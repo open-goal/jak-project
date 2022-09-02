@@ -1391,7 +1391,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
-  ((data   float   16          :offset-assert 0 :score -1)
+  ((data   float   16          :offset-assert 0 :score -10)
    (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
    (trans  vector  :inline     :offset        48)
@@ -4264,13 +4264,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype display-frame (basic)
-  ((buffer        dma-buffer    11      :offset-assert 4) ;; guessed by decompiler
-   (calc-buf      dma-buffer            :offset 8)
-   (vu1-buf       dma-buffer            :offset 8)
-   (debug-buf     dma-buffer            :offset 36)
-   (global-buf    dma-buffer            :offset 40)
-   (bucket-group  (inline-array dma-bucket)    :offset 44)
-   (profile-array profile-array :inline :offset-assert 48)
+  ((buffer        dma-buffer    11          :offset-assert 4) ;; guessed by decompiler
+   (calc-buf      dma-buffer                :offset 8)
+   (vu1-buf       dma-buffer                :offset 8)
+   (debug-buf     dma-buffer                :offset 36)
+   (global-buf    dma-buffer                :offset 40)
+   (bucket-group  (inline-array dma-bucket) :offset 44)
+   (profile-array profile-array :inline     :offset-assert 48)
    (start-time    time-frame                :offset-assert 56)
    (run-time      time-frame                :offset-assert 64) ;; int64
    )
@@ -4357,7 +4357,7 @@
 (define-extern quaternion-from-two-vectors-smooth! (function quaternion vector vector float int quaternion))
 (define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float matrix))
 (define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float matrix))
-(define-extern matrix-remove-z-rot (function matrix matrix matrix))
+(define-extern matrix-remove-z-rot (function matrix vector matrix))
 (define-extern matrix-rot-diff! (function vector matrix matrix float))
 (define-extern quaternion-seek (function quaternion quaternion quaternion float float quaternion))
 (define-extern vector-deg-seek (function vector vector vector float vector))
@@ -4563,7 +4563,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type int level) _type_ 0)
-    (load-dir-method-9 () none 9) ;; (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
+    (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
     (set-loaded-art (_type_ art-group) art-group 10)
     )
   )
@@ -4584,7 +4584,7 @@
    (locked?                    symbol                      :offset-assert 16) ;; guessed by decompiler
    (login?                     symbol                      :offset-assert 20)
    (frame-lock                 symbol                      :offset-assert 24) ;; guessed by decompiler
-   (init-heap                  function                    :offset-assert 28)
+   (init-heap                  (function external-art-buffer object)  :offset-assert 28)
    (heap                       kheap               :inline :offset-assert 32)
    (pending-load-file          string                      :offset-assert 48) ;; guessed by decompiler
    (pending-load-file-part     int32                       :offset-assert 52)
@@ -4604,23 +4604,24 @@
   :flag-assert         #x1000000068
   (:methods
     (new (symbol type int function symbol) _type_ 0)
-    (external-art-buffer-method-9 () none 9) ;; (set-pending-file (_type_ string int handle float) int 9)
-    (external-art-buffer-method-10 () none 10) ;; (update (_type_) int 10)
-    (external-art-buffer-method-11 () none 11) ;; (inactive? (_type_) symbol 11)
-    (external-art-buffer-method-12 () none 12) ;; (file-status (_type_ string int) symbol 12)
-    (external-art-buffer-method-13 () none 13) ;; (link-file (_type_ art-group) art-group 13)
-    (external-art-buffer-method-14 () none 14) ;; (unlink-file (_type_ art-group) int 14)
-    (external-art-buffer-method-15 () none 15) ;; (unlock! (_type_) symbol 15)
+    (set-pending-file (_type_ string int handle float) int 9)
+    (update (_type_) int 10)
+    (inactive? (_type_) symbol 11)
+    (file-status (_type_ string int) symbol 12)
+    (link-file (_type_ art-group) art-group 13)
+    (unlink-file (_type_ art-group) int 14)
+    (unlock! (_type_) int 15)
     )
   )
 
 (deftype spool-anim (basic)
   ((name         string  :offset 16) ;; guessed by decompiler
    (anim-name    basic   :offset-assert 20)
+   (buffer       external-art-buffer :offset 20 :score 10) ;; added
    (parts        int32   :offset-assert 24)
    (hint-id      int32   :offset 24)
    (priority     float   :offset-assert 28)
-   (owner        uint64  :offset-assert 32) ;; handle
+   (owner        handle  :offset-assert 32)
    (command-list pair    :offset-assert 40) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -4628,6 +4629,7 @@
   :flag-assert         #x90000002c
   )
 
+(declare-type process-drawable process)
 (deftype external-art-control (basic)
   ((buffer                   external-art-buffer 2       :offset-assert 4) ;; guessed by decompiler
    (rec                      spool-anim          3 :inline      :offset-assert 16) ;; guessed by decompiler
@@ -4647,11 +4649,11 @@
     (new (symbol type) _type_ 0)
     (update (_type_ symbol) int 9)
     (clear-rec (_type_) int 10)
-    (external-art-control-method-11 () none 11) ;; (spool-push (_type_ string int process float) int 11)
-    (external-art-control-method-12 () none 12) ;; (file-status (_type_ string int) symbol 12)
-    (external-art-control-method-13 () none 13) ;; (reserve-alloc (_type_) kheap 13)
-    (external-art-control-method-14 () none 14) ;; (reserve-free (_type_ kheap) int 14)
-    (external-art-control-method-15 () none 15) ;; (none-reserved? (_type_) symbol 15)
+    (spool-push (_type_ string int process float) int 11)
+    (file-status (_type_ string int) symbol 12)
+    (reserve-alloc (_type_) kheap 13)
+    (reserve-free (_type_ kheap) int 14)
+    (none-reserved? (_type_) symbol 15)
     )
   )
 
@@ -5856,7 +5858,7 @@
     (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
     (load-commands-set! (_type_ pair) none 22) ;; (update-vis-volumes (_type_) none 22)
-    (level-group-method-23 () none 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
+    (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
     (load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
     (level-group-method-25 () none 25) ;; (level-status (_type_ symbol) symbol 25)
     (level-group-method-26 () none 26)
@@ -7081,7 +7083,7 @@
    (stereo-mode int32)
    (music symbol)
    (sound-stinger int32 :offset-assert 236)
-   (spool-anim symbol)
+   (spool-anim spool-anim)
    (sound-mode uint32)
    (task-manager (pointer process))
    (task symbol)
@@ -9986,7 +9988,7 @@
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
     (link-art! (_type_) art-group 13)
-    (art-group-method-14 () none 14) ;; (unlink-art! (_type_) int 14)
+    (unlink-art! (_type_) int 14)
     )
   )
 
@@ -10120,6 +10122,7 @@
 
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
+(declare-type shadow-geo basic)
 
 (deftype draw-control (basic)
   ((process process :offset-assert 4)
@@ -10147,7 +10150,7 @@
    (death-timer-org uint8)
    (death-vertex-skip uint16)
    (death-effect uint32)
-   (shadow uint32)
+   (shadow shadow-geo)
    (shadow-ctrl shadow-control :offset-assert 108)
    (distance meters)
    (origin vector :inline)
@@ -10584,12 +10587,12 @@
   )
 
 (deftype emerc-vu1-low-mem (structure)
-  ((tri-strip-gif qword    :inline :offset-assert 0)
-   (ad-gif        qword    :inline :offset-assert 16)
-   (hvdf-offset   vector   :inline :offset-assert 32)
-   (perspective   vector 4 :inline :offset-assert 48)
-   (fog           vector   :inline :offset-assert 112)
-   (unperspect    vector   :inline :offset-assert 128)
+  ((tri-strip-gif gs-gif-tag    :inline :offset-assert 0)
+   (ad-gif        gs-gif-tag    :inline :offset-assert 16)
+   (hvdf-offset   vector        :inline :offset-assert 32)
+   (perspective   vector 4      :inline :offset-assert 48)
+   (fog           vector        :inline :offset-assert 112)
+   (unperspect    vector        :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
@@ -11444,16 +11447,16 @@
     (reset! (_type_) _type_ 9)
     (update! (_type_) int 10)
     (want-levels (_type_ (pointer symbol)) int 11)
-    (want-sound-banks (_type_ (pointer symbol)) none 12) ;; (want-display-level (_type_ symbol symbol) int 12)
+    (want-sound-banks (_type_ (pointer symbol)) none 12)
     (want-display-level (_type_ symbol symbol) int 13)
-    (want-vis-level (_type_ symbol) none 14) ;; (want-force-vis (_type_ symbol symbol) int 14)
-    (load-state-method-15 () none 15) ;; (execute-command (_type_ pair) none 15)
-    (load-state-method-16 () none 16) ;; (execute-commands-up-to (_type_ float) int 16)
-    (load-state-method-17 () none 17) ;; (backup-load-state-and-set-cmds (_type_ pair) int 17)
-    (load-state-method-18 () none 18) ;; (restore-load-state-and-cleanup (_type_) int 18)
-    (load-state-method-19 () none 19) ;; (restore-load-state (_type_) int 19)
-    (load-state-method-20 () none 20) ;; (set-force-inside! (_type_ symbol symbol) none 20)
-    (load-state-method-21 () none 21)
+    (want-vis-level (_type_ symbol) none 14)
+    (want-force-vis (_type_ symbol symbol) int 15)
+    (execute-command (_type_ pair) none 16)
+    (execute-commands-up-to (_type_ float) none 17)
+    (backup-load-state-and-set-cmds (_type_ pair) int 18)
+    (restore-load-state-and-cleanup (_type_) int 19)
+    (restore-load-state (_type_) int 20)
+    (set-force-inside! (_type_ symbol symbol) none 21)
     )
   )
 
@@ -11803,8 +11806,8 @@
    (channel gui-channel :offset 21)
    (anim-part uint8 :offset 22)
    (flags uint8 :offset 23)
-   (name object :offset 24)
-   (id uint32 :offset 28)
+   (name string :offset 24)
+   (id sound-id :offset 28)
    (handle handle :offset 0)
    (time-stamp time-frame :offset 8)
    (hold-time time-frame :offset-assert 32)
@@ -11826,29 +11829,35 @@
 
 (deftype gui-control (basic)
   ((engine engine)
-   (data uint8 3272)
+   (update-time  time-frame  :offset-assert 8)
+   (connections gui-connection 32 :inline :offset-assert 16)
+   (spool-connections gui-connection 4 :inline :offset-assert 1552)
+   (ids sound-id 96 :offset-assert 1744)
+   (times time-frame 96 :offset-assert 2128)
+   (cmd pair 96 :offset-assert 2896)
    )
   :method-count-assert 25
   :size-assert         #xcd0
   :flag-assert         #x1900000cd0
   ;; Failed to read fields.
   (:methods
-    (gui-control-method-9 () none 9)
-    (gui-control-method-10 () none 10)
-    (gui-control-method-11 () none 11)
-    (gui-control-method-12 () none 12)
-    (update (_type_ symbol) none 13)
-    (gui-control-method-14 () none 14)
-    (gui-control-method-15 () none 15)
-    (gui-control-method-16 () none 16)
-    (gui-control-method-17 () none 17)
-    (gui-control-method-18 () none 18)
-    (gui-control-method-19 () none 19)
-    (gui-control-method-20 () none 20)
-    (gui-control-method-21 () none 21)
-    (gui-control-method-22 () none 22)
-    (gui-control-method-23 () none 23)
-    (gui-control-method-24 () none 24)
+    (new (symbol type int) _type_ 0)
+    (gui-control-method-9 (_type_ process gui-channel gui-action int float time-frame) sound-id 9)
+    (gui-control-method-10 (_type_ process gui-channel) none 10)
+    (gui-control-method-11 (_type_ gui-connection) int 11)
+    (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id 12)
+    (update (_type_ symbol) int 13)
+    (gui-control-method-14 (_type_ string gui-channel gui-action) int 14)
+    (gui-control-method-15 (_type_ process gui-channel string sound-id) gui-connection 15)
+    (gui-control-method-16 (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int 16)
+    (gui-control-method-17 (_type_ sound-id) gui-action 17)
+    (gui-control-method-18 (_type_ gui-channel) symbol 18)
+    (gui-control-method-19 (_type_ gui-channel gui-connection) symbol 19)
+    (gui-control-method-20 (_type_ sound-id symbol int int int) gui-connection 20)
+    (gui-control-method-21 (_type_ gui-connection vector) int 21)
+    (gui-control-method-22 (_type_ gui-connection process symbol) none 22)
+    (gui-control-method-23 (_type_ gui-channel gui-channel symbol gui-connection) symbol 23)
+    (channel-id-set! (_type_ gui-connection sound-id) int 24)
     )
   )
 
@@ -12283,25 +12292,25 @@
 
 
 (deftype top-anim-joint-control (basic)
-  ((process             uint32    :offset-assert 4)
-   (interp-select       uint64  2 :offset-assert 8)
-   (base-anim           basic     :offset-assert 24)
-   (base-anim-speed     float     :offset-assert 28)
-   (base-anim-blend     float     :offset-assert 32)
-   (interp              float     :offset-assert 36)
-   (frame-group         basic     :offset-assert 40)
-   (frame-group-push    basic     :offset-assert 44)
-   (frame-num           float     :offset-assert 48)
-   (frame-targ          basic     :offset-assert 52)
-   (frame-speed         float     :offset-assert 56)
-   (frame-blend         float     :offset-assert 60)
-   (frame-cur-blend     float     :offset-assert 64)
-   (frame-start         float     :offset-assert 68)
-   (frame-post-blend    float     :offset-assert 72)
-   (frame-post-end      float     :offset-assert 76)
-   (frame-push-time     time-frame    :offset-assert 80)
-   (frame-post-put-away basic     :offset-assert 88)
-   (update-time         time-frame    :offset-assert 96)
+  ((process             uint32         :offset-assert 4)
+   (interp-select       uint64  2      :offset-assert 8)
+   (base-anim           basic          :offset-assert 24)
+   (base-anim-speed     float          :offset-assert 28)
+   (base-anim-blend     float          :offset-assert 32)
+   (interp              float          :offset-assert 36)
+   (frame-group         art-joint-anim :offset-assert 40)
+   (frame-group-push    basic          :offset-assert 44)
+   (frame-num           float          :offset-assert 48)
+   (frame-targ          basic          :offset-assert 52)
+   (frame-speed         float          :offset-assert 56)
+   (frame-blend         float          :offset-assert 60)
+   (frame-cur-blend     float          :offset-assert 64)
+   (frame-start         float          :offset-assert 68)
+   (frame-post-blend    float          :offset-assert 72)
+   (frame-post-end      float          :offset-assert 76)
+   (frame-push-time     time-frame     :offset-assert 80)
+   (frame-post-put-away basic          :offset-assert 88)
+   (update-time         time-frame     :offset-assert 96)
    )
   :method-count-assert 13
   :size-assert         #x68
@@ -12334,7 +12343,7 @@
   ((status joint-control-status)
    (allocated-length uint8)
    (active-channels uint8)
-   (root-channel uint32 :offset 16)
+   (root-channel (inline-array joint-control-channel) :offset 16)
    (blend-index uint8)
    (active-frame-interp uint8)
    (float-channels uint8)
@@ -13288,7 +13297,6 @@
   )
 
 (declare-type target process-focusable)
-(declare-type process-drawable process)
 
 (deftype fact-info-target (fact-info)
   ((eco-type int32)
@@ -13585,8 +13593,8 @@
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   (:methods
-    (process-drawable-method-14 () none 14) ;; (initialize-skeleton (_type_ skeleton-group pair) none 14)
-    (process-drawable-method-15 () none 15) ;; (initialize-skeleton-by-name (_type_ string object) _type_ 15)
+    (initialize-skeleton (_type_ skeleton-group pair) none 14)
+    (initialize-skeleton-by-name (_type_ string object) draw-control 15)
     (process-drawable-method-16 () none 16) ;; (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
     (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
@@ -14299,9 +14307,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defenum joint-mod-mode
-  :bitfield #f
+  :bitfield #t
   :type uint32
-
+  (flex-blend)
+  (look-at)
+  (world-look-at)
+  (rotate)
+  (joint-set)
+  (joint-set*)
+  (rotate2) ;; ??
+  (reset)
+  (polar-look-at)
+  (joint-set*-world)
+  (gun-look-at)
+  (foot-rot)
+  (joint-set-world)
   )
 
 ;; +++joint-mod-h:track-mode
@@ -14320,12 +14340,12 @@
 
 (deftype joint-mod (basic)
   ((mode joint-mod-mode)
-   (process process)
+   (process process-drawable)
    (joint cspace)
-   (target vector :inline :offset 16)
-   (twist vector :inline :offset 32)
-   ;;(twist-max vector :inline)
-   (twist-max float 4)
+   (target vector :inline)
+   (twist vector :inline)
+   (twist-max vector :inline)
+   ;; (twist-max float 4)
    (extra-twist degrees :offset 40)
    (track-mode track-mode :offset 44)
    (loock-at-count uint16 :offset 46)
@@ -14363,19 +14383,19 @@
   :flag-assert         #x10000000b8
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
-    (joint-mod-method-9 () none 9) ;; (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
-    (joint-mod-method-10 () none 10) ;; (set-target! (_type_ vector) none 10)
-    (joint-mod-method-11 () none 11) ;; (look-at-enemy! (_type_ vector symbol process) none 11)
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
+    (mode-set! (_type_ joint-mod-mode) none 9)
+    (target-set! (_type_ vector) none 10)
+    (look-at! (_type_ vector symbol process) none :behavior process 11)
     (reset-blend! (_type_) _type_ 12)
-    (joint-mod-method-13 () none 13) ;; (set-twist! (_type_ float float float) vector 13)
-    (joint-mod-method-14 () none 14) ;; (set-trs! (_type_ vector quaternion vector) none 14)
-    (joint-mod-method-15 () none 15) ;; (shut-down! (_type_) float 15)
+    (twist-set! (_type_ float float float) vector 13)
+    (trs-set! (_type_ vector quaternion vector) none 14)
+    (shut-down (_type_) none 15)
     )
   )
 
 (deftype try-to-look-at-info (basic)
-  ((who  handle  :offset-assert 8) ;; handle
+  ((who  handle  :offset-assert 8)
    (horz float   :offset-assert 16)
    (vert float   :offset-assert 20)
    )
@@ -14471,10 +14491,18 @@
   :flag-assert         #x90000002c
   )
 
+(defenum joint-mod-blend-flags
+  :bitfield #t
+  :type uint32
+  (trans)
+  (scale)
+  (rotation)
+  )
+
 (deftype joint-mod-blend-world (basic)
   ((transform       transformq :inline :offset-assert 16)
    (blend-transform transformq :inline :offset-assert 64)
-   (blend-flags     uint32             :offset-assert 112)
+   (blend-flags     joint-mod-blend-flags  :offset-assert 112)
    (node-index      int32              :offset-assert 116)
    (blend           float              :offset-assert 120)
    (enable          symbol             :offset-assert 124)
@@ -14499,9 +14527,17 @@
   :flag-assert         #x900000020
   )
 
+(defenum joint-mod-ik-flags
+  :bitfield #t
+  :type uint32
+  (enable)
+  (elbow-trans-neg)
+  (elbow-rot-neg)
+  )
+
 (deftype joint-mod-ik (basic)
-  ((flags                  uint32         :offset-assert 4)
-   (process                basic          :offset-assert 8)
+  ((flags                  joint-mod-ik-flags  :offset-assert 4)
+   (process                process-drawable    :offset-assert 8)
    (hand-dist              float          :offset-assert 12)
    (handle-pos             vector :inline :offset-assert 16)
    (elbow-pole-vector-axis uint32         :offset-assert 32)
@@ -14510,7 +14546,7 @@
    (user-normal            vector :inline :offset-assert 64)
    (user-blend             float          :offset-assert 80)
    (user-float             float          :offset-assert 84)
-   (callback               basic          :offset-assert 88)
+   (callback               (function joint-mod-ik matrix matrix vector object)          :offset-assert 88)
    (shoulder-matrix-no-ik  matrix :inline :offset-assert 96)
    (elbow-matrix-no-ik     matrix :inline :offset-assert 160)
    (blend                  float          :offset-assert 224)
@@ -14520,8 +14556,9 @@
   :size-assert         #xe8
   :flag-assert         #xb000000e8
   (:methods
-    (joint-mod-ik-method-9 () none 9)
-    (joint-mod-ik-method-10 () none 10)
+    (new (symbol type process-drawable int float) _type_)
+    (handle-copy! (_type_ vector) none 9)
+    (enable-set! (_type_ symbol) none 10)
     )
   )
 
@@ -15679,18 +15716,18 @@
 
 (define-extern cspace-by-name-no-fail (function process-drawable string cspace))
 (define-extern cspace-index-by-name-no-fail (function process-drawable string int))
-(define-extern num-func-none (function joint-control-channel float float float))
-(define-extern num-func-+! (function joint-control-channel float float float))
-(define-extern num-func--! (function joint-control-channel float float float))
-(define-extern num-func-loop! (function joint-control-channel float float float))
-(define-extern num-func-loop-speedless! (function joint-control-channel float float float))
-(define-extern num-func-seek! (function joint-control-channel float float float))
-(define-extern num-func-blend-in! (function joint-control-channel float float float))
+(define-extern num-func-none (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-+! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func--! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-loop! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-loop-speedless! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-seek! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-blend-in! (function joint-control-channel float float float float :behavior process))
 (define-extern joint-channel-float-delete! (function joint-control-channel none))
-(define-extern num-func-interp-play! (function joint-control-channel float float float float))
-(define-extern num-func-interp1-play! (function joint-control-channel float float float float))
-(define-extern num-func-chan (function joint-control-channel float float float))
-(define-extern num-func-identity (function joint-control-channel float float float))
+(define-extern num-func-interp-play! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-interp1-play! (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-chan (function joint-control-channel float float float float :behavior process))
+(define-extern num-func-identity (function joint-control-channel float float float float :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-focusable              ;;
@@ -16036,7 +16073,7 @@
   ((position  vector :inline :offset-assert 0)
    (velocity  vector :inline :offset-assert 16)
    (old-x     vector :inline :offset-assert 32)
-   (joint-mod basic          :offset-assert 48)
+   (joint-mod joint-mod      :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -16057,22 +16094,22 @@
    (negate-y              basic           :offset-assert 1360)
    (axial-slop            float           :offset-assert 1364)
    (maximum-stretch       float           :offset-assert 1368)
-   (turn-off-start        uint64          :offset-assert 1376)
-   (turn-off-duration     uint64          :offset-assert 1384)
+   (turn-off-start        time-frame      :offset-assert 1376)
+   (turn-off-duration     time-frame      :offset-assert 1384)
    )
   :method-count-assert 18
   :size-assert         #x570
   :flag-assert         #x1200000570
   (:methods
-    (chain-physics-method-9 () none 9)
-    (chain-physics-method-10 () none 10)
-    (chain-physics-method-11 () none 11)
-    (chain-physics-method-12 () none 12)
-    (chain-physics-method-13 () none 13)
-    (chain-physics-method-14 () none 14)
-    (chain-physics-method-15 () none 15)
-    (chain-physics-method-16 () none 16)
-    (chain-physics-method-17 () none 17)
+    (initialize-chain-joints (_type_) symbol 9)
+    (turn-off (_type_ time-frame) none :behavior process 10)
+    (update (_type_ process-drawable) none :behavior process 11)
+    (gravity-update (_type_) none 12)
+    (apply-gravity (_type_ vector int) none :behavior process 13)
+    (chain-physics-method-14 (_type_ vector int) none 14)
+    (clamp-length (_type_ vector vector) vector 15)
+    (chain-physics-method-16 (_type_ int) float 16)
+    (chain-physics-method-17 (_type_ vector) none 17)
     )
   )
 
@@ -16188,6 +16225,7 @@
 ;; missing ref test - there's a useless array defintion with a list of not-yet-defined types
 ;; and this doesn't work in goalc.
 
+(declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -16199,7 +16237,7 @@
 (deftype target (process-focusable)
   ((control                 control-info               :score 1      :offset 128) ;; guessed by decompiler
    (skel2                   basic                                    :offset-assert 204)
-   (shadow-backup           basic                                    :offset-assert 208)
+   (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
    (game                    game-info                                :offset-assert 212) ;; guessed by decompiler
    (neck                    joint-mod                                :offset-assert 216) ;; guessed by decompiler
@@ -16613,6 +16651,8 @@
     )
   )
 
+(declare-type collide-query structure)
+
 (deftype collide-cache (basic)
   ((num-tris         int32                      :offset-assert 4)
    (num-prims        int32                      :offset-assert 8)
@@ -16631,13 +16671,13 @@
   (:methods
     (collide-cache-method-9 () none 9) ;; (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-spec process collide-tri-result pat-surface) float 10)
-    (collide-cache-method-11 () none 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
-    (collide-cache-method-12 () none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
+    (collide-cache-method-12 (_type_ collide-query) none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (collide-cache-method-13 () none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (collide-cache-method-14 () none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
+    (fill-using-spheres (_type_ collide-query) none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
     (collide-cache-method-15 () none 15) ;; (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
     (collide-cache-method-16 () none 16) ;; (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
-    (collide-cache-method-17 () none 17) ;; (initialize (_type_) none 17)
+    (probe-using-spheres (_type_ collide-query) symbol 17) ;; (initialize (_type_) none 17)
     (collide-cache-method-18 () none 18) ;; (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (collide-cache-method-19 () none 19) ;; (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (collide-cache-method-20 () none 20) ;; (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
@@ -16693,14 +16733,14 @@
    (exit-planes      plane              2       :offset-assert 256) ;; ?
    (radius           float                      :offset 268)
    (inv-mat          matrix             :inline :offset 288)
-   (spheres          uint32                     :offset 112)
+   (spheres          (inline-array sphere)      :offset 112 :score 1)
    (num-spheres      uint32                     :offset 116)
-   (solid-only       basic                      :offset 120)
-   (best-dist        float                      :offset 112 :score 1)
+   (solid-only       symbol                     :offset 120)
+   (best-dist        float                      :offset 112 :score -1)
    (best-other-prim  basic                      :offset 116)
    (best-my-prim     basic                      :offset 120)
    (move-vec         vector             :inline :offset 224)
-   (best-u           float                      :offset 112)
+   (best-u           float                      :offset 112 :score -1)
    (action-mask      uint32                     :offset-assert 352)
    (local-box4w      bounding-box4w     :inline :offset-assert 368)
    (search-box       bounding-box4w     :inline :offset-assert 400)
@@ -20930,14 +20970,16 @@
 (defenum stream-status
   :type uint32
   :bitfield #t
-  (zero        0)
-  (one         1) ;; another way to be playing
-  (two         2)
-  (three       3)
-  (four        4) ;; is playing?
-  (five        5)
-  (six         6) ;; another way to be playing.
-  (seven       7)
+  (ststatus-zero        0)
+  (ststatus-one         1) ;; another way to be playing
+  (ststatus-two         2)
+  (ststatus-three       3)
+  (ststatus-four        4) ;; is playing?
+  (ststatus-five        5)
+  (ststatus-six         6) ;; another way to be playing.
+  (ststatus-seven       7)
+  (ststatus-eight       8)
+  (ststatus-nine        9)
   )
 
 (defenum stereo-mode
@@ -20963,7 +21005,8 @@
    (stream-position uint32 4 :offset 272)
    (stream-status stream-status 4 :offset-assert 288)
    (stream-name sound-stream-name 4 :inline :offset-assert 304)
-   (stream-id uint32 4 :offset-assert 496)
+   (stream-id sound-id 4 :offset-assert 496)
+   (stream-id-int32 int32 4 :offset 496) ;; ughhhh...
    (music-register uint8 17 :offset-assert 512)
    (music-excite int8 :offset 528)
    (ramdisk-name uint8 48 :offset-assert 529)
@@ -21110,27 +21153,27 @@
 ;; joint-mod                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern joint-mod-ik-callback function)
-;; (define-extern real-joint-mod-gun-look-at-handler function)
-;; (define-extern joint-mod-gun-look-at-handler function)
-;; (define-extern joint-mod-foot-rot-handler function)
+(define-extern joint-mod-ik-callback (function cspace transformq none :behavior process))
+(define-extern real-joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-foot-rot-handler (function cspace transformq none :behavior process))
 (define-extern last-try-to-look-at-data try-to-look-at-info)
-;; (define-extern joint-mod-look-at-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-polar-look-at-guts function)
-;; (define-extern joint-mod-polar-look-at-handler function)
-;; (define-extern joint-mod-world-look-at-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-rotate-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-scale-handler function)
-;; (define-extern joint-mod-joint-set-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-joint-set-world-handler function)
-;; (define-extern joint-mod-joint-set*-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-joint-set*-world-handler function)
+(define-extern joint-mod-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-polar-look-at-guts (function cspace transformq none :behavior process))
+(define-extern joint-mod-polar-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-world-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-rotate-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-scale-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-world-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-world-handler (function cspace transformq none :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chain-physics                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern chain-physics-initialize function)
+(define-extern chain-physics-initialize (function process-drawable chain-physics int float (array chain-physics-setup) int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cylinder                       ;;
@@ -21569,7 +21612,7 @@
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
 (define-extern add-debug-sphere (function symbol bucket-id vector float rgba symbol))
-;; (define-extern add-debug-text-sphere function) ;; (function symbol bucket-id vector float string rgba symbol)
+(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba symbol))
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function)
 ;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
@@ -21736,7 +21779,7 @@
 ;; emerc-vu1                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-block object)
+(define-extern emerc-vu1-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-blend-shape               ;;
@@ -21863,7 +21906,7 @@
 ;; (define-extern merc-stats-display function) ;; (function merc-ctrl none)
 (define-extern merc-stats (function none))
 ;; (define-extern merc-edge-stats function) ;; (function none)
-;; (define-extern merc-vu1-add-vu-function function) ;; (function dma-packet vu-function int dma-gif-packet)
+(define-extern merc-vu1-add-vu-function (function dma-packet vu-function int dma-gif-packet))
 ;; (define-extern merc-vu1-initialize-chain function) ;; (function dma-gif-packet dma-packet)
 ;; (define-extern merc-vu1-init-buffer function) ;; (function bucket-id gs-test int none)
 (define-extern merc-vu1-init-buffers (function none))
@@ -21872,8 +21915,8 @@
 ;; emerc                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern emerc-vu1-initialize-chain function)
-;; (define-extern emerc-vu1-init-buffer function)
+(define-extern emerc-vu1-initialize-chain (function dma-gif-packet dma-packet))
+(define-extern emerc-vu1-init-buffer (function bucket-id gs-test int none))
 (define-extern emerc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22863,7 +22906,7 @@
 ;; (define-extern sp-adjust-launch function) ;; (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) none)
 ;; (define-extern sp-euler-convert function) ;; (function sparticle-launchinfo sparticle-cpuinfo none)
 ;; (define-extern sp-rotate-system function) ;; (function sparticle-launchinfo sparticle-cpuinfo transformq none)
-;; (define-extern sp-launch-particles-var function) ;; (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none))
 ;; (define-extern *death-adgif* object) ;; adgif-shader
 ;; (define-extern sp-launch-particles-death function) ;; (function sparticle-system sparticle-launcher vector none)
 ;; (define-extern sp-clear-queue function) ;; (function none)
@@ -22894,7 +22937,7 @@
 ;; (define-extern birth-func-y->userdata function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
 ;; (define-extern birth-func-ocean-height function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
 ;; (define-extern birth-func-camera-orient function)
-;; (define-extern *particle-quat* object) ;; quaternion
+(define-extern *particle-quat* quaternion)
 ;; (define-extern birth-func-set-quat function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern *particle-vel* object)
 ;; (define-extern birth-func-set-vel function)
@@ -22905,8 +22948,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern sp-particle-copy! function) ;; (function sparticle-cpuinfo sparticle-cpuinfo none)
-;; (define-extern *sp-particle-system-2d* object) ;; sparticle-system
-;; (define-extern *sp-particle-system-3d* object) ;; sparticle-system
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
 ;; (define-extern sp-get-block-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-get-approx-alloc-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-free-particle function) ;; (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)
@@ -22958,27 +23001,11 @@
 ;; loader                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype load-dir (basic)
-  ()
-  :method-count-assert 11
-  :size-assert         #x10
-  :flag-assert         #xb00000010
-  ;; Failed to read fields.
-  (:methods
-     ;; (new (symbol type int level) _type_ 0)
-    (load-dir-method-9 () none 9) ;; (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
-    (load-dir-method-10 () none 10) ;; (set-loaded-art (_type_ art-group) art-group 10)
-    )
-  )
-|#
-
-#|
 (deftype spooler-block (basic)
-  ((anim             basic   :offset-assert 4)
-   (idle             basic   :offset-assert 8)
-   (exit             basic   :offset-assert 12)
-   (break-func       basic   :offset-assert 16)
+  ((anim             spool-anim   :offset-assert 4)
+   (idle             art-joint-anim   :offset-assert 8)
+   (exit             art-joint-anim   :offset-assert 12)
+   (break-func       (function process-drawable object)   :offset-assert 16)
    (part             int32   :offset-assert 20)
    (part-audio-start float   :offset-assert 24)
    (old-status       uint16  :offset-assert 28)
@@ -22986,25 +23013,31 @@
    (good-time        time-frame  :offset-assert 40)
    (old-time         time-frame  :offset-assert 48)
    (good-count       int32   :offset-assert 56)
-   (sid              uint32  :offset-assert 60)
+   (sid              sound-id  :offset-assert 60)
    (real-start-time  time-frame  :offset-assert 64)
-   (paused?          basic   :offset-assert 72)
+   (paused?          symbol   :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
+  (:methods
+    (new (symbol type art-joint-anim (function process-drawable symbol)) _type_ 0)
+    )
   )
-|#
 
-;; (define-extern drawable-load function) ;; (function drawable kheap drawable)
-;; (define-extern art-load function) ;; (function string kheap art)
-;; (define-extern art-group-load-check function) ;; (function string kheap int art-group)
-(define-extern external-art-buffer-init function)
-;; (define-extern *preload-spool-anims* object) ;; symbol
-;; (define-extern ja-play-spooled-anim function) ;; (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) int :behavior process-drawable)
-;; (define-extern ja-abort-spooled-anim function) ;; (function spool-anim art-joint-anim int int :behavior process-drawable)
+(define-extern drawable-load (function drawable kheap drawable))
+(define-extern art-load (function string kheap art))
+(define-extern art-group-load-check (function string kheap int art-group))
+(define-extern external-art-buffer-init (function external-art-buffer int))
+(define-extern *preload-spool-anims* symbol)
+(define-extern ja-play-spooled-anim (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) int :behavior process-drawable))
+(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (define-extern *gui-control* gui-control)
 (define-extern *art-control* external-art-control)
+(define-extern *stack-top* pointer)
+(define-extern *kernel-sp* pointer)
+(define-extern loado (function string kheap object))
+(define-extern link (function pointer pointer int kheap int pointer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-info                      ;;
@@ -25181,17 +25214,17 @@
 ;; cam-update                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;;
-(define-extern set-point (function vector float float float float)) ;;
-(define-extern update-view-planes (function math-camera (inline-array plane) float matrix float)) ;;
-(define-extern *update-leaf-when-outside-bsp* symbol) ;;
-(define-extern update-visible (function math-camera symbol)) ;;
-(define-extern *save-camera-inv-rot* matrix) ;;
-(define-extern move-camera-from-pad (function math-camera math-camera)) ;;
+(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;; 
+(define-extern set-point (function vector float float float float)) ;; 
+(define-extern update-view-planes (function math-camera (inline-array plane) float matrix float)) ;; 
+(define-extern *update-leaf-when-outside-bsp* symbol) ;; 
+(define-extern update-visible (function math-camera symbol)) ;; 
+(define-extern *save-camera-inv-rot* matrix) ;; 
+(define-extern move-camera-from-pad (function math-camera math-camera)) ;; 
 (define-extern external-cam-reset! (function none))
-(define-extern *start-timer* int) ;;
-(define-extern *timer-value* int) ;;
-(define-extern *start-pos* vector) ;;
+(define-extern *start-timer* int) ;; 
+(define-extern *timer-value* int) ;; 
+(define-extern *start-pos* vector) ;; 
 (define-extern update-camera (function symbol)) ;;
 (define-extern move-level-by-name (function symbol float float float vector))
 
@@ -25610,7 +25643,7 @@
 (define-extern cspace-by-name (function process-drawable string cspace))
 (define-extern cspace-index-by-name (function process-drawable string int))
 (define-extern vector<-cspace! (function vector cspace vector))
-;; (define-extern vector<-matrix! function)
+(define-extern vector<-matrix! (function vector matrix vector))
 ;; (define-extern vector<-cspace+vector! function) ;; (function vector cspace vector vector)
 ;; (define-extern cspace-children function) ;; (function process-drawable int pair)
 ;; (define-extern cspace-inspect-tree function) ;; (function process-drawable cspace int int object object)
@@ -25621,24 +25654,24 @@
 (define-extern process-drawable-art-error (state string process-drawable))
 ;; (define-extern process-drawable-idle state) ;; (state process-drawable)
 ;; (define-extern skeleton-group->draw-control function)
-;; (define-extern ja-done? function) ;; (function int symbol :behavior process-drawable)
+(define-extern ja-done? (function int symbol :behavior process-drawable))
 ;; (define-extern ja-min? function) ;; (function int symbol :behavior process-drawable)
 ;; (define-extern ja-max? function) ;; (function int symbol :behavior process-drawable)
 ;; (define-extern ja-num-frames function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-frame-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe function) ;; (function float int float :behavior process-drawable)
+(define-extern ja-frame-num (function int float :behavior process-drawable))
+(define-extern ja-aframe-num (function int float :behavior process-drawable))
+(define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
 ;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-channel-set! function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-channel-push! function) ;; (function int time-frame int :behavior process-drawable)
+(define-extern ja-channel-set! (function int int :behavior process-drawable))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
 (define-extern ja-post (function none :behavior process-drawable))
-;; (define-extern sleep-code function)
+(define-extern sleep-code (function symbol))
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
 ;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
@@ -25657,7 +25690,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern can-display-query? function)
-;; (define-extern talker-surpress! function)
+(define-extern talker-surpress! (function none))
 ;; (define-extern talker-displayed? function)
 ;; (define-extern kill-current-talker function)
 ;; (define-extern string->talker-speech function)
@@ -25929,28 +25962,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gun (process-drawable)
-  ((control       basic           :offset 128)
-   (shadow-backup basic           :offset 208)
+  ((control       control-info    :offset 128)
+   (shadow-backup shadow-geo      :offset 208)
    (read-scale    basic           :offset-assert 212)
    (gun-type      pickup-type     :offset-assert 216)
-   (barrel        basic           :offset-assert 220)
-   (mag           basic 4         :offset-assert 224) ;; guessed type
+   (barrel        joint-mod       :offset-assert 220)
+   (mag           joint-mod 4     :offset-assert 224) ;; guessed type
    (mag-scale     float 4         :offset-assert 240)
    )
   :method-count-assert 24
   :size-assert         #x100
   :flag-assert         #x1800800100
   (:methods
-    (gun-method-20 () none 20)
-    (gun-method-21 () none 21)
-    (gun-method-22 () none 22)
-    (gun-method-23 () none 23)
+    (idle () _type_ :state 20)
+    (use (symbol) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (die () _type_ :state 23)
     )
   )
 
 (deftype gun-info (basic)
-  ((process                uint32             :offset-assert 4)
-   (gun                    uint32             :offset-assert 8)
+  ((process                (pointer target)   :offset-assert 4)
+   (gun                    (pointer gun)      :offset-assert 8)
    (gun-pos                transformq :inline :offset-assert 16)
    (gun-trans              vector     :inline :offset 16)
    (gun-quat               quaternion :inline :offset 32)
@@ -26036,7 +26069,7 @@
   :size-assert         #x2c0
   :flag-assert         #xa000002c0
   (:methods
-    (gun-info-method-9 () none 9)
+    (gun-info-method-9 (_type_) none 9)
     )
   )
 
@@ -26051,17 +26084,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype board (process-drawable)
-  ((control       basic       :score 1 :offset 128)
-   (shadow-backup basic                :offset 208)
-   (main          basic                :offset 212)
+  ((control       control-info          :offset 128)
+   (shadow-backup shadow-geo            :offset 208)
+   (main          joint-mod             :offset 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
   (:methods
-    (board-method-20 () none 20)
-    (board-method-21 () none 21)
-    (board-method-22 () none 22)
+    (idle (symbol) _type_ :state 20)
+    (use () _type_ :state 21)
+    (hidden () _type_ :state 22)
     )
   )
 
@@ -26072,7 +26105,7 @@
    (board-trans            vector :inline     :offset-assert 16)
    (board-quat             vector :inline     :offset-assert 32)
    (board-scale            vector :inline     :offset-assert 48)
-   (main                   basic              :offset-assert 64)
+   (main                   joint-mod          :offset-assert 64)
    (upper-body             basic              :offset-assert 68)
    (sound-bank-knob        float              :offset-assert 72)
    (sound-air-knob         float              :offset-assert 76)
@@ -26228,7 +26261,6 @@
 ;; darkjak-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype darkjak-info (basic)
   ((process      uint32    :offset-assert 4)
    (attack-id    uint32    :offset-assert 8)
@@ -26239,20 +26271,18 @@
    (want-stage   uint32    :offset-assert 44)
    (clock-pos    float     :offset-assert 48)
    (clock-vel    float     :offset-assert 52)
-   (clock-on     basic     :offset-assert 56)
-   (hud          UNKNOWN 1 :offset-assert 64)
-   (tone         uint32    :offset-assert 72)
-   (bomb         uint32    :offset-assert 76)
+   (clock-on     symbol    :offset-assert 56)
+   (hud          handle  1 :offset 64)
+   (tone         uint32    :offset 72)
+   (bomb         uint32    :offset 76)
    )
   :method-count-assert 10
   :size-assert         #x50
   :flag-assert         #xa00000050
   (:methods
-    (darkjak-info-method-9 () none 9)
+    (darkjak-info-method-9 (_type_ int) none :behavior target 9)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-util                    ;;
@@ -26370,7 +26400,7 @@
   )
 |#
 
-;; (define-extern *target-shadow-control* shadow-control) ;; shadow-control
+(define-extern *target-shadow-control* shadow-control)
 ;; (define-extern *TARGET-bank* target-bank) ;; target-bank
 ;; (define-extern target-start-attack function) ;; (function none :behavior target)
 ;; (define-extern target-danger-set! function) ;; (function symbol symbol float :behavior target)
@@ -26784,7 +26814,7 @@
 ;; (define-extern target-hide state)
 ;; (define-extern target-launch state) ;; (state float symbol vector int target)
 ;; (define-extern target-play-anim state) ;; (state string handle target)
-;; (define-extern target-clone-anim state) ;; (state handle target)
+(define-extern target-clone-anim (state handle target))
 ;; (define-extern *float-mods* object)
 ;; (define-extern target-float state)
 
@@ -26895,10 +26925,10 @@
 ;; (define-extern target-gun-combo-start function)
 ;; (define-extern target-gun-joint-pre0 function)
 ;; (define-extern target-gun-joint-pre function)
-;; (define-extern target-gun-compute-pos function)
+(define-extern target-gun-compute-pos (function matrix :behavior target))
 ;; (define-extern target-gun-joint-points function)
 ;; (define-extern target-gun-fire function)
-;; (define-extern target-gun-check function)
+(define-extern target-gun-check (function none :behavior target))
 ;; (define-extern camera-rotate-to-vector function)
 ;; (define-extern target-gun-real-post function)
 ;; (define-extern target-gun-post function)
@@ -26907,7 +26937,6 @@
 ;; gun-util                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-eject (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26916,9 +26945,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-yellow (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26927,9 +26954,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-red (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26938,9 +26963,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-blue (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26949,9 +26972,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-dark (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26960,9 +26981,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype beam-info (structure)
   ((y-scale float  :offset-assert 0)
    )
@@ -26970,14 +26989,13 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern *beam-info* object)
-;; (define-extern birth-func-setup-beam function)
-;; (define-extern birth-func-laser-pointer function)
-;; (define-extern draw-beam function)
-;; (define-extern gun-post function)
-;; (define-extern gun-init function)
+(define-extern *beam-info* beam-info)
+(define-extern birth-func-setup-beam (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-laser-pointer (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern draw-beam (function sparticle-launcher vector vector symbol symbol none)) ;; probably wrong args
+(define-extern gun-post (function none :behavior gun))
+(define-extern gun-init (function none :behavior gun))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-blue-shot                  ;;
@@ -27005,11 +27023,10 @@
 ;; gun-yellow-shot                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-yellow-shot (projectile)
-  ((hit-actor? basic          :offset-assert 468)
-   (tail-pos   vector :inline :offset-assert 476)
-   (hit-pos    vector :inline :offset-assert 492)
+  ((hit-actor? symbol         :offset-assert 472)
+   (tail-pos   vector :inline :offset-assert 480)
+   (hit-pos    vector :inline :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x200
@@ -27017,9 +27034,8 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern target-gun-fire-yellow function)
+(define-extern target-gun-fire-yellow (function none :behavior target))
 ;; (define-extern someone-fire-yellow function)
 ;; (define-extern gun-yellow-shot-move function)
 
@@ -27104,8 +27120,8 @@
 ;; board-util                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern board-post function)
-;; (define-extern board-init function)
+(define-extern board-post (function none :behavior board))
+(define-extern board-init (function none :behavior board))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-board                   ;;
@@ -27418,7 +27434,7 @@
 (define-extern sphere-cull (function vector symbol))
 (define-extern guard-band-cull (function vector symbol))
 (define-extern sphere-in-view-frustum? (function sphere symbol))
-;; (define-extern line-in-view-frustum? function) ;; (function vector vector symbol)
+(define-extern line-in-view-frustum? (function vector vector symbol))
 (define-extern vis-cull (function int symbol))
 ;; (define-extern vis-cull-debug function)
 (define-extern error-sphere (function drawable-error string none))
@@ -45964,12 +45980,11 @@
   )
 |#
 
-#|
 (deftype under-mine (process-drawable)
-  ((chain             basic  :offset-assert 196)
-   (chain-initialized basic  :offset-assert 200)
-   (main-mod          basic  :offset-assert 204)
-   (head-mod          basic  :offset-assert 208)
+  ((chain             chain-physics  :offset-assert 200)
+   (chain-initialized symbol  :offset-assert 204)
+   (main-mod          joint-mod  :offset-assert 208)
+   (head-mod          joint-mod  :offset-assert 212)
    )
   :method-count-assert 22
   :size-assert         #xd8
@@ -45979,7 +45994,6 @@
     (idle () _type_ :state 21)
     )
   )
-|#
 
 #|
 (deftype under-lift (elevator)

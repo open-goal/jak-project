@@ -59,7 +59,10 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     if (*kv->second != *type) {
       // exists, and we are trying to change it!
 
-      if (m_allow_redefinition) {
+      // Check if the type is allowed to be redefined
+      if (m_allow_redefinition ||
+          std::find(m_types_allowed_to_be_redefined.begin(), m_types_allowed_to_be_redefined.end(),
+                    kv->second->get_name()) != m_types_allowed_to_be_redefined.end()) {
         fmt::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
                    kv->second->get_name(), kv->second->print(), type->print());
         // extra dangerous, we have allowed type redefinition!

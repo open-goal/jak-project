@@ -1,0 +1,19 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defun speedrun-start-run ()
+  ;; randomize game id so the autosplitter knows to restart
+  (update-autosplit-jak1-new-game)
+  ;; spawn at the warp gate checkpoint
+  (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+  ;; disable hints (this seems to be overriden by your slot 1 save though)
+  (set! (-> *setting-control* default play-hints) #f)
+  ;; ensure `force actors` is not enabled
+  (set! (-> *pc-settings* force-actors?) #f)
+  ;; force FPS to `60`
+  (set-frame-rate! *pc-settings* 60)
+  ;; skip intro cutscene
+  (close-specific-task! (game-task intro) (task-status need-resolution))
+  ;; enable auto saving by default
+  (set! (-> *setting-control* default auto-save) #t)
+  (none))

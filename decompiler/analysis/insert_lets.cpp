@@ -1130,19 +1130,26 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
 
   auto form_fg = set_fg ? set_fg : arg_group;
+  // jak 1: (the float (+ (-> a0-14 frame-group data 0 length) -1))
+  // jak 2: (the float (+ (-> a0-14 frame-group frames num-frames) -1))
+  auto matcher_cur_group_max_frames =
+      env.version == GameVersion::Jak1
+          ? Matcher::deref(
+                Matcher::any_reg(0), false,
+                {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("data"),
+                 DerefTokenMatcher::integer(0), DerefTokenMatcher::string("length")})
+          : Matcher::deref(
+                Matcher::any_reg(0), false,
+                {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("frames"),
+                 DerefTokenMatcher::string("num-frames")});
   auto matcher_max_num = Matcher::cast(
-      "float",
-      Matcher::op_fixed(
-          FixedOperatorKind::ADDITION,
-          {form_fg
-               ? Matcher::deref(Matcher::any(1), false,
-                                {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
-                                 DerefTokenMatcher::string("length")})
-               : Matcher::deref(
-                     Matcher::any_reg(0), false,
-                     {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("data"),
-                      DerefTokenMatcher::integer(0), DerefTokenMatcher::string("length")}),
-           Matcher::integer(-1)}));
+      "float", Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                                 {form_fg ? Matcher::deref(Matcher::any(1), false,
+                                                           {DerefTokenMatcher::string("data"),
+                                                            DerefTokenMatcher::integer(0),
+                                                            DerefTokenMatcher::string("length")})
+                                          : matcher_cur_group_max_frames,
+                                  Matcher::integer(-1)}));
 
   // DONE CHECKING EVERYTHING!!! Now write the goddamn macro.
   std::vector<Form*> args;
