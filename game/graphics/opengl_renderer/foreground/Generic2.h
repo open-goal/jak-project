@@ -5,7 +5,7 @@
 class Generic2 : public BucketRenderer {
  public:
   Generic2(const std::string& name,
-           BucketId my_id,
+           int my_id,
            u32 num_verts = 200000,
            u32 num_frags = 2000,
            u32 num_adgif = 6000,

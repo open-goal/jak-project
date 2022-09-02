@@ -4,7 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
 

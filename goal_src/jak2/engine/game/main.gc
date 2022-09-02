@@ -7,6 +7,11 @@
 
 ;; DECOMP BEGINS
 
+(defun paused? ()
+  (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
+  )
+
+
 ;; Rough loop outline:
 ;; (while *run*
 ;;    - suspend                                          ;; runs actors
@@ -47,18 +52,18 @@
     (when *debug-segment*
       ;; do all debug drawing.
       ; (debug-draw-buffers)
-      ; (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf))
-      ;   (when (or *display-profile* *stats-profile-bars*)
-      ;     (setup-categories! (-> arg0 frames (-> arg0 on-screen) profile-array))
-      ;     (let ((a2-0 7))
-      ;       (if *display-profile*
-      ;           (draw-bars! *profile-array* s3-0 a2-0)
-      ;           )
-      ;       )
+      (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf))
+        (when (or *display-profile* *stats-profile-bars*)
+          (setup-categories! (-> arg0 frames (-> arg0 on-screen) profile-array))
+          (let ((a2-0 7))
+            (if *display-profile*
+                (draw-bars! *profile-array* s3-0 a2-0)
+                )
+            )
       ;     (if (and (!= *master-mode* 'menu) *stats-profile-bars*)
       ;         (draw-text! *profile-array*)
       ;         )
-      ;     )
+          )
       ;   (when *display-deci-count*
       ;     (let ((s2-0 draw-string-xy))
       ;       (format (clear *temp-string*) "~D" *deci-count*)
@@ -66,7 +71,7 @@
       ;       )
       ;     )
       ;   (display-file-info)
-      ;   )
+        )
       )
 
     ;; draw console buffer
@@ -211,9 +216,9 @@
     ;     )
 
     ;; drawing - this runs foreground/background drawing.
-    ; (with-profiler 'draw-hook *profile-draw-hook-color*
-    ;   (*draw-hook*)
-    ;   )
+    (with-profiler 'draw-hook *profile-draw-hook-color*
+      (*draw-hook*)
+      )
 
     ;; another level load
     ; (if (-> *level* loading-level)
@@ -265,23 +270,23 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;; and we're done with the main frame! end profiling/stat collection
-    ; (when *debug-segment*
-    ;   (let ((s5-13 (-> arg0 frames (-> arg0 on-screen) profile-array data 0)))
-    ;     (when (and *dproc* *debug-segment*)
-    ;       (let* ((v1-294 (+ (-> s5-13 depth) -1))
-    ;              (s4-12 (-> s5-13 segment v1-294))
-    ;              (s3-12 (-> s5-13 base-time))
-    ;              )
-    ;         (when (>= v1-294 0)
-    ;           (set! (-> s4-12 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-12))))
-    ;           (+! (-> s5-13 depth) -1)
-    ;           )
-    ;         )
-    ;       )
-    ;     )
-    ;   0
-    ;   (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
-    ;   )
+    (when *debug-segment*
+      (let ((s5-13 (-> arg0 frames (-> arg0 on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-294 (+ (-> s5-13 depth) -1))
+                 (s4-12 (-> s5-13 segment v1-294))
+                 (s3-12 (-> s5-13 base-time))
+                 )
+            (when (>= v1-294 0)
+              (set! (-> s4-12 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-12))))
+              (+! (-> s5-13 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      ;(read! (-> *perf-stats* data (perf-stat-bucket all-code)))
+      )
 
     ;; now wait for the previous frame to finish rendering...
     (when (nonzero? (sync-path 0 0))
@@ -302,7 +307,7 @@
     ;; start profiling for the new frame
     (when *debug-segment*
       (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
-      (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
+      ;(reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
       )
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -409,12 +414,15 @@
   ;   :to *mid-pool*
   ;   )
   (let ((gp-1 *display*))
-    ; (set! *teleport* #t)
+    (set! *teleport* #t)
     ; (update *setting-control*)
     ; (init-time-of-day-context *time-of-day-context*)
-    ; (display-sync gp-1)
-    ; (swap-display gp-1)
-    ; (install-handler 3 vblank-handler)
+    (format 0 "about to display-sync~%")
+    (display-sync gp-1)
+    (format 0 "about to swap-display~%")
+    (swap-display gp-1)
+    (format 0 "about to install-handler~%")
+    (install-handler 3 vblank-handler) ;; TODO: this never gets called.
     ; *touching-list*
     ; ((method-of-type touching-list touching-list-method-10))
     ; (prepare *collide-rider-pool*)
@@ -431,7 +439,6 @@
     ; (set! (-> gp-1 frames 1 start-time) (the-as time-frame (timer-count (the-as timer-bank #x10000800))))
     ; (set! (-> gp-1 dog-ratio) 1.0)
     (while *run*
-      ;(format 0 "hello from display process: ~A" (with-pp pp))
       (display-loop-main gp-1)
       (with-profiler 'actors *profile-actors-color*
         (suspend)

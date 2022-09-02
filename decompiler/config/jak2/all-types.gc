@@ -96,6 +96,7 @@
 (define-extern link-resume (function int))
 (define-extern link-reset (function none))
 (define-extern kset-language (function language-enum int))
+(define-extern reset-graph (function int int int int none))
 
 (define-extern loading-level kheap)
 
@@ -4268,7 +4269,7 @@
    (vu1-buf       dma-buffer            :offset 8)
    (debug-buf     dma-buffer            :offset 36)
    (global-buf    dma-buffer            :offset 40)
-   (bucket-group  dma-bucket            :offset 44) ;; (inline-array dma-bucket)
+   (bucket-group  (inline-array dma-bucket)    :offset 44)
    (profile-array profile-array :inline :offset-assert 48)
    (start-time    time-frame                :offset-assert 56)
    (run-time      time-frame                :offset-assert 64) ;; int64
@@ -5846,10 +5847,10 @@
     (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level 11) ;;
     (level-get-for-use (_type_ symbol symbol) level 12)
     (activate-levels! (_type_) int 13) ;; (debug-print-entities (_type_ symbol type) none 13)
-    (level-group-method-14 () none 14) ;; (debug-draw-actors (_type_ symbol) none 14)
-    (level-group-method-15 () none 15) ;; (actors-update (_type_) object 15)
+    (level-group-method-14 () none 14)
+    (debug-draw-actors (_type_ symbol) none 15)
     (assign-draw-indices (_type_) none 16) ;; (level-update (_type_) int 16)
-    (level-group-method-17 () none 17) ;; (level-get-target-inside (_type_) level 17)
+    (actors-update (_type_) none 17) ;; (level-get-target-inside (_type_) level 17)
     (level-group-method-18 () none 18) ;; (alloc-levels! (_type_ symbol) int 18)
     (level-update (_type_) none 19) ;;
     (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
@@ -7338,9 +7339,9 @@
   :size-assert         #x710
   :flag-assert         #xc00000710
   (:methods
-    (memory-usage-block-method-9 () none 9) ;; (reset! (_type_) _type_ 9)
+    (reset! (_type_) _type_ 9)
     (memory-usage-block-method-10 () none 10) ;; (calculate-total (_type_) int 10)
-    (memory-usage-block-method-11 () none 11) ;; (print-mem-usage (_type_ level object) none 11)
+    (print-mem-usage (_type_ level object) none 11)
     )
   )
 
@@ -7825,8 +7826,8 @@
     (draw (_type_ _type_ display-frame) none 10)
     (drawable-method-11 () none 11) ;; (collide-with-box (_type_ int collide-list) none 11)
     (drawable-method-12 () none 12) ;; (collide-y-probe (_type_ int collide-list) none 12)
-    (drawable-method-13 () none 13) ;; (collide-ray (_type_ int collide-list) none 13)
-    (debug-draw (_type_ drawable display-frame) none 14) ;; (collect-stats (_type_) none 14)
+    (collect-stats (_type_) none 13) ;; (collide-ray (_type_ int collide-list) none 13)
+    (debug-draw (_type_ drawable display-frame) none 14)
     (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15) ;;
     (collect-regions (_type_ sphere int region-prim-list) none 16)
     )
@@ -9072,7 +9073,7 @@
     (init-orbit-settings! (_type_ int float float float float float float) none 10)
     (sky-work-method-11 () none 11)
     (sky-work-method-12 () none 12)
-    (sky-work-method-13 () none 13)
+    (draw (_type_) none 13)
     (sky-work-method-14 () none 14)
     (sky-work-method-15 () none 15)
     (sky-work-method-16 () none 16)
@@ -9577,8 +9578,8 @@
   :flag-assert         #x5c0000206c
   (:methods
     (ocean-method-11 () none 11)
-    (ocean-method-12 () none 12)
-    (ocean-method-13 () none 13)
+    (draw! (_type_) none 12)
+    (update-map (_type_) none 13)
     (ocean-method-14 () none 14)
     (ocean-method-15 () none 15)
     (ocean-method-16 () none 16)
@@ -15497,9 +15498,9 @@
   (:methods
     (new (symbol type) _type_ 0)
     (touching-list-method-9 () none 9) ;; (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
-    (touching-list-method-10 () none 10) ;; (dummy-10 () none 10)
+    (free-nodes (_type_) none 10) ;; (dummy-10 () none 10)
     (touching-list-method-11 () none 11) ;; (update-from-step-size (_type_ float) none 11)
-    (touching-list-method-12 () none 12) ;; (send-events-for-touching-shapes (_type_) none 12)
+    (send-events-for-touching-shapes (_type_) none 12)
     (touching-list-method-13 () none 13) ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry 13)
     )
   )
@@ -22323,12 +22324,17 @@
 ;; font                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern gen-font-12 function)
-;; (define-extern draw-string-asm function)
-(define-extern draw-string (function string dma-buffer font-context float))
+(deftype draw-string-result (uint64)
+  ((length float :offset 0)
+   (b float :offset 32))
+  )
+
+(define-extern gen-font-12 (function string none))
+(define-extern draw-string-asm (function string dma-buffer font-context uint))
+(define-extern draw-string (function string dma-buffer font-context draw-string-result))
 (define-extern get-string-length (function string font-context float))
-(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags float))
-;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
+(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
+(define-extern draw-string-adv (function string dma-buffer font-context none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; decomp                         ;;
@@ -24207,7 +24213,7 @@
 (define-extern set-filter-color! (function float float int none))
 (define-extern tod-madd! (function vector vector vector float))
 (define-extern update-environment-colors (function time-of-day-context vector))
-;; (define-extern update-time-of-day (function time-of-day-context none))
+(define-extern update-time-of-day (function time-of-day-context none))
 (define-extern calc-fade-from-fog (function vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27417,7 +27423,7 @@
 ;; (define-extern vis-cull-debug function)
 (define-extern error-sphere (function drawable-error string none))
 (define-extern *edit-instance* string)
-;; (define-extern *instance-mem-usage* object) ;; memory-usage-block
+(define-extern *instance-mem-usage* memory-usage-block)
 ;; (define-extern find-instance-by-name-level function)
 (define-extern find-instance-by-name (function string prototype-bucket))
 ;; (define-extern prototypes-game-visible-set! function)
@@ -27430,21 +27436,21 @@
 ;; (define-extern get-shadow-by-name function)
 ;; (define-extern teleport-camera-by-name function)
 ;; (define-extern dma-add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
-;; (define-extern *hud-lights* object) ;; vu-lights
+(define-extern *hud-lights* vu-lights)
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control symbol dma-buffer none)
 ;; (define-extern add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
 (define-extern foreground-engine-execute (function engine display-frame none))
 ;; (define-extern main-debug-hook function) ;; (function none)
 ;; (define-extern *debug-hook* object) ;; (function none)
 (define-extern *add-sphere* symbol)
-;; (define-extern *generic-effect-mode* object) ;; int
+(define-extern *generic-effect-mode* int)
 (define-extern foreground-initialize-engines (function none))
 (define-extern foreground-execute-cpu-vu0-engines (function none))
 (define-extern real-main-draw-hook (function none))
 (define-extern main-draw-hook (function none))
 (define-extern *draw-hook* (function none))
-(define-extern default-init-buffer (function int int int none))
-(define-extern default-end-buffer (function int int int none))
+(define-extern default-init-buffer (function bucket-id gs-zbuf gs-test none))
+(define-extern default-end-buffer (function bucket-id gs-zbuf gs-test none))
 ;; (define-extern screen-shot-scale function)
 ;; (define-extern screen-shot function)
 (define-extern display-frame-start (function display int float none))
@@ -27491,7 +27497,7 @@
 ;; (define-extern get-aspect-ratio function) ;; (function symbol)
 ;; (define-extern set-progressive-scan function)
 ;; (define-extern get-progressive-scan function)
-;; (define-extern *smode2* object)
+(define-extern *smode2* int)
 (define-extern set-graphics-mode (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -2202,7 +2202,7 @@ u64 execute(void* ctxt) {
   //c->sw(v1, 0, s0);                                 // sw v1, 0(s0)
   spad_to_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // Unknown instr: sync.l
-  c->load_symbol(t9, cache.clear_frame_accumulator);// lw t9, clear-frame-accumulator(s7)
+  c->load_symbol2(t9, cache.clear_frame_accumulator);// lw t9, clear-frame-accumulator(s7)
   c->vadd(DEST::yz, vf14, vf14, vf14);              // vadd.yz vf14, vf14, vf14
   c->lw(s2, 0, sp);                                 // lw s2, 0(sp)
   // nop                                            // sll r0, r0, 0
@@ -2241,7 +2241,7 @@ u64 execute(void* ctxt) {
   c->lw(a2, 16, t7);                                // lw a2, 16(t7)
   //c->lui(a1, 28672);                                // lui a1, 28672
   get_fake_spad_addr(a1, cache.fake_scratchpad_data, 0, c);
-  c->load_symbol(t9, cache.decompress_fixed_data_to_accumulator);// lw t9, decompress-fixed-data-to-accumulator(s7)
+  c->load_symbol2(t9, cache.decompress_fixed_data_to_accumulator);// lw t9, decompress-fixed-data-to-accumulator(s7)
   c->daddiu(a1, a1, 7392);                          // daddiu a1, a1, 7408
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddiu(s1, s1, -1);                            // daddiu s1, s1, -1
@@ -2292,7 +2292,7 @@ u64 execute(void* ctxt) {
 
   c->lw(a3, 12, t7);                                // lw a3, 12(t7)
   // nop                                            // sll r0, r0, 0
-  c->load_symbol(t9, cache.decompress_frame_data_pair_to_accumulator);// lw t9, decompress-frame-data-pair-to-accumulator(s7)
+  c->load_symbol2(t9, cache.decompress_frame_data_pair_to_accumulator);// lw t9, decompress-frame-data-pair-to-accumulator(s7)
   // nop                                            // sll r0, r0, 0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(a3, a3, 3);                                // sll a3, a3, 3
@@ -2302,7 +2302,7 @@ u64 execute(void* ctxt) {
   c->daddiu(t7, t7, 24);                            // daddiu t7, t7, 24
   if (bc) {goto block_2;}                           // branch non-likely
 
-  c->load_symbol(t9, cache.normalize_frame_quaternions);// lw t9, normalize-frame-quaternions(s7)
+  c->load_symbol2(t9, cache.normalize_frame_quaternions);// lw t9, normalize-frame-quaternions(s7)
   // nop                                            // sll r0, r0, 0
   c->lw(s2, 0, sp);                                 // lw s2, 0(sp)
   // nop                                            // sll r0, r0, 0
@@ -2330,7 +2330,7 @@ u64 execute(void* ctxt) {
 
 
   block_10:
-  c->load_symbol(t9, cache.decompress_frame_data_to_accumulator);// lw t9, decompress-frame-data-to-accumulator(s7)
+  c->load_symbol2(t9, cache.decompress_frame_data_to_accumulator);// lw t9, decompress-frame-data-to-accumulator(s7)
   // nop                                            // sll r0, r0, 0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   // nop                                            // sll r0, r0, 0
@@ -2340,7 +2340,7 @@ u64 execute(void* ctxt) {
   c->daddiu(t7, t7, 24);                            // daddiu t7, t7, 24
   if (bc) {goto block_2;}                           // branch non-likely
 
-  c->load_symbol(t9, cache.normalize_frame_quaternions);// lw t9, normalize-frame-quaternions(s7)
+  c->load_symbol2(t9, cache.normalize_frame_quaternions);// lw t9, normalize-frame-quaternions(s7)
   // nop                                            // sll r0, r0, 0
   c->lw(s2, 0, sp);                                 // lw s2, 0(sp)
   // nop                                            // sll r0, r0, 0

@@ -2,7 +2,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-OceanNear::OceanNear(const std::string& name, BucketId my_id)
+OceanNear::OceanNear(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_texture_renderer(false) {
   for (auto& a : m_vu_data) {
     a.fill(0);

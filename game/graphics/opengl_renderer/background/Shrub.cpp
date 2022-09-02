@@ -1,6 +1,6 @@
 #include "Shrub.h"
 
-Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Shrub::Shrub(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
 

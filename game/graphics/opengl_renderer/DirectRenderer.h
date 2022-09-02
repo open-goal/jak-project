@@ -21,7 +21,7 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-  DirectRenderer(const std::string& name, BucketId my_id, int batch_size);
+  DirectRenderer(const std::string& name, int my_id, int batch_size);
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
@@ -84,6 +84,9 @@ class DirectRenderer : public BucketRenderer {
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data,
+                           SharedRenderState* render_state,
+                           ScopedProfilerNode& prof);
+  void handle_xyz2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
   void handle_tex0_1_packed(const u8* data);

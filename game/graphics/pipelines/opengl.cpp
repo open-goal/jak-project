@@ -71,10 +71,10 @@ struct GraphicsData {
 
   GraphicsData(GameVersion version)
       : dma_copier(EE_MAIN_MEM_SIZE),
-        texture_pool(std::make_shared<TexturePool>()),
+        texture_pool(std::make_shared<TexturePool>(version)),
         loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" /
                                         game_version_names[version] / "fr3")),
-        ogl_renderer(texture_pool, loader),
+        ogl_renderer(texture_pool, loader, version),
         version(version) {}
 };
 
