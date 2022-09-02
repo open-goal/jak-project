@@ -44,10 +44,14 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
 
   // get the model from the loader
   m_current_model = render_state->loader->get_merc_model(name);
+  m_no_strip_hack = false;
 
   // update stats
   m_stats.num_models++;
   if (m_current_model) {
+    if (m_current_model->model->name == "eichar-lod0") {
+      m_no_strip_hack = true;
+    }
     for (const auto& effect : m_current_model->model->effects) {
       m_stats.num_effects++;
       m_stats.num_predicted_draws += effect.draws.size();
@@ -511,6 +515,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
       draw->light_idx = lights;
       draw->num_triangles = mdraw.num_triangles;
       draw->ignore_alpha = ignore_alpha;
+      draw->no_strip = m_no_strip_hack;
     }
   }
 
@@ -620,8 +625,8 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
       prof.add_tri(draw.num_triangles);
       glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
                         sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
-      glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
-                     (void*)(sizeof(u32) * draw.first_index));
+      glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
+                     GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
     }
   }
 

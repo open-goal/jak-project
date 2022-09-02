@@ -50,9 +50,10 @@ add_library(common
         util/print_float.cpp
         util/FontUtils.cpp
         util/FrameLimiter.cpp
-        util/unicode_util.cpp)
+        util/unicode_util.cpp
+        util/gltf_util.cpp)
 
-target_link_libraries(common fmt lzokay replxx libzstd_static)
+target_link_libraries(common fmt lzokay replxx libzstd_static tiny_gltf)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

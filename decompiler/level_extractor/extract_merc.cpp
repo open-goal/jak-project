@@ -5,6 +5,7 @@
 
 #include "decompiler/level_extractor/MercData.h"
 #include "decompiler/level_extractor/extract_common.h"
+#include "decompiler/level_extractor/merc_replacement.h"
 #include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
@@ -983,6 +984,45 @@ void extract_merc(const ObjectFileData& ag_data,
         pc_draw.index_count = inds.size();
         out.merc_data.indices.insert(out.merc_data.indices.end(), inds.begin(), inds.end());
       }
+    }
+  }
+
+  // replace eichar-lod0:
+  for (auto& model : out.merc_data.models) {
+    if (model.name == "eichar-lod0" && model.max_bones < 100) {
+      fmt::print("DOING SWAP!!!!!!!!!!!!!!!!!!!! {} {} {}\n", model.effects.size(), model.max_bones,
+                 model.max_draws);
+
+      std::vector<tfrag3::MercVertex> old_verts;
+      for (auto& e : model.effects) {
+        for (auto& d : e.draws) {
+          for (size_t i = 0; i < d.index_count; i++) {
+            auto idx = out.merc_data.indices.at(i + d.first_index);
+            if (idx != UINT32_MAX) {
+              old_verts.push_back(out.merc_data.vertices[idx]);
+            }
+          }
+        }
+      }
+
+      auto swap_info = load_replacement_merc_model(
+          out.merc_data.indices.size(), out.merc_data.vertices.size(), out.textures.size(),
+          file_util::get_file_path({"custom_levels/jakswap/jak2_2.glb"}), old_verts);
+      model = swap_info.new_model;
+      model.name = "eichar-lod0";
+      fmt::print("swapping: {} inds, {} verts, {} tex\n", swap_info.new_indices.size(),
+                 swap_info.new_vertices.size(), swap_info.new_textures.size());
+      size_t old_start = out.merc_data.vertices.size();
+      for (auto& ind : swap_info.new_indices) {
+        ASSERT(ind >= old_start);
+      }
+      out.merc_data.indices.insert(out.merc_data.indices.end(), swap_info.new_indices.begin(),
+                                   swap_info.new_indices.end());
+      out.merc_data.vertices.insert(out.merc_data.vertices.end(), swap_info.new_vertices.begin(),
+                                    swap_info.new_vertices.end());
+      out.textures.insert(out.textures.end(), swap_info.new_textures.begin(),
+                          swap_info.new_textures.end());
+      break;
     }
   }
 }

@@ -57,6 +57,7 @@ class Merc2 : public BucketRenderer {
   u32 alloc_bones(int count);
 
   std::optional<MercRef> m_current_model = std::nullopt;
+  bool m_no_strip_hack = false;
   u16 m_current_effect_enable_bits = 0;
   u16 m_current_ignore_alpha_bits = 0;
 
@@ -126,6 +127,7 @@ class Merc2 : public BucketRenderer {
     u16 first_bone;
     u16 light_idx;
     u8 ignore_alpha;
+    u8 no_strip;
   };
 
   struct LevelDrawBucket {
