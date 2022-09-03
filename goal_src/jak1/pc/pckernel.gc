@@ -98,7 +98,6 @@
 
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
-
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
@@ -874,6 +873,7 @@
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
                 (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
+                (("cutscene-skips?") (set! (-> obj cutscene-skips?) (file-stream-read-symbol file)))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -1000,6 +1000,7 @@
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
     (format file "  (speedrunner-mode? ~A)~%" (-> obj speedrunner-mode?))
+    (format file "  (cutscene-skips? ~A)~%" (-> obj cutscene-skips?))
     (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
     (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
     (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))
@@ -1158,8 +1159,8 @@
 
 ) ;; when debug_segment
 
-(defun-debug draw-build-revision ()
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                      (bucket-id debug-no-zbuf))
           (draw-string-xy *pc-settings-built-sha*
                           buf

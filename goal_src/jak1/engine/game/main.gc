@@ -695,9 +695,13 @@
 
       (with-profiler "menu"
         (with-pc
-          (if (and (-> *pc-settings* display-sha) *debug-segment*)
-              (draw-build-revision)))
-
+          (cond ((and (= (-> *pc-settings* speedrunner-mode?) #t)
+                      (< (-> *autosplit-info-jak1* num-power-cells) 1))
+                 ;; display the revision before you collect your first powercell
+                 (draw-build-revision))
+                ((and (-> *pc-settings* display-sha) *debug-segment*)
+                 ;; otherwise, only draw if we are in debug mode and the setting isn't enabled
+                 (draw-build-revision))))
         (*menu-hook*)
         (add-ee-profile-frame 'draw :g #x40)
 
