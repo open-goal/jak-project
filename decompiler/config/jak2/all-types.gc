@@ -7443,7 +7443,7 @@
 (define-extern adgif-shader-login-no-remap (function adgif-shader texture))
 ;; (define-extern adgif-shader-login-fast function) ;; (function adgif-shader texture)
 ;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader<-texture-simple! function) ;; (function adgif-shader texture adgif-shader)
+(define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader)) ;; 
 (define-extern set-dirty-mask!
   "First arg is the level name off the [[*level*]]'s `default-level`"
   (function string int int int none))
@@ -18440,13 +18440,13 @@
    (adgif         adgif-shader                     :offset-assert 4)
    (radius        float                            :offset-assert 8)
    (omega         float                            :offset-assert 12)
-   (vel-sxvel     vector3s                   :inline :offset-assert 16)
-   (rot-syvel     vector3s                   :inline :offset-assert 32)
+   (vel-sxvel     vector                   :inline :offset-assert 16) ;; these are used interchangably as vector3s' as well
+   (rot-syvel     vector                   :inline :offset-assert 32)
    (fade          rgbaf                    :inline :offset-assert 48)
-   (acc           vector3s                   :inline :offset-assert 64)
+   (acc           vector                   :inline :offset-assert 64)
    (rotvel3d      quaternion               :inline :offset-assert 80)
-   (vel           vector3s                 :inline :offset 16)
-   (accel         vector3s                 :inline :offset 64)
+   (vel           vector                 :inline :offset 16)
+   (accel         vector                 :inline :offset 64)
    (scalevelx     float                            :offset 28)
    (scalevely     float                            :offset 44)
    (friction      float                            :offset-assert 96)
@@ -18513,6 +18513,8 @@
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
+  (:methods
+    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_ 0))
   )
 
 (define-extern *sp-60-hz* symbol)
@@ -22910,42 +22912,42 @@
 ;; sparticle                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sp-particle-copy! function) ;; (function sparticle-cpuinfo sparticle-cpuinfo none)
+(define-extern sp-particle-copy! (function sparticle-cpuinfo sparticle-cpuinfo none)) ;; 
 (define-extern *sp-particle-system-2d* sparticle-system) ;; 
 (define-extern *sp-particle-system-3d* sparticle-system) ;; sparticle-system
-;; (define-extern sp-get-block-size function) ;; (function sparticle-system int int)
-;; (define-extern sp-get-approx-alloc-size function) ;; (function sparticle-system int int)
-;; (define-extern sp-free-particle function) ;; (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)
-(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo)) ;; 
-(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none)) ;; 
-;; (define-extern sp-orbiter function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern sp-process-block-2d function) ;; (function sparticle-system int int int int symbol none)
-;; (define-extern sp-process-block-3d function) ;; (function sparticle-system int int int int symbol none)
-;; (define-extern sp-copy-to-spr function) ;; (function int pointer int none)
-;; (define-extern sp-copy-from-spr function) ;; (function int pointer int none)
-;; (define-extern memcpy function) ;; function
-;; (define-extern sp-process-block function) ;; (function sparticle-system int sprite-array-2d int none)
-;; (define-extern sp-process-particle-system function) ;; (function sparticle-system int sprite-array-2d none)
-;; (define-extern *particles-flag* object) ;; symbol
-;; (define-extern forall-particles-with-key-runner function) ;; (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) sparticle-system none)
+(define-extern sp-get-block-size (function sparticle-system int int)) ;; 
+(define-extern sp-get-approx-alloc-size (function sparticle-system int int)) ;; 
+(define-extern sp-free-particle (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)) ;; 
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo)) ;; TODO - manually fixed in jak 1? gross
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol)) ;; 
+(define-extern sp-orbiter (function sparticle-system sparticle-cpuinfo vector none)) ;; 
+(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
+(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
+(define-extern sp-copy-to-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
+(define-extern sp-copy-from-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
+(define-extern memcpy function) ;; TODO - was done manually as well?
+(define-extern sp-process-block (function sparticle-system int sprite-array-2d int none)) ;; 
+(define-extern sp-process-particle-system (function sparticle-system int sprite-array-2d none)) ;; 
+(define-extern *particles-flag* symbol) ;; 
+(define-extern forall-particles-with-key-runner (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) sparticle-system none)) ;; 
 (define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
-;; (define-extern sparticle-kill-it function) ;; (function sparticle-system sparticle-cpuinfo none)
-;; (define-extern sparticle-kill-it-level0 function) ;; (function sparticle-system sparticle-cpuinfo none)
-;; (define-extern sparticle-kill-it-level1 function) ;; (function sparticle-system sparticle-cpuinfo none)
-;; (define-extern sparticle-kill-it-level2 function)
-;; (define-extern sparticle-kill-it-level3 function)
-;; (define-extern sparticle-kill-it-level4 function)
-;; (define-extern sparticle-kill-it-level5 function)
-;; (define-extern sparticle-60-to-50 function) ;; (function sparticle-system sparticle-cpuinfo pointer none)
-;; (define-extern sparticle-50-to-60 function) ;; (function sparticle-system sparticle-cpuinfo pointer none)
+(define-extern sparticle-kill-it (function sparticle-system sparticle-cpuinfo none)) ;; 
+(define-extern sparticle-kill-it-level0 (function sparticle-system sparticle-cpuinfo none)) ;; (function sparticle-system sparticle-cpuinfo none)
+(define-extern sparticle-kill-it-level1 (function sparticle-system sparticle-cpuinfo none)) ;; (function sparticle-system sparticle-cpuinfo none)
+(define-extern sparticle-kill-it-level2 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-kill-it-level3 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-kill-it-level4 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-kill-it-level5 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-60-to-50 (function sparticle-system sparticle-cpuinfo pointer none)) ;; 
+(define-extern sparticle-50-to-60 (function sparticle-system sparticle-cpuinfo pointer none)) ;; (function sparticle-system sparticle-cpuinfo pointer none)
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none)) ;; 
-;; (define-extern forall-particles-runner function) ;; (function (function sparticle-system sparticle-cpuinfo pointer none) sparticle-system none)
-;; (define-extern forall-particles function) ;; (function function symbol symbol none)
+(define-extern forall-particles-runner (function (function sparticle-system sparticle-cpuinfo pointer none) sparticle-system none)) ;; 
+(define-extern forall-particles (function function symbol symbol none)) ;; 
 (define-extern kill-all-particles-in-level (function level int))
-;; (define-extern all-particles-50-to-60 function) ;; (function none)
-;; (define-extern all-particles-60-to-50 function) ;; (function none)
-;; (define-extern remap-particle function)
-;; (define-extern remap-all-particles function)
+(define-extern all-particles-50-to-60 (function none)) ;; 
+(define-extern all-particles-60-to-50 (function none)) ;; (function none)
+(define-extern remap-particle (function sparticle-system sparticle-cpuinfo pointer none))
+(define-extern remap-all-particles (function none))
 (define-extern process-particles (function none))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity-table                   ;;

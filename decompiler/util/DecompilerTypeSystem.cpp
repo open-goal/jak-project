@@ -421,8 +421,8 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   }
 
   static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L",  "3L", "1K", "2j",
-                                                                  "0k", "30L", "1T", "2T"};
+  static const std::vector<std::string> multi_char_ignore_list = {
+      "0L", "1L", "3L", "1K", "2j", "0k", "30L", "1T", "2T", "100", "200", "350"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
@@ -438,6 +438,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
         }
       }
 
+      // TODO - this is dumb, make this not depend on hard-coded lengths
       for (auto& code : multi_char_ignore_list) {
         if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
             str.at(i + 1) == code.at(1)) {

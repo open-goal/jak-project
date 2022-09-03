@@ -195,9 +195,9 @@
     (let ((s0-0 (new 'stack-no-clear 'vector)))
       (sp-init-fields! (-> s2-0 vector) arg2 (sp-field-id launch-fields-start) (sp-field-id launch-fields-end) #t)
       (matrix-rotate-xyz! s5-0 (the-as vector (-> s2-0 vector)))
-      (vector3s-matrix*! (-> arg1 vel-sxvel) (-> arg1 vel-sxvel) s5-0)
+      (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
       (matrix-rotate-xyz! s5-0 (-> s2-0 vector 1))
-      (vector3s-matrix*! (-> arg1 vel-sxvel) (-> arg1 vel-sxvel) s5-0)
+      (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
       (matrix*! s5-0 s5-0 arg3)
       (set-vector! s0-0 0.0 (-> s2-0 vector 2 w) 0.0 1.0)
       (vector-matrix*! s0-0 s0-0 s5-0)
@@ -212,9 +212,9 @@
     (matrix-rotate-xyz! s5-0 (-> s2-0 vector 2))
     (matrix*! s5-0 s5-0 arg3)
     (vector3s-rotate*! (the-as vector3s (-> arg0 launchrot)) (the-as vector3s (-> arg0 launchrot)) s5-0)
-    (vector3s-rotate*! (-> arg1 vel-sxvel) (-> arg1 vel-sxvel) s5-0)
+    (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
     (if (zero? (logand (sp-cpuinfo-flag use-global-acc) (-> arg1 flags)))
-        (vector3s-rotate*! (-> arg1 acc) (-> arg1 acc) s5-0)
+        (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s5-0)
         )
     (if (logtest? (sp-cpuinfo-flag set-conerot) (-> arg1 flags))
         (set! (-> arg0 conerot y) (+ 16384.0 (vector-y-angle (-> s5-0 vector 2))))
@@ -273,7 +273,7 @@
         (set! (-> arg1 rot-syvel z) (* 6.0 (-> arg1 rot-syvel z)))
         )
       )
-    (quaternion-zxy! (-> arg1 rotvel3d) (the-as vector (-> arg1 rot-syvel)))
+    (quaternion-zxy! (-> arg1 rotvel3d) (-> arg1 rot-syvel))
     0
     (none)
     )
@@ -296,9 +296,9 @@
       (quaternion->matrix s5-0 a1-1)
       )
     (vector3s-rotate*! (the-as vector3s (-> arg0 launchrot)) (the-as vector3s (-> arg0 launchrot)) s5-0)
-    (vector3s-rotate*! (-> arg1 vel-sxvel) (-> arg1 vel-sxvel) s5-0)
+    (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
     (if (zero? (logand (sp-cpuinfo-flag use-global-acc) (-> arg1 flags)))
-        (vector3s-rotate*! (-> arg1 acc) (-> arg1 acc) s5-0)
+        (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s5-0)
         )
     )
   0
@@ -858,7 +858,7 @@
          )
     (init-vf0-vector)
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-      (quaternion-axis-angle! gp-0 0.0 1.0 0.0 (+ 32768.0 (vector-y-angle (the-as vector (-> arg1 vel-sxvel)))))
+      (quaternion-axis-angle! gp-0 0.0 1.0 0.0 (+ 32768.0 (vector-y-angle (-> arg1 vel-sxvel))))
       (cond
         ((< (-> gp-0 w) 0.0)
          (.lvf vf1 (&-> arg2 qx-qy-qz-sy quad))
@@ -1034,7 +1034,7 @@
 
 ;; ERROR: failed type prop at 5: Could not figure out load: (set! a1 (l.w (+ v1 12)))
 
-;; ERROR: failed type prop at 5: Could not figure out load: (set! a0 (l.q (+ s3 16)))
+;; ERROR: Expression building failed: In sparticle-motion-blur: [OP: 78] - Floating point math attempted on invalid types: uint and float in op (-.s f2-0 f3-0).
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
