@@ -50,13 +50,12 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
                                     const std::string& language_id,
                                     const std::string& content) {
   if (language_id == "opengoal-ir") {
-    lg::debug("new ir file");
+    lg::debug("new ir file - {}", file_uri);
     WorkspaceIRFile file(content);
-    lg::debug("parsed!");
     m_tracked_ir_files[file_uri] = file;
     if (!file.m_all_types_uri.empty()) {
       if (m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
-        lg::debug("new all-types file");
+        lg::debug("new all-types file - {}", file_uri);
         m_tracked_all_types_files[file.m_all_types_uri] = WorkspaceAllTypesFile(
             file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
@@ -68,9 +67,11 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
 
 void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
                                     const std::string& content) {
+  lg::debug("potentially updating - {}", file_uri);
   // Check if the file is already tracked or not, this is done because change events don't give
   // language details it's assumed you are keeping track of that!
   if (m_tracked_ir_files.count(file_uri) != 0) {
+    lg::debug("updating tracked IR file - {}", file_uri);
     WorkspaceIRFile file(content);
     m_tracked_ir_files[file_uri] = file;
     // There is the potential for the all-types to have changed, albeit this is probably never going
@@ -86,6 +87,7 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
   }
 
   if (m_tracked_all_types_files.count(file_uri) != 0) {
+    lg::debug("updating tracked all types file - {}", file_uri);
     // If the all-types file has changed, re-parse it
     // NOTE - this assumes its still for the same game version!
     m_tracked_all_types_files[file_uri].update_type_system();
@@ -140,9 +142,7 @@ void WorkspaceIRFile::find_all_types_path(const std::string& line) {
       lg::debug("DTS URI - {}", all_types_uri);
 
       if (valid_game_version(game_version.str())) {
-        lg::debug("a");
         m_game_version = game_name_to_version(game_version.str());
-        lg::debug("b");
         m_all_types_uri = all_types_uri;
         m_all_types_file_path = fs::path(all_types_path.str());
       } else {
@@ -181,7 +181,7 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
 
   std::regex end_function("^;; \\.endfunction\\s*$");
   if (std::regex_match(line, end_function)) {
-    lg::info("Found end of previous function on line - {}", line);
+    lg::debug("Found end of previous function on line - {}", line);
     // Set the previous symbols end-line
     if (!m_symbols.empty()) {
       m_symbols[m_symbols.size() - 1].m_range.m_end.m_line = line_num_zero_based - 1;

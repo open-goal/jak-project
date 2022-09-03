@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
         for (const auto& response : responses.value()) {
           std::cout << response.c_str() << std::flush;
           if (appstate.verbose) {
-            lg::debug("<<< Sending message: {}", response);
+            lg::trace("<<< Sending message: {}", response);
           } else {
             lg::info("<<< Sending message of method '{}'", method_name);
           }

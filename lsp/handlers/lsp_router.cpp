@@ -108,7 +108,6 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     if (route.m_post_notification_publish) {
       auto resp = route.m_post_notification_publish.value()(appstate.workspace, body["params"]);
       if (resp) {
-        lg::info("adding publish resp");
         resp_bodies.push_back(resp.value());
       }
     }
