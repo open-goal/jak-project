@@ -167,7 +167,7 @@
     (set! (-> v0-0 allocated-length) (the-as uint arg0))
     (set! (-> v0-0 active-channels) (the-as uint 0))
     (set! (-> v0-0 float-channels) (the-as uint 0))
-    (set! (-> v0-0 root-channel) (the-as (inline-array joint-control) (-> v0-0 channel)))
+    (set! (-> v0-0 root-channel) (-> v0-0 channel))
     (set! (-> v0-0 generate-frame-function) create-interpolated-joint-animation-frame)
     (set! (-> v0-0 prebind-function) #f)
     (set! (-> v0-0 postbind-function) #f)
@@ -183,8 +183,10 @@
   )
 
 ;; definition for method 11 of type joint-control
+;; ERROR: Function may read a register that is not set: a2
 (defmethod debug-print-channels joint-control ((obj joint-control) (arg0 symbol))
-  (format arg0 "~0K")
+  (local-vars (a2-0 none))
+  (format arg0 "~0K" a2-0)
   (dotimes (s4-0 (the-as int (+ (-> obj active-channels) (-> obj float-channels))))
     (let* ((s3-0 (-> obj channel s4-0))
            (s2-0 (if (and (-> s3-0 frame-group) (nonzero? (-> s3-0 frame-group)))
@@ -195,7 +197,7 @@
       (let* ((t9-1 format)
              (a0-3 arg0)
              (a1-2 "~S~2d ~C ~-35S ")
-             (a2-0 (if (= (-> obj root-channel) s3-0)
+             (a2-1 (if (= (-> obj root-channel) s3-0)
                        "~3Lch:~0L"
                        "ch:"
                        )
@@ -224,7 +226,7 @@
                      )
                    )
              )
-        (t9-1 a0-3 a1-2 a2-0 a3-0 t0-2 (if s2-0
+        (t9-1 a0-3 a1-2 a2-1 a3-0 t0-2 (if s2-0
                                            (-> s2-0 name)
                                            "(none)"
                                            )
@@ -709,7 +711,7 @@
   (set! (-> arg0 float-channels) (the-as uint 0))
   (set! (-> arg0 root-channel)
         (the-as
-          (inline-array joint-control)
+          (inline-array joint-control-channel)
           (-> arg0
               channel
               (/ (the-as int (- (the-as uint (-> arg1 root-channel)) (the-as uint (the-as uint (-> arg1 channel))))) 64)

@@ -259,6 +259,10 @@ class TypeSystem {
 
   int get_size_in_type(const Field& field) const;
 
+  void add_type_to_allowed_redefinition_list(const std::string& type_name) {
+    m_types_allowed_to_be_redefined.push_back(type_name);
+  }
+
  private:
   std::string lca_base(const std::string& a, const std::string& b) const;
   bool typecheck_base_types(const std::string& expected,
@@ -284,6 +288,7 @@ class TypeSystem {
 
   std::vector<std::unique_ptr<Type>> m_old_types;
 
+  std::vector<std::string> m_types_allowed_to_be_redefined;
   bool m_allow_redefinition = false;
 };
 

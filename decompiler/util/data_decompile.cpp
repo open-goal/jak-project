@@ -756,7 +756,8 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
-  if (use_fancy_macros) {
+  // temp hack!!
+  if (use_fancy_macros && file && file->version == GameVersion::Jak1) {
     if (type == TypeSpec("sp-field-init-spec")) {
       ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
@@ -1568,10 +1569,6 @@ goos::Object decompile_pair(const DecompilerLabel& label,
             fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
       } else {
         auto& word = words.at(to_print.target_segment).at(to_print.offset / 4);
-        if (word.kind() != LinkedWord::EMPTY_PTR) {
-          throw std::runtime_error(
-              fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
-        }
         // improper list
         lg::error(
             "There is an improper list. This is probably okay, but should be checked manually "
