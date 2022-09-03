@@ -27,7 +27,7 @@
 (define-extern global kheap)
 (define-extern kheap type)
 
-
+(define-extern #t symbol)
 
 ;; some types we need.
 (declare-type sparticle-launch-group basic)
@@ -9575,7 +9575,7 @@
   :size-assert         #x206c
   :flag-assert         #x5c0000206c
   (:methods
-    (ocean-method-11 () none 11)
+    (ocean-method-11 (_type_ (inline-array vector) symbol) float 11)
     (ocean-method-12 () none 12)
     (ocean-method-13 () none 13)
     (ocean-method-14 () none 14)
@@ -18238,6 +18238,7 @@
   (bit2 2)
   )
 
+;; +++sparticle-launcher-h:sp-group-flag
 (defenum sp-group-flag
   :bitfield #t
   :type uint16
@@ -18250,6 +18251,7 @@
   (unk-6 6)
   (unk-7 7)
   )
+;; ---sparticle-launcher-h:sp-group-flag
 
 
 (deftype sparticle-birthinfo (structure)
@@ -18299,7 +18301,9 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (sparticle-launcher-method-9 (_type_ int) sp-field-init-spec 9)
+    (get-field-spec-by-id
+      "Returns the [[sp-field-init-spec]] that has the matching [[sp-field-id]]"
+      (_type_ sp-field-id) sp-field-init-spec 9)
     (sparticle-launcher-method-10 (_type_ string) none 10)
     )
   )
@@ -18401,6 +18405,7 @@
 ;; sparticle-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++sparticle-h:sp-cpuinfo-flag
 (defenum sp-cpuinfo-flag
   :bitfield #t
   :type uint32
@@ -18427,6 +18432,7 @@
   (set-conerot 20)
   (unk-21 21)
   )
+;; ---sparticle-h:sp-cpuinfo-flag
 
 (declare-type sparticle-system basic)
 (deftype sparticle-cpuinfo (structure)
@@ -18459,7 +18465,8 @@
    (valid         uint8                            :offset-assert 128) ;; symbol
    (clock-index   uint8                            :offset-assert 129)
    (user1-int16   uint16                           :offset-assert 130)
-   (key           sparticle-launch-control         :offset-assert 132) ;; guessed by decompiler
+   (key           sparticle-launch-control         :offset-assert 132)
+   (key-alt       sparticle-launch-state           :offset 132)
    (binding       sparticle-launch-state           :offset-assert 136)
    (data          uint32                   1       :offset 12) ;; guessed by decompiler
    (datab         uint8                    4       :offset 12)
@@ -18556,13 +18563,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+;; +++camera-h:cam-index-options
 (defenum cam-index-options
   :type uint32
   :bitfield #t
   (RADIAL)
   (SPHERICAL)
   )
+;; ---camera-h:cam-index-options
 
+;; +++camera-h:slave-los-state
 (defenum slave-los-state
   :type uint32
   (none 0)
@@ -18570,6 +18580,7 @@
   (ccw 2)
   (between 3)
   )
+;; ---camera-h:slave-los-state
 
 (deftype cam-index (structure)
   ((flags cam-index-options   :offset-assert 0) ;; guessed by decompiler
@@ -22840,7 +22851,7 @@
   (function string sparticle-launch-group))
 (define-extern lookup-part-group-pointer-by-name 
   "Similar to [[lookup-part-group-by-name]] but returns a pointer instead"
-  (function string (pointer sparticle-launch-group))) ;; 
+  (function string (pointer object))) ;; 
 (define-extern part-group-pointer? 
   "Verifies if the given pointer, points to a [[sparticle-launch-group]]"
   (function pointer symbol))
@@ -22854,7 +22865,7 @@
 (define-extern particle-adgif-cache-flush "Clear [[*particle-adgif-cache*]]" (function none))
 (define-extern particle-adgif (function adgif-shader texture-id none)) ;; TODO - particle-adgif atomic ops, MIPS2C
 (define-extern particle-adgif-callback (function adgif-shader none)) ;; TODO bad VF dependencies
-(define-extern sp-queue-launch (function sparticle-system sparticle-launcher vector int)) ;; TODO - vector is wrong
+(define-extern sp-queue-launch (function sparticle-system sparticle-launcher matrix int))
 (define-extern sp-adjust-launch (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) matrix symbol none)) ;; 
 (define-extern sp-euler-convert (function sparticle-launchinfo sparticle-cpuinfo none)) ;; 
 (define-extern sp-rotate-system (function sparticle-launchinfo sparticle-cpuinfo transformq none)) ;; 
@@ -22868,32 +22879,32 @@
 (define-extern execute-part-engine (function none)) ;; TODO - whats the basic off the connection?
 (define-extern sparticle-track-root (function object sparticle-cpuinfo vector none)) ;; 
 (define-extern sparticle-track-root-prim (function object sparticle-cpuinfo vector none)) ;; 
-;; (define-extern sparticle-track-joint function)
-;; (define-extern sparticle-turn-to-vel function)
+(define-extern sparticle-track-joint (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-turn-to-vel (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d none))
 (define-extern birth-func-copy-rot-color (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)) ;; 
 (define-extern *global-toggle* int) ;; 
 (define-extern birth-func-copy2-rot-color (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)) ;; 
 (define-extern birth-func-copy-omega-to-z (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)) ;; 
 (define-extern birth-func-random-next-time (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)) ;; 
-;; (define-extern sparticle-respawn-heights function)
-;; (define-extern sparticle-respawn-timer function)
-;; (define-extern sparticle-texture-animate function)
-;; (define-extern sparticle-texture-day-night function)
-;; (define-extern sparticle-mode-animate function)
-;; (define-extern sparticle-motion-blur function)
-;; (define-extern sparticle-motion-blur-old function)
-;; (define-extern sparticle-set-conerot function)
-;; (define-extern sparticle-next-on-mode-1 function)
-;; (define-extern check-ground-bounce function)
-;; (define-extern check-drop-group-center function)
-;; (define-extern birth-func-y->userdata function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
-;; (define-extern birth-func-ocean-height function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
-;; (define-extern birth-func-camera-orient function)
+(define-extern sparticle-respawn-heights (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-respawn-timer (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-texture-animate (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-texture-day-night (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-mode-animate (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-motion-blur (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-motion-blur-old "Unused" (function object sparticle-cpuinfo sprite-vec-data-3d object))
+(define-extern sparticle-set-conerot (function sparticle-launcher vector none))
+(define-extern sparticle-next-on-mode-1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern check-ground-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern check-drop-group-center (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-y->userdata (function sparticle-system sparticle-cpuinfo matrix none)) ;; 
+(define-extern birth-func-ocean-height (function sparticle-system sparticle-cpuinfo matrix none)) ;; 
+(define-extern birth-func-camera-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern *particle-quat* quaternion) ;; 
-;; (define-extern birth-func-set-quat function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
+(define-extern birth-func-set-quat (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 
 (define-extern *particle-vel* vector)
-;; (define-extern birth-func-set-vel function)
-;; (define-extern birth-func-texture-group function)
+(define-extern birth-func-set-vel (function object sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-texture-group (function int sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sparticle                      ;;
@@ -22906,7 +22917,7 @@
 ;; (define-extern sp-get-approx-alloc-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-free-particle function) ;; (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)
 (define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo)) ;; 
-;; (define-extern sp-kill-particle function) ;; (function sparticle-system sparticle-cpuinfo none)
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none)) ;; 
 ;; (define-extern sp-orbiter function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern sp-process-block-2d function) ;; (function sparticle-system int int int int symbol none)
 ;; (define-extern sp-process-block-3d function) ;; (function sparticle-system int int int int symbol none)

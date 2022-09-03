@@ -7,6 +7,7 @@
 
 (declare-type sparticle-system basic)
 
+;; +++sp-cpuinfo-flag
 (defenum sp-cpuinfo-flag
   :bitfield #t
   :type uint32
@@ -15,6 +16,7 @@
   (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
   (bit3 3)
   (bit4 4)
+  (unk5 5)
   (ready-to-launch 6) ;; maybe just just death?
   (distort 7) ;; distort sprite
   (aux-list 8)     ;; prevents relaunch, adds to aux
@@ -30,13 +32,20 @@
   (left-multiply-quat 18)
   (right-multiply-quat 19)
   (set-conerot 20)
+  (unk-21 21)
   )
+;; ---sp-cpuinfo-flag
 
 ;; NOTE - for relocate
 (declare-type sparticle-system basic)
 (declare-type sparticle-cpuinfo structure)
 (declare-type sparticle-launch-control inline-array-class)
 (define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
+
+;; NOTE - for sparticle-launcher
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
+(define-extern kill-all-particles-with-key (function sparticle-launch-control none))
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none))
 
 ;; DECOMP BEGINS
 
@@ -47,10 +56,10 @@
    (adgif         adgif-shader                                                                       :offset-assert   4)
    (radius        float                                                                              :offset-assert   8)
    (omega         float                                                                              :offset-assert  12)
-   (vel-sxvel     vector                                                                     :inline :offset-assert  16)
-   (rot-syvel     vector                                                                     :inline :offset-assert  32)
+   (vel-sxvel     vector3s                                                                   :inline :offset-assert  16)
+   (rot-syvel     vector3s                                                                   :inline :offset-assert  32)
    (fade          rgbaf                                                                      :inline :offset-assert  48)
-   (acc           vector                                                                     :inline :offset-assert  64)
+   (acc           vector3s                                                                   :inline :offset-assert  64)
    (rotvel3d      quaternion                                                                 :inline :offset-assert  80)
    (vel           vector3s                                                                   :inline :offset         16)
    (accel         vector3s                                                                   :inline :offset         64)
@@ -73,6 +82,7 @@
    (clock-index   uint8                                                                              :offset-assert 129)
    (user1-int16   uint16                                                                             :offset-assert 130)
    (key           sparticle-launch-control                                                           :offset-assert 132)
+   (key-alt       sparticle-launch-state                                                             :offset        132)
    (binding       sparticle-launch-state                                                             :offset-assert 136)
    (data          uint32                                                                     1       :offset         12)
    (datab         uint8                                                                      4       :offset         12)
@@ -83,6 +93,7 @@
   :size-assert         #x8c
   :flag-assert         #x90000008c
   )
+
 
 (deftype sparticle-launchinfo (structure)
   ((launchrot  vector :inline :offset-assert   0)
@@ -104,6 +115,7 @@
   :flag-assert         #x900000040
   )
 
+
 (deftype sparticle-system (basic)
   ((blocks          int32                            2 :offset-assert   4)
    (length          int32                            2 :offset-assert  12)
@@ -119,5 +131,10 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
+
+
+0
+
+
 
 
