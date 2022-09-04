@@ -5277,6 +5277,7 @@
 
 (deftype mood-fog-table (structure)
   ((data mood-fog 8 :inline :offset-assert 0)
+   (data-raw uint128 24 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -5302,6 +5303,7 @@
 
 (deftype mood-color-table (structure)
   ((data mood-color 8 :inline :offset-assert 0)
+   (data-raw uint128 16 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x100
@@ -5369,13 +5371,14 @@
   :flag-assert         #x900000080
   )
 
+(declare-type sky-color-day structure)
 (deftype mood-table (basic)
   ((mood-fog-table       mood-fog-table        :offset-assert 4)
    (mood-color-table     mood-color-table      :offset-assert 8)
    (mood-channel-group   mood-channel-group    :offset-assert 12)
    (mood-direction-table mood-direction-table  :offset-assert 16)
    (mood-sky-table       mood-sky-table        :offset-assert 20)
-   (mood-interp-table    basic                 :offset-assert 24)
+   (mood-interp-table    sky-color-day                 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -5415,6 +5418,7 @@
    when updating the mood.  This means that an individual state structure must be less than 128 bytes"
   ((itimes vector4w 4  :inline :offset-assert 1776)
    (state  uint32    32 :offset-assert 1840)
+   (data   uint128 123 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x7b0
@@ -8152,6 +8156,7 @@
 ;; game-task-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++game-task-h:game-task
 (defenum game-task
   :type uint8
   :bitfield #f
@@ -8265,17 +8270,14 @@
   (stadium-burning-bush-race-class3-r 107)
   (stadium-burning-bush-race-class2-r 108)
   (stadium-burning-bush-race-class1-r 109)
-
+  (max 110) ;; awkward that there are things after it...?
+  (unknown-game-task-113 113)
   (tomb-boss-torches 167) ;; guess on the name
-
-
-
-
-
-
-
-  (max 110)
+  (unknown-game-task-172 172)
+  (unknown-game-task-204 204)
+  (unknown-game-task-205 205)
   )
+;; ---game-task-h:game-task
 
 (defenum game-task-actor
   :bitfield #f
@@ -11850,7 +11852,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type int) _type_ 0)
-    (gui-control-method-9 (_type_ process gui-channel gui-action uint float time-frame) sound-id 9)
+    (gui-control-method-9 (_type_ process gui-channel gui-action int float time-frame) sound-id 9)
     (gui-control-method-10 (_type_ process gui-channel) none 10)
     (gui-control-method-11 (_type_ gui-connection) int 11)
     (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id 12)
@@ -18345,7 +18347,7 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (sparticle-launcher-method-9 (_type_ int) uint 9)
+    (sparticle-launcher-method-9 (_type_ int) sp-field-init-spec 9)
     (sparticle-launcher-method-10 (_type_) none 10)
     )
   )
@@ -21060,7 +21062,7 @@
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-set-ear-trans (function vector vector vector float int))
 (define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
-(define-extern sound-play-by-spec (function sound-spec sound-id symbol sound-id))
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-stop (function sound-id int))
 (define-extern sound-continue (function sound-id int))
@@ -23341,9 +23343,9 @@
 (define-extern update-mood-exterior (function mood-context-core3 mood-table float int object)) ;; TODO - so many potential return values...
 (define-extern copy-mood-exterior (function mood-context symbol))
 (define-extern copy-mood-exterior-ambi (function mood-context symbol none))
-(define-extern clear-mood-context (function int none))
+(define-extern clear-mood-context (function mood-context symbol))
 (define-extern update-mood-interior (function mood-context float))
-(define-extern update-mood-flames (function mood-context int int int float float float float :behavior process))
+(define-extern update-mood-flames (function mood-context int int int float float float float :behavior time-of-day-proc))
 (define-extern *flash0* (array float))
 (define-extern *flash1* (array float))
 (define-extern *flash2* (array float))
@@ -23352,13 +23354,13 @@
 (define-extern *flash5* (array float))
 (define-extern *flash6* (array float))
 (define-extern *flash7* (array float))
-(define-extern update-mood-light (function mood-context int int int float float float int none))
-;; (define-extern update-mood-lava function) ;; (function mood-context int int symbol none)
-;; (define-extern update-mood-flicker function)
-;; (define-extern update-mood-florescent function)
-(define-extern update-mood-electricity (function mood-context int int int float float float int none))
-(define-extern update-mood-pulse (function mood-context int int int float float float int none))
-;; (define-extern update-mood-strobe function)
+(define-extern update-mood-light (function mood-context int int float float float float float float))
+(define-extern update-mood-lava "Unused" (function mood-context int int float float float float float float)) ;;
+(define-extern update-mood-flicker "Unused" (function mood-context int int none))
+(define-extern update-mood-florescent "Unused" (function mood-context int int float))
+(define-extern update-mood-electricity (function mood-context int int float float none))
+(define-extern update-mood-pulse (function mood-context int int float float float float none))
+(define-extern update-mood-strobe (function mood-context int int int float float))
 (define-extern update-mood-caustics (function mood-context int float float float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -23602,7 +23604,7 @@
   )
 
 (deftype palroof-states (structure)
-  ((electricity vector 2 :inline :offset-assert 0) ;; TODO - probably wrong, elec-wall? (but its an array....)
+  ((electricity float 8  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -23620,7 +23622,7 @@
 
 (deftype nest-states (structure)
   ((light       light-state :inline :offset-assert 0)
-   (green-flag  basic               :offset-assert 8)
+   (green-flag  symbol               :offset-assert 8)
    (green       float               :offset-assert 12)
    (green-noise float               :offset-assert 16)
    )
@@ -23631,7 +23633,7 @@
 
 (deftype village1-states (structure)
   ((interp      float  :offset-assert 0)
-   (interp-flag basic  :offset-assert 4)
+   (interp-flag symbol  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -23656,76 +23658,76 @@
   )
 
 
-(define-extern update-mood-default (function mood-context float int none))
+(define-extern update-mood-default (function mood-context float int none :behavior time-of-day-proc))
 (define-extern get-sphere-interp (function sphere vector float float float))
 (define-extern init-mood-ruins (function mood-context none))
-(define-extern update-mood-ruins (function mood-context int int none))
-(define-extern init-mood-strip "TODO - returns element at offset 20 in the context's state" (function mood-context uint))
-(define-extern update-mood-strip (function mood-context int int none))
-(define-extern update-mood-ctywide (function mood-context int int none))
-(define-extern update-mood-copy-ctywide (function mood-context int int none))
-(define-extern update-mood-ctyind (function mood-context float int none))
+(define-extern update-mood-ruins (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-strip (function mood-context uint))
+(define-extern update-mood-strip (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctyind (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctysluma (function mood-context float))
-(define-extern update-mood-ctysluma (function mood-context float int none))
+(define-extern update-mood-ctysluma (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyslumb (function mood-context uint))
-(define-extern update-mood-ctyslumb (function mood-context float int none))
+(define-extern update-mood-ctyslumb (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyslumc (function mood-context none))
-(define-extern update-mood-ctyslumc (function mood-context float int none))
+(define-extern update-mood-ctyslumc (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyport (function mood-context uint))
-(define-extern init-mood-ctyport-no-part (function mood-context none)) ;; seems like the return is the particle (group) id perhaps implied by this name?
-(define-extern update-mood-ctyport (function mood-context float int none))
-(define-extern update-mood-ctymarka (function mood-context float int none))
-(define-extern update-mood-ctymarkb (function mood-context float int none))
-(define-extern init-mood-palcab (function mood-context float)) ;; sometimes they are floats though
-(define-extern update-mood-palcab (function mood-context float int none))
+(define-extern init-mood-ctyport-no-part (function mood-context none))
+(define-extern update-mood-ctyport (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctymarka (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctymarkb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-palcab (function mood-context float))
+(define-extern update-mood-palcab (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-palcab-turret-flash! (function float float))
 (define-extern update-stadium-lights (function mood-context none))
-(define-extern update-mood-stadium (function mood-context float int none))
-(define-extern update-mood-copy-stadium (function mood-context float int none))
+(define-extern update-mood-stadium (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-stadium (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-stadiumb-lights (function mood-context none))
-(define-extern update-mood-stadiumb (function mood-context float int none :behavior process)) ;; process - time of day?
-(define-extern update-mood-skatea (function mood-context float int none))
+(define-extern update-mood-stadiumb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-skatea (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-ltentout-lights (function mood-context none))
-(define-extern update-mood-ltentout (function mood-context float int none))
+(define-extern update-mood-ltentout (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-mountain (function mood-context uint))
-(define-extern update-mood-mountain (function mood-context float int none))
-(define-extern update-mood-forest (function mood-context float int none))
+(define-extern update-mood-mountain (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-forest (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-atoll (function mood-context float))
-(define-extern update-mood-atoll (function mood-context float int none))
+(define-extern update-mood-atoll (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-atoll-explosion! (function float float))
-(define-extern update-mood-atollext (function mood-context float int none))
+(define-extern update-mood-atollext (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-drill (function mood-context symbol))
 (define-extern update-drill-lights (function mood-context none))
-(define-extern update-mood-drill (function mood-context float int object object float float int none))
+(define-extern update-mood-drill (function mood-context object int none :behavior time-of-day-proc))
 (define-extern set-drill-fire-floor! (function symbol symbol))
-(define-extern set-drill-electricity-scale! (function float float float))
-(define-extern update-mood-drillmnt (function mood-context float int none))
+(define-extern set-drill-electricity-scale! (function float int float))
+(define-extern update-mood-drillmnt (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-drillb (function mood-context symbol))
-(define-extern update-mood-drillb (function mood-context float int none))
+(define-extern update-mood-drillb (function mood-context none :behavior time-of-day-proc))
 (define-extern update-casboss-lights (function mood-context float))
-(define-extern update-mood-casboss (function mood-context float int none))
+(define-extern update-mood-casboss (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-casboss-explosion! (function float))
-(define-extern update-mood-caspad (function mood-context float int none))
+(define-extern update-mood-caspad (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-palout (function mood-context vector))
-(define-extern update-mood-palout (function mood-context float int none))
+(define-extern update-mood-palout (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-palroof (function mood-context float))
-(define-extern update-mood-palroof (function mood-context object int object object float float float none))
-(define-extern set-palroof-electricity-scale! "TODO - guess on vector, comes from palroof-elec-gate and is probably a pointer to palettes?" (function float (inline-array vector) float))
-(define-extern update-mood-palent (function mood-context float int none))
+(define-extern update-mood-palroof (function mood-context object int none :behavior time-of-day-proc))
+(define-extern set-palroof-electricity-scale! (function float int float))
+(define-extern update-mood-palent (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-palent-turret-flash! (function float float))
 (define-extern init-mood-nest (function mood-context symbol))
 (define-extern update-nest-lights (function mood-context pointer))
-(define-extern update-mood-nest (function mood-context float int none))
+(define-extern update-mood-nest (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-nest-green-flag! (function symbol symbol))
 (define-extern init-mood-village1 (function mood-context symbol))
 (define-extern update-village1-lights (function mood-context float))
-(define-extern update-mood-village1 (function mood-context float int none))
-(define-extern update-mood-copy-village1 (function mood-context float int none))
+(define-extern update-mood-village1 (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-village1 (function mood-context float int none :behavior time-of-day-proc))
 (define-extern clear-village1-interp! (function symbol))
 (define-extern set-village1-interp! (function symbol))
-(define-extern update-mood-consite (function mood-context float int none))
+(define-extern update-mood-consite (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-consite-flash! (function float))
-(define-extern update-mood-mincan (function mood-context float int none))
+(define-extern update-mood-mincan (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-mincan-beam! (function int float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -23807,7 +23809,7 @@
   )
 
 (deftype sewer-states (structure)
-  ((light-flag        basic               :offset-assert 0)
+  ((light-flag        symbol              :offset-assert 0)
    (light-count       uint32              :offset-assert 4)
    (turret-value      float               :offset-assert 8)
    (spec-light-center sp-field-init-spec  :offset-assert 12)
@@ -23928,7 +23930,7 @@
   )
 
 (deftype fordumpa-states (structure)
-  ((turret-value uint32           4       :offset-assert 0) ;; TODO - dunno
+  ((turret-value float           4       :offset-assert 0)
    (pulse        pulse-state       :inline :offset-assert 16)
    (electricity  electricity-state :inline :offset-assert 20)
    )
@@ -23950,8 +23952,7 @@
 
 (deftype forresca-states (structure)
   ((pulse       pulse-state :inline :offset-assert 0)
-   (electricity basic 8 :offset-assert 4)
-  ;;  (electricity vector     2  :inline     :offset 4) ;; what is this electricity field...
+   (electricity float     8      :offset 4)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -23959,8 +23960,8 @@
   )
 
 (deftype forrescb-states (structure)
-  ((electricity basic 8 :offset-assert 0) ;; what
-   (turret      basic 4 :offset-assert 32) ;; what
+  ((electricity float 8 :offset-assert 0)
+   (turret      float 4 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -23971,7 +23972,7 @@
   ((pulse        float  :offset-assert 0)
    (angle        float  :offset-assert 4)
    (torture      float  :offset-assert 8)
-   (torture-flag basic  :offset-assert 12)
+   (torture-flag symbol  :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -24019,7 +24020,7 @@
    (scale       float          :offset-assert 12)
    (flash       float          :offset-assert 16)
    (num         int32          :offset-assert 20)
-   (white       basic          :offset-assert 24)
+   (white       symbol         :offset-assert 24)
    (white-count float          :offset-assert 28)
    (pos         vector :inline :offset-assert 32)
    (dir         vector :inline :offset-assert 48)
@@ -24052,7 +24053,7 @@
 
 (deftype castle-states (structure)
   ((electricity electricity-state :inline :offset-assert 0)
-   (pulse       basic           8       :offset-assert 8) ;; WHAT
+   (pulse       float           8       :offset-assert 8)
    (rot         float                     :offset-assert 40)
    (robot-rot   float                     :offset-assert 44)
    )
@@ -24075,93 +24076,93 @@
   :flag-assert         #x900000000
   )
 
-(define-extern update-mood-default-interior (function mood-context none))
+(define-extern update-mood-default-interior (function mood-context none :behavior time-of-day-proc))
 (define-extern update-vinroom-lights (function mood-context none))
-(define-extern update-mood-vinroom (function mood-context none))
+(define-extern update-mood-vinroom (function mood-context none :behavior time-of-day-proc))
 (define-extern update-hideout-lights (function mood-context none))
-(define-extern update-mood-hideout (function mood-context none))
-(define-extern update-mood-copy-hideout (function mood-context none))
-;; (define-extern init-mood-hiphog function)
+(define-extern update-mood-hideout (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-hideout (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-hiphog (function mood-context none))
 (define-extern update-hiphog-lights (function mood-context none))
-(define-extern update-mood-hiphog (function mood-context float none))
-(define-extern update-mood-copy-hiphog (function mood-context none))
+(define-extern update-mood-hiphog (function mood-context float none :behavior time-of-day-proc))
+(define-extern update-mood-copy-hiphog (function mood-context none :behavior time-of-day-proc))
 (define-extern update-sewer-lights (function mood-context none))
-;; (define-extern init-mood-sewer function)
-(define-extern update-mood-sewer (function mood-context none))
-(define-extern update-mood-copy-sewerb (function mood-context none))
-(define-extern update-mood-copy-sewescb (function mood-context none))
-;; (define-extern set-sewer-lights-flag! function)
-;; (define-extern set-sewer-turret-flash! function)
-;; (define-extern set-sewesc-explosion! function)
+(define-extern init-mood-sewer (function mood-context none))
+(define-extern update-mood-sewer (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-sewerb (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-sewescb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-sewer-lights-flag! (function symbol symbol))
+(define-extern set-sewer-turret-flash! (function float))
+(define-extern set-sewesc-explosion! (function float))
 (define-extern update-onintent-lights (function mood-context none))
-(define-extern update-mood-onintent (function mood-context none))
-;; (define-extern init-mood-oracle function)
-(define-extern update-mood-oracle (function mood-context none))
-;; (define-extern set-oracle-purple-flag! function)
+(define-extern update-mood-onintent (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-oracle (function mood-context symbol))
+(define-extern update-mood-oracle (function mood-context none :behavior time-of-day-proc))
+(define-extern set-oracle-purple-flag! (function symbol symbol))
 (define-extern update-tomba-lights (function mood-context none))
-(define-extern update-mood-tomba (function mood-context none))
+(define-extern update-mood-tomba (function mood-context none :behavior time-of-day-proc))
 (define-extern update-tombb-lights (function mood-context none))
-(define-extern update-mood-tombb (function mood-context none))
-;; (define-extern init-mood-tombc function)
-(define-extern update-mood-tombc (function mood-context none))
-;; (define-extern set-tombc-electricity-scale! function)
+(define-extern update-mood-tombb (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-tombc (function mood-context float))
+(define-extern update-mood-tombc (function mood-context none :behavior time-of-day-proc))
+(define-extern set-tombc-electricity-scale! (function float float))
 (define-extern update-tombd-lights (function mood-context none))
-(define-extern update-mood-tombd (function mood-context none))
-(define-extern update-mood-tombe (function mood-context none))
+(define-extern update-mood-tombd (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-tombe (function mood-context none :behavior time-of-day-proc))
 (define-extern update-tombboss-lights (function mood-context none))
-(define-extern update-mood-tombboss (function mood-context none))
-;; (define-extern set-tombboss-gem-light! function)
+(define-extern update-mood-tombboss (function mood-context none :behavior time-of-day-proc))
+(define-extern set-tombboss-gem-light! (function float float))
 (define-extern update-fortress-lights (function mood-context none))
-(define-extern update-mood-fortress (function mood-context none))
-;; (define-extern init-mood-fordumpa function)
-(define-extern update-mood-fordumpa (function mood-context none))
-;; (define-extern set-fordumpa-turret-flash! function)
-;; (define-extern set-fordumpa-electricity-scale! function)
-;; (define-extern init-mood-fordumpc function)
-(define-extern update-mood-fordumpc (function mood-context none))
-;; (define-extern set-fordumpc-light-flag! function)
-;; (define-extern init-mood-forresca function)
-(define-extern update-mood-forresca (function mood-context none))
-;; (define-extern set-forresca-electricity-scale! function)
-;; (define-extern init-mood-forrescb function)
-(define-extern update-mood-forrescb (function mood-context none))
-;; (define-extern set-forrescb-turret-flash! function)
-;; (define-extern set-forrescb-electricity-scale! function)
+(define-extern update-mood-fortress (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-fordumpa (function mood-context float))
+(define-extern update-mood-fordumpa (function mood-context none :behavior time-of-day-proc))
+(define-extern set-fordumpa-turret-flash! (function int float))
+(define-extern set-fordumpa-electricity-scale! (function float float))
+(define-extern init-mood-fordumpc (function mood-context symbol))
+(define-extern update-mood-fordumpc (function mood-context none :behavior time-of-day-proc))
+(define-extern set-fordumpc-light-flag! (function mood-context mood-context))
+(define-extern init-mood-forresca (function mood-context float))
+(define-extern update-mood-forresca (function mood-context none :behavior time-of-day-proc))
+(define-extern set-forresca-electricity-scale! (function float int float))
+(define-extern init-mood-forrescb (function mood-context float))
+(define-extern update-mood-forrescb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-forrescb-turret-flash! (function int float))
+(define-extern set-forrescb-electricity-scale! (function float int float))
 (define-extern update-prison-lights (function mood-context none))
-;; (define-extern init-mood-prison function)
-(define-extern update-mood-prison (function mood-context none))
-(define-extern update-mood-copy-prison (function mood-context none))
-;; (define-extern set-prison-torture-flag! function)
-(define-extern update-under-lights (function mood-context none))
-(define-extern update-mood-under (function mood-context none))
-(define-extern update-mood-copy-underb (function mood-context none))
-;; (define-extern set-under-laser! function)
-;; (define-extern set-under-fog-interp! function)
+(define-extern init-mood-prison (function mood-context float))
+(define-extern update-mood-prison (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-prison (function mood-context none :behavior time-of-day-proc))
+(define-extern set-prison-torture-flag! (function symbol symbol))
+(define-extern update-under-lights (function mood-context float))
+(define-extern update-mood-under (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-underb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-under-laser! (function float float))
+(define-extern set-under-fog-interp! (function float float))
 (define-extern update-gungame-lights (function mood-context none))
-(define-extern update-mood-gungame (function mood-context none))
-;; (define-extern init-mood-dig1 function)
+(define-extern update-mood-gungame (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-dig1 (function mood-context float))
 (define-extern update-dig1-lights (function mood-context none))
-(define-extern update-mood-dig1 (function mood-context none))
-;; (define-extern set-dig1-explosion! function)
+(define-extern update-mood-dig1 (function mood-context none :behavior time-of-day-proc))
+(define-extern set-dig1-explosion! (function float float))
 (define-extern update-vortex-lights (function mood-context none))
-(define-extern update-mood-vortex (function mood-context none))
-;; (define-extern set-vortex-flash! function)
-;; (define-extern set-vortex-white! function)
+(define-extern update-mood-vortex (function mood-context none :behavior time-of-day-proc))
+(define-extern set-vortex-flash! (function float float))
+(define-extern set-vortex-white! (function symbol float))
 (define-extern update-nestb-lights (function mood-context none))
-(define-extern update-mood-nestb (function mood-context none))
-;; (define-extern set-nestb-purple! function)
-;; (define-extern get-nestb-purple function)
-;; (define-extern init-mood-consiteb function)
-(define-extern update-mood-consiteb (function mood-context none))
+(define-extern update-mood-nestb (function mood-context object int none :behavior time-of-day-proc))
+(define-extern set-nestb-purple! (function float float))
+(define-extern get-nestb-purple (function float))
+(define-extern init-mood-consiteb (function mood-context none))
+(define-extern update-mood-consiteb (function mood-context object int none :behavior time-of-day-proc))
 (define-extern update-castle-lights (function mood-context none))
-;; (define-extern init-mood-castle function)
-(define-extern update-mood-castle (function mood-context none))
-;; (define-extern set-castle-electricity-scale! function)
-;; (define-extern init-mood-garage function)
+(define-extern init-mood-castle (function mood-context float))
+(define-extern update-mood-castle (function mood-context none :behavior time-of-day-proc))
+(define-extern set-castle-electricity-scale! (function float float))
+(define-extern init-mood-garage (function mood-context symbol))
 (define-extern update-garage-lights (function mood-context none))
-(define-extern update-mood-garage (function mood-context none))
-(define-extern update-mood-copy-garage (function mood-context none))
-(define-extern update-mood-palshaft (function mood-context none))
+(define-extern update-mood-garage (function mood-context object int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-garage (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-palshaft (function mood-context none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; weather-part                   ;;
@@ -24238,7 +24239,7 @@
 ;; level-info                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *task-level* array)
+(define-extern *task-level* (array symbol))
 (define-extern default-level level-load-info) ;; level-load-info
 (define-extern intro level-load-info) ;; level-load-info
 (define-extern demo level-load-info) ;; level-load-info
@@ -26463,7 +26464,7 @@
 ;; (define-extern bend-gravity function) ;; (function symbol :behavior target)
 ;; (define-extern target-compute-edge function) ;; (function none :behavior target)
 ;; (define-extern target-compute-edge-rider function) ;; (function none :behavior target)
-;; (define-extern target-compute-pole function) ;; (function none :behavior target)
+(define-extern target-compute-pole (function none :behavior target)) ;; 
 ;; (define-extern target-calc-camera-pos function) ;; (function none :behavior target)
 ;; (define-extern joint-points function) ;; (function none :behavior target)
 ;; (define-extern do-target-gspot function)
