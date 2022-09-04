@@ -1434,7 +1434,7 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
   // stack slot load
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.error("Stack slot load at {} mismatch: defined as size {}, got size {}",
+    env.func->warnings.warning("Stack slot load at {} mismatch: defined as size {}, got size {}",
                              m_offset, info.size, m_size);
   }
 
