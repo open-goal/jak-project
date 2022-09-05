@@ -5,6 +5,10 @@
 ;; name in dgo: debug
 ;; dgos: ENGINE, GAME
 
+;; This file contains functions for debug drawing.
+;; In general, the 3d functions draw using the camera and the 2d functions draw in screen coordinates.
+;; Most functions take a boolean as their first argument. If the boolean is set to #f, it will skip drawing the point.
+
 (define-extern draw-string (function string dma-buffer font-context float))
 (define-extern debug-set-camera-pos-rot! (function vector matrix vector))
 (define-extern lookup-texture-by-id (function texture-id texture))
@@ -12,7 +16,10 @@
 
 ;; DECOMP BEGINS
 
-(defun transform-float-point ((arg0 vector) (arg1 vector4w))
+(defun transform-float-point ((in vector) (out vector4w))
+  "Transform point in and store the result in out.
+   This uses the cached vf register transformation matrix
+   Note that the input/output order of the arguments is swapped from usual"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -26,7 +33,7 @@
          (vf9 :class vf)
          )
     (init-vf0-vector)
-    (.lvf vf5 (&-> arg0 quad))
+    (.lvf vf5 (&-> in quad))
     (.mul.w.vf acc vf4 vf5)
     (.add.mul.x.vf acc vf1 vf5 acc)
     (.add.mul.y.vf acc vf2 vf5 acc)
@@ -38,12 +45,22 @@
     (.max.x.vf vf5 vf5 vf0 :mask #b1000)
     (.min.x.vf vf5 vf5 vf6 :mask #b1000)
     (vftoi4.xyzw vf5 vf5)
-    (.svf (&-> arg1 quad) vf5)
-    arg1
+    (.svf (&-> out quad) vf5)
+    out
     )
   )
 
+
+;;;;;;;;;;;;;;;;;;
+;; Debug Draw
+;;;;;;;;;;;;;;;;;;
+
+;; All of these functions are super slow and probably very old.
+;; They do a DMA packet per thing drawn.
+
 (defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
+  "Draw a point.
+   The point is actually a pretty large square with some weird rgb gradient."
   (if (not enable-draw)
       (return #f)
       )
@@ -172,6 +189,7 @@
 (define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba pointer))
 
 (defun-debug internal-draw-debug-text-3d ((bucket bucket-id) (text string) (position vector) (color font-color) (screen-offset vector2h))
+  "Draw text at the given location (in 3D), with a 2D offset."
   (let ((screen-pos (new 'stack-no-clear 'vector4w)))
     (set! (-> screen-pos quad) (the-as uint128 0))
     (when (transform-point-qword! screen-pos position)
@@ -215,6 +233,7 @@
   )
 
 (defun-debug add-debug-outline-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
+  "Draw outline of a triangle using lines."
   (when enable
     (add-debug-line #t bucket p0 p1 color #f (the-as rgba -1))
     (add-debug-line #t bucket p1 p2 color #f (the-as rgba -1))
@@ -224,6 +243,7 @@
   )
 
 (defun-debug add-debug-triangle-normal ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
+  "Draw the normal of a triangle, with length of 1 meter."
   (when enable
     (let ((s4-0 (new 'stack-no-clear 'vector))
           (s3-0 (vector-3pt-cross! (new 'stack-no-clear 'vector) p0 p1 p2))
@@ -241,7 +261,15 @@
 
 (define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol))
 
-;; this part is debug only
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Buffered debug draw
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Some of the debug draw stuff just adds a line to a list of lines to draw.
+;; This is used when pausing - the actual calls to debug-draw-line won't happen, but
+;; we won't clear the debug draw buffer so they will still be drawn.
+
 (when *debug-segment*
 
 (deftype debug-line (structure)
@@ -342,6 +370,7 @@
 )
 
 (defun-debug get-debug-line ()
+  "Allocate a debug-line from the list."
   (cond
     ((< (-> *debug-lines-trk* length) (-> *debug-lines-trk* allocated-length))
      (+! (-> *debug-lines-trk* length) 1)
@@ -354,6 +383,7 @@
   )
 
 (defun-debug get-debug-text-3d ()
+  "Allocate a debug text 3d from the list."
   (cond
     ((< (-> *debug-text-3d-trk* length) (-> *debug-text-3d-trk* allocated-length))
      (+! (-> *debug-text-3d-trk* length) 1)
@@ -366,6 +396,7 @@
   )
 
 (defun-debug debug-reset-buffers ()
+  "Clear all allocated debug things"
   (set! (-> *debug-lines-trk* length) 0)
   (set! (-> *debug-text-3d-trk* length) 0)
   (set! *debug-draw-pauseable* #f)
@@ -373,6 +404,7 @@
   )
 
 (defun-debug debug-draw-buffers ()
+  "Draw all debug lines and debug text."
   (dotimes (i (-> *debug-lines-trk* length))
     (let ((line (-> *debug-lines* i)))
       (internal-draw-debug-line
@@ -407,6 +439,7 @@
                    (mode symbol)
                    (end-color rgba)
                    )
+  "Draw a debug line between p0 and p1, in 3D."
   (when enable
     (cond
       (*debug-draw-pauseable*
@@ -430,6 +463,7 @@
   )
 
 (defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (start vector) (end vector) (color vector))
+  "Draw a line in screen coordinates"
   (if (not enable)
       (return #f)
       )
@@ -524,6 +558,7 @@
   )
 
 (defun-debug add-debug-box ((enable symbol) (bucket bucket-id) (c1 vector) (c2 vector) (color rgba))
+  "Draw an axis-aligned box"
   (let ((p0 (new-stack-vector0)))
     (set! (-> p0 quad) (-> c1 quad))
     (let ((p1 (new-stack-vector0)))
@@ -572,6 +607,7 @@
   )
 
 (defun-debug add-debug-box-with-transform ((enable symbol) (bucket bucket-id) (box bounding-box) (trans matrix) (color rgba))
+  "Draw an oriented box"
   (b! (not enable) cfg-5 :delay (nop!))
   (let ((points (new 'stack-no-clear 'inline-array 'vector 8)))
     (let ((corners (new 'stack-no-clear 'inline-array 'vector 2))
@@ -607,6 +643,7 @@
   )
 
 (defun-debug add-debug-x ((enable symbol) (bucket bucket-id) (position vector) (color rgba))
+  "Draw an X in the xz plane"
   (if (not enable)
       (return #f)
       )
@@ -624,6 +661,7 @@
   )
 
 (defun-debug add-debug-cross ((enable symbol) (bucket bucket-id) (position vector) (radius float))
+  "Draw an XYZ coordinate cross"
   (if (not enable)
       (return #f)
       )
@@ -703,6 +741,7 @@
                       (color font-color)
                       (screen-offset vector2h)
                       )
+  "Draw text at the given point. screen-offset can be #f."
   (when enable
     (cond
       (*debug-draw-pauseable*
@@ -757,6 +796,8 @@
   )
 
 (defun-debug add-debug-sphere-with-transform ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (trans matrix) (color rgba))
+  "Transform the given point by the given transform, then draw a debug sphere there. 
+   The orientation of the debug sphere itself is not changed by the transform, just its origin."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -786,6 +827,7 @@
   )
 
 (defun-debug add-debug-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (color rgba))
+  "Add a debug sphere at the given point."
   (if enable
       (add-debug-sphere-from-table bucket position radius color 6)
       )
@@ -793,12 +835,14 @@
   )
 
 (defun-debug add-debug-text-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (text string) (color rgba))
+  "Add a debug sphere at the given point, with some text. The color is for the sphere - the text is color 0."
   (add-debug-sphere enable bucket position radius color)
   (add-debug-text-3d enable bucket text position (font-color default) (the-as vector2h #f))
   #f
   )
 
 (defun-debug add-debug-spheres ((enable symbol) (bucket bucket-id) (origins (inline-array vector)) (count int) (color rgba))
+  "Add a bunch of spheres. The radius is taken from the w component of the origin."
   (when enable
     (let ((origin (-> origins 0)))
       (countdown (i count)
@@ -926,7 +970,7 @@
 
 (defun-debug add-debug-circle ((enable symbol) (bucket bucket-id) (position vector) (radius float) (color rgba) (orientation matrix))
   (local-vars (i int) (sv-64 vector) (sv-80 vector))
-  "note: you may pass #f for orientation"
+  "Draw a 2D circle in 3D. orientation may be #f, which will default to drawing in the xz plane."
   (if (not enable)
       (return #f)
       )
@@ -961,6 +1005,7 @@
   )
 
 (defun-debug add-debug-vector ((enable symbol) (bucket bucket-id) (position vector) (direction vector) (length meters) (color rgba))
+  "Draw a ray from the given position, direction, and length."
   (if (not enable)
       (return #f)
       )
@@ -974,63 +1019,39 @@
   )
 
 (defun-debug add-debug-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (line-length meters))
-  (add-debug-vector
-    enable
-    bucket
-    (-> mat trans)
-    (the-as vector (-> mat vector))
-    line-length
-    (new 'static 'rgba :r #xff :a #x80)
-    )
-  (add-debug-vector
-    enable
-    bucket
-    (-> mat trans)
-    (-> mat vector 1)
-    line-length
-    (new 'static 'rgba :g #xff :a #x80)
-    )
-  (add-debug-vector
-    enable
-    bucket
-    (-> mat trans)
-    (-> mat vector 2)
-    line-length
-    (new 'static 'rgba :b #xff :a #x80)
-    )
+  "Draw the rotation vectors of a matrix at its position."
+  (add-debug-vector enable bucket (-> mat trans) (-> mat vector 0) line-length (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-vector enable bucket (-> mat trans) (-> mat vector 1) line-length (new 'static 'rgba :g #xff :a #x80))
+  (add-debug-vector enable bucket (-> mat trans) (-> mat vector 2) line-length (new 'static 'rgba :b #xff :a #x80))
   mat
   )
 
 (defun-debug add-debug-rot-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (position vector))
-  (add-debug-vector
-    enable
-    bucket
-    position
-    (the-as vector (-> mat vector))
-    (meters 2.0)
-    (new 'static 'rgba :r #xff :a #x80)
-    )
+  "Draw the rotation vectors of a matrix at the given position."
+  (add-debug-vector enable bucket position (-> mat vector 0) (meters 2.0) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-vector enable bucket position (-> mat vector 1) (meters 2.0) (new 'static 'rgba :g #xff :a #x80))
   (add-debug-vector enable bucket position (-> mat vector 2) (meters 2.0) (new 'static 'rgba :b #xff :a #x80))
   mat
   )
 
 (defun-debug add-debug-quaternion ((enable symbol) (bucket bucket-id) (position vector) (quat quaternion))
+  "Converts the quaternion to a matrix and draw its rotation vectors at the given position."
   (when enable
     (let ((mat (quaternion->matrix (new 'stack-no-clear 'matrix) quat)))
       (add-debug-rot-matrix enable bucket mat position)
       )
     )
-  0
   (none)
   )
 
 (defun-debug add-debug-cspace ((enable symbol) (bucket bucket-id) (csp cspace))
+  "Draw the cspace bone transformation matrix."
   (add-debug-matrix enable bucket (-> csp bone transform) (meters 2.0))
   csp
   )
 
 (defun-debug add-debug-yrot-vector ((enable symbol) (bucket bucket-id) (position vector) (angle float) (line-length float) (color rgba))
+  "From the given position, draw a vector along the xz plane with the given angle around the Y-axis."
   (local-vars (var-angle float))
   (set! var-angle angle)
   (let ((var-line-length line-length)
@@ -1062,8 +1083,8 @@
                   (color rgba)
                   (orientation matrix)
                   )
+  "Draw an arc with the given start and end angle. orientation may be #f, which defaults to drawing along the xz plane."
   (local-vars (line-start vector) (line-end vector) (i int) (sv-96 vector) (sv-112 vector))
-  "note: you may pass #f for orientation"
   (if (not enable)
       (return #f)
       )
@@ -1114,6 +1135,7 @@
                     (num-knots int)
                     (color rgba)
                     )
+  "Draw a curve as a series of lines."
   (local-vars (p1 vector) (iterations int) (i int))
   (if (not enable)
       (return #f)
@@ -1135,6 +1157,7 @@
   )
 
 (defun-debug add-debug-curve2 ((enable symbol) (bucket bucket-id) (curve curve) (color rgba) (arg4 symbol))
+  "Draw a curve as a series of lines."
   (if enable
       (add-debug-curve
         #t
@@ -1157,13 +1180,11 @@
                      (y-override float)
                      (highlight int)
                      )
-  (local-vars
-    (sv-32 (function symbol bucket-id string vector font-color vector2h symbol))
-    (sv-48 symbol)
-    (sv-64 bucket-id)
-    (sv-80 (function _varargs_ object))
-    (position vector)
-    )
+  "For each point, draw an X along the xz plane with the index of the point above it as text.
+   If y-override is not 0.0, the Y-coordinate of each point will use its value instead.
+   Specify highlight as the index of a point that should be drawn as a white X instead of using
+   the given color."
+  (local-vars (position vector))
   (when enable
     (dotimes (i num-points)
       (set! position (new 'stack-no-clear 'vector))
@@ -1172,33 +1193,15 @@
       (if (!= y-override 0.0)
           (set! (-> position y) y-override)
           )
-      (set! sv-32 add-debug-text-3d)
-      (set! sv-48 #t)
-      (set! sv-64 bucket)
-      (set! sv-80 format)
-      (let ((a0-5 (clear *temp-string*))
-            (a1-1 "~d")
-            (a2-1 i)
-            )
-        (sv-80 a0-5 a1-1 a2-1)
-        )
-      (let ((a2-2 *temp-string*)
-            (a3-1 position)
-            (t0-1 1)
-            (t1-1 #f)
-            )
-        (sv-32 sv-48 sv-64 a2-2 a3-1 (the-as font-color t0-1) (the-as vector2h t1-1))
-        )
-      (let ((t9-3 add-debug-x)
-            (a0-7 #t)
-            (a1-3 bucket)
-            (a3-2 (if (= i highlight)
+      (format (clear *temp-string*) "~d" i)
+      (add-debug-text-3d #t bucket *temp-string* position (the-as font-color 1) (the-as vector2h #f))
+      (let ((a3-2 (if (= i highlight)
                       (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
                       color
                       )
                   )
             )
-        (t9-3 a0-7 a1-3 position a3-2)
+        (add-debug-x #t bucket position a3-2)
         )
       )
     )
@@ -1206,6 +1209,7 @@
   )
 
 (defun-debug debug-percent-bar ((enable symbol) (bucket bucket-id) (x int) (y int) (percentage float) (color rgba) (width int) (height int))
+  "Draw a rectangular percentage bar at the given location."
   (local-vars (sv-16 int) (sv-32 float))
   (set! sv-16 y)
   (set! sv-32 percentage)
@@ -1241,6 +1245,7 @@
   )
 
 (defun-debug debug-pad-display ((pad cpad-info))
+  "Call each frame to draw the history of stick 0 as a series of fading points."
   (let ((stick-history (new 'static 'inline-array vector 32
                          (new 'static 'vector)
                          (new 'static 'vector)
@@ -1465,6 +1470,11 @@
   #f
   )
 
+
+;;;;;;;;;;;;;;;;;;
+;; Misc Debug
+;;;;;;;;;;;;;;;;;;
+
 (defun-debug dma-timeout-cam ()
   (let ((pos (new-stack-vector0))
         (rot (new-stack-matrix0))
@@ -1562,6 +1572,15 @@
   (none)
   )
 
+
+;;;;;;;;;;;;;;;;;;
+;; Boundary Debug
+;;;;;;;;;;;;;;;;;;
+
+;; TODO: missing a bunch of functions here
+
+(define-extern init-boundary-regs (function none))
+
 (defun-debug add-boundary-shader ((tex-id texture-id) (buf dma-buffer))
   (let ((tex (lookup-texture-by-id tex-id)))
     (when tex
@@ -1593,8 +1612,14 @@
   (none)
   )
 
+
+;;;;;;;;;;;;;;;;;;
+;; More Misc
+;;;;;;;;;;;;;;;;;;
+
 (define-extern cpu-delay (function int none))
 
 (define-extern qword-read-time (function (array uint128) int int))
 
+;; Returns whether some workaround for an EE memory controller bug is enabled.
 (define-extern bugfix? (function symbol))
