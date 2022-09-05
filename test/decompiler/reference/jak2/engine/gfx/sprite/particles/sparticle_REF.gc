@@ -1,17 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: sparticle.gc
-;; name in dgo: sparticle
-;; dgos: ENGINE, GAME
-
-;; og:ignore-form:sp-get-particle
-
-(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
-(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
-
-;; DECOMP BEGINS
-
+;; definition for method 2 of type sparticle-cpuinfo
+;; INFO: Return type mismatch object vs sparticle-cpuinfo.
 (defmethod print sparticle-cpuinfo ((obj sparticle-cpuinfo))
   (format #t "<sparticle-cpuinfo>~%")
   (dotimes (s5-0 16)
@@ -21,6 +12,9 @@
   (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> obj flags)))
   )
 
+;; definition for function sp-particle-copy!
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none) vs none.
 (defun sp-particle-copy! ((arg0 sparticle-cpuinfo) (arg1 sparticle-cpuinfo))
   (let ((v1-1 (-> arg1 sprite x-y-z-sx quad)))
     (set! (-> arg0 sprite x-y-z-sx quad) v1-1)
@@ -46,6 +40,7 @@
   (none)
   )
 
+;; definition for method 0 of type sparticle-system
 (defmethod new sparticle-system ((allocation symbol)
                                (type-to-make type)
                                (arg0 int)
@@ -90,18 +85,23 @@
     )
   )
 
+;; failed to figure out what this is:
 (kmemopen global "part-systems")
 
+;; definition for symbol *sp-particle-system-2d*, type sparticle-system
 (define *sp-particle-system-2d*
   (new 'global 'sparticle-system 1920 128 #f (-> *sprite-array-2d* vec-data) (-> *sprite-array-2d* adgif-data))
   )
 
+;; definition for symbol *sp-particle-system-3d*, type sparticle-system
 (define *sp-particle-system-3d*
   (new 'global 'sparticle-system 256 0 #t (-> *sprite-array-3d* vec-data) (-> *sprite-array-3d* adgif-data))
   )
 
+;; failed to figure out what this is:
 (kmemclose)
 
+;; definition for function sp-get-block-size
 (defun sp-get-block-size ((arg0 sparticle-system) (arg1 int))
   (let ((v0-0 0))
     (let ((v1-0 0)
@@ -121,6 +121,7 @@
     )
   )
 
+;; definition for function sp-get-approx-alloc-size
 (defun sp-get-approx-alloc-size ((arg0 sparticle-system) (arg1 int))
   (let ((a3-0 arg1)
         (v1-0 0)
@@ -142,6 +143,8 @@
     )
   )
 
+;; definition for function sp-free-particle
+;; INFO: Return type mismatch int vs none.
 (defun sp-free-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-2d))
   (if (and (-> arg2 binding) (nonzero? (-> arg2 binding)))
       (logclear! (-> arg2 binding flags) (sp-launch-state-flags launcher-active particles-active))
@@ -161,13 +164,108 @@
   (none)
   )
 
+;; definition for function sp-get-particle
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t3, t2]
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t3, t2]
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t3, t2]
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t3, t2]
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t3, t2]
 ;; ERROR: Unsupported inline assembly instruction kind - [movz a2, t2, t1]
+(defun sp-get-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-launch-state))
+  (local-vars
+    (a2-3 int)
+    (a2-4 int)
+    (a2-5 int)
+    (a2-6 int)
+    (a2-7 int)
+    (a2-8 int)
+    (t1-16 int)
+    (t1-17 int)
+    (t1-18 int)
+    (t1-19 int)
+    (t1-20 int)
+    (t3-5 int)
+    )
+  (let ((v1-0 0)
+        (t0-0 (-> arg0 blocks 0))
+        (a3-0 0)
+        )
+    (when (= arg1 1)
+      (set! v1-0 t0-0)
+      (set! t0-0 (-> arg0 blocks 1))
+      )
+    (when arg2
+      (set! a3-0 (the-as int (-> arg2 randomize)))
+      (+! (-> arg2 randomize) 1)
+      (when (= (-> arg2 randomize) t0-0)
+        (set! (-> arg2 randomize) (the-as uint 0))
+        0
+        )
+      )
+    (dotimes (a2-1 t0-0)
+      (when (nonzero? (-> arg0 alloc-table (+ v1-0 a3-0)))
+        (let ((a2-2 0)
+              (t1-15 (-> arg0 alloc-table (+ v1-0 a3-0)))
+              (t0-4 (* (+ v1-0 a3-0) 64))
+              )
+          0
+          0
+          (let ((t2-4 (shl t1-15 32))
+                (t3-0 (+ a2-2 32))
+                )
+            (move-if-not-zero t1-16 t2-4 t2-4 t1-15)
+            (.movz a2-3 t3-0 t2-4 a2-2)
+            )
+          (let ((t2-5 (shl t1-16 16))
+                (t3-1 (+ a2-3 16))
+                )
+            (move-if-not-zero t1-17 t2-5 t2-5 t1-16)
+            (.movz a2-4 t3-1 t2-5 a2-3)
+            )
+          (let ((t2-6 (* t1-17 256))
+                (t3-2 (+ a2-4 8))
+                )
+            (move-if-not-zero t1-18 t2-6 t2-6 t1-17)
+            (.movz a2-5 t3-2 t2-6 a2-4)
+            )
+          (let ((t2-7 (* t1-18 16))
+                (t3-3 (+ a2-5 4))
+                )
+            (move-if-not-zero t1-19 t2-7 t2-7 t1-18)
+            (.movz a2-6 t3-3 t2-7 a2-5)
+            )
+          (let ((t2-8 (* t1-19 4))
+                (t3-4 (+ a2-6 2))
+                )
+            (move-if-not-zero t1-20 t2-8 t2-8 t1-19)
+            (.movz a2-7 t3-4 t2-8 a2-6)
+            (let ((t1-21 (* t1-20 2))
+                  (t2-9 (+ a2-7 1))
+                  )
+              (move-if-not-zero t3-5 t1-21 t1-21 t3-4)
+              (.movz a2-8 t2-9 t1-21 a2-7)
+              )
+            )
+          (let ((t0-5 (+ t0-4 a2-8)))
+            (logxor! (-> arg0 alloc-table (+ v1-0 a3-0)) (the-as uint (ash 1 a2-8)))
+            (+! (-> arg0 num-alloc arg1) 1)
+            (let ((v1-9 (-> arg0 cpuinfo-table t0-5)))
+              (set! (-> v1-9 valid) (the-as uint 1))
+              (return v1-9)
+              )
+            )
+          )
+        )
+      (+! a3-0 1)
+      (if (= a3-0 t0-0)
+          (set! a3-0 0)
+          )
+      )
+    )
+  (the-as sparticle-cpuinfo #f)
+  )
 
+;; definition for function sp-kill-particle
 (defun sp-kill-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (cond
     ((>= (the-as int arg1) #x70000000)
@@ -187,6 +285,8 @@
   #t
   )
 
+;; definition for function sp-orbiter
+;; INFO: Return type mismatch int vs none.
 (defun sp-orbiter ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
   (let* ((f2-0 (-> arg1 omega))
          (f0-0 (-> arg1 radius))
@@ -226,10 +326,14 @@
   (none)
   )
 
+;; definition for function sp-process-block-2d
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function sp-process-block-3d
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function sp-copy-to-spr
+;; INFO: Return type mismatch int vs none.
 (defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
   (let ((a2-1 (/ (+ arg2 15) 16)))
     (dma-send-to-spr-no-flush (the-as uint arg0) (the-as uint arg1) (the-as uint a2-1) #t)
@@ -238,6 +342,8 @@
   (none)
   )
 
+;; definition for function sp-copy-from-spr
+;; INFO: Return type mismatch int vs none.
 (defun sp-copy-from-spr ((arg0 int) (arg1 pointer) (arg2 int))
   (let ((a2-1 (/ (+ arg2 15) 16)))
     (dma-send-from-spr-no-flush (the-as uint arg1) (the-as uint arg0) (the-as uint a2-1) #t)
@@ -246,8 +352,12 @@
   (none)
   )
 
+;; definition for function memcpy
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function sp-process-block
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defun sp-process-block ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d) (arg3 int))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int) (sv-64 int))
   (let ((s3-0 208)
@@ -289,6 +399,9 @@
   (none)
   )
 
+;; definition for function sp-process-particle-system
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defun sp-process-particle-system ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d))
   (countdown (v1-0 13)
     (let ((a0-4 (-> *display* clock v1-0 sparticle-data quad)))
@@ -318,8 +431,12 @@
   (none)
   )
 
+;; definition (perm) for symbol *particles-flag*, type symbol
 (define-perm *particles-flag* symbol #t)
 
+;; definition for function forall-particles-with-key-runner
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defun forall-particles-with-key-runner ((arg0 sparticle-launch-control)
                                 (arg1 (function sparticle-system sparticle-cpuinfo none))
                                 (arg2 sparticle-system)
@@ -353,6 +470,8 @@
   (none)
   )
 
+;; definition for function forall-particles-with-key
+;; INFO: Return type mismatch int vs none.
 (defun forall-particles-with-key ((arg0 sparticle-launch-control)
                          (arg1 (function sparticle-system sparticle-cpuinfo none))
                          (arg2 symbol)
@@ -368,6 +487,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (set! (-> arg1 timer) 0)
   (set! (-> arg1 sp-func) (the-as (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none) 0))
@@ -379,6 +500,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level0
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (zero? (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)))
       (sparticle-kill-it arg0 arg1)
@@ -387,6 +510,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level1
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (= (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1))
          (sp-cpuinfo-flag sp-cpuinfo-flag-9)
@@ -397,6 +522,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level2
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (= (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)) (sp-cpuinfo-flag level0))
       (sparticle-kill-it arg0 arg1)
@@ -405,6 +532,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level3
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level3 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (= (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1))
          (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0)
@@ -415,6 +544,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level4
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level4 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (= (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)) (sp-cpuinfo-flag level1))
       (sparticle-kill-it arg0 arg1)
@@ -423,6 +554,8 @@
   (none)
   )
 
+;; definition for function sparticle-kill-it-level5
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-kill-it-level5 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   (if (= (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1))
          (sp-cpuinfo-flag sp-cpuinfo-flag-9 level1)
@@ -433,6 +566,8 @@
   (none)
   )
 
+;; definition for function sparticle-60-to-50
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-60-to-50 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
   (let ((gp-0 (-> arg1 rotvel3d))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -445,6 +580,8 @@
   (none)
   )
 
+;; definition for function sparticle-50-to-60
+;; INFO: Return type mismatch int vs none.
 (defun sparticle-50-to-60 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
   (let ((gp-0 (-> arg1 rotvel3d))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -457,12 +594,16 @@
   (none)
   )
 
+;; definition for function kill-all-particles-with-key
+;; INFO: Return type mismatch int vs none.
 (defun kill-all-particles-with-key ((arg0 sparticle-launch-control))
   (forall-particles-with-key arg0 sparticle-kill-it #t #t)
   0
   (none)
   )
 
+;; definition for function forall-particles-runner
+;; INFO: Return type mismatch int vs none.
 (defun forall-particles-runner ((arg0 (function sparticle-system sparticle-cpuinfo pointer none)) (arg1 sparticle-system))
   (let ((s4-0 (the-as object (-> arg1 cpuinfo-table 0)))
         (s3-0 (&+ (-> arg1 vecdata-table) 0))
@@ -490,6 +631,8 @@
   (none)
   )
 
+;; definition for function forall-particles
+;; INFO: Return type mismatch int vs none.
 (defun forall-particles ((arg0 function) (arg1 symbol) (arg2 symbol))
   (if arg1
       (forall-particles-runner
@@ -507,6 +650,7 @@
   (none)
   )
 
+;; definition for function kill-all-particles-in-level
 (defun kill-all-particles-in-level ((arg0 level))
   (let ((t9-0 forall-particles)
         (v1-0 (-> arg0 index))
@@ -539,16 +683,20 @@
   0
   )
 
+;; definition for function all-particles-50-to-60
 (defun all-particles-50-to-60 ()
   (forall-particles-runner sparticle-50-to-60 *sp-particle-system-3d*)
   (none)
   )
 
+;; definition for function all-particles-60-to-50
 (defun all-particles-60-to-50 ()
   (forall-particles-runner sparticle-60-to-50 *sp-particle-system-3d*)
   (none)
   )
 
+;; definition for function remap-particle
+;; INFO: Return type mismatch gs-miptbp vs none.
 (defun remap-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
   (let* ((gp-0 (-> arg1 adgif))
          (a0-1 (-> gp-0 texture-id))
@@ -565,11 +713,14 @@
   (none)
   )
 
+;; definition for function remap-all-particles
 (defun remap-all-particles ()
   (forall-particles remap-particle #t #t)
   (none)
   )
 
+;; definition for function process-particles
+;; INFO: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 gp, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defun process-particles ()
@@ -659,7 +810,3 @@
     (none)
     )
   )
-
-
-
-

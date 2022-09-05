@@ -420,32 +420,31 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
     return bad_it->second;
   }
 
-  static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {
-      "0L", "1L", "3L", "1k", "1K", "2j", "0k", "0K", "30L", "1T", "2T"};
+  static const std::vector<std::string> code_ignore_list = {
+      "%",  "T",  "0L",  "1L", "3L", "1k",   "1K",   "2j",
+      "0k", "0K", "30L", "1T", "2T", "100h", "200h", "350h"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
 
-      // Check for codes that take no args
       bool code_takes_no_arg = false;
-      for (char c : single_char_ignore_list) {
-        if (i < str.length() && str.at(i) == c) {
-          code_takes_no_arg = true;
-          break;
+      for (auto& ignored_code : code_ignore_list) {
+        int j = i;
+        bool match = true;
+        for (const char c : ignored_code) {
+          if (j > str.length()) {
+            match = false;
+            break;
+          }
+          if (str.at(j) != c) {
+            match = false;
+            break;
+          }
+          j++;
         }
-      }
-
-      for (auto& code : multi_char_ignore_list) {
-        if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1)) {
-          code_takes_no_arg = true;
-          break;
-        }
-        if (i + 2 < str.length() && code.length() == 3 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1) && str.at(i + 2) == code.at(2)) {
+        if (match) {
           code_takes_no_arg = true;
           break;
         }
