@@ -29197,6 +29197,7 @@
   )
 ;; ---editable-h:editable-flag
 
+(declare-type editable-array basic)
 (deftype editable (basic)
   (
     (flags editable-flag :offset-assert 4)
@@ -29211,7 +29212,7 @@
   (:methods
     (get-color
       "Returns the [[rgba]] that corresponds to the type of [[editable]] TODO - document the colors" 
-      (_type_ int symbol) rgba 9)
+      (_type_ int) rgba 9)
     (editable-method-10 (_type_) none 10)
     (editable-method-11 (_type_ vector) symbol 11)
     (select-editable! (_type_ symbol) none 12)
@@ -29224,17 +29225,18 @@
     (editable-method-19 (_type_ vector) none 19)
     (editable-method-20 (_type_ vector vector vector vector) none 20)
     (editable-method-21 (_type_ editable-region) none 21)
-    (editable-method-22 (_type_ object int) symbol 22)
+    (editable-method-22 (_type_ editable-array int int) symbol 22)
     (editable-method-23 (_type_) symbol 23)
     (editable-method-24 (_type_) none 24)
-    (editable-method-25 (_type_) none 25) ;; TODO - loop and potential recurr?
-    (editable-method-26 (_type_ object) none 26)
-    (editable-method-27 (_type_) none 27)
-    (editable-method-28 (_type_ int) editable 28) ;; TODO - loop and potential recurr?
-    (editable-method-29 (_type_) none 29) ;; TODO - loop and potential recurr?
+    (editable-method-25 (_type_ editable-array) none 25)
+    (editable-method-26 (_type_ editable editable-array) none 26)
+    (editable-method-27 (_type_ editable-array) editable 27)
+    (editable-method-28 (_type_ editable-filter) none 28)
+    (editable-method-29 (_type_ editable-filter) symbol 29)
     )
   )
 
+(declare-type editable-player process-drawable)
 (declare-type editable-plane editable)
 (deftype editable-array (basic)
   (
@@ -29247,9 +29249,9 @@
     (move-speed float :offset-assert 28)
     (selection (array editable) :offset-assert 32)
     (filter editable-filter 2 :offset-assert 36)
-    (target target :offset-assert 44)
-    (target-mode uint32 :offset-assert 48)
-    (target-command basic :offset-assert 52)
+    (target editable :offset-assert 44)
+    (target-mode uint32 :offset-assert 48) ;; enum?
+    (target-command basic :offset-assert 52) ;; editable-command?
     (target-message string :offset-assert 56)
     (edit-plane editable-plane :offset-assert 60)
     (edit-plane-center vector :inline :offset-assert 64)
@@ -29265,14 +29267,14 @@
   :flag-assert         #x120000007c
   (:methods
     (new (symbol type int) _type_ 0)
-    (editable-array-method-9 (_type_ editable-command editable-array) symbol :behavior editable-array 9)
+    (editable-array-method-9 (_type_ editable-command editable-array) symbol :behavior editable-player 9)
     (editable-array-method-10 (_type_ vector int) editable 10)
     (editable-array-method-11 (_type_) int 11)
     (editable-array-method-12 (_type_ editable-array) none 12)
-    (editable-array-method-13 (_type_ editable-command) none 13)
+    (editable-array-method-13 (_type_ uint basic string) none 13)
     (editable-array-method-14 (_type_ (function symbol) symbol) none 14)
-    (editable-array-method-15 () none 15)
-    (editable-array-method-16 () none 16)
+    (editable-array-method-15 (_type_ editable) none 15)
+    (editable-array-method-16 (_type_) none 16)
     (editable-array-method-17 (_type_ vector vector) vector 17)
     )
   )
@@ -29335,7 +29337,7 @@
   :flag-assert         #x2000000058
   (:methods
     (new (symbol type editable-region) _type_ 0)
-    (editable-face-method-30 (_type_ transform) int 30)
+    (editable-face-method-30 (_type_ (inline-array vector)) int 30)
     (editable-face-method-31 (_type_ vector) vector 31)
     )
   )
@@ -29351,7 +29353,7 @@
   :flag-assert         #x2000000028
   (:methods
     (new (symbol type editable-region) _type_ 0)
-    (editable-plane-method-30 (_type_ transform) none 30)
+    (editable-plane-method-30 (_type_ matrix) int 30)
     (editable-plane-method-31 (_type_ vector) vector 31)
     )
   )
@@ -29410,9 +29412,9 @@
 
 (define-extern cleanup-selection (function editable-array none))
 (define-extern insert-box (function editable-array vector none))
-(define-extern execute-select (function editable-array int editable-array none))
-(define-extern execute-mouse-move (function editable-array int editable-array symbol))
-(define-extern execute-move (function editable-array int editable-array symbol))
+(define-extern execute-select (function editable-array editable-command editable-array symbol))
+(define-extern execute-mouse-move (function editable-array editable-command editable-array symbol))
+(define-extern execute-move (function editable-array editable-command editable-array symbol))
 (define-extern editable-player-init (function symbol none :behavior editable-player)) ;; TODO - return type not confirmed
 (define-extern *editable-menu-context* debug-menu-context)
 (define-extern editable-menu-command (function int none))
