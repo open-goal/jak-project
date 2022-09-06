@@ -7,3 +7,218 @@
 
 ;; DECOMP BEGINS
 
+(defmacro test-play ()
+  "Temporary start macro"
+  `(begin
+     (start-debug "test-play~%")
+     (define *kernel-boot-message* 'play)
+     (start-debug "loading GAME.DGO~%")
+     (load-package "game" global)
+     (play-boot)
+     )
+  )
+
+(defmethod get-art-group-by-name level ((obj level) (arg0 string))
+  (countdown (s4-0 (-> obj art-group art-group-array length))
+    (if (name= (-> obj art-group art-group-array s4-0 name) arg0)
+        (return (-> obj art-group art-group-array s4-0))
+        )
+    )
+  (the-as art-group #f)
+  )
+
+(defmethod vis-clear level ((obj level))
+  (countdown (v1-0 8)
+    (nop!)
+    (set! (-> obj vis-info v1-0) #f)
+    )
+  (dotimes (v1-3 128)
+    (set! (-> (the-as (pointer int128) (&+ (-> obj vis-bits) (* v1-3 16)))) (the int128 0))
+    )
+  (set! (-> obj all-visible?) 'loading)
+  0
+  (none)
+  )
+
+(defmethod alloc-levels-if-needed level-group ((obj level-group) (arg0 symbol))
+  "Setup for playing levels by loading the required base packages (art, common)
+   and allocating the level heap."
+  (when (zero? (-> *level* heap base))
+    (kmemopen global "level-heaps")
+    (when (nmember "game" *kernel-packages*)
+      (set! *kernel-packages* (cons "art" *kernel-packages*))
+      (set! *kernel-packages* (cons "common" *kernel-packages*))
+      )
+    (load-package "art" global)
+    (if arg0
+        (load-package "common" global)
+        )
+    (let ((s5-1 (if (and arg0 (not *debug-segment*))
+                    #x11f7000
+                    #x1af2800
+                    )
+                )
+          (gp-1 (-> obj heap))
+          )
+      (set! (-> gp-1 base) (kmalloc global s5-1 (kmalloc-flags) "heap"))
+      (set! (-> gp-1 current) (-> gp-1 base))
+      (set! (-> gp-1 top-base) (&+ (-> gp-1 base) s5-1))
+      (set! (-> gp-1 top) (-> gp-1 top-base))
+      )
+    (kmemclose)
+    )
+  0
+  (none)
+  )
+
+(defmethod load-commands-set! level-group ((obj level-group) (arg0 pair))
+  (set! (-> obj load-commands) arg0)
+  (none)
+  )
+
+
+(define-extern bg (function symbol none)) ;; TODO
+
+(defun play ((arg0 symbol) (arg1 symbol))
+  "Set up the game engine for playing."
+  (kmemopen global "level-boot")
+  (when *kernel-boot-level*
+    (start-debug "using *kernel-boot-level*: ~A~%" *kernel-boot-level*)
+    (bg *kernel-boot-level*)
+    (on #f)
+    (kmemclose)
+    (kmemclose)
+    (return 0)
+    )
+  (let* ((v1-3 *kernel-boot-message*)
+         (s5-0 (cond
+                 ((or (= v1-3 'demo) (= v1-3 'demo-shared))
+                  'demo
+                  )
+                 (*debug-segment*
+                   'prison
+                   )
+                 (else
+                   'title
+                   )
+                 )
+               )
+         )
+    (start-debug "PLAY: kernel-boot-message is: ~A, startup level is ~A~%" v1-3 s5-0)
+    (stop 'play)
+    (set! (-> *level* vis?) arg0)
+    (set! (-> *level* want-level) #f)
+    (set! (-> *level* border?) #t)
+    (set! (-> *setting-control* user-default border-mode) #t)
+    (set! (-> *level* play?) #t)
+    (start-debug "PLAY: allocating levels~%")
+    (alloc-levels-if-needed *level* #t)
+    (start-debug "PLAY: global heap after level alloc:~%")
+    (inspect global)
+    (set! *display-profile* #f)
+    (set! *cheat-mode* (if *debug-segment*
+                           'debug
+                           #f
+                           )
+          )
+    (set! *time-of-day-fast* #f)
+    (load-commands-set! *level* '())
+    (format 0 "SKIP: time of day setup and initial level load.~%")
+  ;   (send-event (ppointer->process *time-of-day*) 'change 'ratio #x3f800000)
+  ;   (send-event (ppointer->process *time-of-day*) 'change 'hour 7)
+  ;   (send-event (ppointer->process *time-of-day*) 'change 'minutes 0)
+  ;   (send-event (ppointer->process *time-of-day*) 'change 'seconds 0)
+  ;   (send-event (ppointer->process *time-of-day*) 'change 'frames 0)
+  ;   (set! (-> *time-of-day-context* mode) (the-as uint 8))
+  ;   (set! (-> *mood-control* overide-weather-flag) #f)
+  ;   (set-blackout-frames (seconds 0.02))
+  ;   (when (not *dproc*)
+  ;     (reset! *load-state*)
+  ;     (let ((s4-1 (level-get-for-use *level* s5-0 'active)))
+  ;       (let ((a1-11 (new 'stack-no-clear 'array 'symbol 10)))
+  ;         (set! (-> a1-11 5) #f)
+  ;         (set! (-> a1-11 4) #f)
+  ;         (set! (-> a1-11 3) #f)
+  ;         (set! (-> a1-11 2) #f)
+  ;         (set! (-> a1-11 1) (if (= s5-0 'ctysluma)
+  ;                                'ctywide
+  ;                                )
+  ;               )
+  ;         (set! (-> a1-11 0) s5-0)
+  ;         (want-levels *load-state* a1-11)
+  ;         )
+  ;       (want-display-level *load-state* s5-0 'display)
+  ;       (if (= s5-0 'ctysluma)
+  ;           (want-display-level *load-state* 'ctywide 'display)
+  ;           )
+  ;       (want-vis-level *load-state* s5-0)
+  ;       (while (and s4-1 (or (= (-> s4-1 status) 'loading) (= (-> s4-1 status) 'loading-bt) (= (-> s4-1 status) 'login)))
+  ;         (set-blackout-frames (seconds 0.02))
+  ;         (load-continue s4-1)
+  ;         )
+  ;       )
+  ;     )
+  ;   (set! *print-login* #f)
+  ;   (level-status-update! (level-get *level* s5-0) 'active)
+    )
+  (start-debug "PLAY: starting dproc~%")
+  (on #t)
+  (format 0 "SKIP: initialize game info~%")
+  ; (if arg1
+  ;     (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+  ;     )
+  (kmemclose)
+  (kmemclose)
+  0
+  )
+
+(defun play-boot ()
+  "Entry point from C to initialize game for running.
+   This simply calls (play #t #t) in a GOAL thread."
+  (start-debug "play-boot about to switch stacks for calling play...~%")
+  (process-spawn-function
+    process
+    (lambda () (play #t #t) (none))
+    :from *4k-dead-pool*
+    :stack *kernel-dram-stack*
+    )
+  0
+  (none)
+  )
+
+(when (zero? (-> *level* level0 art-group))
+  (kmemopen global "level")
+  (let ((gp-0 *level*))
+    (set! (-> gp-0 loading-level) (-> gp-0 default-level))
+    (dotimes (s5-0 6)
+      (let ((s4-0 (-> gp-0 level s5-0)))
+        (set! (-> s4-0 art-group) (new 'global 'load-dir-art-group 100 s4-0))
+        (set! (-> s4-0 vis-bits) (malloc 'global 2048))
+        (vis-clear s4-0)
+        (set! (-> s4-0 tfrag-masks) (new 'global 'texture-masks-array 1))
+        (set! (-> s4-0 tfrag-dists) (malloc 'global 4))
+        (set! (-> s4-0 shrub-masks) (new 'global 'texture-masks-array 1))
+        (set! (-> s4-0 shrub-dists) (malloc 'global 4))
+        (set! (-> s4-0 alpha-masks) (new 'global 'texture-masks-array 1))
+        (set! (-> s4-0 alpha-dists) (malloc 'global 4))
+        (set! (-> s4-0 water-masks) (new 'global 'texture-masks-array 1))
+        (set! (-> s4-0 water-dists) (malloc 'global 4))
+        (clear-mood-context (-> s4-0 mood-context))
+        )
+      )
+    (set! (-> gp-0 default-level art-group) (new 'global 'load-dir-art-group 512 (-> gp-0 default-level)))
+    (dotimes (v1-31 7)
+      (let ((a0-53 (-> gp-0 level v1-31)))
+        (dotimes (a1-48 10)
+          (set! (-> a0-53 texture-anim-array a1-48) #f)
+          )
+        )
+      )
+    ; (set! (-> (the-as (pointer int32) (+ #x8fa8 (the-as int gp-0)))) *sky-texture-anim-array*)
+    ; (set! (-> (the-as (pointer int32) (+ #x8f88 (the-as int gp-0)))) *darkjak-texture-anim-array*)
+    ; (set! (-> (the-as (pointer int32) (+ #x8f94 (the-as int gp-0)))) *bomb-texture-anim-array*)
+    ; (set! (-> (the-as (pointer float) (+ #x8fb0 (the-as int gp-0)))) 20.0)
+    (set! *default-level* (-> gp-0 default-level))
+    )
+  (kmemclose)
+  )

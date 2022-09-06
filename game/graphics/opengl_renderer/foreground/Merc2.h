@@ -3,7 +3,7 @@
 
 class Merc2 : public BucketRenderer {
  public:
-  Merc2(const std::string& name, BucketId my_id);
+  Merc2(const std::string& name, int my_id);
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;

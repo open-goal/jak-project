@@ -1728,20 +1728,22 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
               extras.needs_rerun = true;
             }
           } else {
-            auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
-            if (!location_type.empty()) {  // need to know where we're storing
+            if (m_addr.is_identity() && !m_addr.get_arg(0).is_var()) {
+              auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
+              if (!location_type.empty()) {  // need to know where we're storing
 
-              // temp warning if we have multiple store types
-              if (location_type.size() > 1) {
-                fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
-                for (auto& t : location_type) {
-                  fmt::print("{} ", t.print());
+                // temp warning if we have multiple store types
+                if (location_type.size() > 1) {
+                  fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+                  for (auto& t : location_type) {
+                    fmt::print("{} ", t.print());
+                  }
+                  fmt::print("\n");
                 }
-                fmt::print("\n");
-              }
 
-              if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
-                extras.needs_rerun = true;
+                if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
+                  extras.needs_rerun = true;
+                }
               }
             }
           }
@@ -2442,8 +2444,8 @@ void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
 void StackSpillLoadOp::propagate_types2(types2::Instruction& instr,
                                         const Env& env,
                                         types2::TypeState& input_types,
-                                        DecompilerTypeSystem& dts,
-                                        types2::TypePropExtras& extras) {
+                                        DecompilerTypeSystem& /*dts*/,
+                                        types2::TypePropExtras& /*extras*/) {
   // stack slot load
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {

@@ -11,7 +11,7 @@
 
 class Shrub : public BucketRenderer {
  public:
-  Shrub(const std::string& name, BucketId my_id);
+  Shrub(const std::string& name, int my_id);
   ~Shrub();
   bool setup_for_level(const std::string& level, SharedRenderState* render_state);
   void render_all_trees(const TfragRenderSettings& settings,

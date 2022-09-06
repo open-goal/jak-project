@@ -1552,10 +1552,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         to_print = labels.at(cdr_word.label_id());
         continue;
       }
-      // invalid.
-      lg::error(
-          "There is an improper list. This is probably okay, but should be checked manually "
-          "because we could not find a test case yet.");
+      // improper
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {
@@ -1568,12 +1565,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         throw std::runtime_error(
             fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
       } else {
-        auto& word = words.at(to_print.target_segment).at(to_print.offset / 4);
-        // improper list
-        lg::error(
-            "There is an improper list. This is probably okay, but should be checked manually "
-            "because we "
-            "could not find a test case yet.");
+        // improper
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
             words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts, file));

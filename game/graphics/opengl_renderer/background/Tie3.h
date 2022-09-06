@@ -11,7 +11,7 @@
 
 class Tie3 : public BucketRenderer {
  public:
-  Tie3(const std::string& name, BucketId my_id, int level_id);
+  Tie3(const std::string& name, int my_id, int level_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   ~Tie3();

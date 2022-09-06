@@ -512,11 +512,7 @@ bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
   return xdbg::write_goal_memory(src_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }
 
-/*!
- * Read the GOAL Symbol table from an attached and halted target.
- */
-void Debugger::read_symbol_table() {
-  // todo: this assumes many things specific to jak 1.
+void Debugger::read_symbol_table_jak1() {
   using namespace jak1_symbols;
   using namespace jak1;
   ASSERT(is_valid() && is_attached() && is_halted());
@@ -622,6 +618,107 @@ void Debugger::read_symbol_table() {
   ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
   fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
              m_symbol_name_to_offset_map.size(), timer.getMs());
+}
+
+void Debugger::read_symbol_table_jak2() {
+  using namespace jak2_symbols;
+  using namespace jak2;
+  ASSERT(is_valid() && is_attached() && is_halted());
+  u32 bytes_read = 0;
+  u32 reads = 0;
+  Timer timer;
+
+  u32 st_base = m_debug_context.s7 - ((GOAL_MAX_SYMBOLS / 2) * 4 + 1);
+  u32 empty_pair_offset =
+      (m_debug_context.s7 + S7_OFF_FIX_SYM_EMPTY_PAIR /*- PAIR_OFFSET*/) - st_base;
+
+  std::vector<u8> mem;
+  mem.resize(SYM_TABLE_MEM_SIZE);
+
+  if (!xdbg::read_goal_memory(mem.data(), SYM_TABLE_MEM_SIZE, st_base, m_debug_context,
+                              m_memory_handle)) {
+    fmt::print("Read failed during read_symbol_table\n");
+    return;
+  }
+  reads++;
+  bytes_read += SYM_TABLE_MEM_SIZE;
+
+  m_symbol_name_to_offset_map.clear();
+  m_symbol_offset_to_name_map.clear();
+  m_symbol_name_to_value_map.clear();
+
+  // now loop through all the symbols
+  for (int i = 0; i < (SYM_TO_STRING_OFFSET + 4) / 4; i++) {
+    u32 offset = i * 4;
+    if (offset == empty_pair_offset) {
+      continue;
+    }
+    auto sym_val = *(u32*)(mem.data() + offset);
+    auto info = *(u32*)(mem.data() + i * 4 + SYM_TO_STRING_OFFSET + 1);
+    if (info) {
+      // now get the string.
+      char str_buff[128];
+      if (!xdbg::read_goal_memory((u8*)str_buff, 128, info + 4, m_debug_context, m_memory_handle)) {
+        fmt::print("Read symbol string failed during read_symbol_table\n");
+        return;
+      }
+      reads++;
+      bytes_read += 128;
+      // just in case
+      str_buff[127] = '\0';
+      fmt::print("got {}\n", str_buff);
+
+      // GOAL sym - s7
+      auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
+      ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
+      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
+
+      std::string str(str_buff);
+      if (str.length() >= 50) {
+        fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
+        continue;
+      }
+
+      // update maps
+      if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
+        if (str == "asize-of-basic-func") {
+          // this is an actual bug in kscheme. The bug has no effect, but we replicate it so that
+          // the symbol table layout is closer.
+
+          // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
+          str += "-hack-copy";
+        } else {
+          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
+          continue;
+          // ASSERT(false);
+        }
+      }
+
+      m_symbol_name_to_offset_map[str] = sym_offset;
+      m_symbol_offset_to_name_map[sym_offset] = str;
+      m_symbol_name_to_value_map[str] = sym_val;
+    }
+  }
+
+  ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
+  fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
+             m_symbol_name_to_offset_map.size(), timer.getMs());
+}
+
+/*!
+ * Read the GOAL Symbol table from an attached and halted target.
+ */
+void Debugger::read_symbol_table() {
+  switch (m_version) {
+    case GameVersion::Jak1:
+      read_symbol_table_jak1();
+      break;
+    case GameVersion::Jak2:
+      read_symbol_table_jak2();
+      break;
+    default:
+      ASSERT(false);
+  }
 }
 
 /*!

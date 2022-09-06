@@ -7,36 +7,45 @@
 
 (declare-type sparticle-system basic)
 
+;; +++sp-cpuinfo-flag
 (defenum sp-cpuinfo-flag
   :bitfield #t
   :type uint32
-  (bit0 0)
-  (bit1 1)
-  (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
-  (bit3 3)
-  (bit4 4)
+  (sp-cpuinfo-flag-0 0)
+  (sp-cpuinfo-flag-1 1)
+  (sp-cpuinfo-flag-2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
+  (sp-cpuinfo-flag-3 3)
+  (sp-cpuinfo-flag-4 4)
+  (sp-cpuinfo-flag-5 5)
   (ready-to-launch 6) ;; maybe just just death?
   (distort 7) ;; distort sprite
   (aux-list 8)     ;; prevents relaunch, adds to aux
-  (bit9 9)
+  (sp-cpuinfo-flag-9 9)
   (level0 10)
   (level1 11)
-  (bit12 12)   ;; required to relaunch
-  (bit13 13)
-  (bit14 14)
+  (sp-cpuinfo-flag-12 12)   ;; required to relaunch
+  (sp-cpuinfo-flag-13 13)
+  (sp-cpuinfo-flag-14 14)
   (glow 15) ;; glow sprite
   (use-global-acc 16)
   (launch-along-z 17)
   (left-multiply-quat 18)
   (right-multiply-quat 19)
   (set-conerot 20)
+  (sp-cpuinfo-flag-21 21)
   )
+;; ---sp-cpuinfo-flag
 
 ;; NOTE - for relocate
 (declare-type sparticle-system basic)
 (declare-type sparticle-cpuinfo structure)
 (declare-type sparticle-launch-control inline-array-class)
 (define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
+
+;; NOTE - for sparticle-launcher
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
+(define-extern kill-all-particles-with-key (function sparticle-launch-control none))
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol))
 
 ;; DECOMP BEGINS
 
@@ -52,8 +61,8 @@
    (fade          rgbaf                                                                      :inline :offset-assert  48)
    (acc           vector                                                                     :inline :offset-assert  64)
    (rotvel3d      quaternion                                                                 :inline :offset-assert  80)
-   (vel           vector3s                                                                   :inline :offset         16)
-   (accel         vector3s                                                                   :inline :offset         64)
+   (vel           vector                                                                     :inline :offset         16)
+   (accel         vector                                                                     :inline :offset         64)
    (scalevelx     float                                                                              :offset         28)
    (scalevely     float                                                                              :offset         44)
    (friction      float                                                                              :offset-assert  96)
@@ -73,6 +82,7 @@
    (clock-index   uint8                                                                              :offset-assert 129)
    (user1-int16   uint16                                                                             :offset-assert 130)
    (key           sparticle-launch-control                                                           :offset-assert 132)
+   (key-alt       sparticle-launch-state                                                             :offset        132)
    (binding       sparticle-launch-state                                                             :offset-assert 136)
    (data          uint32                                                                     1       :offset         12)
    (datab         uint8                                                                      4       :offset         12)
@@ -83,6 +93,7 @@
   :size-assert         #x8c
   :flag-assert         #x90000008c
   )
+
 
 (deftype sparticle-launchinfo (structure)
   ((launchrot  vector :inline :offset-assert   0)
@@ -104,6 +115,7 @@
   :flag-assert         #x900000040
   )
 
+
 (deftype sparticle-system (basic)
   ((blocks          int32                            2 :offset-assert   4)
    (length          int32                            2 :offset-assert  12)
@@ -118,6 +130,14 @@
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
+  (:methods
+    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_ 0)
+    )
   )
+
+
+0
+
+
 
 
