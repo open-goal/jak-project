@@ -8281,14 +8281,19 @@
   (stadium-burning-bush-race-class3-r 107)
   (stadium-burning-bush-race-class2-r 108)
   (stadium-burning-bush-race-class1-r 109)
-  (max 110) ;; awkward that there are things after it...?
-  (unknown-game-task-113 113)
-  (tomb-boss-torches 167) ;; guess on the name
-  (unknown-game-task-172 172)
-  (unknown-game-task-204 204)
-  (unknown-game-task-205 205)
-  )
+  (max 110))
 ;; ---game-task-h:game-task
+
+;; +++game-task-h:game-task-node
+(defenum game-task-node
+  :type uint32
+  :bitfield #f
+  (dig-knock-down-resolution 113)
+  (tomb-boss-torches 167)
+  (fortress-save-friends-resolution 172)
+  (drill-mech-resolution 204)
+  (drill-mech-started-smashing 205))
+;; ---game-task-h:game-task-node
 
 (defenum game-task-actor
   :bitfield #f
@@ -13913,7 +13918,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type basic process vector) _type_ 0)
-    (script-context-method-9 (_type_ structure) pair 9)
+    (eval! (_type_ structure) pair 9)
     (script-context-method-10 () none 10)
     (script-context-method-11 () none 11)
     )
@@ -14833,7 +14838,7 @@
 (deftype collide-prim-core (structure)
   ((world-sphere vector         :inline :offset-assert 0)
    (collide-as   collide-spec           :offset-assert 16) ;; guessed by decompiler
-   (collide-with uint32                 :offset-assert 20)
+   (collide-with collide-spec           :offset-assert 20)
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    prim-type              :offset-assert 28)
    (unused1      uint8        3       :offset-assert 29)
@@ -23685,7 +23690,7 @@
   )
 
 (deftype mincan-states (structure)
-  ((beams strobe-state 2 :offset-assert 0) ;; a guess!
+  ((beams float 2 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -23975,7 +23980,7 @@
   )
 
 (deftype fordumpc-states (structure)
-  ((light-flag basic                :offset-assert 0)
+  ((light-flag symbol               :offset-assert 0)
    (pulse0     pulse-state  :inline :offset-assert 4)
    (pulse1     pulse-state  :inline :offset-assert 8)
    (strobe     strobe-state :inline :offset-assert 12)
@@ -24155,7 +24160,7 @@
 (define-extern set-fordumpa-electricity-scale! (function float float))
 (define-extern init-mood-fordumpc (function mood-context symbol))
 (define-extern update-mood-fordumpc (function mood-context none :behavior time-of-day-proc))
-(define-extern set-fordumpc-light-flag! (function mood-context mood-context))
+(define-extern set-fordumpc-light-flag! (function symbol symbol))
 (define-extern init-mood-forresca (function mood-context float))
 (define-extern update-mood-forresca (function mood-context none :behavior time-of-day-proc))
 (define-extern set-forresca-electricity-scale! (function float int float))
@@ -24228,7 +24233,7 @@
 ;; (define-extern time-of-day-interp-colors function) ;; (function (pointer rgba) uint mood-context none)
 ;; (define-extern time-of-day-interp-colors-scratch function) ;; (function (pointer rgba) time-of-day-palette mood-context none)
 (define-extern init-time-of-day-context (function time-of-day-context symbol))
-(define-extern set-filter-color! (function float float int none))
+(define-extern set-filter-color! (function float float float none))
 (define-extern tod-madd! (function vector vector vector float))
 (define-extern update-environment-colors (function time-of-day-context vector))
 (define-extern update-time-of-day (function time-of-day-context none))
@@ -28130,7 +28135,7 @@
 ;; (define-extern task-close! function)
 ;; (define-extern task-closed? function) ;; (function game-task task-status symbol)
 ;; (define-extern open-task-nodes function)
-(define-extern task-node-closed? (function game-task symbol))
+(define-extern task-node-closed? (function game-task-node symbol))
 (define-extern task-node-close! (function game-task none))
 (define-extern task-node-open? (function game-task symbol))
 (define-extern task-node-open! (function game-task none))
@@ -29782,11 +29787,11 @@
     (open (symbol) _type_ :state 20)
     (close (symbol) _type_ :state 21)
     (init-airlock! (_type_) _type_ 22)
-    (open-door? (_type_) symbol :behavior com-airlock 23)
-    (com-airlock-method-24 (_type_ symbol) symbol 24)
-    (com-airlock-method-25 (_type_ vector symbol) float :behavior com-airlock 25)
+    (want-cross-airlock? (_type_) symbol :behavior com-airlock 23)
+    (destination-loaded? (_type_ symbol) symbol 24)
+    (check-crossing-distance (_type_ vector symbol) float :behavior com-airlock 25)
     (rotate-gear! (_type_ float) degrees :behavior com-airlock 26)
-    (com-airlock-method-27 (_type_ symbol) none :behavior com-airlock 27) ;; TODO - really weird usage of a string array / sound-array?
+    (play-city-voice-sound (_type_ symbol) none :behavior com-airlock 27) ;; TODO - really weird usage of a string array / sound-array?
     )
   )
 
