@@ -87,6 +87,6 @@ def update_all_blocks(game_name, block_dict):
             else:
                 final_lines.append(line)
                 i = i + 1
-    # Update the file contents
-    with open(path, "w") as f:
-        f.writelines(final_lines)
+        # Update the file contents
+        with open(path, "w") as f:
+            f.writelines(final_lines)

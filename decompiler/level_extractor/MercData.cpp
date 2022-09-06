@@ -341,7 +341,13 @@ void MercEffect::from_ref(TypedRef tr,
   blend_frag_count = read_plain_data_field<u16>(tr, "blend-frag-count", dts);
   tri_count = read_plain_data_field<u16>(tr, "tri-count", dts);
   dvert_count = read_plain_data_field<u16>(tr, "dvert-count", dts);
-  envmap_usage = read_plain_data_field<u8>(tr, "envmap-usage", dts);
+  auto* type = dynamic_cast<StructureType*>(dts.ts.lookup_type("merc-effect"));
+  Field temp;
+  if (type->lookup_field("envmap-usage", &temp)) {
+    envmap_or_effect_usage = read_plain_data_field<u8>(tr, "envmap-usage", dts);
+  } else {
+    envmap_or_effect_usage = read_plain_data_field<u8>(tr, "effect-usage", dts);
+  }
 
   // do frag-ctrls
   TypedRef fc(deref_label(get_field_ref(tr, "frag-ctrl", dts)),
@@ -364,7 +370,7 @@ std::string MercEffect::print() {
   result += fmt::format("  blend_frag_count: {}\n", blend_frag_count);
   result += fmt::format("  tri_count: {}\n", tri_count);
   result += fmt::format("  dvert_count: {}\n", dvert_count);
-  result += fmt::format("  envmap_usage: {}\n", envmap_usage);
+  result += fmt::format("  envmap_or_effect_usage: {}\n", envmap_or_effect_usage);
 
   for (u32 i = 0; i < frag_count; i++) {
     result += fmt::format("  +FRAGMENT {}\n", i);

@@ -9,6 +9,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/jak1_tpage_dir.h"
+#include "game/graphics/texture/jak2_tpage_dir.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
@@ -281,8 +282,23 @@ std::optional<u64> TexturePool::lookup_mt4hh(u32 location) {
   return {};
 }
 
-TexturePool::TexturePool()
-    : m_loaded_textures(get_jak1_tpage_dir()), m_id_to_name(get_jak1_tpage_dir()) {
+namespace {
+const std::vector<u32>& get_tpage_dir(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return get_jak1_tpage_dir();
+    case GameVersion::Jak2:
+      return get_jak2_tpage_dir();
+    default:
+      ASSERT(false);
+  }
+}
+}  // namespace
+
+TexturePool::TexturePool(GameVersion version)
+    : m_loaded_textures(get_tpage_dir(version)),
+      m_id_to_name(get_tpage_dir(version)),
+      m_tpage_dir_size(get_tpage_dir(version).size()) {
   m_placeholder_data.resize(16 * 16);
   u32 c0 = 0xa0303030;
   u32 c1 = 0xa0e0e0e0;

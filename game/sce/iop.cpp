@@ -226,7 +226,7 @@ s32 WakeupThread(s32 thid) {
   return 0;
 }
 
-s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata) {
+s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* /*userdata*/) {
   (void)edge;
   (void)priority;
   return iop->kernel.RegisterVblankHandler(handler);

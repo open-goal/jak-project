@@ -462,7 +462,7 @@ void InitMachine_PCPort() {
 
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
@@ -531,23 +531,19 @@ void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
 }
 
-u32 sceGsSyncV(u32 /*mode*/) {
-  // stub, jak2 probably works differently here
-  ASSERT(false);
-  return 0;
-  /*
+u32 sceGsSyncV(u32 mode) {
   ASSERT(mode == 0);
-  VBlank_Handler();
+  // VBlank_Handler(); meh...
+  if (vblank_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
+    call_goal(Ptr<Function>(vblank_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+  }
+
   return Gfx::vsync();
-   */
 }
 
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
-  // stub, jak2 probably works differently here
   ASSERT(mode == 0 && timeout == 0);
-  ASSERT(false);
-  return 0;
-  // return Gfx::sync_path();
+  return Gfx::sync_path();
 }
 
 void aybabtu() {}

@@ -9,7 +9,7 @@
 /////////////////////////
 // Bucket Renderer
 /////////////////////////
-EyeRenderer::EyeRenderer(const std::string& name, BucketId id) : BucketRenderer(name, id) {}
+EyeRenderer::EyeRenderer(const std::string& name, int id) : BucketRenderer(name, id) {}
 
 void EyeRenderer::init_textures(TexturePool& texture_pool) {
   // set up eyes
