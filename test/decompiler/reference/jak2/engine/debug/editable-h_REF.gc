@@ -1,126 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: editable-h.gc
-;; name in dgo: editable-h
-;; dgos: ENGINE, GAME
-
-;; +++editable-filter
-(defenum editable-filter
-  :type uint32
-  :bitfield #t
-  (none 0)
-  (unknown 1)
-  (sound 2)
-  (part 3)
-  (user-setting 4)
-  (cam-setting 5)
-  (load 6)
-  (water-command 7)
-  (camera 8)
-  (target 9)
-  (water  10)
-  (data  11)
-  (city_vis  12)
-  (sample  13)
-  (light  14)
-  (entity  15)
-  (selected  16)
-  )
-;; ---editable-filter
-
-;; +++editable-flag
-(defenum editable-flag
-  :type uint32
-  :bitfield #t
-  (selected)
-  (no-save)
-  (orient)
-  (x)
-  (y)
-  (z)
-  (no-plane-snap)
-  (no-update)
-  (mark)
-  (top-set)
-  (bot-set)
-  (changed)
-  )
-;; ---editable-flag
-
-;; +++editable-command
-(defenum editable-command
-  :type uint32
-  :bitfield #f
-  (none 0)
-  (exit 1)
-  (kill 2)
-  (select-one 3)
-  (select-toggle 4)
-  (select-all 5)
-  (select-none 6)
-  (select-region 7)
-  (select-face 8)
-  (select-prim 9)
-  (select-current-owner 10)
-  (select-current-region 11)
-  (select-current-face 12)
-  (select-current-prim 13)
-  (pick-target 14)
-  (pick-loc 15)
-  (pick-yes-no 16)
-  (cancel 17)
-  (drag-move-xy 18)
-  (drag-move-xz 19)
-  (drag-move-x 20)
-  (drag-move-y 21)
-  (drag-move-z 22)
-  (drag-resize 23)
-  (camera-tumble 24)
-  (camera-xy 25)
-  (camera-xz 26)
-  (insert-sphere 27)
-  (insert-point 28)
-  (insert-sample 29)
-  (insert-sample-camera 30)
-  (insert-light 31)
-  (insert-entity 32)
-  (insert-face 33)
-  (insert-plane 34)
-  (insert-box 35)
-  (delete 36)
-  (copy 37)
-  (resize 38)
-  (snap-to-ground 39)
-  (snap-xz 40)
-  (snap-y 41)
-  (flip-side 42)
-  (region-set 43)
-  (region-new 44)
-  (edit-plane-set 45)
-  (edit-plane-clear 46)
-  (delete-region 47)
-  (copy-region 48)
-  (region-add 49)
-  (save 50)
-  (load 51)
-  (update-game 52)
-  (print-region-info 53)
-  (refresh-filter 54)
-  (rotate-level 55)
-  (translate-y-level 56)
-  )
-;; ---editable-command
-
-(declare-type editable-plane editable)
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (declare-file (debug))
 (when *debug-segment*
+;; definition for symbol *editable-temp-id*, type int
 (define *editable-temp-id* 0)
 
+;; definition for function editable-command->string
 (defun editable-command->string ((arg0 editable-command))
   (case arg0
     (((editable-command insert-entity))
@@ -300,6 +187,8 @@
     )
   )
 
+;; definition for function editable-filter->string
+;; INFO: Return type mismatch basic vs string.
 (defun editable-filter->string ((arg0 editable-filter) (arg1 basic))
   (if (= (logand arg0 (editable-filter target)) (editable-filter target))
       (format arg1 "target ")
@@ -355,6 +244,7 @@
   (the-as string arg1)
   )
 
+;; definition of type editable-region
 (deftype editable-region (basic)
   ((changed   symbol           :offset-assert   4)
    (locked    symbol           :offset-assert   8)
@@ -377,6 +267,7 @@
     )
   )
 
+;; definition for method 3 of type editable-region
 (defmethod inspect editable-region ((obj editable-region))
   (when (not obj)
     (set! obj obj)
@@ -396,6 +287,7 @@
   obj
   )
 
+;; definition of type editable
 (deftype editable (basic)
   ((flags  editable-flag    :offset-assert   4)
    (name   string           :offset-assert   8)
@@ -431,6 +323,7 @@
     )
   )
 
+;; definition for method 3 of type editable
 (defmethod inspect editable ((obj editable))
   (when (not obj)
     (set! obj obj)
@@ -485,6 +378,7 @@
   obj
   )
 
+;; definition of type editable-array
 (deftype editable-array (basic)
   ((allocated-length  int32                     :offset-assert   4)
    (length            int32                     :offset-assert   8)
@@ -525,6 +419,7 @@
     )
   )
 
+;; definition for method 3 of type editable-array
 (defmethod inspect editable-array ((obj editable-array))
   (when (not obj)
     (set! obj obj)
@@ -559,6 +454,7 @@
   obj
   )
 
+;; definition for method 0 of type editable-array
 (defmethod new editable-array ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((s5-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
     (set! (-> s5-0 allocated-length) arg0)
@@ -598,6 +494,7 @@
     )
   )
 
+;; definition of type editable-point
 (deftype editable-point (editable)
   ((radius float          :offset-assert  24)
    (trans  vector :inline :offset-assert  32)
@@ -610,6 +507,7 @@
     )
   )
 
+;; definition for method 3 of type editable-point
 (defmethod inspect editable-point ((obj editable-point))
   (when (not obj)
     (set! obj obj)
@@ -666,6 +564,8 @@
   obj
   )
 
+;; definition for method 0 of type editable-point
+;; INFO: Used lq/sq
 (defmethod new editable-point ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 symbol))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 region) #f)
@@ -688,6 +588,7 @@
     )
   )
 
+;; definition of type editable-sphere
 (deftype editable-sphere (editable-point)
   ()
   :method-count-assert 30
@@ -698,6 +599,7 @@
     )
   )
 
+;; definition for method 3 of type editable-sphere
 (defmethod inspect editable-sphere ((obj editable-sphere))
   (when (not obj)
     (set! obj obj)
@@ -754,6 +656,8 @@
   obj
   )
 
+;; definition for method 0 of type editable-sphere
+;; INFO: Used lq/sq
 (defmethod new editable-sphere ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 float) (arg2 editable-region))
   (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> s5-0 region) #f)
@@ -775,6 +679,7 @@
     )
   )
 
+;; definition of type editable-sample
 (deftype editable-sample (editable-point)
   ()
   :method-count-assert 30
@@ -782,6 +687,7 @@
   :flag-assert         #x1e00000030
   )
 
+;; definition for method 3 of type editable-sample
 (defmethod inspect editable-sample ((obj editable-sample))
   (when (not obj)
     (set! obj obj)
@@ -838,6 +744,7 @@
   obj
   )
 
+;; definition of type editable-light
 (deftype editable-light (editable-sphere)
   ((direction           vector :inline :offset-assert  48)
    (color               vector :inline :offset-assert  64)
@@ -853,6 +760,7 @@
     )
   )
 
+;; definition for method 3 of type editable-light
 (defmethod inspect editable-light ((obj editable-light))
   (when (not obj)
     (set! obj obj)
@@ -914,6 +822,8 @@
   obj
   )
 
+;; definition for method 0 of type editable-light
+;; INFO: Used lq/sq
 (defmethod new editable-light ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 float) (arg2 editable-region))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 region) #f)
@@ -944,6 +854,7 @@
     )
   )
 
+;; definition of type editable-entity
 (deftype editable-entity (editable-point)
   ()
   :method-count-assert 30
@@ -951,6 +862,7 @@
   :flag-assert         #x1e00000030
   )
 
+;; definition for method 3 of type editable-entity
 (defmethod inspect editable-entity ((obj editable-entity))
   (when (not obj)
     (set! obj obj)
@@ -1007,6 +919,7 @@
   obj
   )
 
+;; definition of type editable-face
 (deftype editable-face (editable)
   ((length int32                  :offset-assert  24)
    (normal vector         :inline :offset-assert  32)
@@ -1023,6 +936,7 @@
     )
   )
 
+;; definition for method 3 of type editable-face
 (defmethod inspect editable-face ((obj editable-face))
   (when (not obj)
     (set! obj obj)
@@ -1084,6 +998,7 @@
   obj
   )
 
+;; definition for method 0 of type editable-face
 (defmethod new editable-face ((allocation symbol) (type-to-make type) (arg0 editable-region))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 region) #f)
@@ -1103,6 +1018,7 @@
     )
   )
 
+;; definition of type editable-plane
 (deftype editable-plane (editable)
   ((length int32            :offset-assert  24)
    (radius float            :offset-assert  28)
@@ -1118,6 +1034,7 @@
     )
   )
 
+;; definition for method 3 of type editable-plane
 (defmethod inspect editable-plane ((obj editable-plane))
   (when (not obj)
     (set! obj obj)
@@ -1178,6 +1095,7 @@
   obj
   )
 
+;; definition for method 0 of type editable-plane
 (defmethod new editable-plane ((allocation symbol) (type-to-make type) (arg0 editable-region))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 region) #f)
@@ -1198,6 +1116,7 @@
     )
   )
 
+;; definition of type editable-player
 (deftype editable-player (process-drawable)
   ((current           editable-array   :offset-assert 200)
    (select-command    function         :offset-assert 204)
@@ -1219,6 +1138,7 @@
     )
   )
 
+;; definition for method 3 of type editable-player
 (defmethod inspect editable-player ((obj editable-player))
   (when (not obj)
     (set! obj obj)
@@ -1240,6 +1160,7 @@
   obj
   )
 
+;; definition of type editable-work
 (deftype editable-work (basic)
   ((num-found  int16        :offset-assert   4)
    (last-found int16        :offset-assert   6)
@@ -1253,6 +1174,7 @@
   :flag-assert         #x900000810
   )
 
+;; definition for method 3 of type editable-work
 (defmethod inspect editable-work ((obj editable-work))
   (when (not obj)
     (set! obj obj)
@@ -1269,13 +1191,13 @@
   obj
   )
 
+;; definition for symbol *editable-work*, type editable-work
 (define *editable-work* (new 'global 'editable-work))
 
+;; definition for symbol *editable*, type (pointer editable-player)
 (define *editable* (the-as (pointer editable-player) #f))
 
+;; failed to figure out what this is:
 0
 
 )
-
-
-
