@@ -23,7 +23,7 @@
 // size of the sky texture is 64x96, but it's actually a 64x64 (clouds) and a 32x32 (sky)
 
 SkyBlendHandler::SkyBlendHandler(const std::string& name,
-                                 BucketId my_id,
+                                 int my_id,
                                  int level_id,
                                  std::shared_ptr<SkyBlendGPU> shared_blender,
                                  std::shared_ptr<SkyBlendCPU> shared_blender_cpu)
@@ -122,7 +122,7 @@ void SkyBlendHandler::draw_debug_window() {
   }
 }
 
-SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)
+SkyRenderer::SkyRenderer(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_direct_renderer("sky-direct", my_id, 100) {}
 
 void SkyRenderer::render(DmaFollower& dma,

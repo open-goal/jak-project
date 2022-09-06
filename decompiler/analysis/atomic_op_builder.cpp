@@ -253,6 +253,7 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::VFTOI0:
     case InstructionKind::VFTOI4:
     case InstructionKind::VFTOI12:
+    case InstructionKind::VFTOI15:
     case InstructionKind::VITOF0:
     case InstructionKind::VITOF12:
     case InstructionKind::VITOF15:
@@ -337,6 +338,7 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::PEXTLW:
     case InstructionKind::PPACH:
     case InstructionKind::PSUBW:
+    case InstructionKind::PCGTB:
     case InstructionKind::PCGTW:
     case InstructionKind::PEXTLH:
     case InstructionKind::PEXTLB:

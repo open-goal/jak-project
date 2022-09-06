@@ -343,6 +343,11 @@ class ObjectFileDB {
     uint32_t unique_obj_files = 0;
     uint32_t unique_obj_bytes = 0;
   } stats;
+
+  GameVersion version() const { return m_version; }
+
+ private:
+  GameVersion m_version;
 };
 
 std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);

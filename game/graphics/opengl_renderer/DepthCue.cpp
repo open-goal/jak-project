@@ -20,7 +20,7 @@ math::Vector2f fixed_to_floating_point(const math::Vector<s32, 2>& fixed_vec) {
 // Total number of loops depth-cue performs to draw to the framebuffer
 constexpr int TOTAL_DRAW_SLICES = 16;
 
-DepthCue::DepthCue(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+DepthCue::DepthCue(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   opengl_setup();
 
   m_draw_slices.resize(TOTAL_DRAW_SLICES);
