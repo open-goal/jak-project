@@ -160,7 +160,7 @@ u64 execute(void* ctxt) {
 
 
   block_10:
-  c->load_symbol(t9, cache.collide_do_primitives);  // lw t9, collide-do-primitives(s7)
+  c->load_symbol2(t9, cache.collide_do_primitives);  // lw t9, collide-do-primitives(s7)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   c->jalr(call_addr);                               // jalr ra, t9
@@ -276,7 +276,7 @@ u64 execute(void* ctxt) {
   c->lui(v1, 16384);                                // lui v1, 16384
   c->mtc1(f31, v1);                                 // mtc1 f31, v1
   c->mtc1(f28, r0);                                 // mtc1 f28, r0
-  c->load_symbol(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
+  c->load_symbol2(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->mov64(a1, s3);                                 // or a1, s3, r0
   c->daddu(a2, r0, s5);                             // daddu a2, r0, s5
@@ -295,7 +295,7 @@ u64 execute(void* ctxt) {
   c->lqc2(vf31, 0, s5);                             // lqc2 vf31, 0(s5)
 
   block_2:
-  c->load_symbol(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
+  c->load_symbol2(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->mov64(a1, s3);                                 // or a1, s3, r0
   c->daddiu(a2, s5, 16);                            // daddiu a2, s5, 16
@@ -318,7 +318,7 @@ u64 execute(void* ctxt) {
   c->lqc2(vf31, 16, s5);                            // lqc2 vf31, 16(s5)
 
   block_5:
-  c->load_symbol(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
+  c->load_symbol2(t9, cache.ray_sphere_intersect);   // lw t9, ray-sphere-intersect(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->mov64(a1, s3);                                 // or a1, s3, r0
   c->daddiu(a2, s5, 32);                            // daddiu a2, s5, 32
@@ -355,7 +355,7 @@ u64 execute(void* ctxt) {
   c->vmulq(DEST::xyzw, vf2, vf2);                   // vmulq.xyzw vf2, vf2, Q
   c->sqc2(vf2, 0, s2);                              // sqc2 vf2, 0(s2)
   c->mfc1(t1, f30);                                 // mfc1 t1, f30
-  c->load_symbol(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
+  c->load_symbol2(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->mov64(a1, s3);                                 // or a1, s3, r0
   c->daddu(a2, r0, s5);                             // daddu a2, r0, s5
@@ -394,7 +394,7 @@ u64 execute(void* ctxt) {
   c->vmulq(DEST::xyzw, vf2, vf2);                   // vmulq.xyzw vf2, vf2, Q
   c->sqc2(vf2, 0, s2);                              // sqc2 vf2, 0(s2)
   c->mfc1(t1, f30);                                 // mfc1 t1, f30
-  c->load_symbol(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
+  c->load_symbol2(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->mov64(a1, s3);                                 // or a1, s3, r0
   c->daddiu(a2, s5, 16);                            // daddiu a2, s5, 16
@@ -433,7 +433,7 @@ u64 execute(void* ctxt) {
   c->vmulq(DEST::xyzw, vf2, vf2);                   // vmulq.xyzw vf2, vf2, Q
   c->sqc2(vf2, 0, s2);                              // sqc2 vf2, 0(s2)
   c->mfc1(t1, f30);                                 // mfc1 t1, f30
-  c->load_symbol(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
+  c->load_symbol2(t9, cache.ray_cylinder_intersect); // lw t9, ray-cylinder-intersect(s7)
   c->daddiu(a2, s5, 32);                            // daddiu a2, s5, 32
   c->mov64(t2, gp);                                 // or t2, gp, r0
   c->mov64(a0, s4);                                 // or a0, s4, r0

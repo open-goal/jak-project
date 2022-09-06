@@ -22,6 +22,7 @@ extern u32 modsrc;
 extern u32 reboot;
 
 extern const char* init_types[];
+extern u32 vblank_interrupt_handler;
 
 void kmachine_init_globals_common();
 
@@ -77,5 +78,6 @@ void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask,
 u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask);
 void set_gfx_hack(u64 which, u32 symptr);
 u32 offset_of_s7();
-void vif_interrupt_callback();
+void vif_interrupt_callback(int bucket_id);
 u64 pc_get_mips2c(u32 name);
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain);

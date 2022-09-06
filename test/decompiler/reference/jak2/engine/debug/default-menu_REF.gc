@@ -1215,24 +1215,16 @@
       (set! *display-profile* s5-0)
       )
     (let ((s5-1 (car (cdr arg0))))
-      (when (and (type? s5-1 string)
-                 (or (string= (the-as string s5-1) "outro-palace")
-                     (string= (the-as string s5-1) "outro-hiphog")
-                     (string= (the-as string s5-1) "outro-port")
-                     (string= (the-as string s5-1) "outro-nest")
-                     )
+      (when (and (type? s5-1 string) (or (string= (the-as string s5-1) "outro-palace")
+                                         (string= (the-as string s5-1) "outro-hiphog")
+                                         (string= (the-as string s5-1) "outro-port")
+                                         (string= (the-as string s5-1) "outro-nest")
+                                         )
                  )
         (set! (-> palout memory-mode) (the-as uint 4))
         (set! (-> hiphog memory-mode) (the-as uint 1))
         )
-      (process-spawn
-        scene-player
-        :init scene-player-init
-        s5-1
-        #t
-        (car arg0)
-        :name (symbol->string (-> scene-player symbol))
-        )
+      (process-spawn scene-player :init scene-player-init s5-1 #t (car arg0))
       )
     (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
     (set-master-mode 'game)
@@ -4169,13 +4161,7 @@
                #f
                (lambda ()
                  (kill-by-type editable-player *active-pool*)
-                 (process-spawn
-                   editable-player
-                   :init editable-player-init
-                   #f
-                   :name (symbol->string (-> editable-player symbol))
-                   :to *entity-pool*
-                   )
+                 (process-spawn editable-player :init editable-player-init #f :to *entity-pool*)
                  (set-master-mode 'game)
                  (none)
                  )
@@ -5384,43 +5370,44 @@
              (function
                "Clear map"
                #f
-               (lambda () (let ((v1-1 (process-spawn-function
-                                        process
-                                        (lambda () (with-pp
-                                                     (set-master-mode 'game)
-                                                     (let ((gp-0 (-> pp clock frame-counter)))
-                                                       (until (>= (- (-> pp clock frame-counter) gp-0) (seconds 0.3))
-                                                         (suspend)
-                                                         )
-                                                       )
-                                                     (until #f
-                                                       (format *stdcon* "press x clear map, press circle cancel~%")
-                                                       (cond
-                                                         ((cpad-pressed? 0 x)
-                                                          (initialize *bigmap*)
-                                                          (return #f)
-                                                          )
-                                                         ((cpad-pressed? 0 circle)
-                                                          (return #f)
-                                                          )
-                                                         )
-                                                       (suspend)
-                                                       )
-                                                     #f
-                                                     )
-                                                )
-                                        :name (symbol->string (-> process symbol))
+               (lambda ()
+                 (let ((v1-1
+                         (process-spawn-function
+                           process
+                           (lambda () (with-pp
+                                        (set-master-mode 'game)
+                                        (let ((gp-0 (-> pp clock frame-counter)))
+                                          (until (>= (- (-> pp clock frame-counter) gp-0) (seconds 0.3))
+                                            (suspend)
+                                            )
+                                          )
+                                        (until #f
+                                          (format *stdcon* "press x clear map, press circle cancel~%")
+                                          (cond
+                                            ((cpad-pressed? 0 x)
+                                             (initialize *bigmap*)
+                                             (return #f)
+                                             )
+                                            ((cpad-pressed? 0 circle)
+                                             (return #f)
+                                             )
+                                            )
+                                          (suspend)
+                                          )
+                                        #f
                                         )
-                                      )
-                                )
-                            (when v1-1
-                              (let ((v0-3 (logclear (-> v1-1 0 mask) (process-mask menu))))
-                                (set! (-> v1-1 0 mask) v0-3)
-                                v0-3
-                                )
-                              )
-                            )
+                                   )
+                           )
+                         )
                        )
+                   (when v1-1
+                     (let ((v0-3 (logclear (-> v1-1 0 mask) (process-mask menu))))
+                       (set! (-> v1-1 0 mask) v0-3)
+                       v0-3
+                       )
+                     )
+                   )
+                 )
                )
              (flag "Fill in" #f (lambda ((arg0 object) (arg1 debug-menu-msg))
                                   (if (= arg1 (debug-menu-msg press))
@@ -7267,13 +7254,7 @@
        (function "Start" #f (lambda () (start 'play (-> *game-info* current-continue)) (none)))
        (function "Editor" #f (lambda ()
                                (kill-by-type editable-player *active-pool*)
-                               (process-spawn
-                                 editable-player
-                                 :init editable-player-init
-                                 #f
-                                 :name (symbol->string (-> editable-player symbol))
-                                 :to *entity-pool*
-                                 )
+                               (process-spawn editable-player :init editable-player-init #f :to *entity-pool*)
                                (set-master-mode 'game)
                                (none)
                                )

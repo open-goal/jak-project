@@ -12,6 +12,10 @@
 (declare-type entity-nav-mesh entity)
 (declare-type actor-group basic)
 
+(defenum texture-page-flag
+  :type uint16
+  :bitfield #t)
+
 ;; DECOMP BEGINS
 
 (deftype bsp-node (structure)
@@ -31,46 +35,67 @@
 (define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
 
 (deftype bsp-header (drawable)
-  ((info                file-info                      :offset          4)
-   (all-visible-list    (pointer uint16)               :offset-assert  32)
-   (visible-list-length int16                          :offset-assert  36)
-   (drawable-trees      drawable-tree-array            :offset-assert  40)
-   (pat                 pointer                        :offset-assert  44)
-   (pat-length          int32                          :offset-assert  48)
-   (texture-ids         (pointer texture-id)           :offset         60)
-   (texture-page-count  int32                          :offset         64)
-   (name                symbol                         :offset         72)
-   (nickname            symbol                         :offset-assert  76)
-   (vis-info            level-vis-info              8  :offset         80)
-   (actors              drawable-inline-array-actor    :offset-assert 112)
-   (cameras             (array entity-camera)          :offset-assert 116)
-   (nodes               (inline-array bsp-node)        :offset        120)
-   (level               level                          :offset-assert 124)
-   (current-leaf-idx    uint16                         :offset-assert 128)
-   (unk-data-2          uint16                      9  :offset        130)
-   (unk-byte1            uint8                          :offset        152)
-   (unk-byte2 uint8 :offset 153)
-   (unk-half-word uint16 :offset-assert 154)
-   (ambients            symbol                         :offset-assert 156)
-   (unk-data-4          float                          :offset        160)
-   (unk-data-5          float                          :offset-assert 164)
-   (race-meshes         (array entity-race-mesh)       :offset        168)
-   (light-hash          light-hash                     :offset        176)
-   (nav-meshes          (array entity-nav-mesh)        :offset        180)
-   (actor-groups        (array actor-group)            :offset        184)
-   (collide-hash        collide-hash                   :offset        196)
-   (region-tree         drawable-tree-region-prim      :offset        252)
-   (unk-data-8          uint32                      55 :offset        180)
+  (
+   ;; TYPE                                                          0
+   (info file-info                                               :offset 4)
+   ;; 0                                                                  8
+   ;; 0                                                                 12
+   ;; 0                                                                 16
+   ;; 0                                                                 20
+   ;; 0                                                                 24
+   ;; 0                                                                 28
+   (all-visible-list         (pointer uint16)            :offset-assert 32)
+   (visible-list-length      int16                       :offset-assert 36)
+   (drawable-trees           drawable-tree-array         :offset-assert 40)
+   (pat                      pointer                     :offset-assert 44)
+   (pat-length               int32                       :offset-assert 48)
+   (texture-remap-table      (pointer uint64)            :offset-assert 52)
+   (texture-remap-table-len  int32                       :offset-assert 56)
+   (texture-ids              (pointer texture-id)        :offset-assert 60)
+   (texture-page-count       int32                       :offset-assert 64)
+   ;; 0                                                                 68
+   (name                     symbol                             :offset 72)
+   (nickname                 symbol                      :offset-assert 76)
+   (vis-info                 level-vis-info 8            :offset-assert 80)
+   (actors                   drawable-inline-array-actor :offset-assert 112)
+   (cameras                  (array entity-camera)       :offset-assert 116)
+   (nodes                    (inline-array bsp-node)     :offset-assert 120)
+   (level                    level                       :offset-assert 124)
+   ;; 0 (maybe current-leaf-idx?)                                       128
+   (texture-flags            texture-page-flag 10               :offset 130)
+   ;; 0 (maybe padding)                                                 150
+   ;; 0 (was boxes, current back flags?, byte?)                         152
+   ;; #t (was ambients?)                                                156
+   (subdivide-close          float                       :offset        160)
+   (subdivide-far            float                       :offset-assert 164)
+   (race-meshes              (array entity-race-mesh)    :offset-assert 168)
+   ;; pointer to table of sorted floats                                 172
+   (light-hash               light-hash                  :offset        176)
+   (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
+   (actor-groups             (array actor-group)         :offset-assert 184)
+   (region-trees             (array drawable-tree-region-prim) :offset-assert 188)
+   (region-array             region-array                :offset-assert 192)
+   (collide-hash             collide-hash                :offset-assert 196)
+   ;; 200 is some array
+   ;; 204 is maybe that array's length
+   ;; 216 is a vector array
+  ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
+
+   (region-tree drawable-tree-region-prim :offset 252)
+
+   ; (actor-birth-order (pointer uint32) :offset-assert 172)
+   ; (split-box-indices (pointer uint16) :offset-assert 176)
+   (unk-data-8 uint32 55 :offset 180)
    )
   :method-count-assert 19
   :size-assert         #x190
   :flag-assert         #x1300000190
+  ;; Failed to read fields.
   (:methods
     (birth (_type_) none 17)
     (deactivate-entities (_type_) none 18)
     )
   )
-
 ;; unused
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert   4)

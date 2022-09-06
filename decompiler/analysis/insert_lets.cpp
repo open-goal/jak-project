@@ -1420,7 +1420,19 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           args.push_back(as_func->elts().at(i));
         }
 
-        if (mr_ac_call.maps.forms.at(1)->to_string(env) != fmt::format("'{}", proc_type)) {
+        std::string expected_name;
+        switch (env.version) {
+          case GameVersion::Jak1:
+            expected_name = fmt::format("'{}", proc_type);
+            break;
+          case GameVersion::Jak2:
+            expected_name = fmt::format("(symbol->string (-> {} symbol))", proc_type);
+            break;
+          default:
+            ASSERT(false);
+        }
+
+        if (mr_ac_call.maps.forms.at(1)->to_string(env) != expected_name) {
           ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(1), "name");
         }
         if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
