@@ -733,11 +733,16 @@ FormElement* rewrite_set_let(LetElement* in, const Env& env, FormPool& pool) {
     return nullptr;
   }
 
-  if (env.func->name() == "num-func-+!") {
-    bool holyshit = true;
+  if (env.get_variable_name(var) != env.get_variable_name(expr_elt->expr().var())) {
+    return nullptr;
   }
 
-  if (env.get_variable_name(var) != env.get_variable_name(expr_elt->expr().var())) {
+  auto set_src_elt = set_elt->src()->try_as_element<SimpleExpressionElement>();
+  if (!set_src_elt || !set_src_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(set_src_elt->expr().var())) {
     return nullptr;
   }
 
