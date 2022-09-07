@@ -1271,7 +1271,7 @@
 (deftype drill-states (structure)
   ((fire-floor      float                       :offset-assert   0)
    (fire-floor-fade float                       :offset-assert   4)
-   (fire-floor-flag basic                       :offset-assert   8)
+   (fire-floor-flag symbol                      :offset-assert   8)
    (flame           flames-state      :inline   :offset-assert  12)
    (electricity     electricity-state 2 :inline :offset-assert  20)
    (pulse           pulse-state       :inline   :offset         52)
@@ -1393,12 +1393,12 @@
 (defun set-drill-fire-floor! ((arg0 symbol))
   (let ((v1-1 (level-get *level* 'drillmid)))
     (if v1-1
-        (set! (-> (the-as drill-states (-> v1-1 mood-context state)) fire-floor-flag) (the-as basic arg0))
+        (set! (-> (the-as drill-states (-> v1-1 mood-context state)) fire-floor-flag) arg0)
         )
     )
   (let ((v1-4 (level-get *level* 'drillb)))
     (when v1-4
-      (set! (-> (the-as drill-states (-> v1-4 mood-context state)) fire-floor-flag) (the-as basic arg0))
+      (set! (-> (the-as drill-states (-> v1-4 mood-context state)) fire-floor-flag) arg0)
       arg0
       )
     )
@@ -1408,17 +1408,17 @@
 (defun set-drill-electricity-scale! ((arg0 float) (arg1 int))
   (let ((v1-1 (level-get *level* 'drill)))
     (when v1-1
-      (let ((v1-2 (-> v1-1 mood-context state)))
-        (set! (-> (the-as drill-states (&+ v1-2 (* arg1 16))) electricity 0 scale) arg0)
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as drill-states v1-2) electricity arg1 scale) arg0)
         )
       )
     )
   (let ((v1-5 (level-get *level* 'drillmid)))
     (when v1-5
-      (let ((v1-6 (-> v1-5 mood-context state))
+      (let ((v1-6 (the-as object (-> v1-5 mood-context state)))
             (f0-1 arg0)
             )
-        (set! (-> (the-as drill-states (&+ v1-6 (* arg1 16))) electricity 0 scale) f0-1)
+        (set! (-> (the-as drill-states v1-6) electricity arg1 scale) f0-1)
         f0-1
         )
       )
@@ -1452,9 +1452,9 @@
 (deftype drillb-states (structure)
   ((fire-floor      float               :offset-assert   0)
    (fire-floor-fade float               :offset-assert   4)
-   (fire-floor-flag basic               :offset-assert   8)
+   (fire-floor-flag symbol              :offset-assert   8)
    (pulse           pulse-state :inline :offset-assert  12)
-   (light-flag      basic               :offset-assert  16)
+   (light-flag      symbol              :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -1735,7 +1735,7 @@
 
 ;; definition of type palroof-states
 (deftype palroof-states (structure)
-  ((electricity float 8 :offset-assert   0)
+  ((electricity electricity-state 2 :inline :offset-assert   0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -1757,9 +1757,9 @@
 ;; definition for function init-mood-palroof
 (defun init-mood-palroof ((arg0 mood-context))
   (let ((v1-0 (the-as palroof-states (-> arg0 state))))
-    (set! (-> v1-0 electricity 1) 1.0)
+    (set! (-> v1-0 electricity 0 scale) 1.0)
     (let ((f0-1 1.0))
-      (set! (-> v1-0 electricity 5) f0-1)
+      (set! (-> v1-0 electricity 1 scale) f0-1)
       f0-1
       )
     )
@@ -1785,10 +1785,10 @@
 (defun set-palroof-electricity-scale! ((arg0 float) (arg1 int))
   (let ((v1-1 (level-get *level* 'palroof)))
     (when v1-1
-      (let ((v1-2 (-> v1-1 mood-context state))
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state)))
             (f0-0 arg0)
             )
-        (set! (-> (the-as palroof-states (&+ v1-2 (* arg1 16))) electricity 1) f0-0)
+        (set! (-> (the-as palroof-states v1-2) electricity arg1 scale) f0-0)
         f0-0
         )
       )
