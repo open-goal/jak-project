@@ -699,6 +699,51 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   return in->entries().at(0).src->try_as_single_element();
 }
 
+FormElement* rewrite_set_let(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((dest-var src))
+   *   (set! something dest-var)
+   *   dest-var
+   *   )
+   * to:
+   * (set! something src)
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  auto var = in->entries().at(0).dest;
+  auto reg = var.reg();
+  if (reg.get_kind() == Reg::GPR && !reg.allowed_local_gpr()) {
+    return nullptr;
+  }
+
+  auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  if (!set_elt) {
+    return nullptr;
+  }
+
+  auto expr_elt = dynamic_cast<SimpleExpressionElement*>(in->body()->at(1));
+  if (!expr_elt || !expr_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.func->name() == "num-func-+!") {
+    bool holyshit = true;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(expr_elt->expr().var())) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<SetFormFormElement>(set_elt->dst(), in->entries().at(0).src);
+}
+
 Form* strip_truthy(Form* in) {
   auto as_ge = in->try_as_element<GenericElement>();
   if (as_ge) {
@@ -1707,6 +1752,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_attack_info) {
     stats.attack_info++;
     return as_attack_info;
+  }
+
+  auto as_set_let = rewrite_set_let(in, env, pool);
+  if (as_set_let) {
+    stats.set_let++;
+    return as_set_let;
   }
 
   // nothing matched.
