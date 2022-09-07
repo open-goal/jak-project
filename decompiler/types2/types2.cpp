@@ -687,8 +687,8 @@ end_type_pass:
     input.func->ir2.env.types_succeeded = true;
     auto last_type = out.op_end_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
     if (last_type != input.function_type.last_arg()) {
-      input.func->warnings.info("Return type mismatch {} vs {}.", last_type.print(),
-                                input.function_type.last_arg().print());
+      input.func->warnings.warning("Return type mismatch {} vs {}.", last_type.print(),
+                                   input.function_type.last_arg().print());
     }
   }
 

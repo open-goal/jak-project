@@ -5286,6 +5286,7 @@
 
 (deftype mood-fog-table (structure)
   ((data mood-fog 8 :inline :offset-assert 0)
+   (data-raw uint128 24 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -5311,6 +5312,7 @@
 
 (deftype mood-color-table (structure)
   ((data mood-color 8 :inline :offset-assert 0)
+   (data-raw uint128 16 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x100
@@ -5378,13 +5380,14 @@
   :flag-assert         #x900000080
   )
 
+(declare-type sky-color-day structure)
 (deftype mood-table (basic)
   ((mood-fog-table       mood-fog-table        :offset-assert 4)
    (mood-color-table     mood-color-table      :offset-assert 8)
    (mood-channel-group   mood-channel-group    :offset-assert 12)
    (mood-direction-table mood-direction-table  :offset-assert 16)
    (mood-sky-table       mood-sky-table        :offset-assert 20)
-   (mood-interp-table    basic                 :offset-assert 24)
+   (mood-interp-table    sky-color-day                 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -5420,9 +5423,11 @@
   )
 
 (deftype mood-context (mood-context-core3)
+  "`state` holds an arbitrary state structure, ie `[[sewer-states]]` and is used
+   when updating the mood.  This means that an individual state structure must be less than 128 bytes"
   ((itimes vector4w 4  :inline :offset-assert 1776)
-   (state  uint32    32 :offset-assert 1840) ;; arbitrary data - can be floats | symbols
-   (clear  uint128   123 :offset 0) ;; added
+   (state  uint32    32 :offset-assert 1840)
+   (data   uint128 123 :offset 0 :score -1) ;; added
    )
   :method-count-assert 9
   :size-assert         #x7b0
@@ -8162,6 +8167,7 @@
 ;; game-task-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++game-task-h:game-task
 (defenum game-task
   :type uint8
   :bitfield #f
@@ -8275,8 +8281,19 @@
   (stadium-burning-bush-race-class3-r 107)
   (stadium-burning-bush-race-class2-r 108)
   (stadium-burning-bush-race-class1-r 109)
-  (max 110)
-  )
+  (max 110))
+;; ---game-task-h:game-task
+
+;; +++game-task-h:game-task-node
+(defenum game-task-node
+  :type uint32
+  :bitfield #f
+  (dig-knock-down-resolution 113)
+  (tomb-boss-torches 167)
+  (fortress-save-friends-resolution 172)
+  (drill-mech-resolution 204)
+  (drill-mech-started-smashing 205))
+;; ---game-task-h:game-task-node
 
 (defenum game-task-actor
   :bitfield #f
@@ -11851,7 +11868,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type int) _type_ 0)
-    (gui-control-method-9 (_type_ process gui-channel gui-action int float time-frame) sound-id 9)
+    (gui-control-method-9 (_type_ process gui-channel gui-action string float time-frame) sound-id 9)
     (gui-control-method-10 (_type_ process gui-channel) none 10)
     (gui-control-method-11 (_type_ gui-connection) int 11)
     (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id 12)
@@ -13901,7 +13918,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type basic process vector) _type_ 0)
-    (script-context-method-9 () none 9)
+    (eval! (_type_ structure) pair 9)
     (script-context-method-10 () none 10)
     (script-context-method-11 () none 11)
     )
@@ -14821,7 +14838,7 @@
 (deftype collide-prim-core (structure)
   ((world-sphere vector         :inline :offset-assert 0)
    (collide-as   collide-spec           :offset-assert 16) ;; guessed by decompiler
-   (collide-with uint32                 :offset-assert 20)
+   (collide-with collide-spec           :offset-assert 20)
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    prim-type              :offset-assert 28)
    (unused1      uint8        3       :offset-assert 29)
@@ -16539,7 +16556,7 @@
    (texture-flags            texture-page-flag 10               :offset 130)
    ;; 0 (maybe padding)                                                 150
    ;; 0 (was boxes, current back flags?, byte?)                         152
-   ;; #t (was ambients?)                                                156
+   (ambients                 symbol                      :offset        156) ;; now just #t?
    (subdivide-close          float                       :offset        160)
    (subdivide-far            float                       :offset-assert 164)
    (race-meshes              (array entity-race-mesh)    :offset-assert 168)
@@ -23335,7 +23352,7 @@
   ((value float  :offset-assert 0)
    (scale float  :offset-assert 4)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -23344,7 +23361,7 @@
 (deftype pulse-state (structure)
   ((pulse float  :offset-assert 0)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -23353,6 +23370,7 @@
 (deftype strobe-state (structure)
   ((time float  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -23365,9 +23383,9 @@
 (define-extern update-mood-exterior (function mood-context-core3 mood-table float int object)) ;; TODO - so many potential return values...
 (define-extern copy-mood-exterior (function mood-context symbol))
 (define-extern copy-mood-exterior-ambi (function mood-context symbol none))
-(define-extern clear-mood-context (function mood-context none))
-;; (define-extern update-mood-interior function)
-(define-extern update-mood-flames (function mood-context int int int float float float float :behavior process))
+(define-extern clear-mood-context (function mood-context symbol))
+(define-extern update-mood-interior (function mood-context float))
+(define-extern update-mood-flames (function mood-context int int int float float float float :behavior time-of-day-proc))
 (define-extern *flash0* (array float))
 (define-extern *flash1* (array float))
 (define-extern *flash2* (array float))
@@ -23376,13 +23394,13 @@
 (define-extern *flash5* (array float))
 (define-extern *flash6* (array float))
 (define-extern *flash7* (array float))
-(define-extern update-mood-light (function mood-context int int int float float float int none))
-;; (define-extern update-mood-lava function) ;; (function mood-context int int symbol none)
-;; (define-extern update-mood-flicker function)
-;; (define-extern update-mood-florescent function)
-(define-extern update-mood-electricity (function mood-context int int int float float float int none))
-(define-extern update-mood-pulse (function mood-context int int int float float float int none))
-;; (define-extern update-mood-strobe function)
+(define-extern update-mood-light (function mood-context int int float float float float float float))
+(define-extern update-mood-lava "Unused" (function mood-context int int float float float float float float)) ;;
+(define-extern update-mood-flicker "Unused" (function mood-context int int none))
+(define-extern update-mood-florescent "Unused" (function mood-context int int float))
+(define-extern update-mood-electricity (function mood-context int int float float none))
+(define-extern update-mood-pulse (function mood-context int int float float float float none))
+(define-extern update-mood-strobe (function mood-context int int int float float))
 (define-extern update-mood-caustics (function mood-context int float float float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -23573,7 +23591,7 @@
 (deftype drill-states (structure)
   ((fire-floor      float                :offset-assert 0)
    (fire-floor-fade float                :offset-assert 4)
-   (fire-floor-flag basic                :offset-assert 8)
+   (fire-floor-flag symbol               :offset-assert 8)
    (flame           flames-state :inline :offset-assert 12)
    (electricity     electricity-state      2  :inline     :offset-assert 20) ;; TODO - probably wrong, elec-wall? (but its an array....)
    (pulse           pulse-state  :inline :offset 52)
@@ -23587,9 +23605,9 @@
 (deftype drillb-states (structure)
   ((fire-floor      float               :offset-assert 0)
    (fire-floor-fade float               :offset-assert 4)
-   (fire-floor-flag basic               :offset-assert 8)
+   (fire-floor-flag symbol              :offset-assert 8)
    (pulse           pulse-state :inline :offset-assert 12)
-   (light-flag      basic               :offset-assert 16)
+   (light-flag      symbol              :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -23626,7 +23644,7 @@
   )
 
 (deftype palroof-states (structure)
-  ((electricity vector 2 :inline :offset-assert 0) ;; TODO - probably wrong, elec-wall? (but its an array....)
+  ((electricity electricity-state 2 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -23644,7 +23662,7 @@
 
 (deftype nest-states (structure)
   ((light       light-state :inline :offset-assert 0)
-   (green-flag  basic               :offset-assert 8)
+   (green-flag  symbol               :offset-assert 8)
    (green       float               :offset-assert 12)
    (green-noise float               :offset-assert 16)
    )
@@ -23655,7 +23673,7 @@
 
 (deftype village1-states (structure)
   ((interp      float  :offset-assert 0)
-   (interp-flag basic  :offset-assert 4)
+   (interp-flag symbol  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -23672,7 +23690,7 @@
   )
 
 (deftype mincan-states (structure)
-  ((beams strobe-state 2 :offset-assert 0) ;; a guess!
+  ((beams float 2 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -23680,117 +23698,112 @@
   )
 
 
-(define-extern update-mood-default (function mood-context float int none))
+(define-extern update-mood-default (function mood-context float int none :behavior time-of-day-proc))
 (define-extern get-sphere-interp (function sphere vector float float float))
 (define-extern init-mood-ruins (function mood-context none))
-(define-extern update-mood-ruins (function mood-context int int none))
-(define-extern init-mood-strip "TODO - returns element at offset 20 in the context's state" (function mood-context uint))
-(define-extern update-mood-strip (function mood-context int int none))
-(define-extern update-mood-ctywide (function mood-context int int none))
-(define-extern update-mood-copy-ctywide (function mood-context int int none))
-(define-extern update-mood-ctyind (function mood-context float int none))
+(define-extern update-mood-ruins (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-strip (function mood-context uint))
+(define-extern update-mood-strip (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctyind (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctysluma (function mood-context float))
-(define-extern update-mood-ctysluma (function mood-context float int none))
+(define-extern update-mood-ctysluma (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyslumb (function mood-context uint))
-(define-extern update-mood-ctyslumb (function mood-context float int none))
+(define-extern update-mood-ctyslumb (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyslumc (function mood-context none))
-(define-extern update-mood-ctyslumc (function mood-context float int none))
+(define-extern update-mood-ctyslumc (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-ctyport (function mood-context uint))
-(define-extern init-mood-ctyport-no-part (function mood-context none)) ;; seems like the return is the particle (group) id perhaps implied by this name?
-(define-extern update-mood-ctyport (function mood-context float int none))
-(define-extern update-mood-ctymarka (function mood-context float int none))
-(define-extern update-mood-ctymarkb (function mood-context float int none))
-(define-extern init-mood-palcab (function mood-context float)) ;; sometimes they are floats though
-(define-extern update-mood-palcab (function mood-context float int none))
+(define-extern init-mood-ctyport-no-part (function mood-context none))
+(define-extern update-mood-ctyport (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctymarka (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctymarkb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-palcab (function mood-context float))
+(define-extern update-mood-palcab (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-palcab-turret-flash! (function float float))
 (define-extern update-stadium-lights (function mood-context none))
-(define-extern update-mood-stadium (function mood-context float int none))
-(define-extern update-mood-copy-stadium (function mood-context float int none))
+(define-extern update-mood-stadium (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-stadium (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-stadiumb-lights (function mood-context none))
-(define-extern update-mood-stadiumb (function mood-context float int none :behavior process)) ;; process - time of day?
-(define-extern update-mood-skatea (function mood-context float int none))
+(define-extern update-mood-stadiumb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-skatea (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-ltentout-lights (function mood-context none))
-(define-extern update-mood-ltentout (function mood-context float int none))
+(define-extern update-mood-ltentout (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-mountain (function mood-context uint))
-(define-extern update-mood-mountain (function mood-context float int none))
-(define-extern update-mood-forest (function mood-context float int none))
+(define-extern update-mood-mountain (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-forest (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-atoll (function mood-context float))
-(define-extern update-mood-atoll (function mood-context float int none))
+(define-extern update-mood-atoll (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-atoll-explosion! (function float float))
-(define-extern update-mood-atollext (function mood-context float int none))
+(define-extern update-mood-atollext (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-drill (function mood-context symbol))
 (define-extern update-drill-lights (function mood-context none))
-(define-extern update-mood-drill (function mood-context float int object object float float int none))
+(define-extern update-mood-drill (function mood-context object int none :behavior time-of-day-proc))
 (define-extern set-drill-fire-floor! (function symbol symbol))
-(define-extern set-drill-electricity-scale! (function float float float))
-(define-extern update-mood-drillmnt (function mood-context float int none))
+(define-extern set-drill-electricity-scale! (function float int float))
+(define-extern update-mood-drillmnt (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-drillb (function mood-context symbol))
-(define-extern update-mood-drillb (function mood-context float int none))
+(define-extern update-mood-drillb (function mood-context none :behavior time-of-day-proc))
 (define-extern update-casboss-lights (function mood-context float))
-(define-extern update-mood-casboss (function mood-context float int none))
+(define-extern update-mood-casboss (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-casboss-explosion! (function float))
-(define-extern update-mood-caspad (function mood-context float int none))
+(define-extern update-mood-caspad (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-palout (function mood-context vector))
-(define-extern update-mood-palout (function mood-context float int none))
+(define-extern update-mood-palout (function mood-context float int none :behavior time-of-day-proc))
 (define-extern init-mood-palroof (function mood-context float))
-(define-extern update-mood-palroof (function mood-context object int object object float float float none))
-(define-extern set-palroof-electricity-scale! "TODO - guess on vector, comes from palroof-elec-gate and is probably a pointer to palettes?" (function float (inline-array vector) float))
-(define-extern update-mood-palent (function mood-context float int none))
+(define-extern update-mood-palroof (function mood-context object int none :behavior time-of-day-proc))
+(define-extern set-palroof-electricity-scale! (function float int float))
+(define-extern update-mood-palent (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-palent-turret-flash! (function float float))
 (define-extern init-mood-nest (function mood-context symbol))
 (define-extern update-nest-lights (function mood-context pointer))
-(define-extern update-mood-nest (function mood-context float int none))
+(define-extern update-mood-nest (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-nest-green-flag! (function symbol symbol))
 (define-extern init-mood-village1 (function mood-context symbol))
 (define-extern update-village1-lights (function mood-context float))
-(define-extern update-mood-village1 (function mood-context float int none))
-(define-extern update-mood-copy-village1 (function mood-context float int none))
+(define-extern update-mood-village1 (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-village1 (function mood-context float int none :behavior time-of-day-proc))
 (define-extern clear-village1-interp! (function symbol))
 (define-extern set-village1-interp! (function symbol))
-(define-extern update-mood-consite (function mood-context float int none))
+(define-extern update-mood-consite (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-consite-flash! (function float))
-(define-extern update-mood-mincan (function mood-context float int none))
+(define-extern update-mood-mincan (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-mincan-beam! (function int float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-funcs2                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype default-interior-states (UNKNOWN)
+(deftype default-interior-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x0 ;; TODO - is it actually empty?
+  :flag-assert         #x900000000
   )
-|#
 
-#|
-(deftype vinroom-states (UNKNOWN)
+(deftype vinroom-states (structure)
   ((main     float  :offset-assert 0)
    (flicker1 float  :offset-assert 4)
    (flicker2 float  :offset-assert 8)
    (warp     float  :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype hideout-states (UNKNOWN)
+(deftype hideout-states (structure)
   ((flame0 flames-state :inline :offset-assert 0)
    (flame1 flames-state :inline :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
   )
-|#
 
-#|
-(deftype hiphog-states (UNKNOWN)
+(declare-type com-airlock process-drawable)
+(declare-type hip-door-a com-airlock)
+(deftype hiphog-states (structure)
   ((spec-m-on        sp-field-init-spec  :offset-assert 0)
    (spec-o-on        sp-field-init-spec  :offset-assert 4)
    (spec-r-on        sp-field-init-spec  :offset-assert 8)
@@ -23811,7 +23824,7 @@
    (spec-hiphog-off2 sp-field-init-spec  :offset-assert 68)
    (spec-clock-sun   sp-field-init-spec  :offset-assert 72)
    (spec-clock-moon  sp-field-init-spec  :offset-assert 76)
-   (door             basic               :offset-assert 80)
+   (door             entity               :offset-assert 80)
    (m-on             uint8               :offset-assert 84)
    (o-on             uint8               :offset-assert 85)
    (r-on             uint8               :offset-assert 86)
@@ -23830,29 +23843,25 @@
    (clock-sun        uint8               :offset-assert 99)
    (clock-moon       uint8               :offset-assert 100)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x65
+  :flag-assert         #x900000065
   )
-|#
 
-#|
-(deftype sewer-states (UNKNOWN)
-  ((light-flag        basic               :offset-assert 0)
+(deftype sewer-states (structure)
+  ((light-flag        symbol              :offset-assert 0)
    (light-count       uint32              :offset-assert 4)
    (turret-value      float               :offset-assert 8)
    (spec-light-center sp-field-init-spec  :offset-assert 12)
    (spec-light        sp-field-init-spec  :offset-assert 16)
    (explosion         float               :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
-|#
 
-#|
-(deftype onintent-states (UNKNOWN)
+(deftype onintent-states (structure)
   ((flame0      flames-state :inline :offset-assert 0)
    (flame1      flames-state :inline :offset-assert 8)
    (flame2      flames-state :inline :offset-assert 16)
@@ -23860,185 +23869,157 @@
    (totem0      flames-state :inline :offset-assert 32)
    (totem1      flames-state :inline :offset-assert 40)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x2f
+  :flag-assert         #x90000002f
   )
-|#
 
-#|
-(deftype oracle-states (UNKNOWN)
+(deftype oracle-states (structure)
   ((flame0       flames-state :inline :offset-assert 0)
    (flame1       flames-state :inline :offset-assert 8)
    (flame2       flames-state :inline :offset-assert 16)
    (blue-flame   flames-state :inline :offset-assert 24)
-   (door-entity  basic                :offset-assert 32)
+   (door-entity  entity                :offset-assert 32)
    (door-current float                :offset-assert 36)
    (door-target  float                :offset-assert 40)
-   (purple-flag  basic                :offset-assert 44)
+   (purple-flag  symbol                :offset-assert 44)
    (purple       float                :offset-assert 48)
    (purple-noise float                :offset-assert 52)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
   )
-|#
 
-#|
-(deftype tomba-states (UNKNOWN)
+(deftype tomba-states (structure)
   ((flame0    flames-state :inline :offset-assert 0)
    (flame1    flames-state :inline :offset-assert 8)
    (flame2    flames-state :inline :offset-assert 16)
    (light     light-state  :inline :offset-assert 24)
    (gem-light float                :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype tombb-states (UNKNOWN)
+(deftype tombb-states (structure)
   ((flame0 flames-state :inline :offset-assert 0)
    (flame1 flames-state :inline :offset-assert 8)
    (flame2 flames-state :inline :offset-assert 16)
    (light  light-state  :inline :offset-assert 24)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-#|
-(deftype tombc-states (UNKNOWN)
+(deftype tombc-states (structure)
   ((flame0      flames-state      :inline :offset-assert 0)
    (flame1      flames-state      :inline :offset-assert 8)
    (flame2      flames-state      :inline :offset-assert 16)
    (electricity electricity-state :inline :offset-assert 24)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-#|
-(deftype tombd-states (UNKNOWN)
+(deftype tombd-states (structure)
   ((flame0    flames-state :inline :offset-assert 0)
    (flame1    flames-state :inline :offset-assert 8)
    (flame2    flames-state :inline :offset-assert 16)
    (light     light-state  :inline :offset-assert 24)
    (gem-light float                :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype tombe-states (UNKNOWN)
+(deftype tombe-states (structure)
   ((flame0    flames-state :inline :offset-assert 0)
    (flame1    flames-state :inline :offset-assert 8)
    (flame2    flames-state :inline :offset-assert 16)
    (light     light-state  :inline :offset-assert 24)
    (gem-light float                :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype tombboss-states (UNKNOWN)
+(deftype tombboss-states (structure)
   ((flame0    flames-state :inline :offset-assert 0)
    (flame1    flames-state :inline :offset-assert 8)
    (flame2    flames-state :inline :offset-assert 16)
    (light     light-state  :inline :offset-assert 24)
    (gem-light float                :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype fortress-states (UNKNOWN)
+(deftype fortress-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
   )
-|#
 
-#|
-(deftype fordumpa-states (UNKNOWN)
-  ((turret-value UNKNOWN           4       :offset-assert 0)
+(deftype fordumpa-states (structure)
+  ((turret-value float           4       :offset-assert 0)
    (pulse        pulse-state       :inline :offset-assert 16)
    (electricity  electricity-state :inline :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
   )
-|#
 
-#|
-(deftype fordumpc-states (UNKNOWN)
-  ((light-flag basic                :offset-assert 0)
+(deftype fordumpc-states (structure)
+  ((light-flag symbol               :offset-assert 0)
    (pulse0     pulse-state  :inline :offset-assert 4)
    (pulse1     pulse-state  :inline :offset-assert 8)
    (strobe     strobe-state :inline :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype forresca-states (UNKNOWN)
+(deftype forresca-states (structure)
   ((pulse       pulse-state :inline :offset-assert 0)
-   (electricity UNKNOWN     2       :offset-assert 4)
+   (electricity electricity-state 2 :inline :offset 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype forrescb-states (UNKNOWN)
-  ((electricity UNKNOWN 2 :offset-assert 0)
-   (turret      UNKNOWN 4 :offset-assert 32)
+(deftype forrescb-states (structure)
+  ((electricity electricity-state 2 :inline :offset-assert 0)
+   (turret      float 4 :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
   )
-|#
 
-#|
-(deftype prison-states (UNKNOWN)
+(deftype prison-states (structure)
   ((pulse        float  :offset-assert 0)
    (angle        float  :offset-assert 4)
    (torture      float  :offset-assert 8)
-   (torture-flag basic  :offset-assert 12)
+   (torture-flag symbol  :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype under-states (UNKNOWN)
+(deftype under-states (structure)
   ((flame0     flames-state :inline :offset-assert 0)
    (flame1     flames-state :inline :offset-assert 8)
    (rot        float                :offset-assert 16)
@@ -24048,197 +24029,180 @@
    (fog-interp float                :offset-assert 32)
    (flicker    float                :offset-assert 36)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
   )
-|#
 
-#|
-(deftype gungame-states (UNKNOWN)
+(deftype gungame-states (structure)
   ((florescent florescent-state :inline :offset-assert 0)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
   )
-|#
 
-#|
-(deftype dig1-states (UNKNOWN)
+(deftype dig1-states (structure)
   ((pulse0    pulse-state :inline :offset-assert 0)
    (pulse1    pulse-state :inline :offset-assert 4)
    (explosion float               :offset-assert 8)
    (drillbit  float               :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype vortex-states (UNKNOWN)
+(deftype vortex-states (structure)
   ((time        float          :offset-assert 0)
    (level       float          :offset-assert 4)
    (delta       float          :offset-assert 8)
    (scale       float          :offset-assert 12)
    (flash       float          :offset-assert 16)
    (num         int32          :offset-assert 20)
-   (white       basic          :offset-assert 24)
+   (white       symbol         :offset-assert 24)
    (white-count float          :offset-assert 28)
    (pos         vector :inline :offset-assert 32)
    (dir         vector :inline :offset-assert 48)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
   )
-|#
 
-#|
-(deftype nestb-states (UNKNOWN)
+(deftype nestb-states (structure)
   ((pulse        pulse-state :inline :offset-assert 0)
    (rot          float               :offset-assert 4)
    (purple       float               :offset-assert 8)
    (purple-noise float               :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype consiteb-states (UNKNOWN)
+(deftype consiteb-states (structure)
   ((flicker       float  :offset-assert 0)
    (flicker-count float  :offset-assert 4)
    (flicker-state int32  :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype castle-states (UNKNOWN)
+(deftype castle-states (structure)
   ((electricity electricity-state :inline :offset-assert 0)
-   (pulse       UNKNOWN           2       :offset-assert 8)
+   (pulse       pulse-state 2 :inline     :offset-assert 8)
    (rot         float                     :offset-assert 40)
    (robot-rot   float                     :offset-assert 44)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
   )
-|#
 
-#|
-(deftype garage-states (UNKNOWN)
+(deftype garage-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x0 ;; TODO - is it actually empty?
+  :flag-assert         #x900000000
   )
-|#
 
-#|
-(deftype palshaft-states (UNKNOWN)
+(deftype palshaft-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x0 ;; TODO - is it actually empty?
+  :flag-assert         #x900000000
   )
-|#
 
-;; (define-extern update-mood-default-interior function)
-;; (define-extern update-vinroom-lights function)
-;; (define-extern update-mood-vinroom function)
-;; (define-extern update-hideout-lights function)
-;; (define-extern update-mood-hideout function)
-;; (define-extern update-mood-copy-hideout function)
-;; (define-extern init-mood-hiphog function)
-;; (define-extern update-hiphog-lights function)
-;; (define-extern update-mood-hiphog function)
-;; (define-extern update-mood-copy-hiphog function)
-;; (define-extern update-sewer-lights function)
-;; (define-extern init-mood-sewer function)
-;; (define-extern update-mood-sewer function)
-;; (define-extern update-mood-copy-sewerb function)
-;; (define-extern update-mood-copy-sewescb function)
-;; (define-extern set-sewer-lights-flag! function)
-;; (define-extern set-sewer-turret-flash! function)
-;; (define-extern set-sewesc-explosion! function)
-;; (define-extern update-onintent-lights function)
-;; (define-extern update-mood-onintent function)
-;; (define-extern init-mood-oracle function)
-;; (define-extern update-mood-oracle function)
-;; (define-extern set-oracle-purple-flag! function)
-;; (define-extern update-tomba-lights function)
-;; (define-extern update-mood-tomba function)
-;; (define-extern update-tombb-lights function)
-;; (define-extern update-mood-tombb function)
-;; (define-extern init-mood-tombc function)
-;; (define-extern update-mood-tombc function)
-;; (define-extern set-tombc-electricity-scale! function)
-;; (define-extern update-tombd-lights function)
-;; (define-extern update-mood-tombd function)
-;; (define-extern update-mood-tombe function)
-;; (define-extern update-tombboss-lights function)
-;; (define-extern update-mood-tombboss function)
-;; (define-extern set-tombboss-gem-light! function)
-;; (define-extern update-fortress-lights function)
-;; (define-extern update-mood-fortress function)
-;; (define-extern init-mood-fordumpa function)
-;; (define-extern update-mood-fordumpa function)
-;; (define-extern set-fordumpa-turret-flash! function)
-;; (define-extern set-fordumpa-electricity-scale! function)
-;; (define-extern init-mood-fordumpc function)
-;; (define-extern update-mood-fordumpc function)
-;; (define-extern set-fordumpc-light-flag! function)
-;; (define-extern init-mood-forresca function)
-;; (define-extern update-mood-forresca function)
-;; (define-extern set-forresca-electricity-scale! function)
-;; (define-extern init-mood-forrescb function)
-;; (define-extern update-mood-forrescb function)
-;; (define-extern set-forrescb-turret-flash! function)
-;; (define-extern set-forrescb-electricity-scale! function)
-;; (define-extern update-prison-lights function)
-;; (define-extern init-mood-prison function)
-;; (define-extern update-mood-prison function)
-;; (define-extern update-mood-copy-prison function)
-;; (define-extern set-prison-torture-flag! function)
-;; (define-extern update-under-lights function)
-;; (define-extern update-mood-under function)
-;; (define-extern update-mood-copy-underb function)
-;; (define-extern set-under-laser! function)
-;; (define-extern set-under-fog-interp! function)
-;; (define-extern update-gungame-lights function)
-;; (define-extern update-mood-gungame function)
-;; (define-extern init-mood-dig1 function)
-;; (define-extern update-dig1-lights function)
-;; (define-extern update-mood-dig1 function)
-;; (define-extern set-dig1-explosion! function)
-;; (define-extern update-vortex-lights function)
-;; (define-extern update-mood-vortex function)
-;; (define-extern set-vortex-flash! function)
-;; (define-extern set-vortex-white! function)
-;; (define-extern update-nestb-lights function)
-;; (define-extern update-mood-nestb function)
-;; (define-extern set-nestb-purple! function)
-;; (define-extern get-nestb-purple function)
-;; (define-extern init-mood-consiteb function)
-;; (define-extern update-mood-consiteb function)
-;; (define-extern update-castle-lights function)
-;; (define-extern init-mood-castle function)
-;; (define-extern update-mood-castle function)
-;; (define-extern set-castle-electricity-scale! function)
-;; (define-extern init-mood-garage function)
-;; (define-extern update-garage-lights function)
-;; (define-extern update-mood-garage function)
-;; (define-extern update-mood-copy-garage function)
-;; (define-extern update-mood-palshaft function)
+(define-extern update-mood-default-interior (function mood-context none :behavior time-of-day-proc))
+(define-extern update-vinroom-lights (function mood-context none))
+(define-extern update-mood-vinroom (function mood-context none :behavior time-of-day-proc))
+(define-extern update-hideout-lights (function mood-context none))
+(define-extern update-mood-hideout (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-hideout (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-hiphog (function mood-context none))
+(define-extern update-hiphog-lights (function mood-context none))
+(define-extern update-mood-hiphog (function mood-context float none :behavior time-of-day-proc))
+(define-extern update-mood-copy-hiphog (function mood-context none :behavior time-of-day-proc))
+(define-extern update-sewer-lights (function mood-context none))
+(define-extern init-mood-sewer (function mood-context none))
+(define-extern update-mood-sewer (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-sewerb (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-sewescb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-sewer-lights-flag! (function symbol symbol))
+(define-extern set-sewer-turret-flash! (function float))
+(define-extern set-sewesc-explosion! (function float))
+(define-extern update-onintent-lights (function mood-context none))
+(define-extern update-mood-onintent (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-oracle (function mood-context symbol))
+(define-extern update-mood-oracle (function mood-context none :behavior time-of-day-proc))
+(define-extern set-oracle-purple-flag! (function symbol symbol))
+(define-extern update-tomba-lights (function mood-context none))
+(define-extern update-mood-tomba (function mood-context none :behavior time-of-day-proc))
+(define-extern update-tombb-lights (function mood-context none))
+(define-extern update-mood-tombb (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-tombc (function mood-context float))
+(define-extern update-mood-tombc (function mood-context none :behavior time-of-day-proc))
+(define-extern set-tombc-electricity-scale! (function float float))
+(define-extern update-tombd-lights (function mood-context none))
+(define-extern update-mood-tombd (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-tombe (function mood-context none :behavior time-of-day-proc))
+(define-extern update-tombboss-lights (function mood-context none))
+(define-extern update-mood-tombboss (function mood-context none :behavior time-of-day-proc))
+(define-extern set-tombboss-gem-light! (function float float))
+(define-extern update-fortress-lights (function mood-context none))
+(define-extern update-mood-fortress (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-fordumpa (function mood-context float))
+(define-extern update-mood-fordumpa (function mood-context none :behavior time-of-day-proc))
+(define-extern set-fordumpa-turret-flash! (function int float))
+(define-extern set-fordumpa-electricity-scale! (function float float))
+(define-extern init-mood-fordumpc (function mood-context symbol))
+(define-extern update-mood-fordumpc (function mood-context none :behavior time-of-day-proc))
+(define-extern set-fordumpc-light-flag! (function symbol symbol))
+(define-extern init-mood-forresca (function mood-context float))
+(define-extern update-mood-forresca (function mood-context none :behavior time-of-day-proc))
+(define-extern set-forresca-electricity-scale! (function float int float))
+(define-extern init-mood-forrescb (function mood-context float))
+(define-extern update-mood-forrescb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-forrescb-turret-flash! (function int float))
+(define-extern set-forrescb-electricity-scale! (function float int float))
+(define-extern update-prison-lights (function mood-context none))
+(define-extern init-mood-prison (function mood-context float))
+(define-extern update-mood-prison (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-prison (function mood-context none :behavior time-of-day-proc))
+(define-extern set-prison-torture-flag! (function symbol symbol))
+(define-extern update-under-lights (function mood-context float))
+(define-extern update-mood-under (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-copy-underb (function mood-context none :behavior time-of-day-proc))
+(define-extern set-under-laser! (function float float))
+(define-extern set-under-fog-interp! (function float float))
+(define-extern update-gungame-lights (function mood-context none))
+(define-extern update-mood-gungame (function mood-context none :behavior time-of-day-proc))
+(define-extern init-mood-dig1 (function mood-context float))
+(define-extern update-dig1-lights (function mood-context none))
+(define-extern update-mood-dig1 (function mood-context none :behavior time-of-day-proc))
+(define-extern set-dig1-explosion! (function float float))
+(define-extern update-vortex-lights (function mood-context none))
+(define-extern update-mood-vortex (function mood-context none :behavior time-of-day-proc))
+(define-extern set-vortex-flash! (function float float))
+(define-extern set-vortex-white! (function symbol float))
+(define-extern update-nestb-lights (function mood-context none))
+(define-extern update-mood-nestb (function mood-context object int none :behavior time-of-day-proc))
+(define-extern set-nestb-purple! (function float float))
+(define-extern get-nestb-purple (function float))
+(define-extern init-mood-consiteb (function mood-context none))
+(define-extern update-mood-consiteb (function mood-context object int none :behavior time-of-day-proc))
+(define-extern update-castle-lights (function mood-context none))
+(define-extern init-mood-castle (function mood-context float))
+(define-extern update-mood-castle (function mood-context none :behavior time-of-day-proc))
+(define-extern set-castle-electricity-scale! (function float float))
+(define-extern init-mood-garage (function mood-context symbol))
+(define-extern update-garage-lights (function mood-context none))
+(define-extern update-mood-garage (function mood-context object int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-garage (function mood-context none :behavior time-of-day-proc))
+(define-extern update-mood-palshaft (function mood-context none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; weather-part                   ;;
@@ -24269,7 +24233,7 @@
 ;; (define-extern time-of-day-interp-colors function) ;; (function (pointer rgba) uint mood-context none)
 ;; (define-extern time-of-day-interp-colors-scratch function) ;; (function (pointer rgba) time-of-day-palette mood-context none)
 (define-extern init-time-of-day-context (function time-of-day-context symbol))
-(define-extern set-filter-color! (function float float int none))
+(define-extern set-filter-color! (function float float float none))
 (define-extern tod-madd! (function vector vector vector float))
 (define-extern update-environment-colors (function time-of-day-context vector))
 (define-extern update-time-of-day (function time-of-day-context none))
@@ -24315,7 +24279,7 @@
 ;; level-info                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *task-level* array)
+(define-extern *task-level* (array symbol))
 (define-extern default-level level-load-info) ;; level-load-info
 (define-extern intro level-load-info) ;; level-load-info
 (define-extern demo level-load-info) ;; level-load-info
@@ -25681,8 +25645,8 @@
 ;; (define-extern process-drawable-idle state) ;; (state process-drawable)
 ;; (define-extern skeleton-group->draw-control function)
 (define-extern ja-done? (function int symbol :behavior process-drawable))
-;; (define-extern ja-min? function) ;; (function int symbol :behavior process-drawable)
-;; (define-extern ja-max? function) ;; (function int symbol :behavior process-drawable)
+(define-extern ja-min? (function int symbol :behavior process-drawable)) ;; 
+(define-extern ja-max? (function int symbol :behavior process-drawable)) ;; 
 ;; (define-extern ja-num-frames function) ;; (function int int :behavior process-drawable)
 (define-extern ja-frame-num (function int float :behavior process-drawable))
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
@@ -25700,7 +25664,7 @@
 (define-extern sleep-code (function symbol))
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
-;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
+(define-extern transform-post (function int :behavior process-drawable)) ;; 
 ;; (define-extern rider-trans function) ;; (function int :behavior process-drawable)
 ;; (define-extern rider-post function) ;; (function int :behavior process-drawable)
 ;; (define-extern pusher-post function) ;; (function int :behavior process-drawable)
@@ -26540,7 +26504,7 @@
 ;; (define-extern bend-gravity function) ;; (function symbol :behavior target)
 ;; (define-extern target-compute-edge function) ;; (function none :behavior target)
 ;; (define-extern target-compute-edge-rider function) ;; (function none :behavior target)
-;; (define-extern target-compute-pole function) ;; (function none :behavior target)
+(define-extern target-compute-pole (function none :behavior target)) ;; 
 ;; (define-extern target-calc-camera-pos function) ;; (function none :behavior target)
 ;; (define-extern joint-points function) ;; (function none :behavior target)
 ;; (define-extern do-target-gspot function)
@@ -27702,13 +27666,13 @@
 ;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
 ;; (define-extern check-for-rougue-process function)
 ;; (define-extern process-drawable-scale-from-entity! function)
-;; (define-extern process-drawable-from-entity! function) ;; (function process-drawable entity-actor none)
+(define-extern process-drawable-from-entity! (function process-drawable entity-actor none)) ;; 
 (define-extern reset-actors (function symbol none))
 (define-extern reset-cameras (function none))
 ;; (define-extern entity-birth-no-kill function) ;; (function entity none)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
-;; (define-extern process-entity-status! function) ;; (function process entity-perm-status symbol int)
+(define-extern process-entity-status! (function process entity-perm-status symbol int)) ;; 
 ;; (define-extern find-nearest-entity function)
 ;; (define-extern entity-speed-test function) ;; (function string none)
 ;; (define-extern dump-entity-remap function)
@@ -28171,7 +28135,7 @@
 ;; (define-extern task-close! function)
 ;; (define-extern task-closed? function) ;; (function game-task task-status symbol)
 ;; (define-extern open-task-nodes function)
-(define-extern task-node-closed? (function game-task symbol))
+(define-extern task-node-closed? (function game-task-node symbol))
 (define-extern task-node-close! (function game-task none))
 (define-extern task-node-open? (function game-task symbol))
 (define-extern task-node-open! (function game-task none))
@@ -29774,64 +29738,63 @@
 ;; airlock                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype com-airlock (process-drawable)
-  ((level-name            basic   :offset-assert 196)
-   (open-test             basic   :offset-assert 200)
-   (were-behind?          basic   :offset-assert 204)
-   (inner?                basic   :offset-assert 208)
-   (sound-behind?         basic   :offset-assert 212)
-   (visible-move?         basic   :offset-assert 216)
-   (saw-pilot?            uint64  :offset-assert 220)
-   (last-distance         meters  :offset-assert 228)
-   (y-height              uint32  :offset-assert 232)
-   (pre-open-speed        float   :offset-assert 236)
-   (latch-closed-time     time-frame  :offset-assert 244)
-   (latch-open-time       time-frame  :offset-assert 252)
-   (gear                  basic   :offset-assert 260)
-   (gear-rot              deg     :offset-assert 264)
-   (gear-rotv             deg     :offset-assert 268)
-   (open-frame            float   :offset-assert 272)
-   (pre-open-frame        float   :offset-assert 276)
-   (lock-frame            float   :offset-assert 280)
-   (open-distance         meters  :offset-assert 284)
-   (active-distance       meters  :offset-assert 288)
-   (sound-id              uint32  :offset-assert 292)
-   (gear-sound-id         uint32  :offset-assert 296)
-   (sound-gear            basic   :offset-assert 300)
-   (sound-pre-open        basic   :offset-assert 304)
-   (sound-pre-open-stop   basic   :offset-assert 308)
-   (sound-lock-loop       basic   :offset-assert 312)
-   (sound-lock-stop       basic   :offset-assert 316)
-   (sound-open            basic   :offset-assert 320)
-   (sound-open-loop       basic   :offset-assert 324)
-   (sound-open-stop       basic   :offset-assert 328)
-   (sound-close           basic   :offset-assert 332)
-   (sound-close-loop      basic   :offset-assert 336)
-   (sound-close-stop      basic   :offset-assert 340)
-   (sound-post-close      basic   :offset-assert 344)
-   (sound-post-close-stop basic   :offset-assert 348)
-   (spool-sound-time      time-frame  :offset-assert 356)
-   (door-radius           meters  :offset-assert 364)
+  ((child-override        basic    :offset 24) ;; what is this!
+   (root-override         collide-shape    :offset 128 :score 999)
+   (level-name            string   :offset-assert 200)
+   (open-test             symbol   :offset-assert 204)
+   (were-behind?          symbol   :offset-assert 208)
+   (inner?                symbol   :offset-assert 212)
+   (sound-behind?         symbol   :offset-assert 216)
+   (visible-move?         symbol   :offset-assert 220)
+   (saw-pilot?            handle  :offset-assert 224)
+   (last-distance         meters  :offset-assert 232)
+   (y-height              vector  :offset-assert 236) ;; a guess
+   (pre-open-speed        float   :offset-assert 240)
+   (latch-closed-time     time-frame  :offset-assert 248)
+   (latch-open-time       time-frame  :offset-assert 256)
+   (gear                  joint-mod   :offset-assert 264)
+   (gear-rot              degrees     :offset-assert 268)
+   (gear-rotv             degrees     :offset-assert 272)
+   (open-frame            float   :offset-assert 276)
+   (pre-open-frame        float   :offset-assert 280)
+   (lock-frame            float   :offset-assert 284)
+   (open-distance         meters  :offset-assert 288)
+   (active-distance       meters  :offset-assert 292)
+   (sound-id              sound-id  :offset-assert 296)
+   (gear-sound-id         sound-id  :offset-assert 300)
+   (sound-gear            sound-spec   :offset-assert 304)
+   (sound-pre-open        sound-spec   :offset-assert 308)
+   (sound-pre-open-stop   sound-spec   :offset-assert 312)
+   (sound-lock-loop       sound-spec   :offset-assert 316)
+   (sound-lock-stop       sound-spec   :offset-assert 320)
+   (sound-open            sound-spec   :offset-assert 324)
+   (sound-open-loop       sound-spec   :offset-assert 328)
+   (sound-open-stop       sound-spec   :offset-assert 332)
+   (sound-close           sound-spec   :offset-assert 336)
+   (sound-close-loop      sound-spec   :offset-assert 340)
+   (sound-close-stop      sound-spec   :offset-assert 344)
+   (sound-post-close      sound-spec   :offset-assert 348)
+   (sound-post-close-stop sound-spec   :offset-assert 352)
+   (spool-sound-time      time-frame  :offset-assert 360)
+   (door-radius           meters  :offset-assert 368)
    )
   :method-count-assert 28
   :size-assert         #x174
   :flag-assert         #x1c01000174
   ;; field level-name uses ~A with a signed load field open-test uses ~A with a signed load
   (:methods
-    (open () _type_ :state 20)
-    (close () _type_ :state 21)
-    (com-airlock-method-22 () none 22)
-    (com-airlock-method-23 () none 23)
-    (com-airlock-method-24 () none 24)
-    (com-airlock-method-25 () none 25)
-    (com-airlock-method-26 () none 26)
-    (com-airlock-method-27 () none 27)
+    (open (symbol) _type_ :state 20)
+    (close (symbol) _type_ :state 21)
+    (init-airlock! (_type_) _type_ 22)
+    (want-cross-airlock? (_type_) symbol :behavior com-airlock 23)
+    (destination-loaded? (_type_ symbol) symbol 24)
+    (check-crossing-distance (_type_ vector symbol) float :behavior com-airlock 25)
+    (rotate-gear! (_type_ float) degrees :behavior com-airlock 26)
+    (play-city-voice-sound (_type_ symbol) none :behavior com-airlock 27) ;; TODO - really weird usage of a string array / sound-array?
     )
   )
-|#
 
-#|
 (deftype com-airlock-outer (com-airlock)
   ()
   :method-count-assert 28
@@ -29840,9 +29803,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype com-airlock-inner (com-airlock)
   ()
   :method-count-assert 28
@@ -29851,9 +29812,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype fort-entry-gate (com-airlock)
   ()
   :method-count-assert 28
@@ -29862,9 +29821,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hip-door-a (com-airlock)
   ()
   :method-count-assert 28
@@ -29873,9 +29830,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype tomb-mar-door (com-airlock)
   ()
   :method-count-assert 28
@@ -29884,9 +29839,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype cas-front-door (com-airlock-outer)
   ()
   :method-count-assert 28
@@ -29895,9 +29848,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype pal-throne-door (com-airlock)
   ()
   :method-count-assert 28
@@ -29906,9 +29857,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype vin-door-ctyinda (com-airlock)
   ()
   :method-count-assert 28
@@ -29917,9 +29866,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype under-door (com-airlock)
   ()
   :method-count-assert 28
@@ -29928,9 +29875,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype oracle-door (com-airlock)
   ()
   :method-count-assert 28
@@ -29939,7 +29884,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

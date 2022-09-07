@@ -142,10 +142,10 @@ with open(decomp_file_path) as f:
                 if not skip_form:
                     decomp_form_def_lines.append(decomp_within_form)
                     decomp_lines.append(line)
-                while i < len(lines):
+                while i + 1 < len(lines):
                     i = i + 1
                     line = lines[i]
-                    if not skip_form:
+                    if not skip_form and not should_ignore_line(line):
                         decomp_lines.append(line)
                     if has_form_ended(decomp_form_paren_stack, line):
                         decomp_within_form = None
