@@ -8,9 +8,9 @@
 ;; DECOMP BEGINS
 
 (deftype board (process-drawable)
-  ((control       control-info    :offset 128)
-   (shadow-backup shadow-geo      :offset 208)
-   (main          joint-mod       :offset 212)
+  ((control       control-info  :offset 128)
+   (shadow-backup shadow-geo    :offset 208)
+   (main          joint-mod     :offset 212)
    )
   :heap-base #x60
   :method-count-assert 23
@@ -22,6 +22,7 @@
     (hidden () _type_ :state 22)
     )
   )
+
 
 (deftype board-info (basic)
   ((board                  uint32                        :offset-assert   4)
@@ -160,6 +161,7 @@
     )
   )
 
+
 (deftype target-board-bank (basic)
   ((jump-height-min        meters   :offset-assert   4)
    (jump-height-max        meters   :offset-assert   8)
@@ -178,6 +180,7 @@
   :flag-assert         #x900000034
   )
 
+
 (define *TARGET_BOARD-bank* (new 'static 'target-board-bank
                               :jump-height-min (meters 1.01)
                               :jump-height-max (meters 3.5)
@@ -194,7 +197,6 @@
         )
 
 (defbehavior want-to-board? target ()
-  "Can we get on the jetboard?"
   (and (logtest? (-> self game features) (game-feature board))
        (or (and (cpad-pressed? (-> self control unknown-cpad-info00 number) r2)
                 (or (!= *cheat-mode* 'debug)
@@ -243,8 +245,10 @@
            (let ((v1-55 gp-0))
              (set! (-> v1-55 spheres) s5-0)
              (set! (-> v1-55 num-spheres) (the-as uint 3))
-             (set! (-> v1-55 collide-with)
-                   (the-as collide-spec (logand -16561 (-> self control root-prim prim-core collide-with)))
+             (set! (-> v1-55 collide-with) (logclear
+                                             (-> self control root-prim prim-core collide-with)
+                                             (collide-spec civilian enemy vehicle-sphere projectile)
+                                             )
                    )
              (set! (-> v1-55 ignore-process0) #f)
              (set! (-> v1-55 ignore-process1) #f)
@@ -295,3 +299,7 @@
                                            )
                                )
   )
+
+
+
+

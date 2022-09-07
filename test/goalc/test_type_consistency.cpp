@@ -40,3 +40,11 @@ TEST(Jak2TypeConsistency, TypeConsistency) {
   compiler.run_test_no_load("decompiler/config/jak2/all-types.gc");
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
 }
+
+TEST(Jak2TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
+  Compiler compiler(GameVersion::Jak2);
+  compiler.enable_throw_on_redefines();
+  add_common_expected_type_mismatches(compiler);
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
+  compiler.run_test_no_load("decompiler/config/jak2/all-types.gc");
+}

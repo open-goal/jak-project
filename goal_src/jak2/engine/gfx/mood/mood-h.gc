@@ -7,6 +7,8 @@
 
 ;; todo docs and method names.
 
+(declare-type sky-color-day structure)
+
 ;; DECOMP BEGINS
 
 (deftype mood-channel (structure)
@@ -18,6 +20,7 @@
   :flag-assert         #x900000060
   )
 
+
 (deftype mood-channel-group (structure)
   ((data mood-channel 4 :inline :offset-assert   0)
    )
@@ -25,6 +28,7 @@
   :size-assert         #x180
   :flag-assert         #x900000180
   )
+
 
 (deftype mood-fog (structure)
   ((fog-color   vector :inline :offset-assert   0)
@@ -40,13 +44,16 @@
   :flag-assert         #x900000030
   )
 
+
 (deftype mood-fog-table (structure)
-  ((data mood-fog 8 :inline :offset-assert   0)
+  ((data     mood-fog 8 :inline :offset-assert   0)
+   (data-raw uint128  24        :offset          0)
    )
   :method-count-assert 9
   :size-assert         #x180
   :flag-assert         #x900000180
   )
+
 
 (deftype mood-color (structure)
   ((lgt-color vector :inline :offset-assert   0)
@@ -57,6 +64,7 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype mood-direction-table (structure)
   ((data vector 4 :inline :offset-assert   0)
    )
@@ -65,13 +73,16 @@
   :flag-assert         #x900000040
   )
 
+
 (deftype mood-color-table (structure)
-  ((data mood-color 8 :inline :offset-assert   0)
+  ((data     mood-color 8 :inline :offset-assert   0)
+   (data-raw uint128    16        :offset          0)
    )
   :method-count-assert 9
   :size-assert         #x100
   :flag-assert         #x900000100
   )
+
 
 (deftype mood-sky-table (structure)
   ((data vector 8 :inline :offset-assert   0)
@@ -81,6 +92,7 @@
   :flag-assert         #x900000080
   )
 
+
 (deftype mood-clouds (structure)
   ((cloud-min float  :offset-assert   0)
    (cloud-max float  :offset-assert   4)
@@ -89,6 +101,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype mood-weather (structure)
   ((data  float 2 :offset-assert   0)
@@ -102,6 +115,7 @@
   :flag-assert         #x900000008
   )
 
+
 (deftype mood-iweather (structure)
   ((data  int32 2 :offset-assert   0)
    (cloud int32   :offset          0)
@@ -112,6 +126,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype mood-range (structure)
   ((data      float   4 :offset-assert   0)
@@ -126,6 +141,7 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype mood-filters-table (structure)
   ((data vector 8 :inline :offset-assert   0)
    )
@@ -134,18 +150,20 @@
   :flag-assert         #x900000080
   )
 
+
 (deftype mood-table (basic)
   ((mood-fog-table       mood-fog-table        :offset-assert   4)
    (mood-color-table     mood-color-table      :offset-assert   8)
    (mood-channel-group   mood-channel-group    :offset-assert  12)
    (mood-direction-table mood-direction-table  :offset-assert  16)
    (mood-sky-table       mood-sky-table        :offset-assert  20)
-   (mood-interp-table    basic                 :offset-assert  24)
+   (mood-interp-table    sky-color-day         :offset-assert  24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
+
 
 (deftype mood-context-core (structure)
   ((current-fog          mood-fog :inline :offset-assert   0)
@@ -159,6 +177,7 @@
   :flag-assert         #x900000070
   )
 
+
 (deftype mood-context-core2 (mood-context-core)
   ((light-group light-group 8 :inline :offset-assert 112)
    )
@@ -166,6 +185,7 @@
   :size-assert         #x670
   :flag-assert         #x900000670
   )
+
 
 (deftype mood-context-core3 (mood-context-core2)
   ((times vector 8 :inline :offset-assert 1648)
@@ -175,15 +195,19 @@
   :flag-assert         #x9000006f0
   )
 
+
 (deftype mood-context (mood-context-core3)
+  "`state` holds an arbitrary state structure, ie `[[sewer-states]]` and is used
+   when updating the mood.  This means that an individual state structure must be less than 128 bytes"
   ((itimes vector4w 4 :inline :offset-assert 1776)
    (state  uint32   32        :offset-assert 1840)
-   (clear  uint128   123 :offset 0) ;; added
+   (data   uint128  123       :offset          0)
    )
   :method-count-assert 9
   :size-assert         #x7b0
   :flag-assert         #x9000007b0
   )
+
 
 (deftype mood-control-work (structure)
   ((weather        mood-weather  :inline :offset-assert   0)
@@ -202,33 +226,34 @@
   :flag-assert         #x90000004c
   )
 
+
 (deftype mood-control (mood-table)
-  ((mood-clouds           mood-clouds          :offset-assert  28)
-   (current-interp        mood-weather :inline :offset-assert  32)
-   (target-interp         mood-weather :inline :offset-assert  40)
-   (speed-interp          mood-weather :inline :offset-assert  48)
-   (range                 mood-range   :inline :offset-assert  64)
-   (time-until-random     mood-weather :inline :offset-assert  80)
-   (time-until-random-min mood-weather :inline :offset-assert  88)
-   (time-until-random-max mood-weather :inline :offset-assert  96)
-   (display-flag          symbol               :offset-assert 104)
-   (overide-weather-flag  symbol               :offset-assert 108)
-   (overide               mood-weather :inline :offset-assert 112)
-   (lightning-index       int32                :offset-assert 120)
-   (lightning-val         int32                :offset-assert 124)
-   (lightning-time        int32                :offset-assert 128)
-   (lightning-time2       float                :offset-assert 132)
-   (lightning-flash       float                :offset-assert 136)
-   (lightning-id          sound-id             :offset-assert 140)
-   (lightning-count0      uint32               :offset-assert 144)
-   (lightning-count1      uint32               :offset-assert 148)
-   (lightning-count2      uint32               :offset-assert 152)
-   (rain-id               uint32               :offset-assert 156)
-   (sound-pitch           float                :offset-assert 160)
+  ((mood-clouds           mood-clouds                :offset-assert  28)
+   (current-interp        mood-weather       :inline :offset-assert  32)
+   (target-interp         mood-weather       :inline :offset-assert  40)
+   (speed-interp          mood-weather       :inline :offset-assert  48)
+   (range                 mood-range         :inline :offset-assert  64)
+   (time-until-random     mood-weather       :inline :offset-assert  80)
+   (time-until-random-min mood-weather       :inline :offset-assert  88)
+   (time-until-random-max mood-weather       :inline :offset-assert  96)
+   (display-flag          symbol                     :offset-assert 104)
+   (overide-weather-flag  symbol                     :offset-assert 108)
+   (overide               mood-weather       :inline :offset-assert 112)
+   (lightning-index       int32                      :offset-assert 120)
+   (lightning-val         int32                      :offset-assert 124)
+   (lightning-time        int32                      :offset-assert 128)
+   (lightning-time2       float                      :offset-assert 132)
+   (lightning-flash       float                      :offset-assert 136)
+   (lightning-id          sound-id                   :offset-assert 140)
+   (lightning-count0      uint32                     :offset-assert 144)
+   (lightning-count1      uint32                     :offset-assert 148)
+   (lightning-count2      uint32                     :offset-assert 152)
+   (rain-id               uint32                     :offset-assert 156)
+   (sound-pitch           float                      :offset-assert 160)
    (fogs                  mood-fog-table     9       :offset-assert 164)
    (colors                mood-color-table   3       :offset-assert 200)
    (channels              mood-channel-group 3       :offset-assert 212)
-   (clouds                mood-clouds  9       :offset-assert 224)
+   (clouds                mood-clouds        9       :offset-assert 224)
    )
   :method-count-assert 19
   :size-assert         #x104
@@ -246,4 +271,10 @@
     (play-or-stop-lightning! (_type_ sound-spec vector) sound-id 18)
     )
   )
+
+
+0
+
+
+
 
