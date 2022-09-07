@@ -1,6 +1,15 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(defun speedrun-mode-update ()
+  "A per frame update for speedrunning related stuff"
+  (when (-> *pc-settings* speedrunner-mode?)
+    ;; Update auto-splitter
+    (update-autosplit-info-jak1)
+    ;; Draw info to the screen
+    (speedrun-draw-settings))
+  (none))
+
 (defun speedrun-start-run ()
   ;; randomize game id so the autosplitter knows to restart
   (update-autosplit-jak1-new-game)
@@ -16,4 +25,17 @@
   (close-specific-task! (game-task intro) (task-status need-resolution))
   ;; enable auto saving by default
   (set! (-> *setting-control* default auto-save) #t)
+  (none))
+
+(defun speedrun-draw-settings ()
+  "Draw speedrun related settings in the bottom left corner"
+  (when (and (-> *pc-settings* speedrunner-mode?)
+             (< (-> *autosplit-info-jak1* num-power-cells) 1))
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                      (bucket-id debug-no-zbuf))
+      (draw-string-xy (string-format "OpenGOAL Version: ~S ~%Speedrun mode: ~A ~%Cutscene Skips ~A"
+                                     *pc-settings-built-sha*
+                                     (-> *pc-settings* speedrunner-mode?)
+                                     (-> *pc-settings* cutscene-skips?))
+                      buf 0 (- 224 (* 8 4)) (font-color flat-yellow) (font-flags shadow kerning))))
   (none))
