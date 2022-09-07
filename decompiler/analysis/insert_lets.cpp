@@ -1681,6 +1681,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+  // these are ordered based on frequency. for best performance, you check the most likely rewrites
+  // first!
+
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     stats.unused++;
@@ -1753,16 +1756,16 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_proc_new;
   }
 
-  auto as_attack_info = rewrite_attack_info(in, env, pool);
-  if (as_attack_info) {
-    stats.attack_info++;
-    return as_attack_info;
-  }
-
   auto as_set_let = rewrite_set_let(in, env, pool);
   if (as_set_let) {
     stats.set_let++;
     return as_set_let;
+  }
+
+  auto as_attack_info = rewrite_attack_info(in, env, pool);
+  if (as_attack_info) {
+    stats.attack_info++;
+    return as_attack_info;
   }
 
   // nothing matched.
