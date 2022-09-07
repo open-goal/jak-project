@@ -434,7 +434,6 @@ bool propagate_block(FunctionCache& cache,
                      Function& func,
                      DecompilerTypeSystem& dts,
                      bool tag_lock) {
-  bool debug = false;  // func.name() == "string->float";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see
@@ -688,8 +687,8 @@ end_type_pass:
     input.func->ir2.env.types_succeeded = true;
     auto last_type = out.op_end_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
     if (last_type != input.function_type.last_arg()) {
-      input.func->warnings.info("Return type mismatch {} vs {}.", last_type.print(),
-                                input.function_type.last_arg().print());
+      input.func->warnings.warning("Return type mismatch {} vs {}.", last_type.print(),
+                                   input.function_type.last_arg().print());
     }
   }
 

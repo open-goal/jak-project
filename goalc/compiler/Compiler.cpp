@@ -23,7 +23,7 @@ Compiler::Compiler(GameVersion version,
                    std::unique_ptr<ReplWrapper> repl)
     : m_version(version),
       m_goos(user_profile),
-      m_debugger(&m_listener, &m_goos.reader),
+      m_debugger(&m_listener, &m_goos.reader, version),
       m_repl(std::move(repl)),
       m_make(user_profile) {
   m_listener.add_debugger(&m_debugger);

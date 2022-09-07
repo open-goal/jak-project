@@ -35,8 +35,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
 
-SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+SpriteRenderer::SpriteRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);

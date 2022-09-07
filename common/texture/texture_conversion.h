@@ -219,6 +219,6 @@ inline u32 rgba16_to_rgba32(u32 in) {
 }
 
 // texture format enums
-enum class PSM { PSMCT16 = 0x02, PSMT8 = 0x13, PSMT4 = 0x14 };
+enum class PSM { PSMCT32 = 0x0, PSMCT16 = 0x02, PSMT8 = 0x13, PSMT4 = 0x14 };
 // clut format enums
 enum class CPSM { PSMCT32 = 0x0, PSMCT16 = 0x02 };

@@ -114,7 +114,7 @@ def lookahead_for_code(lines, index):
 
 # returns form, or none
 def is_line_start_of_form(line):
-    if line.rstrip().startswith(";"):
+    if line.lstrip().startswith(";"):
         return None
     matches = re.search(r"\(\s*([^\s.]*)\s+", line)
     if matches is not None:

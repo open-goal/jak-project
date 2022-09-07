@@ -4913,7 +4913,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 namespace {
 
 void push_asm_srl_to_stack(const AsmOp* op,
-                           FormElement* /*form_elt*/,
+                           FormElement* form_elt,
                            const Env& env,
                            FormPool& pool,
                            FormStack& stack) {
@@ -4940,7 +4940,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
   } else {
-    // stack.push_form_element(form_elt, true);
+    //
     auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
     if (as_ba) {
@@ -4950,9 +4950,10 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error(
-          fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
-                      src_var->to_string(env), arg0_type.print()));
+      stack.push_form_element(form_elt, true);
+      //  throw std::runtime_error(
+      //  fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
+      //             src_var->to_string(env), arg0_type.print()));
     }
   }
 }

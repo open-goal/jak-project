@@ -4,7 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
+Tie3::Tie3(const std::string& name, int my_id, int level_id)
     : BucketRenderer(name, my_id), m_level_id(level_id) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so

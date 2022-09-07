@@ -1082,6 +1082,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::DADDIU:
       return handle_daddiu(output, i0, instr_str, version);
     case InstructionKind::ADDIU:
+    case InstructionKind::SLTI:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::QMTC2:
       return handle_generic_op2(i0, instr_str, "mov128_vf_gpr");

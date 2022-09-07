@@ -17,7 +17,7 @@ bool looks_like_tfrag_init(const DmaFollower& follow) {
 }  // namespace
 
 TFragment::TFragment(const std::string& name,
-                     BucketId my_id,
+                     int my_id,
                      const std::vector<tfrag3::TFragmentTreeKind>& trees,
                      bool child_mode,
                      int level_id)
@@ -60,7 +60,7 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
-  if (m_my_id == BucketId::TFRAG_LEVEL0) {
+  if (m_my_id == render_state->bucket_for_vis_copy) {
     DmaTransfer transfers[2];
 
     transfers[0] = dma.read_and_advance();

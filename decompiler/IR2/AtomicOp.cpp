@@ -734,6 +734,7 @@ void AsmOp::update_register_info() {
       case InstructionKind::VFTOI0:
       case InstructionKind::VFTOI4:
       case InstructionKind::VFTOI12:
+      case InstructionKind::VFTOI15:
       case InstructionKind::VITOF0:
       case InstructionKind::VITOF12:
       case InstructionKind::VITOF15:

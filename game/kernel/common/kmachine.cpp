@@ -33,6 +33,7 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 
 // added
 u32 vif1_interrupt_handler = 0;
+u32 vblank_interrupt_handler = 0;
 
 Timer ee_clock_timer;
 
@@ -42,6 +43,7 @@ void kmachine_init_globals_common() {
   modsrc = 1;
   reboot = 1;
   vif1_interrupt_handler = 0;
+  vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
 }
 
@@ -213,8 +215,17 @@ u64 CPadGetData(u64 cpad_info) {
 
 // should make sure this works the same way in jak 2
 void InstallHandler(u32 handler_idx, u32 handler_func) {
-  ASSERT(handler_idx == 5);  // vif1
-  vif1_interrupt_handler = handler_func;
+  switch (handler_idx) {
+    case 3:
+      vblank_interrupt_handler = handler_func;
+      break;
+    case 5:
+      vif1_interrupt_handler = handler_func;
+      break;
+    default:
+      printf("unknown handler: %d\n", handler_idx);
+      ASSERT(false);
+  }
 }
 
 // nothing used this in jak1, hopefully same for 2
@@ -479,10 +490,10 @@ void set_gfx_hack(u64 which, u32 symptr) {
  * PC PORT FUNCTIONS END
  */
 
-void vif_interrupt_callback() {
+void vif_interrupt_callback(int bucket_id) {
   // added for the PC port for faking VIF interrupts from the graphics system.
   if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
-    call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+    call_goal(Ptr<Function>(vif1_interrupt_handler), bucket_id, 0, 0, s7.offset, g_ee_main_mem);
   }
 }
 
@@ -501,4 +512,11 @@ u32 offset_of_s7() {
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
   return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+/*!
+ * Called from game thread to submit rendering DMA chain.
+ */
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
 }
