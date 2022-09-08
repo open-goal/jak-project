@@ -6815,7 +6815,7 @@
    (ctywide          basic                  :offset-assert 268)
    (inv-scale        float                  :offset 212)
    (fade             float                  :offset 220)
-   (engine           basic                  :offset-assert 272)
+   (engine           engine-minimap                  :offset-assert 272)
    (engine-key       uint32                 :offset-assert 276)
    (trail           minimap-trail 6 :inline :offset-assert 288)
    (race-tex         basic                  :offset-assert 1536)
@@ -6831,7 +6831,7 @@
   :flag-assert         #x1c00000648
   (:methods
     (minimap-method-9 () none 9)
-    (minimap-method-10 () none 10)
+    (minimap-method-10 (_type_ connection-minimap minimap-trail) minimap-trail 10)
     (minimap-method-11 () none 11)
     (minimap-method-12 () none 12)
     (minimap-method-13 () none 13)
@@ -16080,6 +16080,10 @@
 (defenum projectile-options
   :type uint64
   :bitfield #t
+  (proj-options-2000 13)
+  (proj-options-4000 14)
+  (proj-options-10000 16)
+  (proj-options-20000 17)
   )
 
 (deftype projectile (process-drawable)
@@ -16116,10 +16120,10 @@
   :size-assert         #x1d8
   :flag-assert         #x28016001d8
   (:methods
-    (projectile-method-20 () none 20) ;; (projectile-die () _type_ :state 20)
-    (projectile-method-21 () none 21) ;; (projectile-dissipate () _type_ :state 21)
-    (projectile-method-22 () none 22) ;; (projectile-impact () _type_ :state 22)
-    (projectile-method-23 () none 23) ;; (projectile-moving () _type_ :state 23)
+    (die () _type_ :state 20) ;; (projectile-die () _type_ :state 20)
+    (dissipate () _type_ :state 21) ;; (projectile-dissipate () _type_ :state 21)
+    (impact () _type_ :state 22) ;; (projectile-impact () _type_ :state 22)
+    (moving () _type_ :state 23) ;; (projectile-moving () _type_ :state 23)
     (projectile-method-24 () none 24) ;; (dummy-24 (_type_) none 24)
     (projectile-method-25 () none 25) ;; (dummy-25 (_type_) none 25)
     (projectile-method-26 () none 26) ;; (dummy-26 (_type_) none 26)
@@ -16131,9 +16135,9 @@
     (projectile-method-32 () none 32)
     (projectile-method-33 () none 33)
     (projectile-method-34 () none 34)
-    (projectile-method-35 () none 35)
+    (projectile-method-35 (_type_ process int symbol event-message-block) _type_ 35)
     (projectile-method-36 () none 36)
-    (projectile-method-37 () none 37)
+    (projectile-method-37 (_type_ process int) none 37)
     (projectile-method-38 () none 38)
     (projectile-method-39 () none 39)
     )
@@ -16164,7 +16168,7 @@
   :size-assert         #x1f0
   :flag-assert         #x2a017001f0
   (:methods
-    (projectile-bounce-method-40 () none 40)
+    (sitting () _type_ :state 40)
     (projectile-bounce-method-41 () none 41)
     )
   )
@@ -16604,6 +16608,7 @@
     )
   )
 
+(declare-type collide-query structure)
 (deftype collide-cache (basic)
   ((num-tris         int32                      :offset-assert 4)
    (num-prims        int32                      :offset-assert 8)
@@ -16621,7 +16626,7 @@
   :flag-assert         #x1a00008670
   (:methods
     (collide-cache-method-9 () none 9) ;; (debug-draw (_type_) none 9)
-    (collide-cache-method-10 () none 10) ;; (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
+    (collide-cache-method-10 (_type_ collide-query) float 10) ;; (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
     (collide-cache-method-11 () none 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
     (collide-cache-method-12 () none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (collide-cache-method-13 () none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
@@ -22821,7 +22826,7 @@
 |#
 
 (define-extern *part-id-table* (array sparticle-launcher))
-;; (define-extern *part-group-id-table* object) ;; (array sparticle-launch-group)
+(define-extern *part-group-id-table* (array sparticle-launch-group)) ;; 
 ;; (define-extern *sp-temp* object)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string basic)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer sparticle-launch-group))
@@ -24665,7 +24670,6 @@
 ;; actor-hash                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype actor-cshape-ptr (structure)
   ((cshape basic  :offset-assert 0)
    )
@@ -24673,14 +24677,13 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype actor-hash-bucket (structure)
   ((length     int16   :offset-assert 0)
    (max-length int16   :offset-assert 2)
-   (data       uint32  :offset-assert 4)
+   (data       pointer  :offset-assert 4)
    )
+  :allow-misaligned
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
@@ -24688,13 +24691,11 @@
     (actor-hash-bucket-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype actor-hash-buckets (structure)
   ((hash basic           :offset-assert 0)
    (list basic           :offset-assert 4)
-   (data UNKNOWN 4       :offset-assert 8)
+   (data actor-hash-bucket 4       :inline :offset-assert 8)
    (tpos vector  :inline :offset-assert 80)
    )
   :method-count-assert 10
@@ -24704,10 +24705,9 @@
     (actor-hash-buckets-method-9 () none 9)
     )
   )
-|#
 
-;; (define-extern *actor-hash* object)
-;; (define-extern *actor-hash-buckets* object)
+(define-extern *actor-hash* spatial-hash)
+(define-extern *actor-hash-buckets* actor-hash-buckets)
 (define-extern update-actor-hash (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25654,8 +25654,8 @@
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
-;; (define-extern ja-post function) ;; (function none :behavior process-drawable)
-;; (define-extern sleep-code function)
+(define-extern ja-post (function none :behavior process-drawable)) ;; 
+(define-extern sleep-code (function none :behavior process-drawable))
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
 ;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
@@ -25873,25 +25873,54 @@
 ;; carry-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum carry-mode
+  :type uint8
+  :bitfield #t
+  (none 0)
+  (carry 1)
+  (mech-carry 2)
+  (mech-drag 4)
+  )
+
 (deftype carry-info (basic)
-  ()
+  (
+    (process (pointer process-drawable) :offset-assert 4)
+    (pickup-time time-frame :offset-assert 8)
+    (other-value float :offset-assert 16)
+    (other handle :offset-assert 24)
+    (point vector :inline :offset-assert 32)
+    (normal vector :inline :offset-assert 48)
+    (max-angle degrees :offset-assert 64)
+    (max-distance meters :offset-assert 68)
+    (max-pull meters :offset-assert 72)
+    (min-pull meters :offset-assert 76)
+    (grab-trans-blend float :offset-assert 80)
+    (carry-radius meters :offset-assert 84)
+    (backup-radius meters :offset-assert 88)
+    (joint int8 :offset-assert 92)
+    (mode carry-mode :offset-assert 93)
+    (face-dir int8 :offset-assert 94)
+    (local-point vector :inline :offset-assert 96)
+    (local-normal vector :inline :offset-assert 112)
+    (grab-quat vector :inline :offset-assert 128)
+    (grab-trans vector :inline :offset-assert 144)
+    (hold-trans vector :inline :offset-assert 160)
+  )
   :method-count-assert 17
   :size-assert         #xb0
   :flag-assert         #x11000000b0
-  ;; Failed to read fields.
   (:methods
-    (carry-info-method-9 () none 9)
-    (carry-info-method-10 () none 10)
-    (carry-info-method-11 () none 11)
-    (carry-info-method-12 () none 12)
-    (carry-info-method-13 () none 13)
-    (carry-info-method-14 () none 14)
-    (carry-info-method-15 () none 15)
-    (carry-info-method-16 () none 16)
+    (new (symbol type process-drawable int vector vector float) _type_ 0)
+    (carry-info-method-9 (_type_) none 9)
+    (carry-info-method-10 (_type_ carry-info) float 10)
+    (carry-info-method-11 (_type_ carry-info) none 11)
+    (carry-info-method-12 (_type_ carry-info) none 12)
+    (carry-info-method-13 (_type_) symbol 13)
+    (carry-info-method-14 (_type_ carry-info vector vector) none 14)
+    (carry-info-method-15 (_type_ carry-info) none 15)
+    (carry-info-method-16 (_type_) symbol :behavior process-drawble 16)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26639,7 +26668,6 @@
 ;; task-arrow                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-arrow-params (structure)
   ((flags    uint32             :offset-assert 0)
    (map-icon uint16             :offset-assert 4)
@@ -26650,23 +26678,21 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype task-arrow (process-drawable)
-  ((pos              vector             :inline :offset-assert 204)
-   (theta            float                      :offset-assert 220)
-   (phi              float                      :offset-assert 224)
-   (dist             float                      :offset-assert 228)
-   (smoothed-dist    float                      :offset-assert 232)
-   (max-dist         float                      :offset-assert 236)
-   (flags            uint32                     :offset-assert 240)
-   (map-icon         uint16                     :offset-assert 244)
-   (minimap          connection-minimap         :offset-assert 248)
-   (hud-dist         uint64                     :offset-assert 252)
-   (base-quat        quaternion         :inline :offset-assert 268)
-   (rod-of-god-scale float                      :offset-assert 284)
-   (moving           basic                      :offset-assert 288)
+  ((pos              vector             :inline :offset-assert 208)
+   (theta            float                      :offset-assert 224)
+   (phi              float                      :offset-assert 228)
+   (dist             float                      :offset-assert 232)
+   (smoothed-dist    float                      :offset-assert 236)
+   (max-dist         float                      :offset-assert 240)
+   (flags            uint32                     :offset-assert 244)
+   (map-icon         uint16                     :offset-assert 248)
+   (minimap          connection-minimap         :offset-assert 252)
+   (hud-dist         handle                     :offset-assert 256)
+   (base-quat        quaternion         :inline :offset-assert 272)
+   (rod-of-god-scale float                      :offset-assert 288)
+   (moving           symbol                     :offset-assert 292)
    )
   :method-count-assert 25
   :size-assert         #x128
@@ -26675,21 +26701,20 @@
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
     (leave () _type_ :state 22)
-    (task-arrow-method-23 () none 23)
-    (task-arrow-method-24 () none 24)
+    (task-arrow-method-23 (_type_ vector) none 23)
+    (task-arrow-method-24 (_type_) none 24)
     )
   )
-|#
 
-;; (define-extern task-arrow-init-by-other function)
-;; (define-extern task-arrow-spawn function)
+(define-extern task-arrow-init-by-other (function task-arrow-params task-arrow :behavior task-arrow))
+(define-extern task-arrow-spawn (function task-arrow-params task-arrow none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; projectile                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern cshape-reaction-projectile function)
-;; (define-extern projectile-event-handler function)
+(define-extern projectile-event-handler (function process int symbol event-message-block projectile :behavior projectile))
 ;; (define-extern projectile-move-fill-all-dirs function)
 ;; (define-extern projectile-move-fill-line-sphere function)
 ;; (define-extern projectile-update-velocity-add-gravity function)
@@ -27683,7 +27708,7 @@
 ;; (define-extern entity-birth-no-kill function) ;; (function entity none)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
-;; (define-extern process-entity-status! function) ;; (function process entity-perm-status symbol int)
+(define-extern process-entity-status! (function process entity-perm-status symbol int)) ;; 
 ;; (define-extern find-nearest-entity function)
 ;; (define-extern entity-speed-test function) ;; (function string none)
 ;; (define-extern dump-entity-remap function)
@@ -28306,7 +28331,7 @@
 ;; (define-extern hud-arriving state) ;; (state hud)
 ;; (define-extern hud-in state) ;; (state hud)
 ;; (define-extern hud-leaving state) ;; (state int hud)
-;; (define-extern hud-init-by-other function) ;; (function int none :behavior hud)
+(define-extern hud-init-by-other (function int none :behavior hud)) ;; 
 ;; (define-extern hide-hud function) ;; (function none)
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function none)
@@ -28631,21 +28656,9 @@
   )
 |#
 
-#|
-(deftype engine-minimap (engine-pers)
-  ()
-  :method-count-assert 15
-  :size-assert         #x20
-  :flag-assert         #xf00000020
-  ;; Failed to read fields.
-  (:methods
-    )
-  )
-|#
-
 ;; (define-extern *minimap-texture-name-array* object)
 ;; (define-extern *minimap-corner-array* object)
-;; (define-extern *minimap* object)
+(define-extern *minimap* minimap)
 ;; (define-extern *minimap-class-list* object)
 ;; (define-extern lookup-minimap-texture-by-name function)
 
