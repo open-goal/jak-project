@@ -699,6 +699,56 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   return in->entries().at(0).src->try_as_single_element();
 }
 
+FormElement* rewrite_set_let(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((dest-var src))
+   *   (set! something dest-var)
+   *   dest-var
+   *   )
+   * to:
+   * (set! something src)
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  auto var = in->entries().at(0).dest;
+  auto reg = var.reg();
+  if (reg.get_kind() == Reg::GPR && !reg.allowed_local_gpr()) {
+    return nullptr;
+  }
+
+  auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  if (!set_elt) {
+    return nullptr;
+  }
+
+  auto expr_elt = dynamic_cast<SimpleExpressionElement*>(in->body()->at(1));
+  if (!expr_elt || !expr_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(expr_elt->expr().var())) {
+    return nullptr;
+  }
+
+  auto set_src_elt = set_elt->src()->try_as_element<SimpleExpressionElement>();
+  if (!set_src_elt || !set_src_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(set_src_elt->expr().var())) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<SetFormFormElement>(set_elt->dst(), in->entries().at(0).src);
+}
+
 Form* strip_truthy(Form* in) {
   auto as_ge = in->try_as_element<GenericElement>();
   if (as_ge) {
@@ -1631,6 +1681,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+  // these are ordered based on frequency. for best performance, you check the most likely rewrites
+  // first!
+
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     stats.unused++;
@@ -1701,6 +1754,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_proc_new) {
     stats.proc_new++;
     return as_proc_new;
+  }
+
+  auto as_set_let = rewrite_set_let(in, env, pool);
+  if (as_set_let) {
+    stats.set_let++;
+    return as_set_let;
   }
 
   auto as_attack_info = rewrite_attack_info(in, env, pool);

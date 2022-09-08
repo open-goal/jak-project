@@ -225,11 +225,48 @@ Form* var_to_form(const RegisterAccess& var, FormPool& pool) {
   return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
+/*!
+ * Try to see if this form is a variable, or variable in a cast. If so, return the variable,
+ * and set cast_out if there was a cast.
+ */
+std::optional<RegisterAccess> try_strip_cast_get_var(Form* in, std::optional<TypeSpec>& cast_out) {
+  auto* elt = in->try_as_single_element();
+  if (!elt) {
+    return {};
+  }
+  auto* as_cast_elt = dynamic_cast<CastElement*>(elt);
+  if (as_cast_elt) {
+    cast_out = as_cast_elt->type();
+    elt = as_cast_elt->source()->try_as_single_element();
+  }
+  if (!elt) {
+    return {};
+  }
+  auto as_atom = form_element_as_atom(elt);
+  if (!as_atom || !as_atom->is_var()) {
+    return {};
+  }
+  return as_atom->var();
+}
+
+/*!
+ * Return (the-as <type> <in>) or <in>.
+ */
+FormElement* maybe_cast(FormElement* in, std::optional<TypeSpec>& maybe_cast_type, FormPool& pool) {
+  if (maybe_cast_type) {
+    return pool.alloc_element<CastElement>(*maybe_cast_type, pool.alloc_single_form(nullptr, in));
+  } else {
+    return in;
+  }
+}
+
 }  // namespace
 
 /*!
  * Recognize the handle->process macro.
  * If it occurs inside of another and, the part_of_longer_sc argument should be set.
+ *
+ * Will move the cast out from the `if` to surround the output.
  */
 FormElement* last_two_in_and_to_handle_get_proc(Form* first,
                                                 Form* second,
@@ -242,7 +279,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
   constexpr int reg_input_3 = 2;
   constexpr int reg_temp_1 = 10;
   constexpr int reg_temp_2 = 11;
-  constexpr int reg_temp_3 = 12;
+  constexpr int kValInIf = 12;
 
   // only used if part of a longer sc.
   Form* longer_sc_src = nullptr;  // the source (can be found without repopping)
@@ -294,7 +331,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
           {Matcher::deref(Matcher::any_reg(reg_input_3), false, {DerefTokenMatcher::string("pid")}),
            Matcher::deref(Matcher::any_reg(reg_temp_2), false,
                           {DerefTokenMatcher::string("pid")})}),
-      Matcher::any_reg(reg_temp_3));
+      Matcher::any(kValInIf));
 
   auto second_matcher = Matcher::begin({setup_matcher, if_matcher});
 
@@ -321,7 +358,11 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     return nullptr;
   }
 
-  if (temp_name != second_result.maps.regs.at(reg_temp_3)->to_string(env)) {
+  std::optional<TypeSpec> cast_type_for_result;
+  auto val_in_if =
+      try_strip_cast_get_var(second_result.maps.forms.at(kValInIf), cast_type_for_result);
+
+  if (!val_in_if || temp_name != val_in_if->to_string(env)) {
     return nullptr;
   }
 
@@ -346,10 +387,12 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
       return nullptr;
     }
 
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
-        longer_sc_src);
+    return maybe_cast(
+        pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
+            longer_sc_src),
+        cast_type_for_result, pool);
   } else {
     // modify use def:
     auto* menv = const_cast<Env*>(&env);
@@ -363,10 +406,12 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
       repopped = var_to_form(in1, pool);
     }
 
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
-        repopped);
+    return maybe_cast(
+        pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
+            repopped),
+        cast_type_for_result, pool);
   }
 }
 }  // namespace decompiler

@@ -1866,7 +1866,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
       // another special case: calling the new method is never done virtually. so just handle it
       // without paying attention to virtual/non-virtual
       if (method_id == GOAL_NEW_METHOD) {
-        type_out.type = TP_Type::make_from_ts(method_type);
+        // special flag so later code knows
+        type_out.type = TP_Type::make_non_object_new(method_type, TypeSpec(type_name));
         return true;
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
         // normal non-virtual method access
@@ -2404,11 +2405,19 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   m_write_regs.emplace_back(Reg::GPR, Reg::V0);
 
   if (can_backprop) {
+    bool is_new_method = in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD;
     for (int i = 0; i < int(m_call_type.arg_count()) - 1; i++) {
       auto& expected_type = m_call_type.get_arg(i);
       auto& actual_type = input_types[Register(Reg::GPR, arg_regs[i])];
       if (actual_type->tag.has_tag()) {
-        types2::backprop_tagged_type(TP_Type::make_from_ts(expected_type), *actual_type, dts);
+        if (is_new_method && i == 0) {
+          // special case - new method first argument can be a stack structure
+          types2::backprop_tagged_type(TP_Type::make_from_ts(in_tp.method_from_type()),
+                                       *actual_type, dts);
+        } else {
+          // normal backprop
+          types2::backprop_tagged_type(TP_Type::make_from_ts(expected_type), *actual_type, dts);
+        }
       }
     }
   }

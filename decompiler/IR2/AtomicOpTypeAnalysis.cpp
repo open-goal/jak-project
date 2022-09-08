@@ -977,7 +977,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         return TP_Type::make_object_new(method_type);
       }
       if (method_id == GOAL_NEW_METHOD) {
-        return TP_Type::make_from_ts(method_type);
+        return TP_Type::make_non_object_new(method_type, TypeSpec(type_name));
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
         return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
       } else {
