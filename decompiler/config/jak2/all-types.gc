@@ -14939,6 +14939,7 @@
   )
 
 
+(declare-type collide-query structure)
 (deftype collide-shape (trsqv)
   ((actor-hash-index int16 :offset 12)
    (process process :offset-assert 140)
@@ -14968,12 +14969,12 @@
     (collide-shape-method-29 () none 29) ;; (alloc-riders (_type_ int) none 29)
     (collide-shape-method-30 () none 30) ;; (move-to-point! (_type_ vector) none 30)
     (collide-shape-method-31 () none 31) ;; (debug-draw (_type_) none 31)
-    (collide-shape-method-32 () none 32) ;; (fill-cache-for-shape! (_type_ float collide-kind) none 32)
+    (collide-shape-method-32 (_type_ vector collide-query int) none 32) ;; (fill-cache-for-shape! (_type_ float collide-kind) none 32)
     (collide-shape-method-33 () none 33) ;; (fill-cache-integrate-and-collide! (_type_ vector collide-kind) none 33)
     (collide-shape-method-34 () none 34) ;; (find-prim-by-id (_type_ uint) collide-shape-prim 34)
     (collide-shape-method-35 () none 35) ;; (detect-riders! (_type_) symbol 35)
     (collide-shape-method-36 () none 36) ;; (build-bounding-box-for-shape (_type_ bounding-box float collide-kind) symbol 36)
-    (collide-shape-method-37 () none 37) ;; (integrate-and-collide! (_type_ vector) none 37)
+    (collide-shape-method-37 (_type_ vector) none 37) ;; (integrate-and-collide! (_type_ vector) none 37)
     (collide-shape-method-38 () none 38) ;; (find-collision-meshes (_type_) symbol 38)
     (collide-shape-method-39 () none 39) ;; (on-platform (_type_ collide-shape collide-overlap-result) symbol 39)
     (collide-shape-method-40 () none 40) ;; (find-overlapping-shapes (_type_ overlaps-others-params) symbol 40)
@@ -15066,6 +15067,7 @@
   (csrf31)
   )
 
+(declare-type control-info structure)
 (deftype collide-shape-moving (collide-shape)
   ((rider-time time-frame :offset-assert 200)
    (rider-last-move vector :inline)
@@ -15077,7 +15079,7 @@
    (old-status cshape-moving-flags)
    (prev-status cshape-moving-flags :offset-assert 304)
    (reaction-flag cshape-reaction-flags)
-   (reaction function) ;; function types...
+   (reaction (function control-info collide-query vector cshape-moving-flags)) ;; function types...
    (no-reaction function)
    (local-normal vector :inline)
    (surface-normal vector :inline)
@@ -15100,17 +15102,17 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_ 0)
-    (collide-shape-moving-method-55 () none 55)
+    (collide-shape-moving-method-55 (_type_ collide-query int int int) none 55)
     (collide-shape-moving-method-56 () none 56) ;; (set-and-handle-pat! (_type_ pat-surface) none 56)
     (collide-shape-moving-method-57 () none 57) ;; (integrate-no-collide! (_type_ vector) none 57)
     (collide-shape-moving-method-58 () none 58) ;; (dummy-58 (_type_ vector) symbol 58)
     (collide-shape-moving-method-59 () none 59) ;; (integrate-for-enemy-with-move-to-ground! (_type_ vector collide-kind float symbol symbol symbol) none 59)
     (collide-shape-moving-method-60 () none 60) ;; (move-to-ground (_type_ float float symbol collide-kind) symbol 60)
     (collide-shape-moving-method-61 () none 61) ;; (move-to-ground-point! (_type_ vector vector vector) none 61)
-    (collide-shape-moving-method-62 () none 62) ;; (compute-acc-due-to-gravity (_type_ vector float) vector 62)
+    (compute-acc-due-to-gravity (_type_ vector float) vector 62) ;; (compute-acc-due-to-gravity (_type_ vector float) vector 62)
     (collide-shape-moving-method-63 () none 63) ;; (step-collison! (_type_ vector vector float) float 63)
     (collide-shape-moving-method-64 () none 64) ;; (move-to-tri! (_type_ collide-tri-result vector) none 64)
-    (collide-shape-moving-method-65 () none 65)
+    (collide-shape-moving-method-65 (_type_ vector int int int) none 65)
     (collide-shape-moving-method-66 () none 66)
     (collide-shape-moving-method-67 () none 67)
     )
@@ -15207,9 +15209,9 @@
   )
 
 (deftype lightning-tracker (process)
-  ((root          basic           :offset-assert 128)
-   (lightning     basic           :offset-assert 132)
-   (callback      basic           :offset-assert 136)
+  ((root          trsqv           :offset-assert 128)
+   (lightning     lightning-control           :offset-assert 132)
+   (callback      (function lightning-tracker none)           :offset-assert 136)
    (duration      uint64          :offset-assert 144)
    (start-time    time-frame          :offset-assert 152)
    (offset0       vector  :inline :offset-assert 160)
@@ -16149,14 +16151,20 @@
 (defenum projectile-options
   :type uint64
   :bitfield #t
+  (proj-options-1 0)
+  (proj-options-2 1)
+  (proj-options-3 3)
+  (proj-options-4 4)
   (proj-options-2000 13)
   (proj-options-4000 14)
+  (proj-options-8000 15)
   (proj-options-10000 16)
   (proj-options-20000 17)
   )
 
 (deftype projectile (process-drawable)
-  ((starting-pos    vector                     :inline :offset-assert 208)
+  ((root-override   collide-shape-moving               :offset 128 :score 999)
+   (starting-pos    vector                     :inline :offset-assert 208)
    (starting-dir    vector                     :inline :offset-assert 224)
    (target-pos      vector                     :inline :offset-assert 240)
    (base-target-pos vector                     :inline :offset-assert 256)
@@ -16169,8 +16177,8 @@
    (owner-handle    handle                             :offset-assert 328)
    (ignore-handle   handle                             :offset-assert 336)
    (update-velocity (function projectile none)         :offset-assert 344) ;; guessed by decompiler
-   (move            basic                              :offset-assert 348)
-   (pick-target     basic                              :offset-assert 352)
+   (move            (function projectile none)                              :offset-assert 348)
+   (pick-target     (function projectile none)                              :offset-assert 352)
    (max-speed       float                              :offset-assert 356)
    (old-dist        float                      16      :offset-assert 360) ;; guessed by decompiler
    (old-dist-count  int32                              :offset-assert 424)
@@ -16193,27 +16201,27 @@
     (dissipate () _type_ :state 21) ;; (projectile-dissipate () _type_ :state 21)
     (impact () _type_ :state 22) ;; (projectile-impact () _type_ :state 22)
     (moving () _type_ :state 23) ;; (projectile-moving () _type_ :state 23)
-    (projectile-method-24 () none 24) ;; (dummy-24 (_type_) none 24)
-    (projectile-method-25 () none 25) ;; (dummy-25 (_type_) none 25)
-    (projectile-method-26 () none 26) ;; (dummy-26 (_type_) none 26)
-    (projectile-method-27 () none 27) ;; (dummy-27 (_type_) none 27)
-    (projectile-method-28 () none 28) ;; (dummy-28 (_type_) none 28)
-    (projectile-method-29 () none 29)
-    (projectile-method-30 () none 30)
-    (projectile-method-31 () none 31)
-    (projectile-method-32 () none 32)
-    (projectile-method-33 () none 33)
-    (projectile-method-34 () none 34)
-    (projectile-method-35 (_type_ process int symbol event-message-block) _type_ 35)
-    (projectile-method-36 () none 36)
-    (projectile-method-37 (_type_ process int) none 37)
-    (projectile-method-38 () none 38)
-    (projectile-method-39 () none 39)
+    (projectile-method-24 (_type_) none 24) ;; (dummy-24 (_type_) none 24)
+    (projectile-method-25 (_type_) none 25) ;; (dummy-25 (_type_) none 25)
+    (projectile-method-26 (_type_) none 26) ;; (dummy-26 (_type_) none 26)
+    (projectile-method-27 (_type_) none 27) ;; (dummy-27 (_type_) none 27)
+    (projectile-method-28 (_type_ projectile-options) sound-id 28) ;; (dummy-28 (_type_) none 28)
+    (projectile-method-29 (_type_) none 29)
+    (projectile-method-30 (_type_) none 30)
+    (projectile-method-31 (_type_) none 31)
+    (projectile-method-32 (_type_) none 32)
+    (projectile-method-33 (_type_) none 33)
+    (projectile-method-34 (_type_) symbol 34)
+    (projectile-method-35 (_type_ process int symbol event-message-block) none 35)
+    (projectile-method-36 (_type_ process event-message-block) none 36)
+    (projectile-method-37 (_type_ process event-message-block) symbol 37)
+    (projectile-method-38 (_type_) symbol 38)
+    (projectile-method-39 (_type_) sound-id :behavior projectile 39)
     )
   )
 
 (deftype projectile-init-by-other-params (structure)
-  ((ent           basic          :offset-assert 0)
+  ((ent           entity         :offset-assert 0)
    (charge        float          :offset-assert 4)
    (attack-id     uint32         :offset-assert 8)
    (options       projectile-options   :offset-assert 16)
@@ -16769,7 +16777,7 @@
    (solid-only       symbol                     :offset 120)
    (best-dist        float                      :offset 112 :score -1)
    (best-other-prim  basic                      :offset 116)
-   (best-my-prim     basic                      :offset 120)
+   (best-my-prim     collide-shape-prim         :offset 120 :score 10)
    (move-vec         vector             :inline :offset 224)
    (best-u           float                      :offset 112 :score -1)
    (action-mask      uint32                     :offset-assert 352)
@@ -20869,7 +20877,7 @@
 ;; actor-hash-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *actor-list* pointer) ;; some array of something.
+(define-extern *actor-list* (pointer collide-shape))
 (define-extern *actor-list-length* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24642,14 +24650,14 @@
 
 ;; (define-extern find-ground-point function) ;; (function control-info vector float float vector)
 ;; (define-extern target-attack-up function) ;; (function target symbol symbol none)
-;; (define-extern collide-shape-moving-angle-set! function) ;; (function collide-shape-moving vector vector none)
-;; (define-extern cshape-reaction-update-state function)
-;; (define-extern cshape-reaction-default function)
-;; (define-extern cshape-reaction-just-move function)
+(define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none)) ;; 
+(define-extern cshape-reaction-update-state (function control-info collide-query vector none))
+(define-extern cshape-reaction-default (function control-info collide-query vector vector cshape-moving-flags))
+(define-extern cshape-reaction-just-move (function control-info collide-query vector cshape-moving-flags))
 (define-extern collide-shape-draw-debug-marks (function none))
-;; (define-extern *col-timer* object) ;; stopwatch
-;; (define-extern *frame-timer* object) ;; stopwatch
-;; (define-extern *col-timer-enable* object) ;; symbol
+(define-extern *col-timer* stopwatch) ;; 
+(define-extern *frame-timer* stopwatch) ;; 
+(define-extern *col-timer-enable* symbol) ;; 
 ;; (define-extern debug-report-col-stats function) ;; (function int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25807,12 +25815,12 @@
 ;; (define-extern clone-anim function) ;; (function handle int symbol string none :behavior process-drawable)
 ;; (define-extern swingpole-init function)
 ;; (define-extern manipy-post function)
-;; (define-extern manipy-init function) ;; (function vector entity-actor skeleton-group vector none :behavior manipy)
-;; (define-extern part-tracker-init function) ;; (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker)
+(define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; 
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process matrix none :behavior part-tracker)) ;; 
 ;; (define-extern part-tracker-track-root function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
 ;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
-;; (define-extern lightning-tracker-init function)
+(define-extern lightning-tracker-init (function vector object function int int none))
 ;; (define-extern process-grab? function) ;; (function process symbol :behavior camera-tracker)
 ;; (define-extern process-release? function) ;; (function process symbol :behavior process)
 ;; (define-extern camera-look-at function) ;; (function pair uint process :behavior camera-tracker)
@@ -26454,7 +26462,7 @@
 ;; (define-extern birth-func-set-alpha-from-userdata function)
 ;; (define-extern part-tracker-track-target-joint function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern process-drawable-burn-effect function) ;; (function time-frame none :behavior target)
-;; (define-extern lightning-probe-callback function)
+(define-extern lightning-probe-callback (function lightning-tracker none))
 ;; (define-extern process-drawable-shock-effect function)
 ;; (define-extern process-drawable-shock-wall-effect function)
 ;; (define-extern process-drawable2-shock-effect function)
@@ -26702,17 +26710,17 @@
 ;; projectile                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cshape-reaction-projectile function)
+(define-extern cshape-reaction-projectile (function control-info collide-query vector vector cshape-moving-flags))
 (define-extern projectile-event-handler (function process int symbol event-message-block projectile :behavior projectile))
-;; (define-extern projectile-move-fill-all-dirs function)
-;; (define-extern projectile-move-fill-line-sphere function)
-;; (define-extern projectile-update-velocity-add-gravity function)
-;; (define-extern projectile-update-velocity-space-wars function) ;; (function projectile none)
-(define-extern projectile-init-by-other (function projectile-init-by-other-params projectile)) ;; (function entity-actor vector vector uint handle none :behavior projectile)
-;; (define-extern projectile-bounce-update-velocity function)
-;; (define-extern projectile-bounce-falling-post function)
-;; (define-extern projectile-bounce-move function)
-;; (define-extern projectile-bounce-reaction function)
+(define-extern projectile-move-fill-all-dirs (function projectile none))
+(define-extern projectile-move-fill-line-sphere (function projectile none))
+(define-extern projectile-update-velocity-add-gravity (function projectile none))
+(define-extern projectile-update-velocity-space-wars (function projectile none))
+(define-extern projectile-init-by-other (function projectile-init-by-other-params projectile :behavior projectile)) ;; (function entity-actor vector vector uint handle none :behavior projectile)
+(define-extern projectile-bounce-update-velocity (function projectile-bounce none))
+(define-extern projectile-bounce-falling-post (function projectile-bounce none :behavior projectile-bounce))
+(define-extern projectile-bounce-move (function projectile-bounce none))
+(define-extern projectile-bounce-reaction (function control-info collide-query vector vector cshape-moving-flags))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-handler                 ;;
@@ -27002,11 +27010,10 @@
 ;; gun-blue-shot                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-blue-shot (projectile)
-  ((init-pos       vector :inline :offset-assert 476)
-   (init-dir       vector :inline :offset-assert 492)
-   (collide-normal vector :inline :offset-assert 508)
+  ((init-pos       vector :inline :offset-assert 480)
+   (init-dir       vector :inline :offset-assert 496)
+   (collide-normal vector :inline :offset-assert 512)
    )
   :method-count-assert 40
   :size-assert         #x210
@@ -27014,11 +27021,10 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern target-gun-fire-blue function)
-;; (define-extern gun-blue-shot-move function)
-;; (define-extern cshape-reaction-blue-shot function)
+(define-extern target-gun-fire-blue (function (pointer process) :behavior target))
+(define-extern gun-blue-shot-move (function gun-blue-shot none))
+(define-extern cshape-reaction-blue-shot (function control-info collide-query vector vector cshape-moving-flags))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-yellow-shot                ;;
@@ -27036,24 +27042,24 @@
     )
   )
 
-(define-extern target-gun-fire-yellow (function none :behavior target))
-;; (define-extern someone-fire-yellow function)
-;; (define-extern gun-yellow-shot-move function)
+(define-extern target-gun-fire-yellow (function (pointer process) :behavior target))
+(define-extern someone-fire-yellow (function process-drawable vector vector (pointer process)))
+(define-extern gun-yellow-shot-move (function gun-yellow-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-red-shot                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-red-shot (process-drawable)
-  ((probe-count int32           :offset-assert 196)
-   (probe-mask  uint32          :offset-assert 200)
-   (actor-count int32           :offset-assert 204)
-   (attack-id   uint32          :offset-assert 208)
-   (start-pos   vector  :inline :offset-assert 220)
-   (start-dir   vector  :inline :offset-assert 236)
-   (start-rot   vector  :inline :offset-assert 252)
-   (probe-dir   UNKNOWN 19      :offset-assert 268)
+  ((root-override   collide-shape-moving               :offset 128 :score 999)
+   (probe-count int32           :offset-assert 200)
+   (probe-mask  uint32          :offset-assert 204)
+   (actor-count int32           :offset-assert 208)
+   (attack-id   uint32          :offset-assert 212)
+   (start-pos   vector  :inline :offset-assert 224)
+   (start-dir   vector  :inline :offset-assert 240)
+   (start-rot   vector  :inline :offset-assert 256)
+   (probe-dir   vector 19      :inline :offset-assert 272)
    )
   :method-count-assert 30
   :size-assert         #x240
@@ -27062,39 +27068,37 @@
     (blocked () _type_ :state 20)
     (debug-idle () _type_ :state 21)
     (idle () _type_ :state 22)
-    (gun-red-shot-method-23 () none 23)
-    (gun-red-shot-method-24 () none 24)
+    (gun-red-shot-method-23 (_type_ collide-shape) none 23)
+    (gun-red-shot-method-24 (_type_) symbol 24)
     (gun-red-shot-method-25 () none 25)
-    (gun-red-shot-method-26 () none 26)
-    (gun-red-shot-method-27 () none 27)
-    (gun-red-shot-method-28 () none 28)
-    (gun-red-shot-method-29 () none 29)
+    (gun-red-shot-method-26 (_type_) none 26)
+    (gun-red-shot-method-27 (_type_) none 27)
+    (gun-red-shot-method-28 (_type_ vector) sound-id 28)
+    (gun-red-shot-method-29 (_type_ process-drawable int) object 29)
     )
   )
-|#
 
-;; (define-extern target-gun-fire-red function)
-;; (define-extern gun-red-shot-event-handler function)
-;; (define-extern gun-red-shot-init-by-other function)
+(define-extern target-gun-fire-red (function (pointer process) :behavior target))
+(define-extern gun-red-shot-event-handler (function process int symbol event-message-block object :behavior gun-red-shot))
+(define-extern gun-red-shot-init-by-other (function vector vector gun-red-shot :behavior gun-red-shot))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-dark-shot                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-dark-shot (projectile)
-  ((blast-radius  float           :offset-assert 468)
-   (core-position vector  :inline :offset-assert 476)
-   (core-velocity vector  :inline :offset-assert 492)
-   (spin-vector   vector  :inline :offset-assert 508)
-   (track-target  uint64          :offset-assert 524)
-   (size-t        float           :offset-assert 532)
-   (result-array  UNKNOWN 16      :offset-assert 540)
-   (charge-sound  uint32          :offset-assert 668)
-   (fire-sound    uint32          :offset-assert 672)
-   (trail-sound   uint32          :offset-assert 676)
-   (explode-sound uint32          :offset-assert 680)
-   (start-pilot?  basic           :offset-assert 684)
+  ((blast-radius  float           :offset-assert 472)
+   (core-position vector  :inline :offset-assert 480)
+   (core-velocity vector  :inline :offset-assert 496)
+   (spin-vector   vector  :inline :offset-assert 512)
+   (track-target  uint64          :offset-assert 528)
+   (size-t        float           :offset-assert 536)
+   (result-array  uint64  16      :offset-assert 544)
+   (charge-sound  uint32          :offset-assert 672)
+   (fire-sound    uint32          :offset-assert 676)
+   (trail-sound   uint32          :offset-assert 680)
+   (explode-sound uint32          :offset-assert 684)
+   (start-pilot?  basic           :offset-assert 688)
    )
   :method-count-assert 42
   :size-assert         #x2b4
@@ -27104,11 +27108,10 @@
     (fizzle () _type_ :state 41)
     )
   )
-|#
 
-;; (define-extern target-gun-fire-dark function)
-;; (define-extern process-drawable-shock-effect-bullseye function)
-;; (define-extern gun-dark-shot-init-fizzle function)
+(define-extern target-gun-fire-dark (function (pointer process) :behavior target))
+(define-extern process-drawable-shock-effect-bullseye (function process-focusable process-focusable matrix int sparticle-launcher sparticle-launcher sparticle-launcher none))
+(define-extern gun-dark-shot-init-fizzle (function vector none :behavior gun-dark-shot))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-states                     ;;
@@ -27664,7 +27667,7 @@
 ;; (define-extern entity-count function) ;; (function int)
 ;; (define-extern entity-remap-names function) ;; (function pair none)
 ;; (define-extern process-status-bits function) ;; (function process symbol none)
-;; (define-extern process-entity-set! function)
+(define-extern process-entity-set! (function process entity none))
 (define-extern process-task-mask (function process task-mask))
 ;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
 ;; (define-extern expand-bounding-box function)
