@@ -889,6 +889,7 @@
 ;; ERROR: function has no type analysis. Cannot decompile.
 
 ;; ERROR: failed type prop at 56: Called a function, but we do not know its type
+;; WARN: Return type mismatch none vs float.
 
 
 (defstate cam-lookat (camera-slave)
@@ -944,7 +945,7 @@
       (set! (-> s1-0 ignore-process0) #f)
       (set! (-> s1-0 ignore-process1) #f)
       (set! (-> s1-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-      (set! (-> s1-0 action-mask) (the-as uint 1))
+      (set! (-> s1-0 action-mask) (collide-action solid))
       )
     (vector-flatten! s5-0 (-> *camera-combiner* inv-camera-rot vector 2) (-> *camera* local-down))
     (if (= (vector-normalize-ret-len! s5-0 (- (+ 1024.0 (-> *CAMERA-bank* default-string-min-z)))) 0.0)
@@ -956,7 +957,7 @@
       (vector--float*! s4-0 arg0 (-> *camera* local-down) (-> *camera* settings target-height))
       (set! (-> s3-0 start-pos quad) (-> *camera* tpos-curr-adj quad))
       (set! (-> s3-0 move-dist quad) (-> arg0 quad))
-      (if (< (collide-cache-method-10 *collide-cache* s3-0) 0.0)
+      (if (< (fill-and-probe-using-line-sphere *collide-cache* s3-0) 0.0)
           (return #t)
           )
       (set! f30-0 (cond
@@ -981,6 +982,7 @@
   #f
   )
 
+;; WARN: Return type mismatch uint vs cam-slave-options.
 (defbehavior cam-string-set-position-rel! camera-slave ((arg0 vector))
   (vector-flatten! (-> self view-flat) arg0 (-> *camera* local-down))
   (set! (-> self min-z-override) (vector-length (-> self view-flat)))
@@ -998,6 +1000,7 @@
   409.6
   )
 
+;; WARN: Return type mismatch int vs none.
 (defun-debug cam-draw-collide-cache ((arg0 collide-cache))
   (let ((gp-0 (the-as object (-> arg0 tris))))
     (countdown (s5-0 (-> arg0 num-tris))
@@ -1046,6 +1049,7 @@
   )
 
 
+;; WARN: Return type mismatch int vs none.
 (defun dist-info-init ((arg0 collide-los-dist-info))
   (set! (-> arg0 min-par) 1.0)
   (set! (-> arg0 max-par) 0.0)
@@ -1058,6 +1062,7 @@
   (>= (-> arg0 max-par) (-> arg0 min-par))
   )
 
+;; WARN: Return type mismatch int vs none.
 (defun dist-info-append ((arg0 collide-los-dist-info) (arg1 vector))
   (cond
     ((dist-info-valid? arg0)
@@ -1274,9 +1279,9 @@
       (set! (-> v1-4 ignore-process0) #f)
       (set! (-> v1-4 ignore-process1) #f)
       (set! (-> v1-4 ignore-pat) arg2)
-      (set! (-> v1-4 action-mask) (the-as uint 1))
+      (set! (-> v1-4 action-mask) (collide-action solid))
       )
-    (collide-cache-method-13 s4-0 s5-0)
+    (fill-using-line-sphere s4-0 s5-0)
     (let* ((f0-2 (vector-length (-> s5-0 move-dist)))
            (f28-0
              (cond
@@ -1460,6 +1465,7 @@
     )
   )
 
+;; WARN: Return type mismatch int vs symbol.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f2, f5]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f3, f6]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f2, f4, f7]
@@ -1544,9 +1550,11 @@
   )
 
 ;; ERROR: failed type prop at 785: Could not figure out load: (set! v1 (l.wu (+ v1 124)))
+;; WARN: Return type mismatch symbol vs vector.
 ;; ERROR: Unsupported inline assembly instruction kind - [sllv a0, v1, r0]
 ;; ERROR: Unsupported inline assembly instruction kind - [sllv a0, v1, r0]
 
+;; WARN: Return type mismatch int vs none.
 (defbehavior cam-string-find-hidden camera-slave ()
   (let ((s5-0 (new 'stack-no-clear 'collide-query))
         (gp-0 (new 'stack-no-clear 'vector))
@@ -1565,10 +1573,10 @@
       (set! (-> s4-0 ignore-process0) #f)
       (set! (-> s4-0 ignore-process1) #f)
       (set! (-> s4-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-      (set! (-> s4-0 action-mask) (the-as uint 1))
+      (set! (-> s4-0 action-mask) (collide-action solid))
       )
     (cond
-      ((< (collide-cache-method-10 *collide-cache* s5-0) 0.0)
+      ((< (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
        (set! (-> self time-dist-too-far) (the-as uint 0))
        0
        )
@@ -1684,9 +1692,9 @@
                          (set! (-> s2-0 ignore-process0) #f)
                          (set! (-> s2-0 ignore-process1) #f)
                          (set! (-> s2-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-                         (set! (-> s2-0 action-mask) (the-as uint 1))
+                         (set! (-> s2-0 action-mask) (collide-action solid))
                          )
-                       (collide-cache-method-10 *collide-cache* s5-1)
+                       (fill-and-probe-using-line-sphere *collide-cache* s5-1)
                        )
                       (else
                         -100000000.0
@@ -1772,6 +1780,7 @@
   )
 
 ;; ERROR: failed type prop at 11: Called a function, but we do not know its type
+;; WARN: Return type mismatch none vs vector.
 
 (defbehavior set-string-params camera-slave ()
   (when (not (or (-> self string-val-locked) (logtest? #x40000 (-> self options))))
@@ -2011,9 +2020,9 @@
           (set! (-> s5-0 ignore-process0) #f)
           (set! (-> s5-0 ignore-process1) #f)
           (set! (-> s5-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-          (set! (-> s5-0 action-mask) (the-as uint 1))
+          (set! (-> s5-0 action-mask) (collide-action solid))
           )
-        (let ((f0-31 (collide-cache-method-10 *collide-cache* gp-2)))
+        (let ((f0-31 (fill-and-probe-using-line-sphere *collide-cache* gp-2)))
           (when (and (< 0.0 f0-31) (< f0-31 1.0))
             (vector-float*! (-> gp-2 move-dist) (-> gp-2 move-dist) f0-31)
             (vector-flatten! (-> self view-flat) (-> gp-2 move-dist) (-> *camera* local-down))
