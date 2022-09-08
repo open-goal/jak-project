@@ -20652,14 +20652,14 @@
    (dimension-array     int8       3          :offset-assert 28)
    (vertical-cell-count int8                  :offset-assert 31)
    (bucket-array        (pointer grid-hash-word)                :offset-assert 32)
-   (box-min             uint32       3        :offset-assert 36)
-   (box-max             uint32       3        :offset-assert 48)
+   (box-min             float       3        :offset-assert 36)
+   (box-max             float       3        :offset-assert 48)
    (object-count        int16                 :offset-assert 60)
    (bucket-count        int16                 :offset-assert 62)
    (min-cell-size       float                 :offset-assert 64)
    (bucket-memory-size  int32                 :offset-assert 68)
-   (mem-bucket-array    uint32                :offset-assert 72)
-   (spr-bucket-array    uint32                :offset-assert 76)
+   (mem-bucket-array    (pointer grid-hash-word)                :offset-assert 72)
+   (spr-bucket-array    (pointer grid-hash-word)                :offset-assert 76)
    (debug-draw          symbol                 :offset-assert 80)
    (use-scratch-ram     symbol                 :offset-assert 84)
    )
@@ -20673,7 +20673,7 @@
     (grid-hash-method-11 (_type_) none 11)
     (grid-hash-method-12 (_type_) none 12)
     (grid-hash-method-13 (_type_) none 13)
-    (draw-grid "Draws the grid-hash" (_type_ object) none 14)
+    (draw-grid "Draws the grid-hash" (_type_ rgba) none 14)
     (dump-grid-info
       "Prints out info about the grid-hash, also draws via [[grid-hash::draw-grid]] if `debug-draw` is `#t`"
       (_type_) none 15)
@@ -20681,10 +20681,10 @@
     (grid-hash-method-17 (_type_) none 17)
     (grid-hash-method-18 (_type_ grid-hash-box int) none 18)
     (grid-hash-method-19 (_type_ grid-hash-box int) none 19)
-    (grid-hash-method-20 (_type_) none 20)
+    (grid-hash-method-20 (_type_ grid-hash-box (pointer uint8)) none 20)
     (grid-hash-method-21 (_type_ float int int) none 21)
-    (grid-hash-method-22 (_type_ grid-hash-box object) none 22)
-    (grid-hash-method-23 (_type_ vector vector vector float) none 23)
+    (grid-hash-method-22 (_type_ grid-hash-box sphere) none 22)
+    (grid-hash-method-23 (_type_ grid-hash-box vector vector float) none 23)
     (update-grid (_type_) none 24)
     )
   )
@@ -20703,7 +20703,7 @@
   )
 
 (deftype sphere-hash (grid-hash)
-  ((sphere-array     uint32  :offset-assert 88)
+  ((sphere-array     (inline-array sphere)  :offset-assert 88)
    (max-object-count int16   :offset-assert 92)
    (pad              int16   :offset-assert 94)
    (mem-sphere-array uint32  :offset-assert 96)
@@ -20713,15 +20713,15 @@
   :size-assert         #x68
   :flag-assert         #x2200000068
   (:methods
-    (sphere-hash-method-25 (_type_) none 25)
+    (clear-objects! (_type_) none 25)
     (sphere-hash-method-26 (_type_ vector) none 26)
     (sphere-hash-method-27 (_type_) none 27)
     (sphere-hash-method-28 (_type_) none 28)
-    (sphere-hash-method-29 (_type_) none 29)
-    (sphere-hash-method-30 (_type_) none 30)
-    (sphere-hash-method-31 (_type_) none 31)
-    (sphere-hash-method-32 (_type_) none 32)
-    (sphere-hash-method-33 (_type_) none 33)
+    (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none 29)
+    (sphere-hash-method-30 (_type_ find-nav-sphere-ids-params) none 30)
+    (sphere-hash-method-31 (_type_ vector int int) none 31)
+    (sphere-hash-method-32 (_type_ vector vector float int) symbol 32)
+    (sphere-hash-method-33 (_type_ object int) none 33)
     )
   )
 
@@ -20735,19 +20735,19 @@
 
 (deftype spatial-hash (sphere-hash)
   ((object-array     (pointer hash-object-info)  :offset-assert 104)
-   (mem-object-array uint32  :offset-assert 108)
-   (spr-object-array uint32  :offset-assert 112)
+   (mem-object-array (pointer hash-object-info)  :offset-assert 108)
+   (spr-object-array (pointer hash-object-info)  :offset-assert 112)
    )
   :method-count-assert 41
   :size-assert         #x74
   :flag-assert         #x2900000074
   (:methods
-    (spatial-hash-method-34 (_type_) none 34)
+    (spatial-hash-method-34 (_type_ vector hash-object-info) int 34)
     (spatial-hash-method-35 (_type_) none 35)
-    (spatial-hash-method-36 (_type_) none 36)
+    (spatial-hash-method-36 (_type_ vector vector int) none 36)
     (spatial-hash-method-37 (_type_) none 37)
     (spatial-hash-method-38 (_type_) none 38)
-    (spatial-hash-method-39 (_type_) none 39)
+    (spatial-hash-method-39 (_type_ object hash-object-info) none 39)
     (spatial-hash-method-40 (_type_) none 40)
     )
   )
@@ -21544,7 +21544,7 @@
 (define-extern debug-draw-buffers (function symbol))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
 (define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
-;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
+(define-extern add-debug-box (function symbol bucket-id vector vector rgba symbol)) ;; 
 ;; (define-extern add-debug-box-with-transform function)
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
 ;; (define-extern add-debug-cross function)
@@ -24656,9 +24656,9 @@
   )
 
 (define-extern *grid-hash-work* grid-hash-work)
-(define-extern validate-bucket-bits (function symbol))
-(define-extern draw-grid (function vector vector object object none))
-;; (define-extern draw-sphere-box function)
+(define-extern validate-bucket-bits (function grid-hash (pointer grid-hash-word) symbol))
+(define-extern draw-grid (function vector vector (pointer int8) rgba none))
+(define-extern draw-sphere-box (function sphere none))
 (define-extern draw-line-sphere (function vector vector float rgba none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
