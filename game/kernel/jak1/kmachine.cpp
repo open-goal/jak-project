@@ -386,12 +386,6 @@ int ShutdownMachine() {
 }
 
 // todo, these could probably be moved to common
-/*!
- * Called from game thread to submit rendering DMA chain.
- */
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
-  Gfx::send_chain(g_ee_main_mem, chain);
-}
 
 /*!
  * Called from game thread to upload a texture outside of the main DMA chain.

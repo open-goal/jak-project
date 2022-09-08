@@ -6,7 +6,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
+TextureUploadHandler::TextureUploadHandler(const std::string& name, int my_id)
     : BucketRenderer(name, my_id) {}
 
 void TextureUploadHandler::render(DmaFollower& dma,

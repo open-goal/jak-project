@@ -756,7 +756,8 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
-  if (use_fancy_macros) {
+  // temp hack!!
+  if (use_fancy_macros && file && file->version == GameVersion::Jak1) {
     if (type == TypeSpec("sp-field-init-spec")) {
       ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
@@ -1551,10 +1552,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         to_print = labels.at(cdr_word.label_id());
         continue;
       }
-      // invalid.
-      lg::error(
-          "There is an improper list. This is probably okay, but should be checked manually "
-          "because we could not find a test case yet.");
+      // improper
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {
@@ -1567,16 +1565,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         throw std::runtime_error(
             fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
       } else {
-        auto& word = words.at(to_print.target_segment).at(to_print.offset / 4);
-        if (word.kind() != LinkedWord::EMPTY_PTR) {
-          throw std::runtime_error(
-              fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
-        }
-        // improper list
-        lg::error(
-            "There is an improper list. This is probably okay, but should be checked manually "
-            "because we "
-            "could not find a test case yet.");
+        // improper
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
             words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts, file));

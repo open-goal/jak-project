@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
     level_tools::DrawStats draw_stats;
     // draw_stats.debug_print_dma_data = true;
     level_tools::BspHeader bsp_header;
-    bsp_header.read_from_file(data, dts, &draw_stats);
+    bsp_header.read_from_file(data, dts, &draw_stats, kGameVersion);
 
     level_tools::PrintSettings settings;
     fmt::print("{}\n", bsp_header.print(settings));

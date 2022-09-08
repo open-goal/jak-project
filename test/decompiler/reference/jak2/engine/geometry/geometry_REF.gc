@@ -352,15 +352,15 @@
 ;; definition for function forward-down->inv-matrix
 ;; INFO: Used lq/sq
 (defun forward-down->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
-  (vector-normalize-copy! (the-as vector (&-> arg0 data 8)) arg1 1.0)
-  (vector-cross! (the-as vector (-> arg0 data)) (the-as vector (&-> arg0 data 8)) arg2)
-  (vector-normalize! (the-as vector (-> arg0 data)) 1.0)
-  (vector-cross! (the-as vector (&-> arg0 data 4)) arg1 (the-as vector (-> arg0 data)))
-  (vector-normalize! (the-as vector (&-> arg0 data 4)) 1.0)
+  (vector-normalize-copy! (-> arg0 vector 2) arg1 1.0)
+  (vector-cross! (the-as vector (-> arg0 vector)) (-> arg0 vector 2) arg2)
+  (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
+  (vector-cross! (-> arg0 vector 1) arg1 (the-as vector (-> arg0 vector)))
+  (vector-normalize! (-> arg0 vector 1) 1.0)
   (set! (-> arg0 trans quad) (the-as uint128 0))
-  (set! (-> arg0 data 3) 0.0)
-  (set! (-> arg0 data 7) 0.0)
-  (set! (-> arg0 data 11) 0.0)
+  (set! (-> arg0 vector 0 w) 0.0)
+  (set! (-> arg0 vector 1 w) 0.0)
+  (set! (-> arg0 vector 2 w) 0.0)
   (set! (-> arg0 trans w) 1.0)
   arg0
   )
@@ -368,20 +368,16 @@
 ;; definition for function forward-down-nopitch->inv-matrix
 ;; INFO: Used lq/sq
 (defun forward-down-nopitch->inv-matrix ((arg0 matrix) (arg1 vector) (arg2 vector))
-  (vector-normalize-copy! (the-as vector (&-> arg0 data 4)) arg2 1.0)
-  (vector-negate! (the-as vector (&-> arg0 data 4)) (the-as vector (&-> arg0 data 4)))
-  (vector-cross! (the-as vector (-> arg0 data)) (the-as vector (&-> arg0 data 4)) arg1)
-  (vector-normalize! (the-as vector (-> arg0 data)) 1.0)
-  (vector-cross!
-    (the-as vector (&-> arg0 data 8))
-    (the-as vector (-> arg0 data))
-    (the-as vector (&-> arg0 data 4))
-    )
-  (vector-normalize! (the-as vector (&-> arg0 data 8)) 1.0)
+  (vector-normalize-copy! (-> arg0 vector 1) arg2 1.0)
+  (vector-negate! (-> arg0 vector 1) (-> arg0 vector 1))
+  (vector-cross! (the-as vector (-> arg0 vector)) (-> arg0 vector 1) arg1)
+  (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
+  (vector-cross! (-> arg0 vector 2) (the-as vector (-> arg0 vector)) (-> arg0 vector 1))
+  (vector-normalize! (-> arg0 vector 2) 1.0)
   (set! (-> arg0 trans quad) (the-as uint128 0))
-  (set! (-> arg0 data 3) 0.0)
-  (set! (-> arg0 data 7) 0.0)
-  (set! (-> arg0 data 11) 0.0)
+  (set! (-> arg0 vector 0 w) 0.0)
+  (set! (-> arg0 vector 1 w) 0.0)
+  (set! (-> arg0 vector 2 w) 0.0)
   (set! (-> arg0 trans w) 1.0)
   arg0
   )
@@ -628,22 +624,22 @@
 
 ;; definition for function matrix-remove-z-rot
 ;; INFO: Used lq/sq
-(defun matrix-remove-z-rot ((arg0 matrix) (arg1 matrix))
+(defun matrix-remove-z-rot ((arg0 matrix) (arg1 vector))
   (let ((s4-0 (new-stack-vector0)))
     0.0
     0.0
     (let ((s5-0 (new-stack-matrix0)))
-      (vector-negate! s4-0 (the-as vector arg1))
-      (vector-flatten! s4-0 s4-0 (the-as vector (&-> arg0 data 8)))
+      (vector-negate! s4-0 arg1)
+      (vector-flatten! s4-0 s4-0 (-> arg0 vector 2))
       (vector-normalize! s4-0 1.0)
-      (let ((f30-0 (vector-dot (the-as vector (&-> arg0 data 4)) s4-0)))
+      (let ((f30-0 (vector-dot (-> arg0 vector 1) s4-0)))
         (when (< f30-0 0.99999)
-          (vector-cross! s4-0 (the-as vector (&-> arg0 data 4)) s4-0)
+          (vector-cross! s4-0 (-> arg0 vector 1) s4-0)
           (let ((f0-4 (vector-length s4-0)))
-            (if (< 0.0 (vector-dot s4-0 (the-as vector (&-> arg0 data 8))))
+            (if (< 0.0 (vector-dot s4-0 (-> arg0 vector 2)))
                 (set! f0-4 (- f0-4))
                 )
-            (matrix-axis-sin-cos! s5-0 (the-as vector (&-> arg0 data 8)) f0-4 f30-0)
+            (matrix-axis-sin-cos! s5-0 (-> arg0 vector 2) f0-4 f30-0)
             )
           (matrix*! arg0 arg0 s5-0)
           )
@@ -689,12 +685,7 @@
     (quaternion->matrix s5-0 arg1)
     (quaternion->matrix s4-0 arg2)
     (let ((s2-1 (new-stack-quaternion0)))
-      (quaternion-from-two-vectors-max-angle!
-        s2-1
-        (the-as vector (&-> s5-0 data 8))
-        (the-as vector (&-> s4-0 data 8))
-        arg4
-        )
+      (quaternion-from-two-vectors-max-angle! s2-1 (-> s5-0 vector 2) (-> s4-0 vector 2) arg4)
       (quaternion-normalize! (quaternion*! arg0 arg0 s2-1))
       )
     )
@@ -825,7 +816,7 @@
 
 ;; definition for function closest-pt-in-triangle
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun closest-pt-in-triangle ((arg0 vector) (arg1 vector) (arg2 matrix) (arg3 vector))
   (local-vars
     (v1-0 float)
@@ -911,53 +902,41 @@
     (nop!)
     (label cfg-3)
     (b! (nonzero? v1-4) cfg-6 :delay (set! v1-5 (+ v1-4 -1)))
-    (vector-segment-distance-point! arg1 (the-as vector (-> arg2 data)) (the-as vector (&-> arg2 data 4)) arg0)
+    (vector-segment-distance-point! arg1 (the-as vector (-> arg2 vector)) (-> arg2 vector 1) arg0)
     (goto cfg-24)
     (label cfg-6)
     (b! (nonzero? v1-5) cfg-9 :delay (set! v1-6 (+ v1-5 -1)))
-    (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 4)) (the-as vector (&-> arg2 data 8)) arg0)
+    (vector-segment-distance-point! arg1 (-> arg2 vector 1) (-> arg2 vector 2) arg0)
     (goto cfg-24)
     (label cfg-9)
     (b! (nonzero? v1-6) cfg-14 :delay (set! v1-7 (+ v1-6 -1)))
-    (let ((f30-0
-            (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 4)) (the-as vector (-> arg2 data)) arg0)
-            )
+    (let ((f30-0 (vector-segment-distance-point! arg1 (-> arg2 vector 1) (the-as vector (-> arg2 vector)) arg0))
           (s3-0 (new 'stack-no-clear 'vector))
           )
-      (if (< (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 4)) (the-as vector (&-> arg2 data 8)) s3-0)
-             f30-0
-             )
+      (if (< (vector-segment-distance-point! arg1 (-> arg2 vector 1) (-> arg2 vector 2) s3-0) f30-0)
           (set! (-> arg0 quad) (-> s3-0 quad))
           )
       )
     (goto cfg-24)
     (label cfg-14)
     (b! (nonzero? v1-7) cfg-17 :delay (set! v1-10 (+ v1-7 -1)))
-    (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 8)) (the-as vector (-> arg2 data)) arg0)
+    (vector-segment-distance-point! arg1 (-> arg2 vector 2) (the-as vector (-> arg2 vector)) arg0)
     (goto cfg-24)
     (label cfg-17)
     (b! (nonzero? v1-10) cfg-22 :delay (nop!))
-    (let ((f30-1
-            (vector-segment-distance-point! arg1 (the-as vector (-> arg2 data)) (the-as vector (&-> arg2 data 4)) arg0)
-            )
+    (let ((f30-1 (vector-segment-distance-point! arg1 (the-as vector (-> arg2 vector)) (-> arg2 vector 1) arg0))
           (s3-1 (new 'stack-no-clear 'vector))
           )
-      (if (< (vector-segment-distance-point! arg1 (the-as vector (-> arg2 data)) (the-as vector (&-> arg2 data 8)) s3-1)
-             f30-1
-             )
+      (if (< (vector-segment-distance-point! arg1 (the-as vector (-> arg2 vector)) (-> arg2 vector 2) s3-1) f30-1)
           (set! (-> arg0 quad) (-> s3-1 quad))
           )
       )
     (goto cfg-24)
     (label cfg-22)
-    (let ((f30-2
-            (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 8)) (the-as vector (-> arg2 data)) arg0)
-            )
+    (let ((f30-2 (vector-segment-distance-point! arg1 (-> arg2 vector 2) (the-as vector (-> arg2 vector)) arg0))
           (s3-2 (new 'stack-no-clear 'vector))
           )
-      (if (< (vector-segment-distance-point! arg1 (the-as vector (&-> arg2 data 8)) (the-as vector (&-> arg2 data 4)) s3-2)
-             f30-2
-             )
+      (if (< (vector-segment-distance-point! arg1 (-> arg2 vector 2) (-> arg2 vector 1) s3-2) f30-2)
           (set! (-> arg0 quad) (-> s3-2 quad))
           )
       )
@@ -1052,7 +1031,7 @@
   )
 
 ;; definition for function circle-circle-xz-intersect
-;; INFO: Return type mismatch uint vs int.
+;; WARN: Return type mismatch uint vs int.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f5, f5]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f1]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f0, f0]
@@ -1262,7 +1241,7 @@
 
 ;; definition for function circle-test
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch object vs none.
+;; WARN: Return type mismatch object vs none.
 (defun circle-test ()
   (let ((s4-0 (new 'stack 'sphere))
         (a1-2 (new 'stack 'sphere))
@@ -1282,7 +1261,7 @@
 
 ;; definition for function vector-circle-tangent-new
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun vector-circle-tangent-new ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -1321,7 +1300,7 @@
   )
 
 ;; definition for function vector-circle-tangent
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun vector-circle-tangent ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let* ((s3-1 (vector-! (the-as vector (new 'stack-no-clear 'sphere)) arg1 arg0))
          (f0-0 (vector-xz-length s3-1))
@@ -1409,47 +1388,52 @@
         (f3-0 arg2)
         )
     (.addu v1-1 arg3 v1-0)
-    (let* ((f1-0 a1-1) (f5-0 f1-0)) 0.0 0.0 (let* ((f0-2 (-> (the-as (pointer float) v1-1) 0))
-                                                   (f2-0 (-> (the-as (pointer float) v1-1) 1))
-                                                   (f0-3 (- f3-0 f0-2))
-                                                   (f4-0 (- f2-0 f3-0))
-                                                   (f10-0 (/ f1-0 (+ f4-0 f0-3)))
-                                                   (f2-2 (-> (the-as (pointer float) v1-1) -1))
-                                                   (f8-0 (-> (the-as (pointer float) v1-1) 2))
-                                                   (f2-3 (- f3-0 f2-2))
-                                                   (f9-0 (+ f4-0 f2-3))
-                                                   (f6-0 (-> (the-as (pointer float) v1-1) -2))
-                                                   (f7-0 (-> (the-as (pointer float) v1-1) 3))
-                                                   (f9-1 (/ f1-0 f9-0))
-                                                   (f5-1 (* f5-0 f10-0))
-                                                   (f11-0 (* f4-0 f5-1))
-                                                   (f10-1 (* f0-3 f5-1))
-                                                   (f5-2 (- f8-0 f3-0))
-                                                   (f8-1 (* f11-0 f9-1))
-                                                   (f11-1 (/ f1-0 (+ f5-2 f0-3)))
-                                                   (f9-3 (* f4-0 f8-1))
-                                                   (f8-2 (* f2-3 f8-1))
-                                                   (f11-2 (* f10-1 f11-1))
-                                                   (f10-3 (+ (* f5-2 f11-2) f8-2))
-                                                   (f8-3 (* f0-3 f11-2))
-                                                   (f6-1 (- f3-0 f6-0))
-                                                   (f3-1 (- f7-0 f3-0))
-                                                   (f7-3 (* f9-3 (/ f1-0 (+ f4-0 f6-1))))
-                                                   (f4-1 (* f4-0 f7-3))
-                                                   (f6-2 (* f6-1 f7-3))
-                                                   (f7-6 (* f10-3 (/ f1-0 (+ f5-2 f2-3))))
-                                                   (f5-4 (+ (* f5-2 f7-6) f6-2))
-                                                   (f2-4 (* f2-3 f7-6))
-                                                   (f1-2 (* f8-3 (the-as float (/ f1-0 (+ f3-1 f0-3)))))
-                                                   (f2-5 (+ (* f3-1 f1-2) f2-4))
-                                                   (f0-4 (* f0-3 f1-2))
-                                                   )
-                                              (set! (-> arg0 x) f4-1)
-                                              (set! (-> arg0 y) f5-4)
-                                              (set! (-> arg0 z) f2-5)
-                                              (set! (-> arg0 w) f0-4)
-                                              )
-          )
+    (let* ((f1-0 a1-1)
+           (f5-0 f1-0)
+           )
+      0.0
+      0.0
+      (let* ((f0-2 (-> (the-as (pointer float) v1-1) 0))
+             (f2-0 (-> (the-as (pointer float) v1-1) 1))
+             (f0-3 (- f3-0 f0-2))
+             (f4-0 (- f2-0 f3-0))
+             (f10-0 (/ f1-0 (+ f4-0 f0-3)))
+             (f2-2 (-> (the-as (pointer float) v1-1) -1))
+             (f8-0 (-> (the-as (pointer float) v1-1) 2))
+             (f2-3 (- f3-0 f2-2))
+             (f9-0 (+ f4-0 f2-3))
+             (f6-0 (-> (the-as (pointer float) v1-1) -2))
+             (f7-0 (-> (the-as (pointer float) v1-1) 3))
+             (f9-1 (/ f1-0 f9-0))
+             (f5-1 (* f5-0 f10-0))
+             (f11-0 (* f4-0 f5-1))
+             (f10-1 (* f0-3 f5-1))
+             (f5-2 (- f8-0 f3-0))
+             (f8-1 (* f11-0 f9-1))
+             (f11-1 (/ f1-0 (+ f5-2 f0-3)))
+             (f9-3 (* f4-0 f8-1))
+             (f8-2 (* f2-3 f8-1))
+             (f11-2 (* f10-1 f11-1))
+             (f10-3 (+ (* f5-2 f11-2) f8-2))
+             (f8-3 (* f0-3 f11-2))
+             (f6-1 (- f3-0 f6-0))
+             (f3-1 (- f7-0 f3-0))
+             (f7-3 (* f9-3 (/ f1-0 (+ f4-0 f6-1))))
+             (f4-1 (* f4-0 f7-3))
+             (f6-2 (* f6-1 f7-3))
+             (f7-6 (* f10-3 (/ f1-0 (+ f5-2 f2-3))))
+             (f5-4 (+ (* f5-2 f7-6) f6-2))
+             (f2-4 (* f2-3 f7-6))
+             (f1-2 (* f8-3 (the-as float (/ f1-0 (+ f3-1 f0-3)))))
+             (f2-5 (+ (* f3-1 f1-2) f2-4))
+             (f0-4 (* f0-3 f1-2))
+             )
+        (set! (-> arg0 x) f4-1)
+        (set! (-> arg0 y) f5-4)
+        (set! (-> arg0 z) f2-5)
+        (set! (-> arg0 w) f0-4)
+        )
+      )
     )
   arg0
   )

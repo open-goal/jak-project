@@ -542,7 +542,7 @@ class CollideLoaderStage : public LoaderStage {
 class StallLoaderStage : public LoaderStage {
  public:
   StallLoaderStage() : LoaderStage("stall") {}
-  bool run(Timer&, LoaderInput& data) override {
+  bool run(Timer&, LoaderInput& /*data*/) override {
     m_count++;
     if (m_count > 10) {
       return true;

@@ -6,12 +6,15 @@
 
 #include "game/graphics/pipelines/opengl.h"
 
-Shader::Shader(const std::string& shader_name) {
+Shader::Shader(const std::string& shader_name, GameVersion version) {
+  std::string height_scale = version == GameVersion::Jak1 ? "1.0" : "0.5";
   // read the shader source
   auto vert_src =
       file_util::read_text_file(file_util::get_file_path({shader_folder, shader_name + ".vert"}));
   auto frag_src =
       file_util::read_text_file(file_util::get_file_path({shader_folder, shader_name + ".frag"}));
+
+  vert_src = std::regex_replace(vert_src, std::regex("HEIGHT_SCALE"), height_scale);
 
   m_vert_shader = glCreateShader(GL_VERTEX_SHADER);
   const char* src = vert_src.c_str();
@@ -66,31 +69,31 @@ void Shader::activate() const {
   glUseProgram(m_program);
 }
 
-ShaderLibrary::ShaderLibrary() {
-  at(ShaderId::SOLID_COLOR) = {"solid_color"};
-  at(ShaderId::DIRECT_BASIC) = {"direct_basic"};
-  at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured"};
-  at(ShaderId::DEBUG_RED) = {"debug_red"};
-  at(ShaderId::SPRITE) = {"sprite_3d"};
-  at(ShaderId::SKY) = {"sky"};
-  at(ShaderId::SKY_BLEND) = {"sky_blend"};
-  at(ShaderId::TFRAG3) = {"tfrag3"};
-  at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex"};
-  at(ShaderId::SPRITE3) = {"sprite3_3d"};
-  at(ShaderId::DIRECT2) = {"direct2"};
-  at(ShaderId::EYE) = {"eye"};
-  at(ShaderId::GENERIC) = {"generic"};
-  at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture"};
-  at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap"};
-  at(ShaderId::OCEAN_COMMON) = {"ocean_common"};
-  at(ShaderId::SHRUB) = {"shrub"};
-  at(ShaderId::SHADOW) = {"shadow"};
-  at(ShaderId::COLLISION) = {"collision"};
-  at(ShaderId::MERC2) = {"merc2"};
-  at(ShaderId::SPRITE_DISTORT) = {"sprite_distort"};
-  at(ShaderId::SPRITE_DISTORT_INSTANCED) = {"sprite_distort_instanced"};
-  at(ShaderId::POST_PROCESSING) = {"post_processing"};
-  at(ShaderId::DEPTH_CUE) = {"depth_cue"};
+ShaderLibrary::ShaderLibrary(GameVersion version) {
+  at(ShaderId::SOLID_COLOR) = {"solid_color", version};
+  at(ShaderId::DIRECT_BASIC) = {"direct_basic", version};
+  at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured", version};
+  at(ShaderId::DEBUG_RED) = {"debug_red", version};
+  at(ShaderId::SPRITE) = {"sprite_3d", version};
+  at(ShaderId::SKY) = {"sky", version};
+  at(ShaderId::SKY_BLEND) = {"sky_blend", version};
+  at(ShaderId::TFRAG3) = {"tfrag3", version};
+  at(ShaderId::TFRAG3_NO_TEX) = {"tfrag3_no_tex", version};
+  at(ShaderId::SPRITE3) = {"sprite3_3d", version};
+  at(ShaderId::DIRECT2) = {"direct2", version};
+  at(ShaderId::EYE) = {"eye", version};
+  at(ShaderId::GENERIC) = {"generic", version};
+  at(ShaderId::OCEAN_TEXTURE) = {"ocean_texture", version};
+  at(ShaderId::OCEAN_TEXTURE_MIPMAP) = {"ocean_texture_mipmap", version};
+  at(ShaderId::OCEAN_COMMON) = {"ocean_common", version};
+  at(ShaderId::SHRUB) = {"shrub", version};
+  at(ShaderId::SHADOW) = {"shadow", version};
+  at(ShaderId::COLLISION) = {"collision", version};
+  at(ShaderId::MERC2) = {"merc2", version};
+  at(ShaderId::SPRITE_DISTORT) = {"sprite_distort", version};
+  at(ShaderId::SPRITE_DISTORT_INSTANCED) = {"sprite_distort_instanced", version};
+  at(ShaderId::POST_PROCESSING) = {"post_processing", version};
+  at(ShaderId::DEPTH_CUE) = {"depth_cue", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

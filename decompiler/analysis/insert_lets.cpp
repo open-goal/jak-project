@@ -699,6 +699,56 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   return in->entries().at(0).src->try_as_single_element();
 }
 
+FormElement* rewrite_set_let(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((dest-var src))
+   *   (set! something dest-var)
+   *   dest-var
+   *   )
+   * to:
+   * (set! something src)
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  auto var = in->entries().at(0).dest;
+  auto reg = var.reg();
+  if (reg.get_kind() == Reg::GPR && !reg.allowed_local_gpr()) {
+    return nullptr;
+  }
+
+  auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  if (!set_elt) {
+    return nullptr;
+  }
+
+  auto expr_elt = dynamic_cast<SimpleExpressionElement*>(in->body()->at(1));
+  if (!expr_elt || !expr_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(expr_elt->expr().var())) {
+    return nullptr;
+  }
+
+  auto set_src_elt = set_elt->src()->try_as_element<SimpleExpressionElement>();
+  if (!set_src_elt || !set_src_elt->expr().is_var()) {
+    return nullptr;
+  }
+
+  if (env.get_variable_name(var) != env.get_variable_name(set_src_elt->expr().var())) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<SetFormFormElement>(set_elt->dst(), in->entries().at(0).src);
+}
+
 Form* strip_truthy(Form* in) {
   auto as_ge = in->try_as_element<GenericElement>();
   if (as_ge) {
@@ -1130,19 +1180,26 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
 
   auto form_fg = set_fg ? set_fg : arg_group;
+  // jak 1: (the float (+ (-> a0-14 frame-group data 0 length) -1))
+  // jak 2: (the float (+ (-> a0-14 frame-group frames num-frames) -1))
+  auto matcher_cur_group_max_frames =
+      env.version == GameVersion::Jak1
+          ? Matcher::deref(
+                Matcher::any_reg(0), false,
+                {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("data"),
+                 DerefTokenMatcher::integer(0), DerefTokenMatcher::string("length")})
+          : Matcher::deref(
+                Matcher::any_reg(0), false,
+                {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("frames"),
+                 DerefTokenMatcher::string("num-frames")});
   auto matcher_max_num = Matcher::cast(
-      "float",
-      Matcher::op_fixed(
-          FixedOperatorKind::ADDITION,
-          {form_fg
-               ? Matcher::deref(Matcher::any(1), false,
-                                {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
-                                 DerefTokenMatcher::string("length")})
-               : Matcher::deref(
-                     Matcher::any_reg(0), false,
-                     {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("data"),
-                      DerefTokenMatcher::integer(0), DerefTokenMatcher::string("length")}),
-           Matcher::integer(-1)}));
+      "float", Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                                 {form_fg ? Matcher::deref(Matcher::any(1), false,
+                                                           {DerefTokenMatcher::string("data"),
+                                                            DerefTokenMatcher::integer(0),
+                                                            DerefTokenMatcher::string("length")})
+                                          : matcher_cur_group_max_frames,
+                                  Matcher::integer(-1)}));
 
   // DONE CHECKING EVERYTHING!!! Now write the goddamn macro.
   std::vector<Form*> args;
@@ -1413,7 +1470,19 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           args.push_back(as_func->elts().at(i));
         }
 
-        if (mr_ac_call.maps.forms.at(1)->to_string(env) != fmt::format("'{}", proc_type)) {
+        std::string expected_name;
+        switch (env.version) {
+          case GameVersion::Jak1:
+            expected_name = fmt::format("'{}", proc_type);
+            break;
+          case GameVersion::Jak2:
+            expected_name = fmt::format("(symbol->string (-> {} symbol))", proc_type);
+            break;
+          default:
+            ASSERT(false);
+        }
+
+        if (mr_ac_call.maps.forms.at(1)->to_string(env) != expected_name) {
           ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(1), "name");
         }
         if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
@@ -1612,6 +1681,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+  // these are ordered based on frequency. for best performance, you check the most likely rewrites
+  // first!
+
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     stats.unused++;
@@ -1682,6 +1754,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_proc_new) {
     stats.proc_new++;
     return as_proc_new;
+  }
+
+  auto as_set_let = rewrite_set_let(in, env, pool);
+  if (as_set_let) {
+    stats.set_let++;
+    return as_set_let;
   }
 
   auto as_attack_info = rewrite_attack_info(in, env, pool);

@@ -41,7 +41,7 @@ void MessageBuffer::handle_char(char c) {
     // If so, add it to our known headers.
     // We'll also reset our string then.
     if (!header_name.empty()) {
-      lg::debug("found header!");
+      lg::trace("found header!");
       m_headers[header_name] = header_value;
       m_raw_message.clear();
     }
@@ -53,7 +53,7 @@ void MessageBuffer::handle_char(char c) {
     m_raw_message.clear();
     m_is_header_done = true;
     m_reading_content = true;
-    lg::debug("Header complete, content length: {}", m_headers["Content-Length"]);
+    lg::trace("Header complete, content length: {}", m_headers["Content-Length"]);
   }
 
   if (m_is_header_done) {

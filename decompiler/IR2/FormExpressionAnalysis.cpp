@@ -72,12 +72,33 @@ Form* strip_pcypld_64(Form* in) {
   }
 }
 
-std::optional<float> get_goal_float_constant(Form* in) {
-  auto as_fc = in->try_as_element<ConstantFloatElement>();
+std::optional<float> get_goal_float_constant(FormElement* in) {
+  auto as_fc = dynamic_cast<ConstantFloatElement*>(in);
   if (as_fc) {
     return as_fc->value();
   }
   return {};
+}
+
+std::optional<float> get_goal_float_constant(Form* in) {
+  auto elt = in->try_as_single_element();
+  if (elt) {
+    return get_goal_float_constant(elt);
+  } else {
+    return {};
+  }
+}
+
+bool cond_has_only_single_elements(CondWithElseElement* in) {
+  for (auto& entry : in->entries) {
+    if (entry.body->elts().size() > 1) {
+      return false;
+    }
+  }
+  if (in->else_ir->elts().size() > 1) {
+    return false;
+  }
+  return true;
 }
 }  // namespace
 
@@ -198,6 +219,27 @@ Form* try_cast_simplify(Form* in,
 
   auto type_info = env.dts->ts.lookup_type_allow_partial_def(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  auto* in_as_cond = in->try_as_element<CondWithElseElement>();
+
+  // try to fix (the-as <enum> (if foo 12 13)) type stuff by applying the casts inside a cond if:
+  // - it's casting to a bitfield/enum (this could be expanded to more in the future if needed)
+  // - the cond has an explicit else case (otherwise the #f from not hitting any case...)
+  // - it's not a sound-id - these are basically used like ints so it gets worse
+  // - the cond doesn't have multiple entries in the body
+  //    in theory this could be better if we could only apply a cast to the last element in the body
+  //    but this is a bit too much work for exactly 1 case in jak 1.
+  if ((bitfield_info || enum_info) && in_as_cond && type_info->get_name() != "sound-id" &&
+      cond_has_only_single_elements(in_as_cond)) {
+    for (auto& cas : in_as_cond->entries) {
+      cas.body = try_cast_simplify(cas.body, new_type, pool, env, tc_pass);
+      cas.body->parent_element = in_as_cond;
+    }
+    in_as_cond->else_ir = try_cast_simplify(in_as_cond->else_ir, new_type, pool, env, tc_pass);
+    in_as_cond->else_ir->parent_element = in_as_cond;
+    return in;
+  }
+
   if (bitfield_info) {
     // todo remove this.
     if (bitfield_info->get_load_size() == 8) {
@@ -206,7 +248,6 @@ Form* try_cast_simplify(Form* in,
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
-  auto enum_info = dynamic_cast<EnumType*>(type_info);
   if (enum_info) {
     if (enum_info->is_bitfield()) {
       return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
@@ -1225,7 +1266,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   auto& name = env.func->guessed_name;
   if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
       env.func->type.arg_count() == 3) {
-    if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && (arg1_i || arg1_u)) {
+    if ((env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) ||
+         arg0_type.typespec().base_type() == "inline-array") &&
+        (arg1_i || arg1_u)) {
       auto new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
       result->push_back(new_form);
@@ -1858,20 +1901,33 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     return;
   }
 
+  // jak 1:
+  // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
+  // jak 2:
+  // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
+  auto pid_deref_matcher = Matcher::op_fixed(
+      FixedOperatorKind::SHL,
+      {Matcher::deref(Matcher::any_reg(0), false,
+                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+       Matcher::integer(32)});
   auto make_handle_matcher = Matcher::op_fixed(
       FixedOperatorKind::LOGIOR,
-      {Matcher::op_fixed(
-           FixedOperatorKind::SHL,
-           {Matcher::deref(Matcher::any_reg(0), false,
-                           {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
-            Matcher::integer(32)}),
+      {env.version == GameVersion::Jak1
+           ? pid_deref_matcher
+           : Matcher::if_with_else(
+                 Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY),
+                             {Matcher::any_reg(2)}),
+                 pid_deref_matcher, Matcher::integer(0)),
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
   auto handle_mr = match(make_handle_matcher, element);
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
-    if (env.get_variable_name(var_a) == env.get_variable_name(var_b) &&
+    const auto& var_name = env.get_variable_name(var_a);
+    if (var_name == env.get_variable_name(var_b) &&
+        (env.version == GameVersion::Jak1 ||
+         var_name == env.get_variable_name(handle_mr.maps.regs.at(2).value())) &&
         env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
                        env.get_variable_type(var_a, true))) {
       auto* menv = const_cast<Env*>(&env);
@@ -4898,7 +4954,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 namespace {
 
 void push_asm_srl_to_stack(const AsmOp* op,
-                           FormElement* /*form_elt*/,
+                           FormElement* form_elt,
                            const Env& env,
                            FormPool& pool,
                            FormStack& stack) {
@@ -4925,7 +4981,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
   } else {
-    // stack.push_form_element(form_elt, true);
+    //
     auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
     if (as_ba) {
@@ -4935,9 +4991,10 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error(
-          fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
-                      src_var->to_string(env), arg0_type.print()));
+      stack.push_form_element(form_elt, true);
+      //  throw std::runtime_error(
+      //  fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
+      //             src_var->to_string(env), arg0_type.print()));
     }
   }
 }

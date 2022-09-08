@@ -7,3 +7,841 @@
 
 ;; DECOMP BEGINS
 
+;; sphere-cull
+;; guard-band-cull
+;; sphere-in-view-frustum?
+;; line-in-view-frustum?
+;; vis-cull
+;; error-sphere
+
+;; drawable methods
+
+(defun real-main-draw-hook ()
+  (local-vars (a0-96 int) (a0-98 int))
+  (with-pp
+    (when *slow-frame-rate*
+      (dotimes (v1-2 #xc35000)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        )
+      )
+    "Function to be executed to set up for engine dma"
+
+    ;; update render/texture upload masks
+    (set! (-> *display* vu1-enable-user) (-> *display* vu1-enable-user-menu))
+    ;(set! (-> *texture-pool* texture-enable-user) (-> *texture-pool* texture-enable-user-menu))
+
+    ;; display memory stats
+    ; (when *debug-segment*
+    ;   (when (and *stats-memory* (!= *master-mode* 'menu))
+    ;     (cond
+    ;       (*stats-memory-short*
+    ;         (dotimes (gp-0 (-> *level* length))
+    ;           (let ((s5-0 (-> *level* level gp-0)))
+    ;             (if (= (-> s5-0 status) 'active)
+    ;                 (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
+    ;                 )
+    ;             )
+    ;           )
+    ;         )
+    ;       (else
+    ;         (let ((gp-1 (-> *level* level *stats-memory-level-index*)))
+    ;           (if (and gp-1 (= (-> gp-1 status) 'active))
+    ;               (print-mem-usage (compute-memory-usage gp-1 #f) gp-1 *stdcon*)
+    ;               )
+    ;           )
+    ;         )
+    ;       )
+    ;     )
+    ;   (reset! *dma-mem-usage*)
+    ;   )
+
+    ;; set up foreground buckets
+    ; (foreground-initialize-engines)
+
+    ;; update time of day and wind effects.
+    ; (let ((gp-2 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (if (not (paused?))
+    ;       (update-wind *wind-work* *wind-scales*)
+    ;       )
+    ;   (update-time-of-day *time-of-day-context*)
+    ;   (set! (-> pp clock) gp-2)
+    ;   )
+
+
+    ;; draw the sky
+    (with-profiler 'sky *profile-sky-color*
+      ; (if (-> *sky-work* draw-vortex)
+      ;     (draw-vortex)
+      ;     (draw *sky-work*)
+      ;     )
+      (flush-cache 0)
+      )
+
+    ;; draw the ocean
+    ; (let ((gp-5 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (with-profiler 'ocean *profile-ocean-color*
+    ;     (draw! *ocean*)
+    ;     (if *ocean-map*
+    ;         (update-map *ocean*)
+    ;         )
+    ;     )
+    ;   (set! (-> pp clock) gp-5)
+    ;   )
+
+    ;; run the foreground system
+    ; (foreground-engine-execute *foreground-draw-engine* (-> *display* frames (-> *display* on-screen)))
+    ; (let ((gp-6 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (foreground-execute-cpu-vu0-engines)
+    ;   (set! (-> pp clock) gp-6)
+    ;   )
+
+    ;; ??
+    ; (when *add-sphere*
+    ;   )
+
+    ;; run the sprite/particle system.
+    ; (if (not (paused?))
+    ;     (execute-part-engine)
+    ;     )
+    ; (if (logtest? (vu1-renderer-mask rn29) (-> *display* vu1-enable-user))
+    ;     (sprite-draw *display*)
+    ;     )
+
+    ;; debug draw collision stuff before processing it.
+    (when *debug-segment*
+      ; (debug-draw-actors *level* *display-actor-marks*)
+      ; (collide-shape-draw-debug-marks)
+      )
+
+    ;; after debug drawing, send events to actors
+    ; (send-events-for-touching-shapes *touching-list*)
+    ; (free-nodes *touching-list*)
+    ; (prepare *collide-rider-pool*)
+    ; (send-all! *event-queue*)
+
+    ;; spawn/update actors
+    (with-profiler 'update-actors *profile-update-actors-color*
+      ;(actors-update *level*)
+      )
+
+    ;; ??
+    (with-profiler 'nav *profile-nav-color*
+      ;; ((method-of-object *level* level-group-method-18))
+      )
+
+    #|
+    (when *debug-segment*
+      (let ((gp-11 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-255 'background)
+            (s5-9 *profile-background-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-8 (-> gp-11 data (-> gp-11 count))))
+            (let ((s3-5 (-> gp-11 base-time)))
+              (set! (-> s4-8 name) v1-255)
+              (set! (-> s4-8 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-5))))
+              )
+            (set! (-> s4-8 depth) (the-as uint (-> gp-11 depth)))
+            (set! (-> s4-8 color) s5-9)
+            (set! (-> gp-11 segment (-> gp-11 depth)) s4-8)
+            )
+          (+! (-> gp-11 count) 1)
+          (+! (-> gp-11 depth) 1)
+          (set! (-> gp-11 max-depth) (max (-> gp-11 max-depth) (-> gp-11 depth)))
+          )
+        )
+      0
+      )
+    (init-background)
+    (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen)))
+    (let* ((v1-275 (&-> *perf-stats* data 32 accum0))
+           (a0-94 (-> v1-275 7))
+           )
+      (+! (-> v1-275 1) 1)
+      (b! (zero? a0-94) cfg-116 :delay (nop!))
+      (.mtc0 Perf r0)
+      (.sync.l)
+      (.sync.p)
+      (.mtpc pcr0 r0)
+      (.mtpc pcr1 r0)
+      (.sync.l)
+      (.sync.p)
+      (.mtc0 Perf a0-94)
+      )
+    (.sync.l)
+    (.sync.p)
+    (label cfg-116)
+    0
+    (finish-background)
+    (let ((v1-278 (&-> *perf-stats* data 32 accum0)))
+      (b! (zero? (-> v1-278 7)) cfg-118 :delay (nop!))
+      (.mtc0 Perf r0)
+      (.sync.l)
+      (.sync.p)
+      (.mfpc a0-96 pcr0)
+      (+! (-> v1-278 8) a0-96)
+      (.mfpc a0-98 pcr1)
+      (+! (-> v1-278 9) a0-98)
+      )
+    (label cfg-118)
+    0
+    ((method-of-type perf-stat update-wait-stats)
+     (the-as perf-stat (&-> *perf-stats* data 32 accum0))
+     (-> *background-work* wait-to-vu0)
+     (the-as uint 0)
+     (the-as uint 0)
+     )
+    (b! (not *debug-segment*) cfg-126 :delay (empty-form))
+    (let ((gp-12 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+      (when (and *dproc* *debug-segment*)
+        (let* ((v1-295 (+ (-> gp-12 depth) -1))
+               (s5-10 (-> gp-12 segment v1-295))
+               (s4-9 (-> gp-12 base-time))
+               )
+          (when (>= v1-295 0)
+            (set! (-> s5-10 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-9))))
+            (+! (-> gp-12 depth) -1)
+            )
+          )
+        )
+      )
+    0
+    (label cfg-126)
+    (end-perf-stat-collection)
+    (when (and (!= *master-mode* 'menu) *stats-poly*)
+      (dotimes (gp-13 (-> *level* length))
+        (let ((v1-307 (-> *level* level gp-13)))
+          (if (= (-> v1-307 status) 'active)
+              (collect-stats (-> v1-307 bsp))
+              )
+          )
+        )
+      (print-terrain-stats)
+      )
+    (when (not (paused?))
+      (if (and (!= *master-mode* 'menu) *stats-perf*)
+          (print-perf-stats)
+          )
+      (if (and (!= *master-mode* 'menu) *stats-collide*)
+          (print-collide-stats)
+          )
+      )
+    (start-perf-stat-collection)
+    |#
+    0
+    (none)
+    )
+  )
+
+(defun main-draw-hook ()
+  (real-main-draw-hook)
+  (none)
+  )
+
+(define *draw-hook* main-draw-hook)
+
+(defun default-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
+  (let ((v1-6 (-> *display* frames (-> *display* on-screen) bucket-group arg0)))
+    (when (!= v1-6 (-> v1-6 last))
+      (let* ((a0-8 (-> *display* frames (-> *display* on-screen) global-buf))
+             (a3-3 (-> a0-8 base))
+             )
+        (let* ((t0-0 a0-8)
+               (t1-0 (the-as dma-packet (-> t0-0 base)))
+               )
+          (set! (-> t1-0 dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+          (set! (-> t1-0 vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+          (set! (-> t1-0 vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
+          (set! (-> t0-0 base) (the-as pointer (&+ t1-0 16)))
+          )
+        (let* ((t0-1 a0-8)
+               (t1-2 (the-as object (-> t0-1 base)))
+               )
+          (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
+          (set! (-> (the-as gs-gif-tag t1-2) regs) (new 'static 'gif-tag-regs
+                                                     :regs0 (gif-reg-id a+d)
+                                                     :regs1 (gif-reg-id a+d)
+                                                     :regs2 (gif-reg-id a+d)
+                                                     :regs3 (gif-reg-id a+d)
+                                                     :regs4 (gif-reg-id a+d)
+                                                     :regs5 (gif-reg-id a+d)
+                                                     :regs6 (gif-reg-id a+d)
+                                                     :regs7 (gif-reg-id a+d)
+                                                     :regs8 (gif-reg-id a+d)
+                                                     :regs9 (gif-reg-id a+d)
+                                                     :regs10 (gif-reg-id a+d)
+                                                     :regs11 (gif-reg-id a+d)
+                                                     :regs12 (gif-reg-id a+d)
+                                                     :regs13 (gif-reg-id a+d)
+                                                     :regs14 (gif-reg-id a+d)
+                                                     :regs15 (gif-reg-id a+d)
+                                                     )
+                )
+          (set! (-> t0-1 base) (&+ (the-as pointer t1-2) 16))
+          )
+        (let* ((t0-2 a0-8)
+               (t1-4 (-> t0-2 base))
+               )
+          (set! (-> (the-as (pointer gs-zbuf) t1-4) 0) arg1)
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 zbuf-1))
+          (set! (-> (the-as (pointer gs-test) t1-4) 2) arg2)
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 test-1))
+          (set! (-> (the-as (pointer gs-alpha) t1-4) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 5) (gs-reg64 alpha-1))
+          (set! (-> (the-as (pointer uint64) t1-4) 6) (the-as uint 0))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 7) (gs-reg64 pabe))
+          (set! (-> (the-as (pointer gs-clamp) t1-4) 8)
+                (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+                )
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 9) (gs-reg64 clamp-1))
+          (set! (-> (the-as (pointer gs-tex0) t1-4) 10) (new 'static 'gs-tex0 :tbp0 #x60))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 11) (gs-reg64 tex1-1))
+          (set! (-> (the-as (pointer gs-texa) t1-4) 12) (new 'static 'gs-texa :ta1 #x80))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 13) (gs-reg64 texa))
+          (set! (-> (the-as (pointer gs-texclut) t1-4) 14) (new 'static 'gs-texclut :cbw #x4))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 15) (gs-reg64 texclut))
+          (set! (-> (the-as (pointer uint64) t1-4) 16) (the-as uint *fog-color*))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 17) (gs-reg64 fogcol))
+          (set! (-> t0-2 base) (&+ t1-4 144))
+          )
+        (let ((a1-18 (the-as object (-> a0-8 base))))
+          (set! (-> (the-as dma-packet a1-18) dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> v1-6 next)))
+          (set! (-> (the-as dma-packet a1-18) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet a1-18) vif1) (new 'static 'vif-tag))
+          (set! (-> a0-8 base) (&+ (the-as pointer a1-18) 16))
+          )
+        (set! (-> v1-6 next) (the-as uint a3-3))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun default-end-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
+  (let ((v1-6 (-> *display* frames (-> *display* on-screen) bucket-group arg0)))
+    (when (!= v1-6 (-> v1-6 last))
+      (let* ((a3-2 (-> *display* frames (-> *display* on-screen) global-buf))
+             (a0-8 (-> a3-2 base))
+             )
+        (let* ((t0-1 a3-2)
+               (t1-0 (the-as dma-packet (-> t0-1 base)))
+               )
+          (set! (-> t1-0 dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+          (set! (-> t1-0 vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+          (set! (-> t1-0 vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
+          (set! (-> t0-1 base) (the-as pointer (&+ t1-0 16)))
+          )
+        (let* ((t0-2 a3-2)
+               (t1-2 (the-as object (-> t0-2 base)))
+               )
+          (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
+          (set! (-> (the-as gs-gif-tag t1-2) regs) (new 'static 'gif-tag-regs
+                                                     :regs0 (gif-reg-id a+d)
+                                                     :regs1 (gif-reg-id a+d)
+                                                     :regs2 (gif-reg-id a+d)
+                                                     :regs3 (gif-reg-id a+d)
+                                                     :regs4 (gif-reg-id a+d)
+                                                     :regs5 (gif-reg-id a+d)
+                                                     :regs6 (gif-reg-id a+d)
+                                                     :regs7 (gif-reg-id a+d)
+                                                     :regs8 (gif-reg-id a+d)
+                                                     :regs9 (gif-reg-id a+d)
+                                                     :regs10 (gif-reg-id a+d)
+                                                     :regs11 (gif-reg-id a+d)
+                                                     :regs12 (gif-reg-id a+d)
+                                                     :regs13 (gif-reg-id a+d)
+                                                     :regs14 (gif-reg-id a+d)
+                                                     :regs15 (gif-reg-id a+d)
+                                                     )
+                )
+          (set! (-> t0-2 base) (&+ (the-as pointer t1-2) 16))
+          )
+        (let* ((t0-3 a3-2)
+               (t1-4 (-> t0-3 base))
+               )
+          (set! (-> (the-as (pointer gs-zbuf) t1-4) 0) arg1)
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 zbuf-1))
+          (set! (-> (the-as (pointer gs-test) t1-4) 2) arg2)
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 test-1))
+          (set! (-> (the-as (pointer gs-alpha) t1-4) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 5) (gs-reg64 alpha-1))
+          (set! (-> (the-as (pointer uint64) t1-4) 6) (the-as uint 0))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 7) (gs-reg64 pabe))
+          (set! (-> (the-as (pointer gs-clamp) t1-4) 8)
+                (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+                )
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 9) (gs-reg64 clamp-1))
+          (set! (-> (the-as (pointer gs-tex0) t1-4) 10) (new 'static 'gs-tex0 :tbp0 #x60))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 11) (gs-reg64 tex1-1))
+          (set! (-> (the-as (pointer gs-texa) t1-4) 12) (new 'static 'gs-texa :ta1 #x80))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 13) (gs-reg64 texa))
+          (set! (-> (the-as (pointer gs-texclut) t1-4) 14) (new 'static 'gs-texclut :cbw #x4))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 15) (gs-reg64 texclut))
+          (set! (-> (the-as (pointer uint64) t1-4) 16) (the-as uint *fog-color*))
+          (set! (-> (the-as (pointer gs-reg64) t1-4) 17) (gs-reg64 fogcol))
+          (set! (-> t0-3 base) (&+ t1-4 144))
+          )
+        (let ((t0-4 (-> a3-2 base)))
+          (let ((a1-18 (the-as object (-> a3-2 base))))
+            (set! (-> (the-as dma-packet a1-18) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+            (set! (-> (the-as dma-packet a1-18) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a1-18) vif1) (new 'static 'vif-tag))
+            (set! (-> a3-2 base) (&+ (the-as pointer a1-18) 16))
+            )
+          (set! (-> (the-as dma-bucket (-> v1-6 last)) next) (the-as uint a0-8))
+          (set! (-> v1-6 last) (the-as (pointer dma-tag) t0-4))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+
+(defun display-frame-start ((arg0 display) (arg1 int) (arg2 float))
+  "Advance clocks, poll pads/mouse, set up buckets."
+  ;; workaround for PS2 HW bug
+  ; (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+  ;; tick frame clocks
+  (set-time-ratios *display* 1.0)
+  (tick! (-> arg0 frame-clock))
+  (tick! (-> arg0 real-frame-clock))
+
+  ;; tick other clocks
+  (set-time-ratios *display* arg2)
+  (tick! (-> arg0 session-clock))
+  (tick! (-> arg0 game-clock))
+  (tick! (-> arg0 total-game-clock))
+  (tick! (-> arg0 base-clock))
+  (tick! (-> arg0 real-clock))
+  (tick! (-> arg0 target-clock))
+  (tick! (-> arg0 camera-clock))
+  (tick! (-> arg0 entity-clock))
+  (tick! (-> arg0 user0-clock))
+  (tick! (-> arg0 bg-clock))
+  (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
+  (tick! (-> arg0 part-clock))
+
+  ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
+  ;   (let ((v1-43 (-> *screen-shot-work* size)))
+  ;     (if (!= (-> *screen-shot-work* count) (* v1-43 v1-43))
+  ;         (store-image *screen-shot-work*)
+  ;         )
+  ;     )
+  ;   (+! (-> *screen-shot-work* count) -1)
+  ;   (if (= (-> *screen-shot-work* count) -1)
+  ;       (set! (-> *screen-shot-work* size) -1)
+  ;       )
+  ;   )
+
+  (let ((s5-1 (-> arg0 frames arg1)))
+    (if *sync-dma*
+        (sync-path 0 0)
+        )
+
+    (let ((v1-57 (-> s5-1 global-buf)))
+      (set! (-> v1-57 base) (-> v1-57 data))
+      (set! (-> v1-57 end) (&-> v1-57 data-buffer (-> v1-57 allocated-length)))
+      )
+    (let ((v1-58 (-> s5-1 global-buf)))
+      (&+! (-> v1-58 end) -65536)
+      )
+    (when *debug-segment*
+      (let ((v1-61 (-> s5-1 debug-buf)))
+        (set! (-> v1-61 base) (-> v1-61 data))
+        (set! (-> v1-61 end) (&-> v1-61 data-buffer (-> v1-61 allocated-length)))
+        )
+      )
+    (let ((v1-62 (-> s5-1 calc-buf)))
+      (set! (-> v1-62 base) (-> v1-62 data))
+      (set! (-> v1-62 end) (&-> v1-62 data-buffer (-> v1-62 allocated-length)))
+      )
+    (*pre-draw-hook* (-> s5-1 calc-buf))
+    (when (not (paused?))
+      (clear *stdcon1*)
+      ;(debug-reset-buffers)
+      ;(clear! *simple-sprite-system*)
+      )
+    (set! (-> s5-1 bucket-group) (dma-buffer-add-buckets (-> s5-1 calc-buf) 327))
+    )
+
+  ; (service-cpads)
+  ; (service-mouse)
+  ; (execute-connections *pad-engine* #f)
+  (none)
+  )
+
+(defun pc-maybe-vsync ()
+  "PC Port implementation of the block of code in display-sync that computes frame-time-ratio and maybe vsyncs."
+  ;; for now, it's very simple.
+
+  ;; I think the right logic in the future is to always vsync here, but return a more accurate dog ratio.
+
+  (syncv 0) ;; sync always!
+  ;(set! *ticks-per-frame* 9765) ;; hack!
+  1.0       ;; and report that we run at full speed.
+  )
+
+(defun display-sync ((arg0 display))
+  "Determine frame timing, possibly vsync, and kick off next DMA.
+   This also calls sync-path, but this appears redundant because the display loop did this already."
+
+  ;; The "rendered" frame is the one that has had its DMA processed and is completed and in VRAM.
+  ;; The "drawn" frame is the one that has DMA ready, but not sent.
+  ;; The "vblank period" is how long in between actual frames on the TV. This is 16.67 ms for NTSC.
+
+  ;; This function will kick off the drawn frame's DMA, possibly vsync, and update timing stuff.
+  ;; Currently, I believe the _start_ of the drawn frame's DMA will do the "blit" to move
+  ;; the "rendered" frame's image from the drawing buffer to the frame buffer, but it's possible I have this backward.
+
+  ;; apparently useless sync
+  ;; everything in here happens after DMA is done.
+  (sync-path 0 0)
+
+  (let* ((just-rendered-frame (-> arg0 last-screen))
+         (current-time (shl (timer1-time) 48))
+         (just-rendered-frame-start-time (shl (-> arg0 frames just-rendered-frame start-time) 48))
+         (prev-vblank-time-1 (shl (-> arg0 vblank-start-time 0) 48))
+         (prev-vblank-time-2 (shl (-> arg0 vblank-start-time 1) 48))
+         )
+
+    ;; measure the actual *ticks-per-frame* by comparing the timings of the last two vblanks.
+    ;; I think this should be constant for PAL/NTSC, the vblank interrupt happens no matter what and is based
+    ;; on the TV timing stuff.
+    ;(set! *ticks-per-frame* (sar (- prev-vblank-time-2 prev-vblank-time-1) 48))
+    (set! *ticks-per-frame* 9765) ;; HACK
+
+    (let* ((ticks-per-frame-f (the float *ticks-per-frame*))
+           ;; how long we spent on this frame (measured from the dma-send until now)
+           (frame-duration (the float (sar (- current-time (the-as uint just-rendered-frame-start-time)) 48)))
+           ;; how long we spent on this frame, as a fraction of the time between vblanks (the actual TV framerate)
+           (frame-time-ratio (/ frame-duration ticks-per-frame-f))
+           )
+      (/ (the float (sar (- current-time (the-as uint prev-vblank-time-2)) 48)) ticks-per-frame-f)
+
+      ;; how close we are to the next vblank (should be between 0 and 1)
+      (let ((vysnc-progress (/ (the float (sar (- current-time (the-as uint prev-vblank-time-2)) 48)) ticks-per-frame-f))
+            ;; the "lag ratio" of the frame that was just drawn.
+            (last-dog (fmax 1.0 (fmin 4.0 (-> *display* dog-ratio))))
+            )
+        (set! (-> arg0 frames just-rendered-frame run-time) (the-as time-frame (the int frame-duration)))
+
+        ;; next, we'll compute this "lag" ratio (will become dog-ratio of the next frame).
+        ;; higher numbers = game running slower = bigger timesteps
+        #|
+        (set! frame-time-ratio
+              (cond
+                ((-> arg0 run-half-speed)
+                 ;; running at half speed flag is likely used for debugging? It forces 1 vsync here always.
+                 (syncv 0)
+
+                 ;; do a vysnc if we are both:
+                 ;;  - took less than 2 vblank periods to do the last frame (we finished early)
+                 ;;  - we have more than 10% of the frame left.
+                 ;; see the comments in the next section for a better explanation of why they do this.
+                 (if (and (< (/ (the float (sar (- (shl (timer1-time) 48) (the-as uint just-rendered-frame-start-time)) 48))
+                                ticks-per-frame-f
+                                )
+                             2.0
+                             )
+                          (< vysnc-progress 0.9)
+                          )
+                     (syncv 0)
+                     )
+
+                 ;; report a dog-ratio of exactly 2 always, for this debug mode
+                 2.0
+                 )
+                (else
+                  ;; not using the half-speed debug option.
+
+                  (cond
+                    ;; case where we're lagging and don't want to vsync usually.
+                    ((< 1.0 frame-time-ratio)
+                     ;; we're lagging! In this case, we usually don't bother with vsync, and there would be tearing.
+
+                     ;; not sure about this check, but I guess we never vysnc here if we're on the first 2 frames of the game?
+                     (when (not (or (zero? prev-vblank-time-1) (zero? prev-vblank-time-2)))
+                       ;; if the force sync counter is set, do a vsync and decrease the counter.
+                       (when (> (-> arg0 force-sync) 0)
+                         (syncv 0)
+                         (+! (-> arg0 force-sync) -1)
+
+                         ;; update the frame-time-ratio because we just made this frame longer by vsyncing.
+                         (let ((v1-23 (shl (timer1-time) 48)))
+                           (the float (sar (- v1-23 (the-as uint just-rendered-frame-start-time)) 48))
+                           (set! frame-time-ratio
+                                 (/ (the float (sar (- v1-23 (the-as uint just-rendered-frame-start-time)) 48)) ticks-per-frame-f)
+                                 )
+                           )
+                         )
+                       )
+
+                     ;; this "dog-count" thing can be set to 1.0 if the game thinks that its running fast enough for full framerate
+                     ;; but the frame start time is misaligned with the actual TV's vblank.
+                     ;; we are lagging here, so we don't want this, and dog-count should be set to 0
+                     (set! (-> arg0 dog-count) 0.0)
+                     )
+
+                    ;; case where we're vsyncing.
+                    ;; this should happen if the last-dog is 1.0 (was fast enough), or if the dog-count is set
+                    ;; the dog-count will be set if the frames are fast enough, but not currently aligned.
+                    ((or (= last-dog 1.0) (!= (-> arg0 dog-count) 0.0))
+                     ;; still, only do the sync if we have a lot of time. I guess that vsyncing in other cases is not
+                     ;; needed, and just wastes time. Might as well start on the next frame early!
+                     (if (< vysnc-progress 0.9)
+                         (syncv 0)
+                         )
+                     ;; force no lag
+                     (set! frame-time-ratio 1.0)
+                     ;; clear dog-count, go back to normal lag/no-lag decisions.
+                     (set! (-> arg0 dog-count) 0.0)
+                     )
+                    (else
+                      ;; weird case: last frame was lag (last-dog != 1.0), but this frame wasn't (frame-time-ratio < 1).
+                      ;; so we're transition from lag to no lag. In this case, we want to get back aligned with vsyncs.
+                      ;; interestingly, we don't vsync immediately, but instead set a flag to vsync on the next frame, if
+                      ;; that frame's time is also non-lag. As a result, we only syncrhonize with vsync if we have 2 non-lag frames
+                      ;; in a row (both of them misaligned.), and we spread the syncrhonization delays between 2 frames
+
+
+                      (when (not (or (zero? prev-vblank-time-1) (zero? prev-vblank-time-2))) ;; only if we've done at least 2 syncs..
+
+                        ;; here we wait, recomputing frame-time-ratio/vsync-progress until either:
+                        ;; - we're in the first or last third of the frame
+                        ;; - we've waited longer than the previous frame lagged.
+                        (while (or (< frame-time-ratio last-dog) (and (< 0.333 vysnc-progress) (< vysnc-progress 0.667)))
+                          (let ((v1-34 (shl (timer1-time) 48)))
+                            (set! frame-time-ratio
+                                  (/ (the float (sar (- v1-34 (the-as uint just-rendered-frame-start-time)) 48)) ticks-per-frame-f)
+                                  )
+                            (if (< frame-time-ratio 0.0) ;; ?? timer wraparound issues?
+                                (set! frame-time-ratio last-dog)
+                                )
+                            (set! vysnc-progress
+                                  (/ (the float (sar (- v1-34 (the-as uint (shl (-> arg0 vblank-start-time 1) 48))) 48)) ticks-per-frame-f)
+                                  )
+                            )
+                          )
+                        )
+
+                      ;; force next frame to vsync if it didn't lag, then we will be back on framerate!
+                      (set! (-> arg0 dog-count) 1.0)
+                      )
+                    )
+                  frame-time-ratio
+                  )
+                )
+              )
+        |#
+
+        ;; PC port added: just skip this for now.
+        (set! frame-time-ratio (pc-maybe-vsync))
+
+        (if (< frame-time-ratio 0.0)
+            (set! frame-time-ratio last-dog)
+            )
+        )
+
+      ;; never allow faster than full-speed frames (the logic above will prevent running faster than TV framerate)
+      (let ((next-dog (fmax 1.0 frame-time-ratio))
+            (frame-to-render (-> arg0 on-screen))
+            )
+
+        ;; measure time again, after waiting/vsyncing.
+        (let ((time-after-vsync (timer1-time)))
+          (+! (-> arg0 total-run-time)
+              (the-as time-frame (sar (- (shl time-after-vsync 48) (the-as uint just-rendered-frame-start-time)) 48))
+              )
+          ;; and use this as the start time for the frame we're about to render.
+          (set! (-> arg0 frames frame-to-render start-time) (the-as time-frame time-after-vsync))
+          )
+        ;; while nothing is drawing, update GS/video/magic stuff.
+        ;; (set-graphics-mode)
+
+        ;; start DMA
+        (let ((next-dma-buf (-> arg0 frames frame-to-render calc-buf)))
+          (when (nonzero? (dma-buffer-length next-dma-buf))
+            (+! frame-to-render 1)
+            (if (< 1 frame-to-render)
+                (set! frame-to-render 0)
+                )
+            ;; swap DMA buffers
+            (set! (-> arg0 last-screen) (-> arg0 on-screen))
+            (set! (-> arg0 on-screen) frame-to-render)
+            ;; reset VU profiler for upcoming chain
+            (when *debug-segment*
+              (set! *profile-interrupt-segment* (-> *display* frames (-> *display* last-screen) profile-array data 1))
+              (set! (-> *profile-interrupt-segment* depth) 0)
+              (set! (-> *profile-interrupt-segment* max-depth) 1)
+              )
+            ;; send the chain!
+            (__send-gfx-dma-chain (the-as dma-bank-source #x10009000) (-> next-dma-buf data-buffer))
+            )
+          )
+
+        ;; screenshot/pause stuff.
+        ; (determine-pause-mode)
+        ; (when (and (nonzero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (!= (-> *screen-shot-work* size) -1))
+        ;   (let ((v1-77 (-> *screen-shot-work* size)))
+        ;     (set! (-> *screen-shot-work* count) (* v1-77 v1-77))
+        ;     )
+        ;   (set-master-mode 'pause)
+        ;   )
+
+        ;; prepare engine for the next frame
+        (display-frame-start arg0 frame-to-render next-dog)
+        )
+      )
+    )
+  (none)
+  )
+
+(defun display-frame-finish ((arg0 display))
+  "Do final DMA setup after drawing.
+   Note that this runs _after_ rendering, while VU1/GS are not doing anything.
+   so it's best to keep this code as simple as possible."
+  (with-pp
+    (let* ((s4-0 (-> arg0 frames (-> arg0 on-screen)))
+           (s5-0 (-> s4-0 calc-buf))
+           )
+      ;(-> s4-0 global-buf)
+
+      ;; post-draw buffer setup
+      ; (tfrag-vu1-init-buffers)
+      ; (tie-vu1-init-buffers)
+      ; (merc-vu1-init-buffers)
+      ; (emerc-vu1-init-buffers)
+      ; (generic-vu1-init-buffers)
+
+      ;; sprite texture remaps
+      ; (when (-> *texture-pool* update-sprites-flag)
+      ;   (update-sprites *texture-pool*)
+      ;   (particle-adgif-cache-flush)
+      ;   (remap-all-particles)
+      ;   )
+
+      ;; texture uploads while GS is not doing anything.
+      ; (with-profiler 'texture *profile-texture-color*
+      ;   (let ((s3-1 (-> pp clock)))
+      ;     (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+      ;         (set! (-> pp clock) (-> *display* bg-clock))
+      ;         (set! (-> pp clock) (-> *display* real-clock))
+      ;         )
+      ;     (upload-textures *texture-pool*)
+      ;     (set! (-> pp clock) s3-1)
+      ;     )
+      ;   )
+
+      ;; more texture mapping.
+      ; (if (-> *texture-pool* update-flag)
+      ;     (update-warp-and-hud *texture-pool*)
+      ;     )
+
+      ;; unclear why eyes are here... maybe they rely on textures that were just remapped.
+      ; (-> *display* frames (-> *display* on-screen) global-buf)
+      ; (update-eyes)
+
+
+      ;; end each normal bucket with the standard GS state reset
+      (let ((s3-3 6)
+            (s2-2 324)
+            )
+        (while (>= s2-2 s3-3)
+          (default-end-buffer
+            (the-as bucket-id s3-3)
+            (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24))
+            (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+            )
+          (+! s3-3 1)
+          )
+        )
+
+      ;; initialize buckets with weird custom settings (disable z buffer)
+      (default-init-buffer
+        (bucket-id bucket-318)
+        (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
+        (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+        )
+      (default-init-buffer
+        (bucket-id debug-no-zbuf)
+        (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
+        (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+        )
+      (default-init-buffer
+        (bucket-id bucket-321)
+        (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
+        (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+        )
+      (*post-draw-hook* (-> arg0 frames (-> arg0 on-screen) calc-buf))
+
+      ;; final flushe
+      (let* ((v1-70 s5-0)
+             (a0-25 (the-as object (-> v1-70 base)))
+             )
+        (set! (-> (the-as dma-packet a0-25) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> (the-as dma-packet a0-25) vif0) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd mark)))
+        (set! (-> (the-as dma-packet a0-25) vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :irq #x1 :msk #x1))
+        (set! (-> v1-70 base) (the-as pointer (&+ (the-as dma-packet a0-25) 16)))
+        )
+
+      ;; link all buckets to build the final massive dma list.
+      (dma-buffer-patch-buckets (-> s4-0 bucket-group) 327)
+
+      ;; append the final END
+      (let* ((v1-71 s5-0)
+             (a0-28 (the-as object (-> v1-71 base)))
+             )
+        (set! (-> (the-as dma-packet a0-28) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+        (set! (-> (the-as (pointer int64) a0-28) 1) 0)
+        (set! (-> v1-71 base) (&+ (the-as pointer a0-28) 16))
+        )
+
+      ;; make sure nothing is in cache
+      (flush-cache 0)
+
+      ;; list final dma sizes
+      (when (not (paused?))
+        (when *stats-buffer*
+          (let* ((a0-31 (-> s4-0 global-buf))
+                 (v1-75 (-> s5-0 base))
+                 (a2-4 (-> s5-0 data))
+                 (s4-1 (-> a0-31 base))
+                 (s5-1 (-> a0-31 data))
+                 (s3-4 (-> a0-31 end))
+                 )
+            (format *stdcon* "~0kvu1 buf = ~d~%" (&- v1-75 (the-as uint a2-4)))
+            (format *stdcon* "~0kglobal buf = ~d~%" (&- s4-1 (the-as uint s5-1)))
+            (format *stdcon* "~0kbase = #x~x~%" s4-1)
+            (format *stdcon* "~0kend = #x~x~%" s3-4)
+            )
+          )
+        )
+      ;; now the DMA is ready to send!
+      )
+    arg0
+    )
+  )
+
+(defun swap-display ((arg0 display))
+  (display-frame-finish arg0)
+  (display-sync arg0)
+  (none)
+  )

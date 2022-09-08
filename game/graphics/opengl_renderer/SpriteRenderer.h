@@ -9,7 +9,7 @@
 
 class SpriteRenderer : public BucketRenderer {
  public:
-  SpriteRenderer(const std::string& name, BucketId my_id);
+  SpriteRenderer(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   static constexpr int SPRITES_PER_CHUNK = 48;

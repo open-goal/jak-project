@@ -434,7 +434,6 @@ bool propagate_block(FunctionCache& cache,
                      Function& func,
                      DecompilerTypeSystem& dts,
                      bool tag_lock) {
-  bool debug = false;  // func.name() == "string->float";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see
@@ -688,8 +687,8 @@ end_type_pass:
     input.func->ir2.env.types_succeeded = true;
     auto last_type = out.op_end_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
     if (last_type != input.function_type.last_arg()) {
-      input.func->warnings.info("Return type mismatch {} vs {}.", last_type.print(),
-                                input.function_type.last_arg().print());
+      input.func->warnings.warning("Return type mismatch {} vs {}.", last_type.print(),
+                                   input.function_type.last_arg().print());
     }
   }
 
@@ -726,9 +725,11 @@ end_type_pass:
   for (auto& instr : function_cache.instructions) {
     if (instr.unknown_label_tag) {
       if (!instr.unknown_label_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess label use for {} in {}:{}",
-                                             instr.unknown_label_tag->label_name,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess label use for {} in {}:{}",
+                                 instr.unknown_label_tag->label_name, input.func->name(),
+                                 instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
       auto& type = instr.unknown_label_tag->selected_type.value();
       int idx = instr.unknown_label_tag->label_idx;
@@ -738,9 +739,11 @@ end_type_pass:
 
     if (instr.unknown_stack_structure_tag) {
       if (!instr.unknown_stack_structure_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess stack use for {} in {}:{}",
-                                             instr.unknown_stack_structure_tag->stack_offset,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess stack use for {} in {}:{}",
+                                 instr.unknown_stack_structure_tag->stack_offset,
+                                 input.func->name(), instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
 
       auto& type = instr.unknown_stack_structure_tag->selected_type.value();

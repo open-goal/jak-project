@@ -71,10 +71,10 @@ struct GraphicsData {
 
   GraphicsData(GameVersion version)
       : dma_copier(EE_MAIN_MEM_SIZE),
-        texture_pool(std::make_shared<TexturePool>()),
+        texture_pool(std::make_shared<TexturePool>(version)),
         loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" /
                                         game_version_names[version] / "fr3")),
-        ogl_renderer(texture_pool, loader),
+        ogl_renderer(texture_pool, loader, version),
         version(version) {}
 };
 
@@ -339,7 +339,7 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
   }
 }
 
-void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mode) {
+void GLDisplay::on_mouse_key(GLFWwindow* /*window*/, int button, int action, int /*mode*/) {
   int key =
       button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
 
@@ -356,7 +356,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
   }
 }
 
-void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
+void GLDisplay::on_cursor_position(GLFWwindow* /*window*/, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
   if (is_imgui_visible() || !mapping_info.use_mouse) {
     if (is_cursor_position_valid == true) {

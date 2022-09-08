@@ -98,20 +98,42 @@
 (defenum stream-status
   :type uint32
   :bitfield #t
-  (zero        0)
-  (one         1) ;; another way to be playing
-  (two         2)
-  (three       3)
-  (four        4) ;; is playing?
-  (five        5)
-  (six         6) ;; another way to be playing.
-  (seven       7)
+  (ststatus-zero        0)
+  (ststatus-one         1) ;; another way to be playing
+  (ststatus-two         2)
+  (ststatus-three       3)
+  (ststatus-four        4) ;; is playing?
+  (ststatus-five        5)
+  (ststatus-six         6) ;; another way to be playing.
+  (ststatus-seven       7)
+  (ststatus-eight       8)
+  (ststatus-nine        9)
   )
 
 (defenum stereo-mode
   :type int32
   )
 
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
 
 ;; DECOMP BEGINS
 

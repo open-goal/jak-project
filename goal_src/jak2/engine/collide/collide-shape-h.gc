@@ -208,6 +208,7 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype collide-rider-pool (basic)
   ((alloc-count int32                    :offset-assert   4)
    (riders      collide-rider 20 :inline :offset-assert  16)
@@ -221,6 +222,8 @@
     )
   )
 
+
+;; WARN: Return type mismatch int vs none.
 (defmethod prepare collide-rider-pool ((obj collide-rider-pool))
   "Gets this pool ready to be used to allow allocations.  This should be called once at the start of every frame."
   (set! (-> obj alloc-count) 0)
@@ -239,10 +242,15 @@
   :flag-assert         #x900000020
   )
 
+
 (kmemopen global "collide-lists")
+
 (define *collide-hit-by-player-list* (new 'global 'engine 'collide-hit-by-player-list 640 connection))
+
 (define *collide-hit-by-others-list* (new 'global 'engine 'collide-hit-by-others-list 768 connection))
+
 (define *collide-player-list* (new 'global 'engine 'collide-player-list 32 connection))
+
 (kmemclose)
 
 (deftype overlaps-others-params (structure)
@@ -257,6 +265,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
+
 
 (deftype move-above-ground-params (structure)
   ((gnd-collide-with       collide-spec                   :offset-assert   0)
@@ -276,10 +285,11 @@
   :flag-assert         #x90000006c
   )
 
+
 (deftype collide-prim-core (structure)
   ((world-sphere vector         :inline :offset-assert   0)
    (collide-as   collide-spec           :offset-assert  16)
-   (collide-with uint32                 :offset-assert  20)
+   (collide-with collide-spec           :offset-assert  20)
    (action       collide-action         :offset-assert  24)
    (prim-type    prim-type              :offset-assert  28)
    (unused1      uint8          3       :offset-assert  29)
@@ -289,6 +299,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
 
 (deftype collide-shape-prim (basic)
   ((cshape          collide-shape             :offset-assert   4)
@@ -324,6 +335,7 @@
     )
   )
 
+
 (deftype collide-shape-prim-sphere (collide-shape-prim)
   ((pat        pat-surface  :offset  64)
    (nav-radius float        :offset  68)
@@ -351,6 +363,7 @@
     )
   )
 
+
 (deftype collide-shape-prim-group (collide-shape-prim)
   ((num-children       uint8                         :offset  64)
    (num-alloc-children uint8                         :offset  65)
@@ -363,6 +376,7 @@
     (new (symbol type collide-shape uint int) _type_ 0)
     )
   )
+
 
 (deftype collide-shape (trsqv)
   ((actor-hash-index    int16               :offset         12)
@@ -417,6 +431,7 @@
     (collide-shape-method-54 () none 54)
     )
   )
+
 
 (deftype collide-shape-moving (collide-shape)
   ((rider-time         time-frame                    :offset-assert 200)
@@ -474,13 +489,14 @@
     (set! (-> v0-0 prim-id) arg1)
     (set! (-> v0-0 prim-core action) (collide-action))
     (set! (-> v0-0 prim-core collide-as) (collide-spec))
-    (set! (-> v0-0 prim-core collide-with) (the-as uint 0))
+    (set! (-> v0-0 prim-core collide-with) (collide-spec))
     (set! (-> v0-0 transform-index) -2)
     (set! (-> v0-0 prim-core prim-type) (prim-type prim))
     v0-0
     )
   )
 
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-sphere.
 (defmethod new collide-shape-prim-sphere ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint))
   (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 arg1 80)))
     (set! (-> (the-as collide-shape-prim-sphere v0-0) pat)
@@ -491,6 +507,7 @@
     )
   )
 
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-mesh.
 (defmethod new collide-shape-prim-mesh ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint) (arg2 uint))
   (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 arg2 80)))
     (set! (-> (the-as collide-shape-prim-mesh v0-0) mesh) #f)
@@ -501,6 +518,7 @@
     )
   )
 
+;; WARN: Return type mismatch collide-shape-prim vs collide-shape-prim-group.
 (defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (arg0 collide-shape) (arg1 uint) (arg2 int))
   (let ((v0-0 ((method-of-type collide-shape-prim new) allocation type-to-make arg0 (the-as uint arg2) 80)))
     (set! (-> (the-as collide-shape-prim-group v0-0) num-children) arg1)
@@ -513,6 +531,7 @@
     )
   )
 
+;; WARN: Return type mismatch uint8 vs int.
 (defmethod length collide-shape-prim-group ((obj collide-shape-prim-group))
   (the-as int (-> obj num-children))
   )
@@ -565,6 +584,7 @@
     )
   )
 
+;; WARN: Return type mismatch collide-shape vs collide-shape-moving.
 (defmethod new collide-shape-moving ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 collide-list-enum))
   (let ((v0-0 ((method-of-type collide-shape new) allocation type-to-make arg0 arg1)))
     (set! (-> (the-as collide-shape-moving v0-0) gspot-pos y) -40959590.0)
@@ -601,4 +621,9 @@
         )
 
 (define-perm *collide-rider-pool* collide-rider-pool (new 'global 'collide-rider-pool))
+
+0
+
+
+
 

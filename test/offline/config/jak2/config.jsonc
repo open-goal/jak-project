@@ -1,7 +1,8 @@
 {
   "dgos": [
   "CGO/KERNEL.CGO",
-  "CGO/ENGINE.CGO"
+  "CGO/ENGINE.CGO",
+  "CGO/COMMON.CGO"
   ],
 
   "skip_compile_files": [],
@@ -40,6 +41,8 @@
     "(method 3 sprite-aux-list)",
     // sprite-distort
     "sprite-draw-distorters", // uses clipping flag.
+    // debug
+    "(method 3 debug-vertex-stats)", // multiple defined
     // asm, weird vector dot
     "(method 17 trsqv)",
     // history - rgba issues
@@ -49,7 +52,13 @@
     // - never fixed this one in jak 1, assumed there was an original bug?
     "print-game-text",
     // joint asm
-    "cspace<-parented-transformq-joint!", "(method 11 art-joint-anim-manager)", "make-joint-jump-tables",
+    "cspace<-parented-transformq-joint!", "(method 11 art-joint-anim-manager)", "make-joint-jump-tables", "joint-channel-copy!",
+    // vector-dot in stack vars
+    "joint-mod-ik-callback",
+    "joint-mod-look-at-handler",
+    // bad stack-no-clear decomp
+    "ja-play-spooled-anim",
+
     // default menu
     // - causes a decompiler hang
     "dm-cam-setting-float",
@@ -64,9 +73,60 @@
     "dm-scene-load-pick-func",
     "popup-menu-context-make-default-menus",
     "debug-menu-context-make-default-menus",
-    // placeholder
+    // camera
+    // - vector-dot issue
+    "slave-set-rotation!",
+    "v-slrp2!",
+    "v-slrp3!",
+    // cam-master
+    // - focus understanding / decomp crashes
+    "reset-target-tracking",
+    "(method 16 camera-master)",
+    "master-track-target",
+    // cam-states
+    // - mostly decompiler crashes/hangs
+    "cam-bike-code",
+    "cam-stick-code",
+    "cam-string-code",
+    "cam-string-line-of-sight",
+    "cam-string-joystick", // whats butt-handle!
+    "cam-circular-code",
+    "cam-circular-position",
+    "cam-los-collide", // vector-dot with stack
+    // cam-update
+    "update-visible", // assertion crash when filling out bsp-header
+    // sparticle-launcher
+    // - field loaded as signed and unsigned
+    "sp-relaunch-particle-3d",
+    // - annoying arbitrary data usage functions
+    "execute-part-engine",
+    "sparticle-respawn-heights",
+    "sparticle-respawn-timer",
+    "sparticle-mode-animate",
+    "sparticle-mode-animate",
+    "sparticle-texture-animate",
+    "sparticle-texture-day-night",
+    "sparticle-motion-blur", // clipping
+    "birth-func-texture-group",
+    "(method 10 sparticle-launcher)", // very strange handling of ambiguous type
+    // gun-util
+    "draw-beam", "(method 9 gun-info)",
+    // mood
+    "update-mood-direction", // power of two case
+
     "i-hopefully-will-never-exist-dont-add-anything-after-me-please"
   ],
 
-  "skip_compile_states": {}
+  "skip_compile_states": {
+    "cam-bike": [
+      "code" // hang
+    ],
+    "cam-stick": [
+      "code"
+    ],
+    "cam-circular": [
+      "enter",
+      "event"
+    ]
+  }
 }

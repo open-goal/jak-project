@@ -176,11 +176,10 @@
                (compute-alignment! (-> self align))
                (align!
                  (-> self align)
-                 (the-as align-opts (if gp-0
-                                        2
-                                        6
-                                        )
-                         )
+                 (if gp-0
+                     (align-opts adjust-y-vel)
+                     (align-opts adjust-y-vel adjust-xz-vel)
+                     )
                  (the-as float 1.0)
                  (the-as float 1.0)
                  (the-as float 1.5)
@@ -2037,7 +2036,7 @@
           (let ((gp-1 (target-send-attack
                         arg0
                         (the-as uint (-> self control unknown-symbol30))
-                        (-> arg3 param 0)
+                        (the-as touching-shapes-entry (-> arg3 param 0))
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
@@ -2731,17 +2730,14 @@
             (send-event
               (ppointer->process s5-1)
               'function
-              (lambda ((arg0 target)) (let ((f0-3 (seek
-                                                    (-> arg0 control root-prim local-sphere w)
-                                                    (the-as float 28672.0)
-                                                    (* 286720.0 (-> *display* seconds-per-frame))
-                                                    )
-                                                  )
-                                            )
-                                        (set! (-> arg0 control root-prim local-sphere w) f0-3)
-                                        f0-3
-                                        )
+              (lambda ((arg0 target))
+                (set! (-> arg0 control root-prim local-sphere w) (seek
+                                                                   (-> arg0 control root-prim local-sphere w)
+                                                                   (the-as float 28672.0)
+                                                                   (* 286720.0 (-> *display* seconds-per-frame))
+                                                                   )
                       )
+                )
               )
             )
           )

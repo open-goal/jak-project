@@ -688,11 +688,10 @@
                    arg0
                    488
                    arg1
-                   (the-as font-color (if (>= f30-0 100.0)
-                                          3
-                                          0
-                                          )
-                           )
+                   (if (>= f30-0 100.0)
+                       (font-color orange-red)
+                       (font-color default)
+                       )
                    (font-flags shadow right)
                    )
                  )
@@ -705,11 +704,10 @@
                    arg0
                    488
                    arg1
-                   (the-as font-color (if (>= f30-0 100.0)
-                                          3
-                                          0
-                                          )
-                           )
+                   (if (>= f30-0 100.0)
+                       (font-color orange-red)
+                       (font-color default)
+                       )
                    (font-flags shadow right)
                    )
                  )
@@ -741,11 +739,10 @@
                       arg0
                       488
                       arg1
-                      (the-as font-color (if (>= f30-1 100.0)
-                                             3
-                                             0
-                                             )
-                              )
+                      (if (>= f30-1 100.0)
+                          (font-color orange-red)
+                          (font-color default)
+                          )
                       (font-flags shadow right)
                       )
                     )
@@ -758,11 +755,10 @@
                       arg0
                       488
                       arg1
-                      (the-as font-color (if (>= f30-1 100.0)
-                                             3
-                                             0
-                                             )
-                              )
+                      (if (>= f30-1 100.0)
+                          (font-color orange-red)
+                          (font-color default)
+                          )
                       (font-flags shadow right)
                       )
                     )
@@ -777,6 +773,7 @@
     )
   (none)
   )
+
 
 (defmethod draw-text! profile-array ((obj profile-array))
   "Draw the table of times."
@@ -818,6 +815,24 @@
 
 ;; DECOMP ENDS
 
+(defmacro end-profiler ()
+  `(when *debug-segment*
+     (let ((prof (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+       (when (and *dproc* *debug-segment*)
+         (let* ((after-depth (+ (-> prof depth) -1))
+                (segment (-> prof segment after-depth))
+                (base-time (-> prof base-time))
+                )
+           (when (>= after-depth 0)
+             (set! (-> segment end-time) (the-as int (- (timer-count TIMER1_BANK) base-time)))
+             (+! (-> prof depth) -1)
+             )
+           )
+         )
+       )
+     )
+  )
+
 (defmacro with-profiler (category profile-color &rest body)
   `(begin
      (when *debug-segment*
@@ -829,7 +844,7 @@
            (let ((segment (-> prof data (-> prof count))))
              (let ((base-time (-> prof base-time)))
                (set! (-> segment name) name)
-               (set! (-> segment start-time) (- (timer-count TIMER1_BANK) start-time))
+               (set! (-> segment start-time) (the-as int (- (timer-count TIMER1_BANK) base-time)))
                )
              (set! (-> segment depth) (-> prof depth))
              (set! (-> segment color) color)
@@ -837,27 +852,11 @@
              )
            (+! (-> prof count) 1)
            (+! (-> prof depth) 1)
-           (set! (-> prof max-depth) (max (-> prof max-depth) (-> segment depth)))
+           (set! (-> prof max-depth) (max (-> prof max-depth) (-> prof depth)))
            )
          )
        )
-
      ,@body
-
-     (when *debug-segment*
-       (let ((prof (-> *display* frames (-> *display* on-screen) profile-array data 0)))
-         (when (and *dproc* *debug-segment*)
-           (let* ((after-depth (+ (-> prof depth) -1))
-                  (segment (-> prof segment after-depth))
-                  (base-time (-> prof base-time))
-                  )
-             (when (>= after-depth 0)
-               (set! (-> segment end-time) (- (timer-count TIMER1_BANK) base-time))
-               (+! (-> prof depth) -1)
-               )
-             )
-           )
-         )
-       )
+     (end-profiler)
      )
   )

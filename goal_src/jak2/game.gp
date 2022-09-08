@@ -122,6 +122,36 @@
     )
   )
 
+(defun tpage-name (id)
+  "Get the name of the tpage obj file with the given id"
+  (fmt #f "tpage-{}.go" id)
+  )
+
+(defmacro copy-texture (tpage-id)
+  "Copy a texture from the game, using the given tpage ID"
+  (let* ((path (string-append "$DECOMP/raw_obj/" (tpage-name tpage-id))))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "$OUT/obj/" (tpage-name tpage-id))))))
+
+(defmacro copy-textures (&rest ids)
+  `(begin
+    ,@(apply (lambda (x) `(copy-texture ,x)) ids)
+    )
+  )
+
+(defmacro copy-go (name)
+  (let* ((path (string-append "$DECOMP/raw_obj/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "$OUT/obj/" name ".go")))))
+
+(defmacro copy-gos (&rest gos)
+  `(begin
+    ,@(apply (lambda (x) `(copy-go ,x)) gos)
+    )
+  )
+
 (defmacro group (name &rest stuff)
   `(defstep :in ""
      :tool 'group
@@ -553,10 +583,83 @@
 "debug/nav/nav-graph-editor.gc"
 "debug/sampler.gc"
 "debug/default-menu.gc"
+"gfx/texture/texture-upload.gc"
+"gfx/texture/texture-finish.gc"
+"collide/los-control-h.gc"
+"common_objs/water-anim.gc"
+"common_objs/blocking-plane.gc"
+"game/idle-control.gc"
+"common_objs/dark-eco-pool.gc"
+"ai/enemy-h.gc"
+"nav/nav-enemy-h.gc"
+"physics/rigid-body-h.gc"
+"ai/enemy.gc"
+"nav/nav-enemy.gc"
+"common_objs/base-plat.gc"
+"common_objs/plat.gc"
+"common_objs/basebutton.gc"
+"common_objs/conveyor.gc"
+"common_objs/elevator.gc"
+"physics/rigid-body.gc"
+"physics/rigid-body-queue.gc"
+"common_objs/rigid-body-plat.gc"
+"anim/joint-exploder.gc"
+"process-drawable/simple-focus.gc"
+"process-drawable/simple-nav-sphere.gc"
+"process-drawable/process-taskable.gc"
+"collide/los-control.gc"
+  )
 
+(goal-src-sequence
+  "levels/common/"
+  :deps
+  ("$OUT/obj/los-control-h.o")
+
+  "airlock.gc"
+  "enemy/bouncer.gc"
+  "scene-actor.gc"
+  "scene-looper.gc"
+  "warp-gate.gc"
+  "guard-projectile.gc"
+  "metalhead-projectile.gc"
+  "grunt.gc"
+  "flitter.gc"
+  "battle.gc"
+  "elec-gate.gc"
+  "cty-guard-turret-button.gc"
   )
 
 (cgo "ENGINE.CGO" "engine.gd")
+
+(cgo "GAME.CGO" "game.gd")
+
+(defstep :in "$DECOMP/textures/tpage-dir.txt"
+  :tool 'tpage-dir
+  :out '("$OUT/obj/dir-tpages.go")
+  )
+
+(copy-textures 11 31 1804 12 917 918 1106 1141 1658 2841 2932 3076)
+
+(copy-gos
+  "collectables-ag"
+  "ctywide-arrow-ag"
+  "crate-ag"
+  "talk-box-ag"
+  "scenecamera-ag"
+  "eco-canister-ag"
+  "hud-ring-ag"
+  "jakb-ag"
+  "daxter-ag"
+  "board-ag"
+  "gun-ag"
+  "jak-gun+0-ag"
+  "jak-board+0-ag"
+  "jak-dark+0-ag"
+  "jak-swim+0-ag"
+  "blocking-plane-ag"
+  )
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;

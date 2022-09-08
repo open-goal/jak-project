@@ -48,7 +48,7 @@ constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 10;
 constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
     256 * 10;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
 
-Sprite3::Sprite3(const std::string& name, BucketId my_id)
+Sprite3::Sprite3(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
   opengl_setup();
 }
