@@ -72,12 +72,33 @@ Form* strip_pcypld_64(Form* in) {
   }
 }
 
-std::optional<float> get_goal_float_constant(Form* in) {
-  auto as_fc = in->try_as_element<ConstantFloatElement>();
+std::optional<float> get_goal_float_constant(FormElement* in) {
+  auto as_fc = dynamic_cast<ConstantFloatElement*>(in);
   if (as_fc) {
     return as_fc->value();
   }
   return {};
+}
+
+std::optional<float> get_goal_float_constant(Form* in) {
+  auto elt = in->try_as_single_element();
+  if (elt) {
+    return get_goal_float_constant(elt);
+  } else {
+    return {};
+  }
+}
+
+bool cond_has_only_single_elements(CondWithElseElement* in) {
+  for (auto& entry : in->entries) {
+    if (entry.body->elts().size() > 1) {
+      return false;
+    }
+  }
+  if (in->else_ir->elts().size() > 1) {
+    return false;
+  }
+  return true;
 }
 }  // namespace
 
@@ -198,6 +219,27 @@ Form* try_cast_simplify(Form* in,
 
   auto type_info = env.dts->ts.lookup_type_allow_partial_def(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  auto* in_as_cond = in->try_as_element<CondWithElseElement>();
+
+  // try to fix (the-as <enum> (if foo 12 13)) type stuff by applying the casts inside a cond if:
+  // - it's casting to a bitfield/enum (this could be expanded to more in the future if needed)
+  // - the cond has an explicit else case (otherwise the #f from not hitting any case...)
+  // - it's not a sound-id - these are basically used like ints so it gets worse
+  // - the cond doesn't have multiple entries in the body
+  //    in theory this could be better if we could only apply a cast to the last element in the body
+  //    but this is a bit too much work for exactly 1 case in jak 1.
+  if ((bitfield_info || enum_info) && in_as_cond && type_info->get_name() != "sound-id" &&
+      cond_has_only_single_elements(in_as_cond)) {
+    for (auto& cas : in_as_cond->entries) {
+      cas.body = try_cast_simplify(cas.body, new_type, pool, env, tc_pass);
+      cas.body->parent_element = in_as_cond;
+    }
+    in_as_cond->else_ir = try_cast_simplify(in_as_cond->else_ir, new_type, pool, env, tc_pass);
+    in_as_cond->else_ir->parent_element = in_as_cond;
+    return in;
+  }
+
   if (bitfield_info) {
     // todo remove this.
     if (bitfield_info->get_load_size() == 8) {
@@ -206,7 +248,6 @@ Form* try_cast_simplify(Form* in,
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
-  auto enum_info = dynamic_cast<EnumType*>(type_info);
   if (enum_info) {
     if (enum_info->is_bitfield()) {
       return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
