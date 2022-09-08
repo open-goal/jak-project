@@ -725,9 +725,11 @@ end_type_pass:
   for (auto& instr : function_cache.instructions) {
     if (instr.unknown_label_tag) {
       if (!instr.unknown_label_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess label use for {} in {}:{}",
-                                             instr.unknown_label_tag->label_name,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess label use for {} in {}:{}",
+                                 instr.unknown_label_tag->label_name, input.func->name(),
+                                 instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
       auto& type = instr.unknown_label_tag->selected_type.value();
       int idx = instr.unknown_label_tag->label_idx;
@@ -737,9 +739,11 @@ end_type_pass:
 
     if (instr.unknown_stack_structure_tag) {
       if (!instr.unknown_stack_structure_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess stack use for {} in {}:{}",
-                                             instr.unknown_stack_structure_tag->stack_offset,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess stack use for {} in {}:{}",
+                                 instr.unknown_stack_structure_tag->stack_offset,
+                                 input.func->name(), instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
 
       auto& type = instr.unknown_stack_structure_tag->selected_type.value();
