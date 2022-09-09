@@ -99,8 +99,11 @@
   (ruins-hut 68)
   (forest-samos 69)
   (metalhead 70)
-
   )
+
+(declare-type process-drawable process)
+(declare-type minimap structure)
+(define-extern *minimap* minimap)
 
 ;; DECOMP BEGINS
 
@@ -118,6 +121,7 @@
   :flag-assert         #x900000024
   )
 
+
 (deftype connection-minimap (connection-pers)
   ((handle            handle                     :offset          8)
    (position          vector                     :offset         16)
@@ -134,6 +138,7 @@
   :flag-assert         #x900000050
   )
 
+
 (deftype engine-minimap (engine-pers)
   ((alive-list-override connection-minimap  :offset  24)
    (dead-list-override  connection-minimap  :offset  28)
@@ -142,6 +147,7 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   )
+
 
 (deftype minimap-trail (structure)
   ((used-by        connection-minimap               :offset-assert   0)
@@ -157,10 +163,11 @@
   :size-assert         #xd0
   :flag-assert         #xb000000d0
   (:methods
-    (minimap-trail-method-9 () none 9)
+    (minimap-trail-method-9 (_type_ vector vector) float 9)
     (minimap-trail-method-10 () none 10)
     )
   )
+
 
 (deftype minimap-draw-work (structure)
   ((buf           basic              :offset-assert   0)
@@ -173,6 +180,7 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
+
 
 (deftype minimap (structure)
   ((draw-tmpl        dma-gif-packet :inline   :offset-assert   0)
@@ -192,7 +200,7 @@
    (ctywide          basic                    :offset-assert 268)
    (inv-scale        float                    :offset        212)
    (fade             float                    :offset        220)
-   (engine           basic                    :offset-assert 272)
+   (engine           engine-minimap           :offset-assert 272)
    (engine-key       uint32                   :offset-assert 276)
    (trail            minimap-trail  6 :inline :offset-assert 288)
    (race-tex         basic                    :offset-assert 1536)
@@ -208,9 +216,9 @@
   :flag-assert         #x1c00000648
   (:methods
     (minimap-method-9 () none 9)
-    (minimap-method-10 () none 10)
+    (minimap-method-10 (_type_ connection-minimap minimap-trail) minimap-trail 10)
     (minimap-method-11 () none 11)
-    (minimap-method-12 () none 12)
+    (minimap-method-12 (_type_ process-drawable uint symbol symbol int) none 12)
     (minimap-method-13 () none 13)
     (minimap-method-14 () none 14)
     (minimap-method-15 () none 15)
@@ -228,4 +236,10 @@
     (minimap-method-27 () none 27)
     )
   )
+
+
+0
+
+
+
 
