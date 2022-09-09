@@ -727,7 +727,7 @@ TEST_F(FormRegressionTestJak1, DmaSend) {
       "(begin\n"
       "  (dma-sync (the-as pointer arg0) 0 0)\n"
       "  (flush-cache 0)\n"
-      "  (.sync.l)\n"
+      //"  (.sync.l)\n"
       "  (set!\n"
       "   (-> arg0 madr)\n"
       "   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)\n"
@@ -737,9 +737,9 @@ TEST_F(FormRegressionTestJak1, DmaSend) {
       "    )\n"
       "   )\n"
       "  (set! (-> arg0 qwc) arg2)\n"
-      "  (.sync.l)\n"
+      //"  (.sync.l)\n"
       "  (set! (-> arg0 chcr) (new 'static 'dma-chcr :str 1))\n"
-      "  (.sync.l)\n"
+      //"  (.sync.l)\n"
       "  0\n"
       "  )";
   test_with_expr(func, type, expected);
