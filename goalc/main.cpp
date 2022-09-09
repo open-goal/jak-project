@@ -46,12 +46,13 @@ int main(int argc, char** argv) {
   app.add_flag("--user-auto", auto_find_user,
                "Attempt to automatically deduce the user, overrides '-user'");
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
-  app.add_option("--proj-path", project_path_override, "Specify the location of the 'data/' folder");
+  app.add_option("--proj-path", project_path_override,
+                 "Specify the location of the 'data/' folder");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
   GameVersion game_version = game_name_to_version(game);
-  
+
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {
       lg::error("Error: project path override '{}' does not exist", project_path_override.string());
