@@ -25470,235 +25470,234 @@
 ;; cam-layout                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype cam-layout-bank (UNKNOWN)
-  ((spline-t    float  :offset-assert 4)
-   (spline-step float  :offset-assert 8)
-   (intro-t     float  :offset-assert 12)
-   (intro-step  float  :offset-assert 16)
-   (debug-t     float  :offset-assert 20)
-   (debug-step  float  :offset-assert 24)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype cam-layout-bank (basic)
+  (
+    (spline-t float :offset-assert 4)
+    (spline-step float :offset-assert 8)
+    (intro-t float :offset-assert 12)
+    (intro-step float :offset-assert 16)
+    (debug-t float :offset-assert 20)
+    (debug-step float :offset-assert 24)
   )
-|#
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
 
-#|
-(deftype clm-basic (UNKNOWN)
+(deftype clm-basic (basic)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
   )
-|#
 
-#|
-(deftype clm-item-action (UNKNOWN)
-  ((button  uint64  :offset-assert 0)
-   (options uint64  :offset-assert 8)
-   (func    symbol  :offset-assert 16) ;; guessed by decompiler
-   (parm0   int32   :offset-assert 20) ;; guessed by decompiler
-   (parm1   symbol  :offset-assert 24) ;; guessed by decompiler
+(deftype clm-item-action (structure)
+  (
+    (button uint64 :offset-assert 0)
+    (options uint64 :offset-assert 8)
+    (func symbol :offset-assert 16)
+    (parm0 int32 :offset 20)
+    (parm0-symbol symbol :offset 20)
+    (parm0-basic basic :offset 20)
+    (parm1 symbol :offset 24)
+    (parm1-basic basic :offset 24)
+  )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype clm-item (clm-basic)
+  (
+    (description string :offset-assert 4)
+    (button-symbol symbol :offset-assert 8)
+    (action clm-item-action :inline :offset-assert 16)
+  )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype clm-list-item (basic)
+  (
+    (description string :offset-assert 4)
+    (track-val symbol :offset-assert 8)
+    (val-func symbol :offset-assert 12)
+    (val-parm0 int32 :offset 16)
+    (val-parm0-symbol symbol :offset 16)
+    (val-parm0-basic basic :offset 16)
+    (val-parm1 symbol :offset 20)
+    (val-parm1-basic basic :offset 20)
+    (actions (array clm-item-action) :offset-assert 24)
+  )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype clm-list (clm-basic)
+  (
+    (tracker symbol :offset-assert 4)
+    (cur-list-item int32 :offset-assert 8)
+    (items (array clm-list-item) :offset-assert 12)
+  )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype clm (basic)
+  (
+    (title string :offset-assert 4)
+    (items (array clm-basic) :offset-assert 8)
+  )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype volume-descriptor-array (inline-array-class)
+  ((data  plane-volume  :inline :dynamic :offset 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field parm0 uses ~A with a signed load field parm1 uses ~A with a signed load
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype clm-item (UNKNOWN)
-  ((description   string                  :offset-assert 4) ;; guessed by decompiler
-   (button-symbol symbol                  :offset-assert 8) ;; guessed by decompiler
-   (action        clm-item-action :inline :offset-assert 16)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype cam-layout (process)
+  (
+    (cam-entity entity-camera :offset-assert 128)
+    (num-entities int32 :offset-assert 132)
+    (cur-entity int32 :offset-assert 136)
+    (num-volumes int32 :offset-assert 140)
+    (cur-volume int32 :offset-assert 144)
+    (first-pvol int32 :offset-assert 148)
+    (first-cutoutvol int32 :offset-assert 152)
+    (res-key float :offset-assert 156)
   )
-|#
-
-#|
-(deftype clm-list-item (UNKNOWN)
-  ((description string                   :offset-assert 4) ;; guessed by decompiler
-   (track-val   symbol                   :offset-assert 8) ;; guessed by decompiler
-   (val-func    symbol                   :offset-assert 12) ;; guessed by decompiler
-   (val-parm0   int32                    :offset-assert 16) ;; guessed by decompiler
-   (val-parm1   symbol                   :offset-assert 20) ;; guessed by decompiler
-   (actions     (array clm-item-action)  :offset-assert 24) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field track-val uses ~A with a signed load field val-parm0 uses ~A with a signed load field val-parm1 uses ~A with a signed load
+  :method-count-assert 14
+  :heap-base           #x200
+  :size-assert         #xa0
+  :flag-assert         #xe020000a0
+  (:states
+    cam-layout-active)
   )
-|#
 
-#|
-(deftype clm-list (UNKNOWN)
-  ((tracker       symbol                 :offset-assert 4) ;; guessed by decompiler
-   (cur-list-item int32                  :offset-assert 8)
-   (items         (array clm-list-item)  :offset-assert 12) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype interp-test-info (structure)
+  (
+    (from vector :inline :offset-assert 0)
+    (to vector :inline :offset-assert 16)
+    (origin vector :inline :offset-assert 32)
+    (color vector4w :offset-assert 48)
+    (axis vector :offset-assert 52)
+    (disp string :offset-assert 56)
   )
-|#
-
-#|
-(deftype clm (UNKNOWN)
-  ((title string             :offset-assert 4) ;; guessed by decompiler
-   (items (array clm-basic)  :offset-assert 8) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
-#|
-(deftype volume-descriptor-array (UNKNOWN)
-  ((length           int32                 :offset-assert 4)
-   (allocated-length int32                 :offset-assert 8)
-   (data             plane-volume :dynamic :offset-assert 16) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype clmf-cam-flag-toggle-info (structure)
+  (
+    (key float :offset-assert 0)
+    (force-on int32 :offset-assert 4)
+    (force-off int32 :offset-assert 8)
   )
-|#
-
-#|
-(deftype cam-layout (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype interp-test-info (UNKNOWN)
-  ((from   vector   :inline :offset-assert 0)
-   (to     vector   :inline :offset-assert 16)
-   (origin vector   :inline :offset-assert 32)
-   (color  vector4w         :offset-assert 48)
-   (axis   vector           :offset-assert 52)
-   (disp   string           :offset-assert 56) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-#|
-(deftype clmf-cam-flag-toggle-info (UNKNOWN)
-  ((key       float  :offset-assert 0)
-   (force-on  int32  :offset-assert 4)
-   (force-off int32  :offset-assert 8)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-;; (define-extern *camera-layout-blink* object) ;; symbol
-;; (define-extern *CAM_LAYOUT-bank* cam-layout-bank) ;; cam-layout-bank
-;; (define-extern *camera-layout-message-ypos* object) ;; int
-;; (define-extern *volume-point-current* object) ;; int
-;; (define-extern *volume-point* object) ;; vector-array
-;; (define-extern *volume-normal-current* object) ;; int
-;; (define-extern *volume-normal* object) ;; vector-array
-;; (define-extern *volume-descriptor-current* object) ;; int
-;; (define-extern *volume-descriptor* object) ;; vol-control
-;; (define-extern cam-layout-print function) ;; (function int int string pointer)
-;; (define-extern cam-layout-intersect-dist function) ;; (function vector vector vector float)
-;; (define-extern cam-layout-entity-volume-info-create function) ;; (function entity-camera symbol symbol :behavior cam-layout)
-;; (define-extern cam-layout-entity-volume-info function) ;; (function symbol :behavior cam-layout)
-;; (define-extern v-slrp! function) ;; (function vector vector vector float vector)
-;; (define-extern interp-test function) ;; (function (function vector vector vector float vector float none) interp-test-info basic)
-;; (define-extern interp-test-deg function) ;; (function (function vector vector vector vector float none) interp-test-info basic)
-;; (define-extern cam-layout-entity-info function) ;; (function entity-actor basic)
-;; (define-extern clmf-button-test function) ;; (function symbol)
-;; (define-extern clmf-bna function) ;; (function symbol)
-;; (define-extern clmf-implement function) ;; (function symbol)
-;; (define-extern clmf-input function) ;; (function vector vector int vector)
-;; (define-extern clmf-pos-rot function) ;; (function symbol symbol symbol :behavior cam-layout)
-;; (define-extern clmf-next-volume function) ;; (function int symbol :behavior cam-layout)
-;; (define-extern clmf-next-vol-dpad function) ;; (function symbol)
-;; (define-extern clmf-to-edit-cam function) ;; (function symbol)
-;; (define-extern *last-cur-entity* object) ;; int
-;; (define-extern clmf-next-entity function) ;; (function int symbol :behavior cam-layout)
-;; (define-extern clmf-to-spline-attr function) ;; (function symbol)
-;; (define-extern clmf-to-intro-attr function) ;; (function symbol)
-;; (define-extern clmf-to-index-attr function) ;; (function symbol)
-;; (define-extern clmf-to-focalpull-attr function) ;; (function symbol)
-;; (define-extern clmf-to-edit function) ;; (function symbol :behavior cam-layout)
-;; (define-extern clmf-to-select function) ;; (function symbol)
-;; (define-extern clmf-look-through function) ;; (function symbol :behavior cam-layout)
-;; (define-extern fov->maya function) ;; (function float float)
-;; (define-extern cam-layout-save-cam-rot function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-cam-trans function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-pivot function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-align function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-interesting function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-fov function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-focalpull function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-focalpull-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-campoints-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-introsplinetime function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-introsplineexitval function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-interptime function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-splineoffset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-spline-follow-dist-offset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-campointsoffset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-tiltAdjust function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMinLength function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMaxLength function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMinHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMaxHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringCliffHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-maxAngle function) ;; (function symbol string entity-actor string)
-;; (define-extern clmf-save-single function) ;; (function entity-camera symbol symbol file-stream :behavior cam-layout)
-;; (define-extern clmf-save-one function) ;; (function symbol symbol :behavior cam-layout)
-;; (define-extern clmf-save-all function) ;; (function symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-flag-toggle function) ;; (function int int symbol :behavior cam-layout)
-;; (define-extern clmf-cam-flag function) ;; (function string uint uint symbol :behavior cam-layout)
-;; (define-extern clmf-cam-float-adjust function) ;; (function symbol (pointer float) symbol :behavior cam-layout)
-;; (define-extern clmf-cam-meters function) ;; (function meters symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-fov function) ;; (function degrees symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-deg function) ;; (function degrees symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-intro-time function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-interp-time function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-float function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-string function) ;; (function string symbol symbol :behavior cam-layout)
-;; (define-extern *clm-focalpull-attr* clm) ;; clm
-;; (define-extern *clm-index-attr* clm) ;; clm
-;; (define-extern *clm-intro-attr* clm) ;; clm
-;; (define-extern *clm-spline-attr* clm) ;; clm
-;; (define-extern *clm-cam-attr* clm) ;; clm
-;; (define-extern *clm-cam-lookthrough* clm) ;; clm
-;; (define-extern *clm-edit* clm) ;; clm
-;; (define-extern *clm-save-all* clm) ;; clm
-;; (define-extern *clm-save-one* clm) ;; clm
-;; (define-extern *clm-select* clm) ;; clm
-;; (define-extern *clm* object) ;; clm
-;; (define-extern cam-layout-do-action function) ;; (function clm-item-action symbol :behavior cam-layout)
-;; (define-extern cam-layout-function-call function) ;; (function symbol string int basic symbol :behavior cam-layout)
-;; (define-extern cam-layout-do-menu function) ;; (function clm none :behavior cam-layout)
-;; (define-extern cam-layout-active state) ;; (state cam-layout)
-;; (define-extern cam-layout-init function) ;; (function none :behavior cam-layout)
+(define-extern *camera-layout-blink* symbol) ;; 
+(define-extern *CAM_LAYOUT-bank* cam-layout-bank) ;; cam-layout-bank
+(define-extern *camera-layout-message-ypos* int) ;; int
+(define-extern *volume-point-current* int) ;; int
+(define-extern *volume-point* vector-array) ;; vector-array
+(define-extern *volume-normal-current* int) ;; int
+(define-extern *volume-normal* vector-array) ;; vector-array
+(define-extern *volume-descriptor-current* int) ;; int
+(define-extern *volume-descriptor* vol-control) ;; vol-control
+(define-extern cam-layout-print (function int int string pointer)) ;; 
+(define-extern cam-layout-intersect-dist (function vector vector vector float)) ;; 
+(define-extern cam-layout-entity-volume-info-create (function entity-camera symbol symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-entity-volume-info (function symbol :behavior cam-layout)) ;; 
+(define-extern v-slrp! (function vector vector vector float vector)) ;; 
+(define-extern interp-test (function (function vector vector vector float vector float none) interp-test-info none)) ;; 
+(define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info none)) ;; 
+(define-extern cam-layout-entity-info (function entity-actor none)) ;; 
+(define-extern clmf-button-test "Displays the message `button test`" (function symbol)) ;; 
+(define-extern clmf-bna "Displays the message `button not available`" (function symbol)) ;; 
+(define-extern clmf-implement "Displays the message `button not implemented yet`" (function symbol)) ;; 
+(define-extern clmf-input (function vector vector int vector)) ;; 
+(define-extern clmf-pos-rot (function symbol symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-next-volume (function int symbol :behavior cam-layout)) ;; 
+(define-extern clmf-next-vol-dpad (function symbol)) ;; 
+(define-extern clmf-to-edit-cam (function symbol)) ;; 
+(define-extern *last-cur-entity* int) ;; int
+(define-extern clmf-next-entity (function int symbol :behavior cam-layout)) ;; 
+(define-extern clmf-to-spline-attr (function symbol)) ;; 
+(define-extern clmf-to-intro-attr (function symbol)) ;; 
+(define-extern clmf-to-index-attr (function symbol)) ;; 
+(define-extern clmf-to-focalpull-attr (function symbol)) ;; (function symbol)
+(define-extern clmf-to-edit (function symbol :behavior cam-layout)) ;; 
+(define-extern clmf-to-select (function symbol)) ;; (function symbol)
+(define-extern clmf-look-through (function symbol :behavior cam-layout)) ;; 
+(define-extern fov->maya (function float float)) ;; 
+(define-extern cam-layout-save-cam-rot (function symbol string entity-actor none)) ;; 
+(define-extern cam-layout-save-cam-trans (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-pivot (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-align (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-interesting (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-fov (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-focalpull (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-focalpull-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-campoints-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-introsplinetime (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-introsplineexitval (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-interptime (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-splineoffset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-spline-follow-dist-offset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-campointsoffset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-tiltAdjust (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMinLength (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMaxLength (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMinHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMaxHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringCliffHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-maxAngle (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern clmf-save-single (function entity-camera symbol symbol file-stream :behavior cam-layout)) ;; 
+(define-extern clmf-save-one (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
+(define-extern clmf-save-all (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
+(define-extern clmf-cam-flag-toggle (function int int symbol :behavior cam-layout)) ;; (function int int symbol :behavior cam-layout)
+(define-extern clmf-cam-flag (function string uint uint symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-float-adjust (function symbol (pointer float) symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-meters (function meters symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-fov (function degrees symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-deg (function degrees symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-intro-time (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-interp-time (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-float (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-string (function string symbol symbol :behavior cam-layout)) ;; 
+(define-extern *clm-focalpull-attr* clm) ;; clm
+(define-extern *clm-index-attr* clm) ;; clm
+(define-extern *clm-intro-attr* clm) ;; clm
+(define-extern *clm-spline-attr* clm) ;; clm
+(define-extern *clm-cam-attr* clm) ;; clm
+(define-extern *clm-cam-lookthrough* clm) ;; clm
+(define-extern *clm-edit* clm) ;; clm
+(define-extern *clm-save-all* clm) ;; clm
+(define-extern *clm-save-one* clm) ;; clm
+(define-extern *clm-select* clm) ;; clm
+(define-extern *clm* clm) ;; clm
+(define-extern cam-layout-do-action (function clm-item-action symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-function-call (function symbol string int basic symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-do-menu (function clm symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-active (state cam-layout)) ;; 
+(define-extern cam-layout-init (function object :behavior cam-layout)) ;; 
 (define-extern cam-layout-stop (function symbol))
 (define-extern cam-layout-start (function symbol))
-(define-extern cam-layout-restart (function none))
+(define-extern cam-layout-restart (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-debug                      ;;
