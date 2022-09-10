@@ -97,8 +97,8 @@
 (define-extern link-reset (function none))
 (define-extern kset-language (function language-enum int))
 (define-extern reset-graph (function int int int int none))
-
 (define-extern loading-level kheap)
+(define-extern dma-sync (function pointer int int int))
 
 
 
@@ -3073,6 +3073,12 @@
   (sky    9)
   )
 
+(defenum tpage-category-u32
+  :type uint32
+  :copy-entries tpage-category
+  )
+
+
 (deftype dma-foreground-sink (basic)
   ((bucket                   bucket-id      :offset-assert 4)
    (foreground-texture-page  tpage-category :offset-assert 8)
@@ -4758,7 +4764,7 @@
     (new (symbol type) _type_ 0)
     (initialize! (_type_) _type_ 9)
     (print-usage (_type_) _type_ 10)
-    (texture-pool-method-11 (_type_) none 11) ;; (setup-font-texture! (_type_) none 11)
+    (setup-font-texture (_type_) none 11)
     (allocate-defaults (_type_) none 12)
     (login-level-textures (_type_ level int (pointer texture-id)) none 13)
     (add-level-tpage-dma (_type_ level tpage-category bucket-id) none 14) ;; (add-tex-to-dma! (_type_ level int) none 14)
@@ -4861,6 +4867,7 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
+    (relocate (_type_ kheap (pointer uint8)) texture-page :replace 7)
     (remove-data-from-heap (_type_ kheap) _type_ 9)
     (get-leftover-block-count (_type_ int int) int 10)
     (relocate-dests! (_type_ int int) none 11) ;; (unused-11 () none 11)
@@ -4914,8 +4921,8 @@
 (defenum link-test-flags
   :type uint32
   :bitfield #t
-  ; (needs-log-in 8)
-  ; (bit-9 9)
+  (needs-log-in 8)
+  (bit-9 9)
   )
 
 
@@ -4924,7 +4931,7 @@
    (prims      gs-reg64        10 :offset 0 :score -100)
    (reg-0      uint8              :offset 8)
    (reg-1      uint8              :offset 24)
-   (reg-2      uint8              :offset 40)
+   (reg-2      uint8              :offset 40 :score -1)
    (reg-3      uint8              :offset 56)
    (reg-4-u32  gs-reg32           :offset 72)
    (reg-4      uint8              :offset 72)
@@ -4966,7 +4973,7 @@
 (deftype texture-page-translate-item (structure)
   ((bucket             bucket-id  :offset-assert 0)
    (level-index        uint32     :offset-assert 4)
-   (level-texture-page uint32     :offset-assert 8)
+   (level-texture-page tpage-category-u32     :offset-assert 8)
    (texture-user       uint32     :offset-assert 12)
    )
   :method-count-assert 9
@@ -4980,7 +4987,7 @@
    )
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (unlink-textures-in-heap! (_type_ kheap) int 9)
+    (unlink-shaders-in-heap (_type_ kheap) int 9)
     )
   :flag-assert #xa00000014
   )
@@ -5864,7 +5871,7 @@
    (load-time float :offset-assert 156)
    (load-login-time float :offset-assert 160)
    (draw-level-count int32 :offset-assert 164)
-   (draw-level basic 7 :offset-assert 168)
+   (draw-level level 7 :offset-assert 168)
    (draw-index-map uint8 7 :offset-assert 196)
    (load-order uint64 :offset-assert 208)
    ;; ?
@@ -6219,7 +6226,7 @@
 
 (define-extern *font-default-matrix* matrix)
 (define-extern *font-work* font-work)
-(define-extern font-set-tex0 (function (pointer gs-tex0) texture uint uint uint none))
+(define-extern font-set-tex0 (function (pointer gs-tex0) texture int int int none))
 (define-extern set-font-color (function int int int int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -7479,23 +7486,21 @@
 (define-extern lookup-texture-by-id (function texture-id texture))
 (define-extern lookup-texture-by-id-fast (function texture-id texture))
 (define-extern lookup-texture-by-name (function string string (pointer texture-page) texture))
-(define-extern lookup-texture-id-by-name (function string symbol texture-id))
+(define-extern lookup-texture-id-by-name (function string string texture-id))
 (define-extern lookup-level-texture-by-name (function string level (pointer texture-page) texture))
 (define-extern *shader-list* pair)
 (define-extern *edit-shader* texture-id)
 (define-extern link-texture-by-id (function texture-id adgif-shader texture-page-dir-entry))
 (define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
 (define-extern adgif-shader-update! (function adgif-shader texture none))
-;; (define-extern adgif-shader<-texture-with-update! function) ;; (function adgif-shader texture adgif-shader)
+(define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
 (define-extern hack-texture (function texture float))
 (define-extern adgif-shader-login (function adgif-shader texture))
 (define-extern adgif-shader-login-no-remap (function adgif-shader texture))
-;; (define-extern adgif-shader-login-fast function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
+(define-extern adgif-shader-login-fast (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap-fast (function adgif-shader texture))
 (define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
-(define-extern set-dirty-mask!
-  "First arg is the level name off the [[*level*]]'s `default-level`"
-  (function string int int int none))
+(define-extern set-dirty-mask! (function level int int int none))
 (define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
 (define-extern *texture-pool* texture-pool)
 
@@ -21505,7 +21510,7 @@
 ;; (define-extern *test-shrub* object) ;; int
 (define-extern bsp-camera-asm (function bsp-header vector none)) ;;
 (define-extern print-collide-stats (function none))
-;; (define-extern level-remap-texture function) ;; (function texture-id texture-id)
+(define-extern level-remap-texture (function texture-id texture-id))
 (define-extern build-masks (function bsp-header none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
