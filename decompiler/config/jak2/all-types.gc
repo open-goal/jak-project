@@ -2997,6 +2997,7 @@
   (bucket-323 323)
   (bucket-324 324)
   (debug-no-zbuf 325)
+  (debug-unknown-326 326)
   )
 
 ;; TODO - names in `render` menu
@@ -6091,6 +6092,15 @@
   (fc-6  6)
   (fc-8  8)
   (fc-9  9)
+  (fc-10 10)
+  (fc-13 13)
+  (fc-11 11)
+  (fc-12 12)
+  (fc-15 15)
+  (fc-16 16)
+  (fc-17 17)
+  (fc-18 18)
+  (fc-19 19)
   )
 
 (defenum font-flags
@@ -8513,8 +8523,8 @@
 (deftype game-task-node-info (basic)
   ((level basic)
    (task game-task)
-   (name basic)
-   (when-open basic)
+   (name string)
+   (when-open array)
    (flags game-task-node-flag)
    (parent-node uint16 4)
    (task-mask task-mask)
@@ -8543,14 +8553,14 @@
 
 
 (deftype game-task-info (basic)
-  ((name                basic   :offset-assert 4)
+  ((name                string   :offset-assert 4)
    (text-name           uint32  :offset-assert 8)
    (pre-play-node       uint16  :offset-assert 12)
    (kiosk-play-node     uint16  :offset-assert 14)
-   (pre-play-continue   basic   :offset-assert 16)
+   (pre-play-continue   string   :offset-assert 16)
    (play-node           uint16  :offset-assert 20)
-   (play-continue       basic   :offset-assert 24)
-   (kiosk-play-continue basic   :offset-assert 28)
+   (play-continue       string   :offset-assert 24)
+   (kiosk-play-continue string   :offset-assert 28)
    )
   :flag-assert         #x900000020
   )
@@ -11672,8 +11682,8 @@
    (task-perm-list         entity-perm-array    :offset-assert 236)
    (current-continue       continue-point       :offset-assert 240)
    (last-continue          continue-point       :offset-assert 244)
-   (unknown-pad3 array :offset-assert 248)
-   (unknown-pad4 array :offset-assert 252)
+   (play-list              (array game-task-info) :offset-assert 248)
+   (sub-task-list          (array game-task-node-info) :offset-assert 252)
    (unknown-pad5 array :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
    (unknown-pad6           uint32               :offset-assert 264)
@@ -22635,7 +22645,7 @@
 (define-extern gen-font-12 (function string none))
 (define-extern draw-string-asm (function string dma-buffer font-context uint))
 (define-extern draw-string (function string dma-buffer font-context draw-string-result))
-(define-extern get-string-length (function string font-context float))
+(define-extern get-string-length (function string font-context draw-string-result))
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 (define-extern draw-string-adv (function string dma-buffer font-context none))
 
@@ -27518,6 +27528,8 @@
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
+  (:methods
+   (new (symbol type) _type_ 0))
   )
 
 (deftype debug-menu-node (basic)
@@ -27542,6 +27554,8 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
+  (:methods
+   (new (symbol type debug-menu-context string) _type_ 0))
   )
 
 (deftype debug-menu-item (debug-menu-node)
@@ -27558,6 +27572,8 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
+  (:methods
+   (new (symbol type string debug-menu) _type_ 0))
   )
 
 (deftype debug-menu-item-function (debug-menu-item)
@@ -27567,6 +27583,8 @@
   :method-count-assert 9
   :size-assert         #x1d
   :flag-assert         #x90000001d
+  (:methods
+   (new (symbol type string object (function object object)) _type_ 0))
   )
 
 (defenum debug-menu-msg
@@ -27584,6 +27602,8 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
+  (:methods
+   (new (symbol type string object (function object debug-menu-msg object)) _type_ 0))
   )
 
 (deftype debug-menu-item-var (debug-menu-item)
@@ -27617,6 +27637,8 @@
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
+  (:methods
+   (new (symbol type string int int) _type_ 0))
   )
 
 (defenum debug-menu-dest
@@ -27626,42 +27648,42 @@
   (open-menus 2)
   (current-selection 3))
 
-;; (define-extern debug-menu-item-var-update-display-str function) ;; (function debug-menu-item-var debug-menu-item-var)
+(define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var)) ;; 
 (define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int debug-menu-msg int int int) int symbol int int symbol debug-menu-item-var))
 (define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int debug-menu-msg float float float) float symbol float float int debug-menu-item-var))
-;; (define-extern debug-menu-context-grab-joypad function) ;; (function debug-menu-context basic (function basic none) symbol)
-;; (define-extern debug-menu-context-release-joypad function) ;; (function debug-menu-context symbol)
-;; (define-extern debug-menu-item-get-max-width function) ;; (function debug-menu-item debug-menu int)
-;; (define-extern debug-menu-context-default-selection function) ;; (function debug-menu-context symbol debug-menu-context)
-;; (define-extern debug-menu-rebuild function) ;; (function debug-menu debug-menu)
+(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic none) symbol)) ;; 
+(define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;; 
+(define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int)) ;; 
+(define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context)) ;; 
+(define-extern debug-menu-rebuild (function debug-menu debug-menu)) ;; 
 (define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
 (define-extern debug-menu-append-item (function debug-menu debug-menu-node debug-menu-node))
 (define-extern debug-menu-remove-all-items (function debug-menu debug-menu))
-;; (define-extern debug-menu-func-decode function) ;; (function object function)
+(define-extern debug-menu-func-decode (function object function)) ;; 
 (define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
 (define-extern debug-menu-find-from-template (function debug-menu-context pair debug-menu))
-;; (define-extern debug-menu-item-submenu-render function) ;; (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)
-;; (define-extern debug-menu-item-function-render function) ;; (function debug-menu-item-function int int int symbol debug-menu-item-function)
-;; (define-extern debug-menu-item-flag-render function) ;; (function debug-menu-item-flag int int int symbol debug-menu-item-flag)
-;; (define-extern debug-menu-item-var-render function) ;; (function debug-menu-item-var int int int symbol debug-menu-item-var)
-;; (define-extern debug-menu-item-render function) ;; (function debug-menu-item int int int symbol debug-menu-item)
-;; (define-extern debug-menu-render function) ;; (function debug-menu int int debug-menu-node int debug-menu)
-;; (define-extern debug-menu-context-render function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menu-context-select-next-or-prev-item function) ;; (function debug-menu-context int debug-menu-context)
-;; (define-extern debug-menu-context-select-new-item function) ;; (function debug-menu-context int debug-menu-context)
-;; (define-extern debug-menu-context-open-submenu function) ;; (function debug-menu-context debug-menu basic)
-;; (define-extern debug-menu-context-close-submenu function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menu-item-submenu-msg function) ;; (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)
-;; (define-extern debug-menu-item-function-msg function) ;; (function debug-menu-item-function debug-menu-msg debug-menu-item-function)
-;; (define-extern debug-menu-item-flag-msg function) ;; (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)
-;; (define-extern debug-menu-item-var-joypad-handler function) ;; (function debug-menu-item-var debug-menu-item-var)
-;; (define-extern debug-menu-item-var-msg function) ;; (function debug-menu-item-var debug-menu-msg debug-menu-item-var)
-;; (define-extern debug-menu-item-send-msg function) ;; (function debug-menu-item debug-menu-msg debug-menu-item)
-;; (define-extern debug-menu-send-msg function) ;; (function debug-menu debug-menu-msg symbol debug-menu)
+(define-extern debug-menu-item-submenu-render (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)) ;; 
+(define-extern debug-menu-item-function-render (function debug-menu-item-function int int int symbol debug-menu-item-function)) ;; 
+(define-extern debug-menu-item-flag-render (function debug-menu-item-flag int int int symbol debug-menu-item-flag)) ;; 
+(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-render (function debug-menu-item int int int symbol debug-menu-item)) ;; 
+(define-extern debug-menu-render (function debug-menu int int debug-menu-node int debug-menu)) ;; 
+(define-extern debug-menu-context-render (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menu-context-select-next-or-prev-item (function debug-menu-context int debug-menu-context)) ;; 
+(define-extern debug-menu-context-select-new-item (function debug-menu-context int debug-menu-context)) ;; 
+(define-extern debug-menu-context-open-submenu (function debug-menu-context debug-menu basic)) ;; 
+(define-extern debug-menu-context-close-submenu (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)) ;; 
+(define-extern debug-menu-item-function-msg (function debug-menu-item-function debug-menu-msg debug-menu-item-function)) ;; 
+(define-extern debug-menu-item-flag-msg (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)) ;; 
+(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-var-msg (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item)) ;; 
+(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu)) ;; 
 (define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
-;; (define-extern debug-menu-context-activate-selection function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menus-default-joypad-func function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menus-active function) ;; (function debug-menu-context debug-menu-context)
+(define-extern debug-menu-context-activate-selection (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menus-default-joypad-func (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menus-active (function debug-menu-context debug-menu-context)) ;; 
 (define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29838,7 +29860,7 @@
 (define-extern dm-cam-settings-func (function cam-slave-options debug-menu-msg symbol))
 (define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
 (define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))
-;; (define-extern dm-cam-setting-float (function float debug-menu-msg symbol)) ;; TODO - causes decomp hang
+(define-extern dm-cam-setting-float (function float debug-menu-msg float float float)) ;; TODO - omit the last 2 args and set the return type to `none` to get a hang
 (define-extern dm-cam-render-float (function int debug-menu-msg float float float))
 (define-extern dm-subdiv-float (function symbol debug-menu-msg float float float))
 (define-extern dm-subdiv-int (function symbol debug-menu-msg int int int))
@@ -29949,7 +29971,7 @@
 (define-extern dm-play-task-with-continue (function game-task string none))
 (define-extern dm-play-task (function game-task none))
 (define-extern dm-play-race (function race-selection symbol none))
-(define-extern debug-menu-make-play-menu (function symbol none)) ;; TODO - need to figure out game-info more
+(define-extern debug-menu-make-play-menu (function symbol none))
 (define-extern dm-anim-tester-flag-func (function int debug-menu-msg symbol))
 (define-extern dm-anim-tester-func (function int debug-menu-msg symbol))
 (define-extern dm-pilot-mode "TODO - what is the third arg to target's change-mode?" (function object none))
