@@ -595,7 +595,7 @@
          (set! (-> pkt1 dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
          (set! (-> pkt1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
          (set! (-> pkt1 vif1) (new 'static 'vif-tag :num #x5 ;; matrix + qword
-                                                    :cmd (vif-cmd unpack-v4-32) 
+                                                    :cmd (vif-cmd unpack-v4-32)
                                                     :imm (shr (shl count 54) 54)))
          (set! (-> a1-1 base) (&+ (the-as pointer pkt1) 16))
          )
@@ -628,7 +628,7 @@
          (set! (-> pkt2 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
          (set! (-> pkt2 vif1)
                (new 'static 'vif-tag :num #x50 ;; matrix + qword + 75 qword table
-                                     :cmd (vif-cmd unpack-v4-32) 
+                                     :cmd (vif-cmd unpack-v4-32)
                                      :imm (shr (shl count 54) 54))
                )
          (set! (-> a1-10 base) (&+ (the-as pointer pkt2) 16))
@@ -705,7 +705,7 @@
     (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
     (&+! (-> dma-buff base) (* qwc-pkt1 16))
     )
-  
+
   ;; second packet is vector data (3 qw / sprite)
   (let* ((qwc-pkt2 (* 3 num-sprites))
          (v1-4 dma-buff)
@@ -738,7 +738,7 @@
     (set! (-> pkt3 vif1) (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3))
     (set! (-> v1-6 base) (&+ (the-as pointer pkt3) 16))
     )
-  
+
   ;; fourth packet runs the renderer!
   (let ((pkt4 (the-as dma-packet (-> dma-buff base))))
     (set! (-> pkt4 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
@@ -794,7 +794,7 @@
     (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
     (&+! (-> dma-buff base) (* qwc-pkt1 16))
     )
-  
+
   ;; second packet is vector data (3 qw / sprite)
   (let* ((qwc-pkt2 (* 3 num-sprites))
          (v1-4 dma-buff)
@@ -811,7 +811,7 @@
     (set! (-> pkt2 vif1) (new 'static 'vif-tag :imm #x8001 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2))
     (set! (-> v1-4 base) (&+ (the-as pointer pkt2) 16))
     )
-  
+
   ;; third packet is adgif data (5 qw/sprite)
   (let* ((qwc-pkt3 (* 5 num-sprites))
          (v1-6 dma-buff)
@@ -827,7 +827,7 @@
     (set! (-> pkt3 vif1) (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3))
     (set! (-> v1-6 base) (&+ (the-as pointer pkt3) 16))
     )
-  
+
   ;; fourth packet runs the renderer!
   (let ((pkt4 (the-as dma-packet (-> dma-buff base))))
     (set! (-> pkt4 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
@@ -849,7 +849,7 @@
                               )
           (remaining-sprites (-> sprites num-valid group-idx))
           )
-      
+
       ;; loop over chunks
       (while (< 48 remaining-sprites)
         (sprite-add-3d-chunk sprites current-sprite-idx 48 dma-buff)
@@ -890,26 +890,7 @@
              (giftag (the-as gs-gif-tag (-> v1-18 base)))
              )
         (set! (-> giftag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-        (set! (-> giftag regs)
-              (new 'static 'gif-tag-regs
-                :regs0 (gif-reg-id a+d)
-                :regs1 (gif-reg-id a+d)
-                :regs2 (gif-reg-id a+d)
-                :regs3 (gif-reg-id a+d)
-                :regs4 (gif-reg-id a+d)
-                :regs5 (gif-reg-id a+d)
-                :regs6 (gif-reg-id a+d)
-                :regs7 (gif-reg-id a+d)
-                :regs8 (gif-reg-id a+d)
-                :regs9 (gif-reg-id a+d)
-                :regs10 (gif-reg-id a+d)
-                :regs11 (gif-reg-id a+d)
-                :regs12 (gif-reg-id a+d)
-                :regs13 (gif-reg-id a+d)
-                :regs14 (gif-reg-id a+d)
-                :regs15 (gif-reg-id a+d)
-                )
-              )
+        (set! (-> giftag regs) GIF_REGS_ALL_AD)
         (set! (-> v1-18 base) (the-as pointer (&+ giftag 16)))
         )
       (let* ((v1-19 dma-buff)
@@ -932,7 +913,7 @@
         (set! (-> (the-as (pointer gs-reg64) a0-10) 3) (gs-reg64 clamp-1))
         (set! (-> v1-19 base) (&+ a0-10 32))
         )
-      
+
       ;; load the VU1 code
       (dma-buffer-add-vu-function dma-buff sprite-vu1-block 1)
 
@@ -948,7 +929,7 @@
         (set! (-> pkt2 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1)) ;; wait for mpg
         (set! (-> v1-20 base) (&+ (the-as pointer pkt2) 16))
         )
-      
+
       ;; set up double buffer upload and draw
       (let* ((v1-21 dma-buff)
              (pkt3 (the-as dma-packet (-> v1-21 base)))
@@ -962,7 +943,7 @@
       ;;;;;;;;;;;;;;;;
       ;; group 0 draw
       ;;;;;;;;;;;;;;;;
-      
+
       ;; add matrix data (not needed for init)
       (sprite-add-matrix-data dma-buff (the-as uint 0))
 
@@ -970,7 +951,7 @@
       (sprite-add-3d-all *sprite-array-3d* dma-buff 0)
       ;; add 2d's (group 0)
       (sprite-add-2d-all *sprite-array-2d* dma-buff 0)
-      
+
       ;; draw group 0
       (let* ((v1-22 dma-buff)
              (pkt4 (the-as dma-packet (-> v1-22 base)))
@@ -1032,7 +1013,7 @@
           )
         )
       )
-    
+
     ;; update memory usage
     (let ((mem-use *dma-mem-usage*))
       (when (nonzero? mem-use)
