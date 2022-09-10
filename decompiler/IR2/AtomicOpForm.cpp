@@ -727,6 +727,14 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         return pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
                                                             std::vector<DerefToken>());
       }
+
+      // if we fail here, report a LoadSourceElement with the register and offset to be consumed
+      // by the expression pass, which can detect more complicated cases (see
+      // LoadSourceElement::update_from_stack, which needs expressions)
+      auto source =
+          pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
+      return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind, ro,
+                                                               input_type);
     }
   }
 
@@ -738,7 +746,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
   }
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
+  return pool.alloc_single_element_form<LoadSourceElement>(
+      nullptr, source, m_size, m_kind, std::optional<IR2_RegOffset>{}, TP_Type());
 }
 
 FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {

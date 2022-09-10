@@ -13,7 +13,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
-#include "decompiler/util/goal_constants.h"
+#include "decompiler/util/type_utils.h"
 
 /*
  * TODO
@@ -688,6 +688,21 @@ void LoadSourceElement::update_from_stack(const Env& env,
                                           bool allow_side_effects) {
   mark_popped();
   m_addr->update_children_from_stack(env, pool, stack, allow_side_effects);
+
+  // most of the time, the AtomicOpForm logic is able to figure the load, but sometimes
+  // it's impossible before expressions:
+
+  //  ori a2, r0, 33708
+  //  lw a3, *level*(s7)
+  //  daddu a2, a2, a3
+  //  lq a2, 0(a2)
+
+  /*
+  if (m_load_source_ro && m_load_source_ro->offset == 0) {
+    // maybe a case like above, try to improve
+  }
+  */
+
   result->push_back(this);
 }
 
@@ -1025,19 +1040,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    u64 symbol_to_string_offset = -1;
-    switch (env.version) {
-      case GameVersion::Jak1:
-        symbol_to_string_offset = DECOMP_SYM_INFO_OFFSET + 4;
-        break;
-      case GameVersion::Jak2:
-        symbol_to_string_offset = jak2::SYM_TO_STRING_OFFSET;
-        break;
-      default:
-        ASSERT(false);
-    }
-    if (arg0_int && (*arg0_int == symbol_to_string_offset) &&
-        arg1_type.typespec() == TypeSpec("symbol")) {
+
+    if (arg0_int && (*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
+        allowable_base_type_for_symbol_to_string(arg1_type.typespec())) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
     }
@@ -1250,10 +1255,29 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
       }
+    } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_integer_constant();
+      input.stride = 0;
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success && !out.has_variable_token()) {
+        // it is. now we have to modify things
+        // first, look for the index
+        std::vector<DerefToken> tokens;
+        for (auto& tok : out.tokens) {
+          tokens.push_back(to_token(tok));
+        }
+
+        result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+        return;
+      }
     }
   }
 
-  if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
+  if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int() &&
+      arg0_type.kind != TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
     auto type_info = env.dts->ts.lookup_type(arg0_type.typespec());
     if (type_info->get_size_in_memory() == m_expr.get_arg(1).get_int()) {
       auto new_form = pool.alloc_element<GenericElement>(
@@ -1276,7 +1300,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-  if (arg0_ptr) {
+  if (arg0_ptr && arg0_type.kind != TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
