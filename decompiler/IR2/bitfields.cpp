@@ -865,8 +865,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     }
 
     // will always be 64-bits
-    auto fields =
-        try_decompile_bitfield_from_int(typespec, env.dts->ts, val, false, {});
+    auto fields = try_decompile_bitfield_from_int(typespec, env.dts->ts, val, false, {});
     if (!fields) {
       return pool.form<CastElement>(typespec, in);
     }

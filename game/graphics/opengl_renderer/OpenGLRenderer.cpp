@@ -766,7 +766,6 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 
-
   // TODO ending data.
 }
 /*!

@@ -7,3 +7,33 @@
 
 ;; DECOMP BEGINS
 
+(defun level-remap-texture ((arg0 texture-id))
+  (let ((v1-1 (-> *level* log-in-level-bsp)))
+    (when v1-1
+      (let* ((a3-0 (-> v1-1 texture-remap-table-len))
+             (v1-2 (the-as object (-> v1-1 texture-remap-table)))
+             (t0-0 (the-as (pointer uint64) v1-2))
+             (a1-1 (the-as uint #xfffffff8))
+             (a2-1 (logand (new 'static 'texture-id :index #xfff :page #xfff) arg0))
+             (a3-2 (the-as object (&+ t0-0 (* a3-0 8))))
+             )
+        (label cfg-2)
+        (b! (= v1-2 a3-2) cfg-8 :delay (nop!))
+        (let ((t0-3 (the-as object (logand (/ (+ (the-as int v1-2) (the-as int a3-2)) 2) a1-1))))
+          (let ((t1-1 (- (-> (the-as (pointer uint32) t0-3) 0) a2-1)))
+            (b! (zero? t1-1) cfg-7 :delay (nop!))
+            (b! (< (the-as int t1-1) 0) cfg-6 :delay (nop!))
+            )
+          (b! #t cfg-2 :delay (set! a3-2 (the-as (pointer uint64) t0-3)))
+          (label cfg-6)
+          (b! #t cfg-2 :delay (set! v1-2 (+ (the-as int t0-3) 8)))
+          (label cfg-7)
+          (set! arg0 (the-as texture-id (logior (-> (the-as (pointer uint32) t0-3) 1) 20)))
+          )
+        )
+      (label cfg-8)
+      0
+      )
+    )
+  (the-as texture-id arg0)
+  )

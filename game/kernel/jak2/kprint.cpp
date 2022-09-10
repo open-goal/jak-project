@@ -256,7 +256,6 @@ s32 format_impl_jak2(uint64_t* args) {
           output_ptr++;
         } break;
 
-
         case 'A':  // print a boxed object
         case 'a':  // pad,padchar (like ) ~8,'0A
         {

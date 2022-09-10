@@ -396,7 +396,7 @@ class TP_Type {
 
  private:
   TypeSpec m_ts;
-  TypeSpec m_method_from_type; // hack, also stores sum type.
+  TypeSpec m_method_from_type;  // hack, also stores sum type.
   int m_method_id = -1;
   std::string m_str;
   int64_t m_int = 0;
