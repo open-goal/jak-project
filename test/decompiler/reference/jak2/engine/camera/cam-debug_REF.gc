@@ -1761,12 +1761,7 @@
 ;; definition for function cam-collision-record-draw
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-;; WARN: Function may read a register that is not set: t0
-;; WARN: Function may read a register that is not set: t1
-;; WARN: Function may read a register that is not set: t2
-;; WARN: Function may read a register that is not set: t3
 (defun cam-collision-record-draw ()
-  (local-vars (t0-0 none) (t1-0 none) (t2-0 none) (t3-0 none))
   (cond
     ((cpad-pressed? 0 down)
      (cam-collision-record-step 1)
@@ -1806,128 +1801,115 @@
     (set! (-> gp-0 y) 127)
     (set! (-> gp-0 z) 127)
     (set! (-> gp-0 w) 128)
-    (let ((t9-7 camera-line-rel-len)
-          (a0-12 (-> (the-as cam-collision-record s5-0) pos))
-          (a1-3 (-> (the-as cam-collision-record s5-0) vel))
-          (a2-1 (fmax 81.92 (vector-length (-> (the-as cam-collision-record s5-0) vel))))
-          (a3-0 s4-0)
+    (camera-line-rel-len
+      (-> (the-as cam-collision-record s5-0) pos)
+      (-> (the-as cam-collision-record s5-0) vel)
+      (fmax 81.92 (vector-length (-> (the-as cam-collision-record s5-0) vel)))
+      s4-0
+      )
+    (let ((s3-0 (new 'stack-no-clear 'collide-query)))
+      (set! (-> s3-0 start-pos quad) (-> (the-as cam-collision-record s5-0) pos quad))
+      (set! (-> s3-0 move-dist quad) (-> (the-as cam-collision-record s5-0) vel quad))
+      (let ((v1-47 s3-0))
+        (set! (-> v1-47 radius) (-> *CAMERA-bank* collide-move-rad))
+        (set! (-> v1-47 collide-with) (collide-spec backgnd))
+        (set! (-> v1-47 ignore-process0) #f)
+        (set! (-> v1-47 ignore-process1) #f)
+        (set! (-> v1-47 ignore-pat) (new 'static 'pat-surface :nocamera #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> v1-47 action-mask) (collide-action solid))
+        )
+      (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* s3-0))
+            (s2-0 (new 'stack-no-clear 'vector))
+            )
+        (format
+          *stdcon*
+          "frame ~D iteration ~D travel ~f~%"
+          (-> (the-as cam-collision-record s5-0) frame)
+          (-> (the-as cam-collision-record s5-0) iteration)
+          f30-0
           )
-      (t9-7 a0-12 a1-3 a2-1 a3-0)
-      (let ((s3-0 (new 'stack-no-clear 'collide-query)))
-        (set! (-> s3-0 start-pos quad) (-> (the-as cam-collision-record s5-0) pos quad))
-        (set! (-> s3-0 move-dist quad) (-> (the-as cam-collision-record s5-0) vel quad))
-        (let ((v1-47 s3-0))
-          (set! (-> v1-47 radius) (-> *CAMERA-bank* collide-move-rad))
-          (set! (-> v1-47 collide-with) (collide-spec backgnd))
-          (set! (-> v1-47 ignore-process0) #f)
-          (set! (-> v1-47 ignore-process1) #f)
-          (set! (-> v1-47 ignore-pat) (new 'static 'pat-surface :nocamera #x1 :probe #x1 :noendlessfall #x1))
-          (set! (-> v1-47 action-mask) (the-as uint 1))
+        (format
+          *stdcon*
+          "mzo ~M psz ~M vop ~f~%"
+          (-> (the-as cam-collision-record s5-0) min-z-override)
+          (-> (the-as cam-collision-record s5-0) string-push-z)
+          (-> (the-as cam-collision-record s5-0) view-off-param)
           )
-        (let ((f30-0
-                (fill-and-probe-using-line-sphere
-                  *collide-cache*
-                  (the-as vector s3-0)
-                  (the-as vector a2-1)
-                  (the-as float a3-0)
-                  (the-as collide-spec t0-0)
-                  (the-as process t1-0)
-                  (the-as collide-tri-result t2-0)
-                  (the-as pat-surface t3-0)
-                  )
-                )
-              (s2-0 (new 'stack-no-clear 'vector))
-              )
-          (format
-            *stdcon*
-            "frame ~D iteration ~D travel ~f~%"
-            (-> (the-as cam-collision-record s5-0) frame)
-            (-> (the-as cam-collision-record s5-0) iteration)
-            f30-0
-            )
-          (format
-            *stdcon*
-            "mzo ~M psz ~M vop ~f~%"
-            (-> (the-as cam-collision-record s5-0) min-z-override)
-            (-> (the-as cam-collision-record s5-0) string-push-z)
-            (-> (the-as cam-collision-record s5-0) view-off-param)
-            )
-          (format
-            *stdcon*
-            "pos ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) pos x)
-            (-> (the-as cam-collision-record s5-0) pos y)
-            (-> (the-as cam-collision-record s5-0) pos z)
-            )
-          (format
-            *stdcon*
-            "vel ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) vel x)
-            (-> (the-as cam-collision-record s5-0) vel y)
-            (-> (the-as cam-collision-record s5-0) vel z)
-            )
-          (format
-            *stdcon*
-            "des ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) desired-pos x)
-            (-> (the-as cam-collision-record s5-0) desired-pos y)
-            (-> (the-as cam-collision-record s5-0) desired-pos z)
-            )
-          (format
-            *stdcon*
-            "flt ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) view-flat x)
-            (-> (the-as cam-collision-record s5-0) view-flat y)
-            (-> (the-as cam-collision-record s5-0) view-flat z)
-            )
-          (format
-            *stdcon*
-            "cur ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) cam-tpos-cur x)
-            (-> (the-as cam-collision-record s5-0) cam-tpos-cur y)
-            (-> (the-as cam-collision-record s5-0) cam-tpos-cur z)
-            )
-          (format
-            *stdcon*
-            "old ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) cam-tpos-old x)
-            (-> (the-as cam-collision-record s5-0) cam-tpos-old y)
-            (-> (the-as cam-collision-record s5-0) cam-tpos-old z)
-            )
-          (format
-            *stdcon*
-            "smn ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) string-min-val x)
-            (-> (the-as cam-collision-record s5-0) string-min-val y)
-            (-> (the-as cam-collision-record s5-0) string-min-val z)
-            )
-          (format
-            *stdcon*
-            "smx ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) string-max-val x)
-            (-> (the-as cam-collision-record s5-0) string-max-val y)
-            (-> (the-as cam-collision-record s5-0) string-max-val z)
-            )
-          (format
-            *stdcon*
-            "vof ~M ~M ~M~%"
-            (-> (the-as cam-collision-record s5-0) view-off x)
-            (-> (the-as cam-collision-record s5-0) view-off y)
-            (-> (the-as cam-collision-record s5-0) view-off z)
-            )
-          (when (>= f30-0 0.0)
-            (camera-line (the-as vector (-> s3-0 best-other-tri)) (-> s3-0 best-other-tri vertex 1) s4-0)
-            (camera-line (-> s3-0 best-other-tri vertex 1) (-> s3-0 best-other-tri vertex 2) s4-0)
-            (camera-line (-> s3-0 best-other-tri vertex 2) (the-as vector (-> s3-0 best-other-tri)) s4-0)
-            (vector-! s2-0 (the-as vector (+ (the-as int s5-0) 0)) (-> s3-0 best-other-tri intersect))
-            (vector-normalize! s2-0 1.0)
-            (camera-line-rel-len (-> s3-0 best-other-tri intersect) s2-0 (-> *CAMERA-bank* collide-move-rad) gp-0)
-            (camera-line-rel-len
-              (-> s3-0 best-other-tri intersect)
-              (-> s3-0 best-other-tri normal)
-              (-> *CAMERA-bank* collide-move-rad)
-              gp-0
-              )
+        (format
+          *stdcon*
+          "pos ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) pos x)
+          (-> (the-as cam-collision-record s5-0) pos y)
+          (-> (the-as cam-collision-record s5-0) pos z)
+          )
+        (format
+          *stdcon*
+          "vel ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) vel x)
+          (-> (the-as cam-collision-record s5-0) vel y)
+          (-> (the-as cam-collision-record s5-0) vel z)
+          )
+        (format
+          *stdcon*
+          "des ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) desired-pos x)
+          (-> (the-as cam-collision-record s5-0) desired-pos y)
+          (-> (the-as cam-collision-record s5-0) desired-pos z)
+          )
+        (format
+          *stdcon*
+          "flt ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) view-flat x)
+          (-> (the-as cam-collision-record s5-0) view-flat y)
+          (-> (the-as cam-collision-record s5-0) view-flat z)
+          )
+        (format
+          *stdcon*
+          "cur ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) cam-tpos-cur x)
+          (-> (the-as cam-collision-record s5-0) cam-tpos-cur y)
+          (-> (the-as cam-collision-record s5-0) cam-tpos-cur z)
+          )
+        (format
+          *stdcon*
+          "old ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) cam-tpos-old x)
+          (-> (the-as cam-collision-record s5-0) cam-tpos-old y)
+          (-> (the-as cam-collision-record s5-0) cam-tpos-old z)
+          )
+        (format
+          *stdcon*
+          "smn ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) string-min-val x)
+          (-> (the-as cam-collision-record s5-0) string-min-val y)
+          (-> (the-as cam-collision-record s5-0) string-min-val z)
+          )
+        (format
+          *stdcon*
+          "smx ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) string-max-val x)
+          (-> (the-as cam-collision-record s5-0) string-max-val y)
+          (-> (the-as cam-collision-record s5-0) string-max-val z)
+          )
+        (format
+          *stdcon*
+          "vof ~M ~M ~M~%"
+          (-> (the-as cam-collision-record s5-0) view-off x)
+          (-> (the-as cam-collision-record s5-0) view-off y)
+          (-> (the-as cam-collision-record s5-0) view-off z)
+          )
+        (when (>= f30-0 0.0)
+          (camera-line (the-as vector (-> s3-0 best-other-tri)) (-> s3-0 best-other-tri vertex 1) s4-0)
+          (camera-line (-> s3-0 best-other-tri vertex 1) (-> s3-0 best-other-tri vertex 2) s4-0)
+          (camera-line (-> s3-0 best-other-tri vertex 2) (the-as vector (-> s3-0 best-other-tri)) s4-0)
+          (vector-! s2-0 (the-as vector (+ (the-as int s5-0) 0)) (-> s3-0 best-other-tri intersect))
+          (vector-normalize! s2-0 1.0)
+          (camera-line-rel-len (-> s3-0 best-other-tri intersect) s2-0 (-> *CAMERA-bank* collide-move-rad) gp-0)
+          (camera-line-rel-len
+            (-> s3-0 best-other-tri intersect)
+            (-> s3-0 best-other-tri normal)
+            (-> *CAMERA-bank* collide-move-rad)
+            gp-0
             )
           )
         )

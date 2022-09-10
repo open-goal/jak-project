@@ -889,6 +889,7 @@
 ;; ERROR: function has no type analysis. Cannot decompile.
 
 ;; ERROR: failed type prop at 56: Called a function, but we do not know its type
+;; WARN: Return type mismatch none vs float.
 
 
 (defstate cam-lookat (camera-slave)
@@ -930,13 +931,8 @@
 
 (define *CAM_STRING-bank* (new 'static 'cam-string-bank :los-coll-rad (meters 1) :los-coll-rad2 (meters 0.5)))
 
-;; ERROR: Function may read a register that is not set: t0
-;; ERROR: Function may read a register that is not set: t1
-;; ERROR: Function may read a register that is not set: t2
-;; ERROR: Function may read a register that is not set: t3
 ;; WARN: new jak 2 until loop case, check carefully
 (defun cam-string-find-position-rel! ((arg0 vector))
-  (local-vars (t0-0 none) (t1-0 none) (t2-0 none) (t3-0 none))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'collide-query))
@@ -949,7 +945,7 @@
       (set! (-> s1-0 ignore-process0) #f)
       (set! (-> s1-0 ignore-process1) #f)
       (set! (-> s1-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-      (set! (-> s1-0 action-mask) (the-as uint 1))
+      (set! (-> s1-0 action-mask) (collide-action solid))
       )
     (vector-flatten! s5-0 (-> *camera-combiner* inv-camera-rot vector 2) (-> *camera* local-down))
     (if (= (vector-normalize-ret-len! s5-0 (- (+ 1024.0 (-> *CAMERA-bank* default-string-min-z)))) 0.0)
@@ -958,30 +954,12 @@
     (vector--float*! s5-0 s5-0 (-> *camera* local-down) (-> *CAMERA-bank* default-string-min-y))
     (set! (-> arg0 quad) (-> s5-0 quad))
     (until #f
-      (let ((t9-4 vector--float*!)
-            (a0-7 s4-0)
-            (a1-4 arg0)
-            (a2-2 (-> *camera* local-down))
-            (a3-1 (-> *camera* settings target-height))
-            )
-        (t9-4 a0-7 a1-4 a2-2 a3-1)
-        (set! (-> s3-0 start-pos quad) (-> *camera* tpos-curr-adj quad))
-        (set! (-> s3-0 move-dist quad) (-> arg0 quad))
-        (if (< (fill-and-probe-using-line-sphere
-                 *collide-cache*
-                 (the-as vector s3-0)
-                 a2-2
-                 (the-as float a3-1)
-                 (the-as collide-spec t0-0)
-                 (the-as process t1-0)
-                 (the-as collide-tri-result t2-0)
-                 (the-as pat-surface t3-0)
-                 )
-               0.0
-               )
-            (return #t)
-            )
-        )
+      (vector--float*! s4-0 arg0 (-> *camera* local-down) (-> *camera* settings target-height))
+      (set! (-> s3-0 start-pos quad) (-> *camera* tpos-curr-adj quad))
+      (set! (-> s3-0 move-dist quad) (-> arg0 quad))
+      (if (< (fill-and-probe-using-line-sphere *collide-cache* s3-0) 0.0)
+          (return #t)
+          )
       (set! f30-0 (cond
                     ((>= -32768.0 f30-0)
                      (format #t "cam-string didn't find a spot~%")
@@ -1004,6 +982,7 @@
   #f
   )
 
+;; WARN: Return type mismatch uint vs cam-slave-options.
 (defbehavior cam-string-set-position-rel! camera-slave ((arg0 vector))
   (vector-flatten! (-> self view-flat) arg0 (-> *camera* local-down))
   (set! (-> self min-z-override) (vector-length (-> self view-flat)))
@@ -1021,6 +1000,7 @@
   409.6
   )
 
+;; WARN: Return type mismatch int vs none.
 (defun-debug cam-draw-collide-cache ((arg0 collide-cache))
   (let ((gp-0 (the-as object (-> arg0 tris))))
     (countdown (s5-0 (-> arg0 num-tris))
@@ -1069,6 +1049,7 @@
   )
 
 
+;; WARN: Return type mismatch int vs none.
 (defun dist-info-init ((arg0 collide-los-dist-info))
   (set! (-> arg0 min-par) 1.0)
   (set! (-> arg0 max-par) 0.0)
@@ -1081,6 +1062,7 @@
   (>= (-> arg0 max-par) (-> arg0 min-par))
   )
 
+;; WARN: Return type mismatch int vs none.
 (defun dist-info-append ((arg0 collide-los-dist-info) (arg1 vector))
   (cond
     ((dist-info-valid? arg0)
@@ -1297,9 +1279,9 @@
       (set! (-> v1-4 ignore-process0) #f)
       (set! (-> v1-4 ignore-process1) #f)
       (set! (-> v1-4 ignore-pat) arg2)
-      (set! (-> v1-4 action-mask) (the-as uint 1))
+      (set! (-> v1-4 action-mask) (collide-action solid))
       )
-    ((method-of-object s4-0 collide-cache-method-13))
+    (fill-using-line-sphere s4-0 s5-0)
     (let* ((f0-2 (vector-length (-> s5-0 move-dist)))
            (f28-0
              (cond
@@ -1483,6 +1465,7 @@
     )
   )
 
+;; WARN: Return type mismatch int vs symbol.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f2, f5]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f3, f6]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f2, f4, f7]
@@ -1567,24 +1550,21 @@
   )
 
 ;; ERROR: failed type prop at 785: Could not figure out load: (set! v1 (l.wu (+ v1 124)))
+;; WARN: Return type mismatch symbol vs vector.
 ;; ERROR: Unsupported inline assembly instruction kind - [sllv a0, v1, r0]
 ;; ERROR: Unsupported inline assembly instruction kind - [sllv a0, v1, r0]
 
-;; ERROR: Function may read a register that is not set: t0
-;; ERROR: Function may read a register that is not set: t1
-;; ERROR: Function may read a register that is not set: t2
-;; ERROR: Function may read a register that is not set: t3
+;; WARN: Return type mismatch int vs none.
 (defbehavior cam-string-find-hidden camera-slave ()
-  (local-vars (t0-0 none) (t1-0 none) (t2-0 none) (t3-0 none))
-  (let* ((s5-0 (new 'stack-no-clear 'collide-query))
-         (gp-0 (new 'stack-no-clear 'vector))
-         (t9-0 vector--float*!)
-         (a0-0 (-> s5-0 move-dist))
-         (a1-0 (-> *camera* tpos-curr-adj))
-         (a2-0 (-> *camera* local-down))
-         (a3-0 (-> *camera* settings target-height))
-         )
-    (t9-0 a0-0 a1-0 a2-0 a3-0)
+  (let ((s5-0 (new 'stack-no-clear 'collide-query))
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+    (vector--float*!
+      (-> s5-0 move-dist)
+      (-> *camera* tpos-curr-adj)
+      (-> *camera* local-down)
+      (-> *camera* settings target-height)
+      )
     (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> self string-trans))
     (set! (-> s5-0 start-pos quad) (-> self string-trans quad))
     (let ((s4-0 s5-0))
@@ -1593,21 +1573,10 @@
       (set! (-> s4-0 ignore-process0) #f)
       (set! (-> s4-0 ignore-process1) #f)
       (set! (-> s4-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-      (set! (-> s4-0 action-mask) (the-as uint 1))
+      (set! (-> s4-0 action-mask) (collide-action solid))
       )
     (cond
-      ((< (fill-and-probe-using-line-sphere
-            *collide-cache*
-            (the-as vector s5-0)
-            a2-0
-            (the-as float a3-0)
-            (the-as collide-spec t0-0)
-            (the-as process t1-0)
-            (the-as collide-tri-result t2-0)
-            (the-as pat-surface t3-0)
-            )
-          0.0
-          )
+      ((< (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
        (set! (-> self time-dist-too-far) (the-as uint 0))
        0
        )
@@ -1629,13 +1598,7 @@
   (none)
   )
 
-;; ERROR: Function may read a register that is not set: a3
-;; ERROR: Function may read a register that is not set: t0
-;; ERROR: Function may read a register that is not set: t1
-;; ERROR: Function may read a register that is not set: t2
-;; ERROR: Function may read a register that is not set: t3
 (defbehavior cam-string-move camera-slave ()
-  (local-vars (a3-0 object) (t0-0 object) (t1-0 float) (t2-0 none) (t3-0 none))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -1671,180 +1634,134 @@
         (.svf (&-> v1-7 quad) vf4)
         )
       (vector-normalize! s5-0 1.0)
-      (let ((t9-2 vector-normalize-copy!)
-            (a0-7 s4-0)
-            (a1-7 (-> self view-flat))
-            (a2-2 (the-as object 1.0))
-            )
-        (t9-2 a0-7 a1-7 (the-as float a2-2))
-        (vector-cross! gp-0 s4-0 s5-0)
-        (cond
-          ((and (< (vector-length (-> self velocity)) (-> *CAMERA-bank* min-detectable-velocity))
-                (< (vector-length s3-0) (-> *CAMERA-bank* min-detectable-velocity))
-                )
-           (set! (-> self string-vel-dir) (the-as uint 0))
-           0
-           )
-          ((< (cos 5461.3335) (vector-dot (-> *camera* local-down) s5-0))
-           (set! (-> self string-vel-dir) (the-as uint 4))
-           )
-          ((< (vector-dot (-> *camera* local-down) s5-0) (- (cos 5461.3335)))
-           (set! (-> self string-vel-dir) (the-as uint 3))
-           )
-          ((< (cos 5461.3335) (vector-dot s4-0 s5-0))
-           (set! (-> self string-vel-dir) (the-as uint 6))
-           )
-          ((< (vector-dot s4-0 s5-0) (- (cos 5461.3335)))
-           (set! (-> self string-vel-dir) (the-as uint 5))
-           )
-          ((< (vector-dot (-> *camera* local-down) gp-0) 0.0)
-           (set! (-> self string-vel-dir) (the-as uint 1))
-           )
-          (else
-            (set! (-> self string-vel-dir) (the-as uint 2))
-            )
+      (vector-normalize-copy! s4-0 (-> self view-flat) 1.0)
+      (vector-cross! gp-0 s4-0 s5-0)
+      (cond
+        ((and (< (vector-length (-> self velocity)) (-> *CAMERA-bank* min-detectable-velocity))
+              (< (vector-length s3-0) (-> *CAMERA-bank* min-detectable-velocity))
+              )
+         (set! (-> self string-vel-dir) (the-as uint 0))
+         0
+         )
+        ((< (cos 5461.3335) (vector-dot (-> *camera* local-down) s5-0))
+         (set! (-> self string-vel-dir) (the-as uint 4))
+         )
+        ((< (vector-dot (-> *camera* local-down) s5-0) (- (cos 5461.3335)))
+         (set! (-> self string-vel-dir) (the-as uint 3))
+         )
+        ((< (cos 5461.3335) (vector-dot s4-0 s5-0))
+         (set! (-> self string-vel-dir) (the-as uint 6))
+         )
+        ((< (vector-dot s4-0 s5-0) (- (cos 5461.3335)))
+         (set! (-> self string-vel-dir) (the-as uint 5))
+         )
+        ((< (vector-dot (-> *camera* local-down) gp-0) 0.0)
+         (set! (-> self string-vel-dir) (the-as uint 1))
+         )
+        (else
+          (set! (-> self string-vel-dir) (the-as uint 2))
           )
-        (let ((s5-1 (new 'stack-no-clear 'collide-query)))
-          0.0
-          (let ((f30-2 1.0)
-                (s4-1 (-> s5-1 move-dist))
-                (gp-1 0)
+        )
+      )
+    (let ((s5-1 (new 'stack-no-clear 'collide-query)))
+      0.0
+      (let ((f30-2 1.0)
+            (s4-1 (-> s5-1 move-dist))
+            (gp-1 0)
+            )
+        (let ((s3-1 (new 'stack-no-clear 'vector)))
+          (when *debug-segment*
+            (if (>= (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity)))
+                (cam-collision-record-save (-> self string-trans) (-> self velocity) -1 'no-hit self)
                 )
-            (let ((s3-1 (new 'stack-no-clear 'vector)))
-              (when *debug-segment*
-                (when (>= (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity)))
-                  (let ((t9-7 cam-collision-record-save)
-                        (a0-16 (-> self string-trans))
-                        (a1-10 (-> self velocity))
-                        )
-                    (set! a2-2 -1)
-                    (set! a3-0 'no-hit)
-                    (set! t0-0 self)
-                    (t9-7 a0-16 a1-10 (the-as int a2-2) (the-as symbol a3-0) (the-as camera-slave t0-0))
-                    )
-                  )
+            )
+          (while (and (< 0.01 f30-2)
+                      (and (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))) (< gp-1 4))
+                      )
+            (vector-float*! s4-1 (-> self velocity) f30-2)
+            (if *debug-segment*
+                (cam-collision-record-save (-> self string-trans) s4-1 gp-1 'normal self)
                 )
-              (while (and (< 0.01 f30-2)
-                          (and (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))) (< gp-1 4))
-                          )
-                (vector-float*! s4-1 (-> self velocity) f30-2)
-                (when *debug-segment*
-                  (let ((t9-8 cam-collision-record-save)
-                        (a0-18 (-> self string-trans))
-                        (a1-11 s4-1)
-                        )
-                    (set! a2-2 gp-1)
-                    (set! a3-0 'normal)
-                    (set! t0-0 self)
-                    (t9-8 a0-18 a1-11 (the-as int a2-2) (the-as symbol a3-0) (the-as camera-slave t0-0))
-                    )
-                  )
-                (let ((f28-0
-                        (cond
-                          ((logtest? (-> self options) 32)
-                           (set! (-> s5-1 start-pos quad) (-> self string-trans quad))
-                           (let ((s2-0 s5-1))
-                             (set! (-> s2-0 radius) (-> *CAMERA-bank* collide-move-rad))
-                             (set! (-> s2-0 collide-with) (collide-spec backgnd obstacle hit-by-others-list camera-blocker pusher))
-                             (set! (-> s2-0 ignore-process0) #f)
-                             (set! (-> s2-0 ignore-process1) #f)
-                             (set! (-> s2-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-                             (set! (-> s2-0 action-mask) (the-as uint 1))
-                             )
-                           (fill-and-probe-using-line-sphere
-                             *collide-cache*
-                             (the-as vector s5-1)
-                             (the-as vector a2-2)
-                             (the-as float a3-0)
-                             (the-as collide-spec t0-0)
-                             (the-as process t1-0)
-                             (the-as collide-tri-result t2-0)
-                             (the-as pat-surface t3-0)
-                             )
-                           )
-                          (else
-                            -100000000.0
-                            )
-                          )
+            (let ((f28-0
+                    (cond
+                      ((logtest? (-> self options) 32)
+                       (set! (-> s5-1 start-pos quad) (-> self string-trans quad))
+                       (let ((s2-0 s5-1))
+                         (set! (-> s2-0 radius) (-> *CAMERA-bank* collide-move-rad))
+                         (set! (-> s2-0 collide-with) (collide-spec backgnd obstacle hit-by-others-list camera-blocker pusher))
+                         (set! (-> s2-0 ignore-process0) #f)
+                         (set! (-> s2-0 ignore-process1) #f)
+                         (set! (-> s2-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
+                         (set! (-> s2-0 action-mask) (collide-action solid))
+                         )
+                       (fill-and-probe-using-line-sphere *collide-cache* s5-1)
+                       )
+                      (else
+                        -100000000.0
                         )
                       )
-                  (when *display-cam-los-debug*
-                    (let ((t9-11 format)
-                          (a0-23 *stdcon*)
-                          (a1-14 "vp ~f vr ~f r ~f ta ~f~%")
-                          )
-                      (set! a2-2 (vector-length s4-1))
-                      (set! a3-0 f30-2)
-                      (set! t0-0 (/ (vector-length s4-1) f30-2))
-                      (set! t1-0 f28-0)
-                      (t9-11 a0-23 a1-14 (the-as float a2-2) (the-as float a3-0) (the-as float t0-0) t1-0)
-                      )
                     )
-                  (cond
-                    ((>= f28-0 0.0)
-                     (let* ((f1-10 (fmax 0.01 (/ 40.96 (vector-length s4-1))))
-                            (f0-22 (fmax 0.0 (- f28-0 f1-10)))
-                            (v1-71 (-> self string-trans))
-                            )
-                       (let ((a0-24 (-> self string-trans)))
-                         (.lvf vf2 (&-> s4-1 quad))
-                         (.lvf vf1 (&-> a0-24 quad))
-                         )
-                       (let ((a0-25 f0-22))
-                         (.mov vf3 a0-25)
-                         )
-                       (.add.x.vf vf4 vf0 vf0 :mask #b1000)
-                       (.mul.x.vf acc vf2 vf3)
-                       (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
-                       (.svf (&-> v1-71 quad) vf4)
-                       )
-                     (vector-! s3-1 (-> self string-trans) (-> s5-1 best-other-tri intersect))
-                     (vector-normalize! s3-1 1.0)
-                     (let ((t9-13 vector-flatten!)
-                           (a0-28 (-> self velocity))
-                           (a1-19 (-> self velocity))
-                           )
-                       (set! a2-2 s3-1)
-                       (t9-13 a0-28 a1-19 (the-as vector a2-2))
-                       )
-                     (set! f30-2 (- f30-2 (* f30-2 f28-0)))
-                     (+! gp-1 1)
+                  )
+              (if *display-cam-los-debug*
+                  (format *stdcon* "vp ~f vr ~f r ~f ta ~f~%" (vector-length s4-1) f30-2 (/ (vector-length s4-1) f30-2) f28-0)
+                  )
+              (cond
+                ((>= f28-0 0.0)
+                 (let* ((f1-10 (fmax 0.01 (/ 40.96 (vector-length s4-1))))
+                        (f0-22 (fmax 0.0 (- f28-0 f1-10)))
+                        (v1-71 (-> self string-trans))
+                        )
+                   (let ((a0-24 (-> self string-trans)))
+                     (.lvf vf2 (&-> s4-1 quad))
+                     (.lvf vf1 (&-> a0-24 quad))
                      )
-                    (else
-                      (vector+! (-> self string-trans) (-> self string-trans) s4-1)
-                      (set! f30-2 0.0)
-                      )
-                    )
+                   (let ((a0-25 f0-22))
+                     (.mov vf3 a0-25)
+                     )
+                   (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+                   (.mul.x.vf acc vf2 vf3)
+                   (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
+                   (.svf (&-> v1-71 quad) vf4)
+                   )
+                 (vector-! s3-1 (-> self string-trans) (-> s5-1 best-other-tri intersect))
+                 (vector-normalize! s3-1 1.0)
+                 (vector-flatten! (-> self velocity) (-> self velocity) s3-1)
+                 (set! f30-2 (- f30-2 (* f30-2 f28-0)))
+                 (+! gp-1 1)
+                 )
+                (else
+                  (vector+! (-> self string-trans) (-> self string-trans) s4-1)
+                  (set! f30-2 0.0)
                   )
                 )
               )
-            (cond
-              ((zero? gp-1)
-               (set! (-> self options) (logand -1025 (-> self options)))
-               (if *display-cam-los-debug*
-                   (format *stdcon* "not blocked~%")
-                   )
+            )
+          )
+        (cond
+          ((zero? gp-1)
+           (set! (-> self options) (logand -1025 (-> self options)))
+           (if *display-cam-los-debug*
+               (format *stdcon* "not blocked~%")
                )
-              (else
-                (logior! (-> self options) 1024)
-                (if *display-cam-los-debug*
-                    (format *stdcon* "blocked ~D ~f~%" gp-1 f30-2)
-                    )
-                (let ((gp-2 (new-stack-vector0))
-                      (f30-3 (vector-length (-> self view-flat)))
-                      )
-                  (vector-! gp-2 (-> self string-trans) (-> *camera* tpos-curr-adj))
-                  (vector-flatten! gp-2 gp-2 (-> *camera* local-down))
-                  (let ((f28-1 (vector-length gp-2)))
-                    (cond
-                      ((< f28-1 f30-3)
-                       (vector-normalize-copy! (-> self view-flat) gp-2 f28-1)
-                       (set! (-> self min-z-override) f28-1)
-                       )
-                      (else
-                        (vector-normalize-copy! (-> self view-flat) gp-2 f30-3)
-                        )
-                      )
+           )
+          (else
+            (logior! (-> self options) 1024)
+            (if *display-cam-los-debug*
+                (format *stdcon* "blocked ~D ~f~%" gp-1 f30-2)
+                )
+            (let ((gp-2 (new-stack-vector0))
+                  (f30-3 (vector-length (-> self view-flat)))
+                  )
+              (vector-! gp-2 (-> self string-trans) (-> *camera* tpos-curr-adj))
+              (vector-flatten! gp-2 gp-2 (-> *camera* local-down))
+              (let ((f28-1 (vector-length gp-2)))
+                (cond
+                  ((< f28-1 f30-3)
+                   (vector-normalize-copy! (-> self view-flat) gp-2 f28-1)
+                   (set! (-> self min-z-override) f28-1)
+                   )
+                  (else
+                    (vector-normalize-copy! (-> self view-flat) gp-2 f30-3)
                     )
                   )
                 )
@@ -1863,6 +1780,7 @@
   )
 
 ;; ERROR: failed type prop at 11: Called a function, but we do not know its type
+;; WARN: Return type mismatch none vs vector.
 
 (defbehavior set-string-params camera-slave ()
   (when (not (or (-> self string-val-locked) (logtest? #x40000 (-> self options))))
@@ -2002,7 +1920,6 @@
       )
     )
   :enter (behavior ()
-    (local-vars (t0-0 none) (t1-0 none) (t2-0 none) (t3-0 none))
     (when (not (-> self enter-has-run))
       (if (-> self cam-entity)
           (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
@@ -2089,14 +2006,13 @@
       (vector+! (-> self desired-pos) (-> self desired-pos) (-> *camera* tpos-curr-adj))
       (set! (-> self string-trans quad) (-> self desired-pos quad))
       (vector-reset! (-> self velocity))
-      (let* ((gp-2 (new 'stack-no-clear 'collide-query))
-             (t9-13 vector--float*!)
-             (a0-20 (-> gp-2 start-pos))
-             (a1-17 (-> *camera* tpos-curr-adj))
-             (a2-9 (-> *camera* local-down))
-             (a3-1 (-> *camera* settings target-height))
-             )
-        (t9-13 a0-20 a1-17 a2-9 a3-1)
+      (let ((gp-2 (new 'stack-no-clear 'collide-query)))
+        (vector--float*!
+          (-> gp-2 start-pos)
+          (-> *camera* tpos-curr-adj)
+          (-> *camera* local-down)
+          (-> *camera* settings target-height)
+          )
         (vector-! (-> gp-2 move-dist) (-> self string-trans) (-> gp-2 start-pos))
         (let ((s5-0 gp-2))
           (set! (-> s5-0 radius) (-> *CAMERA-bank* collide-move-rad))
@@ -2104,20 +2020,9 @@
           (set! (-> s5-0 ignore-process0) #f)
           (set! (-> s5-0 ignore-process1) #f)
           (set! (-> s5-0 ignore-pat) (the-as pat-surface (camera-master-method-16 *camera* #f)))
-          (set! (-> s5-0 action-mask) (the-as uint 1))
+          (set! (-> s5-0 action-mask) (collide-action solid))
           )
-        (let ((f0-31 (fill-and-probe-using-line-sphere
-                       *collide-cache*
-                       (the-as vector gp-2)
-                       a2-9
-                       (the-as float a3-1)
-                       (the-as collide-spec t0-0)
-                       (the-as process t1-0)
-                       (the-as collide-tri-result t2-0)
-                       (the-as pat-surface t3-0)
-                       )
-                     )
-              )
+        (let ((f0-31 (fill-and-probe-using-line-sphere *collide-cache* gp-2)))
           (when (and (< 0.0 f0-31) (< f0-31 1.0))
             (vector-float*! (-> gp-2 move-dist) (-> gp-2 move-dist) f0-31)
             (vector-flatten! (-> self view-flat) (-> gp-2 move-dist) (-> *camera* local-down))
