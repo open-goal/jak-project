@@ -1201,7 +1201,7 @@
   )
 
 (deftype sphere (vector)
-  ((r    float     :offset 12)
+  ((r    float     :offset 12 :score 999)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -14988,11 +14988,18 @@
   (player)
   )
 
+(defenum nav-flags
+  :type uint8
+  :bitfield #t
+  (nav-flags0 0)
+  (nav-flags1 1)
+  )
+
 (deftype collide-shape (trsqv)
   ((actor-hash-index int16 :offset 12)
-   (process process :offset-assert 140)
+   (process process-drawable :offset-assert 140)
    (max-iteration-count uint8)
-   (nav-flags uint8)
+   (nav-flags nav-flags)
    (total-prims uint8)
    (num-riders uint8)
    (pat-ignore-mask pat-surface)
@@ -20601,7 +20608,7 @@
 (deftype nav-find-poly-parms (structure)
   ((point         vector   :inline :offset-assert 0)
    (y-threshold   float            :offset-assert 16)
-   (ignore        uint8            :offset-assert 20)
+   (ignore        uint8            :offset-assert 20) ;; TODO - bitfield of some kind
    (poly          nav-poly         :offset-assert 24)
    (dist          float            :offset-assert 28)
    (point-inside? symbol           :offset-assert 32)
@@ -20691,7 +20698,7 @@
     (nav-mesh-method-26 (_type_) none 26) ;; (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
     (new-nav-control (_type_ vector int) nav-control 27) ;; (find-poly-fast (_type_ vector meters) nav-poly 27)
     (nav-mesh-method-28 (_type_ object) none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
-    (nav-mesh-method-29 (_type_ object symbol) none 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
+    (nav-mesh-method-29 (_type_ object symbol) nav-control 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
     (nav-mesh-method-30 (_type_ process-drawable) none 30)
     (change-to (_type_ process-drawable) none 31)
     (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) none 32)
@@ -20707,9 +20714,9 @@
     (nav-mesh-method-38 (_type_ nav-poly vector vector vector object) vector 38)
     (closest-point-on-boundary (_type_ nav-poly vector vector) none 39)
     (nav-mesh-method-40 (_type_ nav-poly vector object vector) none 40)
-    (project-point-into-poly-2d (_type_ float vector vector) none 41)
-    (nav-mesh-method-42 (_type_ object) none 42)
-    (nav-mesh-method-43 () none 43)
+    (project-point-into-poly-2d (_type_ nav-poly vector vector) none 41)
+    (nav-mesh-method-42 (_type_ nav-find-poly-parms) symbol 42)
+    (nav-mesh-method-43 (_type_ nav-find-poly-parms) none 43)
     (nav-mesh-method-44 (_type_ vector float float) symbol 44)
     (nav-mesh-method-45 "TODO - asm expression building error" (_type_ entity-perm) none 45)
     (nav-mesh-method-46 (_type_ object) none 46)
@@ -20886,7 +20893,7 @@
    (callback-info        nav-callback-info             :offset-assert   4)
    (process              process                       :offset-assert   8)
    (pad0                 uint32                        :offset-assert  12)
-   (shape                basic                         :offset-assert  16)
+   (shape                collide-shape                 :offset-assert  16)
    (nearest-y-threshold  meters                        :offset-assert  20)
    (nav-cull-radius      meters                        :offset-assert  24)
    (sec-per-frame        float                         :offset-assert  28)
@@ -20901,8 +20908,8 @@
    (sphere-mask          uint8                         :offset-assert  61)
    (pad1                 uint8                 2       :offset-assert  62)
    (sphere-id-array      uint8                 16      :offset-assert  64)
-   (extra-nav-sphere     vector                :inline :offset-assert  80)
-   (root-nav-sphere      vector                :inline :offset-assert  96)
+   (extra-nav-sphere     sphere                :inline :offset-assert  80)
+   (root-nav-sphere      sphere                :inline :offset-assert  96)
    (state                nav-state             :inline :offset-assert 112)
    )
   :method-count-assert 47
@@ -20912,43 +20919,45 @@
   (:methods
      ;; (new (symbol type collide-shape int float) _type_ 0)
     (nav-control-method-9 () none 9) ;; (debug-draw (_type_) none 9)
-    (nav-control-method-10 () none 10) ;; (point-in-bounds? (_type_ vector) symbol 10)
-    (nav-control-method-11 () none 11) ;; (dummy-11 (_type_ vector) vector 11)
+    (point-in-bounds?
+      "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius" 
+      (_type_ vector) symbol 10)
+    (nav-control-method-11 "TODO" (_type_ vector) none 11) ;; (dummy-11 (_type_ vector) vector 11)
     (nav-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
-    (nav-control-method-13 () none 13) ;; (dummy-13 (_type_ vector vector) vector 13)
-    (nav-control-method-14 () none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
-    (nav-control-method-15 () none 15) ;; (set-target-pos! (_type_ vector) none 15)
-    (nav-control-method-16 () none 16) ;; (dummy-16 (_type_ vector) nav-poly 16)
-    (nav-control-method-17 () none 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
+    (find-poly "TODO" (_type_ vector) nav-poly 13) ;; (dummy-13 (_type_ vector vector) vector 13)
+    (nav-control-method-14 (_type_ nav-poly vector object vector) none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
+    (nav-control-method-15 "TODO - same as 11" (_type_ vector) none 15) ;; (set-target-pos! (_type_ vector) none 15)
+    (nav-control-method-16 (_type_ vector float) symbol 16) ;; (dummy-16 (_type_ vector) nav-poly 16)
+    (is-in-mesh? "TODO" (_type_ vector float) symbol 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
     (nav-control-method-18 () none 18) ;; (find-poly (_type_ vector) nav-poly 18)
     (nav-control-method-19 () none 19) ;; (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
     (nav-control-method-20 () none 20) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
     (nav-control-method-21 () none 21) ;; (TODO-RENAME-21 (_type_ vector) nav-poly 21)
     (nav-control-method-22 () none 22) ;; (TODO-RENAME-22 (_type_ vector float) symbol 22)
-    (nav-control-method-23 () none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
+    (nav-control-method-23 "TODO" (_type_) none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
     (nav-control-method-24 () none 24) ;; (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
-    (nav-control-method-25 () none 25) ;; (is-in-mesh? (_type_ vector float) symbol 25)
-    (nav-control-method-26 () none 26) ;; (TODO-RENAME-26 (_type_) none 26)
-    (nav-control-method-27 () none 27) ;; (TODO-RENAME-27 (_type_) none 27)
-    (nav-control-method-28 () none 28) ;; (TODO-RENAME-28 (_type_ collide-kind) none 28)
-    (nav-control-method-29 () none 29) ;; (should-display? (_type_) symbol 29)
-    (nav-control-method-30 () none 30) ;; (dummy-30 (_type_ vector vector vector) sphere 30)
-    (nav-control-method-31 () none 31) ;; (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
-    (nav-control-method-32 () none 32) ;; (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
-    (nav-control-method-33 () none 33) ;; (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
-    (nav-control-method-34 () none 34) ;; (dummy-34 () none 34)
-    (nav-control-method-35 () none 35) ;; (dummy-35 (_type_ vector vector vector vector float) none 35)
-    (nav-control-method-36 () none 36)
-    (nav-control-method-37 () none 37)
-    (nav-control-method-38 () none 38)
-    (nav-control-method-39 () none 39)
-    (nav-control-method-40 () none 40)
-    (nav-control-method-41 () none 41)
-    (nav-control-method-42 () none 42)
-    (nav-control-method-43 () none 43)
+    (get-max-rotation-rate (_type_) float 25) ;; (is-in-mesh? (_type_ vector float) symbol 25)
+    (get-sphere-mask (_type_) none 26) ;; (TODO-RENAME-26 (_type_) none 26)
+    (get-target-speed (_type_) meters 27) ;; (TODO-RENAME-27 (_type_) none 27)
+    (nav-control-method-28 "TODO - Clears `nav-flags::1` on `shape`'s `flags`" (_type_) none 28) ;; (TODO-RENAME-28 (_type_ collide-kind) none 28)
+    (nav-control-method-29 "TODO - Sets `nav-flags::1` on `shape`'s `flags`" (_type_) none 29) ;; (should-display? (_type_) symbol 29)
+    (copy-extra-nav-sphere! "Copies the given [[sphere]] into `extra-nav-sphere`" (_type_ sphere) none 30) ;; (dummy-30 (_type_ vector vector vector) sphere 30)
+    (set-extra-nav-sphere! "Set the `extra-nav-sphere` with the data in the given [[sphere]]" (_type_ sphere) none 31) ;; (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
+    (set-extra-nav-sphere-radius! "Set's `extra-nav-sphere`'s radius" (_type_ float) none 32) ;; (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
+    (set-nearest-y-thres! "Set `nearest-y-threshold`" (_type_ float) none 33) ;; (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
+    (set-nav-cull-radius! "Set `nav-cull-radius`" (_type_ meters) none 34) ;; (dummy-34 () none 34)
+    (set-speed-scale! "Set `speed-scale`" (_type_ float) none 35) ;; (dummy-35 (_type_ vector vector vector vector float) none 35)
+    (set-target-speed! "Set `target-speed`" (_type_ meters) none 36)
+    (set-acceleration! "Set `acceleration`" (_type_ meters) none 37)
+    (set-turning-acceleration! "Set `turning-acceleration`" (_type_ meters) none 38)
+    (set-max-rotation-rate! "Set `max-rotation-rate`" (_type_ float) none 39)
+    (set-sphere-mask! "TODO - probably an enum - Set `sphere-mask`" (_type_ uint) none 40)
+    (nav-control-method-41 "TODO - calls nav-mesh::28" (_type_) none 41)
+    (init! "Initializes the [[nav-control]], setting `shape` with the provided [[collide-shape]]" (_type_ collide-shape) none 42)
+    (display-marks? "Returns if navigation related marks should be displayed" (_type_) symbol 43)
     (nav-control-method-44 () none 44)
-    (nav-control-method-45 () none 45)
-    (nav-control-method-46 () none 46)
+    (nav-control-method-45 (_type_ vector vector vector) sphere 45)
+    (find-sphere "TODO" (_type_) none 46)
     )
   )
 
@@ -21028,7 +21037,7 @@
   )
 
 (deftype sphere-hash (grid-hash)
-  ((sphere-array     uint32  :offset-assert 88)
+  ((sphere-array     (inline-array sphere)  :offset-assert 88)
    (max-object-count int16   :offset-assert 92)
    (pad              int16   :offset-assert 94)
    (mem-sphere-array uint32  :offset-assert 96)
@@ -21043,7 +21052,7 @@
     (sphere-hash-method-27 () none 27)
     (sphere-hash-method-28 () none 28)
     (sphere-hash-method-29 () none 29)
-    (sphere-hash-method-30 () none 30)
+    (sphere-hash-method-30 (_type_ find-nav-sphere-ids-params) none 30)
     (sphere-hash-method-31 () none 31)
     (sphere-hash-method-32 () none 32)
     (sphere-hash-method-33 () none 33)
@@ -21359,7 +21368,7 @@
 
 ;; (define-extern raw-ray-sphere-intersect function) ;; (function float float)
 (define-extern ray-sphere-intersect (function vector vector vector float float))
-;; (define-extern ray-circle-intersect function) ;; (function vector vector vector float float)
+(define-extern ray-circle-intersect (function vector vector vector float float)) ;; 
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
 ;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
@@ -28030,12 +28039,11 @@
 ;; nav-control                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-control-cfs-work (structure)
   ((in-dir              vector  :inline :offset-assert 0)
    (right-dir           vector  :inline :offset-assert 16)
-   (best-dir            vector  2       :offset-assert 32) ;; guessed by decompiler
-   (temp-dir            vector  2       :offset-assert 64) ;; guessed by decompiler
+   (best-dir            vector  2       :inline :offset-assert 32) ;; guessed by decompiler
+   (temp-dir            vector  2       :inline  :offset-assert 64) ;; guessed by decompiler
    (away-dir            vector  :inline :offset-assert 96)
    (best-dir-angle      degrees 2       :offset-assert 112) ;; guessed by decompiler
    (ignore-mask         uint64          :offset-assert 120)
@@ -28056,18 +28064,25 @@
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-|#
 
-;; (define-extern *nav-triangle-test-count* object) ;; int
-;; (define-extern *nav-last-triangle-test-count* object) ;; int
-;; (define-extern debug-nav-validate-current-poly function) ;; (function nav-mesh nav-poly vector symbol)
-;; (define-extern debug-report-nav-stats function) ;; (function none)
-;; (define-extern get-nav-control function)
-;; (define-extern add-nav-sphere function) ;; (function nav-control vector none)
-;; (define-extern add-collide-shape-spheres function) ;; (function nav-control collide-shape vector none)
-;; (define-extern circle-tangent-directions function) ;; (function vector vector vector vector vector)
-;; (define-extern circle-ray-intersection? function)
-;; (define-extern find-closest-circle-ray-intersection function) ;; (function vector vector float int (inline-array vector) int int)
+(define-extern *nav-triangle-test-count* int) ;; int
+(define-extern *nav-last-triangle-test-count* int) ;; int
+(define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol))
+(define-extern debug-report-nav-stats "Does nothing" (function none))
+(define-extern get-nav-control
+  "Given a [[process-drawable]] return the associated [[nav-control]] using either:
+   - the provided `nav-mesh` arg
+   - the `nav-mesh` associated with the [[process-drawable]]'s [[entity]]
+   If no [[nav-mesh]] is set or found, set the [[entity]]'s [[entity-perm-status]] to TODO and return an error"
+  (function process-drawable nav-mesh nav-control))
+(define-extern add-nav-sphere
+  "Adds the given [[sphere]] to the [[nav-control]]'s `sphere-array` so long as
+   `max-spheres` is less than [[nav-control]]'s `sphere-count`"
+  (function nav-control sphere int none))
+(define-extern add-collide-shape-spheres (function nav-control collide-shape sphere none)) ;; 
+(define-extern circle-tangent-directions (function vector vector vector vector vector)) ;; 
+(define-extern circle-ray-intersection? (function vector vector float vector symbol))
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int)) ;; 
 ;; (define-extern compute-dir-parm function) ;; (function vector vector vector float)
 ;; (define-extern vector-rotate-y-sincos! function)
 ;; (define-extern test-xz-point-on-line-segment? function) ;; (function vector vector vector float symbol)
