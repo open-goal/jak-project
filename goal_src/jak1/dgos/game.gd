@@ -219,7 +219,7 @@
   ("collide-shape.o" "collide-shape")
   ("collide-shape-rider.o" "collide-shape-rider")
   ("collide.o" "collide")
-  ("collide-planes.o" "collide-planes")
+  ;; ("collide-planes.o" "collide-planes")
   ("merc-death.o" "merc-death")
   ("water-h.o" "water-h")
   ("camera.o" "camera")

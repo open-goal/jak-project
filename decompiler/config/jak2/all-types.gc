@@ -98,8 +98,10 @@
 (define-extern kset-language (function language-enum int))
 (define-extern reset-graph (function int int int int none))
 
-(define-extern loading-level kheap)
+(declare-type sql-result basic)
+(define-extern sql-query (function string sql-result))
 
+(define-extern loading-level kheap)
 
 
 (defenum kmalloc-flags
@@ -158,7 +160,8 @@
    ;; children of inline-array-class should define their own data which overlays this one.
    (_data            uint8  :score -50 :dynamic :offset 16)
    )
-  (:methods (new (symbol type int) _type_ 0))
+  (:methods
+    (new (symbol type int) _type_ 0))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -15417,6 +15420,7 @@
     )
   )
 
+(declare-type collide-query structure)
 (deftype impact-control (structure)
   ((process      (pointer process-drawable) :offset-assert 0)
    (radius       float             :offset-assert 4)
@@ -15433,7 +15437,7 @@
     (new (symbol type process-drawable int float collide-spec) _type_ 0)
     (initialize (_type_ process-drawable int float collide-spec) impact-control :behavior process 9)
     (update-from-cspace (_type_) none 10)
-    (impact-control-method-11 (_type_) none 11)
+    (impact-control-method-11 (_type_ collide-query process pat-surface) float 11)
     )
   )
 
@@ -15445,8 +15449,8 @@
   (:methods
     (new (symbol type vector vector) _type_ 0)
     (initialize (_type_ vector vector) point-tracker 9)
-    (point-tracker-method-10 () none 10)
-    (point-tracker-method-11 () none 11)
+    (point-tracker-method-10 (_type_ vector vector vector float) vector 10)
+    (point-tracker-method-11 (_type_ vector vector vector float) vector 11)
     )
   )
 
@@ -15458,8 +15462,8 @@
   :size-assert         #x30
   :flag-assert         #xe00000030
   (:methods
-    (combo-tracker-method-12 () none 12)
-    (combo-tracker-method-13 () none 13)
+    (combo-tracker-method-12 (_type_ vector vector process time-frame) combo-tracker 12)
+    (combo-tracker-method-13 (_type_ handle vector float vector float) none 13)
     )
   )
 
@@ -15498,11 +15502,11 @@
   :size-assert         #x40
   :flag-assert         #xe00000040
   (:methods
-    (cubic-curve-method-9 () none 9)
-    (cubic-curve-method-10 () none 10)
-    (cubic-curve-method-11 () none 11)
-    (cubic-curve-method-12 () none 12)
-    (cubic-curve-method-13 () none 13)
+    (cubic-curve-method-9 (_type_ vector vector vector vector) none 9)
+    (cubic-curve-method-10 (_type_ vector float) vector 10)
+    (cubic-curve-method-11 (_type_ vector float) vector 11)
+    (cubic-curve-method-12 (_type_ vector float) vector 12)
+    (debug-draw-curve (_type_) none 13)
     )
   )
 
@@ -16906,13 +16910,13 @@
   :flag-assert         #x1a00008670
   (:methods
     (collide-cache-method-9 () none 9) ;; (debug-draw (_type_) none 9)
-    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-spec process collide-tri-result pat-surface) float 10)
-    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
+    (fill-and-probe-using-line-sphere (_type_ collide-query) float 10)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11)
     (collide-cache-method-12 (_type_ collide-query) none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
-    (collide-cache-method-13 () none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (fill-using-spheres (_type_ collide-query) none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
-    (collide-cache-method-15 () none 15) ;; (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
-    (collide-cache-method-16 (_type_) float 16) ;; (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
+    (fill-using-line-sphere (_type_ collide-query) none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
+    (fill-using-spheres (_type_ collide-query) none 14)
+    (collide-cache-method-15 () none 15)
+    (collide-cache-method-16 (_type_ collide-query) float 16) ;; (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
     (probe-using-spheres (_type_ collide-query) symbol 17) ;; (initialize (_type_) none 17)
     (collide-cache-method-18 () none 18) ;; (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (collide-cache-method-19 () none 19) ;; (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
@@ -16977,7 +16981,7 @@
    (best-my-prim     basic                      :offset 120)
    (move-vec         vector             :inline :offset 224)
    (best-u           float                      :offset 112 :score -1)
-   (action-mask      uint32                     :offset-assert 352)
+   (action-mask      collide-action             :offset-assert 352)
    (local-box4w      bounding-box4w     :inline :offset-assert 368)
    (search-box       bounding-box4w     :inline :offset-assert 400)
    (search-vector    vector4w           :inline :offset-assert 432)
@@ -20901,7 +20905,7 @@
      ;; (new (symbol type collide-shape int float) _type_ 0)
     (nav-control-method-9 () none 9) ;; (debug-draw (_type_) none 9)
     (nav-control-method-10 () none 10) ;; (point-in-bounds? (_type_ vector) symbol 10)
-    (nav-control-method-11 () none 11) ;; (dummy-11 (_type_ vector) vector 11)
+    (nav-control-method-11 (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
     (nav-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
     (nav-control-method-13 () none 13) ;; (dummy-13 (_type_ vector vector) vector 13)
     (nav-control-method-14 () none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
@@ -20910,7 +20914,7 @@
     (nav-control-method-17 () none 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
     (nav-control-method-18 () none 18) ;; (find-poly (_type_ vector) nav-poly 18)
     (nav-control-method-19 () none 19) ;; (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
-    (nav-control-method-20 () none 20) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
+    (nav-control-method-20 (_type_ vector vector vector int symbol symbol) none 20) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
     (nav-control-method-21 () none 21) ;; (TODO-RENAME-21 (_type_ vector) nav-poly 21)
     (nav-control-method-22 () none 22) ;; (TODO-RENAME-22 (_type_ vector float) symbol 22)
     (nav-control-method-23 () none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
@@ -21309,7 +21313,7 @@
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-set-ear-trans (function vector vector vector float int))
 (define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
-(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id)) ;; NOTE - the `vector` can also be #t
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-stop (function sound-id int))
 (define-extern sound-continue (function sound-id int))
@@ -21882,7 +21886,7 @@
 ;; (define-extern render-boundary-quad function) ;; (function lbvtx dma-buffer none)
 ;; (define-extern render-boundary-tri function) ;; (function lbvtx dma-buffer none)
 ;; (define-extern add-debug-bound-internal function)
-;; (define-extern add-debug-bound function)
+(define-extern add-debug-bound (function int transform int rgba rgba int none))
 (define-extern cpu-delay (function int none))
 (define-extern qword-read-time (function (array uint128) int int))
 (define-extern bugfix? (function symbol))
@@ -23041,8 +23045,8 @@
 ;; trajectory                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern traj2d-calc-initial-speed-using-tilt function)
-;; (define-extern traj3d-calc-initial-velocity-using-tilt function)
+(define-extern traj2d-calc-initial-speed-using-tilt (function traj2d-params symbol))
+(define-extern traj3d-calc-initial-velocity-using-tilt (function traj3d-params symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sparticle-launcher             ;;
@@ -24948,7 +24952,7 @@
   )
 |#
 
-;; (define-extern *actor-hash* object)
+(define-extern *actor-hash* spatial-hash)
 ;; (define-extern *actor-hash-buckets* object)
 (define-extern update-actor-hash (function none))
 
@@ -25942,8 +25946,8 @@
 (define-extern key-assoc (function none))
 (define-extern *script-form* int)
 ;; (define-extern level-from-heap function)
-(define-extern *syntax-context* int)
-(define-extern *script-context* int)
+(define-extern *syntax-context* script-context)
+(define-extern *script-context* script-context)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-obs                    ;;
@@ -26848,19 +26852,50 @@
 ;; find-nearest                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++find-nearest:search-info-flag
+(defenum search-info-flag
+  :type uint32
+  :bitfield #t
+  (crate 0)
+  (enemy 1)
+  (on-screen 2)
+  (prefer-dist 3)
+  (prefer-angle 4)
+  (prefer-xz 5)
+  (cull-angle 6)
+  (cull-xz 7)
+  (back-point 8)
+  (combo 9)
+  (probe 10)
+  (probe-camera 11)
+  (check-track 12)
+  (prefer-center 13)
+  )
+;; ---find-nearest:search-info-flag
+
 (deftype search-info (structure)
-  ()
+  (
+    (point vector :inline :offset-assert 0)
+    (best-point vector :inline :offset-assert 16)
+    (match-handle handle :offset-assert 32)
+    (match basic :offset-assert 40)
+    (best float :offset-assert 44)
+    (radius float :offset-assert 48)
+    (rating search-info-flag :offset-assert 52)
+    (require search-info-flag :offset-assert 56)
+    (mask search-info-flag :offset-assert 60)
+    (rot-base vector :inline :offset-assert 64)
+    (ack-point vector :inline :offset-assert 80)
+    (rot-range float :offset-assert 96)
+  )
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
-  ;; Failed to read fields.
   )
-|#
 
-;; (define-extern *search-info* object) ;; search-info
-;; (define-extern find-nearest-attackable function) ;; (function vector float uint uint vector float projectile)
-;; (define-extern find-nearest-focusable function)
+(define-extern *search-info* search-info)
+(define-extern find-nearest-attackable (function vector float uint uint vector vector float basic))
+(define-extern find-nearest-focusable (function (array collide-shape) vector float search-info-flag search-info-flag vector vector float basic))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; task-arrow                     ;;
@@ -29256,245 +29291,367 @@
 ;; editable-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++editable-h:editable-command
+(defenum editable-command
+  :type uint32
+  :bitfield #f
+  (none 0)
+  (exit 1)
+  (kill 2)
+  (select-one 3)
+  (select-toggle 4)
+  (select-all 5)
+  (select-none 6)
+  (select-region 7)
+  (select-face 8)
+  (select-prim 9)
+  (select-current-owner 10)
+  (select-current-region 11)
+  (select-current-face 12)
+  (select-current-prim 13)
+  (pick-target 14)
+  (pick-loc 15)
+  (pick-yes-no 16)
+  (cancel 17)
+  (drag-move-xy 18)
+  (drag-move-xz 19)
+  (drag-move-x 20)
+  (drag-move-y 21)
+  (drag-move-z 22)
+  (drag-resize 23)
+  (camera-tumble 24)
+  (camera-xy 25)
+  (camera-xz 26)
+  (insert-sphere 27)
+  (insert-point 28)
+  (insert-sample 29)
+  (insert-sample-camera 30)
+  (insert-light 31)
+  (insert-entity 32)
+  (insert-face 33)
+  (insert-plane 34)
+  (insert-box 35)
+  (delete 36)
+  (copy 37)
+  (resize 38)
+  (snap-to-ground 39)
+  (snap-xz 40)
+  (snap-y 41)
+  (flip-side 42)
+  (region-set 43)
+  (region-new 44)
+  (edit-plane-set 45)
+  (edit-plane-clear 46)
+  (delete-region 47)
+  (copy-region 48)
+  (region-add 49)
+  (save 50)
+  (load 51)
+  (update-game 52)
+  (print-region-info 53)
+  (refresh-filter 54)
+  (rotate-level 55)
+  (translate-y-level 56)
+  )
+;; ---editable-h:editable-command
+
+;; +++editable-h:editable-filter
+(defenum editable-filter
+  :type uint32
+  :bitfield #t
+  (none 0)
+  (unknown 1)
+  (sound 2)
+  (part 3)
+  (user-setting 4)
+  (cam-setting 5)
+  (load 6)
+  (water-command 7)
+  (camera 8)
+  (target 9)
+  (water  10)
+  (data  11)
+  (city_vis  12)
+  (sample  13)
+  (light  14)
+  (entity  15)
+  (selected  16)
+  )
+;; ---editable-h:editable-filter
+
 (deftype editable-region (basic)
-  ((changed   basic   :offset-assert 4)
-   (locked    basic   :offset-assert 8)
+  ((changed   symbol   :offset-assert 4)
+   (locked    symbol   :offset-assert 8)
    (id        uint64  :offset-assert 16)
-   (filter    uint32  :offset-assert 24)
-   (tree      basic   :offset-assert 28)
-   (level     basic   :offset-assert 32)
-   (on-enter  basic   :offset-assert 36)
-   (on-inside basic   :offset-assert 40)
-   (on-exit   basic   :offset-assert 44)
+   (filter    editable-filter  :offset-assert 24)
+   (tree      string   :offset-assert 28)
+   (level     string   :offset-assert 32)
+   (on-enter  string   :offset-assert 36)
+   (on-inside string   :offset-assert 40)
+   (on-exit   string   :offset-assert 44)
    )
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
-  ;; field on-enter uses ~A with a signed load field on-inside uses ~A with a signed load field on-exit uses ~A with a signed load
   (:methods
+    (new (symbol type) _type_ 0) ;; added to avoid re-definition errors (even though nothing was being re-defined)
     (editable-region-method-9 () none 9)
-    (editable-region-method-10 () none 10)
-    (editable-region-method-11 () none 11)
-    (editable-region-method-12 () none 12)
+    (editable-region-method-10 (_type_ int) symbol 10)
+    (editable-region-method-11 (_type_ vector int) none 11)
+    (editable-region-method-12 (_type_) editable-filter 12)
     )
   )
-|#
 
-#|
+;; +++editable-h:editable-flag
+(defenum editable-flag
+  :type uint32
+  :bitfield #t
+  (selected)
+  (no-save)
+  (orient)
+  (x)
+  (y)
+  (z)
+  (no-plane-snap)
+  (no-update)
+  (mark)
+  (top-set)
+  (bot-set)
+  (changed)
+  )
+;; ---editable-h:editable-flag
+
+(declare-type editable-array basic)
 (deftype editable (basic)
-  ()
+  (
+    (flags editable-flag :offset-assert 4)
+    (name string :offset-assert 8)
+    (id uint32 :offset-assert 12)
+    (region editable-region :offset-assert 16) ;; or symbol?
+    (owner pair :offset-assert 20) ;; command-list?
+  )
   :method-count-assert 30
   :size-assert         #x18
   :flag-assert         #x1e00000018
-  ;; Failed to read fields.
   (:methods
-    (editable-method-9 () none 9)
-    (editable-method-10 () none 10)
-    (editable-method-11 () none 11)
-    (editable-method-12 () none 12)
-    (editable-method-13 () none 13)
-    (editable-method-14 () none 14)
-    (editable-method-15 () none 15)
-    (editable-method-16 () none 16)
-    (editable-method-17 () none 17)
-    (editable-method-18 () none 18)
-    (editable-method-19 () none 19)
-    (editable-method-20 () none 20)
-    (editable-method-21 () none 21)
-    (editable-method-22 () none 22)
-    (editable-method-23 () none 23)
-    (editable-method-24 () none 24)
-    (editable-method-25 () none 25)
-    (editable-method-26 () none 26)
-    (editable-method-27 () none 27)
-    (editable-method-28 () none 28)
-    (editable-method-29 () none 29)
+    (get-color
+      "Returns the [[rgba]] that corresponds to the type of [[editable]] TODO - document the colors" 
+      (_type_ int) rgba 9)
+    (editable-method-10 (_type_) none 10)
+    (editable-method-11 (_type_ vector) symbol 11)
+    (select-editable! (_type_ symbol) none 12)
+    (edit-get-distance "Returns the distance from the camera to the [[editable]], or -1.0" (_type_ vector) float 13)
+    (edit-get-trans "Returns the `trans` [[vector]] or [[*null-vector*]]" (_type_) vector 14)
+    (editable-method-15 (_type_ vector int) none 15)
+    (edit-coord! (_type_ vector editable-flag) none 16)
+    (editable-method-17 (_type_ vector) none 17)
+    (editable-method-18 (_type_ vector matrix) none 18)
+    (editable-method-19 (_type_ vector) none 19)
+    (editable-method-20 (_type_ vector vector vector vector) none 20)
+    (editable-method-21 (_type_ editable-region) none 21)
+    (editable-method-22 (_type_ editable-array int int) symbol 22)
+    (editable-method-23 (_type_) symbol 23)
+    (editable-method-24 (_type_) none 24)
+    (editable-method-25 (_type_ editable-array) none 25)
+    (editable-method-26 (_type_ editable editable-array) none 26)
+    (editable-method-27 (_type_ editable-array) editable 27)
+    (editable-method-28 (_type_ editable-filter) none 28)
+    (editable-method-29 (_type_ editable-filter) symbol 29)
     )
   )
-|#
 
-#|
+(declare-type editable-player process-drawable)
+(declare-type editable-plane editable)
 (deftype editable-array (basic)
-  ()
+  (
+    (allocated-length int32 :offset-assert 4)
+    (length int32 :offset-assert 8)
+    (region editable-region :offset-assert 12)
+    (backup-region editable-region :offset-assert 16)
+    (region-lock? symbol :offset-assert 20)
+    (move-lock? symbol :offset-assert 24)
+    (move-speed float :offset-assert 28)
+    (selection (array editable) :offset-assert 32)
+    (filter editable-filter 2 :offset-assert 36)
+    (target editable :offset-assert 44)
+    (target-mode uint32 :offset-assert 48) ;; enum?
+    (target-command basic :offset-assert 52) ;; editable-command?
+    (target-message string :offset-assert 56)
+    (edit-plane editable-plane :offset-assert 60)
+    (edit-plane-center vector :inline :offset-assert 64)
+    (edit-plane-normal vector :inline :offset-assert 80)
+    (level-offset vector :inline :offset-assert 96)
+    (level-info-id uint32  :offset-assert 112)
+    (level uint32 :offset-assert 116) ;; symbol?
+    (edit-param0 float :offset-assert 120)
+    (data editable :dynamic :offset-assert 124)
+  )
   :method-count-assert 18
   :size-assert         #x7c
   :flag-assert         #x120000007c
-  ;; Failed to read fields.
   (:methods
-    (editable-array-method-9 () none 9)
-    (editable-array-method-10 () none 10)
-    (editable-array-method-11 () none 11)
-    (editable-array-method-12 () none 12)
-    (editable-array-method-13 () none 13)
-    (editable-array-method-14 () none 14)
-    (editable-array-method-15 () none 15)
-    (editable-array-method-16 () none 16)
-    (editable-array-method-17 () none 17)
+    (new (symbol type int) _type_ 0)
+    (editable-array-method-9 (_type_ editable-command editable-array) symbol :behavior editable-player 9)
+    (editable-array-method-10 (_type_ vector int) editable 10)
+    (editable-array-method-11 (_type_) int 11)
+    (editable-array-method-12 (_type_ editable-array) none 12)
+    (editable-array-method-13 (_type_ uint basic string) none 13)
+    (editable-array-method-14 (_type_ (function symbol) symbol) none 14)
+    (editable-array-method-15 (_type_ editable) none 15)
+    (editable-array-method-16 (_type_) none 16)
+    (editable-array-method-17 (_type_ vector vector) vector 17)
     )
   )
-|#
 
-#|
 (deftype editable-point (editable)
-  ()
+  (
+    (radius float :offset-assert 24)
+    (trans vector :inline :offset-assert 32)
+  )
   :method-count-assert 30
   :size-assert         #x30
   :flag-assert         #x1e00000030
-  ;; Failed to read fields.
   (:methods
-    )
+    (new (symbol type vector editable-region) _type_ 0))
   )
-|#
 
-#|
 (deftype editable-sphere (editable-point)
   ()
   :method-count-assert 30
   :size-assert         #x30
   :flag-assert         #x1e00000030
-  ;; Failed to read fields.
   (:methods
-    )
-  )
-|#
+    (new (symbol type vector float editable-region) _type_ 0)))
 
-#|
 (deftype editable-sample (editable-point)
   ()
   :method-count-assert 30
   :size-assert         #x30
-  :flag-assert         #x1e00000030
-  ;; Failed to read fields.
-  (:methods
-    )
-  )
-|#
+  :flag-assert         #x1e00000030)
 
-#|
 (deftype editable-light (editable-sphere)
-  ()
+  (
+    (direction vector :inline :offset-assert 48)
+    (color vector :inline :offset-assert 64)
+    (decay-start float :offset-assert 80)
+    (ambient-point-ratio float :offset-assert 84)
+    (brightness float :offset-assert 88)
+  )
   :method-count-assert 30
   :size-assert         #x5c
   :flag-assert         #x1e0000005c
-  ;; Failed to read fields.
   (:methods
-    )
-  )
-|#
+    (new (symbol type vector float editable-region) _type_ 0)))
 
-#|
 (deftype editable-entity (editable-point)
   ()
   :method-count-assert 30
   :size-assert         #x30
-  :flag-assert         #x1e00000030
-  ;; Failed to read fields.
-  (:methods
-    )
-  )
-|#
+  :flag-assert         #x1e00000030)
 
-#|
 (deftype editable-face (editable)
-  ()
+  (
+    (length int32 :offset-assert 24)
+    (normal vector :inline :offset-assert 32)
+    (center vector :inline :offset-assert 48)
+    (vertex editable-point 6 :offset-assert 64)
+  )
   :method-count-assert 32
   :size-assert         #x58
   :flag-assert         #x2000000058
-  ;; Failed to read fields.
   (:methods
-    (editable-face-method-30 () none 30)
-    (editable-face-method-31 () none 31)
+    (new (symbol type editable-region) _type_ 0)
+    (editable-face-method-30 (_type_ (inline-array vector)) int 30)
+    (editable-face-method-31 (_type_ vector) vector 31)
     )
   )
-|#
 
-#|
 (deftype editable-plane (editable)
-  ()
+  (
+    (length int32 :offset-assert 24)
+    (radius float :offset-assert 28)
+    (vertex editable-point 2 :offset-assert 32)
+  )
   :method-count-assert 32
   :size-assert         #x28
   :flag-assert         #x2000000028
-  ;; Failed to read fields.
   (:methods
-    (editable-plane-method-30 () none 30)
-    (editable-plane-method-31 () none 31)
+    (new (symbol type editable-region) _type_ 0)
+    (editable-plane-method-30 (_type_ matrix) int 30)
+    (editable-plane-method-31 (_type_ vector) vector 31)
     )
   )
-|#
 
 (deftype editable-player (process-drawable)
-  ((current           basic     :offset-assert 200)
-   (select-command    uint32    :offset-assert 204)
-   (move-command      uint32    :offset-assert 208)
-   (extra-command     uint32    :offset-assert 212)
+  ((current           editable-array     :offset-assert 200)
+   (select-command    function    :offset-assert 204)
+   (move-command      function    :offset-assert 208)
+   (extra-command     function    :offset-assert 212)
    (left-handed       basic     :offset-assert 216)
    (light-names       basic     :offset-assert 220)
-   (external-cam-mode basic     :offset-assert 224)
-   (command           object 6 :offset-assert 228)
+   (external-cam-mode symbol     :offset-assert 224)
+   (command           function 6 :offset-assert 228)
    (close-menu-time   time-frame    :offset-assert 256)
    )
   :method-count-assert 22
   :size-assert         #x108
   :flag-assert         #x1600900108
   (:methods
-    (editable-player-method-20 () none 20)
-    (editable-player-method-21 () none 21)
+    (idle () _type_ :state 20)
+    (editable-player-method-21 (_type_) none 21)
     )
   )
 
-#|
 (deftype editable-work (basic)
   ((num-found  int16       :offset-assert 4)
    (last-found int16       :offset-assert 6)
    (last-x     float       :offset-assert 8)
    (last-y     float       :offset-assert 12)
-   (found      UNKNOWN 256 :offset-assert 16)
-   (dists      UNKNOWN 256 :offset-assert 1040)
+   (found      editable 256 :offset-assert 16) ;; a guess
+   (dists      uint32 256 :offset-assert 1040)
    )
   :method-count-assert 9
   :size-assert         #x810
   :flag-assert         #x900000810
   )
-|#
 
-;; (define-extern *editable-temp-id* object)
-;; (define-extern editable-command->string function)
-;; (define-extern editable-filter->string function)
-;; (define-extern *editable-work* object)
-(define-extern *editable* symbol)
+(define-extern *editable-temp-id* int)
+(define-extern editable-command->string (function editable-command string)) ;; TODO - find a caller
+(define-extern editable-filter->string (function editable-filter basic string)) ;; TODO - find a caller
+(define-extern *editable-work* editable-work)
+(define-extern *editable* (pointer editable-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern update-light-sphere-from-editable-light function)
-;; (define-extern *editable-sample-region* object)
-;; (define-extern *editable-light-region* object)
-;; (define-extern *editable-entity-region* object)
+(define-extern update-light-sphere-from-editable-light (function editable-light none))
+(define-extern *editable-sample-region* editable-region)
+(define-extern *editable-light-region* editable-region)
+(define-extern *editable-entity-region* editable-region)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable-player                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cleanup-selection function)
-;; (define-extern insert-box function)
-;; (define-extern execute-select function)
-;; (define-extern execute-mouse-move function)
-;; (define-extern execute-move function)
-(define-extern editable-player-init (function symbol none)) ;; TODO - return type not confirmed
+(define-extern cleanup-selection (function editable-array none))
+(define-extern insert-box (function editable-array vector none))
+(define-extern execute-select (function editable-array editable-command editable-array symbol))
+(define-extern execute-mouse-move (function editable-array editable-command editable-array symbol))
+(define-extern execute-move (function editable-array editable-command editable-array symbol))
+(define-extern editable-player-init (function symbol none :behavior editable-player)) ;; TODO - return type not confirmed
 (define-extern *editable-menu-context* debug-menu-context)
-;; (define-extern editable-menu-command function)
-;; (define-extern editable-menu-command-no-close function)
-;; (define-extern dm-region-tree-pick-func function)
-;; (define-extern dm-editable-flag-pick-func function)
-;; (define-extern dm-editable-filter0-pick-func function)
-;; (define-extern dm-editable-filter1-pick-func function)
-;; (define-extern dm-editable-light-float-func function)
-;; (define-extern dm-cam-externalize2 function)
-;; (define-extern dm-editable-boolean-toggle-pick-func function)
-;; (define-extern editable-menu-context-make-menus function)
-;; (define-extern insert-sample-camera function)
+(define-extern editable-menu-command (function int none))
+(define-extern editable-menu-command-no-close (function int none)) ;; TODO - whats the int
+(define-extern dm-region-tree-pick-func (function symbol debug-menu-msg symbol))
+(define-extern dm-editable-flag-pick-func (function editable-flag debug-menu-msg symbol))
+(define-extern dm-editable-filter0-pick-func (function editable-filter debug-menu-msg symbol))
+(define-extern dm-editable-filter1-pick-func (function editable-filter debug-menu-msg symbol))
+(define-extern dm-editable-light-float-func (function object debug-menu-msg float symbol object))
+(define-extern dm-cam-externalize2 (function symbol debug-menu-msg symbol))
+(define-extern dm-editable-boolean-toggle-pick-func (function int debug-menu-msg none))
+(define-extern editable-menu-context-make-menus (function debug-menu-context none))
+(define-extern insert-sample-camera (function symbol none))
 ;; (define-extern *debug-hook* object) ;; (function none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
