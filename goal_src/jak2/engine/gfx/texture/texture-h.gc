@@ -19,6 +19,14 @@
 (define-extern *texture-pool* texture-pool)
 (define-extern *fog-texture-work* fog-texture-work)
 
+(defenum tex-upload-mode
+  (none     -3)
+  (seg0-1   -2)
+  (seg0-1-2 -1)
+  (seg0      0)
+  (seg2      2)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype texture-id (uint32)
@@ -156,7 +164,7 @@
 
 (deftype texture-page (basic)
   ((info      file-info                      :offset-assert   4)
-   (name      basic                          :offset-assert   8)
+   (name      string                         :offset-assert   8)
    (id        uint32                         :offset-assert  12)
    (length    int32                          :offset-assert  16)
    (mip0-size uint32                         :offset-assert  20)
@@ -242,8 +250,8 @@
 (defenum link-test-flags
   :type uint32
   :bitfield #t
-  ; (needs-log-in 8)
-  ; (bit-9 9)
+  (needs-log-in 8)
+  (bit-9 9)
   )
 
 (deftype adgif-shader (structure)
@@ -750,3 +758,6 @@
 (define *grey-scale-base* (new 'static 'texture-base))
 (define *map-texture-base* (new 'static 'texture-base))
 
+(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-login  (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
+(define-extern lookup-texture-by-id (function texture-id texture))

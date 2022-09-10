@@ -446,9 +446,10 @@
   (set! (-> obj common-page-mask) 0)
 
   ;; enable uploads for all textures
-  (set! (-> obj texture-enable-user-menu) (texture-enable-mask tex0 tex1 tex2 tex3 tex4 tex5 tex6 tex7 tex8))
-  (set! (-> obj texture-enable-user) (texture-enable-mask tex0 tex1 tex2 tex3 tex4 tex5 tex6 tex7 tex8))
-
+  (set! (-> obj texture-enable-user-menu)
+        (texture-enable-mask tfrag pris shrub alpha water warp sprite map sky)
+        )
+  (set! (-> obj texture-enable-user) (texture-enable-mask tfrag pris shrub alpha water warp sprite map sky))
   ;; mark all vram slots as unoccupied.
   (dotimes (v1-13 128)
     (set! (-> obj ids v1-13) (the-as uint 0))
@@ -1837,6 +1838,12 @@
 (defmethod upload-now! texture-page ((obj texture-page) (arg0 tex-upload-mode))
   "Send the given texture-page to VRAM right now. This function doesn't return until
    it has happened, and only should be used during boot."
+
+   (#when PC_PORT
+     ;; load it to the PC Port's texture pool.
+     (__pc-texture-upload-now obj arg0)
+     )
+
   (let ((gp-0 *txt-dma-list*))
     (let ((v1-0 gp-0))
       (set! (-> v1-0 base) (-> v1-0 data))
@@ -1873,7 +1880,9 @@
       (set! (-> v1-6 base) (&+ (the-as pointer a0-7) 16))
       )
     ;; the actual send
-    (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+    (#unless PC_PORT
+             (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+             )
     )
   ;; wait for dma to finish.
   (dma-sync (the-as pointer #x1000a000) 0 0)
@@ -1914,7 +1923,13 @@
    "Move a texture in VRAM. Unrelated to the texture-relocate-later, which moves textures in RAM.
    Will try to move the whole thing, including the clut, assuming you provide a destination for it.
    Note that this uses the format/width stuff properly, so it will be slower, but won't scramble your texture."
-  (dotimes (v1-0 (the-as int (-> tex num-mips)))
+
+
+   (#when PC_PORT
+     ;; as far as I know this is only used for fonts which have 1 mip level.
+     (__pc-texture-relocate (/ dest-loc 64) (-> tex dest 0) dest-fmt)
+     )
+   (dotimes (v1-0 (the-as int (-> tex num-mips)))
     (let ((t1-1 (ash (-> tex w) (- v1-0)))
           (t2-3 (ash (-> tex h) (- v1-0)))
           )
@@ -2140,7 +2155,9 @@
           (set! (-> (the-as (pointer int64) a0-32) 1) 0)
           (set! (-> v1-31 base) (&+ (the-as pointer a0-32) 16))
           )
-        (dma-buffer-send-chain (the-as dma-bank-source #x10009000) s4-0)
+        (#unless PC_PORT
+          (dma-buffer-send-chain (the-as dma-bank-source #x10009000) s4-0)
+          )
         )
       (dma-sync (the-as pointer #x10009000) 0 0)
       (if (and s5-0 (-> s5-0 page) (= (-> obj cur) (+ sv-16 (-> s5-0 page size))))
@@ -2492,7 +2509,7 @@
                     (b!
                       (< (the-as int (- (the-as uint shader) (the-as uint mem-start))) 0)
                       cfg-8
-                      :delay (set! dist-past-end (- (the-as uint shader) mem-end))
+                      :delay (set! dist-past-end (- (the-as uint shader) (the-as uint mem-end)))
                       )
                     (b! (>= (the-as int dist-past-end) 0) cfg-8 :delay (nop!))
                     (let ((t4-2 (-> shader next)))
@@ -2585,6 +2602,9 @@
     f0-4
     )
   )
+
+(define-extern level-remap-texture (function texture-id texture-id))
+
 
 (defun adgif-shader-login ((arg0 adgif-shader))
   "Initialize an adgif-shader
