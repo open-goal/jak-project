@@ -1,18 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: merc.gc
-;; name in dgo: merc
-;; dgos: ENGINE, GAME
-
-;; TODO uncomment usages of adgif-shader-login and get-eye-block once their respective files are finished
-;; (define-extern adgif-shader-login (function adgif-shader texture))
-;; (define-extern get-eye-block (function int int int))
-
-;; DECOMP BEGINS
-
-(format 0 "SKIP: calls to adgif-shader-login and get-eye-block in merc~%")
-
+;; definition of type texture-login-data
 (deftype texture-login-data (structure)
   ((default-texture-index int32                :offset-assert   0)
    (current-texture-index int32                :offset-assert   4)
@@ -25,8 +14,26 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type texture-login-data
+(defmethod inspect texture-login-data ((obj texture-login-data))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'texture-login-data)
+  (format #t "~1Tdefault-texture-index: ~D~%" (-> obj default-texture-index))
+  (format #t "~1Tcurrent-texture-index: ~D~%" (-> obj current-texture-index))
+  (format #t "~1Ttexture-usage-group: #<texture-usage-group @ #x~X>~%" (-> obj texture-usage-group))
+  (format #t "~1Tmerc-ctrl-header: #<merc-ctrl-header @ #x~X>~%" (-> obj merc-ctrl-header))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *texture-login-data*, type texture-login-data
 (define *texture-login-data* (new 'global 'texture-login-data))
 
+;; definition for method 9 of type art-joint-geo
 (defmethod login art-joint-geo ((obj art-joint-geo))
   (let ((s5-0 *texture-login-data*))
     (set! (-> s5-0 default-texture-index)
@@ -36,8 +43,9 @@
   obj
   )
 
+;; definition for function texture-usage-init
+;; INFO: Used lq/sq
 (defun texture-usage-init ((arg0 merc-ctrl))
-  "Initialize texture login data."
   (let ((gp-0 *texture-login-data*))
     (set! (-> arg0 header texture-usage-group) (new 'loading-level 'texture-usage-group))
     (set! (-> gp-0 texture-usage-group) (-> arg0 header texture-usage-group))
@@ -62,6 +70,8 @@
   #f
   )
 
+;; definition for function texture-usage-update
+;; INFO: Used lq/sq
 (defun texture-usage-update ((arg0 texture))
   (local-vars (a3-3 uint128))
   (let* ((v1-0 *texture-login-data*)
@@ -87,10 +97,13 @@
   #f
   )
 
+;; definition for method 5 of type merc-fragment
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of merc-fragment ((obj merc-fragment))
   (the-as int (* (-> obj header mm-quadword-size) 16))
   )
 
+;; definition for method 9 of type merc-fragment
 (defmethod login-adgifs merc-fragment ((obj merc-fragment))
   (let* ((s5-0 (merc-fragment-fp-data obj))
          (v1-1 (-> *texture-login-data* merc-ctrl-header))
@@ -109,10 +122,10 @@
                )
            (cond
              ((< v1-6 3)
-              ;; (adgif-shader-login s3-0)
-              ;; (let ((v1-8 (get-eye-block s1-0 0)))
-              ;;   (set! (-> s3-0 tex0 tbp0) v1-8)
-              ;;   )
+              (adgif-shader-login s3-0)
+              (let ((v1-8 (get-eye-block s1-0 0)))
+                (set! (-> s3-0 tex0 tbp0) v1-8)
+                )
               (set! (-> s3-0 tex0 tw) 5)
               (set! (-> s3-0 tex0 th) 5)
               (set! (-> s3-0 tex0 tcc) 1)
@@ -124,7 +137,7 @@
                     )
               )
              (else
-               ;; (adgif-shader-login s3-0)
+               (adgif-shader-login s3-0)
                (let ((v1-34 (+ (-> *eyes-texture-base* vram-block) (* s1-0 32))))
                  (set! (-> s3-0 tex0 tbp0) v1-34)
                  )
@@ -147,10 +160,10 @@
                )
            (cond
              ((< v1-61 3)
-              ;; (adgif-shader-login s3-0)
-              ;; (let ((v1-63 (get-eye-block s1-1 1)))
-              ;;   (set! (-> s3-0 tex0 tbp0) v1-63)
-              ;;   )
+              (adgif-shader-login s3-0)
+              (let ((v1-63 (get-eye-block s1-1 1)))
+                (set! (-> s3-0 tex0 tbp0) v1-63)
+                )
               (set! (-> s3-0 tex0 tw) 5)
               (set! (-> s3-0 tex0 th) 5)
               (set! (-> s3-0 tex0 tcc) 1)
@@ -162,7 +175,7 @@
                     )
               )
              (else
-               ;; (adgif-shader-login s3-0)
+               (adgif-shader-login s3-0)
                (let ((v1-89 (+ (-> *eyes-texture-base* vram-block) (* (+ s1-1 1) 32))))
                  (set! (-> s3-0 tex0 tbp0) v1-89)
                  )
@@ -180,11 +193,11 @@
            )
          )
         (else
-          ;; (let ((a0-69 (adgif-shader-login s3-0)))
-          ;;   (if a0-69
-          ;;       (texture-usage-update a0-69)
-          ;;       )
-          ;;   )
+          (let ((a0-69 (adgif-shader-login s3-0)))
+            (if a0-69
+                (texture-usage-update a0-69)
+                )
+            )
           )
         )
       (&+! s3-0 80)
@@ -193,10 +206,30 @@
   obj
   )
 
+;; definition for method 5 of type merc-fragment-control
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of merc-fragment-control ((obj merc-fragment-control))
   (the-as int (+ (* (-> obj mat-xfer-count) 2) 4))
   )
 
+;; definition for method 3 of type merc-fragment-control
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect merc-fragment-control ((obj merc-fragment-control))
+  (format #t "[~8x] ~A~%" obj 'merc-fragment-control)
+  (format #t "~Tunsigned-four-count: ~D~%" (-> obj unsigned-four-count))
+  (format #t "~Tlump-four-count: ~D~%" (-> obj lump-four-count))
+  (format #t "~Tfp-qwc: ~D~%" (-> obj fp-qwc))
+  (format #t "~Tmat-xfer-count: ~D~%" (-> obj mat-xfer-count))
+  (dotimes (s5-0 (the-as int (-> obj mat-xfer-count)))
+    (format #t "~Tmat-dest-data[~d]:~%" s5-0)
+    (format #t "~T~Tmatrix-number: ~D~%" (-> obj mat-dest-data s5-0 matrix-number))
+    (format #t "~T~Tmatrix-dest: ~D~%" (-> obj mat-dest-data s5-0 matrix-dest))
+    )
+  obj
+  )
+
+;; definition for method 9 of type merc-effect
+;; WARN: Return type mismatch merc-effect vs none.
 (defmethod login-adgifs merc-effect ((obj merc-effect))
   (let* ((data *texture-login-data*)
          (a0-1 (-> data default-texture-index))
@@ -212,11 +245,11 @@
   (let ((tex (-> obj extra-info)))
     (when (nonzero? tex)
       (when (nonzero? (-> tex shader-offset))
-        ;; (let ((a0-6 (adgif-shader-login (the-as adgif-shader (+ (the-as uint tex) (* (-> tex shader-offset) 16))))))
-        ;;   (if a0-6
-        ;;       (texture-usage-update a0-6)
-        ;;       )
-        ;;   )
+        (let ((a0-6 (adgif-shader-login (the-as adgif-shader (+ (the-as uint tex) (* (-> tex shader-offset) 16))))))
+          (if a0-6
+              (texture-usage-update a0-6)
+              )
+          )
         )
       )
     )
@@ -234,6 +267,22 @@
       )
     )
   (none)
+  )
+
+;; definition for method 3 of type merc-ctrl
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect merc-ctrl ((obj merc-ctrl))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Tseg-table: ~A~%" (-> obj seg-table))
+  (inspect (-> obj header))
+  (dotimes (s5-0 (the-as int (-> obj header effect-count)))
+    (inspect (-> obj effect s5-0))
+    )
+  obj
   )
 
 ;; definition for method 8 of type merc-ctrl
@@ -314,11 +363,11 @@
   (when (and (-> obj header eye-ctrl) (nonzero? (-> obj header eye-ctrl)))
     (let ((s5-1 (-> obj header eye-ctrl)))
       (dotimes (s4-0 (-> s5-1 shader-count))
-        ;; (let ((a0-5 (adgif-shader-login (-> s5-1 shader s4-0))))
-        ;;   (if a0-5
-        ;;       (texture-usage-update a0-5)
-        ;;       )
-        ;;   )
+        (let ((a0-5 (adgif-shader-login (-> s5-1 shader s4-0))))
+          (if a0-5
+              (texture-usage-update a0-5)
+              )
+          )
         )
       )
     )
@@ -326,8 +375,9 @@
   obj
   )
 
+;; definition (debug) for function merc-stats-display
+;; WARN: Return type mismatch symbol vs none.
 (defun-debug merc-stats-display ((arg0 merc-ctrl))
-  "Print merc debug stats."
   (format #t "~30s:" (-> arg0 name))
   (let ((s5-0 (-> arg0 header st-int-scale))
         (s4-0 (ash 1 (- 12 (the-as int (-> arg0 header st-int-scale)))))
@@ -370,6 +420,8 @@
   (none)
   )
 
+;; definition (debug) for function merc-stats
+;; WARN: Return type mismatch int vs none.
 (defun-debug merc-stats ()
   (dotimes (gp-0 7)
     (let ((s5-0 (-> *level* level gp-0 art-group)))
@@ -397,6 +449,8 @@
   (none)
   )
 
+;; definition (debug) for function merc-edge-stats
+;; WARN: Return type mismatch int vs none.
 (defun-debug merc-edge-stats ()
   (dotimes (gp-0 7)
     (let ((s5-0 (-> *level* level gp-0 art-group)))
@@ -427,7 +481,6 @@
 ;; definition for function merc-vu1-add-vu-function
 ;; WARN: Return type mismatch dma-packet vs dma-gif-packet.
 (defun merc-vu1-add-vu-function ((dma dma-packet) (func vu-function) (flush-mode int))
-  "Add VU1 function to DMA chain."
   (let ((func-data (&-> func data 4))
         (qwc (-> func qlength))
         (dst (-> func origin))
@@ -449,8 +502,9 @@
   (the-as dma-gif-packet dma)
   )
 
+;; definition for function merc-vu1-initialize-chain
+;; INFO: Used lq/sq
 (defun merc-vu1-initialize-chain ((arg0 dma-gif-packet) (arg1 int))
-  "Init a merc DMA chain."
   (let ((gp-0 (the-as object (merc-vu1-add-vu-function (the-as dma-packet arg0) merc-vu1-block 1))))
     (set! (-> (the-as dma-gif-packet gp-0) dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-gif-packet gp-0) dma-vif vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
@@ -529,8 +583,8 @@
     )
   )
 
+;; definition for function merc-vu1-init-buffer
 (defun merc-vu1-init-buffer ((dma-bucket bucket-id) (arg1 int) (arg2 symbol))
-  "Set up a merc DMA buffer."
   (let ((bucket (-> *display* frames (-> *display* on-screen) bucket-group dma-bucket)))
     (when (!= bucket (-> bucket last))
       (let* ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
@@ -608,8 +662,9 @@
   0
   )
 
+;; definition for function merc-vu1-init-buffers
+;; WARN: Return type mismatch int vs none.
 (defun merc-vu1-init-buffers ()
-  "Init merc DMA buffers."
   (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask merc))
     (merc-vu1-init-buffer (bucket-id bucket-14) 0 #t)
     (merc-vu1-init-buffer (bucket-id bucket-25) 0 #t)
