@@ -10,13 +10,53 @@
 ;; NOTE - for cam-debug
 (define-extern transform-float-point (function vector vector4w vector4w))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-;; NOTE - for sparticle-launcher
-(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
-
+;; NOTE - for editable
+(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
+(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
+(define-extern add-debug-bound (function int transform int rgba rgba int none))
 
 (define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 (define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
+
+;; NOTE - for debug
+(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
+
+(defenum debug-menu-msg
+  :type int32
+  (activate 1)
+  (deactivate 2)
+  (update 3)
+  (press 4)
+  )
+
+(defenum debug-menu-dest
+  :type int32
+  (activation 0)
+  (root 1)
+  (open-menus 2)
+  (current-selection 3))
+
+;; NOTE - for editable-player
+(declare-type debug-menu basic)
+(deftype debug-menu-context (basic)
+  ((is-active     symbol                  :offset-assert 4) ;; guessed by decompiler
+   (sel-length    int32                   :offset-assert 8)
+   (sel-menu      debug-menu            8 :offset-assert 12) ;; guessed by decompiler
+   (root-menu     debug-menu              :offset-assert 44) ;; guessed by decompiler
+   (joypad-func   (function basic none)   :offset-assert 48) ;; guessed by decompiler
+   (joypad-item   basic                   :offset-assert 52)
+   (font          font-context            :offset-assert 56) ;; guessed by decompiler
+   (is-hidden     symbol                  :offset-assert 60) ;; guessed by decompiler
+   (joypad-number int32                   :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+(define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
+(define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
+
 
 ;; DECOMP BEGINS
 

@@ -1894,7 +1894,7 @@
  "collide/collide-shape.gc"
  "collide/collide-shape-rider.gc"
  "collide/collide.gc"
- "collide/collide-planes.gc"
+;;  "collide/collide-planes.gc"
  "gfx/merc/merc-death.gc"
  "common-obs/water-h.gc"
  "camera/camera.gc"

@@ -468,7 +468,7 @@
 "collide/collide-shape.gc"
 "collide/collide-shape-rider.gc"
 "collide/collide.gc"
-"collide/collide-planes.gc"
+;; "collide/collide-planes.gc"
 "spatial-hash/spatial-hash.gc"
 "spatial-hash/actor-hash.gc"
 "gfx/merc/merc-death.gc"
