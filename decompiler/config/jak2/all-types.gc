@@ -118,6 +118,9 @@
 (define-extern *kernel-boot-message* symbol)
 (define-extern *kernel-boot-art-group* string)
 
+;; added - part of the kernel
+(define-extern dma-sync (function pointer int int int))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gcommon                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1201,7 +1204,7 @@
   )
 
 (deftype sphere (vector)
-  ((r    float     :offset 12)
+  ((r    float     :offset 12 :score 999)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -2997,6 +3000,7 @@
   (bucket-323 323)
   (bucket-324 324)
   (debug-no-zbuf 325)
+  (debug-unknown-326 326)
   )
 
 ;; TODO - names in `render` menu
@@ -6082,14 +6086,51 @@
   :flag-assert         #x900000010
   )
 
+;; +++font-h:font-color
 (defenum font-color
   :type uint32
-  (default 0)
-  (one 1)
-  (orange-red 3)
-  (fc-5  5)
-  (fc-6  6)
+  (default-#cddbcd 0)
+  (#dadada 1)
+  (#ededed 2)
+  (precursor-#ec3b00 3)
+  (gold-#ba9200 4)
+  (yellow-#f3f300 5)
+  (green-#3df23d 6)
+  (blue-#003cf1 7)
+  (cyan-#00fefe 8)
+  (magenta-#f87df8 9)
+  (#a0d5d5 10)
+  (#7cbaba 11)
+  (white-#ffffff 12)
+  (#959595 13)
+  (#f9a400 14)
+  (#daf95e 15)
+  (#8aa81f 16)
+  (#a6b5a6 17)
+  (#757f75 18)
+  (#5e3f5e 19)
+  (#f0e387 20)
+  (#3fbaed 21)
+  (#3a3a3a 22)
+  (#5c5c5c 23)
+  (#f298c8 24)
+  (#f46868 25)
+  (#20ca98 26)
+  (#8289de 27)
+  (#a8f3f6 28)
+  (#fef666 29)
+  (#f1f104 30)
+  (#8ed0f4 31)
+  (#7efbfb 32)
+  (#7ffcfc 33)
+  (#f9f9f9 34)
+  (#408080 35)
+  (#e0f0e0 36)
+  (#c00000 37)
+  (#ffc040 38)
+  (#000000 39)
   )
+;; ---font-h:font-color
 
 (defenum font-flags
   :type uint32
@@ -7757,6 +7798,7 @@
 
 (declare-type time-of-day-proc process)
 (define-extern *time-of-day* (pointer time-of-day-proc))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mspace-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -8511,8 +8553,8 @@
 (deftype game-task-node-info (basic)
   ((level basic)
    (task game-task)
-   (name basic)
-   (when-open basic)
+   (name string)
+   (when-open array)
    (flags game-task-node-flag)
    (parent-node uint16 4)
    (task-mask task-mask)
@@ -8541,14 +8583,14 @@
 
 
 (deftype game-task-info (basic)
-  ((name                basic   :offset-assert 4)
+  ((name                string   :offset-assert 4)
    (text-name           uint32  :offset-assert 8)
    (pre-play-node       uint16  :offset-assert 12)
    (kiosk-play-node     uint16  :offset-assert 14)
-   (pre-play-continue   basic   :offset-assert 16)
+   (pre-play-continue   string   :offset-assert 16)
    (play-node           uint16  :offset-assert 20)
-   (play-continue       basic   :offset-assert 24)
-   (kiosk-play-continue basic   :offset-assert 28)
+   (play-continue       string   :offset-assert 24)
+   (kiosk-play-continue string   :offset-assert 28)
    )
   :flag-assert         #x900000020
   )
@@ -11670,8 +11712,8 @@
    (task-perm-list         entity-perm-array    :offset-assert 236)
    (current-continue       continue-point       :offset-assert 240)
    (last-continue          continue-point       :offset-assert 244)
-   (unknown-pad3 array :offset-assert 248)
-   (unknown-pad4 array :offset-assert 252)
+   (play-list              (array game-task-info) :offset-assert 248)
+   (sub-task-list          (array game-task-node-info) :offset-assert 252)
    (unknown-pad5 array :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
    (unknown-pad6           uint32               :offset-assert 264)
@@ -14986,11 +15028,20 @@
   (player)
   )
 
+;; +++collide-shape-h:nav-flags
+(defenum nav-flags
+  :type uint8
+  :bitfield #t
+  (nav-flags0 0)
+  (nav-flags1 1)
+  )
+;; ---collide-shape-h:nav-flags
+
 (deftype collide-shape (trsqv)
   ((actor-hash-index int16 :offset 12)
-   (process process :offset-assert 140)
+   (process process-drawable :offset-assert 140)
    (max-iteration-count uint8)
-   (nav-flags uint8)
+   (nav-flags nav-flags)
    (total-prims uint8)
    (num-riders uint8)
    (pat-ignore-mask pat-surface)
@@ -18107,8 +18158,8 @@
   :flag-assert         #x1b00000034
   ;; Failed to read fields.
   (:methods
-    (entity-method-22 () none 22) ;; (birth! (_type_) _type_ 22)
-    (entity-method-23 () none 23) ;; (kill! (_type_) _type_ 23)
+    (entity-method-22 (_type_) _type_ 22) ;; (birth! (_type_) _type_ 22)
+    (entity-method-23 (_type_) _type_ 23) ;; (kill! (_type_) _type_ 23)
     (entity-method-24 () none 24) ;; (add-to-level! (_type_ level-group level actor-id) none 24)
     (entity-method-25 () none 25) ;; (remove-from-level! (_type_ level-group) _type_ 25)
     (entity-method-26 () none 26) ;; (get-level (_type_) level 26)
@@ -18122,14 +18173,13 @@
 
 (declare-type nav-mesh basic)
 (deftype entity-nav-mesh (entity)
-  ((nav-mesh nav-mesh))
+  ((nav-mesh nav-mesh  :offset-assert  52))
   :method-count-assert 29
   :size-assert         #x38
   :flag-assert         #x1d00000038
-  ;; Failed to read fields.
   (:methods
-    (entity-nav-mesh-method-27 () none 27)
-    (entity-nav-mesh-method-28 () none 28)
+    (entity-nav-mesh-method-27 (_type_) none 27)
+    (debug-draw (_type_) none 28)
     )
   )
 
@@ -18145,6 +18195,7 @@
   )
 
 (define-extern entity-actor type)
+(declare-type nav-poly structure)
 (deftype entity-actor (entity)
   ((etype type :offset 56)
    (task  game-task :offset-assert 60)
@@ -18161,8 +18212,8 @@
     (prev-actor (_type_) entity-actor 28)
     (entity-actor-method-29 () none 29) ;; (debug-print (_type_ symbol type) none 29)
     (entity-actor-method-30 () none 30) ;; (dummy-30 (_type_ entity-perm-status symbol) none 30)
-    (entity-actor-method-31 () none 31)
-    (entity-actor-method-32 () none 32)
+    (entity-actor-method-31 (_type_ vector vector vector object float) nav-mesh 31)
+    (entity-actor-method-32 (_type_ vector vector nav-poly float) nav-poly 32)
     )
   )
 
@@ -20502,10 +20553,10 @@
    (work-struct-in-scratch int8                   :offset-assert 292)
    (mesh-struct-in-scratch int8                   :offset-assert 293)
    (polys-in-scratch       int8                   :offset-assert 294)
-   (mesh                   basic                  :offset-assert 296)
+   (mesh                   nav-mesh               :offset-assert 296)
    (nav                    basic                  :offset-assert 300)
-   (poly0                  basic                  :offset-assert 304)
-   (poly1                  basic                  :offset-assert 308)
+   (poly0                  nav-poly                  :offset-assert 304)
+   (poly1                  nav-poly                  :offset-assert 308)
    (poly-id                int32                  :offset-assert 312)
    )
   :method-count-assert 9
@@ -20530,7 +20581,7 @@
 (deftype nav-poly (structure)
   ((data         uint8   64       :offset-assert 0 :score -1)
    (vertex       vector 4 :inline :offset 0) ;; changed to vector from uint8 in jak 1
-   (vertex0      vector  :inline  :offset 0)
+   (vertex0      vector  :inline  :offset 0 :score 999)
    (vertex1      vector  :inline  :offset 16)
    (vertex2      vector  :inline  :offset 32)
    (vertex3      vector  :inline  :offset 48)
@@ -20552,6 +20603,8 @@
   )
 
 (deftype nav-vertex (vector)
+  "A typedef for `vector`, not used because our code looks nicer if everything is `vector`s anyway
+   and declared out of order (cannot use forward declared structures in inline arrays)"
   ()
   :method-count-assert 9
   :size-assert         #x10
@@ -20598,7 +20651,7 @@
 (deftype nav-find-poly-parms (structure)
   ((point         vector   :inline :offset-assert 0)
    (y-threshold   float            :offset-assert 16)
-   (ignore        uint8            :offset-assert 20)
+   (ignore        uint8            :offset-assert 20) ;; TODO - bitfield of some kind
    (poly          nav-poly         :offset-assert 24)
    (dist          float            :offset-assert 28)
    (point-inside? symbol           :offset-assert 32)
@@ -20636,75 +20689,80 @@
   (dummy 0)
   )
 
+(declare-type grid-hash basic)
+(declare-type sphere-hash grid-hash)
 (deftype nav-mesh (basic)
-  ((work nav-mesh-work :offset-assert 4)
-   (poly-array (inline-array nav-poly))
-   (static-sphere-count uint8)
-   (poly-count uint8)
-   (nav-control-count uint8)
-   (max-nav-control-count uint8)
-   (route uint32)
-   (poly-hash basic)
-   (nav-control-array uint32)
-   (sphere-hash basic)
-   (static-sphere uint32 :offset-assert 32)
-   (user-list basic)
-   (next-nav-mesh basic)
-   (prev-nav-mesh basic)
-   (bounds sphere :inline :offset-assert 48)
-   (origin vector :inline :offset 48)
-   (entity entity)
-   (link-array uint32)
-   (link-count uint8)
-   (flags nav-mesh-flag)
-   (pad1 uint8 2)
-   (nearest-y-threshold meters :offset-assert 76)
-   (water-max-height meters)
-   (pad2 uint32 7)
+  ((work                  nav-mesh-work         :offset-assert   4)
+   (poly-array            (inline-array nav-poly)              :offset-assert   8) ;; is this actually an inline-array?
+   (static-sphere-count   uint8                 :offset-assert  12)
+   (poly-count            uint8                 :offset-assert  13)
+   (nav-control-count     uint8                 :offset-assert  14)
+   (max-nav-control-count uint8                 :offset-assert  15)
+   (route                 uint32                :offset-assert  16)
+   (poly-hash             grid-hash                 :offset-assert  20)
+   (nav-control-array     (inline-array nav-control)                :offset-assert  24) ;; 307 elts
+   (sphere-hash           sphere-hash                 :offset-assert  28)
+   (static-sphere         (inline-array sphere)                :offset-assert  32)
+   (user-list             engine                 :offset-assert  36)
+   (next-nav-mesh         surface                 :offset-assert  40)
+   (prev-nav-mesh         surface                 :offset-assert  44)
+   (bounds                sphere        :inline :offset-assert  48)
+   (origin                vector        :inline :offset         48)
+   (entity                entity                :offset-assert  64)
+   (link-array            (array nav-mesh-link)                :offset-assert  68)
+   (link-count            uint8                 :offset-assert  72)
+   (flags                 nav-mesh-flag         :offset-assert  73)
+   (pad1                  uint8         2       :offset-assert  74)
+   (nearest-y-threshold   meters                :offset-assert  76)
+   (water-max-height      meters                :offset-assert  80)
+   (pad2                  uint32        7       :offset-assert  84)
    )
   :method-count-assert 47
   :size-assert         #x70
   :flag-assert         #x2f00000070
-  ;; Failed to read fields.
   (:methods
-    (nav-mesh-method-9 () none 9) ;; (tri-centroid-world (_type_ nav-poly vector) vector 9)
-    (nav-mesh-method-10 () none 10) ;; (tri-centroid-local (_type_ nav-poly vector) vector 10)
-    (nav-mesh-method-11 () none 11) ;; (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly 11)
-    (nav-mesh-method-12 () none 12) ;; (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object 12)
-    (nav-mesh-method-13 () none 13) ;; (initialize-mesh! (_type_) none 13)
-    (nav-mesh-method-14 () none 14) ;; (move-along-nav-ray! (_type_ nav-ray) none 14)
-    (nav-mesh-method-15 () none 15) ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters 15)
+    (nav-mesh-method-9 (_type_) none 9) ;; (tri-centroid-world (_type_ nav-poly vector) vector 9)
+    (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly 10) ;; (tri-centroid-local (_type_ nav-poly vector) vector 10)
+    (nav-mesh-method-11 (_type_ nav-poly vector) vector 11) ;; (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly 11)
+    (nav-mesh-method-12 (_type_ nav-poly vector) none 12) ;; (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object 12)
+    (nav-mesh-method-13 (_type_ symbol symbol) none 13) ;; (initialize-mesh! (_type_) none 13)
+    (get-route-portal(_type_ object object nav-find-poly-parms) none 14) ;; (move-along-nav-ray! (_type_ nav-ray) none 14)
+    (initialize-mesh! (_type_) none 15) ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters 15)
     (move-along-nav-ray! (_type_ nav-ray) none 16) ;; (TODO-RENAME-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none 16)
-    (nav-mesh-method-17 () none 17) ;; (update-route-table (_type_) none 17)
+    (try-move-along-ray (_type_ nav-poly vector vector float) meters 17) ;; (update-route-table (_type_) none 17)
     (nav-mesh-method-18 () none 18) ;; (dummy-18 (_type_ int vector int (pointer int8) int) none 18)
     (nav-mesh-method-19 () none 19) ;; (compute-bounding-box (_type_ vector vector) none 19)
     (nav-mesh-method-20 () none 20) ;; (debug-draw-poly (_type_ nav-poly rgba) none 20)
     (nav-mesh-method-21 () none 21) ;; (point-in-poly? (_type_ nav-poly vector) symbol 21)
-    (nav-mesh-method-22 () none 22) ;; (find-opposite-vertices (_type_ nav-poly nav-poly) uint 22)
-    (nav-mesh-method-23 () none 23) ;; (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
-    (nav-mesh-method-24 () none 24) ;; (closest-point-on-boundary (_type_ nav-poly vector vector) vector 24)
-    (nav-mesh-method-25 () none 25) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) none 25)
-    (nav-mesh-method-26 () none 26) ;; (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
-    (nav-mesh-method-27 () none 27) ;; (find-poly-fast (_type_ vector meters) nav-poly 27)
-    (nav-mesh-method-28 () none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
-    (nav-mesh-method-29 () none 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
-    (nav-mesh-method-30 () none 30)
-    (nav-mesh-method-31 () none 31)
-    (nav-mesh-method-32 () none 32)
-    (nav-mesh-method-33 () none 33)
-    (nav-mesh-method-34 () none 34)
-    (nav-mesh-method-35 () none 35)
-    (nav-mesh-method-36 () none 36)
+    (nav-mesh-method-22 (_type_ vector vector) none 22) ;; (find-opposite-vertices (_type_ nav-poly nav-poly) uint 22)
+    (nav-mesh-method-23 (_type_ entity-nav-mesh) none 23) ;; (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
+    (nav-mesh-method-24 (_type_) none 24) ;; (closest-point-on-boundary (_type_ nav-poly vector vector) vector 24)
+    (nav-mesh-method-25 (_type_) none 25) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) none 25)
+    (nav-mesh-method-26 (_type_) none 26) ;; (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
+    (new-nav-control (_type_ vector int) nav-control 27) ;; (find-poly-fast (_type_ vector meters) nav-poly 27)
+    (nav-mesh-method-28 (_type_ object) none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
+    (nav-mesh-method-29 (_type_ object symbol) nav-control 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
+    (nav-mesh-method-30 (_type_ process-drawable) none 30)
+    (change-to (_type_ process-drawable) none 31)
+    (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) none 32)
+    (nav-mesh-method-33 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) symbol 33)
+    (nav-mesh-method-34 (_type_ object vector float) none 34)
+    (nav-mesh-method-35
+      "TODO - Assertion failed: 'std::isfinite(value)'
+        Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90
+        Function: int __cdecl float_to_cstr(float, char *, bool)"
+      () none 35)
+    (nav-mesh-method-36 (_type_ nav-poly rgba) none 36)
     (point-in-poly? (_type_ nav-poly vector) symbol 37)
-    (nav-mesh-method-38 () none 38)
+    (nav-mesh-method-38 (_type_ nav-poly vector vector vector object) vector 38)
     (closest-point-on-boundary (_type_ nav-poly vector vector) none 39)
-    (nav-mesh-method-40 () none 40)
+    (nav-mesh-method-40 (_type_ nav-poly vector object vector) none 40)
     (project-point-into-poly-2d (_type_ nav-poly vector vector) none 41)
-    (nav-mesh-method-42 () none 42)
-    (nav-mesh-method-43 () none 43)
-    (nav-mesh-method-44 () none 44)
-    (nav-mesh-method-45 () none 45)
-    (nav-mesh-method-46 () none 46)
+    (nav-mesh-method-42 (_type_ nav-find-poly-parms) symbol 42)
+    (nav-mesh-method-43 (_type_ nav-find-poly-parms) none 43)
+    (nav-mesh-method-44 (_type_ vector float float) symbol 44)
+    (nav-mesh-method-45 "TODO - asm expression building error" (_type_ entity-perm) none 45)
+    (nav-mesh-method-46 (_type_ object) none 46)
     )
   )
 
@@ -20783,27 +20841,27 @@
   )
 
 (deftype nav-state (structure)
-  ((flags nav-state-flag)
-   (nav basic) ;; ??
-   (user-poly nav-poly)
-   (mesh nav-mesh)
-   (current-poly nav-poly)
-   (virtual-current-poly nav-poly)
-   (next-poly nav-poly)
-   (target-poly nav-poly)
-   (rotation-rate float :offset-assert 32)
-   (speed meters)
-   (prev-speed meters)
-   (pad0 uint32 1)
-   (travel vector :inline :offset-assert 48)
-   (target-post vector :inline)
-   (current-pos vector :inline)
-   (current-pos-local vector :inline)
-   (virtual-current-pos-local vector :inline)
-   (velocity vector :inline :offset-assert 128)
-   (heading vector :inline)
-   (target-dir vector :inline :offset-assert 160)
-   (accel vector :inline :offset 160)
+  ((flags                     nav-state-flag         :offset-assert   0)
+   (nav                       basic                  :offset-assert   4)
+   (user-poly                 nav-poly               :offset-assert   8)
+   (mesh                      nav-mesh               :offset-assert  12)
+   (current-poly              nav-poly               :offset-assert  16)
+   (virtual-current-poly      nav-poly               :offset-assert  20)
+   (next-poly                 nav-poly               :offset-assert  24)
+   (target-poly               nav-poly               :offset-assert  28) ;; wrong
+   (rotation-rate             float                  :offset-assert  32)
+   (speed                     meters                 :offset-assert  36)
+   (prev-speed                meters                 :offset-assert  40)
+   (pad0                      uint32         1       :offset-assert  44)
+   (travel                    vector         :inline :offset-assert  48)
+   (target-post               vector         :inline :offset-assert  64)
+   (current-pos               vector         :inline :offset-assert  80)
+   (current-pos-local         vector         :inline :offset-assert  96)
+   (virtual-current-pos-local vector         :inline :offset-assert 112)
+   (velocity                  vector         :inline :offset-assert 128)
+   (heading                   vector         :inline :offset-assert 144)
+   (target-dir                vector         :inline :offset-assert 160)
+   (accel                     vector         :inline :offset        160)
    )
   :method-count-assert 55
   :size-assert         #xb0
@@ -20874,28 +20932,28 @@
   )
 
 (deftype nav-control (structure)
-  ((flags nav-control-flag)
-   (callback-info nav-callback-info)
-   (process process)
-   (pad0 uint32)
-   (shape basic)
-   (nearest-y-threshold meters)
-   (nav-cull-radius meters)
-   (sec-per-frame float)
-   (target-speed meters)
-   (acceleration meters)
-   (turning-acceleration meters)
-   (max-rotation-rate float)
-   (speed-scale float)
-   (sphere-count int32)
-   (sphere-array (inline-array sphere)) ;; guess
-   (root-sphere-id uint8)
-   (sphere-mask uint8)
-   (pad1 uint8 2)
-   (sphere-id-array uint8 16)
-   (extra-nav-sphere vector :inline)
-   (root-nav-sphere vector :inline)
-   (state nav-state :inline)
+  ((flags                nav-control-flag              :offset-assert   0)
+   (callback-info        nav-callback-info             :offset-assert   4)
+   (process              process                       :offset-assert   8)
+   (pad0                 uint32                        :offset-assert  12)
+   (shape                collide-shape                 :offset-assert  16)
+   (nearest-y-threshold  meters                        :offset-assert  20)
+   (nav-cull-radius      meters                        :offset-assert  24)
+   (sec-per-frame        float                         :offset-assert  28)
+   (target-speed         meters                        :offset-assert  32)
+   (acceleration         meters                        :offset-assert  36)
+   (turning-acceleration meters                        :offset-assert  40)
+   (max-rotation-rate    float                         :offset-assert  44)
+   (speed-scale          float                         :offset-assert  48)
+   (sphere-count         int32                         :offset-assert  52)
+   (sphere-array         (inline-array sphere)         :offset-assert  56)
+   (root-sphere-id       uint8                         :offset-assert  60)
+   (sphere-mask          uint8                         :offset-assert  61)
+   (pad1                 uint8                 2       :offset-assert  62)
+   (sphere-id-array      uint8                 16      :offset-assert  64)
+   (extra-nav-sphere     sphere                :inline :offset-assert  80)
+   (root-nav-sphere      sphere                :inline :offset-assert  96)
+   (state                nav-state             :inline :offset-assert 112)
    )
   :method-count-assert 47
   :size-assert         #x120
@@ -20904,43 +20962,45 @@
   (:methods
      ;; (new (symbol type collide-shape int float) _type_ 0)
     (nav-control-method-9 () none 9) ;; (debug-draw (_type_) none 9)
-    (nav-control-method-10 () none 10) ;; (point-in-bounds? (_type_ vector) symbol 10)
-    (nav-control-method-11 (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
+    (point-in-bounds?
+      "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius" 
+      (_type_ vector) symbol 10)
+    (nav-control-method-11 "TODO" (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
     (nav-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
-    (nav-control-method-13 () none 13) ;; (dummy-13 (_type_ vector vector) vector 13)
-    (nav-control-method-14 () none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
-    (nav-control-method-15 () none 15) ;; (set-target-pos! (_type_ vector) none 15)
-    (nav-control-method-16 () none 16) ;; (dummy-16 (_type_ vector) nav-poly 16)
-    (nav-control-method-17 () none 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
+    (find-poly "TODO" (_type_ vector) nav-poly 13) ;; (dummy-13 (_type_ vector vector) vector 13)
+    (nav-control-method-14 (_type_ nav-poly vector object vector) none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
+    (nav-control-method-15 "TODO - same as 11" (_type_ vector) none 15) ;; (set-target-pos! (_type_ vector) none 15)
+    (nav-control-method-16 (_type_ vector float) symbol 16) ;; (dummy-16 (_type_ vector) nav-poly 16)
+    (is-in-mesh? "TODO" (_type_ vector float) symbol 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
     (nav-control-method-18 () none 18) ;; (find-poly (_type_ vector) nav-poly 18)
     (nav-control-method-19 () none 19) ;; (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
     (nav-control-method-20 (_type_ vector vector vector int symbol symbol) none 20) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
     (nav-control-method-21 () none 21) ;; (TODO-RENAME-21 (_type_ vector) nav-poly 21)
     (nav-control-method-22 () none 22) ;; (TODO-RENAME-22 (_type_ vector float) symbol 22)
-    (nav-control-method-23 () none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
+    (nav-control-method-23 "TODO" (_type_) none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
     (nav-control-method-24 () none 24) ;; (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
-    (nav-control-method-25 () none 25) ;; (is-in-mesh? (_type_ vector float) symbol 25)
-    (nav-control-method-26 () none 26) ;; (TODO-RENAME-26 (_type_) none 26)
-    (nav-control-method-27 () none 27) ;; (TODO-RENAME-27 (_type_) none 27)
-    (nav-control-method-28 () none 28) ;; (TODO-RENAME-28 (_type_ collide-kind) none 28)
-    (nav-control-method-29 () none 29) ;; (should-display? (_type_) symbol 29)
-    (nav-control-method-30 () none 30) ;; (dummy-30 (_type_ vector vector vector) sphere 30)
-    (nav-control-method-31 () none 31) ;; (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
-    (nav-control-method-32 () none 32) ;; (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
-    (nav-control-method-33 () none 33) ;; (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
-    (nav-control-method-34 () none 34) ;; (dummy-34 () none 34)
-    (nav-control-method-35 () none 35) ;; (dummy-35 (_type_ vector vector vector vector float) none 35)
-    (nav-control-method-36 () none 36)
-    (nav-control-method-37 () none 37)
-    (nav-control-method-38 () none 38)
-    (nav-control-method-39 () none 39)
-    (nav-control-method-40 () none 40)
-    (nav-control-method-41 () none 41)
-    (nav-control-method-42 () none 42)
-    (nav-control-method-43 () none 43)
+    (get-max-rotation-rate (_type_) float 25) ;; (is-in-mesh? (_type_ vector float) symbol 25)
+    (get-sphere-mask (_type_) none 26) ;; (TODO-RENAME-26 (_type_) none 26)
+    (get-target-speed (_type_) meters 27) ;; (TODO-RENAME-27 (_type_) none 27)
+    (nav-control-method-28 "TODO - Clears `nav-flags::1` on `shape`'s `flags`" (_type_) none 28) ;; (TODO-RENAME-28 (_type_ collide-kind) none 28)
+    (nav-control-method-29 "TODO - Sets `nav-flags::1` on `shape`'s `flags`" (_type_) none 29) ;; (should-display? (_type_) symbol 29)
+    (copy-extra-nav-sphere! "Copies the given [[sphere]] into `extra-nav-sphere`" (_type_ sphere) none 30) ;; (dummy-30 (_type_ vector vector vector) sphere 30)
+    (set-extra-nav-sphere! "Set the `extra-nav-sphere` with the data in the given [[sphere]]" (_type_ sphere) none 31) ;; (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
+    (set-extra-nav-sphere-radius! "Set's `extra-nav-sphere`'s radius" (_type_ float) none 32) ;; (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
+    (set-nearest-y-thres! "Set `nearest-y-threshold`" (_type_ float) none 33) ;; (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
+    (set-nav-cull-radius! "Set `nav-cull-radius`" (_type_ meters) none 34) ;; (dummy-34 () none 34)
+    (set-speed-scale! "Set `speed-scale`" (_type_ float) none 35) ;; (dummy-35 (_type_ vector vector vector vector float) none 35)
+    (set-target-speed! "Set `target-speed`" (_type_ meters) none 36)
+    (set-acceleration! "Set `acceleration`" (_type_ meters) none 37)
+    (set-turning-acceleration! "Set `turning-acceleration`" (_type_ meters) none 38)
+    (set-max-rotation-rate! "Set `max-rotation-rate`" (_type_ float) none 39)
+    (set-sphere-mask! "TODO - probably an enum - Set `sphere-mask`" (_type_ uint) none 40)
+    (nav-control-method-41 "TODO - calls nav-mesh::28" (_type_) none 41)
+    (init! "Initializes the [[nav-control]], setting `shape` with the provided [[collide-shape]]" (_type_ collide-shape) none 42)
+    (display-marks? "Returns if navigation related marks should be displayed" (_type_) symbol 43)
     (nav-control-method-44 () none 44)
-    (nav-control-method-45 () none 45)
-    (nav-control-method-46 () none 46)
+    (nav-control-method-45 (_type_ vector vector vector) sphere 45)
+    (find-sphere "TODO" (_type_) none 46)
     )
   )
 
@@ -21020,7 +21080,7 @@
   )
 
 (deftype sphere-hash (grid-hash)
-  ((sphere-array     uint32  :offset-assert 88)
+  ((sphere-array     (inline-array sphere)  :offset-assert 88)
    (max-object-count int16   :offset-assert 92)
    (pad              int16   :offset-assert 94)
    (mem-sphere-array uint32  :offset-assert 96)
@@ -21035,7 +21095,7 @@
     (sphere-hash-method-27 () none 27)
     (sphere-hash-method-28 () none 28)
     (sphere-hash-method-29 () none 29)
-    (sphere-hash-method-30 () none 30)
+    (sphere-hash-method-30 (_type_ find-nav-sphere-ids-params) none 30)
     (sphere-hash-method-31 () none 31)
     (sphere-hash-method-32 () none 32)
     (sphere-hash-method-33 () none 33)
@@ -21351,7 +21411,7 @@
 
 ;; (define-extern raw-ray-sphere-intersect function) ;; (function float float)
 (define-extern ray-sphere-intersect (function vector vector vector float float))
-;; (define-extern ray-circle-intersect function) ;; (function vector vector vector float float)
+(define-extern ray-circle-intersect (function vector vector vector float float)) ;; 
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
 ;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
@@ -22616,7 +22676,7 @@
 (define-extern gen-font-12 (function string none))
 (define-extern draw-string-asm (function string dma-buffer font-context uint))
 (define-extern draw-string (function string dma-buffer font-context draw-string-result))
-(define-extern get-string-length (function string font-context float))
+(define-extern get-string-length (function string font-context draw-string-result))
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 (define-extern draw-string-adv (function string dma-buffer font-context none))
 
@@ -24899,7 +24959,9 @@
   )
 |#
 
-;; (define-extern *grid-hash-work* grid-hash-work)
+;; TODO remove this after spatial-hash PR merges
+(declare-type grid-hash-work basic)
+(define-extern *grid-hash-work* grid-hash-work)
 ;; (define-extern validate-bucket-bits function)
 ;; (define-extern draw-grid function)
 ;; (define-extern draw-sphere-box function)
@@ -25432,17 +25494,22 @@
   :size-assert         #x18
   :flag-assert         #xc00000018
   (:methods
-    (plane-volume-method-9 () none 9) ;; (dummy-9 (_type_ symbol vector-array vector-array) symbol 9)
-    (plane-volume-method-10 () none 10) ;; (debug-draw (_type_) none 10)
-    (plane-volume-method-11 () none 11) ;; (dummy-11 (_type_ vector float) symbol 11)
+    (plane-volume-method-9 (_type_ symbol vector-array vector-array) plane-volume 9)
+    (debug-draw (_type_) none 10)
+    (point-in-vol?
+      "TODO - Checks if the given [[vector]] point is inside the volume defined by 6 [[plane]]s by atleast the padding value provided"
+      (_type_ vector float) symbol 11)
     )
   )
 
+;; +++vol-h:vol-flags
 (defenum vol-flags
   :bitfield #t
   :type uint32
   (display?)
+  (vol-flags-1)
   )
+;; ---vol-h:vol-flags
 
 (deftype vol-control (basic)
   ((flags         vol-flags     :offset-assert 4)
@@ -25459,8 +25526,8 @@
   :flag-assert         #xc0000061c
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (vol-control-method-9 (_type_) symbol 9) ;; (dummy-9 (_type_) symbol 9)
-    (vol-control-method-10 (_type_ vector) symbol 10) ;; (dummy-10 (_type_ vector) symbol 10)
+    (vol-control-method-9 (_type_) none 9)
+    (vol-control-method-10 (_type_ plane) symbol 10)
     (should-display?
       "Returns true/false if the volume's marks should be displayed"
       (_type_) symbol 11)
@@ -25472,235 +25539,234 @@
 ;; cam-layout                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype cam-layout-bank (UNKNOWN)
-  ((spline-t    float  :offset-assert 4)
-   (spline-step float  :offset-assert 8)
-   (intro-t     float  :offset-assert 12)
-   (intro-step  float  :offset-assert 16)
-   (debug-t     float  :offset-assert 20)
-   (debug-step  float  :offset-assert 24)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype cam-layout-bank (basic)
+  (
+    (spline-t float :offset-assert 4)
+    (spline-step float :offset-assert 8)
+    (intro-t float :offset-assert 12)
+    (intro-step float :offset-assert 16)
+    (debug-t float :offset-assert 20)
+    (debug-step float :offset-assert 24)
   )
-|#
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
 
-#|
-(deftype clm-basic (UNKNOWN)
+(deftype clm-basic (basic)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
   )
-|#
 
-#|
-(deftype clm-item-action (UNKNOWN)
-  ((button  uint64  :offset-assert 0)
-   (options uint64  :offset-assert 8)
-   (func    symbol  :offset-assert 16) ;; guessed by decompiler
-   (parm0   int32   :offset-assert 20) ;; guessed by decompiler
-   (parm1   symbol  :offset-assert 24) ;; guessed by decompiler
+(deftype clm-item-action (structure)
+  (
+    (button uint64 :offset-assert 0)
+    (options uint64 :offset-assert 8)
+    (func symbol :offset-assert 16)
+    (parm0 int32 :offset 20)
+    (parm0-symbol symbol :offset 20)
+    (parm0-basic basic :offset 20)
+    (parm1 symbol :offset 24)
+    (parm1-basic basic :offset 24)
+  )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype clm-item (clm-basic)
+  (
+    (description string :offset-assert 4)
+    (button-symbol symbol :offset-assert 8)
+    (action clm-item-action :inline :offset-assert 16)
+  )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype clm-list-item (basic)
+  (
+    (description string :offset-assert 4)
+    (track-val symbol :offset-assert 8)
+    (val-func symbol :offset-assert 12)
+    (val-parm0 int32 :offset 16)
+    (val-parm0-symbol symbol :offset 16)
+    (val-parm0-basic basic :offset 16)
+    (val-parm1 symbol :offset 20)
+    (val-parm1-basic basic :offset 20)
+    (actions (array clm-item-action) :offset-assert 24)
+  )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype clm-list (clm-basic)
+  (
+    (tracker symbol :offset-assert 4)
+    (cur-list-item int32 :offset-assert 8)
+    (items (array clm-list-item) :offset-assert 12)
+  )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype clm (basic)
+  (
+    (title string :offset-assert 4)
+    (items (array clm-basic) :offset-assert 8)
+  )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype volume-descriptor-array (inline-array-class)
+  ((data  plane-volume  :inline :dynamic :offset 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field parm0 uses ~A with a signed load field parm1 uses ~A with a signed load
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype clm-item (UNKNOWN)
-  ((description   string                  :offset-assert 4) ;; guessed by decompiler
-   (button-symbol symbol                  :offset-assert 8) ;; guessed by decompiler
-   (action        clm-item-action :inline :offset-assert 16)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype cam-layout (process)
+  (
+    (cam-entity entity-camera :offset-assert 128)
+    (num-entities int32 :offset-assert 132)
+    (cur-entity int32 :offset-assert 136)
+    (num-volumes int32 :offset-assert 140)
+    (cur-volume int32 :offset-assert 144)
+    (first-pvol int32 :offset-assert 148)
+    (first-cutoutvol int32 :offset-assert 152)
+    (res-key float :offset-assert 156)
   )
-|#
-
-#|
-(deftype clm-list-item (UNKNOWN)
-  ((description string                   :offset-assert 4) ;; guessed by decompiler
-   (track-val   symbol                   :offset-assert 8) ;; guessed by decompiler
-   (val-func    symbol                   :offset-assert 12) ;; guessed by decompiler
-   (val-parm0   int32                    :offset-assert 16) ;; guessed by decompiler
-   (val-parm1   symbol                   :offset-assert 20) ;; guessed by decompiler
-   (actions     (array clm-item-action)  :offset-assert 24) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field track-val uses ~A with a signed load field val-parm0 uses ~A with a signed load field val-parm1 uses ~A with a signed load
+  :method-count-assert 14
+  :heap-base           #x200
+  :size-assert         #xa0
+  :flag-assert         #xe020000a0
+  (:states
+    cam-layout-active)
   )
-|#
 
-#|
-(deftype clm-list (UNKNOWN)
-  ((tracker       symbol                 :offset-assert 4) ;; guessed by decompiler
-   (cur-list-item int32                  :offset-assert 8)
-   (items         (array clm-list-item)  :offset-assert 12) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype interp-test-info (structure)
+  (
+    (from vector :inline :offset-assert 0)
+    (to vector :inline :offset-assert 16)
+    (origin vector :inline :offset-assert 32)
+    (color vector4w :offset-assert 48)
+    (axis vector :offset-assert 52)
+    (disp string :offset-assert 56)
   )
-|#
-
-#|
-(deftype clm (UNKNOWN)
-  ((title string             :offset-assert 4) ;; guessed by decompiler
-   (items (array clm-basic)  :offset-assert 8) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
-#|
-(deftype volume-descriptor-array (UNKNOWN)
-  ((length           int32                 :offset-assert 4)
-   (allocated-length int32                 :offset-assert 8)
-   (data             plane-volume :dynamic :offset-assert 16) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype clmf-cam-flag-toggle-info (structure)
+  (
+    (key float :offset-assert 0)
+    (force-on int32 :offset-assert 4)
+    (force-off int32 :offset-assert 8)
   )
-|#
-
-#|
-(deftype cam-layout (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype interp-test-info (UNKNOWN)
-  ((from   vector   :inline :offset-assert 0)
-   (to     vector   :inline :offset-assert 16)
-   (origin vector   :inline :offset-assert 32)
-   (color  vector4w         :offset-assert 48)
-   (axis   vector           :offset-assert 52)
-   (disp   string           :offset-assert 56) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-#|
-(deftype clmf-cam-flag-toggle-info (UNKNOWN)
-  ((key       float  :offset-assert 0)
-   (force-on  int32  :offset-assert 4)
-   (force-off int32  :offset-assert 8)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-;; (define-extern *camera-layout-blink* object) ;; symbol
-;; (define-extern *CAM_LAYOUT-bank* cam-layout-bank) ;; cam-layout-bank
-;; (define-extern *camera-layout-message-ypos* object) ;; int
-;; (define-extern *volume-point-current* object) ;; int
-;; (define-extern *volume-point* object) ;; vector-array
-;; (define-extern *volume-normal-current* object) ;; int
-;; (define-extern *volume-normal* object) ;; vector-array
-;; (define-extern *volume-descriptor-current* object) ;; int
-;; (define-extern *volume-descriptor* object) ;; vol-control
-;; (define-extern cam-layout-print function) ;; (function int int string pointer)
-;; (define-extern cam-layout-intersect-dist function) ;; (function vector vector vector float)
-;; (define-extern cam-layout-entity-volume-info-create function) ;; (function entity-camera symbol symbol :behavior cam-layout)
-;; (define-extern cam-layout-entity-volume-info function) ;; (function symbol :behavior cam-layout)
-;; (define-extern v-slrp! function) ;; (function vector vector vector float vector)
-;; (define-extern interp-test function) ;; (function (function vector vector vector float vector float none) interp-test-info basic)
-;; (define-extern interp-test-deg function) ;; (function (function vector vector vector vector float none) interp-test-info basic)
-;; (define-extern cam-layout-entity-info function) ;; (function entity-actor basic)
-;; (define-extern clmf-button-test function) ;; (function symbol)
-;; (define-extern clmf-bna function) ;; (function symbol)
-;; (define-extern clmf-implement function) ;; (function symbol)
-;; (define-extern clmf-input function) ;; (function vector vector int vector)
-;; (define-extern clmf-pos-rot function) ;; (function symbol symbol symbol :behavior cam-layout)
-;; (define-extern clmf-next-volume function) ;; (function int symbol :behavior cam-layout)
-;; (define-extern clmf-next-vol-dpad function) ;; (function symbol)
-;; (define-extern clmf-to-edit-cam function) ;; (function symbol)
-;; (define-extern *last-cur-entity* object) ;; int
-;; (define-extern clmf-next-entity function) ;; (function int symbol :behavior cam-layout)
-;; (define-extern clmf-to-spline-attr function) ;; (function symbol)
-;; (define-extern clmf-to-intro-attr function) ;; (function symbol)
-;; (define-extern clmf-to-index-attr function) ;; (function symbol)
-;; (define-extern clmf-to-focalpull-attr function) ;; (function symbol)
-;; (define-extern clmf-to-edit function) ;; (function symbol :behavior cam-layout)
-;; (define-extern clmf-to-select function) ;; (function symbol)
-;; (define-extern clmf-look-through function) ;; (function symbol :behavior cam-layout)
-;; (define-extern fov->maya function) ;; (function float float)
-;; (define-extern cam-layout-save-cam-rot function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-cam-trans function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-pivot function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-align function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-interesting function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-fov function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-focalpull function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-focalpull-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-campoints-flags function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-introsplinetime function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-introsplineexitval function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-interptime function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-splineoffset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-spline-follow-dist-offset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-campointsoffset function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-tiltAdjust function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMinLength function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMaxLength function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMinHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringMaxHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-stringCliffHeight function) ;; (function symbol string entity-actor string)
-;; (define-extern cam-layout-save-maxAngle function) ;; (function symbol string entity-actor string)
-;; (define-extern clmf-save-single function) ;; (function entity-camera symbol symbol file-stream :behavior cam-layout)
-;; (define-extern clmf-save-one function) ;; (function symbol symbol :behavior cam-layout)
-;; (define-extern clmf-save-all function) ;; (function symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-flag-toggle function) ;; (function int int symbol :behavior cam-layout)
-;; (define-extern clmf-cam-flag function) ;; (function string uint uint symbol :behavior cam-layout)
-;; (define-extern clmf-cam-float-adjust function) ;; (function symbol (pointer float) symbol :behavior cam-layout)
-;; (define-extern clmf-cam-meters function) ;; (function meters symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-fov function) ;; (function degrees symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-deg function) ;; (function degrees symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-intro-time function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-interp-time function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-float function) ;; (function float symbol symbol :behavior cam-layout)
-;; (define-extern clmf-cam-string function) ;; (function string symbol symbol :behavior cam-layout)
-;; (define-extern *clm-focalpull-attr* clm) ;; clm
-;; (define-extern *clm-index-attr* clm) ;; clm
-;; (define-extern *clm-intro-attr* clm) ;; clm
-;; (define-extern *clm-spline-attr* clm) ;; clm
-;; (define-extern *clm-cam-attr* clm) ;; clm
-;; (define-extern *clm-cam-lookthrough* clm) ;; clm
-;; (define-extern *clm-edit* clm) ;; clm
-;; (define-extern *clm-save-all* clm) ;; clm
-;; (define-extern *clm-save-one* clm) ;; clm
-;; (define-extern *clm-select* clm) ;; clm
-;; (define-extern *clm* object) ;; clm
-;; (define-extern cam-layout-do-action function) ;; (function clm-item-action symbol :behavior cam-layout)
-;; (define-extern cam-layout-function-call function) ;; (function symbol string int basic symbol :behavior cam-layout)
-;; (define-extern cam-layout-do-menu function) ;; (function clm none :behavior cam-layout)
-;; (define-extern cam-layout-active state) ;; (state cam-layout)
-;; (define-extern cam-layout-init function) ;; (function none :behavior cam-layout)
+(define-extern *camera-layout-blink* symbol) ;; 
+(define-extern *CAM_LAYOUT-bank* cam-layout-bank) ;; cam-layout-bank
+(define-extern *camera-layout-message-ypos* int) ;; int
+(define-extern *volume-point-current* int) ;; int
+(define-extern *volume-point* vector-array) ;; vector-array
+(define-extern *volume-normal-current* int) ;; int
+(define-extern *volume-normal* vector-array) ;; vector-array
+(define-extern *volume-descriptor-current* int) ;; int
+(define-extern *volume-descriptor* vol-control) ;; vol-control
+(define-extern cam-layout-print (function int int string pointer)) ;; 
+(define-extern cam-layout-intersect-dist (function vector vector vector float)) ;; 
+(define-extern cam-layout-entity-volume-info-create (function entity-camera symbol symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-entity-volume-info (function symbol :behavior cam-layout)) ;; 
+(define-extern v-slrp! (function vector vector vector float vector)) ;; 
+(define-extern interp-test (function (function vector vector vector float vector float none) interp-test-info none)) ;; 
+(define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info none)) ;; 
+(define-extern cam-layout-entity-info (function entity-actor none)) ;; 
+(define-extern clmf-button-test "Displays the message `button test`" (function symbol)) ;; 
+(define-extern clmf-bna "Displays the message `button not available`" (function symbol)) ;; 
+(define-extern clmf-implement "Displays the message `button not implemented yet`" (function symbol)) ;; 
+(define-extern clmf-input (function vector vector int vector)) ;; 
+(define-extern clmf-pos-rot (function symbol symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-next-volume (function int symbol :behavior cam-layout)) ;; 
+(define-extern clmf-next-vol-dpad (function symbol)) ;; 
+(define-extern clmf-to-edit-cam (function symbol)) ;; 
+(define-extern *last-cur-entity* int) ;; int
+(define-extern clmf-next-entity (function int symbol :behavior cam-layout)) ;; 
+(define-extern clmf-to-spline-attr (function symbol)) ;; 
+(define-extern clmf-to-intro-attr (function symbol)) ;; 
+(define-extern clmf-to-index-attr (function symbol)) ;; 
+(define-extern clmf-to-focalpull-attr (function symbol)) ;; (function symbol)
+(define-extern clmf-to-edit (function symbol :behavior cam-layout)) ;; 
+(define-extern clmf-to-select (function symbol)) ;; (function symbol)
+(define-extern clmf-look-through (function symbol :behavior cam-layout)) ;; 
+(define-extern fov->maya (function float float)) ;; 
+(define-extern cam-layout-save-cam-rot (function symbol string entity-actor none)) ;; 
+(define-extern cam-layout-save-cam-trans (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-pivot (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-align (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-interesting (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-fov (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-focalpull (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-focalpull-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-campoints-flags (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-introsplinetime (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-introsplineexitval (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-interptime (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-splineoffset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-spline-follow-dist-offset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-campointsoffset (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-tiltAdjust (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMinLength (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMaxLength (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMinHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringMaxHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-stringCliffHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern cam-layout-save-maxAngle (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
+(define-extern clmf-save-single (function entity-camera symbol symbol file-stream :behavior cam-layout)) ;; 
+(define-extern clmf-save-one (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
+(define-extern clmf-save-all (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
+(define-extern clmf-cam-flag-toggle (function int int symbol :behavior cam-layout)) ;; (function int int symbol :behavior cam-layout)
+(define-extern clmf-cam-flag (function string uint uint symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-float-adjust (function symbol (pointer float) symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-meters (function meters symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-fov (function degrees symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-deg (function degrees symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-intro-time (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-interp-time (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-float (function float symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-string (function string symbol symbol :behavior cam-layout)) ;; 
+(define-extern *clm-focalpull-attr* clm) ;; clm
+(define-extern *clm-index-attr* clm) ;; clm
+(define-extern *clm-intro-attr* clm) ;; clm
+(define-extern *clm-spline-attr* clm) ;; clm
+(define-extern *clm-cam-attr* clm) ;; clm
+(define-extern *clm-cam-lookthrough* clm) ;; clm
+(define-extern *clm-edit* clm) ;; clm
+(define-extern *clm-save-all* clm) ;; clm
+(define-extern *clm-save-one* clm) ;; clm
+(define-extern *clm-select* clm) ;; clm
+(define-extern *clm* clm) ;; clm
+(define-extern cam-layout-do-action (function clm-item-action symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-function-call (function symbol string int basic symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-do-menu (function clm symbol :behavior cam-layout)) ;; 
+(define-extern cam-layout-active (state cam-layout)) ;; 
+(define-extern cam-layout-init (function object :behavior cam-layout)) ;; 
 (define-extern cam-layout-stop (function symbol))
 (define-extern cam-layout-start (function symbol))
-(define-extern cam-layout-restart (function none))
+(define-extern cam-layout-restart (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-debug                      ;;
@@ -27528,6 +27594,8 @@
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
+  (:methods
+   (new (symbol type) _type_ 0))
   )
 
 (deftype debug-menu-node (basic)
@@ -27552,6 +27620,8 @@
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
+  (:methods
+   (new (symbol type debug-menu-context string) _type_ 0))
   )
 
 (deftype debug-menu-item (debug-menu-node)
@@ -27568,6 +27638,8 @@
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
+  (:methods
+   (new (symbol type string debug-menu) _type_ 0))
   )
 
 (deftype debug-menu-item-function (debug-menu-item)
@@ -27577,8 +27649,11 @@
   :method-count-assert 9
   :size-assert         #x1d
   :flag-assert         #x90000001d
+  (:methods
+   (new (symbol type string object (function object object)) _type_ 0))
   )
 
+;; +++debug-h:debug-menu-msg
 (defenum debug-menu-msg
   :type int32
   (activate 1)
@@ -27586,6 +27661,7 @@
   (update 3)
   (press 4)
   )
+;; ---debug-h:debug-menu-msg
 
 (deftype debug-menu-item-flag (debug-menu-item)
   ((activate-func (function object debug-menu-msg object)  :offset-assert 24) ;; guessed by decompiler
@@ -27594,6 +27670,8 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
+  (:methods
+   (new (symbol type string object (function object debug-menu-msg object)) _type_ 0))
   )
 
 (deftype debug-menu-item-var (debug-menu-item)
@@ -27627,51 +27705,55 @@
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
+  (:methods
+   (new (symbol type string int int) _type_ 0))
   )
 
+;; +++debug-h:debug-menu-dest
 (defenum debug-menu-dest
   :type int32
   (activation 0)
   (root 1)
   (open-menus 2)
   (current-selection 3))
+;; ---debug-h:debug-menu-dest
 
-;; (define-extern debug-menu-item-var-update-display-str function) ;; (function debug-menu-item-var debug-menu-item-var)
+(define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var)) ;; 
 (define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int debug-menu-msg int int int) int symbol int int symbol debug-menu-item-var))
 (define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int debug-menu-msg float float float) float symbol float float int debug-menu-item-var))
-;; (define-extern debug-menu-context-grab-joypad function) ;; (function debug-menu-context basic (function basic none) symbol)
-;; (define-extern debug-menu-context-release-joypad function) ;; (function debug-menu-context symbol)
-;; (define-extern debug-menu-item-get-max-width function) ;; (function debug-menu-item debug-menu int)
-;; (define-extern debug-menu-context-default-selection function) ;; (function debug-menu-context symbol debug-menu-context)
-;; (define-extern debug-menu-rebuild function) ;; (function debug-menu debug-menu)
+(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic none) symbol)) ;; 
+(define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;; 
+(define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int)) ;; 
+(define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context)) ;; 
+(define-extern debug-menu-rebuild (function debug-menu debug-menu)) ;; 
 (define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
 (define-extern debug-menu-append-item (function debug-menu debug-menu-node debug-menu-node))
 (define-extern debug-menu-remove-all-items (function debug-menu debug-menu))
-;; (define-extern debug-menu-func-decode function) ;; (function object function)
+(define-extern debug-menu-func-decode (function object function)) ;; 
 (define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
 (define-extern debug-menu-find-from-template (function debug-menu-context pair debug-menu))
-;; (define-extern debug-menu-item-submenu-render function) ;; (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)
-;; (define-extern debug-menu-item-function-render function) ;; (function debug-menu-item-function int int int symbol debug-menu-item-function)
-;; (define-extern debug-menu-item-flag-render function) ;; (function debug-menu-item-flag int int int symbol debug-menu-item-flag)
-;; (define-extern debug-menu-item-var-render function) ;; (function debug-menu-item-var int int int symbol debug-menu-item-var)
-;; (define-extern debug-menu-item-render function) ;; (function debug-menu-item int int int symbol debug-menu-item)
-;; (define-extern debug-menu-render function) ;; (function debug-menu int int debug-menu-node int debug-menu)
-;; (define-extern debug-menu-context-render function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menu-context-select-next-or-prev-item function) ;; (function debug-menu-context int debug-menu-context)
-;; (define-extern debug-menu-context-select-new-item function) ;; (function debug-menu-context int debug-menu-context)
-;; (define-extern debug-menu-context-open-submenu function) ;; (function debug-menu-context debug-menu basic)
-;; (define-extern debug-menu-context-close-submenu function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menu-item-submenu-msg function) ;; (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)
-;; (define-extern debug-menu-item-function-msg function) ;; (function debug-menu-item-function debug-menu-msg debug-menu-item-function)
-;; (define-extern debug-menu-item-flag-msg function) ;; (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)
-;; (define-extern debug-menu-item-var-joypad-handler function) ;; (function debug-menu-item-var debug-menu-item-var)
-;; (define-extern debug-menu-item-var-msg function) ;; (function debug-menu-item-var debug-menu-msg debug-menu-item-var)
-;; (define-extern debug-menu-item-send-msg function) ;; (function debug-menu-item debug-menu-msg debug-menu-item)
-;; (define-extern debug-menu-send-msg function) ;; (function debug-menu debug-menu-msg symbol debug-menu)
+(define-extern debug-menu-item-submenu-render (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)) ;; 
+(define-extern debug-menu-item-function-render (function debug-menu-item-function int int int symbol debug-menu-item-function)) ;; 
+(define-extern debug-menu-item-flag-render (function debug-menu-item-flag int int int symbol debug-menu-item-flag)) ;; 
+(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-render (function debug-menu-item int int int symbol debug-menu-item)) ;; 
+(define-extern debug-menu-render (function debug-menu int int debug-menu-node int debug-menu)) ;; 
+(define-extern debug-menu-context-render (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menu-context-select-next-or-prev-item (function debug-menu-context int debug-menu-context)) ;; 
+(define-extern debug-menu-context-select-new-item (function debug-menu-context int debug-menu-context)) ;; 
+(define-extern debug-menu-context-open-submenu (function debug-menu-context debug-menu basic)) ;; 
+(define-extern debug-menu-context-close-submenu (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)) ;; 
+(define-extern debug-menu-item-function-msg (function debug-menu-item-function debug-menu-msg debug-menu-item-function)) ;; 
+(define-extern debug-menu-item-flag-msg (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)) ;; 
+(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-var-msg (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item)) ;; 
+(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu)) ;; 
 (define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
-;; (define-extern debug-menu-context-activate-selection function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menus-default-joypad-func function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern debug-menus-active function) ;; (function debug-menu-context debug-menu-context)
+(define-extern debug-menu-context-activate-selection (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menus-default-joypad-func (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menus-active (function debug-menu-context debug-menu-context)) ;; 
 (define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27902,8 +27984,8 @@
 (define-extern entity-by-type (function type entity-actor))
 (define-extern entity-by-aid (function uint entity))
 ;; (define-extern entity-actor-from-level-name function)
-;; (define-extern entity-nav-mesh-by-aid function)
-;; (define-extern nav-mesh-from-res-tag function)
+(define-extern entity-nav-mesh-by-aid (function actor-id entity-nav-mesh))
+(define-extern nav-mesh-from-res-tag (function entity symbol int nav-mesh))
 ;; (define-extern entity-by-meters function) ;; (function float float float entity-actor)
 ;; (define-extern process-by-ename function) ;; (function string process)
 ;; (define-extern entity-process-count function) ;; (function symbol int)
@@ -27943,50 +28025,48 @@
 ;; vol                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern plane-volume-intersect-dist function) ;; (function vector vector vector float)
+(define-extern plane-volume-intersect-dist (function vector vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-mesh                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-engine-spr-buffer (structure)
   ((mem-addr  uint32  :offset-assert 0)
-   (mem-nav   uint32  :offset-assert 0)
+   (mem-nav   uint32  :offset 0)
    (spr-addr  uint32  :offset-assert 4)
-   (spr-nav   uint32  :offset-assert 4)
+   (spr-nav   uint32  :offset 4)
    (q-size    uint32  :offset-assert 8)
    (i-nav     uint8   :offset-assert 12)
    (done      int8    :offset-assert 13)
    (nav-count int8    :offset-assert 14)
    (i-pass    int8    :offset-assert 15)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-engine (structure)
   ((spr-addr              uint32          :offset-assert 0)
    (nav-work-addr         uint32          :offset-assert 4)
-   (nav-mesh-addr         uint32          :offset-assert 8)
+   (nav-mesh-addr         nav-mesh        :offset-assert 8)
    (poly-array-addr       uint32          :offset-assert 12)
    (hash-sphere-addr      uint32          :offset-assert 16)
    (hash-buckets-addr     uint32          :offset-assert 20)
    (buf-nav-control-count int8            :offset-assert 24)
    (max-pass-count        int8            :offset-assert 25)
    (output-sphere-hash    uint8           :offset-assert 26)
-   (work-buf-array        UNKNOWN       3 :offset-assert 28)
-   (spr-work              nav-mesh-work   :offset-assert 4)
+   (work-buf-array        nav-engine-spr-buffer       3 :inline :offset-assert 28)
+   (spr-work              nav-mesh-work   :offset 4)
    (mem-work              nav-mesh-work   :offset-assert 76)
-   (spr-mesh              basic           :offset-assert 8)
-   (mem-mesh              basic           :offset-assert 80)
-   (spr-poly-array        uint32          :offset-assert 12)
-   (mem-poly-array        uint32          :offset-assert 84)
-   (hash-sphere-list      uint32          :offset-assert 16)
-   (hash-buckets          uint32          :offset-assert 20)
+   (spr-mesh              basic           :offset 8)
+   (mem-mesh              nav-mesh           :offset-assert 80)
+   (spr-poly-array        uint32          :offset 12)
+   (mem-poly-array        (inline-array nav-poly)          :offset-assert 84)
+   (hash-sphere-list      uint32          :offset 16)
+   (hash-buckets          uint32          :offset 20)
    (to-spr-wait           uint32          :offset-assert 88)
    (from-spr-wait         uint32          :offset-assert 92)
    )
@@ -27994,65 +28074,68 @@
   :size-assert         #x60
   :flag-assert         #x1600000060
   (:methods
-    (nav-engine-method-9 () none 9)
-    (nav-engine-method-10 () none 10)
-    (nav-engine-method-11 () none 11)
-    (nav-engine-method-12 () none 12)
-    (nav-engine-method-13 () none 13)
-    (nav-engine-method-14 () none 14)
-    (nav-engine-method-15 () none 15)
-    (nav-engine-method-16 () none 16)
-    (nav-engine-method-17 () none 17)
-    (nav-engine-method-18 () none 18)
-    (nav-engine-method-19 () none 19)
+    (inc-spr-addr! "Adds the given integer to `spr-addr` and returns it" (_type_ uint) uint 9)
+    (nav-engine-method-10 (_type_ object) none 10)
+    (nav-engine-method-11 (_type_) none 11)
+    (nav-engine-method-12 (_type_ nav-mesh object) none 12)
+    (nav-engine-method-13 (_type_) none 13)
+    (nav-engine-method-14 (_type_) none 14)
+    (nav-engine-method-15 (_type_) none 15)
+    (update-nav-controls-in-spr (_type_) none 16)
+    (nav-engine-method-17 (_type_ nav-engine-spr-buffer) none 17)
+    (nav-engine-method-18 (_type_ nav-engine-spr-buffer) none 18)
+    (nav-engine-method-19 (_type_ nav-engine-spr-buffer) none 19)
     (nav-engine-method-20 () none 20)
     (nav-engine-method-21 () none 21)
     )
   )
-|#
 
-;; (define-extern *debug-nav-control-output* object)
-;; (define-extern *debug-nav-control* object)
-;; (define-extern *debug-nav-mesh-output* object)
-;; (define-extern *debug-nav-ray* object) ;; nav-ray
-;; (define-extern *debug-ray-offset* object) ;; vector
-;; (define-extern *debug-offset* object) ;; vector
-;; (define-extern *nav-mesh-work* object)
-;; (define-extern *default-nav-mesh* nav-mesh) ;; nav-mesh
-;; (define-extern nav-mesh-connect-from-ent function)
-;; (define-extern connection-validate function)
-;; (define-extern connection-list-validate function)
-;; (define-extern nav-control-validate function)
-;; (define-extern debug-validate-nav-poly function)
-;; (define-extern nav-dma-send-to-spr-no-flush function)
-;; (define-extern nav-dma-send-from-spr-no-flush function)
-;; (define-extern inc-mod3 function) ;; (function int int)
-;; (define-extern nav-state-patch-pointers function)
-;; (define-extern vu-point-triangle-intersection? function) ;; (function vector vector vector vector symbol)
-;; (define-extern poly-in-height-range? function)
-;; (define-extern init-ray-local function) ;; (function nav-ray nav-poly vector vector symbol)
-;; (define-extern init-ray-dir-local function) ;; (function nav-ray nav-poly vector vector float symbol)
-;; (define-extern nav-ray-test function) ;; (function nav-mesh nav-poly vector vector meters)
-;; (define-extern point-poly-distance-min function)
-;; (define-extern nav-mesh-route-table-bit-index function)
-;; (define-extern ray-ccw-line-segment-intersection? function) ;; (function vector vector vector vector symbol)
-;; (define-extern ray-line-segment-intersection? function) ;; (function vector vector vector vector symbol)
-;; (define-extern plane-height-at-xz-point function)
-;; (define-extern nav-normal-from-3-points function)
-;; (define-extern get-nav-mesh function)
-;; (define-extern find-nearest-nav-mesh function)
-;; (define-extern point-to-poly-boundary function)
+(define-extern *debug-nav-control-output* symbol)
+(define-extern *debug-nav-control* symbol)
+(define-extern *debug-nav-mesh-output* symbol)
+(define-extern *debug-nav-ray* nav-ray) ;; nav-ray
+(define-extern *debug-ray-offset* vector) ;; vector
+(define-extern *debug-offset* vector) ;; vector
+(define-extern *nav-mesh-work* nav-mesh-work)
+(define-extern *default-nav-mesh* nav-mesh) ;; nav-mesh
+(define-extern nav-mesh-connect-from-ent (function entity-nav-mesh none))
+(define-extern connection-validate (function connection none))
+(define-extern connection-list-validate (function (inline-array connection) none))
+(define-extern nav-control-validate (function nav-control none))
+(define-extern debug-validate-nav-poly (function nav-mesh-link nav-poly none))
+(define-extern nav-dma-send-to-spr-no-flush (function object object object none))
+(define-extern nav-dma-send-from-spr-no-flush (function none))
+;; TODO - local vars and docstrings "Increments and returns the provided [[int]], if the value exceeds `2`, wrap back to `0`"
+(define-extern inc-mod3 (function int int)) ;; 
+(define-extern nav-state-patch-pointers (function none))
+(define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;; 
+(define-extern poly-in-height-range? (function nav-poly float float symbol))
+(define-extern init-ray-local (function nav-ray nav-poly vector vector none)) ;; 
+(define-extern init-ray-dir-local (function nav-ray nav-poly vector vector float none)) ;; 
+(define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters)) ;; 
+(define-extern point-poly-distance-min (function nav-poly none))
+(define-extern nav-mesh-route-table-bit-index (function nav-mesh uint int int))
+(define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol)) ;; 
+(define-extern ray-line-segment-intersection? (function vector vector vector vector symbol)) ;; 
+(define-extern plane-height-at-xz-point (function plane vector float))
+(define-extern nav-normal-from-3-points (function vector vector vector vector none))
+(define-extern get-nav-mesh (function actor-id nav-mesh))
+(define-extern find-nearest-nav-mesh (function vector float nav-mesh))
+;; (define-extern point-to-poly-boundary
+;;   "TODO - assertion:
+;;    Assertion failed: 'std::isfinite(value)'
+;;         Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90"
+;;   (function nav-poly object vector object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-control-cfs-work (structure)
   ((in-dir              vector  :inline :offset-assert 0)
    (right-dir           vector  :inline :offset-assert 16)
-   (best-dir            vector  2       :offset-assert 32) ;; guessed by decompiler
-   (temp-dir            vector  2       :offset-assert 64) ;; guessed by decompiler
+   (best-dir            vector  2       :inline :offset-assert 32) ;; guessed by decompiler
+   (temp-dir            vector  2       :inline  :offset-assert 64) ;; guessed by decompiler
    (away-dir            vector  :inline :offset-assert 96)
    (best-dir-angle      degrees 2       :offset-assert 112) ;; guessed by decompiler
    (ignore-mask         uint64          :offset-assert 120)
@@ -28073,18 +28156,25 @@
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-|#
 
-;; (define-extern *nav-triangle-test-count* object) ;; int
-;; (define-extern *nav-last-triangle-test-count* object) ;; int
-;; (define-extern debug-nav-validate-current-poly function) ;; (function nav-mesh nav-poly vector symbol)
-;; (define-extern debug-report-nav-stats function) ;; (function none)
-;; (define-extern get-nav-control function)
-;; (define-extern add-nav-sphere function) ;; (function nav-control vector none)
-;; (define-extern add-collide-shape-spheres function) ;; (function nav-control collide-shape vector none)
-;; (define-extern circle-tangent-directions function) ;; (function vector vector vector vector vector)
-;; (define-extern circle-ray-intersection? function)
-;; (define-extern find-closest-circle-ray-intersection function) ;; (function vector vector float int (inline-array vector) int int)
+(define-extern *nav-triangle-test-count* int) ;; int
+(define-extern *nav-last-triangle-test-count* int) ;; int
+(define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol))
+(define-extern debug-report-nav-stats "Does nothing" (function none))
+(define-extern get-nav-control
+  "Given a [[process-drawable]] return the associated [[nav-control]] using either:
+   - the provided `nav-mesh` arg
+   - the `nav-mesh` associated with the [[process-drawable]]'s [[entity]]
+   If no [[nav-mesh]] is set or found, set the [[entity]]'s [[entity-perm-status]] to TODO and return an error"
+  (function process-drawable nav-mesh nav-control))
+(define-extern add-nav-sphere
+  "Adds the given [[sphere]] to the [[nav-control]]'s `sphere-array` so long as
+   `max-spheres` is less than [[nav-control]]'s `sphere-count`"
+  (function nav-control sphere int none))
+(define-extern add-collide-shape-spheres (function nav-control collide-shape sphere none)) ;; 
+(define-extern circle-tangent-directions (function vector vector vector vector vector)) ;; 
+(define-extern circle-ray-intersection? (function vector vector float vector symbol))
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int)) ;; 
 ;; (define-extern compute-dir-parm function) ;; (function vector vector vector float)
 ;; (define-extern vector-rotate-y-sincos! function)
 ;; (define-extern test-xz-point-on-line-segment? function) ;; (function vector vector vector float symbol)
@@ -29962,7 +30052,7 @@
 (define-extern dm-cam-settings-func (function cam-slave-options debug-menu-msg symbol))
 (define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
 (define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))
-;; (define-extern dm-cam-setting-float (function float debug-menu-msg symbol)) ;; TODO - causes decomp hang
+(define-extern dm-cam-setting-float (function float debug-menu-msg float float float)) ;; TODO - omit the last 2 args and set the return type to `none` to get a hang
 (define-extern dm-cam-render-float (function int debug-menu-msg float float float))
 (define-extern dm-subdiv-float (function symbol debug-menu-msg float float float))
 (define-extern dm-subdiv-int (function symbol debug-menu-msg int int int))
@@ -30073,7 +30163,7 @@
 (define-extern dm-play-task-with-continue (function game-task string none))
 (define-extern dm-play-task (function game-task none))
 (define-extern dm-play-race (function race-selection symbol none))
-(define-extern debug-menu-make-play-menu (function symbol none)) ;; TODO - need to figure out game-info more
+(define-extern debug-menu-make-play-menu (function symbol none))
 (define-extern dm-anim-tester-flag-func (function int debug-menu-msg symbol))
 (define-extern dm-anim-tester-func (function int debug-menu-msg symbol))
 (define-extern dm-pilot-mode "TODO - what is the third arg to target's change-mode?" (function object none))
