@@ -1007,8 +1007,8 @@ goos::Object decompile_structure(const TypeSpec& type,
                                                         field_start, ts, words, file));
         } else if (field.name() == "poly-array" && type.print() == "nav-mesh" &&
                    file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(
-              field.name(), nav_mesh_poly_arr_jak2_decompile(obj_words, labels, label.target_segment,
+          field_defs_out.emplace_back(field.name(), nav_mesh_poly_arr_jak2_decompile(
+                                                        obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
         } else if (field.name() == "nav-control-array" && type.print() == "nav-mesh" &&
                    file->version == GameVersion::Jak2) {
