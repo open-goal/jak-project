@@ -167,6 +167,13 @@
 ;; NOTE - for settings
 (define-extern update-task-masks (function symbol none))
 
+;; NOTE - for default-menu
+(define-extern play-clean (function symbol none))
+(define-extern task-node-open! (function game-task none))
+(define-extern task-node-close! (function game-task none))
+(define-extern task-node-open? (function game-task symbol))
+(define-extern play-task (function game-task symbol symbol string))
+
 ;; DECOMP BEGINS
 
 (defun-debug game-task->string ((arg0 game-task))
@@ -1291,8 +1298,8 @@
 (deftype game-task-node-info (basic)
   ((level            basic                    :offset-assert   4)
    (task             game-task                :offset-assert   8)
-   (name             basic                    :offset-assert  12)
-   (when-open        basic                    :offset-assert  16)
+   (name             string                   :offset-assert  12)
+   (when-open        array                    :offset-assert  16)
    (flags            game-task-node-flag      :offset-assert  20)
    (parent-node      uint16                 4 :offset-assert  24)
    (task-mask        task-mask                :offset-assert  32)
@@ -1323,14 +1330,14 @@
 
 
 (deftype game-task-info (basic)
-  ((name                basic   :offset-assert   4)
+  ((name                string  :offset-assert   4)
    (text-name           uint32  :offset-assert   8)
    (pre-play-node       uint16  :offset-assert  12)
    (kiosk-play-node     uint16  :offset-assert  14)
-   (pre-play-continue   basic   :offset-assert  16)
+   (pre-play-continue   string  :offset-assert  16)
    (play-node           uint16  :offset-assert  20)
-   (play-continue       basic   :offset-assert  24)
-   (kiosk-play-continue basic   :offset-assert  28)
+   (play-continue       string  :offset-assert  24)
+   (kiosk-play-continue string  :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x20

@@ -5,11 +5,14 @@
 ;; name in dgo: vol-h
 ;; dgos: ENGINE, GAME
 
+;; +++vol-flags
 (defenum vol-flags
   :bitfield #t
   :type uint32
   (display?)
+  (vol-flags-1)
   )
+;; ---vol-flags
 
 ;; DECOMP BEGINS
 
@@ -27,11 +30,12 @@
   :size-assert         #x18
   :flag-assert         #xc00000018
   (:methods
-    (plane-volume-method-9 () none 9)
-    (plane-volume-method-10 () none 10)
-    (plane-volume-method-11 () none 11)
+    (plane-volume-method-9 (_type_ symbol vector-array vector-array) plane-volume 9)
+    (debug-draw (_type_) none 10)
+    (point-in-vol? (_type_ vector float) symbol 11)
     )
   )
+
 
 (deftype vol-control (basic)
   ((flags         vol-flags                   :offset-assert   4)
@@ -48,12 +52,14 @@
   :flag-assert         #xc0000061c
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (vol-control-method-9 (_type_) symbol 9)
-    (vol-control-method-10 (_type_ vector) symbol 10)
+    (vol-control-method-9 (_type_) none 9)
+    (vol-control-method-10 (_type_ plane) symbol 10)
     (should-display? (_type_) symbol 11)
     )
   )
 
+
+;; WARN: Return type mismatch object vs vol-control.
 (defmethod new vol-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
   (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
     (when (zero? (the-as vol-control gp-0))

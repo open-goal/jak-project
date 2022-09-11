@@ -155,7 +155,7 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
     g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
   }
 
-  if (configuration.find("Debug Menu Visibility") != configuration.end()) {
+  if (configuration.find("Use Mouse") != configuration.end()) {
     g_settings.pad_mapping_info.use_mouse = configuration["Use Mouse"].get<bool>();
   }
   int controller_index = 0;
