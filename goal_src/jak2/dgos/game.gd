@@ -253,7 +253,7 @@
   ("collide-shape.o" "collide-shape")
   ("collide-shape-rider.o" "collide-shape-rider")
   ("collide.o" "collide")
-  ("collide-planes.o" "collide-planes")
+  ;; ("collide-planes.o" "collide-planes")
   ("spatial-hash.o" "spatial-hash")
   ("actor-hash.o" "actor-hash")
   ("merc-death.o" "merc-death")

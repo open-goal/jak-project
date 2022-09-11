@@ -8,27 +8,27 @@
 ;; TODO document and method names with texture.gc
 
 (declare-type texture-page basic)
-
-;; NOTE - for settings
 (declare-type texture-pool basic)
-(define-extern *texture-pool* texture-pool)
-
-;; NOTE - for cam-update
 (declare-type fog-texture-work structure)
-(define-extern *fog-texture-work* fog-texture-work)
-
-;; NOTE - for sparticle
 (declare-type adgif-shader structure)
 (declare-type texture basic)
 (declare-type texture-id uint32)
 (define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
 (define-extern lookup-texture-by-id-fast (function texture-id texture))
-
-;; NOTE - for default-menu
 (define-extern *edit-shader* texture-id)
 (define-extern adgif-shader-update! (function adgif-shader texture none))
 (declare-type texture-page-dir basic)
 (define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
+(define-extern *texture-pool* texture-pool)
+(define-extern *fog-texture-work* fog-texture-work)
+
+(defenum tex-upload-mode
+  (none     -3)
+  (seg0-1   -2)
+  (seg0-1-2 -1)
+  (seg0      0)
+  (seg2      2)
+  )
 
 ;; DECOMP BEGINS
 
@@ -62,10 +62,10 @@
    (segment-common           texture-pool-segment                                        :inline   :offset         28)
    (common-page              texture-page                                                32        :offset-assert  52)
    (common-page-mask         int32                                                                 :offset-assert 180)
-   (update-sprites-flag      symbol                                                                 :offset-assert 184)
-   (update-flag              symbol                                                                 :offset-assert 188)
-   (texture-enable-user      uint64                                                                :offset-assert 192)
-   (texture-enable-user-menu uint64                                                                :offset-assert 200)
+   (update-sprites-flag      symbol                                                                :offset-assert 184)
+   (update-flag              symbol                                                                :offset-assert 188)
+   (texture-enable-user      texture-enable-mask                                                   :offset-assert 192)
+   (texture-enable-user-menu texture-enable-mask                                                   :offset-assert 200)
    (ids                      uint32                                                      128       :offset-assert 208)
    )
   :method-count-assert 26
@@ -74,21 +74,21 @@
   (:methods
     (new (symbol type) _type_ 0)
     (initialize! (_type_) _type_ 9)
-    (texture-pool-method-10 () none 10) ;; (print-usage (_type_) _type_ 10)
-    (texture-pool-method-11 () none 11) ;; (setup-font-texture! (_type_) none 11)
-    (allocate-defaults! (_type_) none 12)
+    (print-usage (_type_) _type_ 10)
+    (setup-font-texture (_type_) none 11)
+    (allocate-defaults (_type_) none 12)
     (login-level-textures (_type_ level int (pointer texture-id)) none 13)
-    (texture-pool-method-14 () none 14) ;; (add-tex-to-dma! (_type_ level int) none 14)
+    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none 14)
     (allocate-vram-words! (_type_ int) int 15)
-    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
-    (texture-pool-method-17 () none 17) ;; (unused-17 () none 17)
-    (texture-pool-method-18 (_type_ int) int 18) ;; (unused-18 () none 18)
-    (update-warp-and-hud (_type_) none 19) ;; (unused-19 () none 19)
-    (update-sprites (_type_) none 20) ;; (unload! (_type_ texture-page) int 20)
-    (flag-update-and-sprite (_type_) none 21) ;; (upload-one-common! (_type_ level) symbol 21)
-    (relocate-sprite-dests! (_type_) none 22) ;; (lookup-boot-common-id (_type_ int) int 22)
-    (relocate-hud-dests! (_type_) none 23)
-    (relocate-warp-dests! (_type_) none 24)
+    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment 16)
+    (unload-page (_type_ texture-page) none 17)
+    (get-common-page-slot-by-id (_type_ int) int 18)
+    (update-warp-and-hud (_type_) none 19)
+    (update-sprites (_type_) none 20)
+    (mark-hud-warp-sprite-dirty (_type_) none 21)
+    (lay-out-sprite-tex (_type_) none 22)
+    (lay-out-hud-tex (_type_) none 23)
+    (lay-out-warp-tex (_type_) none 24)
     (clear-ids (_type_) none 25)
     )
   )
@@ -167,7 +167,7 @@
 
 (deftype texture-page (basic)
   ((info      file-info                      :offset-assert   4)
-   (name      basic                          :offset-assert   8)
+   (name      string                         :offset-assert   8)
    (id        uint32                         :offset-assert  12)
    (length    int32                          :offset-assert  16)
    (mip0-size uint32                         :offset-assert  20)
@@ -181,11 +181,12 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
-    (remove-from-heap (_type_ kheap) _type_ 9)
+    (relocate (_type_ kheap (pointer uint8)) texture-page :replace 7)
+    (remove-data-from-heap (_type_ kheap) _type_ 9)
     (get-leftover-block-count (_type_ int int) int 10)
-    (relocate-dests! (_type_ int int) none 11) ;; (unused-11 () none 11)
-    (texture-page-method-12 () none 12) ;;
-    (upload-now! (_type_ int) none 13) ;; (add-to-dma-buffer (_type_ dma-buffer int) int 13)
+    (relocate-dests! (_type_ int int) none 11)
+    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int 12)
+    (upload-now! (_type_ tex-upload-mode) none 13)
     )
   )
 
@@ -227,7 +228,7 @@
   :flag-assert         #xa00000014
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (unlink-textures-in-heap! (_type_ kheap) int 9)
+    (unlink-shaders-in-heap (_type_ kheap) int 9)
     )
   )
 
@@ -252,8 +253,8 @@
 (defenum link-test-flags
   :type uint32
   :bitfield #t
-  ; (needs-log-in 8)
-  ; (bit-9 9)
+  (needs-log-in 8)
+  (bit-9 9)
   )
 
 (deftype adgif-shader (structure)
@@ -361,365 +362,394 @@
         )
 
 (deftype texture-page-translate-item (structure)
-  ((bucket             bucket-id  :offset-assert   0)
-   (level-index        uint32     :offset-assert   4)
-   (level-texture-page uint32     :offset-assert   8)
-   (texture-user       uint32     :offset-assert  12)
+  ((bucket             bucket-id                :offset-assert   0)
+   (level-index        uint32                   :offset-assert   4)
+   (level-texture-page tpage-category-u32       :offset-assert   8)
+   (texture-user       texture-enable-mask-u32  :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-
+;; the order of all texture uploads in a frame.
+;; this is used by the texture system to figure out if anything can be reused
+;; or if it needs to be uploaded at a certain time.
 (define *texture-page-translate*
         (new 'static 'boxed-array :type texture-page-translate-item
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-4)
+                  :bucket (bucket-id tex-lcom-sky-pre)
                   :level-index #x6
-                  :level-texture-page #x9
-                  :texture-user #x100
-                  )
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-7) :texture-user #x1)
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-18) :level-index #x1 :texture-user #x1)
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-29) :level-index #x2 :texture-user #x1)
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-40) :level-index #x3 :texture-user #x1)
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-51) :level-index #x4 :texture-user #x1)
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-62) :level-index #x5 :texture-user #x1)
-             (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-73)
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :level-texture-page (tpage-category-u32 sky)
+                  :texture-user (texture-enable-mask-u32 sky)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-82)
+                  :bucket (bucket-id tex-l0-tfrag)
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-tfrag)
                   :level-index #x1
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-91)
+                  :bucket (bucket-id tex-l2-tfrag)
                   :level-index #x2
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-100)
+                  :bucket (bucket-id tex-l3-tfrag)
                   :level-index #x3
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-109)
+                  :bucket (bucket-id tex-l4-tfrag)
                   :level-index #x4
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-118)
+                  :bucket (bucket-id tex-l5-tfrag)
                   :level-index #x5
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-127)
-                  :level-texture-page #x3
-                  :texture-user #x8
+                  :bucket (bucket-id tex-l0-shrub)
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-137)
+                  :bucket (bucket-id tex-l1-shrub)
                   :level-index #x1
-                  :level-texture-page #x3
-                  :texture-user #x8
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-147)
+                  :bucket (bucket-id tex-l2-shrub)
                   :level-index #x2
-                  :level-texture-page #x3
-                  :texture-user #x8
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-157)
+                  :bucket (bucket-id tex-l3-shrub)
                   :level-index #x3
-                  :level-texture-page #x3
-                  :texture-user #x8
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-167)
+                  :bucket (bucket-id tex-l4-shrub)
                   :level-index #x4
-                  :level-texture-page #x3
-                  :texture-user #x8
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-177)
+                  :bucket (bucket-id tex-l5-shrub)
                   :level-index #x5
-                  :level-texture-page #x3
-                  :texture-user #x8
-                  )
-             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-187) :level-index #x6 :texture-user #x1)
-             (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-191)
-                  :level-index #x6
-                  :level-texture-page #x2
-                  :texture-user #x4
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-196)
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :bucket (bucket-id tex-l0-alpha)
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-200)
+                  :bucket (bucket-id tex-l1-alpha)
                   :level-index #x1
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-204)
+                  :bucket (bucket-id tex-l2-alpha)
                   :level-index #x2
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-208)
+                  :bucket (bucket-id tex-l3-alpha)
                   :level-index #x3
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-212)
+                  :bucket (bucket-id tex-l4-alpha)
                   :level-index #x4
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-216)
+                  :bucket (bucket-id tex-l5-alpha)
                   :level-index #x5
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-220)
+                  :bucket (bucket-id tex-lcom-tfrag)
                   :level-index #x6
-                  :level-texture-page #x1
-                  :texture-user #x2
+                  :texture-user (texture-enable-mask-u32 tfrag)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-224)
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :bucket (bucket-id tex-lcom-shrub)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-228)
+                  :bucket (bucket-id tex-l0-pris)
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-pris)
                   :level-index #x1
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-232)
+                  :bucket (bucket-id tex-l2-pris)
                   :level-index #x2
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-236)
+                  :bucket (bucket-id tex-l3-pris)
                   :level-index #x3
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-240)
+                  :bucket (bucket-id tex-l4-pris)
                   :level-index #x4
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-244)
+                  :bucket (bucket-id tex-l5-pris)
                   :level-index #x5
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-248)
+                  :bucket (bucket-id tex-lcom-pris)
                   :level-index #x6
-                  :level-texture-page #x6
-                  :texture-user #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-252)
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :bucket (bucket-id tex-l0-pris2)
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-261)
+                  :bucket (bucket-id tex-l1-pris2)
                   :level-index #x1
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-270)
+                  :bucket (bucket-id tex-l2-pris2)
                   :level-index #x2
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-279)
+                  :bucket (bucket-id tex-l3-pris2)
                   :level-index #x3
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-288)
+                  :bucket (bucket-id tex-l4-pris2)
                   :level-index #x4
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-297)
+                  :bucket (bucket-id tex-l5-pris2)
                   :level-index #x5
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-306)
+                  :bucket (bucket-id tex-lcom-pris2)
                   :level-index #x6
-                  :level-texture-page #x4
-                  :texture-user #x10
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-309)
-                  :level-index #x6
-                  :level-texture-page #x9
-                  :texture-user #x100
+                  :bucket (bucket-id tex-l0-water)
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
-                  :level-texture-page #x7
-                  :texture-user #x40
-                  )
-             (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-l1-water)
                   :level-index #x1
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-l2-water)
                   :level-index #x2
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-l3-water)
                   :level-index #x3
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-l4-water)
                   :level-index #x4
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-l5-water)
                   :level-index #x5
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-312)
+                  :bucket (bucket-id tex-lcom-water)
                   :level-index #x6
-                  :level-texture-page #x7
-                  :texture-user #x40
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :bucket (bucket-id tex-lcom-sky-post)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 sky)
+                  :texture-user (texture-enable-mask-u32 sky)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x1
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x2
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x3
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x4
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x5
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-316)
+                  :bucket (bucket-id tex-all-sprite)
                   :level-index #x6
-                  :level-texture-page #x5
-                  :texture-user #x20
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :bucket (bucket-id tex-all-warp)
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x1
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x2
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x3
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x4
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x5
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-warp)
                   :level-index #x6
-                  :level-texture-page #x8
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
                   )
              (new 'static 'texture-page-translate-item
-                  :bucket (bucket-id bucket-319)
+                  :bucket (bucket-id tex-all-map)
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
                   :level-index #x6
-                  :level-texture-page #x3
-                  :texture-user #x80
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 map)
                   )
              )
         )
@@ -731,3 +761,6 @@
 (define *grey-scale-base* (new 'static 'texture-base))
 (define *map-texture-base* (new 'static 'texture-base))
 
+(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-login  (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
+(define-extern lookup-texture-by-id (function texture-id texture))

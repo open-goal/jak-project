@@ -102,6 +102,8 @@
 (define-extern sql-query (function string sql-result))
 
 (define-extern loading-level kheap)
+(define-extern dma-sync (function pointer int int int))
+
 
 
 (defenum kmalloc-flags
@@ -117,9 +119,6 @@
 
 (define-extern *kernel-boot-message* symbol)
 (define-extern *kernel-boot-art-group* string)
-
-;; added - part of the kernel
-(define-extern dma-sync (function pointer int int int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gcommon                        ;;
@@ -1052,7 +1051,7 @@
   )
 
 (deftype vector4w (structure)
-  ((data  uint32  4 :offset-assert 0 :score -1)
+  ((data  int32  4 :offset-assert 0 :score -1)
    (x     int32     :offset        0)
    (y     int32     :offset        4)
    (z     int32     :offset        8)
@@ -2671,335 +2670,420 @@
 ;; vu1-user-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum texture-enable-mask
+  :type uint64
+  :bitfield #t
+  (tfrag  0)
+  (pris   1)
+  (shrub  2)
+  (alpha  3)
+  (water  4)
+  (warp   5)
+  (sprite 6)
+  (map    7)
+  (sky    8)
+  (tex9   9)
+  (tex10 10)
+  (tex11 11)
+  (tex12 12)
+  (tex13 13)
+  (tex14 14)
+  (tex15 15)
+  (tex16 16)
+  )
+
+(defenum texture-enable-mask-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries texture-enable-mask
+  )
+
+;;  <what renderer>-<what level>-<what tpage>
 (defenum bucket-id
   :type int32
   :bitfield #f
-  (bucket-0 0)
-  (bucket-1 1)
-  (bucket-2 2)
-  (bucket-3 3)
-  (bucket-4 4)
-  (bucket-5 5)
-  (bucket-6 6)
-  (bucket-7 7)     ;; level 0 tex
-  (bucket-8 8)
-  (bucket-9 9)
-  (bucket-10 10)
-  (bucket-11 11)
-  (bucket-12 12)
-  (bucket-13 13)
-  (bucket-14 14)
-  (bucket-15 15)
-  (bucket-16 16)
-  (bucket-17 17)
-  (bucket-18 18)
-  (bucket-19 19)
-  (bucket-20 20)
-  (bucket-21 21)
-  (bucket-22 22)
-  (bucket-23 23)
-  (bucket-24 24)
-  (bucket-25 25)
-  (bucket-26 26)
-  (bucket-27 27)
-  (bucket-28 28)
-  (bucket-29 29)
-  (bucket-30 30)
-  (bucket-31 31)
-  (bucket-32 32)
-  (bucket-33 33)
-  (bucket-34 34)
-  (bucket-35 35)
-  (bucket-36 36)
-  (bucket-37 37)
-  (bucket-38 38)
-  (bucket-39 39)
-  (bucket-40 40)
-  (bucket-41 41)
-  (bucket-42 42)
-  (bucket-43 43)
-  (bucket-44 44)
-  (bucket-45 45)
-  (bucket-46 46)
-  (bucket-47 47)
-  (bucket-48 48)
-  (bucket-49 49)
-  (bucket-50 50)
-  (bucket-51 51)
-  (bucket-52 52)
-  (bucket-53 53)
-  (bucket-54 54)
-  (bucket-55 55)
-  (bucket-56 56)
-  (bucket-57 57)
-  (bucket-58 58)
-  (bucket-59 59)
-  (bucket-60 60)
-  (bucket-61 61)
-  (bucket-62 62)
-  (bucket-63 63)
-  (bucket-64 64)
-  (bucket-65 65)
-  (bucket-66 66)
-  (bucket-67 67)
-  (bucket-68 68)
-  (bucket-69 69)
-  (bucket-70 70)
-  (bucket-71 71)
-  (bucket-72 72)
-  (bucket-73 73)
-  (bucket-74 74)
-  (bucket-75 75)
-  (bucket-76 76)
-  (bucket-77 77)
-  (bucket-78 78)
-  (bucket-79 79)
-  (bucket-80 80)
-  (bucket-81 81)
-  (bucket-82 82)
-  (bucket-83 83)
-  (bucket-84 84)
-  (bucket-85 85)
-  (bucket-86 86)
-  (bucket-87 87)
-  (bucket-88 88)
-  (bucket-89 89)
-  (bucket-90 90)
-  (bucket-91 91)
-  (bucket-92 92)
-  (bucket-93 93)
-  (bucket-94 94)
-  (bucket-95 95)
-  (bucket-96 96)
-  (bucket-97 97)
-  (bucket-98 98)
-  (bucket-99 99)
-  (bucket-100 100)
-  (bucket-101 101)
-  (bucket-102 102)
-  (bucket-103 103)
-  (bucket-104 104)
-  (bucket-105 105)
-  (bucket-106 106)
-  (bucket-107 107)
-  (bucket-108 108)
-  (bucket-109 109)
-  (bucket-110 110)
-  (bucket-111 111)
-  (bucket-112 112)
-  (bucket-113 113)
-  (bucket-114 114)
-  (bucket-115 115)
-  (bucket-116 116)
-  (bucket-117 117)
-  (bucket-118 118)
-  (bucket-119 119)
-  (bucket-120 120)
-  (bucket-121 121)
-  (bucket-122 122)
-  (bucket-123 123)
-  (bucket-124 124)
-  (bucket-125 125)
-  (bucket-126 126)
-  (bucket-127 127)
-  (bucket-128 128)
-  (bucket-129 129)
-  (bucket-130 130)
-  (bucket-131 131)
-  (bucket-132 132)
-  (bucket-133 133)
-  (bucket-134 134)
-  (bucket-135 135)
-  (bucket-136 136)
-  (bucket-137 137)
-  (bucket-138 138)
-  (bucket-139 139)
-  (bucket-140 140)
-  (bucket-141 141)
-  (bucket-142 142)
-  (bucket-143 143)
-  (bucket-144 144)
-  (bucket-145 145)
-  (bucket-146 146)
-  (bucket-147 147)
-  (bucket-148 148)
-  (bucket-149 149)
-  (bucket-150 150)
-  (bucket-151 151)
-  (bucket-152 152)
-  (bucket-153 153)
-  (bucket-154 154)
-  (bucket-155 155)
-  (bucket-156 156)
-  (bucket-157 157)
-  (bucket-158 158)
-  (bucket-159 159)
-  (bucket-160 160)
-  (bucket-161 161)
-  (bucket-162 162)
-  (bucket-163 163)
-  (bucket-164 164)
-  (bucket-165 165)
-  (bucket-166 166)
-  (bucket-167 167)
-  (bucket-168 168)
-  (bucket-169 169)
-  (bucket-170 170)
-  (bucket-171 171)
-  (bucket-172 172)
-  (bucket-173 173)
-  (bucket-174 174)
-  (bucket-175 175)
-  (bucket-176 176)
-  (bucket-177 177)
-  (bucket-178 178)
-  (bucket-179 179)
-  (bucket-180 180)
-  (bucket-181 181)
-  (bucket-182 182)
-  (bucket-183 183)
-  (bucket-184 184)
-  (bucket-185 185)
-  (bucket-186 186)
-  (bucket-187 187)
-  (bucket-188 188)
-  (bucket-189 189)
-  (bucket-190 190)
-  (bucket-191 191)
-  (bucket-192 192)
-  (bucket-193 193)
-  (bucket-194 194)
-  (bucket-195 195)
-  (bucket-196 196)
-  (bucket-197 197)
-  (bucket-198 198)
-  (bucket-199 199)
-  (bucket-200 200)
-  (bucket-201 201)
-  (bucket-202 202)
-  (bucket-203 203)
-  (bucket-204 204)
-  (bucket-205 205)
-  (bucket-206 206)
-  (bucket-207 207)
-  (bucket-208 208)
-  (bucket-209 209)
-  (bucket-210 210)
-  (bucket-211 211)
-  (bucket-212 212)
-  (bucket-213 213)
-  (bucket-214 214)
-  (bucket-215 215)
-  (bucket-216 216)
-  (bucket-217 217)
-  (bucket-218 218)
-  (bucket-219 219)
-  (bucket-220 220)
-  (bucket-221 221)
-  (bucket-222 222)
-  (bucket-223 223)
-  (bucket-224 224)
-  (bucket-225 225)
-  (bucket-226 226)
-  (bucket-227 227)
-  (bucket-228 228)
-  (bucket-229 229)
-  (bucket-230 230)
-  (bucket-231 231)
-  (bucket-232 232)
-  (bucket-233 233)
-  (bucket-234 234)
-  (bucket-235 235)
-  (bucket-236 236)
-  (bucket-237 237)
-  (bucket-238 238)
-  (bucket-239 239)
-  (bucket-240 240)
-  (bucket-241 241)
-  (bucket-242 242)
-  (bucket-243 243)
-  (bucket-244 244)
-  (bucket-245 245)
-  (bucket-246 246)
-  (bucket-247 247)
-  (bucket-248 248)
-  (bucket-249 249)
-  (bucket-250 250)
-  (bucket-251 251)
-  (bucket-252 252)
-  (bucket-253 253)
-  (bucket-254 254)
-  (bucket-255 255)
-  (bucket-256 256)
-  (bucket-257 257)
-  (bucket-258 258)
-  (bucket-259 259)
-  (bucket-260 260)
-  (bucket-261 261)
-  (bucket-262 262)
-  (bucket-263 263)
-  (bucket-264 264)
-  (bucket-265 265)
-  (bucket-266 266)
-  (bucket-267 267)
-  (bucket-268 268)
-  (bucket-269 269)
-  (bucket-270 270)
-  (bucket-271 271)
-  (bucket-272 272)
-  (bucket-273 273)
-  (bucket-274 274)
-  (bucket-275 275)
-  (bucket-276 276)
-  (bucket-277 277)
-  (bucket-278 278)
-  (bucket-279 279)
-  (bucket-280 280)
-  (bucket-281 281)
-  (bucket-282 282)
-  (bucket-283 283)
-  (bucket-284 284)
-  (bucket-285 285)
-  (bucket-286 286)
-  (bucket-287 287)
-  (bucket-288 288)
-  (bucket-289 289)
-  (bucket-290 290)
-  (bucket-291 291)
-  (bucket-292 292)
-  (bucket-293 293)
-  (bucket-294 294)
-  (bucket-295 295)
-  (bucket-296 296)
-  (bucket-297 297)
-  (bucket-298 298)
-  (bucket-299 299)
-  (bucket-300 300)
-  (bucket-301 301)
-  (bucket-302 302)
-  (bucket-303 303)
-  (bucket-304 304)
-  (bucket-305 305)
-  (bucket-306 306)
-  (bucket-307 307)
-  (bucket-308 308)
-  (bucket-309 309)
-  (bucket-310 310)
-  (bucket-311 311)
-  (bucket-312 312)
-  (bucket-313 313)
-  (bucket-314 314)
-  (bucket-315 315)
-  (bucket-316 316)
-  (bucket-317 317)
-  (bucket-318 318)
-  (bucket-319 319)
-  (bucket-320 320)
-  (bucket-321 321)
-  (bucket-322 322)
-  (bucket-323 323)
-  (bucket-324 324)
-  (debug-no-zbuf 325)
+
+  ;;;;;;;;;;
+
+  (bucket-0      0)
+  (bucket-1      1)
+  (bucket-2      2)
+  (bucket-3      3)   ;; blit displays
+  (tex-lcom-sky-pre  4)   ;; tex
+  (bucket-5      5)   ;; sky
+  (bucket-6      6)   ;; ocean
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; All levels with tfrag tpage
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (tex-l0-tfrag      7)   ;; level 0 tex
+  (bucket-8          8)   ;; tfrag
+  (bucket-9          9)   ;; tie
+  (bucket-10        10)   ;; tie
+  (bucket-11        11)   ;; tfrag
+  (bucket-12        12)   ;; tie
+  (bucket-13        13)   ;; tie
+  (merc-l0-tfrag    14)   ;; merc
+  (emerc-l0-tfrag   15)   ;; emerc
+  (bucket-16        16)   ;; mercneric
+  (bucket-17        17)   ;; tie
+
+  (tex-l1-tfrag     18)   ;; tex
+  (bucket-19        19)   ;; tfrag
+  (bucket-20        20)   ;; tie
+  (bucket-21        21)   ;; tie
+  (bucket-22        22)   ;; tfrag
+  (bucket-23        23)   ;; tie
+  (bucket-24        24)   ;; tie
+  (merc-l1-tfrag    25)   ;; merc
+  (emerc-l1-tfrag   26)   ;; emerc
+  (bucket-27        27)   ;; mercneric
+  (bucket-28        28)   ;; tie
+
+  (tex-l2-tfrag     29)   ;; tex
+  (bucket-30        30)   ;; tfrag
+  (bucket-31        31)   ;; tie
+  (bucket-32        32)   ;; tie
+  (bucket-33        33)   ;; tfrag
+  (bucket-34        34)   ;; tie
+  (bucket-35        35)   ;; tie
+  (merc-l2-tfrag    36)   ;; merc
+  (emerc-l2-tfrag   37)   ;; emerc
+  (bucket-38        38)   ;; mercneric
+  (bucket-39        39)   ;; tie
+
+  (tex-l3-tfrag     40)   ;; tex
+  (bucket-41        41)   ;; tfrag
+  (bucket-42        42)   ;; tie
+  (bucket-43        43)   ;; tie
+  (bucket-44        44)   ;; tfrag
+  (bucket-45        45)   ;; tie
+  (bucket-46        46)   ;; tie
+  (merc-l3-tfrag    47)   ;; merc
+  (emerc-l3-tfrag   48)   ;; emerc
+  (bucket-49        49)   ;; mercneric
+  (bucket-50        50)   ;; tie
+
+  (tex-l4-tfrag     51)   ;; tex
+  (bucket-52        52)   ;; tfrag
+  (bucket-53        53)   ;; tie
+  (bucket-54        54)   ;; tie
+  (bucket-55        55)   ;; tfrag
+  (bucket-56        56)   ;; tie
+  (bucket-57        57)   ;; tie
+  (merc-l4-tfrag    58)   ;; merc
+  (emerc-l4-tfrag   59)   ;; emerc
+  (bucket-60        60)   ;; mercneric
+  (bucket-61        61)   ;; tie
+
+  (tex-l5-tfrag     62)   ;; tex
+  (bucket-63        63)   ;; tfrag
+  (bucket-64        64)   ;; tie
+  (bucket-65        65)   ;; tie
+  (bucket-66        66)   ;; tfrag
+  (bucket-67        67)   ;; tie
+  (bucket-68        68)   ;; tie
+  (merc-l5-tfrag    69)   ;; merc
+  (emerc-l5-tfrag   70)   ;; emerc
+  (bucket-71        71)   ;; mercneric
+  (bucket-72        72)   ;; tie
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; All levels with shrub tpage
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (tex-l0-shrub      73)   ;; tex
+  (bucket-74         74)   ;; shrub
+  (bucket-75         75)   ;; shrub
+  (bucket-76         76)   ;; shrub
+  (bucket-77         77)   ;; shrub
+  (bucket-78         78)   ;; shrub
+  (merc-l0-shrub     79)   ;; merc
+  (emerc-l0-shrub    80)   ;; emerc
+  (bucket-81         81)   ;; mercneric
+
+  (tex-l1-shrub      82)   ;; tex
+  (bucket-83         83)   ;; shrub
+  (bucket-84         84)   ;; shrub
+  (bucket-85         85)   ;; shrub
+  (bucket-86         86)   ;; shrub
+  (bucket-87         87)   ;; shrub
+  (merc-l1-shrub     88)   ;; merc
+  (emerc-l1-shrub    89)   ;; emerc
+  (bucket-90         90)   ;; mercneric
+
+  (tex-l2-shrub      91)   ;; tex
+  (bucket-92         92)   ;; shrub
+  (bucket-93         93)   ;; shrub
+  (bucket-94         94)   ;; shrub
+  (bucket-95         95)   ;; shrub
+  (bucket-96         96)   ;; shrub
+  (merc-l2-shrub     97)   ;; merc
+  (emerc-l2-shrub    98)   ;; emerc
+  (bucket-99         99)   ;; mercneric
+
+  (tex-l3-shrub     100)  ;; tex
+  (bucket-101       101)  ;; shrub
+  (bucket-102       102)  ;; shrub
+  (bucket-103       103)  ;; shrub
+  (bucket-104       104)  ;; shrub
+  (bucket-105       105)  ;; shrub
+  (merc-l3-shrub    106)  ;; merc
+  (emerc-l3-shrub   107)  ;; emerc
+  (bucket-108       108)  ;; mercneric
+
+  (tex-l4-shrub     109)  ;; tex
+  (bucket-110       110)  ;; shrub
+  (bucket-111       111)  ;; shrub
+  (bucket-112       112)  ;; shrub
+  (bucket-113       113)  ;; shrub
+  (bucket-114       114)  ;; shrub
+  (merc-l4-shrub    115)  ;; merc
+  (emerc-l4-shrub   116)  ;; emerc
+  (bucket-117       117)  ;; mercneric
+
+  (tex-l5-shrub     118)  ;; tex
+  (bucket-119       119)  ;; shrub
+  (bucket-120       120)  ;; shrub
+  (bucket-121       121)  ;; shrub
+  (bucket-122       122)  ;; shrub
+  (bucket-123       123)  ;; shrub
+  (merc-l5-shrub    124)  ;; merc
+  (emerc-l5-shrub   125)  ;; emerc
+  (bucket-126       126)  ;; mercneric
+
+  (tex-l0-alpha     127)  ;; tex
+  (bucket-128       128)  ;; tfrag
+  (bucket-129       129)  ;; tie
+  (bucket-130       130)  ;; tie
+  (merc-l0-alpha    131)  ;; merc
+  (emerc-l0-alpha   132)  ;; emerc
+  (bucket-133       133)  ;; mercneric
+  (bucket-134       134)  ;; tfrag
+  (bucket-135       135)  ;; tie
+  (bucket-136       136)  ;; tie
+
+  (tex-l1-alpha     137)  ;; tex
+  (bucket-138       138)  ;; tfrag
+  (bucket-139       139)  ;; tie
+  (bucket-140       140)  ;; tie
+  (merc-l1-alpha    141)  ;; merc
+  (emerc-l1-alpha   142)  ;; emerc
+  (bucket-143       143)  ;; mercneric
+  (bucket-144       144)  ;; tfrag
+  (bucket-145       145)  ;; tie
+  (bucket-146       146)  ;; tie
+
+  (tex-l2-alpha     147)  ;; tex
+  (bucket-148       148)  ;; tfrag
+  (bucket-149       149)  ;; tie
+  (bucket-150       150)  ;; tie
+  (merc-l2-alpha    151)  ;; merc
+  (emerc-l2-alpha   152)  ;; emerc
+  (bucket-153       153)  ;; mercneric
+  (bucket-154       154)  ;; tfrag
+  (bucket-155       155)  ;; tie
+  (bucket-156       156)  ;; tie
+
+  (tex-l3-alpha     157)  ;; tex
+  (bucket-158       158)  ;; tfrag
+  (bucket-159       159)  ;; tie
+  (bucket-160       160)  ;; tie
+  (merc-l3-alpha    161)  ;; merc
+  (emerc-l3-alpha   162)  ;; emerc
+  (bucket-163       163)  ;; mercneric
+  (bucket-164       164)  ;; tfrag
+  (bucket-165       165)  ;; tie
+  (bucket-166       166)  ;; tie
+
+  (tex-l4-alpha     167)  ;; tex
+  (bucket-168       168)  ;; tfrag
+  (bucket-169       169)  ;; tie
+  (bucket-170       170)  ;; tie
+  (merc-l4-alpha    171)  ;; merc
+  (emerc-l4-alpha   172)  ;; emerc
+  (bucket-173       173)  ;; mercneric
+  (bucket-174       174)  ;; tfrag
+  (bucket-175       175)  ;; tie
+  (bucket-176       176)  ;; tie
+
+  (tex-l5-alpha     177)  ;; tex
+  (bucket-178       178)  ;; tfrag
+  (bucket-179       179)  ;; tie
+  (bucket-180       180)  ;; tie
+  (merc-l5-alpha    181)  ;; merc
+  (emerc-l5-alpha   182)  ;; emerc
+  (bucket-183       183)  ;; mercneric
+  (bucket-184       184)  ;; tfrag
+  (bucket-185       185)  ;; tie
+  (bucket-186       186)  ;; tie
+
+  (tex-lcom-tfrag   187)  ;; tex
+  (merc-lcom-tfrag  188)  ;; merc
+  (emerc-lcom-tfrag 189)  ;; emerc
+  (bucket-190       190)  ;; mercneric
+
+  (tex-lcom-shrub   191)  ;; tex
+  (merc-lcom-shrub  192)  ;; merc
+  (emerc-lcom-shrub 193)  ;; emerc
+  (bucket-194       194)  ;; mercneric
+
+  (bucket-195       195)  ;; shadow
+
+  (tex-l0-pris      196)  ;; tex
+  (merc-l0-pris     197)  ;; merc
+  (emerc-l0-pris    198)  ;; emerc
+  (bucket-199       199)  ;; mercneric
+
+  (tex-l1-pris      200)  ;; tex
+  (merc-l1-pris     201)  ;; merc
+  (emerc-l1-pris    202)  ;; emerc
+  (bucket-203       203)  ;; mercneric
+
+  (tex-l2-pris      204)  ;; tex
+  (merc-l2-pris     205)  ;; merc
+  (emerc-l2-pris    206)  ;; emerc
+  (bucket-207       207)  ;; mercneric
+
+  (tex-l3-pris      208)  ;; tex
+  (merc-l3-pris     209)  ;; merc
+  (emerc-l3-pris    210)  ;; emerc
+  (bucket-211       211)  ;; mercneric
+
+  (tex-l4-pris      212)  ;; tex
+  (merc-l4-pris     213)  ;; merc
+  (emerc-l4-pris    214)  ;; emerc
+  (bucket-215       215)  ;; mercneric
+
+  (tex-l5-pris      216)  ;; tex
+  (merc-l5-pris     217)  ;; merc
+  (emerc-l5-pris    218)  ;; emerc
+  (bucket-219       219)  ;; mercneric
+
+  (tex-lcom-pris    220)  ;; tex
+  (merc-lcom-pris   221)  ;; merc
+  (emerc-lcom-pris  222)  ;; emerc
+  (bucket-223       223)  ;; mercneric
+
+  (tex-l0-pris2     224)  ;; tex
+  (merc-l0-pris2    225)  ;; merc
+  (emerc-l0-pris2   226)  ;; emerc
+  (bucket-227       227)  ;; mercneric
+
+  (tex-l1-pris2     228)  ;; tex
+  (merc-l1-pris2    229)  ;; merc
+  (emerc-l1-pris2   230)  ;; emerc
+  (bucket-231       231)  ;; mercneric
+
+  (tex-l2-pris2     232)  ;; tex
+  (merc-l2-pris2    233)  ;; merc
+  (emerc-l2-pris2   234)  ;; emerc
+  (bucket-235       235)  ;; mercneric
+
+  (tex-l3-pris2     236)  ;; tex
+  (merc-l3-pris2    237)  ;; merc
+  (emerc-l3-pris2   238)  ;; emerc
+  (bucket-239       239)  ;; mercneric
+
+  (tex-l4-pris2     240)  ;; tex
+  (merc-l4-pris2    241)  ;; merc
+  (emerc-l4-pris2   242)  ;; emerc
+  (bucket-243       243)  ;; mercneric
+
+  (tex-l5-pris2     244)  ;; tex
+  (merc-l5-pris2    245)  ;; merc
+  (emerc-l5-pris2   246)  ;; emerc
+  (bucket-247       247)  ;; mercneric
+
+  (tex-lcom-pris2   248)  ;; tex
+  (merc-lcom-pris2  249)  ;; merc
+  (emerc-lcom-pris2 250)  ;; emerc
+  (bucket-251       251)  ;; mercneric
+
+  (tex-l0-water     252)  ;; tex
+  (merc-l0-water    253)  ;; merc
+  (bucket-254       254)  ;; mercneric
+  (bucket-255       255)  ;; tfrag
+  (bucket-256       256)
+  (bucket-257       257)
+  (bucket-258       258)
+  (bucket-259       259)  ;; tfrag
+  (bucket-260       260)
+
+  (tex-l1-water     261)  ;; tex
+  (merc-l1-water    262)  ;; merc
+  (bucket-263       263)  ;; mercneric
+  (bucket-264       264)  ;; tfrag
+  (bucket-265       265)
+  (bucket-266       266)
+  (bucket-267       267)
+  (bucket-268       268)  ;; tfrag
+  (bucket-269       269)
+
+  (tex-l2-water     270)  ;; tex
+  (merc-l2-water    271)  ;; merc
+  (bucket-272       272)  ;; mercneric
+  (bucket-273       273)  ;; tfrag
+  (bucket-274       274)
+  (bucket-275       275)
+  (bucket-276       276)
+  (bucket-277       277)  ;; tfrag
+  (bucket-278       278)
+
+  (tex-l3-water     279)  ;; tex
+  (merc-l3-water    280)  ;; merc
+  (bucket-281       281)  ;; mercneric
+  (bucket-282       282)  ;; tfrag
+  (bucket-283       283)
+  (bucket-284       284)
+  (bucket-285       285)
+  (bucket-286       286)  ;; tfrag
+  (bucket-287       287)
+
+  (tex-l4-water     288)  ;; tex
+  (merc-l4-water    289)  ;; merc
+  (bucket-290       290)  ;; mercneric
+  (bucket-291       291)  ;; tfrag
+  (bucket-292       292)
+  (bucket-293       293)
+  (bucket-294       294)
+  (bucket-295       295)  ;; tfrag
+  (bucket-296       296)
+
+  (tex-l5-water     297)  ;; tex
+  (merc-l5-water    298)  ;; merc
+  (bucket-299       299)  ;; mercneric
+  (bucket-300       300)  ;; tfrag
+  (bucket-301       301)
+  (bucket-302       302)
+  (bucket-303       303)
+  (bucket-304       304)  ;; tfrag
+  (bucket-305       305)
+
+  (tex-lcom-water   306)  ;; tex
+  (merc-lcom-water  307)  ;; merc
+  (bucket-308       308)  ;; mercneric
+
+  (tex-lcom-sky-post 309)
+
+  (bucket-310       310)  ;; ocean
+  (bucket-311       311)  ;; depth-cue
+
+  (tex-all-sprite   312)
+  (bucket-313       313)  ;; particles
+  (bucket-314       314)  ;; shadow
+  (bucket-315       315)  ;; effects
+  (tex-all-warp     316)  ;; tex
+  (bucket-317       317)  ;; mercneric
+  (bucket-318       318)  ;; debug, no zbuf
+  (tex-all-map      319)  ;; tex
+  (bucket-320       320)  ;; hud
+  (bucket-321       321)  ;; hud letterbox, no zbuf
+  (bucket-322       322)  ;; hud
+  (bucket-323       323)  ;; hud
+  (bucket-324   324)  ;; debug
+  (debug-no-zbuf 325)  ;; debug
   (debug-unknown-326 326)
   )
 
@@ -3057,6 +3141,12 @@
   (map    8)
   (sky    9)
   )
+
+(defenum tpage-category-u32
+  :type uint32
+  :copy-entries tpage-category
+  )
+
 
 (deftype dma-foreground-sink (basic)
   ((bucket                   bucket-id      :offset-assert 4)
@@ -4732,8 +4822,8 @@
    (common-page-mask         int32                           :offset-assert 180)
    (update-sprites-flag      symbol                          :offset-assert 184)
    (update-flag              symbol                          :offset-assert 188)
-   (texture-enable-user      uint64                          :offset-assert 192)
-   (texture-enable-user-menu uint64                          :offset-assert 200)
+   (texture-enable-user      texture-enable-mask             :offset-assert 192)
+   (texture-enable-user-menu texture-enable-mask             :offset-assert 200)
    (ids                      uint32                  128     :offset-assert 208) ;; guessed by decompiler
    )
   :method-count-assert 26
@@ -4742,21 +4832,21 @@
   (:methods
     (new (symbol type) _type_ 0)
     (initialize! (_type_) _type_ 9)
-    (texture-pool-method-10 () none 10) ;; (print-usage (_type_) _type_ 10)
-    (texture-pool-method-11 () none 11) ;; (setup-font-texture! (_type_) none 11)
-    (allocate-defaults! (_type_) none 12)
+    (print-usage (_type_) _type_ 10)
+    (setup-font-texture (_type_) none 11)
+    (allocate-defaults (_type_) none 12)
     (login-level-textures (_type_ level int (pointer texture-id)) none 13)
-    (texture-pool-method-14 () none 14) ;; (add-tex-to-dma! (_type_ level int) none 14)
+    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none 14)
     (allocate-vram-words! (_type_ int) int 15)
-    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
-    (texture-pool-method-17 () none 17) ;; (unused-17 () none 17)
-    (texture-pool-method-18 (_type_ int) int 18) ;; (unused-18 () none 18)
-    (update-warp-and-hud (_type_) none 19) ;; (unused-19 () none 19)
-    (update-sprites (_type_) none 20) ;; (unload! (_type_ texture-page) int 20)
-    (flag-update-and-sprite (_type_) none 21) ;; (upload-one-common! (_type_ level) symbol 21)
-    (relocate-sprite-dests! (_type_) none 22) ;; (lookup-boot-common-id (_type_ int) int 22)
-    (relocate-hud-dests! (_type_) none 23)
-    (relocate-warp-dests! (_type_) none 24)
+    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment 16)
+    (unload-page (_type_ texture-page) none 17)
+    (get-common-page-slot-by-id (_type_ int) int 18)
+    (update-warp-and-hud (_type_) none 19)
+    (update-sprites (_type_) none 20)
+    (mark-hud-warp-sprite-dirty (_type_) none 21)
+    (lay-out-sprite-tex (_type_) none 22)
+    (lay-out-hud-tex (_type_) none 23)
+    (lay-out-warp-tex (_type_) none 24)
     (clear-ids (_type_) none 25)
     )
   )
@@ -4822,9 +4912,17 @@
   :flag-assert         #x90000000c
   )
 
+(defenum tex-upload-mode
+  (none     -3)
+  (seg0-1   -2)
+  (seg0-1-2 -1)
+  (seg0      0)
+  (seg2      2)
+  )
+
 (deftype texture-page (basic)
   ((info      file-info                      :offset-assert 4)
-   (name      basic                          :offset-assert 8)
+   (name      string                         :offset-assert 8)
    (id        uint32                         :offset-assert 12)
    (length    int32                          :offset-assert 16)
    (mip0-size uint32                         :offset-assert 20)
@@ -4838,11 +4936,12 @@
   :size-assert         #x80
   :flag-assert         #xe00000080
   (:methods
-    (remove-from-heap (_type_ kheap) _type_ 9)
+    (relocate (_type_ kheap (pointer uint8)) texture-page :replace 7)
+    (remove-data-from-heap (_type_ kheap) _type_ 9)
     (get-leftover-block-count (_type_ int int) int 10)
-    (relocate-dests! (_type_ int int) none 11) ;; (unused-11 () none 11)
-    (texture-page-method-12 () none 12) ;;
-    (upload-now! (_type_ int) none 13) ;; (add-to-dma-buffer (_type_ dma-buffer int) int 13)
+    (relocate-dests! (_type_ int int) none 11)
+    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int 12)
+    (upload-now! (_type_ tex-upload-mode) none 13)
     )
   )
 
@@ -4891,8 +4990,8 @@
 (defenum link-test-flags
   :type uint32
   :bitfield #t
-  ; (needs-log-in 8)
-  ; (bit-9 9)
+  (needs-log-in 8)
+  (bit-9 9)
   )
 
 
@@ -4901,7 +5000,7 @@
    (prims      gs-reg64        10 :offset 0 :score -100)
    (reg-0      uint8              :offset 8)
    (reg-1      uint8              :offset 24)
-   (reg-2      uint8              :offset 40)
+   (reg-2      uint8              :offset 40 :score -1)
    (reg-3      uint8              :offset 56)
    (reg-4-u32  gs-reg32           :offset 72)
    (reg-4      uint8              :offset 72)
@@ -4943,8 +5042,8 @@
 (deftype texture-page-translate-item (structure)
   ((bucket             bucket-id  :offset-assert 0)
    (level-index        uint32     :offset-assert 4)
-   (level-texture-page uint32     :offset-assert 8)
-   (texture-user       uint32     :offset-assert 12)
+   (level-texture-page tpage-category-u32     :offset-assert 8)
+   (texture-user       texture-enable-mask-u32     :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -4957,7 +5056,7 @@
    )
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (unlink-textures-in-heap! (_type_ kheap) int 9)
+    (unlink-shaders-in-heap (_type_ kheap) int 9)
     )
   :flag-assert #xa00000014
   )
@@ -5841,7 +5940,7 @@
    (load-time float :offset-assert 156)
    (load-login-time float :offset-assert 160)
    (draw-level-count int32 :offset-assert 164)
-   (draw-level basic 7 :offset-assert 168)
+   (draw-level level 7 :offset-assert 168)
    (draw-index-map uint8 7 :offset-assert 196)
    (load-order uint64 :offset-assert 208)
    ;; ?
@@ -6233,7 +6332,7 @@
 
 (define-extern *font-default-matrix* matrix)
 (define-extern *font-work* font-work)
-(define-extern font-set-tex0 (function (pointer gs-tex0) texture uint uint uint none))
+(define-extern font-set-tex0 (function (pointer gs-tex0) texture int int int none))
 (define-extern set-font-color (function int int int int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -7479,37 +7578,35 @@
 (define-extern texture-page-font-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern upload-vram-data (function dma-buffer int pointer int int none))
-(define-extern upload-vram-pages  (function texture-pool texture-pool-segment texture-page int bucket-id int))
-(define-extern update-vram-pages (function texture-pool texture-pool-segment texture-page int int))
-(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page bucket-id int int))
+(define-extern upload-vram-pages  (function texture-pool texture-pool-segment texture-page tex-upload-mode bucket-id int))
+(define-extern update-vram-pages (function texture-pool texture-pool-segment texture-page tex-upload-mode int))
+(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page bucket-id (pointer int32) int))
 (define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
-;; (define-extern texture-page-size-check function) ;; (function texture-pool level symbol int)
-;; (define-extern set-skull-gem-masks function)
+(define-extern texture-page-size-check (function texture-pool level symbol int))
+(define-extern set-skull-gem-masks (function none))
 (define-extern upload-textures (function texture-pool none))
 (define-extern *txt-dma-list* dma-buffer)
-;; (define-extern texture-relocate function) ;; (function dma-buffer texture int gs-psm int dma-buffer)
+(define-extern texture-relocate (function dma-buffer texture int gs-psm int dma-buffer))
 (define-extern relocate-later (function symbol))
-;; (define-extern texture-page-login function) ;; (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry)
+(define-extern texture-page-login  (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
 (define-extern lookup-texture-by-id (function texture-id texture))
 (define-extern lookup-texture-by-id-fast (function texture-id texture))
-;; (define-extern lookup-texture-by-name function)
-(define-extern lookup-texture-id-by-name (function string symbol texture-id))
-;; (define-extern lookup-level-texture-by-name function)
+(define-extern lookup-texture-by-name (function string string (pointer texture-page) texture))
+(define-extern lookup-texture-id-by-name (function string string texture-id))
+(define-extern lookup-level-texture-by-name (function string level (pointer texture-page) texture))
 (define-extern *shader-list* pair)
 (define-extern *edit-shader* texture-id)
-;; (define-extern link-texture-by-id function) ;; (function texture-id adgif-shader texture-page-dir-entry)
+(define-extern link-texture-by-id (function texture-id adgif-shader texture-page-dir-entry))
 (define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
 (define-extern adgif-shader-update! (function adgif-shader texture none))
-;; (define-extern adgif-shader<-texture-with-update! function) ;; (function adgif-shader texture adgif-shader)
-;; (define-extern hack-texture function)
+(define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
+(define-extern hack-texture (function texture float))
 (define-extern adgif-shader-login (function adgif-shader texture))
 (define-extern adgif-shader-login-no-remap (function adgif-shader texture))
-;; (define-extern adgif-shader-login-fast function) ;; (function adgif-shader texture)
-;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
+(define-extern adgif-shader-login-fast (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap-fast (function adgif-shader texture))
 (define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
-(define-extern set-dirty-mask!
-  "First arg is the level name off the [[*level*]]'s `default-level`"
-  (function string int int int none))
+(define-extern set-dirty-mask! (function level int int int none))
 (define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
 (define-extern *texture-pool* texture-pool)
 
@@ -20963,7 +21060,7 @@
      ;; (new (symbol type collide-shape int float) _type_ 0)
     (nav-control-method-9 () none 9) ;; (debug-draw (_type_) none 9)
     (point-in-bounds?
-      "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius" 
+      "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius"
       (_type_ vector) symbol 10)
     (nav-control-method-11 "TODO" (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
     (nav-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
@@ -21411,7 +21508,7 @@
 
 ;; (define-extern raw-ray-sphere-intersect function) ;; (function float float)
 (define-extern ray-sphere-intersect (function vector vector vector float float))
-(define-extern ray-circle-intersect (function vector vector vector float float)) ;; 
+(define-extern ray-circle-intersect (function vector vector vector float float)) ;;
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
 ;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
@@ -21539,7 +21636,7 @@
 ;; (define-extern *test-shrub* object) ;; int
 (define-extern bsp-camera-asm (function bsp-header vector none)) ;;
 (define-extern print-collide-stats (function none))
-;; (define-extern level-remap-texture function) ;; (function texture-id texture-id)
+(define-extern level-remap-texture (function texture-id texture-id))
 (define-extern build-masks (function bsp-header none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22594,7 +22691,7 @@
 ;; (define-extern blend-clut-texture-anim-layer-func function)
 ;; (define-extern move-rg-to-ba-texture-anim-layer-func function)
 ;; (define-extern fill-rgb-texture-anim-layer-func function)
-;; (define-extern update-texture-anim function)
+(define-extern update-texture-anim (function bucket-id none))
 ;; (define-extern no-alpha-texture-anim-layer-func function)
 ;; (define-extern copy-alpha-texture-anim-layer-func function)
 ;; (define-extern copy-clut-alpha-texture-anim-layer-func function)
@@ -25677,7 +25774,7 @@
   :flag-assert         #x90000000c
   )
 
-(define-extern *camera-layout-blink* symbol) ;; 
+(define-extern *camera-layout-blink* symbol) ;;
 (define-extern *CAM_LAYOUT-bank* cam-layout-bank) ;; cam-layout-bank
 (define-extern *camera-layout-message-ypos* int) ;; int
 (define-extern *volume-point-current* int) ;; int
@@ -25686,33 +25783,33 @@
 (define-extern *volume-normal* vector-array) ;; vector-array
 (define-extern *volume-descriptor-current* int) ;; int
 (define-extern *volume-descriptor* vol-control) ;; vol-control
-(define-extern cam-layout-print (function int int string pointer)) ;; 
-(define-extern cam-layout-intersect-dist (function vector vector vector float)) ;; 
-(define-extern cam-layout-entity-volume-info-create (function entity-camera symbol symbol :behavior cam-layout)) ;; 
-(define-extern cam-layout-entity-volume-info (function symbol :behavior cam-layout)) ;; 
-(define-extern v-slrp! (function vector vector vector float vector)) ;; 
-(define-extern interp-test (function (function vector vector vector float vector float none) interp-test-info none)) ;; 
-(define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info none)) ;; 
-(define-extern cam-layout-entity-info (function entity-actor none)) ;; 
-(define-extern clmf-button-test "Displays the message `button test`" (function symbol)) ;; 
-(define-extern clmf-bna "Displays the message `button not available`" (function symbol)) ;; 
-(define-extern clmf-implement "Displays the message `button not implemented yet`" (function symbol)) ;; 
-(define-extern clmf-input (function vector vector int vector)) ;; 
-(define-extern clmf-pos-rot (function symbol symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-next-volume (function int symbol :behavior cam-layout)) ;; 
-(define-extern clmf-next-vol-dpad (function symbol)) ;; 
-(define-extern clmf-to-edit-cam (function symbol)) ;; 
+(define-extern cam-layout-print (function int int string pointer)) ;;
+(define-extern cam-layout-intersect-dist (function vector vector vector float)) ;;
+(define-extern cam-layout-entity-volume-info-create (function entity-camera symbol symbol :behavior cam-layout)) ;;
+(define-extern cam-layout-entity-volume-info (function symbol :behavior cam-layout)) ;;
+(define-extern v-slrp! (function vector vector vector float vector)) ;;
+(define-extern interp-test (function (function vector vector vector float vector float none) interp-test-info none)) ;;
+(define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info none)) ;;
+(define-extern cam-layout-entity-info (function entity-actor none)) ;;
+(define-extern clmf-button-test "Displays the message `button test`" (function symbol)) ;;
+(define-extern clmf-bna "Displays the message `button not available`" (function symbol)) ;;
+(define-extern clmf-implement "Displays the message `button not implemented yet`" (function symbol)) ;;
+(define-extern clmf-input (function vector vector int vector)) ;;
+(define-extern clmf-pos-rot (function symbol symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-next-volume (function int symbol :behavior cam-layout)) ;;
+(define-extern clmf-next-vol-dpad (function symbol)) ;;
+(define-extern clmf-to-edit-cam (function symbol)) ;;
 (define-extern *last-cur-entity* int) ;; int
-(define-extern clmf-next-entity (function int symbol :behavior cam-layout)) ;; 
-(define-extern clmf-to-spline-attr (function symbol)) ;; 
-(define-extern clmf-to-intro-attr (function symbol)) ;; 
-(define-extern clmf-to-index-attr (function symbol)) ;; 
+(define-extern clmf-next-entity (function int symbol :behavior cam-layout)) ;;
+(define-extern clmf-to-spline-attr (function symbol)) ;;
+(define-extern clmf-to-intro-attr (function symbol)) ;;
+(define-extern clmf-to-index-attr (function symbol)) ;;
 (define-extern clmf-to-focalpull-attr (function symbol)) ;; (function symbol)
-(define-extern clmf-to-edit (function symbol :behavior cam-layout)) ;; 
+(define-extern clmf-to-edit (function symbol :behavior cam-layout)) ;;
 (define-extern clmf-to-select (function symbol)) ;; (function symbol)
-(define-extern clmf-look-through (function symbol :behavior cam-layout)) ;; 
-(define-extern fov->maya (function float float)) ;; 
-(define-extern cam-layout-save-cam-rot (function symbol string entity-actor none)) ;; 
+(define-extern clmf-look-through (function symbol :behavior cam-layout)) ;;
+(define-extern fov->maya (function float float)) ;;
+(define-extern cam-layout-save-cam-rot (function symbol string entity-actor none)) ;;
 (define-extern cam-layout-save-cam-trans (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
 (define-extern cam-layout-save-pivot (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
 (define-extern cam-layout-save-align (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
@@ -25735,19 +25832,19 @@
 (define-extern cam-layout-save-stringMaxHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
 (define-extern cam-layout-save-stringCliffHeight (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
 (define-extern cam-layout-save-maxAngle (function symbol string entity-actor none)) ;; (function symbol string entity-actor string)
-(define-extern clmf-save-single (function entity-camera symbol symbol file-stream :behavior cam-layout)) ;; 
+(define-extern clmf-save-single (function entity-camera symbol symbol file-stream :behavior cam-layout)) ;;
 (define-extern clmf-save-one (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
 (define-extern clmf-save-all (function symbol symbol :behavior cam-layout)) ;; (function symbol symbol :behavior cam-layout)
 (define-extern clmf-cam-flag-toggle (function int int symbol :behavior cam-layout)) ;; (function int int symbol :behavior cam-layout)
-(define-extern clmf-cam-flag (function string uint uint symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-float-adjust (function symbol (pointer float) symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-meters (function meters symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-fov (function degrees symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-deg (function degrees symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-intro-time (function float symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-interp-time (function float symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-float (function float symbol symbol :behavior cam-layout)) ;; 
-(define-extern clmf-cam-string (function string symbol symbol :behavior cam-layout)) ;; 
+(define-extern clmf-cam-flag (function string uint uint symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-float-adjust (function symbol (pointer float) symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-meters (function meters symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-fov (function degrees symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-deg (function degrees symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-intro-time (function float symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-interp-time (function float symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-float (function float symbol symbol :behavior cam-layout)) ;;
+(define-extern clmf-cam-string (function string symbol symbol :behavior cam-layout)) ;;
 (define-extern *clm-focalpull-attr* clm) ;; clm
 (define-extern *clm-index-attr* clm) ;; clm
 (define-extern *clm-intro-attr* clm) ;; clm
@@ -25759,11 +25856,11 @@
 (define-extern *clm-save-one* clm) ;; clm
 (define-extern *clm-select* clm) ;; clm
 (define-extern *clm* clm) ;; clm
-(define-extern cam-layout-do-action (function clm-item-action symbol :behavior cam-layout)) ;; 
-(define-extern cam-layout-function-call (function symbol string int basic symbol :behavior cam-layout)) ;; 
-(define-extern cam-layout-do-menu (function clm symbol :behavior cam-layout)) ;; 
-(define-extern cam-layout-active (state cam-layout)) ;; 
-(define-extern cam-layout-init (function object :behavior cam-layout)) ;; 
+(define-extern cam-layout-do-action (function clm-item-action symbol :behavior cam-layout)) ;;
+(define-extern cam-layout-function-call (function symbol string int basic symbol :behavior cam-layout)) ;;
+(define-extern cam-layout-do-menu (function clm symbol :behavior cam-layout)) ;;
+(define-extern cam-layout-active (state cam-layout)) ;;
+(define-extern cam-layout-init (function object :behavior cam-layout)) ;;
 (define-extern cam-layout-stop (function symbol))
 (define-extern cam-layout-start (function symbol))
 (define-extern cam-layout-restart (function symbol))
@@ -27718,42 +27815,42 @@
   (current-selection 3))
 ;; ---debug-h:debug-menu-dest
 
-(define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var)) ;; 
+(define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var)) ;;
 (define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int debug-menu-msg int int int) int symbol int int symbol debug-menu-item-var))
 (define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int debug-menu-msg float float float) float symbol float float int debug-menu-item-var))
-(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic none) symbol)) ;; 
-(define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;; 
-(define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int)) ;; 
-(define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context)) ;; 
-(define-extern debug-menu-rebuild (function debug-menu debug-menu)) ;; 
+(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic none) symbol)) ;;
+(define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;;
+(define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int)) ;;
+(define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context)) ;;
+(define-extern debug-menu-rebuild (function debug-menu debug-menu)) ;;
 (define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
 (define-extern debug-menu-append-item (function debug-menu debug-menu-node debug-menu-node))
 (define-extern debug-menu-remove-all-items (function debug-menu debug-menu))
-(define-extern debug-menu-func-decode (function object function)) ;; 
+(define-extern debug-menu-func-decode (function object function)) ;;
 (define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
 (define-extern debug-menu-find-from-template (function debug-menu-context pair debug-menu))
-(define-extern debug-menu-item-submenu-render (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)) ;; 
-(define-extern debug-menu-item-function-render (function debug-menu-item-function int int int symbol debug-menu-item-function)) ;; 
-(define-extern debug-menu-item-flag-render (function debug-menu-item-flag int int int symbol debug-menu-item-flag)) ;; 
-(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var)) ;; 
-(define-extern debug-menu-item-render (function debug-menu-item int int int symbol debug-menu-item)) ;; 
-(define-extern debug-menu-render (function debug-menu int int debug-menu-node int debug-menu)) ;; 
-(define-extern debug-menu-context-render (function debug-menu-context debug-menu-context)) ;; 
-(define-extern debug-menu-context-select-next-or-prev-item (function debug-menu-context int debug-menu-context)) ;; 
-(define-extern debug-menu-context-select-new-item (function debug-menu-context int debug-menu-context)) ;; 
-(define-extern debug-menu-context-open-submenu (function debug-menu-context debug-menu basic)) ;; 
-(define-extern debug-menu-context-close-submenu (function debug-menu-context debug-menu-context)) ;; 
-(define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)) ;; 
-(define-extern debug-menu-item-function-msg (function debug-menu-item-function debug-menu-msg debug-menu-item-function)) ;; 
-(define-extern debug-menu-item-flag-msg (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)) ;; 
-(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
-(define-extern debug-menu-item-var-msg (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;; 
-(define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item)) ;; 
-(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu)) ;; 
+(define-extern debug-menu-item-submenu-render (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)) ;;
+(define-extern debug-menu-item-function-render (function debug-menu-item-function int int int symbol debug-menu-item-function)) ;;
+(define-extern debug-menu-item-flag-render (function debug-menu-item-flag int int int symbol debug-menu-item-flag)) ;;
+(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var)) ;;
+(define-extern debug-menu-item-render (function debug-menu-item int int int symbol debug-menu-item)) ;;
+(define-extern debug-menu-render (function debug-menu int int debug-menu-node int debug-menu)) ;;
+(define-extern debug-menu-context-render (function debug-menu-context debug-menu-context)) ;;
+(define-extern debug-menu-context-select-next-or-prev-item (function debug-menu-context int debug-menu-context)) ;;
+(define-extern debug-menu-context-select-new-item (function debug-menu-context int debug-menu-context)) ;;
+(define-extern debug-menu-context-open-submenu (function debug-menu-context debug-menu basic)) ;;
+(define-extern debug-menu-context-close-submenu (function debug-menu-context debug-menu-context)) ;;
+(define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)) ;;
+(define-extern debug-menu-item-function-msg (function debug-menu-item-function debug-menu-msg debug-menu-item-function)) ;;
+(define-extern debug-menu-item-flag-msg (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)) ;;
+(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;;
+(define-extern debug-menu-item-var-msg (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;;
+(define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item)) ;;
+(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu)) ;;
 (define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
-(define-extern debug-menu-context-activate-selection (function debug-menu-context debug-menu-context)) ;; 
-(define-extern debug-menus-default-joypad-func (function debug-menu-context debug-menu-context)) ;; 
-(define-extern debug-menus-active (function debug-menu-context debug-menu-context)) ;; 
+(define-extern debug-menu-context-activate-selection (function debug-menu-context debug-menu-context)) ;;
+(define-extern debug-menus-default-joypad-func (function debug-menu-context debug-menu-context)) ;;
+(define-extern debug-menus-active (function debug-menu-context debug-menu-context)) ;;
 (define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28106,17 +28203,17 @@
 (define-extern nav-dma-send-to-spr-no-flush (function object object object none))
 (define-extern nav-dma-send-from-spr-no-flush (function none))
 ;; TODO - local vars and docstrings "Increments and returns the provided [[int]], if the value exceeds `2`, wrap back to `0`"
-(define-extern inc-mod3 (function int int)) ;; 
+(define-extern inc-mod3 (function int int)) ;;
 (define-extern nav-state-patch-pointers (function none))
-(define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;; 
+(define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;;
 (define-extern poly-in-height-range? (function nav-poly float float symbol))
-(define-extern init-ray-local (function nav-ray nav-poly vector vector none)) ;; 
-(define-extern init-ray-dir-local (function nav-ray nav-poly vector vector float none)) ;; 
-(define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters)) ;; 
+(define-extern init-ray-local (function nav-ray nav-poly vector vector none)) ;;
+(define-extern init-ray-dir-local (function nav-ray nav-poly vector vector float none)) ;;
+(define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters)) ;;
 (define-extern point-poly-distance-min (function nav-poly none))
 (define-extern nav-mesh-route-table-bit-index (function nav-mesh uint int int))
-(define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol)) ;; 
-(define-extern ray-line-segment-intersection? (function vector vector vector vector symbol)) ;; 
+(define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol)) ;;
+(define-extern ray-line-segment-intersection? (function vector vector vector vector symbol)) ;;
 (define-extern plane-height-at-xz-point (function plane vector float))
 (define-extern nav-normal-from-3-points (function vector vector vector vector none))
 (define-extern get-nav-mesh (function actor-id nav-mesh))
@@ -28171,10 +28268,10 @@
   "Adds the given [[sphere]] to the [[nav-control]]'s `sphere-array` so long as
    `max-spheres` is less than [[nav-control]]'s `sphere-count`"
   (function nav-control sphere int none))
-(define-extern add-collide-shape-spheres (function nav-control collide-shape sphere none)) ;; 
-(define-extern circle-tangent-directions (function vector vector vector vector vector)) ;; 
+(define-extern add-collide-shape-spheres (function nav-control collide-shape sphere none)) ;;
+(define-extern circle-tangent-directions (function vector vector vector vector vector)) ;;
 (define-extern circle-ray-intersection? (function vector vector float vector symbol))
-(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int)) ;; 
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int)) ;;
 ;; (define-extern compute-dir-parm function) ;; (function vector vector vector float)
 ;; (define-extern vector-rotate-y-sincos! function)
 ;; (define-extern test-xz-point-on-line-segment? function) ;; (function vector vector vector float symbol)
@@ -29523,7 +29620,7 @@
   :flag-assert         #x1e00000018
   (:methods
     (get-color
-      "Returns the [[rgba]] that corresponds to the type of [[editable]] TODO - document the colors" 
+      "Returns the [[rgba]] that corresponds to the type of [[editable]] TODO - document the colors"
       (_type_ int) rgba 9)
     (editable-method-10 (_type_) none 10)
     (editable-method-11 (_type_ vector) symbol 11)
@@ -30158,7 +30255,7 @@
 (define-extern debug-menu-make-instance-menu (function debug-menu-context debug-menu-item-submenu))
 (define-extern dm-task-menu-pick-func (function game-task debug-menu-msg symbol))
 (define-extern debug-menu-make-continue-sub-menu (function debug-menu-context symbol pair))
-(define-extern debug-menu-make-task-sub-menu "TODO - need to know more about game-info" (function debug-menu-context debug-menu-node))
+(define-extern debug-menu-make-task-sub-menu "TODO - need to know more about game-info" (function symbol pair))
 (define-extern debug-menu-make-task-menu (function debug-menu-context debug-menu-item-submenu))
 (define-extern dm-play-task-with-continue (function game-task string none))
 (define-extern dm-play-task (function game-task none))
@@ -50343,3 +50440,12 @@
 |#
 
 ;; (define-extern hiphog-activate function)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; texture-upload                 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern *default-envmap-shader* adgif-shader)
+(define-extern *generic-envmap-texture* texture)

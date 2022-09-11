@@ -2265,17 +2265,17 @@ TEST_F(FormRegressionTestJak1, ExprPrintName) {
 
   std::string expected =
       "(cond\n"
-      "  ((= arg0 arg1) #t)\n"
+      "  ((= arg0 arg1)\n"
+      "   #t\n"
+      "   )\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) string))\n"
       "   (string= (the-as string arg0) (the-as string arg1))\n"
       "   )\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) symbol))\n"
-      "   (string= (the-as string arg0) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
-      "(the-as int arg1))))))\n"
+      "   (string= (the-as string arg0) (symbol->string arg1))\n"
       "   )\n"
       "  ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol))\n"
-      "   (string= (the-as string arg1) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
-      "(the-as int arg0))))))\n"
+      "   (string= (the-as string arg1) (symbol->string arg0))\n"
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},

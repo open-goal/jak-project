@@ -54,7 +54,6 @@ u64 execute(void* ctxt) {
   c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
   c->load_symbol2(a3, cache.font_work);              // lw a3, *font-work*(s7)
   c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
-  printf("a2 = 0x%lx, a3 = 0x%lx\n", c->sgpr64(a2), c->sgpr64(a3));
   c->lwu(a2, 2160, a2);                             // lwu a2, 2160(a2)
   // Unknown instr: ld a3, L164(fp)
   c->gprs[a3].du64[0] = 0xffffffff'00ffffff;

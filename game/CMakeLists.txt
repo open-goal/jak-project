@@ -85,6 +85,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/collide_func.cpp
         mips2c/jak2_functions/font.cpp
         mips2c/jak2_functions/joint.cpp
+        mips2c/jak2_functions/texture.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp

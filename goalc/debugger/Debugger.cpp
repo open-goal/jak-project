@@ -666,7 +666,6 @@ void Debugger::read_symbol_table_jak2() {
       bytes_read += 128;
       // just in case
       str_buff[127] = '\0';
-      fmt::print("got {}\n", str_buff);
 
       // GOAL sym - s7
       auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);

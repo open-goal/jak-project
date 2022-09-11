@@ -285,6 +285,7 @@
 (defun vif1-handler-debug ((mark-in int))
   "Handle the VIF1 interrupt.
   The mark register of VIF will be set to the bucket that is now starting."
+
   ; B0:
   ; L42:
   ;     daddiu sp, sp, -32
@@ -316,7 +317,9 @@
          ;     lwu a1, 0(a1)
          ;     sync.l
          (current-time (timer-count TIMER1_BANK))
+         (delta-time (the uint 0))
          )
+
 
     (cond
       ;     sltu t0, a0, a2  t0 = (mark < last-index)
@@ -373,15 +376,21 @@
         ; B6:
         ; L46:
         ;     dsubu a1, a1, a3
-        (let ((delta-time (- current-time base-time)))
+        ;(let ((delta-time (- current-time base-time)))
+          (set! delta-time (- current-time base-time))
+
           ;     dsll a2, a2, 4
           ;     daddu a2, v1, a2
           ;     sh a1, 50(a2)
           (set! (-> prof data last-index end-time) (the int delta-time))
+          ; (format 0 "mark: ~D last ~D elapsed ~D~%" mark last-index
+          ;         (- (-> prof data last-index end-time)
+          ;            (-> prof data last-index start-time)))
+
           ;     sh a1, 50(v1)
           (set! (-> prof data 0 end-time) (the int delta-time))
           ;     or a2, a1, r0
-          )
+          ;)
         ) ;; end else
       ) ;; end cond
     ; B7:
@@ -393,7 +402,7 @@
     ;     dsll a2, a0, 4
     ;     daddu v1, v1, a2
     ;     sh a1, 48(v1)
-    (set! (-> prof data mark start-time) (the int current-time))
+    (set! (-> prof data mark start-time) (the int delta-time))
     ;     lw v1, *profile-work*(s7)
     ;     sw a0, 64(v1)
     (set! (-> *profile-work* last-index) mark)
@@ -522,25 +531,7 @@
            (t3-2 (the-as object (-> v1-2 base)))
            )
       (set! (-> (the-as gs-gif-tag t3-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-      (set! (-> (the-as gs-gif-tag t3-2) regs) (new 'static 'gif-tag-regs
-                                                 :regs0 (gif-reg-id a+d)
-                                                 :regs1 (gif-reg-id a+d)
-                                                 :regs2 (gif-reg-id a+d)
-                                                 :regs3 (gif-reg-id a+d)
-                                                 :regs4 (gif-reg-id a+d)
-                                                 :regs5 (gif-reg-id a+d)
-                                                 :regs6 (gif-reg-id a+d)
-                                                 :regs7 (gif-reg-id a+d)
-                                                 :regs8 (gif-reg-id a+d)
-                                                 :regs9 (gif-reg-id a+d)
-                                                 :regs10 (gif-reg-id a+d)
-                                                 :regs11 (gif-reg-id a+d)
-                                                 :regs12 (gif-reg-id a+d)
-                                                 :regs13 (gif-reg-id a+d)
-                                                 :regs14 (gif-reg-id a+d)
-                                                 :regs15 (gif-reg-id a+d)
-                                                 )
-            )
+      (set! (-> (the-as gs-gif-tag t3-2) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-2 base) (&+ (the-as pointer t3-2) 16))
       )
     (let* ((v1-3 arg0)
@@ -584,25 +575,7 @@
            (t5-2 (the-as object (-> v1-2 base)))
            )
       (set! (-> (the-as gs-gif-tag t5-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-      (set! (-> (the-as gs-gif-tag t5-2) regs) (new 'static 'gif-tag-regs
-                                                 :regs0 (gif-reg-id a+d)
-                                                 :regs1 (gif-reg-id a+d)
-                                                 :regs2 (gif-reg-id a+d)
-                                                 :regs3 (gif-reg-id a+d)
-                                                 :regs4 (gif-reg-id a+d)
-                                                 :regs5 (gif-reg-id a+d)
-                                                 :regs6 (gif-reg-id a+d)
-                                                 :regs7 (gif-reg-id a+d)
-                                                 :regs8 (gif-reg-id a+d)
-                                                 :regs9 (gif-reg-id a+d)
-                                                 :regs10 (gif-reg-id a+d)
-                                                 :regs11 (gif-reg-id a+d)
-                                                 :regs12 (gif-reg-id a+d)
-                                                 :regs13 (gif-reg-id a+d)
-                                                 :regs14 (gif-reg-id a+d)
-                                                 :regs15 (gif-reg-id a+d)
-                                                 )
-            )
+      (set! (-> (the-as gs-gif-tag t5-2) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-2 base) (&+ (the-as pointer t5-2) 16))
       )
     (let* ((v1-3 arg0)
@@ -647,26 +620,7 @@
          (a2-3 (the-as object (-> v1-1 base)))
          )
     (set! (-> (the-as gs-gif-tag a2-3) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x7))
-    (set! (-> (the-as gs-gif-tag a2-3) regs)
-          (new 'static 'gif-tag-regs
-            :regs0 (gif-reg-id a+d)
-            :regs1 (gif-reg-id a+d)
-            :regs2 (gif-reg-id a+d)
-            :regs3 (gif-reg-id a+d)
-            :regs4 (gif-reg-id a+d)
-            :regs5 (gif-reg-id a+d)
-            :regs6 (gif-reg-id a+d)
-            :regs7 (gif-reg-id a+d)
-            :regs8 (gif-reg-id a+d)
-            :regs9 (gif-reg-id a+d)
-            :regs10 (gif-reg-id a+d)
-            :regs11 (gif-reg-id a+d)
-            :regs12 (gif-reg-id a+d)
-            :regs13 (gif-reg-id a+d)
-            :regs14 (gif-reg-id a+d)
-            :regs15 (gif-reg-id a+d)
-            )
-          )
+    (set! (-> (the-as gs-gif-tag a2-3) regs) GIF_REGS_ALL_AD)
     (set! (-> v1-1 base) (&+ (the-as pointer a2-3) 16))
     )
   (let* ((v1-2 arg1)

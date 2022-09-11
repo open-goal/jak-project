@@ -11,6 +11,10 @@
   (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
   )
 
+(defun movie? ()
+  (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
+  )
+
 
 ;; Rough loop outline:
 ;; (while *run*
@@ -60,9 +64,9 @@
                 (draw-bars! *profile-array* s3-0 a2-0)
                 )
             )
-      ;     (if (and (!= *master-mode* 'menu) *stats-profile-bars*)
-      ;         (draw-text! *profile-array*)
-      ;         )
+          (if (and (!= *master-mode* 'menu) *stats-profile-bars*)
+              (draw-text! *profile-array*)
+              )
           )
       ;   (when *display-deci-count*
       ;     (let ((s2-0 draw-string-xy))
@@ -75,87 +79,87 @@
       )
 
     ;; draw console buffer
-    ; (let ((buf (if *debug-segment*
-    ;                  (-> arg0 frames (-> arg0 on-screen) debug-buf)
-    ;                  (-> arg0 frames (-> arg0 on-screen) global-buf)
-    ;                  )
-    ;              )
-    ;        )
-    ;   (with-dma-buffer-add-bucket ((s3-0 buf) (bucket-id debug-no-zbuf))
-    ;   (if (and (= *master-mode* 'pause)
-    ;            (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
-    ;            )
-    ;       (draw-string-xy
-    ;         (lookup-text! *common-text* (game-text-id pause) #f)
-    ;         s3-1
-    ;         256
-    ;         (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
-    ;             352
-    ;             320
-    ;             )
-    ;         (font-color precursor-#ec3b00)
-    ;         (font-flags shadow kerning middle large)
-    ;         )
-    ;       )
-    ;   (let ((s2-2 (the int (-> *font-context* origin y))))
-    ;     (cond
-    ;       ((or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)))
-    ;        (+! s2-2 56)
-    ;        )
-    ;       (*display-profile*
-    ;         (+! s2-2 48)
-    ;         )
-    ;       )
-    ;     (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
-    ;       (let* ((v1-82
-    ;                (draw-string-xy
-    ;                  *stdcon0*
-    ;                  s3-1
-    ;                  (the int (-> *font-context* origin x))
-    ;                  s2-2
-    ;                  (font-color default-#cddbcd)
-    ;                  (font-flags shadow)
-    ;                  )
-    ;                )
-    ;              (a3-6 (+ s2-2 (the int (* 2.0 (the-as float (gpr->fpr (sar (the-as int v1-82) 32)))))))
-    ;              )
-    ;         (draw-string-xy
-    ;           *stdcon1*
-    ;           s3-1
-    ;           (the int (-> *font-context* origin x))
-    ;           a3-6
-    ;           (font-color default-#cddbcd)
-    ;           (font-flags shadow)
-    ;           )
-    ;         )
-    ;       )
-    ;     )
-    ;   (if *display-iop-info*
-    ;       (show-iop-info s3-1)
-    ;       )
-    ;   (if *display-memcard-info*
-    ;       (show-mc-info s3-1)
-    ;       )
-    ;     )
-    ;   )
-    ; (let ((v1-101 *dma-mem-usage*))
-    ;   (when (nonzero? v1-101)
-    ;     (set! (-> v1-101 length) (max 88 (-> v1-101 length)))
-    ;     (set! (-> v1-101 data 87 name) "debug")
-    ;     (+! (-> v1-101 data 87 count) 1)
-    ;     (+! (-> v1-101 data 87 used) (&-
-    ;                                    (-> (if *debug-segment*
-    ;                                            (-> arg0 frames (-> arg0 on-screen) debug-buf)
-    ;                                            (-> arg0 frames (-> arg0 on-screen) global-buf)
-    ;                                            )
-    ;                                        base
-    ;                                        )
-    ;                                    (the-as uint s5-0)
-    ;                                    )
-    ;         )
-    ;     (set! (-> v1-101 data 87 total) (-> v1-101 data 87 used))
-    ;     )
-    ;   )
+    (let ((buf (if *debug-segment*
+                     (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                     (-> arg0 frames (-> arg0 on-screen) global-buf)
+                     )
+                 )
+           )
+      (with-dma-buffer-add-bucket ((s3-0 buf) (bucket-id debug-no-zbuf))
+      (if (and (= *master-mode* 'pause)
+               (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
+               )
+          (draw-string-xy
+            "pause or something like that" ;;(lookup-text! *common-text* (game-text-id pause) #f)
+            buf
+            256
+            (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+                352
+                320
+                )
+            (font-color precursor-#ec3b00)
+            (font-flags shadow kerning middle large)
+            )
+          )
+      (let ((s2-2 (the int (-> *font-context* origin y))))
+        (cond
+          ((or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)))
+           (+! s2-2 56)
+           )
+          (*display-profile*
+            (+! s2-2 48)
+            )
+          )
+        (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+          (let* ((v1-82
+                   (draw-string-xy
+                     *stdcon0*
+                     buf
+                     (the int (-> *font-context* origin x))
+                     s2-2
+                     (font-color default-#cddbcd)
+                     (font-flags shadow)
+                     )
+                   )
+                 (a3-6 (+ s2-2 (the int (* 2.0 (the-as float (-> v1-82 b))))))
+                 )
+            (draw-string-xy
+              *stdcon1*
+              buf
+              (the int (-> *font-context* origin x))
+              a3-6
+              (font-color default-#cddbcd)
+              (font-flags shadow)
+              )
+            )
+          )
+        )
+      (if *display-iop-info*
+          (show-iop-info buf)
+          )
+      (if *display-memcard-info*
+          (show-mc-info buf)
+          )
+        )
+      )
+    (let ((v1-101 *dma-mem-usage*))
+      (when (nonzero? v1-101)
+        (set! (-> v1-101 length) (max 88 (-> v1-101 length)))
+        (set! (-> v1-101 data 87 name) "debug")
+        (+! (-> v1-101 data 87 count) 1)
+        (+! (-> v1-101 data 87 used) (&-
+                                       (-> (if *debug-segment*
+                                               (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                                               (-> arg0 frames (-> arg0 on-screen) global-buf)
+                                               )
+                                           base
+                                           )
+                                       (the-as uint s5-0)
+                                       )
+            )
+        (set! (-> v1-101 data 87 total) (-> v1-101 data 87 used))
+        )
+      )
     )
   (set! *stdcon* (clear *stdcon0*))
   0
@@ -190,17 +194,17 @@
     ;   )
 
     ;; execute the debug hook before doing the big updates
-    ; (with-profiler 'debug *profile-debug-color*
-    ;   (let* ((s5-5 *debug-hook*)
-    ;          (t9-12 (car s5-5)))
-    ;     (while (not (null? s5-5))
-    ;       ((the-as (function none) t9-12))
-    ;       (set! s5-5 (cdr s5-5))
-    ;       (set! t9-12 (car s5-5))
-    ;       )
-    ;     )
-    ;   (main-cheats)
-    ;   )
+    (with-profiler 'debug *profile-debug-color*
+      (let* ((s5-5 *debug-hook*)
+             (t9-12 (car s5-5)))
+        (while (not (null? s5-5))
+          ((the-as (function none) t9-12))
+          (set! s5-5 (cdr s5-5))
+          (set! t9-12 (car s5-5))
+          )
+        )
+      ; (main-cheats)
+      )
 
     ;; using the position of the in-game camera, update visiblity and matrices for rendering.
     ; (with-profiler 'camera *profile-camera-color*
