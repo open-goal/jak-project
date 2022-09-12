@@ -287,10 +287,10 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         }
       case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
         if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_t = coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                                    add.get_objects_typespec()));
           auto new_child = TP_Type::make_from_integer_constant_plus_var(
-              existing.get_integer_constant(),
-              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
-                                                           add.get_objects_typespec())));
+              existing.get_integer_constant(), new_t, new_t);
           *changed = (new_child != existing);
           return new_child;
         } else {
