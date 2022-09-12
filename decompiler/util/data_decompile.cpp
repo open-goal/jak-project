@@ -1550,12 +1550,14 @@ goos::Object decompile_pair(const DecompilerLabel& label,
                             const LinkedObjectFile* file) {
   if ((label.offset % 8) != 2) {
     if ((label.offset % 4) != 0) {
-      throw std::runtime_error(fmt::format("Invalid alignment for pair {}\n", label.offset % 16));
+      throw std::runtime_error(
+          fmt::format("Invalid alignment for pair {} at {}\n", label.offset % 16, label.name));
     } else {
       auto& word = words.at(label.target_segment).at(label.offset / 4);
       if (word.kind() != LinkedWord::EMPTY_PTR) {
         throw std::runtime_error(
-            fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
+            fmt::format("Based on alignment, expected to get empty list for pair at {}, but didn't",
+                        label.name));
       }
       return pretty_print::to_symbol("'()");
     }
