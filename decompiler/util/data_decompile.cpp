@@ -720,6 +720,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
     // volume is fixed point, and floats should round towards zero, so we convert specific ints
     // to better-looking floats that end up being the same value.
     // there should be a more automated way to do this, but i am a bit lazy.
+    // TODO try fixed point print i made some time ago
     switch (volume) {
       case 0x2cc:
         volf = 70;
