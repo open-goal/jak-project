@@ -3076,15 +3076,16 @@
   (bucket-315       315)  ;; effects
   (tex-all-warp     316)  ;; tex
   (bucket-317       317)  ;; mercneric
-  (bucket-318       318)  ;; debug, no zbuf
+
+  (debug-no-zbuf1   318)  ;; debug, no zbuf
   (tex-all-map      319)  ;; tex
   (bucket-320       320)  ;; hud
-  (bucket-321       321)  ;; hud letterbox, no zbuf
+  (screen-filter    321)  ;; hud letterbox, no zbuf
   (bucket-322       322)  ;; hud
   (bucket-323       323)  ;; hud
-  (bucket-324   324)  ;; debug
-  (debug-no-zbuf 325)  ;; debug
-  (debug-unknown-326 326)
+  (debug2           324)  ;; debug
+  (debug-no-zbuf2   325)  ;; debug
+  (debug3           326)
   )
 
 ;; TODO - names in `render` menu
@@ -5712,6 +5713,16 @@
   (movie2   18) ;; 0x40000
   )
 
+(defenum load-buffer-mode
+  :type uint32
+  (small-edge 0)
+  (small-center 1)
+  (medium 2)
+  (large 3)
+  (borrow 4)
+  (ten 10)
+  )
+
 (deftype level-load-info (basic)
   ((name-list           symbol 6  :offset-assert 4 :score -1)
    (index               int16     :offset-assert 28)
@@ -5723,7 +5734,7 @@
    (taskname            symbol    :offset 20)
    (other-name-1        symbol    :offset 24)
    (packages            pair      :offset-assert 32) ;; guess on type
-   (memory-mode         uint32    :offset-assert 36)
+   (memory-mode         load-buffer-mode    :offset-assert 36)
    (music-bank          symbol     :offset-assert 40)
    (ambient-sounds      symbol     :offset-assert 44)
    (sound-reverb        float     :offset-assert 48)
@@ -5796,16 +5807,6 @@
   )
 (declare-type entity-links-array inline-array-class)
 (declare-type game-text-info basic)
-
-(defenum load-buffer-mode
-  :type uint32
-  (small-edge 0)
-  (small-center 1)
-  (medium 2)
-  (large 3)
-  (borrow 4)
-  (ten 10)
-  )
 
 (declare-type game-text-id uint32)
 (declare-type engine basic)
@@ -5979,7 +5980,7 @@
     (alloc-levels-if-needed (_type_ symbol) none 21)
     (load-commands-set! (_type_ pair) none 22) ;; (update-vis-volumes (_type_) none 22)
     (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
-    (load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
+    (alt-load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
     (level-group-method-25 () none 25) ;; (level-status (_type_ symbol) symbol 25)
     (level-group-method-26 () none 26)
     (level-group-method-27 () none 27)
@@ -11622,12 +11623,12 @@
     (want-display-level (_type_ symbol symbol) int 13)
     (want-vis-level (_type_ symbol) none 14)
     (want-force-vis (_type_ symbol symbol) int 15)
-    (execute-command (_type_ pair) none 16)
+    (want-force-inside (_type_ symbol symbol) none 16)
     (execute-commands-up-to (_type_ float) none 17)
     (backup-load-state-and-set-cmds (_type_ pair) int 18)
     (restore-load-state-and-cleanup (_type_) int 19)
     (restore-load-state (_type_) int 20)
-    (set-force-inside! (_type_ symbol symbol) none 21)
+    (add-borrow-levels (_type_) none 21)
     )
   )
 
@@ -19945,12 +19946,12 @@
     (progress-method-24 () none 24) ;; (draw-fuel-cell-screen (_type_ int) none 24)
     (progress-method-25 () none 25) ;; (draw-money-screen (_type_ int) none 25)
     (progress-method-26 () none 26) ;; (draw-buzzer-screen (_type_ int) none 26)
-    (progress-method-27 () none 27) ;; (draw-notice-screen (_type_) none 27)
+    (can-go-back? (_type_) symbol 27) ;; (draw-notice-screen (_type_) none 27)
     (progress-method-28 () none 28) ;; (draw-options (_type_ int int float) none 28)
     (progress-method-29 () none 29) ;; (respond-common (_type_) none 29)
     (progress-method-30 () none 30) ;; (respond-progress (_type_) none 30)
     (progress-method-31 () none 31) ;; (respond-memcard (_type_) none 31)
-    (progress-method-32 () none 32) ;; (can-go-back? (_type_) symbol 32)
+    (progress-method-32 () none 32)
     )
   )
 
@@ -21643,7 +21644,7 @@
 ;; subdivide                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *merc-global-stats* object) ;; merc-global-stats
+(define-extern *merc-global-stats* merc-global-stats)
 ;; (define-extern clear-tr-stat function) ;; (function tr-stat none)
 (define-extern *stat-string-tfrag* string)
 (define-extern *stat-string-tfrag-scissor* string)
@@ -21653,14 +21654,14 @@
 ;; (define-extern update-subdivide-settings! function) ;; (function subdivide-settings math-camera int none)
 (define-extern *subdivide-settings* subdivide-settings)
 ;; (define-extern set-tfrag-dists! function) ;; (function tfrag-dists none)
-;; (define-extern *terrain-context* object) ;; terrain-context
-;; (define-extern GSH_ENABLE object) ;; symbol
-;; (define-extern GSH_BUCKET object) ;; bucket-id
-;; (define-extern GSH_WHICH_STAT object) ;; int
-;; (define-extern GSH_MAX_DISPLAY object) ;; basic
-;; (define-extern GSH_TIME object) ;; int
+(define-extern *terrain-context* terrain-context)
+(define-extern GSH_ENABLE symbol)
+(define-extern GSH_BUCKET bucket-id)
+(define-extern GSH_WHICH_STAT int)
+(define-extern GSH_MAX_DISPLAY basic)
+(define-extern GSH_TIME int)
 (define-extern *perf-stats* perf-stat-array)
-;; (define-extern *gomi-stats-hack* object) ;; (inline-array perf-stat)
+(define-extern *gomi-stats-hack* (inline-array perf-stat))
 (define-extern start-perf-stat-collection (function none))
 (define-extern end-perf-stat-collection (function none))
 (define-extern print-perf-stats (function none))
@@ -24624,8 +24625,8 @@
 ;; load-state                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *display-load-commands* object) ;; symbol
-;; (define-extern *backup-load-state* object) ;; load-state
+(define-extern *display-load-commands* symbol)
+(define-extern *backup-load-state* load-state)
 (define-extern *load-state* load-state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27862,11 +27863,11 @@
 (define-extern sphere-in-view-frustum? (function sphere symbol))
 (define-extern line-in-view-frustum? (function vector vector symbol))
 (define-extern vis-cull (function int symbol))
-;; (define-extern vis-cull-debug function)
+(define-extern vis-cull-debug (function work-area int symbol))
 (define-extern error-sphere (function drawable-error string none))
 (define-extern *edit-instance* string)
 (define-extern *instance-mem-usage* memory-usage-block)
-;; (define-extern find-instance-by-name-level function)
+(define-extern find-instance-by-name-level (function string level prototype-bucket))
 (define-extern find-instance-by-name (function string prototype-bucket))
 ;; (define-extern prototypes-game-visible-set! function)
 ;; (define-extern find-instance-by-index function) ;; (function type int bsp-header prototype-bucket)
@@ -28905,7 +28906,7 @@
 ;; (define-extern progress-init-by-other function) ;; (function none :behavior progress)
 ;; (define-extern set-ring-position function)
 (define-extern activate-progress (function process symbol none))
-;; (define-extern deactivate-progress function) ;; (function none)
+(define-extern deactivate-progress (function none))
 (define-extern hide-progress-screen (function none))
 (define-extern progress-allowed? (function symbol))
 ;; (define-extern menu-update-purchase-secrets function)

@@ -79,7 +79,7 @@ enum class BucketId {
 }
 
 namespace jak2 {
-enum class BucketId { DEBUG_NO_ZBUF = 325, MAX_BUCKETS = 327 };
+enum class BucketId { DEBUG_NO_ZBUF = 325, DEBUG = 326, MAX_BUCKETS = 327 };
 }
 
 enum class BucketCategory {

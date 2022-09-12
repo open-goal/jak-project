@@ -90,6 +90,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
 
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x8000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {

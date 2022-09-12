@@ -2463,6 +2463,18 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 
   out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
 
+  if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
+      in_type.last_arg() == TypeSpec("array") && input_types[Register(Reg::GPR, arg_regs[2])]) {
+    // array new:
+    if (input_types[Register(Reg::GPR, arg_regs[2])]->type &&
+        input_types[Register(Reg::GPR, arg_regs[2])]->type->kind ==
+            TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(TypeSpec(
+          "array",
+          {input_types[Register(Reg::GPR, arg_regs[2])]->type->get_type_objects_typespec()}));
+    }
+  }
+
   // we can also update register usage here.
   m_read_regs.clear();
   m_arg_vars.clear();

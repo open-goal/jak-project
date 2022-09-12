@@ -134,6 +134,16 @@ Form* try_cast_simplify(Form* in,
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 
+    if (!fc && env.version == GameVersion::Jak2) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        ASSERT((s64)*ic == (s64)(s32)*ic);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        fc = f;
+      }
+    }
+
     if (fc) {
       double div = (double)*fc / METER_LENGTH;  // GOOS will use doubles here
       if (div * METER_LENGTH == *fc) {
