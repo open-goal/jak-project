@@ -112,7 +112,7 @@ This will create an image with all required dependencies and already built.
 docker run -v "$(pwd)"/build:/home/jak/jak-project/build -it jak bash
 ```
 
-Note: If you change the content of the `build/` directory you'll need to rerun the `build` command. Alteratively you can get the build via `docker cp`.
+Note: If you change the content of the `build/` directory you'll need to rerun the `build` command. Alternatively you can get the build via `docker cp`.
 
 This will link your `build/` folder to the images so can validate your build or test it on an external device. 
 

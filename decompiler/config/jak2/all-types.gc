@@ -29843,21 +29843,43 @@
 ;; mysql-nav-graph                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++mysql-nav-graph:mysql-save-flag
+(defenum mysql-save-flag
+  :type uint32
+  :bitfield #t
+  (delete 1)
+  (update 2)
+  (insert 3)
+  )
+;; ---mysql-nav-graph:mysql-save-flag
 
+;; +++mysql-nav-graph:nav-node-flag
+(defenum nav-node-flag
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4))
+;; ---mysql-nav-graph:nav-node-flag
+
+(declare-type mysql-nav-edge structure)
 (deftype mysql-nav-node (structure)
-  ((mysql-save-flag  uint32         :offset-assert 0)
+  ((mysql-save-flag  mysql-save-flag         :offset-assert 0)
    (runtime-id       uint32         :offset-assert 4)
-   (temp-edge-list   basic          :offset-assert 8)
+   (temp-edge-list   (inline-array mysql-nav-edge)          :offset-assert 8)
    (level-node-index int32          :offset-assert 12)
    (cam-dist         float          :offset-assert 16)
    (visible          basic          :offset-assert 20)
    (nav_node_id      uint32         :offset-assert 24)
    (nav_graph_id     uint32         :offset-assert 28)
    (position         vector :inline :offset-assert 32)
-   (level_name       basic          :offset-assert 48)
+   (level_name       symbol         :offset-assert 48)
    (angle            float          :offset-assert 52)
    (radius           float          :offset-assert 56)
-   (nav_node_flag    uint32         :offset-assert 60)
+   (nav_node_flag    nav-node-flag         :offset-assert 60)
    (nav_mesh_id      uint32         :offset-assert 64)
    )
   :pack-me
@@ -29865,25 +29887,70 @@
   :size-assert         #x44
   :flag-assert         #xb00000044
   (:methods
-    (mysql-nav-node-method-9 () none 9)
-    (mysql-nav-node-method-10 () none 10)
+    (exec-sql!
+      "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
+      (_type_) symbol 9)
+    (temp-edge-size
+      "Returns the number of [[mysql-nav-edge]] stored in the `temp-edge-list`"
+      (_type_) int 10)
     )
   )
 
-#|
 (deftype mysql-nav-node-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             mysql-nav-node :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
+
+;; +++mysql-nav-graph:nav-directionality
+(defenum nav-directionality
+  :type uint32
+  :bitfield #f
+  (default 0)
+  (directed 1)
+  (bi_directional 2))
+;; ---mysql-nav-graph:nav-directionality
+
+;; +++mysql-nav-graph:nav-clock-mask
+(defenum nav-clock-mask
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #t
+  (phase-1 0)
+  (phase-1a 1)
+  (phase-2 2)
+  (phase-2a 3)
+  (phase-3 4)
+  (phase-3a 5)
+  (phase-4 6)
+  (phase-4a 7))
+;; ---mysql-nav-graph:nav-clock-mask
+
+;; +++mysql-nav-graph:nav-clock-type
+(defenum nav-clock-type
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #f
+  (no-clock 0)
+  (clock2 1)
+  (clock3 2)
+  (clock4 3))
+;; ---mysql-nav-graph:nav-clock-mask
+
+;; +++mysql-nav-graph:nav-minimap-edge-flag
+(defenum nav-minimap-edge-flag
+  "This string value is stored in their SQL database"
+  :type int32
+  :bitfield #t
+  (pass-red 0)
+  (pass-green 1)
+  (pass-yellow 2)
+  (pass-blue 3))
+;; ---mysql-nav-graph:nav-minimap-edge-flag
 
 (deftype mysql-nav-edge (structure)
-  ((mysql-save-flag   uint32          :offset-assert 0)
+  ((mysql-save-flag   mysql-save-flag          :offset-assert 0)
    (runtime-id        uint32          :offset-assert 4)
    (runtime-node-id-1 int32           :offset-assert 8)
    (runtime-node-id-2 int32           :offset-assert 12)
@@ -29892,39 +29959,34 @@
    (nav_graph_id      uint32          :offset-assert 24)
    (nav_node_id_1     uint32          :offset-assert 28)
    (nav_node_id_2     uint32          :offset-assert 32)
-   (directionality    uint32          :offset-assert 36)
+   (directionality    nav-directionality          :offset-assert 36)
    (speed_limit       float           :offset-assert 40)
    (density           float           :offset-assert 44)
    (traffic_edge_flag int32           :offset-assert 48)
-   (nav_clock_mask    uint32          :offset-assert 52)
-   (nav_clock_type    uint32          :offset-assert 56)
+   (nav_clock_mask    nav-clock-mask          :offset-assert 52)
+   (nav_clock_type    nav-clock-type          :offset-assert 56)
    (width             float           :offset-assert 60)
-   (minimap_edge_flag int32           :offset-assert 64)
+   (minimap_edge_flag nav-minimap-edge-flag           :offset-assert 64)
    )
   :pack-me
   :method-count-assert 10
   :size-assert         #x44
   :flag-assert         #xa00000044
   (:methods
-    (mysql-nav-edge-method-9 () none 9)
-    )
+    (exec-sql!
+      "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
+      (_type_) symbol 9))
   )
 
-#|
 (deftype mysql-nav-edge-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             mysql-nav-edge :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype mysql-nav-visnode (structure)
-  ((mysql-save-flag uint32  :offset-assert 0)
+  ((mysql-save-flag mysql-save-flag  :offset-assert 0)
    (runtime-node-id int32   :offset-assert 4)
    (runtime-edge-id int32   :offset-assert 8)
    (nav_visnode_id  uint32  :offset-assert 12)
@@ -29936,24 +29998,18 @@
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (mysql-nav-visnode-method-9 () none 9)
-    )
+    (exec-sql!
+      "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
+      (_type_) symbol 9))
   )
-|#
 
-#|
 (deftype mysql-nav-visnode-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             mysql-nav-visnode :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype mysql-nav-graph-level-info (structure)
   ((level         basic   :offset-assert 0)
    (level-id      uint32  :offset-assert 4)
@@ -29961,48 +30017,71 @@
    (branch-count  int32   :offset-assert 12)
    (to-link-count int32   :offset-assert 16)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype mysql-nav-graph (basic)
   ((nav_graph_id            uint32     :offset-assert 4)
-   (node-array              basic      :offset-assert 8)
-   (edge-array              basic      :offset-assert 12)
-   (visnode-array           basic      :offset-assert 16)
+   (node-array              mysql-nav-node-array      :offset-assert 8)
+   (edge-array              mysql-nav-edge-array      :offset-assert 12)
+   (visnode-array           mysql-nav-visnode-array      :offset-assert 16)
    (level-info-array-length int32      :offset-assert 20)
    (level-info-last-lookup  int32      :offset-assert 24)
-   (level-info-array        UNKNOWN 32 :offset-assert 28)
+   (level-info-array        mysql-nav-graph-level-info 32 :inline :offset-assert 28)
    )
   :method-count-assert 21
   :size-assert         #x41c
   :flag-assert         #x150000041c
   (:methods
-    (mysql-nav-graph-method-9 () none 9)
-    (mysql-nav-graph-method-10 () none 10)
-    (mysql-nav-graph-method-11 () none 11)
-    (mysql-nav-graph-method-12 () none 12)
-    (mysql-nav-graph-method-13 () none 13)
-    (mysql-nav-graph-method-14 () none 14)
-    (mysql-nav-graph-method-15 () none 15)
-    (mysql-nav-graph-method-16 () none 16)
-    (mysql-nav-graph-method-17 () none 17)
-    (mysql-nav-graph-method-18 () none 18)
-    (mysql-nav-graph-method-19 () none 19)
-    (mysql-nav-graph-method-20 () none 20)
+    (new (symbol type int string) _type_ 0)
+    (init-from-sql!
+      "Query the database and initialize the [[mysql-nav-graph]] and all it's related components"
+      (_type_ string string) symbol 9)
+    (exec-sql! (_type_) symbol 10)
+    (indexof-nav-node
+      "Iterate through the `node-array` and return the index for the first [[mysql-nav-node]] whom's `nav_node_id` matches the provided id
+       returns `-1` if none is found"
+      (_type_ int) int 11)
+    (indexof-nav-edge
+      "Iterate through the `edge-array` and return the index for the first [[mysql-nav-edge]] whom's `nav_edge_id` matches the provided id
+       returns `-1` if none is found"
+      (_type_ int) int 12)
+    (alloc-new-node!
+      "Allocates a new `[[mysql-nav-node]]`, if `node-array`'s `length` exceeds `3000` return `-1`
+       otherwise, return the new size of the array"
+      (_type_) int 13)
+    (alloc-new-edge!
+      "Allocates a new `[[mysql-nav-edge]]`, if `edge-array`'s `length` exceeds `5000` return `-1`
+       otherwise, return the new size of the array"
+      (_type_) int 14)
+    (indexof-visnode
+      "Returns the index in the `visnode-array` whom's [[mysql-nav-visnode]] has the provided `runtime-edge-id` and `runtime-node-id`
+       if none exist, return `-1`"
+      (_type_ int int) int 15)
+    (alloc-new-visnode!
+      "Potentially allocates a new `[[mysql-nav-visnode]]`:
+       - if `visnode-array`'s `length` exceeds `3000` return `-1`
+       - otherwise, if the node already exists, TODO
+         - if the node does not already exist, create it!"
+      (_type_ int int) int 16)
+    (mysql-nav-graph-method-17
+      (_type_) none 17)
+    (lookup-level-info2
+      "TODO - this was originally called `lookup-level-info` but it clashes with the function defined in `level`"
+      (_type_ mysql-nav-node symbol) mysql-nav-graph-level-info 18)
+    (mysql-nav-graph-method-19 (_type_) none 19)
+    (mysql-nav-graph-method-20 (_type_) none 20)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-graph-editor               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-graph-command (structure)
   ((com-type uint32         :offset-assert 0)
    (id       int32          :offset-assert 4)
@@ -30013,19 +30092,13 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype nav-graph-command-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             nav-graph-command :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 (deftype nav-graph-editor (process)
   ((nav-graph           basic                  :offset-assert 128)
@@ -30108,12 +30181,12 @@
     (nav-graph-editor-method-59 () none 59)
     (nav-graph-editor-method-60 () none 60)
     (nav-graph-editor-method-61 () none 61)
-    (nav-graph-editor-method-62 () none 62)
+    (nav-graph-editor-method-62 (_type_ symbol symbol) none 62)
     (nav-graph-editor-method-63 () none 63)
     )
   )
 
-;; (define-extern *nav-graph-editor* object)
+(define-extern *nav-graph-editor* nav-graph-editor)
 ;; (define-extern nav-graph-editor-init-by-other function)
 (define-extern run-nav-graph-editor (function symbol none))
 (define-extern get-nav-graph-editor (function nav-graph-editor))
