@@ -58,7 +58,7 @@
 
 ;; definition of type mysql-nav-node-array
 (deftype mysql-nav-node-array (inline-array-class)
-  ((data mysql-nav-node :dynamic :offset-assert  16)
+  ((data mysql-nav-node :inline :dynamic :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -141,7 +141,7 @@
 
 ;; definition of type mysql-nav-edge-array
 (deftype mysql-nav-edge-array (inline-array-class)
-  ((data mysql-nav-edge :dynamic :offset-assert  16)
+  ((data mysql-nav-edge :inline :dynamic :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -203,7 +203,7 @@
 
 ;; definition of type mysql-nav-visnode-array
 (deftype mysql-nav-visnode-array (inline-array-class)
-  ((data mysql-nav-visnode :dynamic :offset-assert  16)
+  ((data mysql-nav-visnode :inline :dynamic :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -342,7 +342,7 @@
      -1
      )
     (else
-      (let ((gp-0 (the-as mysql-nav-node (+ (+ (* 80 (-> obj node-array length)) 12) (the-as int (-> obj node-array)))))
+      (let ((gp-0 (-> obj node-array data (-> obj node-array length)))
             (s5-0 (-> obj node-array length))
             )
         (+! (-> obj node-array length) 1)
@@ -387,7 +387,7 @@
   "Returns the index in the `visnode-array` whom's [[mysql-nav-visnode]] has the provided `runtime-edge-id` and `runtime-node-id`
        if none exist, return `-1`"
   (dotimes (v1-0 (-> obj visnode-array length))
-    (let ((a3-2 (the-as mysql-nav-visnode (+ (+ (* v1-0 32) 12) (the-as int (-> obj visnode-array))))))
+    (let ((a3-2 (-> obj visnode-array data v1-0)))
       (if (and (= (-> a3-2 runtime-edge-id) edge-id) (= (-> a3-2 runtime-node-id) node-id))
           (return v1-0)
           )
@@ -418,9 +418,7 @@
           (return v1-3)
           )
         )
-      (let ((v1-9
-              (the-as mysql-nav-visnode (+ (+ (* (-> obj visnode-array length) 32) 12) (the-as int (-> obj visnode-array))))
-              )
+      (let ((v1-9 (-> obj visnode-array data (-> obj visnode-array length)))
             (v0-1 (-> obj visnode-array length))
             )
         (+! (-> obj visnode-array length) 1)
@@ -806,7 +804,7 @@
   "Iterate through the `node-array` and return the index for the first [[mysql-nav-node]] whom's `nav_node_id` matches the provided id
        returns `-1` if none is found"
   (dotimes (v1-0 (-> obj node-array length))
-    (if (= node-id (-> (the-as mysql-nav-node (+ (+ (* 80 v1-0) 12) (the-as int (-> obj node-array)))) nav_node_id))
+    (if (= node-id (-> (the-as mysql-nav-node (-> obj node-array data v1-0)) nav_node_id))
         (return v1-0)
         )
     )
@@ -872,10 +870,7 @@
           (let ((s1-0 0))
             (while (< s1-0 (-> s2-1 len))
               (when (= (string->int (the-as string (-> s2-1 data (+ s1-0 9)))) (-> obj nav_graph_id))
-                (let ((nav-node
-                        (the-as mysql-nav-node (+ (+ (* 80 (-> obj node-array length)) 12) (the-as int (-> obj node-array))))
-                        )
-                      )
+                (let ((nav-node (-> obj node-array data (-> obj node-array length))))
                   (set! (-> nav-node mysql-save-flag) (mysql-save-flag))
                   (set! (-> nav-node runtime-id) (the-as uint (-> obj node-array length)))
                   (set! (-> nav-node nav_graph_id) (-> obj nav_graph_id))
@@ -1144,10 +1139,7 @@
           (let ((s2-3 0))
             (while (< s2-3 (-> s3-5 len))
               (when (= (string->int (the-as string (-> s3-5 data (+ s2-3 2)))) (-> obj nav_graph_id))
-                (let ((nav-visnode
-                        (the-as mysql-nav-visnode (+ (+ (* (-> obj visnode-array length) 32) 12) (the-as int (-> obj visnode-array))))
-                        )
-                      )
+                (let ((nav-visnode (-> obj visnode-array data (-> obj visnode-array length))))
                   (set! (-> nav-visnode mysql-save-flag) (mysql-save-flag))
                   (set! (-> nav-visnode nav_graph_id) (-> obj nav_graph_id))
                   (set! (-> nav-visnode nav_edge_id) (the-as uint (string->int (the-as string (-> s3-5 data s2-3)))))
@@ -1193,7 +1185,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod mysql-nav-graph-method-17 mysql-nav-graph ((obj mysql-nav-graph))
   (dotimes (v1-0 (-> obj node-array length))
-    (set! (-> (the-as mysql-nav-node (+ (+ (* 80 v1-0) 12) (the-as int (-> obj node-array)))) temp-edge-list)
+    (set! (-> (the-as mysql-nav-node (-> obj node-array data v1-0)) temp-edge-list)
           (the-as (inline-array mysql-nav-edge) #f)
           )
     )
@@ -1203,8 +1195,7 @@
   (countdown (v1-7 (-> obj edge-array length))
     (let ((a1-17 (the-as mysql-nav-edge (+ (+ (* 80 v1-7) 12) (the-as int (-> obj edge-array))))))
       (when (zero? (logand (-> a1-17 mysql-save-flag) (mysql-save-flag delete)))
-        (let ((a2-8 (the-as mysql-nav-node (+ (+ (* 80 (-> a1-17 runtime-node-id-1)) 12) (the-as int (-> obj node-array)))))
-              )
+        (let ((a2-8 (-> obj node-array data (-> a1-17 runtime-node-id-1))))
           (when (zero? (logand (-> a2-8 mysql-save-flag) (mysql-save-flag delete)))
             (cond
               ((-> a2-8 temp-edge-list)
@@ -1243,17 +1234,15 @@
     0
     )
   (dotimes (s5-0 (-> obj node-array length))
-    (let ((s4-0 (the-as mysql-nav-node (+ (+ (* 80 s5-0) 12) (the-as int (-> obj node-array))))))
-      (when (zero? (logand (-> (the-as (pointer uint32) s4-0)) 2))
+    (let ((s4-0 (-> obj node-array data s5-0)))
+      (when (zero? (logand (-> s4-0 mysql-save-flag) (mysql-save-flag delete)))
         (let ((v1-10 (lookup-level-info2 obj s4-0 #t)))
           (set! (-> s4-0 level-node-index) (-> v1-10 node-count))
           (+! (-> v1-10 node-count) 1)
           (let ((a0-10 (the-as mysql-nav-edge (-> s4-0 temp-edge-list))))
             (while a0-10
               (when (zero? (logand (-> a0-10 mysql-save-flag) (mysql-save-flag delete)))
-                (if (!= (-> v1-10 level)
-                        (l.wu (+ (+ (* 80 (-> a0-10 runtime-node-id-2)) 12) (the-as int (-> obj node-array)) 48))
-                        )
+                (if (!= (-> v1-10 level) (-> obj node-array data (-> a0-10 runtime-node-id-2) level_name))
                     (+! (-> v1-10 to-link-count) 1)
                     )
                 (+! (-> v1-10 branch-count) 1)
@@ -1282,7 +1271,7 @@
 (defmethod exec-sql! mysql-nav-graph ((obj mysql-nav-graph))
   (format #t "Saving nodes ...~%")
   (dotimes (s5-0 (-> obj node-array length))
-    (let ((a0-3 (the-as mysql-nav-node (+ (+ (* 80 s5-0) 12) (the-as int (-> obj node-array))))))
+    (let ((a0-3 (-> obj node-array data s5-0)))
       (set! (-> a0-3 nav_graph_id) (-> obj nav_graph_id))
       (if (not (exec-sql! a0-3))
           (return #f)
@@ -1294,23 +1283,17 @@
   (dotimes (s5-1 (-> obj edge-array length))
     (let ((a0-7 (the-as mysql-nav-edge (+ (+ (* 80 s5-1) 12) (the-as int (-> obj edge-array))))))
       (set! (-> a0-7 nav_graph_id) (-> obj nav_graph_id))
-      (set! (-> a0-7 nav_node_id_1)
-            (l.wu (+ (the-as uint (-> obj node-array)) (* 80 (-> a0-7 runtime-node-id-1)) 36))
-            )
-      (set! (-> a0-7 nav_node_id_2)
-            (l.wu (+ (the-as uint (-> obj node-array)) (* 80 (-> a0-7 runtime-node-id-2)) 36))
-            )
+      (set! (-> a0-7 nav_node_id_1) (-> obj node-array data (-> a0-7 runtime-node-id-1) nav_node_id))
+      (set! (-> a0-7 nav_node_id_2) (-> obj node-array data (-> a0-7 runtime-node-id-2) nav_node_id))
       (exec-sql! a0-7)
       )
     )
   (format #t "Done.~%")
   (format #t "Saving visible nodes ...~%")
   (dotimes (s5-2 (-> obj visnode-array length))
-    (let ((a0-11 (the-as mysql-nav-visnode (+ (+ (* s5-2 32) 12) (the-as int (-> obj visnode-array))))))
+    (let ((a0-11 (-> obj visnode-array data s5-2)))
       (set! (-> a0-11 nav_graph_id) (-> obj nav_graph_id))
-      (set! (-> a0-11 nav_node_id)
-            (l.wu (+ (the-as uint (-> obj node-array)) (* 80 (-> a0-11 runtime-node-id)) 36))
-            )
+      (set! (-> a0-11 nav_node_id) (-> obj node-array data (-> a0-11 runtime-node-id) nav_node_id))
       (set! (-> a0-11 nav_edge_id)
             (l.wu (+ (the-as uint (-> obj edge-array)) (* 80 (-> a0-11 runtime-edge-id)) 32))
             )
