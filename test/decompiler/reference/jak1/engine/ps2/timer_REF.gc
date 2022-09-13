@@ -4,14 +4,18 @@
 ;; definition for function timer-reset
 ;; INFO: Return type mismatch int vs none.
 (defun timer-reset ((arg0 timer-bank))
+  (.sync.l)
   (set! (-> arg0 count) (the-as uint 0))
+  (.sync.l)
   0
   (none)
   )
 
 ;; definition for function timer-count
 (defun timer-count ((arg0 timer-bank))
+  (.sync.l)
   (let ((v0-0 (-> arg0 count)))
+    (.sync.l)
     v0-0
     )
   )
@@ -23,8 +27,11 @@
   (local-vars (v0-0 int))
   (let ((v1-0 (the-as uint #xfffffffe)))
     (.mfc0 v0-0 Status)
-    (logand v0-0 v1-0)
+    (let ((v0-1 (logand v0-0 v1-0)))
+      (.mtc0 Status v0-1)
+      )
     )
+  (.sync.p)
   0
   (none)
   )
@@ -35,7 +42,10 @@
 (defun enable-irq ()
   (local-vars (v0-0 int))
   (.mfc0 v0-0 Status)
-  (logior v0-0 1)
+  (let ((v0-1 (logior v0-0 1)))
+    (.mtc0 Status v0-1)
+    )
+  (.sync.p)
   0
   (none)
   )
