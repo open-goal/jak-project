@@ -764,6 +764,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     vif_interrupt_callback(bucket_id);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
   }
+  vif_interrupt_callback(m_bucket_renderers.size());
 
   // TODO ending data.
 }

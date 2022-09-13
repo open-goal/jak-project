@@ -4,7 +4,7 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/types2.h"
-#include "decompiler/util/goal_constants.h"
+#include "decompiler/util/type_utils.h"
 
 namespace decompiler::types2 {
 

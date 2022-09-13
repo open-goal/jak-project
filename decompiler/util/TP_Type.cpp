@@ -124,7 +124,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::FORMAT_STRING:
       return m_int == other.m_int;
     case Kind::INTEGER_CONSTANT_PLUS_VAR:
-      return m_int == other.m_int && m_ts == other.m_ts;
+      return m_int == other.m_int && m_ts == other.m_ts &&
+             m_method_from_type == other.m_method_from_type;
     case Kind::DYNAMIC_METHOD_ACCESS:
       return true;
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
@@ -185,9 +186,10 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("string");
     case Kind::INTEGER_CONSTANT:
       return TypeSpec("int");
-    case Kind::INTEGER_CONSTANT_PLUS_VAR:
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       return m_ts;
+    case Kind::INTEGER_CONSTANT_PLUS_VAR:
+      return m_method_from_type;
     case Kind::DYNAMIC_METHOD_ACCESS:
       return TypeSpec("object");
     case Kind::FORMAT_STRING:

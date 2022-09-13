@@ -111,6 +111,7 @@ def should_ignore_line(line):
             return True
     return False
 
+# TODO - ignore brackets inside strings!
 
 decomp_file_path = "./decompiler_out/{}/{}_disasm.gc".format(args.game, args.file)
 with open(decomp_file_path) as f:

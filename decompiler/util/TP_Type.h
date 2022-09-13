@@ -189,11 +189,14 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_from_integer_constant_plus_var(int64_t value, const TypeSpec& var_type) {
+  static TP_Type make_from_integer_constant_plus_var(int64_t value,
+                                                     const TypeSpec& var_type,
+                                                     const TypeSpec& sum_type) {
     TP_Type result;
     result.kind = Kind::INTEGER_CONSTANT_PLUS_VAR;
     result.m_int = value;
     result.m_ts = var_type;
+    result.m_method_from_type = sum_type;
     return result;
   }
 
@@ -393,7 +396,7 @@ class TP_Type {
 
  private:
   TypeSpec m_ts;
-  TypeSpec m_method_from_type;
+  TypeSpec m_method_from_type;  // hack, also stores sum type.
   int m_method_id = -1;
   std::string m_str;
   int64_t m_int = 0;

@@ -94,7 +94,7 @@ class TypeSpec {
   void modify_tag(const std::string& tag_name, const std::string& tag_value);
   void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
 
-  const std::string base_type() const { return m_type; }
+  const std::string& base_type() const { return m_type; }
 
   bool has_single_arg() const {
     if (m_arguments) {

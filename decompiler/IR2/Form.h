@@ -265,11 +265,14 @@ class StoreElement : public FormElement {
 
 /*!
  * Representing a value loaded from memory.  Not the destination.
- * Unclear if this should have some common base with store?
  */
 class LoadSourceElement : public FormElement {
  public:
-  LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind);
+  LoadSourceElement(Form* addr,
+                    int size,
+                    LoadVarOp::Kind kind,
+                    const std::optional<IR2_RegOffset>& load_source_ro,
+                    const TP_Type& ro_reg_type);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -289,6 +292,8 @@ class LoadSourceElement : public FormElement {
   Form* m_addr = nullptr;
   int m_size = -1;
   LoadVarOp::Kind m_kind;
+  std::optional<IR2_RegOffset> m_load_source_ro;
+  TP_Type m_ro_reg_type;
 };
 
 /*!
