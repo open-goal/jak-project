@@ -9,6 +9,8 @@ import shutil
 ## update reference like this
 ##    python3 ../scripts/update_decomp_reference.py ./failures ../test/decompiler/reference
 
+## TODO - this has a bug and isn't properly game specific
+
 def get_goal_files(root_dir):
 	return [f for file in os.walk(root_dir) for f in glob.glob(os.path.join(file[0], '*.gc'))]
 
