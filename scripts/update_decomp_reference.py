@@ -3,34 +3,36 @@ import glob
 import argparse
 import shutil
 
+from gsrc.utils import get_ref_path_from_filename
+
 ## Script to update failing _REF.gc files
 ## Instructions:
-##  run offline-test with the `--dump-mode` flag set. This generates a "failures" folder.
+##  run offline-test with the `--dump_current_output` flag set. This generates a "failures" folder.
 ## update reference like this
-##    python3 ../scripts/update_decomp_reference.py ./failures ../test/decompiler/reference
+##    python3 ../scripts/update_decomp_reference.py ./failures ../test/decompiler/reference --game [jak1|jak2]
 
-## TODO - this has a bug and isn't properly game specific
-
-def get_goal_files(root_dir):
-	return [f for file in os.walk(root_dir) for f in glob.glob(os.path.join(file[0], '*.gc'))]
+def get_failures(root_dir):
+    return [
+        f
+        for file in os.walk(root_dir)
+        for f in glob.glob(os.path.join(file[0], "*.gc"))
+    ]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(dest='diff', help='the failures folder')
-    parser.add_argument(dest='reference', help='the test/decompiler/reference folder')
+    parser.add_argument(dest="diff", help="the failures folder")
+    parser.add_argument(dest="reference", help="the test/decompiler/reference folder")
+    parser.add_argument("--game", help="The name of the game (jak1/jak2)", type=str)
     args = parser.parse_args()
 
-    location_map = {os.path.basename(x) : x for x in get_goal_files(args.reference)}
+    for replacement in get_failures(args.diff):
+        obj_name = os.path.basename(replacement).removesuffix(".gc").replace("_REF", "")
 
-    for replacement in get_goal_files(args.diff):
-    	base = os.path.basename(replacement)
-    	if base not in location_map:
-    		print("Could not find file {}".format(base))
-    		exit(-1)
-    	print("replace {} with {}".format(location_map[base], replacement))
-    	shutil.copyfile(replacement, location_map[base])
+        # Find gsrc path, given game-name
+        ref_path = get_ref_path_from_filename(args.game, obj_name, args.reference)
 
-
+        print("replace {} with {}".format(ref_path, replacement))
+        shutil.copyfile(replacement, ref_path)
 
 if __name__ == "__main__":
     main()
