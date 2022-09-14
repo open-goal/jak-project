@@ -7421,8 +7421,8 @@
   :flag-assert         #x1300000fb0
   (:methods
     (new (symbol type int) _type_ 0)
-    (add-setting (_type_ process symbol object object object) none 9)
-    (persist-with-delay (_type_ process time-frame object object float object) none 10)
+    (add-setting "Originally called `setting-set` see (anon-function 48 script)" (_type_ process symbol object object object) none 9)
+    (persist-with-delay "Originally called `setting-pers` see (anon-function 46 script)" (_type_ symbol time-frame symbol symbol float int) none 10)
     (set-setting (_type_ process symbol object object object) none 11)
     (remove-setting (_type_ process symbol) none 12)
     (kill-persister "Calls [[engine-pers::kill-matching]]" (_type_ engine-pers object) none 13)
@@ -8315,6 +8315,7 @@
 (defenum game-task
   :type uint8
   :bitfield #f
+  (unknown -1)
   (none 0)
   (complete 1)
   (dummy0 2)
@@ -11607,7 +11608,7 @@
    (vis-nick symbol :offset-assert 112)
    (command-list pair)
    (object-name string 256)
-   (object-status basic 256)
+   (object-status basic 256) ;; see (anon-function 25 script), should be an `entity-perm-status` but that's too small!
    )
   :method-count-assert 22
   :size-assert         #x878
@@ -11622,7 +11623,7 @@
     (want-display-level (_type_ symbol symbol) int 13)
     (want-vis-level (_type_ symbol) none 14)
     (want-force-vis (_type_ symbol symbol) int 15)
-    (execute-command (_type_ pair) none 16)
+    (execute-command (_type_ pair object) none 16)
     (execute-commands-up-to (_type_ float) none 17)
     (backup-load-state-and-set-cmds (_type_ pair) int 18)
     (restore-load-state-and-cleanup (_type_) int 19)
@@ -11884,7 +11885,7 @@
     (game-info-method-18 () none 18)
     (get-current-continue-point (_type_) continue-point 19)
     (get-continue-by-name (_type_ string) continue-point 20)
-    (set-continue! (_type_ basic) continue-point 21)
+    (set-continue! (_type_ basic symbol) continue-point 21)
     (game-info-method-22 () none 22)
     (game-info-method-23 () none 23)
     (game-info-method-24 () none 24)
@@ -12055,10 +12056,10 @@
   ;; field on-close uses ~A with a signed load
   (:methods
     (talker-speech-class-method-9 () none 9)
-    (talker-speech-class-method-10 () none 10)
+    (talker-speech-class-method-10 (_type_) none 10)
     (talker-speech-class-method-11 () none 11)
-    (talker-speech-class-method-12 () none 12)
-    (talker-speech-class-method-13 () none 13)
+    (talker-speech-class-method-12 (_type_ int) none 12)
+    (talker-speech-class-method-13 (_type_ int) none 13)
     )
   )
 
@@ -14034,11 +14035,13 @@
 ;; script-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type script-context structure)
 (deftype script-form (structure)
-  ((name string  :offset-assert 0)
-   (spec basic  :offset-assert 4)
-   (func basic  :offset-assert 8)
+  ((name symbol  :offset-assert   0)
+   (spec pair    :offset-assert   4) ;; a pair of forms/symbols ie. (return macro)
+   (func (function script-context object)   :offset-assert   8) ;; takes atleast 1 arg, probably the script-context WHICH IS ALL ARBITRARY DATA
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #xc
   :flag-assert         #xa0000000c
@@ -14048,26 +14051,25 @@
   )
 
 (deftype script-context (structure)
-  ((load-state load-state)
-   (key basic)
-   (process process)
-   (trans vector)
-   (side-effect? symbol)
-   (got-error? symbol)
-   (expr basic)
-   (param-count int32)
-   (param object 16)
-   (param-type object 16)
+  ((load-state   load-state    :offset-assert   0)
+   (key          basic         :offset-assert   4)
+   (process      process       :offset-assert   8)
+   (trans        vector        :offset-assert  12)
+   (side-effect? symbol        :offset-assert  16)
+   (got-error?   symbol        :offset-assert  20)
+   (expr         pair          :offset-assert  24)
+   (param-count  int32         :offset-assert  28)
+   (param        object     16 :offset-assert  32)
+   (param-type   object     16 :offset-assert  96)
    )
   :method-count-assert 12
   :size-assert         #xa0
   :flag-assert         #xc000000a0
-  ;; Failed to read fields.
   (:methods
     (new (symbol type basic process vector) _type_ 0)
-    (eval! (_type_ structure) pair 9)
-    (script-context-method-10 () none 10)
-    (script-context-method-11 () none 11)
+    (eval! "TODO - Argument can be a [[symbol]] or a [[pair]]" (_type_ object) object 9)
+    (script-context-method-10 (_type_ object pair) object 10)
+    (script-context-method-11 (_type_ pair pair symbol) symbol 11)
     )
   )
 
@@ -18178,6 +18180,7 @@
   (complete 8)
   (bit-9 9)
   (bit-10 10)
+  (entity-perm-status-12 12)
   )
 
 (deftype entity-perm (structure)
@@ -18256,7 +18259,7 @@
   ;; Failed to read fields.
   (:methods
     (entity-method-22 (_type_) _type_ 22) ;; (birth! (_type_) _type_ 22)
-    (entity-method-23 (_type_) _type_ 23) ;; (kill! (_type_) _type_ 23)
+    (kill! (_type_ ) _type_ 23) ;; (kill! (_type_) _type_ 23)
     (entity-method-24 () none 24) ;; (add-to-level! (_type_ level-group level actor-id) none 24)
     (entity-method-25 () none 25) ;; (remove-from-level! (_type_ level-group) _type_ 25)
     (entity-method-26 () none 26) ;; (get-level (_type_) level 26)
@@ -18308,7 +18311,7 @@
     (next-actor (_type_) entity-actor 27)
     (prev-actor (_type_) entity-actor 28)
     (entity-actor-method-29 () none 29) ;; (debug-print (_type_ symbol type) none 29)
-    (entity-actor-method-30 () none 30) ;; (dummy-30 (_type_ entity-perm-status symbol) none 30)
+    (entity-actor-method-30 (_type_ entity-perm-status symbol) none 30) ;; (dummy-30 (_type_ entity-perm-status symbol) none 30)
     (entity-actor-method-31 (_type_ vector vector vector object float) nav-mesh 31)
     (entity-actor-method-32 (_type_ vector vector nav-poly float) nav-poly 32)
     )
@@ -21469,8 +21472,11 @@
 (define-extern sound-set-volume (function sound-group float int))
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-set-ear-trans (function vector vector vector float int))
-(define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
-(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id)) ;; NOTE - the `vector` can also be #t
+(define-extern sound-play-by-name
+  "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
+   otherwise, an explicit [[vector]] can be provided"
+  (function sound-name sound-id int int int sound-group object sound-id :behavior process-drawable))
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id :behavior process-drawable))
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-stop (function sound-id int))
 (define-extern sound-continue (function sound-id int))
@@ -24625,7 +24631,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *display-load-commands* object) ;; symbol
-;; (define-extern *backup-load-state* object) ;; load-state
+(define-extern *backup-load-state* load-state) ;; 
 (define-extern *load-state* load-state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26042,8 +26048,8 @@
 (define-extern talker-surpress! (function none))
 ;; (define-extern talker-displayed? function)
 ;; (define-extern kill-current-talker function)
-;; (define-extern string->talker-speech function)
-;; (define-extern talker-spawn-func function)
+(define-extern string->talker-speech (function string talker-speech-class))
+(define-extern talker-spawn-func (function talker-speech-class process-tree vector basic int))
 ;; (define-extern talker-init function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26058,23 +26064,30 @@
 
 ;; (define-extern region-tree-execute function)
 (define-extern region-execute (function none))
-;; (define-extern region-prim-lookup-by-id function)
-;; (define-extern region-lookup-by-id function)
+(define-extern region-prim-lookup-by-id (function int drawable-region-prim))
+(define-extern region-lookup-by-id (function int region))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fma-sphere                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum fma-sphere-mode
+  :type uint32
+  :bitfield #t
+  (nav 0)
+  (kill-once 1)
+  (danger 2)
+  (deadly-overlap 3))
+
 (deftype fma-sphere (process-drawable)
-  ((first-time?  basic                       :offset-assert 196)
-   (mode         uint32                      :offset-assert 200)
-   (track-handle uint64                      :offset-assert 204)
-   (track-joint  int32                       :offset-assert 212)
-   (attack-id    uint32                      :offset-assert 216)
-   (duration     uint64                      :offset-assert 220)
-   (sphere       sphere              :inline :offset-assert 236)
-   (danger       traffic-danger-info :inline :offset-assert 252)
+  ((first-time?  symbol                      :offset-assert 200)
+   (mode         fma-sphere-mode                      :offset-assert 204)
+   (track-handle handle                      :offset-assert 208)
+   (track-joint  int32                       :offset-assert 216)
+   (attack-id    uint32                      :offset-assert 220)
+   (duration     time-frame                      :offset-assert 224)
+   (sphere       sphere              :inline :offset-assert 240)
+   (danger       traffic-danger-info :inline :offset-assert 256)
    )
   :method-count-assert 21
   :size-assert         #x136
@@ -26083,9 +26096,8 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern fma-sphere-init-by-other function)
+(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; script                         ;;
@@ -26093,10 +26105,10 @@
 
 (define-extern command-get-int (function object int int))
 (define-extern command-get-float (function object float float))
-(define-extern command-get-time (function object int int))
+(define-extern command-get-time (function object int time-frame))
 (define-extern command-get-param (function object object object))
 (define-extern command-get-quoted-param (function object object object))
-;; (define-extern command-get-process (function object process process :behavior camera-tracker))
+(define-extern command-get-process (function object symbol process))
 (define-extern command-get-entity
   "- If `search` is a [[process]] - return it's `entity`
    - If `search` is an [[entity]] - return it
@@ -26104,9 +26116,9 @@
    - If `search` is [[null?]] or [[empty]] or if no other condition passes, return `fallback`"
   (function object entity entity))
 (define-extern command-get-trans (function object vector vector))
-(define-extern key-assoc (function none))
-(define-extern *script-form* int)
-;; (define-extern level-from-heap function)
+(define-extern key-assoc "TODO [[vector4w]] is probably wrong!" (function object pair vector4w pair))
+(define-extern *script-form* (inline-array script-form))
+(define-extern level-from-heap (function int level))
 (define-extern *syntax-context* script-context)
 (define-extern *script-context* script-context)
 
@@ -26181,11 +26193,11 @@
 ;; (define-extern swingpole-init function)
 ;; (define-extern manipy-post function)
 (define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; (function vector entity-actor skeleton-group vector none :behavior manipy)
-;; (define-extern part-tracker-init function) ;; (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker)
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker)) ;; 
 ;; (define-extern part-tracker-track-root function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
 ;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
-;; (define-extern lightning-tracker-init function)
+(define-extern lightning-tracker-init (function lightning-spec time-frame symbol process-drawable vector vector none))
 ;; (define-extern process-grab? function) ;; (function process symbol :behavior camera-tracker)
 ;; (define-extern process-release? function) ;; (function process symbol :behavior process)
 ;; (define-extern camera-look-at function) ;; (function pair uint process :behavior camera-tracker)
@@ -28105,7 +28117,7 @@
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none)) ;;
 (define-extern reset-actors (function symbol none))
 (define-extern reset-cameras (function none))
-;; (define-extern entity-birth-no-kill function) ;; (function entity none)
+(define-extern entity-birth-no-kill (function entity none)) ;; 
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
 (define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
@@ -28499,7 +28511,7 @@
 ;; (define-extern *collectable-dummy-shadow-control* shadow-control)
 ;; (define-extern initialize-ammo-by-other function)
 ;; (define-extern initialize-upgrade-by-other function)
-;; (define-extern birth-pickup-at-point function) ;; (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process)
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; task-control                   ;;
@@ -28586,7 +28598,7 @@
 ;; (define-extern task-node-reset function)
 ;; (define-extern task-node-dump function)
 ;; (define-extern fail-mission-init-by-other function)
-;; (define-extern task-manager-init-by-other function)
+(define-extern task-manager-init-by-other (function game-task-node-info object none))
 ;; (define-extern task-manager-event-handler function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28746,7 +28758,7 @@
 ;; (define-extern hide-hud function) ;; (function none)
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function none)
-;; (define-extern show-hud function) ;; (function none)
+(define-extern show-hud (function object none)) ;; 
 ;; (define-extern hud-hidden? function) ;; (function symbol)
 ;; (define-extern set-hud-piece-position! function)
 ;; (define-extern set-as-offset-from! function)
