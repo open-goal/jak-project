@@ -11718,10 +11718,6 @@
   ; (no-auto-save 17)
   )
 
-(declare-type entity-perm-array inline-array-class)
-(declare-type continue-point basic)
-(declare-type game-save basic)
-
 (defenum game-feature
   :type uint64
   :bitfield #t
@@ -11774,6 +11770,10 @@
   (big-head)
   (little-head))
 
+(declare-type entity-perm-array inline-array-class)
+(declare-type continue-point basic)
+(declare-type game-save basic)
+(declare-type talker-speech-class structure)
 (deftype game-info (basic)
   ((mode                   symbol               :offset-assert   4)
    (save-name              string               :offset-assert   8)
@@ -11817,7 +11817,7 @@
    (sub-task-list          (array game-task-node-info) :offset-assert 252)
    (unknown-pad5 array :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
-   (unknown-pad6           uint32               :offset-assert 264)
+   (unknown-pad6           (array talker-speech-class)               :offset-assert 264)
    (level-opened           uint8             32 :offset-assert 268)
    (total-deaths           int32                :offset-assert 300)
    (continue-deaths        int32                :offset-assert 304)
@@ -12056,11 +12056,10 @@
   :method-count-assert 14
   :size-assert         #x18
   :flag-assert         #xe00000018
-  ;; field on-close uses ~A with a signed load
   (:methods
-    (talker-speech-class-method-9 () none 9)
+    (talker-speech-class-method-9 (_type_) symbol 9)
     (talker-speech-class-method-10 (_type_) none 10)
-    (talker-speech-class-method-11 () none 11)
+    (talker-speech-class-method-11 (_type_) none 11)
     (talker-speech-class-method-12 (_type_ int) none 12)
     (talker-speech-class-method-13 (_type_ int) none 13)
     )
@@ -12073,25 +12072,25 @@
    (total-off-time time-frame                      :offset-assert 160)
    (start-time     time-frame                      :offset-assert 168)
    (state-time     time-frame                      :offset-assert 176)
-   (voicebox       uint64                      :offset-assert 184)
-   (voice-id       uint32                      :offset-assert 192)
-   (message-id     uint32                      :offset-assert 196)
+   (voicebox       handle                      :offset-assert 184)
+   (voice-id       sound-id                      :offset-assert 192)
+   (message-id     sound-id                      :offset-assert 196)
    (region         region                      :offset-assert 200)
    (interp         float                       :offset-assert 204)
-   (save?          basic                       :offset-assert 208)
+   (save?          symbol                      :offset-assert 208)
    )
   :method-count-assert 18
   :size-assert         #xd4
   :flag-assert         #x12006000d4
   (:methods
-    (talker-method-14 () none 14)
-    (talker-method-15 () none 15)
-    (talker-method-16 () none 16)
-    (talker-method-17 () none 17)
+    (idle () _type_ :state 14)
+    (active () _type_ :state 15)
+    (exit () _type_ :state 16)
+    (talker-method-17 (_type_) none 17)
     )
   )
 
-(define-extern *talker-speech* talker-speech-class)
+(define-extern *talker-speech* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-h                       ;;
@@ -12104,24 +12103,23 @@
   )
 
 (deftype speech-type-info (structure)
-  ((channel uint8)
-   (flags speech-type-flag)
-   (priority int8)
-   (request-timeout uint16)
-   (min-delay uint16)
-   (max-delay uint16)
-   (delay uint16)
-   (play-index int16)
-   (list basic)
+  ((channel         uint8             :offset-assert   0)
+   (flags           speech-type-flag  :offset-assert   1)
+   (priority        int8              :offset-assert   2)
+   (request-timeout uint16            :offset-assert   4)
+   (min-delay       uint16            :offset-assert   6)
+   (max-delay       uint16            :offset-assert   8)
+   (delay           uint16            :offset-assert  10)
+   (play-index      int16             :offset-assert  12)
+   (list            basic             :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; Failed to read fields.
   )
 
 (deftype speech-request (structure)
-  ((handle      uint64  :offset-assert 0)
+  ((handle      handle  :offset-assert 0)
    (time        time-frame  :offset-assert 8)
    (priority    float   :offset-assert 16)
    (speech-type int8    :offset-assert 20)
@@ -12139,46 +12137,45 @@
   )
 
 (deftype speech-channel (structure)
-  ((flags speech-channel-flag)
-   (gui-channel gui-channel)
-   (delay uint16)
-   (id uint32)
-   (update-time time-frame :offset-assert 8)
-   (start-time time-frame)
-   (end-time time-frame)
-   (request speech-request :inline)
-   (last-request speech-request :inline)
-   (target-pos vector :inline)
-   (speech-table uint32)
+  ((flags        speech-channel-flag         :offset-assert   0)
+   (gui-channel  gui-channel                 :offset-assert   1)
+   (delay        uint16                      :offset-assert   2)
+   (id           uint32                      :offset-assert   4)
+   (update-time  time-frame                  :offset-assert   8)
+   (start-time   time-frame                  :offset-assert  16)
+   (end-time     time-frame                  :offset-assert  24)
+   (request      speech-request      :inline :offset-assert  32)
+   (last-request speech-request      :inline :offset-assert  56)
+   (target-pos   vector              :inline :offset-assert  80)
+   (speech-table uint32                      :offset-assert  96)
    )
   :method-count-assert 14
   :size-assert         #x64
   :flag-assert         #xe00000064
-  ;; Failed to read fields.
   (:methods
-    (speech-channel-method-9 () none 9)
-    (speech-channel-method-10 () none 10)
-    (speech-channel-method-11 () none 11)
-    (speech-channel-method-12 () none 12)
-    (speech-channel-method-13 () none 13)
+    (speech-channel-method-9 (_type_) none 9)
+    (speech-channel-method-10 (_type_ handle) none 10)
+    (speech-channel-method-11 (_type_) none 11)
+    (speech-channel-method-12 (_type_) none 12)
+    (speech-channel-method-13 (_type_) none 13)
     )
   )
 
 
 (deftype speech-control (structure)
   ((channel-array speech-channel 2  :inline :offset-assert 0)
-   (speech-table  uint32 57 :offset-assert 224) ;; guess
+   (speech-table  speech-type-info 57 :offset-assert 224) ;; guess
    )
   :method-count-assert 17
   :size-assert         #x1c4
   :flag-assert         #x11000001c4
   (:methods
     (speech-control-method-9 () none 9)
-    (speech-control-method-10 () none 10)
-    (speech-control-method-11 () none 11)
-    (speech-control-method-12 () none 12)
-    (speech-control-method-13 () none 13)
-    (speech-control-method-14 () none 14)
+    (speech-control-method-10 (_type_ int speech-type-info) none 10)
+    (speech-control-method-11 (_type_) none 11)
+    (speech-control-method-12 (_type_) none 12)
+    (speech-control-method-13 (_type_ handle) none 13)
+    (speech-control-method-14 (_type_) none 14)
     (speech-control-method-15 () none 15)
     (speech-control-method-16 () none 16)
     )
@@ -23584,7 +23581,7 @@
 ;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
 (define-extern auto-save-command (function symbol int int process-tree symbol none))
 (define-extern auto-save-check (function none))
-;; (define-extern auto-save-user function)
+(define-extern auto-save-user (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
@@ -26047,13 +26044,13 @@
 ;; ambient                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern can-display-query? function)
+(define-extern can-display-query? (function process string float symbol))
 (define-extern talker-surpress! (function none))
-;; (define-extern talker-displayed? function)
-;; (define-extern kill-current-talker function)
+(define-extern talker-displayed? "Always returns [[#f]]" (function symbol))
+(define-extern kill-current-talker (function object symbol none))
 (define-extern string->talker-speech (function string talker-speech-class))
 (define-extern talker-spawn-func (function talker-speech-class process-tree vector basic int))
-;; (define-extern talker-init function)
+(define-extern talker-init (function talker-speech-class vector basic none :behavior talker))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech                         ;;
@@ -27008,7 +27005,7 @@
 ;; (define-extern remote-track function)
 ;; (define-extern cam-remote state)
 ;; (define-extern voicebox-init-by-other function) ;; (function vector handle none :behavior voicebox)
-;; (define-extern voicebox-spawn function) ;; (function process vector (pointer process))
+(define-extern voicebox-spawn (function process-drawable vector (pointer process))) ;; (function process vector (pointer process))
 ;; (define-extern judge-init-by-other function)
 ;; (define-extern judge-spawn function)
 
