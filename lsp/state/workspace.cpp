@@ -1,17 +1,45 @@
 #include "workspace.h"
 
+#include <iomanip>
 #include <regex>
+#include <sstream>
 
 #include "common/log/log.h"
 
 #include "lsp/protocol/common_types.h"
 
+std::string url_encode(const std::string& value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << std::hex;
+
+  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+
+    // Keep alphanumeric and other accepted characters intact
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '/') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << std::uppercase;
+    escaped << '%' << std::setw(2) << int((unsigned char)c);
+    escaped << std::nouppercase;
+  }
+
+  return escaped.str();
+}
+
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
-  // Replace slash type on windows
   std::string path_str = path.string();
+  // Replace slash type on windows
 #ifdef _WIN32
   std::replace(path_str.begin(), path_str.end(), '\\', '/');
 #endif
+  // vscode works with proper URL encoded URIs for file paths
+  // which means we have to roll our own...
+  path_str = url_encode(path_str);
   return fmt::format("file:///{}", path_str);
 }
 
@@ -55,7 +83,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
     m_tracked_ir_files[file_uri] = file;
     if (!file.m_all_types_uri.empty()) {
       if (m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
-        lg::debug("new all-types file - {}", file_uri);
+        lg::debug("new all-types file - {}", file.m_all_types_uri);
         m_tracked_all_types_files[file.m_all_types_uri] = WorkspaceAllTypesFile(
             file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
