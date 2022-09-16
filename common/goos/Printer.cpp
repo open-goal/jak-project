@@ -46,6 +46,10 @@ goos::Object to_symbol(const std::string& str) {
   return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
 }
 
+goos::Object new_string(const std::string& str) {
+  return goos::StringObject::make_new(str);
+}
+
 goos::Object build_list(const std::string& str) {
   return build_list(to_symbol(str));
 }
