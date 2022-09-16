@@ -6,6 +6,14 @@
 #include "lsp/state/data/mips_instructions.h"
 #include "lsp/state/workspace.h"
 
+bool is_number(const std::string& s) {
+  return !s.empty() && std::find_if(s.begin(), s.end(),
+                                    [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+}
+
+std::vector<std::string> og_method_names = {"new",      "delete", "print",    "inspect",  "length",
+                                            "asize-of", "copy",   "relocate", "mem-usage"};
+
 std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
   auto converted_params = params.get<LSPSpec::TextDocumentPositionParams>();
   auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
@@ -55,9 +63,10 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
           symbol_replacements[name] = fmt::format("_{}_", name);
         } else {
           // Construct path
-          auto symbol_uri = fmt::format("{}#L{}%2C{}", tracked_file->m_all_types_uri,
-                                        symbol_info.value().definition_info->line_idx_to_display + 1,
-                                        symbol_info.value().definition_info->pos_in_line);
+          auto symbol_uri =
+              fmt::format("{}#L{}%2C{}", tracked_file->m_all_types_uri,
+                          symbol_info.value().definition_info->line_idx_to_display + 1,
+                          symbol_info.value().definition_info->pos_in_line);
           symbol_replacements[name] = fmt::format("[{}]({})", name, symbol_uri);
         }
         searchStart = match.suffix().first;
@@ -68,6 +77,36 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
       }
 
       markup.m_value = docstring;
+      LSPSpec::Hover hover_resp;
+      hover_resp.m_contents = markup;
+      return hover_resp;
+    } else if (!token_at_pos) {
+      // Check if it's a number, and if so we'll do some numeric conversions
+      if (!is_number(symbol_name.value())) {
+        return {};
+      }
+      lg::debug("hover - numeric match - {}", symbol_name.value());
+      // Construct the body
+      std::string body = "";
+      uint32_t num = std::atoi(symbol_name.value().data());
+      // Assuming it comes in as Decimal
+      body += "| Base    | Value |\n";
+      body += "|---------|-------|\n";
+      body += fmt::format("| Decimal        | `{:d}` |\n", num);
+      body += fmt::format("| Hex            | `{:X}` |\n", num);
+      // TODO - would be nice to format as groups of 4
+      body += fmt::format("| Binary         | `{:b}` |\n", num);
+      if (num >= 16 && (num - 16) % 4 == 0) {
+        uint32_t method_id = (num - 16) / 4;
+        std::string method_name = "not built-in";
+        if (method_id <= 8) {
+          method_name = og_method_names.at(method_id);
+        }
+        body += fmt::format("| Method ID   | `{}` - `{}` |\n", method_id, method_name);
+      }
+      body += fmt::format("| Octal          | `{:o}` |\n", num);
+
+      markup.m_value = body;
       LSPSpec::Hover hover_resp;
       hover_resp.m_contents = markup;
       return hover_resp;
@@ -91,15 +130,10 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
       if (mnemonic_lower == token) {
         if (instr.type == "ee") {
           ee_instructions.push_back(fmt::format("- _{}_\n\n", instr.description));
-        }
-        else {
+        } else {
           vu_instructions.push_back(fmt::format("- _{}_\n\n", instr.description));
         }
       }
-    }
-
-    if (ee_instructions.empty() && vu_instructions.empty()) {
-      return {};
     }
 
     // Construct the body
@@ -119,6 +153,7 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
       }
       body += "___\n\n";
     }
+
     markup.m_value = body;
     LSPSpec::Hover hover_resp;
     hover_resp.m_contents = markup;
