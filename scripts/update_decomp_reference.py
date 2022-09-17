@@ -18,6 +18,13 @@ def get_failures(root_dir):
         for f in glob.glob(os.path.join(file[0], "*.gc"))
     ]
 
+# removesuffix only added in python 3.9....
+def removesuffix(self: str, suffix: str, /) -> str:
+    if self.endswith(suffix):
+        return self[:-len(suffix)]
+    else:
+        return self[:]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(dest="diff", help="the failures folder")
@@ -26,7 +33,7 @@ def main():
     args = parser.parse_args()
 
     for replacement in get_failures(args.diff):
-        obj_name = os.path.basename(replacement).removesuffix(".gc").replace("_REF", "")
+        obj_name = removesuffix(os.path.basename(replacement), ".gc").replace("_REF", "")
 
         # Find gsrc path, given game-name
         ref_path = get_ref_path_from_filename(args.game, obj_name, args.reference)

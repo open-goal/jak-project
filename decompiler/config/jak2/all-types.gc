@@ -103,6 +103,7 @@
 
 (define-extern loading-level kheap)
 (define-extern dma-sync (function pointer int int int))
+(define-extern unload (function string none))
 
 
 
@@ -2649,8 +2650,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype video-params (structure)
-  ((set-video-mode              basic  :offset-assert 0)
-   (reset-video-mode            basic  :offset-assert 4)
+  ((set-video-mode              symbol  :offset-assert 0)
+   (reset-video-mode            symbol  :offset-assert 4)
    (display-fbp                 int32  :offset-assert 8)
    (relative-x-scale            float  :offset 16)
    (display-dx                  int32  :offset-assert 20)
@@ -3076,15 +3077,16 @@
   (bucket-315       315)  ;; effects
   (tex-all-warp     316)  ;; tex
   (bucket-317       317)  ;; mercneric
-  (bucket-318       318)  ;; debug, no zbuf
+
+  (debug-no-zbuf1   318)  ;; debug, no zbuf
   (tex-all-map      319)  ;; tex
   (bucket-320       320)  ;; hud
-  (bucket-321       321)  ;; hud letterbox, no zbuf
+  (screen-filter    321)  ;; hud letterbox, no zbuf
   (bucket-322       322)  ;; hud
   (bucket-323       323)  ;; hud
-  (bucket-324   324)  ;; debug
-  (debug-no-zbuf 325)  ;; debug
-  (debug-unknown-326 326)
+  (debug2           324)  ;; debug
+  (debug-no-zbuf2   325)  ;; debug
+  (debug3           326)
   )
 
 ;; TODO - names in `render` menu
@@ -5710,6 +5712,31 @@
   (movie0   16) ;; 0x10000
   (movie1   17) ;; 0x20000
   (movie2   18) ;; 0x40000
+
+  (tm19)
+  (tm20)
+  (tm21)
+  (tm22)
+  (tm23)
+  (tm24)
+  (tm25)
+  (tm26)
+  (tm27)
+  (tm28)
+  (tm29)
+  (tm30)
+  (tm31)
+
+  )
+
+(defenum load-buffer-mode
+  :type uint32
+  (small-edge 0)
+  (small-center 1)
+  (medium 2)
+  (large 3)
+  (borrow 4)
+  (ten 10)
   )
 
 (deftype level-load-info (basic)
@@ -5723,7 +5750,7 @@
    (taskname            symbol    :offset 20)
    (other-name-1        symbol    :offset 24)
    (packages            pair      :offset-assert 32) ;; guess on type
-   (memory-mode         uint32    :offset-assert 36)
+   (memory-mode         load-buffer-mode    :offset-assert 36)
    (music-bank          symbol     :offset-assert 40)
    (ambient-sounds      symbol     :offset-assert 44)
    (sound-reverb        float     :offset-assert 48)
@@ -5841,7 +5868,7 @@
    (vis-bits          pointer :offset-assert 2392)
    (all-visible?      symbol :offset-assert 2396)
    (force-all-visible? symbol :offset-assert 2400)
-   (linking           basic :offset-assert 2404)
+   (linking           symbol :offset-assert 2404)
    (vis-info          level-vis-info 8 :offset-assert 2408)
    (vis-self-index    int32 :offset-assert 2440)
    (vis-adj-index     int32 :offset-assert 2444)
@@ -5859,7 +5886,7 @@
    (display-start-time time-frame :offset-assert 4552)
    (memory-mask       uint32 :offset-assert 4560)
    (task-mask         task-mask :offset-assert 4564)
-   (tfrag-gs-test     uint64 :offset-assert 4568)
+   (tfrag-gs-test     gs-test :offset-assert 4568)
    (texture-dirty-masks texture-mask 10 :inline :offset-assert 4576)
    (texture-mask texture-mask 18 :inline :offset-assert 4736)
    (sky-mask texture-mask :inline :offset-assert 5024)
@@ -5892,12 +5919,12 @@
   ;; Failed to read fields.
   (:methods
     (deactivate (_type_) _type_ 9)
-    (level-method-10 () none 10) ;; (is-object-visible? (_type_ int) symbol 10)
+    (is-object-visible? (_type_ int) symbol 10)
     (level-method-11 () none 11) ;; (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
     (compute-memory-usage (_type_ object) memory-usage-block 14)
-    (point-in-boxes? (_type_ vector) symbol 15)
+    (inside-boxes-check (_type_ vector) symbol 15)
     (level-method-16 () none 16) ;; (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (load-continue (_type_) _type_ 17)
     (load-begin (_type_) _type_ 18)
@@ -5968,21 +5995,21 @@
     (level-get-with-status (_type_ symbol) level 10)
     (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level 11) ;;
     (level-get-for-use (_type_ symbol symbol) level 12)
-    (activate-levels! (_type_) int 13) ;; (debug-print-entities (_type_ symbol type) none 13)
-    (level-group-method-14 () none 14)
+    (activate-levels! (_type_) int 13)
+    (debug-print-entities (_type_ symbol type) none 14)
     (debug-draw-actors (_type_ symbol) none 15)
     (assign-draw-indices (_type_) none 16) ;; (level-update (_type_) int 16)
     (actors-update (_type_) none 17) ;; (level-get-target-inside (_type_) level 17)
-    (level-group-method-18 () none 18) ;; (alloc-levels! (_type_ symbol) int 18)
+    (level-group-method-18 (_type_) none 18) ;; (alloc-levels! (_type_ symbol) int 18)
     (level-update (_type_) none 19) ;;
     (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
-    (load-commands-set! (_type_ pair) none 22) ;; (update-vis-volumes (_type_) none 22)
-    (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
-    (load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
-    (level-group-method-25 () none 25) ;; (level-status (_type_ symbol) symbol 25)
-    (level-group-method-26 () none 26)
-    (level-group-method-27 () none 27)
+    (load-commands-set! (_type_ pair) none 22)
+    (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23)
+    (alt-load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
+    (update-vis-volumes (_type_) none 25) ;; (level-status (_type_ symbol) symbol 25)
+    (update-vis-volumes-from-nav-mesh (_type_) none 26)
+    (print-volume-sizes (_type_) none 27)
     (level-status (_type_ symbol) symbol 28)
     (load-in-progress? (_type_) symbol 29)
     (level-get-most-disposable (_type_) level 30)
@@ -7189,8 +7216,8 @@
    (process-mask process-mask)
    (unknown-int32-00 int32 :offset-assert 8)
    (language language-enum :offset 16)
-   (unknown-int32-01 int32 :offset-assert 24)
-   (unknown-int32-02 int32 :offset-assert 28)
+   (display-dx int32 :offset-assert 24) ;; video mode related, 0 for both ntsc/pal
+   (display-dy int32 :offset-assert 28) ;; video mode related, 8 for ntsc, 24 pal
    (vibration symbol :offset 32)
    (play-hints symbol :offset 36)
    (movie (pointer process) :offset 40)
@@ -7200,7 +7227,7 @@
    (ambient (pointer process) :offset-assert 56)
    (video-mode symbol)
    (aspect-ratio symbol :offset-assert 64)
-   (unknown-uint32-00 uint32 :offset 68)
+   (use-progressive-scan symbol :offset 68)
    (auto-save symbol :offset 72)
    (bg-r float :offset-assert 76)
    (bg-g float)
@@ -7274,7 +7301,7 @@
    (movie-skip-frame float)
    (allow-blackout symbol)
    (race-minimap int32 :offset-assert 364)
-   (extra-bank symbol)
+   (extra-bank pair)
    (beard symbol)
    (ignore-target symbol)
    (subtitle-language language-enum)
@@ -8161,12 +8188,13 @@
   :size-assert         #x20
   :flag-assert         #x1400000020
   (:methods
-    (drawable-region-prim-method-17 () none 17)
+    (debug-draw-region (_type_ int) none 17)
     (drawable-region-prim-method-18 () none 18)
     (drawable-region-prim-method-19 () none 19)
     )
   )
 
+(declare-type drawable-inline-array-region-prim drawable)
 
 (deftype drawable-tree-region-prim (drawable-tree)
   ((name basic :offset 8)
@@ -11623,12 +11651,12 @@
     (want-display-level (_type_ symbol symbol) int 13)
     (want-vis-level (_type_ symbol) none 14)
     (want-force-vis (_type_ symbol symbol) int 15)
-    (execute-command (_type_ pair object) none 16)
+    (want-force-inside (_type_ symbol symbol) none 16)
     (execute-commands-up-to (_type_ float) none 17)
     (backup-load-state-and-set-cmds (_type_ pair) int 18)
     (restore-load-state-and-cleanup (_type_) int 19)
     (restore-load-state (_type_) int 20)
-    (set-force-inside! (_type_ symbol symbol) none 21)
+    (add-borrow-levels (_type_) none 21)
     )
   )
 
@@ -11885,7 +11913,7 @@
     (game-info-method-18 () none 18)
     (get-current-continue-point (_type_) continue-point 19)
     (get-continue-by-name (_type_ string) continue-point 20)
-    (set-continue! (_type_ basic symbol) continue-point 21)
+    (set-continue! (_type_ basic object) continue-point 21)
     (game-info-method-22 () none 22)
     (game-info-method-23 () none 23)
     (game-info-method-24 () none 24)
@@ -16887,7 +16915,9 @@
 
 (defenum texture-page-flag
   :type uint16
-  :bitfield #t)
+  :bitfield #t
+  (alpha-enable 0)
+  )
 
 (deftype bsp-header (drawable)
   (
@@ -16919,12 +16949,12 @@
    ;; 0 (maybe current-leaf-idx?)                                       128
    (texture-flags            texture-page-flag 10               :offset 130)
    ;; 0 (maybe padding)                                                 150
-   ;; 0 (was boxes, current back flags?, byte?)                         152
+   (require-force-inside     uint8                              :offset 152)
    (ambients                 symbol                      :offset        156) ;; now just #t?
    (subdivide-close          float                       :offset        160)
    (subdivide-far            float                       :offset-assert 164)
    (race-meshes              (array entity-race-mesh)    :offset-assert 168)
-   ;; pointer to table of sorted floats                                 172
+   (actor-birth-order        (pointer uint32)            :offset        172)
    (light-hash               light-hash                  :offset        176)
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    (actor-groups             (array actor-group)         :offset-assert 184)
@@ -16934,13 +16964,19 @@
    ;; 200 is some array
    ;; 204 is maybe that array's length
    ;; 216 is a vector array
-  ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
+   ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
 
    (region-tree drawable-tree-region-prim :offset 252)
 
    ; (actor-birth-order (pointer uint32) :offset-assert 172)
    ; (split-box-indices (pointer uint16) :offset-assert 176)
-   (unk-data-8 uint32 55 :offset 180)
+   (unk-data uint32 18 :offset 180)
+   (tfrag-texture-masks-array texture-masks-array)
+
+   (tmask0 texture-masks-array :offset 272)
+   (tmask2 texture-masks-array :offset 280)
+
+   (end uint8 :offset 399)
    )
   :method-count-assert 19
   :size-assert         #x190
@@ -18169,10 +18205,10 @@
 (defenum entity-perm-status
   :bitfield #t
   :type uint16
-  (bit-0 0)
+  (bit-0 0) ;; blocks birth
   (bit-1 1)
   (dead 2)
-  (bit-3 3)
+  (no-kill 3)
   (bit-4 4)
   (bit-5 5)
   (subtask-complete 6)
@@ -18203,7 +18239,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (entity-perm-method-9 () none 9) ;; (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
+    (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
     )
   )
 
@@ -18228,7 +18264,7 @@
   :flag-assert         #xa00000040
   ;; Failed to read fields.
   (:methods
-    (entity-links-method-9 () none 9) ;; (birth? (_type_ vector) symbol 9)
+    (birth? (_type_ vector) symbol 9)
     )
   )
 
@@ -18258,11 +18294,11 @@
   :flag-assert         #x1b00000034
   ;; Failed to read fields.
   (:methods
-    (entity-method-22 (_type_) _type_ 22) ;; (birth! (_type_) _type_ 22)
-    (kill! (_type_ ) _type_ 23) ;; (kill! (_type_) _type_ 23)
-    (entity-method-24 () none 24) ;; (add-to-level! (_type_ level-group level actor-id) none 24)
-    (entity-method-25 () none 25) ;; (remove-from-level! (_type_ level-group) _type_ 25)
-    (entity-method-26 () none 26) ;; (get-level (_type_) level 26)
+    (birth! (_type_) _type_ 22)
+    (kill! (_type_) _type_ 23)
+    (add-to-level! (_type_ level-group level actor-id) none 24)
+    (remove-from-level! (_type_ level-group) _type_ 25)
+    (get-level (_type_) level 26)
     )
   )
 
@@ -18310,17 +18346,18 @@
   (:methods
     (next-actor (_type_) entity-actor 27)
     (prev-actor (_type_) entity-actor 28)
-    (entity-actor-method-29 () none 29) ;; (debug-print (_type_ symbol type) none 29)
-    (entity-actor-method-30 (_type_ entity-perm-status symbol) none 30) ;; (dummy-30 (_type_ entity-perm-status symbol) none 30)
+    (debug-print (_type_ symbol type) none 29)
+    (toggle-status (_type_ entity-perm-status symbol) none 30)
     (entity-actor-method-31 (_type_ vector vector vector object float) nav-mesh 31)
     (entity-actor-method-32 (_type_ vector vector nav-poly float) nav-poly 32)
     )
   )
 
 (deftype actor-reference (structure)
-  ((actor basic   :offset-assert 0)
+  ((actor entity  :offset-assert 0)
    (id    uint32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -19948,12 +19985,12 @@
     (progress-method-24 () none 24) ;; (draw-fuel-cell-screen (_type_ int) none 24)
     (progress-method-25 () none 25) ;; (draw-money-screen (_type_ int) none 25)
     (progress-method-26 () none 26) ;; (draw-buzzer-screen (_type_ int) none 26)
-    (progress-method-27 () none 27) ;; (draw-notice-screen (_type_) none 27)
+    (can-go-back? (_type_) symbol 27) ;; (draw-notice-screen (_type_) none 27)
     (progress-method-28 () none 28) ;; (draw-options (_type_ int int float) none 28)
     (progress-method-29 () none 29) ;; (respond-common (_type_) none 29)
     (progress-method-30 () none 30) ;; (respond-progress (_type_) none 30)
     (progress-method-31 () none 31) ;; (respond-memcard (_type_) none 31)
-    (progress-method-32 () none 32) ;; (can-go-back? (_type_) symbol 32)
+    (progress-method-32 () none 32)
     )
   )
 
@@ -20583,7 +20620,7 @@
   :flag-assert         #x1b00000024
   (:methods
     (new (symbol type process symbol float entity symbol) _type_ 0)
-    (path-control-method-9 () none 9) ;; (dummy-9 (_type_) none 9)
+    (debug-draw (_type_) none 9)
     (path-control-method-10 () none 10) ;; (eval-path-curve-div! (_type_ vector float symbol) vector 10)
     (path-control-method-11 () none 11) ;; (get-random-point (_type_ vector) vector 11)
     (path-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ vector float) vector 12)
@@ -21061,7 +21098,7 @@
   ;; Failed to read fields.
   (:methods
      ;; (new (symbol type collide-shape int float) _type_ 0)
-    (nav-control-method-9 () none 9) ;; (debug-draw (_type_) none 9)
+    (debug-draw (_type_) none 9)
     (point-in-bounds?
       "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius"
       (_type_ vector) symbol 10)
@@ -21649,7 +21686,7 @@
 ;; subdivide                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *merc-global-stats* object) ;; merc-global-stats
+(define-extern *merc-global-stats* merc-global-stats)
 ;; (define-extern clear-tr-stat function) ;; (function tr-stat none)
 (define-extern *stat-string-tfrag* string)
 (define-extern *stat-string-tfrag-scissor* string)
@@ -21659,14 +21696,14 @@
 ;; (define-extern update-subdivide-settings! function) ;; (function subdivide-settings math-camera int none)
 (define-extern *subdivide-settings* subdivide-settings)
 ;; (define-extern set-tfrag-dists! function) ;; (function tfrag-dists none)
-;; (define-extern *terrain-context* object) ;; terrain-context
-;; (define-extern GSH_ENABLE object) ;; symbol
-;; (define-extern GSH_BUCKET object) ;; bucket-id
-;; (define-extern GSH_WHICH_STAT object) ;; int
-;; (define-extern GSH_MAX_DISPLAY object) ;; basic
-;; (define-extern GSH_TIME object) ;; int
+(define-extern *terrain-context* terrain-context)
+(define-extern GSH_ENABLE symbol)
+(define-extern GSH_BUCKET bucket-id)
+(define-extern GSH_WHICH_STAT int)
+(define-extern GSH_MAX_DISPLAY basic)
+(define-extern GSH_TIME int)
 (define-extern *perf-stats* perf-stat-array)
-;; (define-extern *gomi-stats-hack* object) ;; (inline-array perf-stat)
+(define-extern *gomi-stats-hack* (inline-array perf-stat))
 (define-extern start-perf-stat-collection (function none))
 (define-extern end-perf-stat-collection (function none))
 (define-extern print-perf-stats (function none))
@@ -24630,8 +24667,8 @@
 ;; load-state                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *display-load-commands* object) ;; symbol
-(define-extern *backup-load-state* load-state) ;; 
+(define-extern *display-load-commands* symbol)
+(define-extern *backup-load-state* load-state)
 (define-extern *load-state* load-state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24808,12 +24845,12 @@
 (define-extern add-bsp-drawable (function bsp-header level symbol display-frame none))
 (define-extern *login-state* login-state)
 (define-extern *print-login* symbol)
-(define-extern load-buffer-resize (function level pointer none))
+(define-extern load-buffer-resize (function level dgo-header none))
 (define-extern level-update-after-load (function level login-state level))
 (define-extern bg (function symbol none))
 (define-extern play  (function symbol symbol int))
 (define-extern play-boot (function none))
-;; (define-extern update-sound-banks function) ;; (function int)
+(define-extern update-sound-banks (function int))
 (define-extern show-level (function symbol int))
 (define-extern *default-level* level)
 
@@ -25629,7 +25666,7 @@
   :flag-assert         #xc0000061c
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (vol-control-method-9 (_type_) none 9)
+    (debug-draw (_type_) none 9)
     (vol-control-method-10 (_type_ plane) symbol 10)
     (should-display?
       "Returns true/false if the volume's marks should be displayed"
@@ -26003,7 +26040,7 @@
 ;; (define-extern cspace-children function) ;; (function process-drawable int pair)
 ;; (define-extern cspace-inspect-tree function) ;; (function process-drawable cspace int int object object)
 (define-extern execute-math-engine (function int))
-;; (define-extern draw-joint-axes function)
+(define-extern draw-joint-axes (function process-drawable none))
 ;; (define-extern draw-root function)
 ;; (define-extern empty-state state) ;; (state process)
 (define-extern process-drawable-art-error (state string process-drawable))
@@ -26244,7 +26281,7 @@
 ;; (define-extern *lightning-globals* object)
 ;; (define-extern *lightning* object)
 (define-extern lightning-draw-all (function none))
-;; (define-extern unlink-lightning-spec-by-heap function)
+(define-extern unlink-lightning-spec-by-heap (function kheap none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; carry-h                        ;;
@@ -27874,11 +27911,11 @@
 (define-extern sphere-in-view-frustum? (function sphere symbol))
 (define-extern line-in-view-frustum? (function vector vector symbol))
 (define-extern vis-cull (function int symbol))
-;; (define-extern vis-cull-debug function)
+(define-extern vis-cull-debug (function work-area int symbol))
 (define-extern error-sphere (function drawable-error string none))
 (define-extern *edit-instance* string)
 (define-extern *instance-mem-usage* memory-usage-block)
-;; (define-extern find-instance-by-name-level function)
+(define-extern find-instance-by-name-level (function string level prototype-bucket))
 (define-extern find-instance-by-name (function string prototype-bucket))
 ;; (define-extern prototypes-game-visible-set! function)
 ;; (define-extern find-instance-by-index function) ;; (function type int bsp-header prototype-bucket)
@@ -27945,12 +27982,13 @@
 ;; video                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-extern *video-mode* int)
 ;; (define-extern set-video-mode function) ;; (function symbol none)
 (define-extern get-video-mode (function symbol))
-;; (define-extern set-aspect-ratio function) ;; (function symbol none)
-;; (define-extern get-aspect-ratio function) ;; (function symbol)
-;; (define-extern set-progressive-scan function)
-;; (define-extern get-progressive-scan function)
+(define-extern set-aspect-ratio (function symbol none))
+(define-extern get-aspect-ratio (function symbol))
+(define-extern set-progressive-scan (function symbol none))
+(define-extern get-progressive-scan (function symbol))
 (define-extern *smode2* int)
 (define-extern set-graphics-mode (function none))
 
@@ -28073,10 +28111,9 @@
 |#
 
 
-#|
 (deftype debug-actor-info (basic)
   ((name    basic   :offset-assert 4)
-   (handle  uint64  :offset-assert 8)
+   (handle  handle  :offset-assert 8)
    (process basic   :offset-assert 16)
    (pid     int32   :offset-assert 20)
    )
@@ -28084,7 +28121,6 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
 (define-extern *spawn-actors* symbol)
 (define-extern *compact-actors* symbol)
@@ -28092,38 +28128,38 @@
 (define-extern entity-by-name (function string entity))
 (define-extern entity-by-type (function type entity-actor))
 (define-extern entity-by-aid (function uint entity))
-;; (define-extern entity-actor-from-level-name function)
+(define-extern entity-actor-from-level-name (function level entity-actor))
 (define-extern entity-nav-mesh-by-aid (function actor-id entity-nav-mesh))
 (define-extern nav-mesh-from-res-tag (function entity symbol int nav-mesh))
-;; (define-extern entity-by-meters function) ;; (function float float float entity-actor)
-;; (define-extern process-by-ename function) ;; (function string process)
-;; (define-extern entity-process-count function) ;; (function symbol int)
-;; (define-extern entity-count function) ;; (function int)
-;; (define-extern entity-remap-names function) ;; (function pair none)
-;; (define-extern process-status-bits function) ;; (function process symbol none)
-;; (define-extern process-entity-set! function)
+(define-extern entity-by-meters (function float float float entity-actor))
+(define-extern process-by-ename (function string process))
+(define-extern entity-process-count (function symbol int))
+(define-extern entity-count (function int))
+(define-extern entity-remap-names (function pair none))
+(define-extern process-status-bits (function process symbol none))
+(define-extern process-entity-set! (function process entity entity))
 (define-extern process-task-mask (function process task-mask))
-;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
-;; (define-extern expand-bounding-box function)
-;; (define-extern expand-vis-box-with-point function) ;; (function entity vector none)
-;; (define-extern *debug-actor-info* debug-actor-info)
-;; (define-extern *pid-string* object)
+(define-extern update-actor-vis-box (function process-drawable vector vector none))
+(define-extern expand-bounding-box (function vector vector vector vector none))
+(define-extern expand-vis-box-with-point (function entity vector none))
+(define-extern *debug-actor-info* debug-actor-info)
+(define-extern *pid-string* string)
 (define-extern debug-actor (function string none))
-;; (define-extern draw-actor-marks function)
-;; (define-extern init-entity function) ;; (function process entity-actor none)
+(define-extern draw-actor-marks (function process none))
+(define-extern init-entity (function process entity-actor none))
 ;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
-;; (define-extern check-for-rougue-process function)
-;; (define-extern process-drawable-scale-from-entity! function)
+(define-extern check-for-rougue-process (function process int int level none))
+(define-extern process-drawable-scale-from-entity! (function process-drawable entity none))
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none)) ;;
 (define-extern reset-actors (function symbol none))
 (define-extern reset-cameras (function none))
-(define-extern entity-birth-no-kill (function entity none)) ;; 
-;; (define-extern entity-task-complete-on function) ;; (function entity none)
-;; (define-extern entity-task-complete-off function) ;; (function entity none)
+(define-extern entity-birth-no-kill (function entity process))
+(define-extern entity-task-complete-on (function entity none))
+(define-extern entity-task-complete-off (function entity none))
 (define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
-;; (define-extern find-nearest-entity function)
-;; (define-extern entity-speed-test function) ;; (function string none)
-;; (define-extern dump-entity-remap function)
+(define-extern find-nearest-entity (function vector type entity))
+(define-extern entity-speed-test (function string none))
+(define-extern dump-entity-remap (function object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; path                           ;;
@@ -28595,7 +28631,7 @@
 (define-extern task-node-close! (function game-task none))
 (define-extern task-node-open? (function game-task symbol))
 (define-extern task-node-open! (function game-task none))
-;; (define-extern task-node-reset function)
+(define-extern task-node-reset (function symbol none))
 ;; (define-extern task-node-dump function)
 ;; (define-extern fail-mission-init-by-other function)
 (define-extern task-manager-init-by-other (function game-task-node-info object none))
@@ -28917,7 +28953,7 @@
 ;; (define-extern progress-init-by-other function) ;; (function none :behavior progress)
 ;; (define-extern set-ring-position function)
 (define-extern activate-progress (function process symbol none))
-;; (define-extern deactivate-progress function) ;; (function none)
+(define-extern deactivate-progress (function none))
 (define-extern hide-progress-screen (function none))
 (define-extern progress-allowed? (function symbol))
 ;; (define-extern menu-update-purchase-secrets function)
@@ -29462,7 +29498,7 @@
 ;; (define-extern init-viewer function) ;; (function string object :behavior viewer)
 ;; (define-extern init-viewer-for-other function) ;; (function string vector none :behavior viewer)
 ;; (define-extern add-a-bunch function) ;; (function string int int float symbol)
-;; (define-extern birth-viewer function) ;; (function process entity-actor object)
+(define-extern birth-viewer (function process entity-actor object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; part-tester                    ;;

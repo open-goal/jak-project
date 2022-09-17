@@ -81,6 +81,13 @@ void find_boxed(LabelDB* db, LinkedObjectFile* file) {
       // so it can actually share a label with something else.
       if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() != "snowball-bank") {
         TypeSpec basic_type(word.symbol_name());
+        if (word.symbol_name() == "array") {
+          const auto& type_word =
+              file->words_by_seg.at(lab.target_segment).at((lab.offset - 4 + 12) / 4);
+          if (type_word.kind() == LinkedWord::TYPE_PTR) {
+            basic_type.add_arg(TypeSpec(type_word.symbol_name()));
+          }
+        }
         const auto& existing = db->lookup(lab.name);
         if (existing.known) {
           if (existing.result_type.base_type() != basic_type.base_type()) {

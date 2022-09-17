@@ -82,6 +82,8 @@ std::string TP_Type::print() const {
       return "<run-function-in-process-func>";
     case Kind::GET_ART_BY_NAME_METHOD:
       return "<get-art-by-name-method>";
+    case Kind::SYMBOL:
+      return fmt::format("<sym {}>", m_str);
     case Kind::INVALID:
     default:
       ASSERT(false);
@@ -137,6 +139,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return m_pcpyud == other.m_pcpyud && m_ts == other.m_ts;
     case Kind::PCPYUD_BITFIELD_AND:
       return m_pcpyud == other.m_pcpyud && m_ts == other.m_ts;
+    case Kind::SYMBOL:
+      return m_str == other.m_str;
     case Kind::LABEL_ADDR:
     case Kind::ENTER_STATE_FUNCTION:
     case Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION:
@@ -213,6 +217,8 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("function");
     case Kind::GET_ART_BY_NAME_METHOD:
       return m_ts;
+    case Kind::SYMBOL:
+      return TypeSpec("symbol");
     case Kind::INVALID:
     default:
       ASSERT(false);

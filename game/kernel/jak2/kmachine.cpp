@@ -426,6 +426,22 @@ int ShutdownMachine() {
 
 Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
   // stubbed out in the actual game
+  static double px = 0;
+  static double py = 0;
+
+  mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->status = 1;
+  mouse->button0 = 0;
+
+  // TODO: actually hook these up.
+  double last_cursor_x_position = 0;
+  double last_cursor_y_position = 0;
+
+  mouse->deltax = last_cursor_x_position - px;
+  mouse->deltay = last_cursor_y_position - py;
+  px = last_cursor_x_position;
+  py = last_cursor_y_position;
   return mouse;
 }
 
