@@ -191,8 +191,8 @@
           (-> obj count)
           (-> obj cycles)
           (-> obj instructions)
-          (-> obj icache)
-          (-> obj dcache)
+          0 ;; (-> obj icache) removed, doesn't work on pc
+          0 ;; (-> obj dcache) removed, doesn't work on pc
           )
   (format *stdcon* "  ~2d ~2d ~2d"
           (-> obj to-vu0-waits)
@@ -331,6 +331,8 @@
          )
     (+! (-> v1-31 0 count) 1)
     (b! (zero? a0-76) cfg-28)
+    (set! *pc-perf-stat-counter* (get-cpu-clock)) ;; patched
+
     #|
     (.mtc0 Perf r0-0)
     (.sync.l)
@@ -358,9 +360,13 @@
     (.sync.l)
     (.sync.p)
     ;;(.mfpc a0-1 pcr0)
-    (+! (-> v1-1 0 accum0) (the-as uint a0-1))
+    ;; (+! (-> v1-1 0 accum0) (the-as uint a0-1))
+    (+! (-> v1-1 0 accum0) (- (get-cpu-clock) *pc-perf-stat-counter*)) ;; patched
+
     ;;(.mfpc a0-3 pcr1)
-    (+! (-> v1-1 0 accum1) (the-as uint a0-3))
+    ;; (+! (-> v1-1 0 accum1) (the-as uint a0-3))
+    (set! (-> v1-1 0 accum1) 0) ;;  ;; patched
+
     )
   (label cfg-2)
   0

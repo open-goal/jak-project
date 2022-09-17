@@ -92,7 +92,7 @@ u32 Thread_Loader() {
 
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
   if (g_game_version == GameVersion::Jak2) {
-    printf("RPC_Player skip\n");
+    printf("RPC_Player skip %d\n", (int)((SoundRpcCommand*)data)->command);
     return nullptr;
   }
   if (gSoundEnable) {
@@ -358,7 +358,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 
 void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   if (g_game_version == GameVersion::Jak2) {
-    printf("RPC_Loader skip\n");
+    printf("RPC_Loader skip %d\n", (int)((SoundRpcCommand*)data)->command);
     return nullptr;
   }
   int n_messages = size / SRPC_MESSAGE_SIZE;

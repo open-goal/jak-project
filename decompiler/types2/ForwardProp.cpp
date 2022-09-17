@@ -856,6 +856,10 @@ void types2_for_div_mod_signed(types2::Type& type_out,
                                        expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
+void types2_for_div_mod_unsigned(types2::Type& type_out) {
+  type_out.type = TP_Type::make_from_ts("uint");
+}
+
 void types2_for_pcpyld(types2::Type& type_out,
                        const SimpleExpression& expr,
                        const Env& env,
@@ -1531,6 +1535,10 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::DIV_SIGNED:
     case SimpleExpression::Kind::MOD_SIGNED:
       types2_for_div_mod_signed(type_out, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::DIV_UNSIGNED:
+    case SimpleExpression::Kind::MOD_UNSIGNED:
+      types2_for_div_mod_unsigned(type_out);
       break;
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
