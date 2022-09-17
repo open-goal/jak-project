@@ -1,0 +1,779 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type billboard
+(defmethod login billboard ((obj billboard))
+  (adgif-shader-login (-> obj flat))
+  obj
+  )
+
+;; definition for method 8 of type billboard
+(defmethod mem-usage billboard ((obj billboard) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 34 (-> arg0 length)))
+  (set! (-> arg0 data 33 name) "billboard")
+  (+! (-> arg0 data 33 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 33 used) v1-6)
+    (+! (-> arg0 data 33 total) (logand -16 (+ v1-6 15)))
+    )
+  obj
+  )
+
+;; definition for function mem-usage-shrub-walk
+(defun mem-usage-shrub-walk ((arg0 draw-node) (arg1 int) (arg2 memory-usage-block) (arg3 int))
+  (set! (-> arg2 length) (max 64 (-> arg2 length)))
+  (set! (-> arg2 data 63 name) "draw-node")
+  (+! (-> arg2 data 63 count) arg1)
+  (let ((v1-5 (* arg1 32)))
+    (+! (-> arg2 data 63 used) v1-5)
+    (+! (-> arg2 data 63 total) (logand -16 (+ v1-5 15)))
+    )
+  (let ((s2-0 arg0))
+    (dotimes (s1-0 arg1)
+      (let ((a1-2 (-> s2-0 child-count)))
+        (cond
+          ((logtest? (-> s2-0 flags) 1)
+           (mem-usage-shrub-walk (the-as draw-node (-> s2-0 child)) (the-as int a1-2) arg2 arg3)
+           )
+          (else
+            (set! (-> arg2 length) (max 35 (-> arg2 length)))
+            (set! (-> arg2 data 34 name) "instance-shrubbery")
+            (+! (-> arg2 data 34 count) a1-2)
+            (let ((v1-18 (* (the-as uint 80) a1-2)))
+              (+! (-> arg2 data 34 used) v1-18)
+              (+! (-> arg2 data 34 total) (logand -16 (+ v1-18 15)))
+              )
+            )
+          )
+        )
+      (&+! s2-0 32)
+      )
+    )
+  arg0
+  )
+
+;; definition for method 8 of type drawable-tree-instance-shrub
+(defmethod mem-usage drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 1 (-> arg0 length)))
+  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
+  (+! (-> arg0 data 0 count) 1)
+  (let ((v1-7 32))
+    (+! (-> arg0 data 0 used) v1-7)
+    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
+    )
+  (when (nonzero? (-> obj colors-added))
+    (set! (-> arg0 length) (max 33 (-> arg0 length)))
+    (set! (-> arg0 data 32 name) "shrubbery-pal")
+    (+! (-> arg0 data 32 count) 1)
+    (let ((v1-19 (asize-of (-> obj colors-added))))
+      (+! (-> arg0 data 32 used) v1-19)
+      (+! (-> arg0 data 32 total) (logand -16 (+ v1-19 15)))
+      )
+    )
+  (mem-usage-shrub-walk
+    (the-as draw-node (&+ (-> obj data 0) 32))
+    (-> (the-as drawable-group (-> obj data 0)) length)
+    arg0
+    arg1
+    )
+  (mem-usage (-> obj info prototype-inline-array-shrub) arg0 (logior arg1 1))
+  obj
+  )
+
+;; definition for method 9 of type generic-shrub-fragment
+(defmethod login generic-shrub-fragment ((obj generic-shrub-fragment))
+  (let ((s5-0 (/ (-> obj cnt-qwc) (the-as uint 5))))
+    (dotimes (s4-0 (the-as int s5-0))
+      (adgif-shader-login-no-remap (-> obj textures s4-0))
+      )
+    )
+  obj
+  )
+
+;; definition for method 8 of type generic-shrub-fragment
+(defmethod mem-usage generic-shrub-fragment ((obj generic-shrub-fragment) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 27 (-> arg0 length)))
+  (set! (-> arg0 data 25 name) "generic-shrub")
+  (+! (-> arg0 data 25 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 25 used) v1-6)
+    (+! (-> arg0 data 25 total) (logand -16 (+ v1-6 15)))
+    )
+  (set! (-> arg0 data 26 name) "generic-shrub-data")
+  (+! (-> arg0 data 26 count) 1)
+  (let ((v1-17 (* (+ (-> obj cnt-qwc) (-> obj vtx-qwc) (-> obj col-qwc) (-> obj stq-qwc)) 16)))
+    (+! (-> arg0 data 26 used) v1-17)
+    (+! (-> arg0 data 26 total) (logand -16 (+ v1-17 15)))
+    )
+  obj
+  )
+
+;; definition for method 3 of type prototype-shrubbery
+(defmethod inspect prototype-shrubbery ((obj prototype-shrubbery))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 8 of type prototype-shrubbery
+(defmethod mem-usage prototype-shrubbery ((obj prototype-shrubbery) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 1 (-> arg0 length)))
+  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
+  (+! (-> arg0 data 0 count) 1)
+  (let ((v1-7 32))
+    (+! (-> arg0 data 0 used) v1-7)
+    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
+    )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for method 9 of type prototype-shrubbery
+(defmethod login prototype-shrubbery ((obj prototype-shrubbery))
+  (dotimes (s5-0 (-> obj length))
+    (login (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 5 of type prototype-shrubbery
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of prototype-shrubbery ((obj prototype-shrubbery))
+  (the-as int (+ (-> prototype-shrubbery size) (* (+ (-> obj length) -1) 32)))
+  )
+
+;; definition for method 9 of type prototype-generic-shrub
+(defmethod login prototype-generic-shrub ((obj prototype-generic-shrub))
+  (dotimes (s5-0 (-> obj length))
+    (login (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 9 of type shrubbery
+(defmethod login shrubbery ((obj shrubbery))
+  (let ((s5-0 (* (-> obj header data 0) 2)))
+    (dotimes (s4-0 (the-as int s5-0))
+      (let ((v1-3 (adgif-shader-login-no-remap (-> obj textures s4-0))))
+        (when v1-3
+          (dotimes (a0-5 3)
+            (dotimes (a1-0 3)
+              (set! (-> (the-as (pointer int32) (+ (+ (* a0-5 16) (* a1-0 4)) (the-as int *texture-masks*))))
+                    (logior (-> (the-as (pointer int32) (+ (* a1-0 4) (the-as int *texture-masks*) (* a0-5 16))) 0)
+                            (-> (the-as (inline-array texture-masks) (+ (* a1-0 4) (the-as int v1-3) (* a0-5 16))) 1 data 0 mask w)
+                            )
+                    )
+              )
+            (set! (-> *texture-masks* data a0-5 mask w)
+                  (the-as int (fmax (-> *texture-masks* data a0-5 dist) (-> v1-3 masks data a0-5 dist)))
+                  )
+            )
+          )
+        )
+      )
+    )
+  (shrubbery-login-post-texture obj)
+  obj
+  )
+
+;; definition for method 8 of type shrubbery
+(defmethod mem-usage shrubbery ((obj shrubbery) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 28 (-> arg0 length)))
+  (set! (-> arg0 data 27 name) "shrubbery")
+  (+! (-> arg0 data 27 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 27 used) v1-6)
+    (+! (-> arg0 data 27 total) (logand -16 (+ v1-6 15)))
+    )
+  (set! (-> arg0 length) (max 30 (-> arg0 length)))
+  (set! (-> arg0 data 29 name) "shrubbery-vertex")
+  (+! (-> arg0 data 29 count) 1)
+  (let ((v1-16 (* (-> obj vtx-qwc) 16)))
+    (+! (-> arg0 data 29 used) v1-16)
+    (+! (-> arg0 data 29 total) (logand -16 (+ v1-16 15)))
+    )
+  (set! (-> arg0 length) (max 31 (-> arg0 length)))
+  (set! (-> arg0 data 30 name) "shrubbery-color")
+  (+! (-> arg0 data 30 count) 1)
+  (let ((v1-26 (* (-> obj col-qwc) 16)))
+    (+! (-> arg0 data 30 used) v1-26)
+    (+! (-> arg0 data 30 total) (logand -16 (+ v1-26 15)))
+    )
+  (set! (-> arg0 length) (max 29 (-> arg0 length)))
+  (set! (-> arg0 data 28 name) "shrubbery-object")
+  (+! (-> arg0 data 28 count) 1)
+  (let ((v1-36 (* (-> obj obj-qwc) 16)))
+    (+! (-> arg0 data 28 used) v1-36)
+    (+! (-> arg0 data 28 total) (logand -16 (+ v1-36 15)))
+    )
+  (set! (-> arg0 length) (max 32 (-> arg0 length)))
+  (set! (-> arg0 data 31 name) "shrubbery-stq")
+  (+! (-> arg0 data 31 count) 1)
+  (let ((v1-46 (* (-> obj stq-qwc) 16)))
+    (+! (-> arg0 data 31 used) v1-46)
+    (+! (-> arg0 data 31 total) (logand -16 (+ v1-46 15)))
+    )
+  obj
+  )
+
+;; definition for method 9 of type drawable-tree-instance-shrub
+(defmethod login drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub))
+  (if (nonzero? (-> obj info prototype-inline-array-shrub))
+      (login (-> obj info prototype-inline-array-shrub))
+      )
+  obj
+  )
+
+;; definition for symbol shrub-vu1-block, type vu-function
+(define shrub-vu1-block (new 'static 'vu-function :length #x26a :qlength #x135))
+
+;; definition for function shrub-num-tris
+;; WARN: Return type mismatch uint32 vs uint.
+(defun shrub-num-tris ((shrub shrubbery))
+  (the-as uint (- (-> shrub header data 2) (the-as uint (* (-> shrub header data 1) 2))))
+  )
+
+;; definition for function shrub-make-perspective-matrix
+;; INFO: Used lq/sq
+(defun shrub-make-perspective-matrix ((out matrix) (camera-temp matrix))
+  (let* ((v1-0 out)
+         (t0-0 camera-temp)
+         (a1-1 (-> t0-0 vector 0 quad))
+         (a2-0 (-> t0-0 vector 1 quad))
+         (a3-0 (-> t0-0 vector 2 quad))
+         (t0-1 (-> t0-0 trans quad))
+         )
+    (set! (-> v1-0 vector 0 quad) a1-1)
+    (set! (-> v1-0 vector 1 quad) a2-0)
+    (set! (-> v1-0 vector 2 quad) a3-0)
+    (set! (-> v1-0 trans quad) t0-1)
+    )
+  (let ((f0-1 (/ 1.0 (-> *math-camera* pfog0))))
+    (set! (-> out vector 0 w) (* (-> out vector 0 w) f0-1))
+    (set! (-> out vector 1 w) (* (-> out vector 1 w) f0-1))
+    (set! (-> out vector 2 w) (* (-> out vector 2 w) f0-1))
+    (set! (-> out trans w) (* (-> out trans w) f0-1))
+    )
+  (+! (-> out vector 0 x) (* (-> out vector 0 w) (-> *math-camera* hvdf-off x)))
+  (+! (-> out vector 1 x) (* (-> out vector 1 w) (-> *math-camera* hvdf-off x)))
+  (+! (-> out vector 2 x) (* (-> out vector 2 w) (-> *math-camera* hvdf-off x)))
+  (+! (-> out trans x) (* (-> out trans w) (-> *math-camera* hvdf-off x)))
+  (+! (-> out vector 0 y) (* (-> out vector 0 w) (-> *math-camera* hvdf-off y)))
+  (+! (-> out vector 1 y) (* (-> out vector 1 w) (-> *math-camera* hvdf-off y)))
+  (+! (-> out vector 2 y) (* (-> out vector 2 w) (-> *math-camera* hvdf-off y)))
+  (+! (-> out trans y) (* (-> out trans w) (-> *math-camera* hvdf-off y)))
+  (+! (-> out vector 0 z) (* (-> out vector 0 w) (-> *math-camera* hvdf-off z)))
+  (+! (-> out vector 1 z) (* (-> out vector 1 w) (-> *math-camera* hvdf-off z)))
+  (+! (-> out vector 2 z) (* (-> out vector 2 w) (-> *math-camera* hvdf-off z)))
+  (+! (-> out trans z) (* (-> out trans w) (-> *math-camera* hvdf-off z)))
+  out
+  )
+
+;; definition for function shrub-init-view-data
+(defun shrub-init-view-data ((view-data shrub-view-data))
+  (set! (-> view-data texture-giftag tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x4))
+  (set! (-> view-data texture-giftag regs) (new 'static 'gif-tag-regs
+                                             :regs0 (gif-reg-id a+d)
+                                             :regs1 (gif-reg-id a+d)
+                                             :regs2 (gif-reg-id a+d)
+                                             :regs3 (gif-reg-id a+d)
+                                             )
+        )
+  (set! (-> view-data texture-giftag word 3) (the-as uint #x40a00000))
+  (set! (-> view-data consts x) 25167696.0)
+  (set! (-> view-data consts y) 8388608.0)
+  (set! (-> view-data consts z) (-> *math-camera* pfog0))
+  (set! (-> view-data consts w) (-> *math-camera* pfog1))
+  (set! (-> view-data fog-clamp x) (-> *math-camera* fog-min))
+  (set! (-> view-data fog-clamp y) (-> *math-camera* fog-max))
+  #f
+  )
+
+;; definition for function shrub-upload-view-data
+(defun shrub-upload-view-data ((dma-buff dma-buffer))
+  (let ((qwc 3))
+    (let* ((buf dma-buff)
+           (pkt (the-as dma-packet (-> buf base)))
+           )
+      (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+      (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc))
+      (set! (-> buf base) (&+ (the-as pointer pkt) 16))
+      )
+    (shrub-init-view-data (the-as shrub-view-data (-> dma-buff base)))
+    (&+! (-> dma-buff base) (* qwc 16))
+    )
+  #f
+  )
+
+;; definition for function shrub-time
+(defun shrub-time ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (+ (* arg0 8) 29 (* 22 arg2) (* 11 arg1) (* (+ (* arg4 2) 15 (* 5 arg2) (* 13 arg0)) arg3) 53)
+  )
+
+;; definition for function shrub-do-init-frame
+(defun shrub-do-init-frame ((dma-buff dma-buffer))
+  (dma-buffer-add-vu-function dma-buff shrub-vu1-block 1)
+  (shrub-upload-view-data dma-buff)
+  (let* ((v1-0 dma-buff)
+         (pkt1 (the-as dma-packet (-> v1-0 base)))
+         )
+    (set! (-> pkt1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> pkt1 vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm #x0))
+    (set! (-> pkt1 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+    (set! (-> v1-0 base) (&+ (the-as pointer pkt1) 16))
+    )
+  (let* ((v1-1 dma-buff)
+         (pkt2 (the-as dma-packet (-> v1-1 base)))
+         )
+    (set! (-> pkt2 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+    (set! (-> pkt2 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt2 vif1) (new 'static 'vif-tag))
+    (set! (-> v1-1 base) (&+ (the-as pointer pkt2) 16))
+    )
+  (let ((v1-2 (-> dma-buff base)))
+    (set! (-> (the-as (pointer vif-tag) v1-2) 0) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+    (set! (-> (the-as (pointer uint32) v1-2) 1) (the-as uint #x8080))
+    (set! (-> (the-as (pointer uint32) v1-2) 2) (the-as uint #x8080))
+    (set! (-> (the-as (pointer uint32) v1-2) 3) (the-as uint #x8080))
+    (set! (-> (the-as (pointer uint32) v1-2) 4) (the-as uint 0))
+    (set! (-> (the-as (pointer vif-tag) v1-2) 5) (new 'static 'vif-tag :cmd (vif-cmd stcol) :msk #x1))
+    (set! (-> (the-as (pointer uint32) v1-2) 6) (the-as uint 4096))
+    (set! (-> (the-as (pointer uint32) v1-2) 7) (the-as uint 4096))
+    (set! (-> (the-as (pointer uint32) v1-2) 8) (the-as uint 4096))
+    (set! (-> (the-as (pointer uint32) v1-2) 9) (the-as uint 4096))
+    (set! (-> (the-as (pointer vif-tag) v1-2) 10) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
+    (set! (-> (the-as (pointer uint32) v1-2) 11) (the-as uint #xa0a0a0a0))
+    (set! (-> dma-buff base) (&+ v1-2 48))
+    )
+  (set! *shrub-state* 2)
+  #f
+  )
+
+;; definition for function shrub-init-frame
+(defun shrub-init-frame ((dma-buff dma-buffer) (test gs-test))
+  (shrub-do-init-frame dma-buff)
+  (let* ((v1-0 dma-buff)
+         (pkt (the-as dma-packet (-> v1-0 base)))
+         )
+    (set! (-> pkt dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+    (set! (-> pkt vif0) (new 'static 'vif-tag))
+    (set! (-> pkt vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
+    )
+  (let* ((v1-1 dma-buff)
+         (giftag (the-as gs-gif-tag (-> v1-1 base)))
+         )
+    (set! (-> giftag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+    (set! (-> giftag regs) GIF_REGS_ALL_AD)
+    (set! (-> v1-1 base) (&+ (the-as pointer giftag) 16))
+    )
+  (let ((v1-2 (-> dma-buff base)))
+    (set! (-> (the-as (pointer gs-test) v1-2) 0) test)
+    (set! (-> (the-as (pointer gs-reg64) v1-2) 1) (gs-reg64 test-1))
+    (set! (-> dma-buff base) (&+ v1-2 16))
+    )
+  #f
+  )
+
+;; definition for function shrub-upload-model
+(defun shrub-upload-model ((shrub shrubbery) (dma-buff dma-buffer) (arg2 int))
+  (let* ((v1-0 dma-buff)
+         (a3-0 (the-as dma-packet (-> v1-0 base)))
+         )
+    (set! (-> a3-0 dma) (new 'static 'dma-tag
+                          :id (dma-tag-id ref)
+                          :addr (the-as int (-> shrub obj))
+                          :qwc (+ (-> shrub obj-qwc) (-> shrub vtx-qwc) (-> shrub col-qwc) (-> shrub stq-qwc))
+                          )
+          )
+    (set! (-> a3-0 vif0) (new 'static 'vif-tag :cmd (vif-cmd base) :imm *shrub-state*))
+    (set! (-> a3-0 vif1) (new 'static 'vif-tag :cmd (vif-cmd offset)))
+    (set! (-> v1-0 base) (&+ (the-as pointer a3-0) 16))
+    )
+  (cond
+    ((= arg2 1)
+     (let* ((v1-2 dma-buff)
+            (a0-9 (the-as dma-packet (-> v1-2 base)))
+            )
+       (set! (-> a0-9 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+       (set! (-> a0-9 vif0) (new 'static 'vif-tag))
+       (set! (-> a0-9 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #x11))
+       (set! (-> v1-2 base) (&+ (the-as pointer a0-9) 16))
+       )
+     )
+    (else
+      (let* ((v1-3 dma-buff)
+             (a0-11 (the-as dma-packet (-> v1-3 base)))
+             )
+        (set! (-> a0-11 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> a0-11 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-11 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #x15))
+        (set! (-> v1-3 base) (&+ (the-as pointer a0-11) 16))
+        )
+      )
+    )
+  (set! *shrub-state* (- 164 *shrub-state*))
+  #f
+  )
+
+;; definition for function draw-inline-array-instance-shrub
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function draw-prototype-inline-array-shrub
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function draw-drawable-tree-instance-shrub
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr0, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr1, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, a2]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr0]
+;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr1]
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr0, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr1, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, a0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
+;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr0]
+;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr1]
+(defun draw-drawable-tree-instance-shrub ((tree drawable-tree-instance-shrub) (level level))
+  (local-vars (a0-4 int) (a0-6 int) (a0-11 int) (a0-13 int))
+  (set! (-> *instance-shrub-work* texture-dists) (-> level bsp shrub-texture-dists))
+  (set! (-> *instance-shrub-work* near-last) (the-as uint 0))
+  (set! (-> *instance-shrub-work* near-next) (the-as uint 0))
+  (set! (-> *instance-shrub-work* near-count) (the-as uint 0))
+  (set! (-> *instance-shrub-work* near-trans-last) (the-as uint 0))
+  (set! (-> *instance-shrub-work* near-trans-next) (the-as uint 0))
+  (set! (-> *instance-shrub-work* near-trans-count) (the-as uint 0))
+  (set! (-> *instance-shrub-work* wind-vectors) (-> tree info wind-vectors))
+  (set! (-> *instance-shrub-work* wait-to-spr) (the-as uint 0))
+  (set! (-> *instance-shrub-work* wait-from-spr) (the-as uint 0))
+  (when (logtest? (vu1-renderer-mask rn15 rn16 rn17 rn18) (-> *display* vu1-enable-user))
+    (let* ((proto-array (-> tree info prototype-inline-array-shrub))
+           (proto-array-len (-> proto-array length))
+           (proto-array-data (-> proto-array data))
+           )
+      (countdown (i proto-array-len)
+        (let ((proto (-> proto-array data i)))
+          (set! (-> proto next-clear) (the-as uint128 0))
+          (set! (-> proto last-clear) (the-as uint128 0))
+          (set! (-> proto count-clear) (the-as uint 0))
+          )
+        0
+        )
+      (let ((dma-buff (-> *display* frames (-> *display* on-screen) global-buf)))
+        (when (nonzero? (-> tree length))
+          (let ((dma-start (-> *display* frames (-> *display* on-screen) global-buf base)))
+            (let* ((a1-16 (-> *perf-stats* data 44))
+                   (a2-6 (-> a1-16 ctrl))
+                   )
+              (+! (-> a1-16 count) 1)
+              (b! (zero? a2-6) cfg-7 :delay (nop!))
+              (.mtc0 Perf r0)
+              (.sync.l)
+              (.sync.p)
+              (.mtpc pcr0 r0)
+              (.mtpc pcr1 r0)
+              (.sync.l)
+              (.sync.p)
+              (.mtc0 Perf a2-6)
+              )
+            (.sync.l)
+            (.sync.p)
+            (label cfg-7)
+            0
+            (draw-inline-array-instance-shrub
+              dma-buff
+              (&+ (-> tree data 0) 32)
+              (-> (the-as drawable-group (-> tree data 0)) length)
+              proto-array-data
+              )
+            (let ((v1-26 (-> *perf-stats* data 44)))
+              (b! (zero? (-> v1-26 ctrl)) cfg-9 :delay (nop!))
+              (.mtc0 Perf r0)
+              (.sync.l)
+              (.sync.p)
+              (.mfpc a0-4 pcr0)
+              (+! (-> v1-26 accum0) a0-4)
+              (.mfpc a0-6 pcr1)
+              (+! (-> v1-26 accum1) a0-6)
+              )
+            (label cfg-9)
+            0
+            (let* ((v1-29 (-> *perf-stats* data 45))
+                   (a0-8 (-> v1-29 ctrl))
+                   )
+              (+! (-> v1-29 count) 1)
+              (b! (zero? a0-8) cfg-11 :delay (nop!))
+              (.mtc0 Perf r0)
+              (.sync.l)
+              (.sync.p)
+              (.mtpc pcr0 r0)
+              (.mtpc pcr1 r0)
+              (.sync.l)
+              (.sync.p)
+              (.mtc0 Perf a0-8)
+              )
+            (.sync.l)
+            (.sync.p)
+            (label cfg-11)
+            0
+            (draw-prototype-inline-array-shrub proto-array-len proto-array-data)
+            (let ((v1-32 (-> *perf-stats* data 45)))
+              (b! (zero? (-> v1-32 ctrl)) cfg-13 :delay (nop!))
+              (.mtc0 Perf r0)
+              (.sync.l)
+              (.sync.p)
+              (.mfpc a0-11 pcr0)
+              (+! (-> v1-32 accum0) a0-11)
+              (.mfpc a0-13 pcr1)
+              (+! (-> v1-32 accum1) a0-13)
+              )
+            (label cfg-13)
+            0
+            (let ((v1-33 *dma-mem-usage*))
+              (when (nonzero? v1-33)
+                (set! (-> v1-33 length) (max 28 (-> v1-33 length)))
+                (set! (-> v1-33 data 27 name) "shrubbery")
+                (+! (-> v1-33 data 27 count) 1)
+                (+! (-> v1-33 data 27 used)
+                    (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint dma-start))
+                    )
+                (set! (-> v1-33 data 27 total) (-> v1-33 data 27 used))
+                )
+              )
+            )
+          )
+        )
+      )
+    (update-wait-stats
+      (-> *perf-stats* data 44)
+      (the-as uint 0)
+      (-> *instance-shrub-work* wait-to-spr)
+      (-> *instance-shrub-work* wait-from-spr)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type drawable-tree-instance-shrub
+;; WARN: Return type mismatch int vs none.
+(defmethod draw drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub) (arg0 drawable-tree-instance-shrub) (arg1 display-frame))
+  (let ((v1-1 (-> *background-work* shrub-tree-count))
+        (a1-4 (-> *level* draw-level *draw-index*))
+        )
+    (set! (-> *background-work* shrub-trees v1-1) obj)
+    (set! (-> *background-work* shrub-levels v1-1) a1-4)
+    )
+  (+! (-> *background-work* shrub-tree-count) 1)
+  0
+  (none)
+  )
+
+;; definition for method 15 of type drawable-tree-instance-shrub
+(defmethod unpack-vis drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  arg1
+  )
+
+;; definition for method 13 of type drawable-tree-instance-shrub
+;; WARN: Return type mismatch int vs none.
+(defmethod collect-stats drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub))
+  (when (logtest? (vu1-renderer-mask rn15 rn16 rn17 rn18) (-> *display* vu1-enable-user))
+    (let* ((v1-4 (-> obj info prototype-inline-array-shrub))
+           (gp-0 (the-as object (-> v1-4 data)))
+           )
+      (countdown (s5-0 (-> v1-4 length))
+        (when (logtest? (vu1-renderer-mask rn16) (-> *display* vu1-enable-user))
+          (let ((v1-8 (-> (the-as prototype-bucket-shrub gp-0) count 0))
+                (a1-2 (-> (the-as prototype-bucket-shrub gp-0) geometry 0))
+                )
+            (when (nonzero? v1-8)
+              (let ((a0-4 (-> (the-as drawable-group a1-2) length)))
+                (+! (-> *terrain-stats* shrub groups) 1)
+                (+! (-> *terrain-stats* shrub fragments) (* a0-4 (the-as int v1-8)))
+                )
+              (+! (-> *terrain-stats* shrub instances) v1-8)
+              )
+            )
+          )
+        (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask rn15))
+          (let ((s4-0 (-> (the-as prototype-bucket-shrub gp-0) count 1))
+                (v1-14 (-> (the-as prototype-bucket-shrub gp-0) geometry 1))
+                )
+            (when (nonzero? s4-0)
+              (let ((s3-0 (&+ v1-14 32))
+                    (s2-0 (-> (the-as drawable-group v1-14) length))
+                    )
+                (+! (-> *terrain-stats* shrub groups) 1)
+                (+! (-> *terrain-stats* shrub fragments) s2-0)
+                (+! (-> *terrain-stats* shrub instances) s4-0)
+                (while (nonzero? s2-0)
+                  (+! s2-0 -1)
+                  (let ((a0-15 (* (shrub-num-tris (the-as shrubbery s3-0)) s4-0))
+                        (v1-26 (* (the-as uint (-> (the-as shrubbery s3-0) header data 2)) s4-0))
+                        )
+                    (+! (-> *terrain-stats* shrub tris) a0-15)
+                    (+! (-> *terrain-stats* shrub dverts) v1-26)
+                    )
+                  (&+! s3-0 32)
+                  )
+                )
+              )
+            )
+          )
+        (when (logtest? (vu1-renderer-mask rn18) (-> *display* vu1-enable-user))
+          (let ((s4-1 (-> (the-as prototype-bucket-shrub gp-0) count 2))
+                (v1-32 (-> (the-as prototype-bucket-shrub gp-0) geometry 2))
+                )
+            (when (nonzero? s4-1)
+              (let ((s3-1 (&+ v1-32 32))
+                    (s2-1 (-> (the-as drawable-group v1-32) length))
+                    )
+                (+! (-> *terrain-stats* trans-shrub groups) 1)
+                (+! (-> *terrain-stats* trans-shrub fragments) s2-1)
+                (+! (-> *terrain-stats* trans-shrub instances) s4-1)
+                (while (nonzero? s2-1)
+                  (+! s2-1 -1)
+                  (let ((a0-28 (* (shrub-num-tris (the-as shrubbery s3-1)) s4-1))
+                        (v1-44 (* (the-as uint (-> (the-as shrubbery s3-1) header data 2)) s4-1))
+                        )
+                    (+! (-> *terrain-stats* trans-shrub tris) a0-28)
+                    (+! (-> *terrain-stats* trans-shrub dverts) v1-44)
+                    )
+                  (&+! s3-1 32)
+                  )
+                )
+              )
+            )
+          )
+        (when (logtest? (vu1-renderer-mask rn17) (-> *display* vu1-enable-user))
+          (let ((v1-50 (-> (the-as prototype-bucket-shrub gp-0) count 3)))
+            (when (nonzero? v1-50)
+              (+! (-> *terrain-stats* billboard groups) 1)
+              (+! (-> *terrain-stats* billboard instances) v1-50)
+              (+! (-> *terrain-stats* billboard tris) (* v1-50 2))
+              (+! (-> *terrain-stats* billboard dverts) (* v1-50 4))
+              )
+            )
+          )
+        (set! gp-0 (-> (the-as (inline-array prototype-bucket-shrub) gp-0) 1))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type dma-test
+(deftype dma-test (structure)
+  ((data qword 101 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x650
+  :flag-assert         #x900000650
+  )
+
+;; definition for method 3 of type dma-test
+(defmethod inspect dma-test ((obj dma-test))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'dma-test)
+  (format #t "~1Tdata[101] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *dma-test*, type dma-test
+(define *dma-test* (new 'global 'dma-test))
+
+;; definition of type dma-test-work
+(deftype dma-test-work (structure)
+  ((upload dma-packet :inline :offset-assert   0)
+   (end    dma-packet :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type dma-test-work
+(defmethod inspect dma-test-work ((obj dma-test-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'dma-test-work)
+  (format #t "~1Tupload: #<dma-packet @ #x~X>~%" (-> obj upload))
+  (format #t "~1Tend: #<dma-packet @ #x~X>~%" (-> obj end))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *dma-test-work*, type dma-test-work
+(define *dma-test-work*
+  (new 'static 'dma-test-work
+    :upload (new 'static 'dma-packet :dma (new 'static 'dma-tag :qwc #x20 :id (dma-tag-id ref)))
+    :end (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id end)))
+    )
+  )
+
+;; definition for function init-dma-test
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint128 vs none.
+(defun init-dma-test ()
+  (let ((a0-0 *dma-test-work*)
+        (v1-0 (the-as object *dma-test*))
+        )
+    (let ((a1-6 (-> *display* frames (-> *display* on-screen) calc-buf base)))
+      (dotimes (a2-1 100)
+        (set! (-> a0-0 upload dma addr) (the-as int a1-6))
+        (set! (-> (the-as dma-test v1-0) data a2-1 quad) (-> a0-0 upload quad))
+        (&+! a1-6 256)
+        )
+      )
+    (set! (-> (the-as (inline-array qword) v1-0) 101 quad) (-> a0-0 end quad))
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(init-dma-test)
+
+;; definition for function dma-test-func
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function move-test-func
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+
+
+
