@@ -14,7 +14,9 @@
 
 (defenum texture-page-flag
   :type uint16
-  :bitfield #t)
+  :bitfield #t
+  (alpha-enable 0)
+  )
 
 ;; DECOMP BEGINS
 
@@ -64,12 +66,12 @@
    ;; 0 (maybe current-leaf-idx?)                                       128
    (texture-flags            texture-page-flag 10               :offset 130)
    ;; 0 (maybe padding)                                                 150
-   ;; 0 (was boxes, current back flags?, byte?)                         152
-   (ambients                 symbol                      :offset        156)
+   (require-force-inside     uint8                              :offset 152)
+   (ambients                 symbol                      :offset        156) ;; now just #t?
    (subdivide-close          float                       :offset        160)
    (subdivide-far            float                       :offset-assert 164)
    (race-meshes              (array entity-race-mesh)    :offset-assert 168)
-   ;; pointer to table of sorted floats                                 172
+   (actor-birth-order        (pointer uint32)            :offset        172)
    (light-hash               light-hash                  :offset        176)
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    (actor-groups             (array actor-group)         :offset-assert 184)
@@ -79,13 +81,19 @@
    ;; 200 is some array
    ;; 204 is maybe that array's length
    ;; 216 is a vector array
-  ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
+   ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
 
    (region-tree drawable-tree-region-prim :offset 252)
 
    ; (actor-birth-order (pointer uint32) :offset-assert 172)
    ; (split-box-indices (pointer uint16) :offset-assert 176)
-   (unk-data-8 uint32 55 :offset 180)
+   (unk-data uint32 18 :offset 180)
+   (tfrag-texture-masks-array texture-masks-array)
+
+   (tmask0 texture-masks-array :offset 272)
+   (tmask2 texture-masks-array :offset 280)
+
+   (end uint8 :offset 399)
    )
   :method-count-assert 19
   :size-assert         #x190
@@ -197,3 +205,4 @@
 
 
 (define-extern level-remap-texture (function texture-id texture-id))
+(define-extern build-masks (function bsp-header none))

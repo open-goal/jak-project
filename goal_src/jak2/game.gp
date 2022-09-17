@@ -660,6 +660,33 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;; PRISON
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "PRI.DGO" "pri.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ("$OUT/obj/los-control.o")
+ "fortress/prison/intro-texture.gc"
+ "fortress/prison/prison-part.gc"
+ "fortress/prison/prison-obs.gc"
+ )
+
+(copy-textures 1578 1950 1579 2647)
+
+(copy-gos
+  "daxter-highres-ag"
+  "prsn-torture-ag"
+  "prsn-chair-shackle-ag"
+  "prsn-hang-cell-ag"
+  "warp-gate-b-ag"
+  "prsn-vent-fan-ag"
+  "fort-entry-gate-ag"
+  "prsn-cell-door-ag"
+  "prison-vis"
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
