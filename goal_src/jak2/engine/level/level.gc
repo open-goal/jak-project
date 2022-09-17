@@ -1058,7 +1058,7 @@
                )
            )
          )
-       (when (nonzero? build-masks) (build-masks s5-0)) ;; ADDED nonzero check.
+        (build-masks s5-0)
        )
      (set! (-> *login-state* state) -1)
      (set! (-> *login-state* pos) (the-as uint 0))
@@ -1172,7 +1172,7 @@
         (let ((current-array (-> lstate elt (-> lstate state))))
           (cond
             ((= (-> current-array type) drawable-inline-array-tfrag)
-             (set! *texture-masks-array* (-> lev bsp tfrag-texture-masks-array))
+             (set! *texture-masks-array* (-> lev bsp tfrag-masks))
              (cond
                ((< login-state-pos (-> (the-as drawable-inline-array-tfrag current-array) length))
                 (dotimes (s2-2 200)
@@ -1200,16 +1200,14 @@
                        (set! proto (-> proto-array array-data (the-as uint login-state-pos)))
                        (+! (-> protos prototype-max-qwc) 32)
                        (cond
-                         ((logtest? (-> proto flags) 4)
-                          (set! *texture-masks* (-> *level* level *level-index* bsp tmask0 data (-> proto texture-masks-index)))
+                         ((logtest? (-> proto flags) (prototype-flags tpage-alpha))
+                          (set! *texture-masks* (-> *level* level *level-index* bsp alpha-masks data (-> proto texture-masks-index)))
                           )
-                         ((logtest? (-> proto flags) 128)
-                          (set! *texture-masks* (-> *level* level *level-index* bsp tmask2 data (-> proto texture-masks-index)))
+                         ((logtest? (-> proto flags) (prototype-flags tpage-water))
+                          (set! *texture-masks* (-> *level* level *level-index* bsp water-masks data (-> proto texture-masks-index)))
                           )
                          (else
-                           (set! *texture-masks*
-                                 (-> *level* level *level-index* bsp tfrag-texture-masks-array data (-> proto texture-masks-index))
-                                 )
+                           (set! *texture-masks* (-> *level* level *level-index* bsp tfrag-masks data (-> proto texture-masks-index)))
                            )
                          )
                        (when (and *debug-segment* (-> *screen-shot-work* highres-enable))
@@ -1239,16 +1237,14 @@
                  (dotimes (proto2-idx (-> proto-array length))
                    (let ((proto2 (-> proto-array array-data proto2-idx)))
                      (cond
-                       ((logtest? (-> proto2 flags) 4)
-                        (set! *texture-masks* (-> *level* level *level-index* bsp tmask0 data (-> proto2 texture-masks-index)))
+                       ((logtest? (-> proto2 flags) (prototype-flags tpage-alpha))
+                        (set! *texture-masks* (-> *level* level *level-index* bsp alpha-masks data (-> proto2 texture-masks-index)))
                         )
-                       ((logtest? (-> proto2 flags) 128)
-                        (set! *texture-masks* (-> *level* level *level-index* bsp tmask2 data (-> proto2 texture-masks-index)))
+                       ((logtest? (-> proto2 flags) (prototype-flags tpage-water))
+                        (set! *texture-masks* (-> *level* level *level-index* bsp water-masks data (-> proto2 texture-masks-index)))
                         )
                        (else
-                         (set! *texture-masks*
-                               (-> *level* level *level-index* bsp tfrag-texture-masks-array data (-> proto2 texture-masks-index))
-                               )
+                         (set! *texture-masks* (-> *level* level *level-index* bsp tfrag-masks data (-> proto2 texture-masks-index)))
                          )
                        )
                      (let ((envmap-shader (-> proto2 envmap-shader)))
@@ -1751,7 +1747,7 @@
      #t
      )
     (else
-      (zero? (-> obj bsp require-force-inside))
+      (zero? (-> obj bsp cam-outside-bsp))
       )
     )
   )
@@ -2761,7 +2757,7 @@
         (when (= (-> v1-96 status) 'active)
           (if (and (= (-> v1-96 status) 'active)
                    (!= (-> v1-96 display?) 'special)
-                   (nonzero? (-> v1-96 bsp require-force-inside))
+                   (nonzero? (-> v1-96 bsp cam-outside-bsp))
                    )
               (format *stdcon* "~3Loutside of bsp ~S~%~0L" (-> v1-96 name))
               )

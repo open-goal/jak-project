@@ -7484,9 +7484,13 @@
 
     (res 48)
 
-    (bsp-leaf-vis-self 62)
-    (bsp-leaf-vis-adj  63)
+    (bsp-main          58)
+    (bsp-misc          59)
+    (bsp-node          60)
+    (bsp-leaf-vis-self 61)
+    (bsp-leaf-vis-adj  62)
 
+    (pat          64)
     (level-code   65)
     (entity-links 66)
 
@@ -7495,14 +7499,19 @@
     (joint-anim-compressed-control 69)
     (joint-anim-fixed 70)
     (joint-anim-frame 71)
-
+    (subtitle         72)
     (art-group        73)
     (art-mesh-anim    74)
     (art-mesh-geo     75)
     (art-joint-geo    76)
     (art-joint-anim   77)
+    (merc-ctrl        78)
+    (joint-anim-drawable 79)
+    (blend-shape      80)
 
-    (joint-anim-drawable 78)
+    (texture          82)
+
+    (array            84)
 
     (eye-anim        111)
     )
@@ -12268,9 +12277,19 @@
 ;; prototype-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0)
+  (tpage-alpha 2)
+  (vanish      3)
+  (tpage-water 7)
+
+  )
+
 (deftype prototype-bucket (basic)
   ((name                string           :offset-assert 4) ;; guessed by decompiler
-   (flags               uint16           :offset-assert 8) ;; uint32
+   (flags               prototype-flags           :offset-assert 8) ;; uint32
    (texture-masks-index uint16           :offset-assert 10)
    (in-level            uint16           :offset-assert 12)
    (utextures           uint16           :offset-assert 14)
@@ -16793,6 +16812,7 @@
   :method-count-assert 14
   :size-assert         #x34
   :flag-assert         #xe00000034
+  :pack-me
   (:methods
     (perf-stat-method-9 () none 9) ;; (dummy-9 (_type_) none 9)
     (print-to-stream (_type_ string basic) none 10)
@@ -16880,6 +16900,7 @@
    (back-box-min  vector4b :inline :offset-assert 12)
    (back-box-max  vector4b :inline :offset-assert 16)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
@@ -16938,24 +16959,25 @@
    (texture-remap-table-len  int32                       :offset-assert 56)
    (texture-ids              (pointer texture-id)        :offset-assert 60)
    (texture-page-count       int32                       :offset-assert 64)
-   ;; 0                                                                 68
-   (name                     symbol                             :offset 72)
+   (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
+   (name                     symbol                      :offset-assert 72)
    (nickname                 symbol                      :offset-assert 76)
    (vis-info                 level-vis-info 8            :offset-assert 80)
    (actors                   drawable-inline-array-actor :offset-assert 112)
    (cameras                  (array entity-camera)       :offset-assert 116)
    (nodes                    (inline-array bsp-node)     :offset-assert 120)
    (level                    level                       :offset-assert 124)
-   ;; 0 (maybe current-leaf-idx?)                                       128
-   (texture-flags            texture-page-flag 10               :offset 130)
-   ;; 0 (maybe padding)                                                 150
-   (require-force-inside     uint8                              :offset 152)
-   (ambients                 symbol                      :offset        156) ;; now just #t?
-   (subdivide-close          float                       :offset        160)
+   (current-leaf-idx         uint16                      :offset-assert 128)
+   (texture-flags            texture-page-flag 10        :offset-assert 130)
+   (cam-outside-bsp          uint8                       :offset        152)
+   (cam-using-back           uint8                       :offset-assert 153)
+   (cam-box-idx              uint16                      :offset-assert 154)
+   (ambients                 symbol                      :offset-assert 156) ;; now just #t?
+   (subdivide-close          float                       :offset-assert 160)
    (subdivide-far            float                       :offset-assert 164)
    (race-meshes              (array entity-race-mesh)    :offset-assert 168)
-   (actor-birth-order        (pointer uint32)            :offset        172)
-   (light-hash               light-hash                  :offset        176)
+   (actor-birth-order        (pointer uint32)            :offset-assert 172)
+   (light-hash               light-hash                  :offset-assert 176)
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    (actor-groups             (array actor-group)         :offset-assert 184)
    (region-trees             (array drawable-tree-region-prim) :offset-assert 188)
@@ -16965,16 +16987,21 @@
    ;; 204 is maybe that array's length
    ;; 216 is a vector array
    ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
+   (region-tree              drawable-tree-region-prim          :offset 252)
+   (tfrag-masks              texture-masks-array         :offset-assert 256)
+   (tfrag-mask-count         uint32                      :offset-assert 260)
+   (shrub-masks              texture-masks-array         :offset-assert 264)
+   (shrub-mask-count         uint32                      :offset-assert 268)
+   (alpha-masks              texture-masks-array         :offset-assert 272)
+   (alpha-mask-count         uint32                      :offset-assert 276)
+   (water-masks              texture-masks-array         :offset-assert 280)
+   (water-mask-count         uint32                      :offset-assert 284)
 
-   (region-tree drawable-tree-region-prim :offset 252)
+   (bsp-scale                vector :inline              :offset-assert 288)
+   (bsp-offset               vector :inline              :offset-assert 304)
 
-   ; (actor-birth-order (pointer uint32) :offset-assert 172)
-   ; (split-box-indices (pointer uint16) :offset-assert 176)
-   (unk-data uint32 18 :offset 180)
-   (tfrag-texture-masks-array texture-masks-array)
 
-   (tmask0 texture-masks-array :offset 272)
-   (tmask2 texture-masks-array :offset 280)
+   (unk-data                 uint32 18                          :offset 180)
 
    (end uint8 :offset 399)
    )
@@ -17573,7 +17600,7 @@
    (translucent-flag               uint32             :offset-assert 520)
    (wait-from-spr                  uint32             :offset-assert 524)
    (wait-to-spr                    uint32             :offset-assert 528)
-   (use-etie                       basic              :offset-assert 532)
+   (use-etie                       symbol             :offset-assert 532)
    (buffer-start                   uint32             :offset-assert 536)
    (buffer-end                     uint32             :offset-assert 540)
    (tfrag-dists                    uint32             :offset-assert 544)
@@ -21675,9 +21702,9 @@
 ;; bsp                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern mem-usage-bsp-tree function) ;; (function bsp-header bsp-node memory-usage-block int none)
-;; (define-extern *test-shrub* object) ;; int
-(define-extern bsp-camera-asm (function bsp-header vector none)) ;;
+(define-extern mem-usage-bsp-tree (function bsp-header bsp-node memory-usage-block int none))
+(define-extern *test-shrub* int)
+(define-extern bsp-camera-asm (function bsp-header vector none))
 (define-extern print-collide-stats (function none))
 (define-extern level-remap-texture (function texture-id texture-id))
 (define-extern build-masks (function bsp-header none))
@@ -21687,15 +21714,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *merc-global-stats* merc-global-stats)
-;; (define-extern clear-tr-stat function) ;; (function tr-stat none)
+(define-extern clear-tr-stat (function tr-stat none))
 (define-extern *stat-string-tfrag* string)
 (define-extern *stat-string-tfrag-scissor* string)
 (define-extern *stat-string-total* string)
-;; (define-extern print-tr-stat function) ;; (function tr-stat string string none)
+(define-extern print-tr-stat (function tr-stat string string none))
 (define-extern print-terrain-stats (function none))
-;; (define-extern update-subdivide-settings! function) ;; (function subdivide-settings math-camera int none)
+(define-extern update-subdivide-settings! (function subdivide-settings math-camera int none))
 (define-extern *subdivide-settings* subdivide-settings)
-;; (define-extern set-tfrag-dists! function) ;; (function tfrag-dists none)
+(define-extern set-tfrag-dists! (function tfrag-dists none))
 (define-extern *terrain-context* terrain-context)
 (define-extern GSH_ENABLE symbol)
 (define-extern GSH_BUCKET bucket-id)
@@ -22174,9 +22201,8 @@
       - If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
       - However if we find an elt who's `owner` matches the iterator's, break out early returning that `elt`"
      (_type_) history-elt 10)
-    (history-iterator-method-11
-     "TODO - Unsure of the purpose
-      `min(1.0, ((history-elt.timestamp - 1) + frame-counter) / (max-age + 1)) - 1.0`"
+    (get-age
+     "Get the age of a history element"
      (_type_ history-elt) float 11)
     )
   )
@@ -23175,7 +23201,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *instance-tie-work* instance-tie-work) ;;
-;; (define-extern *prototype-tie-work* object) ;; prototype-tie-work
+(define-extern *prototype-tie-work* prototype-tie-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tie-methods                    ;;
@@ -26230,7 +26256,7 @@
 ;; (define-extern swingpole-init function)
 ;; (define-extern manipy-post function)
 (define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; (function vector entity-actor skeleton-group vector none :behavior manipy)
-(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker)) ;; 
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker)) ;;
 ;; (define-extern part-tracker-track-root function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
 ;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
@@ -28547,7 +28573,7 @@
 ;; (define-extern *collectable-dummy-shadow-control* shadow-control)
 ;; (define-extern initialize-ammo-by-other function)
 ;; (define-extern initialize-upgrade-by-other function)
-(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process)) ;; 
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process)) ;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; task-control                   ;;
@@ -28794,7 +28820,7 @@
 ;; (define-extern hide-hud function) ;; (function none)
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function none)
-(define-extern show-hud (function object none)) ;; 
+(define-extern show-hud (function object none)) ;;
 ;; (define-extern hud-hidden? function) ;; (function symbol)
 ;; (define-extern set-hud-piece-position! function)
 ;; (define-extern set-as-offset-from! function)

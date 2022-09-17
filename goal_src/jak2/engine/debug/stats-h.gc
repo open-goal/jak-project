@@ -102,6 +102,7 @@
    (to-spr-waits   uint32  :offset-assert  44)
    (from-spr-waits uint32  :offset-assert  48)
    )
+  :pack-me
   :method-count-assert 14
   :size-assert         #x34
   :flag-assert         #xe00000034
@@ -299,10 +300,14 @@
   )
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
+(define *pc-perf-stat-counter* (the-as uint 0))
 
 (defmethod reset! perf-stat ((obj perf-stat))
   ; (let ((v1-0 (-> obj ctrl)))
-    (+! (-> obj count) 1)
+  (+! (-> obj count) 1)
+  (when (nonzero? (-> obj ctrl))
+    (set! *pc-perf-stat-counter* (get-cpu-clock))
+    )
   ;   (b! (zero? v1-0) cfg-2 :delay (nop!))
   ;   (.mtc0 Perf r0)
   ;   (.sync.l)
@@ -324,13 +329,16 @@
 (defmethod read! perf-stat ((obj perf-stat))
   ; (local-vars (v1-1 int) (v1-3 int))
   ; (b! (zero? (-> obj ctrl)) cfg-2 :delay (nop!))
-  ; (.mtc0 Perf r0)
-  ; (.sync.l)
-  ; (.sync.p)
-  ; (.mfpc v1-1 pcr0)
-  ; (+! (-> obj accum0) v1-1)
-  ; (.mfpc v1-3 pcr1)
-  ; (+! (-> obj accum1) v1-3)
+  (when (nonzero? (-> obj ctrl))
+    ; (.mtc0 Perf r0)
+    ; (.sync.l)
+    ; (.sync.p)
+    ; (.mfpc v1-1 pcr0)
+    (+! (-> obj accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
+    ; (.mfpc v1-3 pcr1)
+    ; (+! (-> obj accum1) v1-3)
+    (set! (-> obj accum1) 0)
+    )
   ; (label cfg-2)
   ; 0
   (none)
