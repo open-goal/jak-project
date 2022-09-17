@@ -687,68 +687,66 @@
 
 ;; definition for function sound-play-by-name
 ;; INFO: Used lq/sq
-(defun sound-play-by-name ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 symbol))
+(defbehavior sound-play-by-name process-drawable ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 object))
+  "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
+   otherwise, an explicit [[vector]] can be provided"
   (local-vars (sv-16 sound-group))
-  (with-pp
-    (set! sv-16 arg5)
-    (let ((s4-0 (the-as object arg6)))
-      (when *sound-player-enable*
-        (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
-          (set! (-> s5-0 command) (sound-command play))
-          (set! (-> s5-0 id) arg1)
-          (set! (-> s5-0 name) arg0)
-          (set! (-> s5-0 params mask) (the-as uint 0))
-          (set! (-> s5-0 params group) (the-as uint sv-16))
-          (set! (-> s5-0 params volume) arg2)
-          (set! (-> s5-0 params pitch-mod) arg3)
-          (set! (-> s5-0 params bend) arg4)
-          (let ((s3-1 (the-as process-drawable pp)))
-            (when (= (the-as symbol s4-0) #t)
-              (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
-                  (set! s4-0 (-> s3-1 root trans))
-                  (set! s4-0 #f)
-                  )
-              )
-            )
-          (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) (the-as vector s4-0))
-          )
-        )
-      )
-    arg1
-    )
-  )
-
-;; definition for function sound-play-by-spec
-;; INFO: Used lq/sq
-(defun sound-play-by-spec ((arg0 sound-spec) (arg1 sound-id) (arg2 vector))
-  (with-pp
+  (set! sv-16 arg5)
+  (let ((s4-0 arg6))
     (when *sound-player-enable*
       (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
         (set! (-> s5-0 command) (sound-command play))
         (set! (-> s5-0 id) arg1)
-        (set! (-> s5-0 name) (-> arg0 sound-name))
-        (set! (-> s5-0 params mask) (the-as uint (-> arg0 mask)))
-        (set! (-> s5-0 params group-and-regs) (-> arg0 group-and-regs))
-        (set! (-> s5-0 params volume) (-> arg0 volume))
-        (set! (-> s5-0 params pitch-mod) (-> arg0 pitch-mod))
-        (set! (-> s5-0 params bend) (-> arg0 bend))
-        (set! (-> s5-0 params fo-min) (-> arg0 fo-min))
-        (set! (-> s5-0 params fo-max) (-> arg0 fo-max))
-        (set! (-> s5-0 params fo-curve) (-> arg0 fo-curve))
-        (set! (-> s5-0 params priority) (-> arg0 priority))
-        (let ((s3-1 (the-as process-drawable pp)))
-          (when (= arg2 #t)
+        (set! (-> s5-0 name) arg0)
+        (set! (-> s5-0 params mask) (the-as uint 0))
+        (set! (-> s5-0 params group) (the-as uint sv-16))
+        (set! (-> s5-0 params volume) arg2)
+        (set! (-> s5-0 params pitch-mod) arg3)
+        (set! (-> s5-0 params bend) arg4)
+        (let ((s3-1 self))
+          (when (= s4-0 #t)
             (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
-                (set! arg2 (-> s3-1 root trans))
-                (set! arg2 (the-as vector #f))
+                (set! s4-0 (-> s3-1 root trans))
+                (set! s4-0 #f)
                 )
             )
           )
-        (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) arg2)
+        (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) (the-as vector s4-0))
         )
       )
-    arg1
     )
+  arg1
+  )
+
+;; definition for function sound-play-by-spec
+;; INFO: Used lq/sq
+(defbehavior sound-play-by-spec process-drawable ((arg0 sound-spec) (arg1 sound-id) (arg2 vector))
+  (when *sound-player-enable*
+    (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
+      (set! (-> s5-0 command) (sound-command play))
+      (set! (-> s5-0 id) arg1)
+      (set! (-> s5-0 name) (-> arg0 sound-name))
+      (set! (-> s5-0 params mask) (the-as uint (-> arg0 mask)))
+      (set! (-> s5-0 params group-and-regs) (-> arg0 group-and-regs))
+      (set! (-> s5-0 params volume) (-> arg0 volume))
+      (set! (-> s5-0 params pitch-mod) (-> arg0 pitch-mod))
+      (set! (-> s5-0 params bend) (-> arg0 bend))
+      (set! (-> s5-0 params fo-min) (-> arg0 fo-min))
+      (set! (-> s5-0 params fo-max) (-> arg0 fo-max))
+      (set! (-> s5-0 params fo-curve) (-> arg0 fo-curve))
+      (set! (-> s5-0 params priority) (-> arg0 priority))
+      (let ((s3-1 self))
+        (when (= arg2 #t)
+          (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
+              (set! arg2 (-> s3-1 root trans))
+              (set! arg2 (the-as vector #f))
+              )
+          )
+        )
+      (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) arg2)
+      )
+    )
+  arg1
   )
 
 ;; definition for function sound-pause
@@ -1023,7 +1021,7 @@
                                    (-> obj pitch)
                                    0
                                    (sound-group sfx)
-                                   (the-as symbol (-> obj trans))
+                                   (-> obj trans)
                                    )
              )
        )
@@ -1037,7 +1035,7 @@
                   (-> obj pitch)
                   0
                   (sound-group sfx)
-                  (the-as symbol (-> obj trans))
+                  (-> obj trans)
                   )
                 )
           (set! (-> obj play-time)

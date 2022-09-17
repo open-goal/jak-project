@@ -1,88 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: mysql-nav-graph.gc
-;; name in dgo: mysql-nav-graph
-;; dgos: ENGINE, GAME
-
-;; +++mysql-save-flag
-(defenum mysql-save-flag
-  :type uint32
-  :bitfield #t
-  (delete 1)
-  (update 2)
-  (insert 3)
-  )
-;; ---mysql-save-flag
-
-;; +++nav-node-flag
-(defenum nav-node-flag
-  "This string value is stored in their SQL database"
-  :type uint32
-  :bitfield #t
-  (visited 0)
-  (blocked 1)
-  (pedestrian 2)
-  (selected 3)
-  (hidden 4))
-;; ---nav-node-flag
-
-;; +++nav-directionality
-(defenum nav-directionality
-  :type uint32
-  :bitfield #f
-  (default 0)
-  (directed 1)
-  (bi_directional 2))
-;; ---nav-directionality
-
-;; +++nav-clock-mask
-(defenum nav-clock-mask
-  "This string value is stored in their SQL database"
-  :type uint32
-  :bitfield #t
-  (phase-1 0)
-  (phase-1a 1)
-  (phase-2 2)
-  (phase-2a 3)
-  (phase-3 4)
-  (phase-3a 5)
-  (phase-4 6)
-  (phase-4a 7))
-;; ---nav-clock-mask
-
-;; +++nav-clock-type
-(defenum nav-clock-type
-  "This string value is stored in their SQL database"
-  :type uint32
-  :bitfield #f
-  (no-clock 0)
-  (clock2 1)
-  (clock3 2)
-  (clock4 3))
-;; ---nav-clock-mask
-
-;; +++nav-minimap-edge-flag
-(defenum nav-minimap-edge-flag
-  "This string value is stored in their SQL database"
-  :type int32
-  :bitfield #t
-  (pass-red 0)
-  (pass-green 1)
-  (pass-yellow 2)
-  (pass-blue 3))
-;; ---nav-minimap-edge-flag
-
-(declare-type mysql-nav-edge structure)
-
-;; og:ignore-form:defmethod mysql-nav-graph-method-19 mysql-nav-graph
-;; og:ignore-form:defmethod exec-sql! mysql-nav-graph
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (declare-file (debug))
 (when *debug-segment*
+;; definition of type mysql-nav-node
 (deftype mysql-nav-node (structure)
   ((mysql-save-flag  mysql-save-flag                       :offset-assert   0)
    (runtime-id       uint32                                :offset-assert   4)
@@ -109,7 +31,32 @@
     )
   )
 
+;; definition for method 3 of type mysql-nav-node
+(defmethod inspect mysql-nav-node ((obj mysql-nav-node))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mysql-nav-node)
+  (format #t "~1Tmysql-save-flag: ~D~%" (-> obj mysql-save-flag))
+  (format #t "~1Truntime-id: ~D~%" (-> obj runtime-id))
+  (format #t "~1Ttemp-edge-list: ~A~%" (-> obj temp-edge-list))
+  (format #t "~1Tlevel-node-index: ~D~%" (-> obj level-node-index))
+  (format #t "~1Tcam-dist: ~f~%" (-> obj cam-dist))
+  (format #t "~1Tvisible: ~A~%" (-> obj visible))
+  (format #t "~1Tnav_node_id: ~D~%" (-> obj nav_node_id))
+  (format #t "~1Tnav_graph_id: ~D~%" (-> obj nav_graph_id))
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> obj position))
+  (format #t "~1Tlevel_name: ~A~%" (-> obj level_name))
+  (format #t "~1Tangle: ~f~%" (-> obj angle))
+  (format #t "~1Tradius: ~f~%" (-> obj radius))
+  (format #t "~1Tnav_node_flag: ~D~%" (-> obj nav_node_flag))
+  (format #t "~1Tnav_mesh_id: ~D~%" (-> obj nav_mesh_id))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type mysql-nav-node-array
 (deftype mysql-nav-node-array (inline-array-class)
   ((data mysql-nav-node :inline :dynamic :offset-assert  16)
    )
@@ -118,9 +65,24 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type mysql-nav-node-array
+(defmethod inspect mysql-nav-node-array ((obj mysql-nav-node-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (set! (-> mysql-nav-node-array heap-base) (the-as uint 80))
 
+;; definition of type mysql-nav-edge
 (deftype mysql-nav-edge (structure)
   ((mysql-save-flag   mysql-save-flag        :offset-assert   0)
    (runtime-id        uint32                 :offset-assert   4)
@@ -149,7 +111,35 @@
     )
   )
 
+;; definition for method 3 of type mysql-nav-edge
+(defmethod inspect mysql-nav-edge ((obj mysql-nav-edge))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mysql-nav-edge)
+  (format #t "~1Tmysql-save-flag: ~D~%" (-> obj mysql-save-flag))
+  (format #t "~1Truntime-id: ~D~%" (-> obj runtime-id))
+  (format #t "~1Truntime-node-id-1: ~D~%" (-> obj runtime-node-id-1))
+  (format #t "~1Truntime-node-id-2: ~D~%" (-> obj runtime-node-id-2))
+  (format #t "~1Ttemp-next-edge: #<mysql-nav-edge @ #x~X>~%" (-> obj temp-next-edge))
+  (format #t "~1Tnav_edge_id: ~D~%" (-> obj nav_edge_id))
+  (format #t "~1Tnav_graph_id: ~D~%" (-> obj nav_graph_id))
+  (format #t "~1Tnav_node_id_1: ~D~%" (-> obj nav_node_id_1))
+  (format #t "~1Tnav_node_id_2: ~D~%" (-> obj nav_node_id_2))
+  (format #t "~1Tdirectionality: ~D~%" (-> obj directionality))
+  (format #t "~1Tspeed_limit: ~f~%" (-> obj speed_limit))
+  (format #t "~1Tdensity: ~f~%" (-> obj density))
+  (format #t "~1Ttraffic_edge_flag: ~D~%" (-> obj traffic_edge_flag))
+  (format #t "~1Tnav_clock_mask: ~D~%" (-> obj nav_clock_mask))
+  (format #t "~1Tnav_clock_type: ~D~%" (-> obj nav_clock_type))
+  (format #t "~1Twidth: ~f~%" (-> obj width))
+  (format #t "~1Tminimap_edge_flag: ~D~%" (-> obj minimap_edge_flag))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type mysql-nav-edge-array
 (deftype mysql-nav-edge-array (inline-array-class)
   ((data mysql-nav-edge :inline :dynamic :offset-assert  16)
    )
@@ -158,9 +148,24 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type mysql-nav-edge-array
+(defmethod inspect mysql-nav-edge-array ((obj mysql-nav-edge-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (set! (-> mysql-nav-edge-array heap-base) (the-as uint 80))
 
+;; definition of type mysql-nav-visnode
 (deftype mysql-nav-visnode (structure)
   ((mysql-save-flag mysql-save-flag  :offset-assert   0)
    (runtime-node-id int32            :offset-assert   4)
@@ -178,7 +183,25 @@
     )
   )
 
+;; definition for method 3 of type mysql-nav-visnode
+(defmethod inspect mysql-nav-visnode ((obj mysql-nav-visnode))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mysql-nav-visnode)
+  (format #t "~1Tmysql-save-flag: ~D~%" (-> obj mysql-save-flag))
+  (format #t "~1Truntime-node-id: ~D~%" (-> obj runtime-node-id))
+  (format #t "~1Truntime-edge-id: ~D~%" (-> obj runtime-edge-id))
+  (format #t "~1Tnav_visnode_id: ~D~%" (-> obj nav_visnode_id))
+  (format #t "~1Tnav_graph_id: ~D~%" (-> obj nav_graph_id))
+  (format #t "~1Tnav_node_id: ~D~%" (-> obj nav_node_id))
+  (format #t "~1Tnav_edge_id: ~D~%" (-> obj nav_edge_id))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type mysql-nav-visnode-array
 (deftype mysql-nav-visnode-array (inline-array-class)
   ((data mysql-nav-visnode :inline :dynamic :offset-assert  16)
    )
@@ -187,9 +210,24 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type mysql-nav-visnode-array
+(defmethod inspect mysql-nav-visnode-array ((obj mysql-nav-visnode-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (set! (-> mysql-nav-visnode-array heap-base) (the-as uint 32))
 
+;; definition of type mysql-nav-graph-level-info
 (deftype mysql-nav-graph-level-info (structure)
   ((level         basic   :offset-assert   0)
    (level-id      uint32  :offset-assert   4)
@@ -203,7 +241,23 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type mysql-nav-graph-level-info
+(defmethod inspect mysql-nav-graph-level-info ((obj mysql-nav-graph-level-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mysql-nav-graph-level-info)
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "~1Tlevel-id: ~D~%" (-> obj level-id))
+  (format #t "~1Tnode-count: ~D~%" (-> obj node-count))
+  (format #t "~1Tbranch-count: ~D~%" (-> obj branch-count))
+  (format #t "~1Tto-link-count: ~D~%" (-> obj to-link-count))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type mysql-nav-graph
 (deftype mysql-nav-graph (basic)
   ((nav_graph_id            uint32                                :offset-assert   4)
    (node-array              mysql-nav-node-array                  :offset-assert   8)
@@ -233,7 +287,25 @@
     )
   )
 
+;; definition for method 3 of type mysql-nav-graph
+(defmethod inspect mysql-nav-graph ((obj mysql-nav-graph))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tnav_graph_id: ~D~%" (-> obj nav_graph_id))
+  (format #t "~1Tnode-array: ~A~%" (-> obj node-array))
+  (format #t "~1Tedge-array: ~A~%" (-> obj edge-array))
+  (format #t "~1Tvisnode-array: ~A~%" (-> obj visnode-array))
+  (format #t "~1Tlevel-info-array-length: ~D~%" (-> obj level-info-array-length))
+  (format #t "~1Tlevel-info-last-lookup: ~D~%" (-> obj level-info-last-lookup))
+  (format #t "~1Tlevel-info-array[32] @ #x~X~%" (-> obj level-info-array))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 0 of type mysql-nav-graph
 ;; WARN: Return type mismatch object vs mysql-nav-graph.
 (defmethod new mysql-nav-graph ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -260,6 +332,7 @@
     )
   )
 
+;; definition for method 13 of type mysql-nav-graph
 (defmethod alloc-new-node! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-node]]`, if `node-array`'s `length` exceeds `3000` return `-1`
        otherwise, return the new size of the array"
@@ -284,6 +357,7 @@
     )
   )
 
+;; definition for method 14 of type mysql-nav-graph
 (defmethod alloc-new-edge! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-edge]]`, if `edge-array`'s `length` exceeds `5000` return `-1`
        otherwise, return the new size of the array"
@@ -308,6 +382,7 @@
     )
   )
 
+;; definition for method 15 of type mysql-nav-graph
 (defmethod indexof-visnode mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Returns the index in the `visnode-array` whom's [[mysql-nav-visnode]] has the provided `runtime-edge-id` and `runtime-node-id`
        if none exist, return `-1`"
@@ -321,6 +396,7 @@
   -1
   )
 
+;; definition for method 16 of type mysql-nav-graph
 (defmethod alloc-new-visnode! mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Potentially allocates a new `[[mysql-nav-visnode]]`:
        - if `visnode-array`'s `length` exceeds `3000` return `-1`
@@ -357,6 +433,7 @@
     )
   )
 
+;; definition for method 9 of type mysql-nav-node
 (defmethod exec-sql! mysql-nav-node ((obj mysql-nav-node))
   "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
   (if (and (logtest? (-> obj mysql-save-flag) (mysql-save-flag insert))
@@ -462,6 +539,7 @@
   #t
   )
 
+;; definition for method 9 of type mysql-nav-edge
 (defmethod exec-sql! mysql-nav-edge ((obj mysql-nav-edge))
   "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
   (if (and (logtest? (-> obj mysql-save-flag) (mysql-save-flag insert))
@@ -666,6 +744,7 @@
   #t
   )
 
+;; definition for method 9 of type mysql-nav-visnode
 (defmethod exec-sql! mysql-nav-visnode ((obj mysql-nav-visnode))
   "Executes the respective SQL operation specified by `mysql-save-flag`, return value indicates success"
   (if (and (logtest? (-> obj mysql-save-flag) (mysql-save-flag insert))
@@ -720,6 +799,7 @@
   #t
   )
 
+;; definition for method 11 of type mysql-nav-graph
 (defmethod indexof-nav-node mysql-nav-graph ((obj mysql-nav-graph) (node-id int))
   "Iterate through the `node-array` and return the index for the first [[mysql-nav-node]] whom's `nav_node_id` matches the provided id
        returns `-1` if none is found"
@@ -731,6 +811,7 @@
   -1
   )
 
+;; definition for method 12 of type mysql-nav-graph
 (defmethod indexof-nav-edge mysql-nav-graph ((obj mysql-nav-graph) (edge-id int))
   "Iterate through the `edge-array` and return the index for the first [[mysql-nav-edge]] whom's `nav_edge_id` matches the provided id
        returns `-1` if none is found"
@@ -742,6 +823,8 @@
   -1
   )
 
+;; definition for method 9 of type mysql-nav-graph
+;; INFO: Used lq/sq
 ;; WARN: new jak 2 until loop case, check carefully
 ;; WARN: new jak 2 until loop case, check carefully
 ;; WARN: new jak 2 until loop case, check carefully
@@ -1084,6 +1167,7 @@
   #t
   )
 
+;; definition for method 10 of type mysql-nav-node
 (defmethod temp-edge-size mysql-nav-node ((obj mysql-nav-node))
   "Returns the number of [[mysql-nav-edge]] stored in the `temp-edge-list`"
   (let ((v0-0 0))
@@ -1097,6 +1181,7 @@
     )
   )
 
+;; definition for method 17 of type mysql-nav-graph
 ;; WARN: Return type mismatch int vs none.
 (defmethod mysql-nav-graph-method-17 mysql-nav-graph ((obj mysql-nav-graph))
   (dotimes (v1-0 (-> obj node-array length))
@@ -1130,10 +1215,50 @@
   (none)
   )
 
+;; definition for method 18 of type mysql-nav-graph
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for method 19 of type mysql-nav-graph
 ;; WARN: Return type mismatch int vs none.
+(defmethod mysql-nav-graph-method-19 mysql-nav-graph ((obj mysql-nav-graph))
+  (set! (-> obj level-info-array-length) 0)
+  (set! (-> obj level-info-last-lookup) 0)
+  (dotimes (v1-0 32)
+    (let ((a0-3 (-> obj level-info-array v1-0)))
+      (set! (-> a0-3 level) #f)
+      (set! (-> a0-3 level-id) (the-as uint v1-0))
+      (set! (-> a0-3 node-count) 0)
+      (set! (-> a0-3 branch-count) 0)
+      (set! (-> a0-3 to-link-count) 0)
+      )
+    0
+    )
+  (dotimes (s5-0 (-> obj node-array length))
+    (let ((s4-0 (-> obj node-array data s5-0)))
+      (when (zero? (logand (-> s4-0 mysql-save-flag) (mysql-save-flag delete)))
+        (let ((v1-10 (lookup-level-info2 obj s4-0 #t)))
+          (set! (-> s4-0 level-node-index) (-> v1-10 node-count))
+          (+! (-> v1-10 node-count) 1)
+          (let ((a0-10 (the-as mysql-nav-edge (-> s4-0 temp-edge-list))))
+            (while a0-10
+              (when (zero? (logand (-> a0-10 mysql-save-flag) (mysql-save-flag delete)))
+                (if (!= (-> v1-10 level) (-> obj node-array data (-> a0-10 runtime-node-id-2) level_name))
+                    (+! (-> v1-10 to-link-count) 1)
+                    )
+                (+! (-> v1-10 branch-count) 1)
+                )
+              (set! a0-10 (-> a0-10 temp-next-edge))
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
 
+;; definition for method 20 of type mysql-nav-graph
 ;; WARN: Return type mismatch int vs none.
 (defmethod mysql-nav-graph-method-20 mysql-nav-graph ((obj mysql-nav-graph))
   (mysql-nav-graph-method-17 obj)
@@ -1142,8 +1267,43 @@
   (none)
   )
 
+;; definition for method 10 of type mysql-nav-graph
+(defmethod exec-sql! mysql-nav-graph ((obj mysql-nav-graph))
+  (format #t "Saving nodes ...~%")
+  (dotimes (s5-0 (-> obj node-array length))
+    (let ((a0-3 (-> obj node-array data s5-0)))
+      (set! (-> a0-3 nav_graph_id) (-> obj nav_graph_id))
+      (if (not (exec-sql! a0-3))
+          (return #f)
+          )
+      )
+    )
+  (format #t "Done.~%")
+  (format #t "Saving edges ...~%")
+  (dotimes (s5-1 (-> obj edge-array length))
+    (let ((a0-7 (the-as mysql-nav-edge (+ (+ (* 80 s5-1) 12) (the-as int (-> obj edge-array))))))
+      (set! (-> a0-7 nav_graph_id) (-> obj nav_graph_id))
+      (set! (-> a0-7 nav_node_id_1) (-> obj node-array data (-> a0-7 runtime-node-id-1) nav_node_id))
+      (set! (-> a0-7 nav_node_id_2) (-> obj node-array data (-> a0-7 runtime-node-id-2) nav_node_id))
+      (exec-sql! a0-7)
+      )
+    )
+  (format #t "Done.~%")
+  (format #t "Saving visible nodes ...~%")
+  (dotimes (s5-2 (-> obj visnode-array length))
+    (let ((a0-11 (-> obj visnode-array data s5-2)))
+      (set! (-> a0-11 nav_graph_id) (-> obj nav_graph_id))
+      (set! (-> a0-11 nav_node_id) (-> obj node-array data (-> a0-11 runtime-node-id) nav_node_id))
+      (set! (-> a0-11 nav_edge_id)
+            (l.wu (+ (the-as uint (-> obj edge-array)) (* 80 (-> a0-11 runtime-edge-id)) 32))
+            )
+      (if (not (exec-sql! a0-11))
+          (return #f)
+          )
+      )
+    )
+  (format #t "Done.~%")
+  #t
+  )
 
 )
-
-
-

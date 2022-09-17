@@ -19,25 +19,25 @@ std::optional<json> go_to_definition_handler(Workspace& workspace, int id, json 
 
   if (!symbol_name) {
     lg::debug("GOTODEF - no symbol");
-    return locations;
+    return {};
   }
 
   lg::debug("GOTODEF - symbol - {}", symbol_name.value());
 
-  auto symbol_info =
-      workspace.get_symbol_info_from_all_types(symbol_name.value(), tracked_file->m_all_types_uri);
+  auto symbol_info = workspace.get_definition_info_from_all_types(symbol_name.value(),
+                                                                  tracked_file->m_all_types_uri);
 
   if (!symbol_info) {
     lg::debug("GOTODEF - no symbol info");
-    return locations;
+    return {};
   }
 
   LSPSpec::Location location;
   location.m_uri = tracked_file->m_all_types_uri;
-  location.m_range.m_start = {(uint32_t)symbol_info->line_idx_to_display,
-                              (uint32_t)symbol_info->pos_in_line};
-  location.m_range.m_end = {(uint32_t)symbol_info->line_idx_to_display,
-                            (uint32_t)symbol_info->pos_in_line};
+  location.m_range.m_start = {(uint32_t)symbol_info.value().definition_info->line_idx_to_display,
+                              (uint32_t)symbol_info.value().definition_info->pos_in_line};
+  location.m_range.m_end = {(uint32_t)symbol_info.value().definition_info->line_idx_to_display,
+                            (uint32_t)symbol_info.value().definition_info->pos_in_line};
   locations.push_back(location);
 
   return locations;
