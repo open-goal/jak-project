@@ -1640,9 +1640,9 @@
 (define-extern matrix-rotate-yzx! (function matrix vector matrix))
 (define-extern matrix-rotate-yxy! (function matrix vector matrix))
 (define-extern matrix-rotate-yx! (function matrix float float matrix))
-(define-extern matrix-axis-sin-cos-vu! (function matrix vector float float none))
+(define-extern matrix-axis-sin-cos-vu! (function matrix vector float float matrix))
 (define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
-(define-extern matrix-axis-angle! (function matrix vector float none))
+(define-extern matrix-axis-angle! (function matrix vector float matrix))
 (define-extern matrix-lerp! (function matrix matrix matrix float matrix))
 (define-extern matrix-3x3-determinant (function matrix float))
 (define-extern matrix3-determinant (function matrix float))
@@ -8170,7 +8170,7 @@
   :flag-assert         #xa00000010
   ;; field on-enter uses ~A with a signed load field on-inside uses ~A with a signed load field on-exit uses ~A with a signed load
   (:methods
-    (region-method-9 () none 9)
+    (region-method-9 (_type_ vector) symbol 9)
     )
   )
 
@@ -8183,7 +8183,7 @@
   :flag-assert         #x900000010
   )
 
-
+(declare-type region-prim-area structure)
 (deftype drawable-region-prim (drawable)
   ((region region  :offset 8)
    )
@@ -8192,12 +8192,10 @@
   :flag-assert         #x1400000020
   (:methods
     (debug-draw-region (_type_ int) none 17)
-    (drawable-region-prim-method-18 () none 18)
-    (drawable-region-prim-method-19 () none 19)
+    (drawable-region-prim-method-18 (_type_ region-prim-area) symbol 18)
+    (drawable-region-prim-method-19 (_type_ region-prim-area) symbol 19)
     )
   )
-
-(declare-type drawable-inline-array-region-prim drawable)
 
 (deftype drawable-tree-region-prim (drawable-tree)
   ((name basic :offset 8)
@@ -8207,7 +8205,7 @@
   :flag-assert         #x1300000020
   ;; Failed to read fields.
   (:methods
-    (drawable-tree-region-prim-method-17 () none 17)
+    (drawable-tree-region-prim-method-17 (_type_) none 17)
     (debug-print (_type_ vector object) none 18)
     )
   )
@@ -18151,7 +18149,9 @@
 (deftype region-prim-area (structure)
   ((region-prim-list        region-prim-list :inline :offset-assert 0)
    (pos                     vector           :inline :offset-assert 1296)
+   (unk-sphere-87d71        vector           :inline :offset-assert 1312)
    (ray                     vector           :inline :offset 1328)
+   (unk-vector-u7123        vector           :inline :offset 1344)
    (region-enter-count      int32                    :offset 1360)
    (region-enter-list       uint32          320     :offset-assert 1364)
    (region-enter-prim-list  uint32          320     :offset-assert 2644)
@@ -18169,10 +18169,10 @@
   :size-assert         #x2d60
   :flag-assert         #xd00002d60
   (:methods
-    (region-prim-area-method-9 () none 9)
-    (region-prim-area-method-10 () none 10)
-    (region-prim-area-method-11 () none 11)
-    (region-prim-area-method-12 () none 12)
+    (region-prim-area-method-9 (_type_ drawable-region-prim) none 9)
+    (region-prim-area-method-10 (_type_ drawable-region-prim) none 10)
+    (region-prim-area-method-11 (_type_ drawable-region-prim) none 11)
+    (region-prim-area-method-12 (_type_ drawable-region-prim) none 12)
     )
   )
 
@@ -21562,7 +21562,7 @@
 (define-extern ray-sphere-intersect (function vector vector vector float float))
 (define-extern ray-circle-intersect (function vector vector vector float float)) ;;
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
-;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float)) ;; 
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
 ;; (define-extern collide-do-primitives function) ;; (function float)
 (define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float)) ;;
@@ -26108,7 +26108,7 @@
 ;; region                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern region-tree-execute function)
+(define-extern region-tree-execute (function symbol vector vector none))
 (define-extern region-execute (function none))
 (define-extern region-prim-lookup-by-id (function int drawable-region-prim))
 (define-extern region-lookup-by-id (function int region))
