@@ -856,6 +856,43 @@ void types2_for_div_mod_signed(types2::Type& type_out,
                                        expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
+void types2_for_div_mod_unsigned(types2::Type& type_out,
+                                 const SimpleExpression& expr,
+                                 const Env& env,
+                                 types2::TypeState& input_types,
+                                 const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // unsigned division will always return an unsigned number.
+    type_out.type = TP_Type::make_from_ts("uint");
+    return;
+  }
+
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
+    return;
+  }
+
+  throw std::runtime_error(
+      fmt::format("Couldn't figure out unsigned integer mod/divide: {} ({} and {})\n",
+                  expr.to_string(env), arg0_type.print(), arg1_type.print()));
+}
+
 void types2_for_pcpyld(types2::Type& type_out,
                        const SimpleExpression& expr,
                        const Env& env,
@@ -1531,6 +1568,10 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::DIV_SIGNED:
     case SimpleExpression::Kind::MOD_SIGNED:
       types2_for_div_mod_signed(type_out, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::DIV_UNSIGNED:
+    case SimpleExpression::Kind::MOD_UNSIGNED:
+      types2_for_div_mod_unsigned(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
