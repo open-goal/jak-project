@@ -1652,7 +1652,7 @@ int InitHeapAndSymbol() {
   make_function_symbol_from_c("kmemclose", (void*)kmemclose);
   make_function_symbol_from_c("new-dynamic-structure", (void*)new_dynamic_structure);
   make_function_symbol_from_c("method-set!", (void*)method_set);
-  make_function_symbol_from_c("link", (void*)link_and_exec);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec);
   make_function_symbol_from_c("link-busy?", (void*)link_busy);
   make_function_symbol_from_c("link-reset", (void*)link_reset);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
@@ -1660,7 +1660,7 @@ int InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("memcpy-and-rellink", 0);
   make_raw_function_symbol_from_c("symlink2", 0);
   make_raw_function_symbol_from_c("symlink3", 0);
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   make_function_symbol_from_c("sql-query", (void*)sql_query_sync);
   make_function_symbol_from_c("mc-run", (void*)MC_run);

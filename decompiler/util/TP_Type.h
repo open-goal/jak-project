@@ -43,6 +43,7 @@ class TP_Type {
     RUN_FUNCTION_IN_PROCESS_FUNCTION,
     SET_TO_RUN_FUNCTION,
     GET_ART_BY_NAME_METHOD,
+    SYMBOL,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -77,6 +78,7 @@ class TP_Type {
       case Kind::SET_TO_RUN_FUNCTION:
       case Kind::GET_ART_BY_NAME_METHOD:
       case Kind::NON_OBJECT_NEW_METHOD:
+      case Kind::SYMBOL:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -100,6 +102,7 @@ class TP_Type {
   }
   bool is_format_string() const { return kind == Kind::FORMAT_STRING; }
   bool can_be_format_string() const { return is_format_string() || is_constant_string(); }
+  bool is_symbol() const { return kind == Kind::SYMBOL; }
 
   int get_format_string_arg_count() const {
     ASSERT(is_format_string());
@@ -173,6 +176,13 @@ class TP_Type {
   static TP_Type make_false() {
     TP_Type result;
     result.kind = Kind::FALSE_AS_NULL;
+    return result;
+  }
+
+  static TP_Type make_symbol(const std::string& name) {
+    TP_Type result;
+    result.kind = Kind::SYMBOL;
+    result.m_str = name;
     return result;
   }
 
