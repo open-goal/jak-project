@@ -2466,9 +2466,12 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
       in_type.last_arg() == TypeSpec("array") && input_types[Register(Reg::GPR, arg_regs[2])]) {
     // array new:
-    if (input_types[Register(Reg::GPR, arg_regs[2])]->type &&
-        input_types[Register(Reg::GPR, arg_regs[2])]->type->kind ==
-            TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+    auto& a2 = input_types[Register(Reg::GPR, arg_regs[2])];
+    auto& a1 = input_types[Register(Reg::GPR, arg_regs[1])];
+
+    // the is_symbol() check here makes sure it's a symbol known at compile time.
+    if (a2->type && a2->type->kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL && a1->type &&
+        a1->type->is_symbol()) {
       out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(TypeSpec(
           "array",
           {input_types[Register(Reg::GPR, arg_regs[2])]->type->get_type_objects_typespec()}));
