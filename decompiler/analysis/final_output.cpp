@@ -27,19 +27,41 @@ void append_body_to_function_definition(goos::Object* top_form,
                                         const std::vector<goos::Object>& inline_body,
                                         const FunctionVariableDefinitions& var_dec,
                                         const TypeSpec& ts) {
-  if (var_dec.local_vars) {
-    pretty_print::append(*top_form, pretty_print::build_list(*var_dec.local_vars));
+  // Some forms like docstrings and local-vars we _always_ want to be at the top level and first (in
+  // the order added)
+  std::vector<goos::Object> initial_top_level_forms;
+
+  std::vector<goos::Object> body_elements;
+  body_elements.insert(body_elements.end(), inline_body.begin(), inline_body.end());
+  // If the first element in the body is a docstring, add it first
+  if (body_elements.size() > 0 && body_elements.at(0).is_string()) {
+    initial_top_level_forms.push_back(inline_body.at(0));
+    body_elements.erase(body_elements.begin());
   }
 
+  // add local vars if applicable
+  if (var_dec.local_vars) {
+    initial_top_level_forms.push_back(*var_dec.local_vars);
+  }
+
+  std::vector<goos::Object> final_body;
+  for (const auto& elem : initial_top_level_forms) {
+    final_body.push_back(elem);
+  }
+  // If the form contains the ppointer and isn't a behavior, we need to wrap the body in `with-pp`
   if (var_dec.had_pp && !ts.try_get_tag("behavior")) {
     std::vector<goos::Object> body_with_pp;
     body_with_pp.push_back(pretty_print::to_symbol("with-pp"));
-    body_with_pp.insert(body_with_pp.end(), inline_body.begin(), inline_body.end());
-    pretty_print::append(*top_form,
-                         pretty_print::build_list(pretty_print::build_list(body_with_pp)));
+    body_with_pp.insert(body_with_pp.end(), body_elements.begin(), body_elements.end());
+    final_body.push_back(pretty_print::build_list(body_with_pp));
   } else {
-    pretty_print::append(*top_form, pretty_print::build_list(inline_body));
+    // otherwise, just construct the form from the body
+    for (const auto& elem : body_elements) {
+      final_body.push_back(elem);
+    }
   }
+
+  pretty_print::append(*top_form, pretty_print::build_list(final_body));
 }
 }  // namespace
 
@@ -113,10 +135,9 @@ std::string final_defun_out(const Function& func,
 
     // docstring if available
     if (dts.symbol_metadata_map.count(func.name()) != 0) {
-      auto meta = dts.symbol_metadata_map.at(func.name());
+      auto& meta = dts.symbol_metadata_map.at(func.name());
       if (meta.docstring) {
-        inline_body.insert(inline_body.begin(),
-                           pretty_print::to_symbol(fmt::format("\"{}\"", meta.docstring.value())));
+        inline_body.insert(inline_body.begin(), pretty_print::new_string(meta.docstring.value()));
       }
     }
 
@@ -136,8 +157,8 @@ std::string final_defun_out(const Function& func,
     auto top_form = pretty_print::build_list(top);
 
     if (method_info.docstring) {
-      inline_body.insert(inline_body.begin(), pretty_print::to_symbol(fmt::format(
-                                                  "\"{}\"", method_info.docstring.value())));
+      inline_body.insert(inline_body.begin(),
+                         pretty_print::new_string(method_info.docstring.value()));
     }
     append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type);
     return pretty_print::to_string(top_form);

@@ -91,6 +91,10 @@ u32 Thread_Loader() {
 }
 
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
+  if (g_game_version == GameVersion::Jak2) {
+    printf("RPC_Player skip\n");
+    return nullptr;
+  }
   if (gSoundEnable) {
     gFreeMem = QueryTotalFreeMemSize();
     if (!PollSema(gSema)) {
@@ -353,6 +357,10 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 }
 
 void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
+  if (g_game_version == GameVersion::Jak2) {
+    printf("RPC_Loader skip\n");
+    return nullptr;
+  }
   int n_messages = size / SRPC_MESSAGE_SIZE;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
   if (gSoundEnable) {

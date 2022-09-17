@@ -7,14 +7,272 @@
 
 ;; DECOMP BEGINS
 
-;; sphere-cull
-;; guard-band-cull
-;; sphere-in-view-frustum?
-;; line-in-view-frustum?
-;; vis-cull
-;; error-sphere
+;; TODO
 
+(defmacro spr-work ()
+  `(the work-area *fake-scratchpad-data*))
+
+(defun sphere-cull ((arg0 vector))
+  "Is the given sphere in the view frustum?"
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf9 :class vf)
+         )
+        ;; modified for PC: these register would be loaded by the draw method of bsp.
+        (let ((at-0 *math-camera*))
+          (.lvf vf16 (&-> at-0 guard-plane 0 quad))
+          (.lvf vf17 (&-> at-0 guard-plane 1 quad))
+          (.lvf vf18 (&-> at-0 guard-plane 2 quad))
+          (.lvf vf19 (&-> at-0 guard-plane 3 quad))
+          )
+    (init-vf0-vector)
+    (.lvf vf10 (&-> arg0 quad))
+    (.mul.x.vf acc vf16 vf10)
+    (.add.mul.y.vf acc vf17 vf10 acc)
+    (.add.mul.z.vf acc vf18 vf10 acc)
+    (.sub.mul.w.vf vf9 vf19 vf0 acc)
+    (.add.w.vf vf9 vf9 vf10)
+    (.mov v1-0 vf9)
+    (.pcgtw v1-1 0 v1-0)
+    (.ppach v1-2 (the-as uint128 0) v1-1)
+    (zero? (the-as int v1-2))
+    )
+  )
+
+
+(defun guard-band-cull ((arg0 vector))
+  "Is the given sphere within the guard band, and possibly needs clipping?"
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         (vf22 :class vf)
+         (vf23 :class vf)
+         (vf9 :class vf)
+         )
+        (init-vf0-vector)
+        ;; modified for PC: these registers would be loaded in dma-add-process-drawable
+        (let ((at-0 *math-camera*))
+          (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+          (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+          (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+          (.lvf vf23 (&-> at-0 guard-plane 3 quad))
+          )
+        (.lvf vf10 (&-> arg0 quad))
+        (.mul.x.vf acc vf20 vf10)
+        (.add.mul.y.vf acc vf21 vf10 acc)
+        (.add.mul.z.vf acc vf22 vf10 acc)
+        (.sub.mul.w.vf vf9 vf23 vf0 acc)
+        (.sub.w.vf vf9 vf9 vf10)
+        (.mov v1-0 vf9)
+        (.pcgtw v1-1 0 v1-0)
+        (.ppach v1-2 (the-as uint128 0) v1-1)
+        (nonzero? (the-as int v1-2))
+        )
+  )
+
+(defun sphere-in-view-frustum? ((arg0 sphere))
+  "Is the given sphere in the view frustum?
+   Safe to use anywhere (unlike sphere-cull, which only works if service-mouse
+   registers are still set from draw bsp.)
+   "
+  (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 *math-camera*))
+      (.lvf vf6 (&-> arg0 quad))
+      (.lvf vf1 (&-> v1-0 plane 0 quad))
+      (.lvf vf2 (&-> v1-0 plane 1 quad))
+      (.lvf vf3 (&-> v1-0 plane 2 quad))
+      (.lvf vf4 (&-> v1-0 plane 3 quad))
+      )
+    (.mul.x.vf acc vf1 vf6)
+    (.add.mul.y.vf acc vf2 vf6 acc)
+    (.add.mul.z.vf acc vf3 vf6 acc)
+    (.sub.mul.w.vf vf5 vf4 vf0 acc)
+    (.add.w.vf vf5 vf5 vf6)
+    (.mov v1-1 vf5)
+    (.pcgtw v1-2 0 v1-1)
+    (.ppach v1-3 (the-as uint128 0) v1-2)
+    (zero? (the-as int v1-3))
+    )
+  )
+
+(defun line-in-view-frustum? ((arg0 vector) (arg1 vector))
+  "Is the line segment at least partially in the view frustum?"
+  (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128) (a0-1 uint128) (a0-2 uint128) (a0-3 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 *math-camera*))
+      (.lvf vf9 (&-> arg0 quad))
+      (.lvf vf10 (&-> arg1 quad))
+      (.lvf vf16 (&-> v1-0 plane 0 quad))
+      (.lvf vf17 (&-> v1-0 plane 1 quad))
+      (.lvf vf18 (&-> v1-0 plane 2 quad))
+      (.lvf vf19 (&-> v1-0 plane 3 quad))
+      )
+    (.mul.x.vf acc vf16 vf9)
+    (.add.mul.y.vf acc vf17 vf9 acc)
+    (.add.mul.z.vf acc vf18 vf9 acc)
+    (.sub.mul.w.vf vf9 vf19 vf0 acc)
+    (.mul.x.vf acc vf16 vf10)
+    (.add.mul.y.vf acc vf17 vf10 acc)
+    (.add.mul.z.vf acc vf18 vf10 acc)
+    (.sub.mul.w.vf vf10 vf19 vf0 acc)
+    (.mov v1-1 vf9)
+    (.pcgtw v1-2 0 v1-1)
+    (.ppach v1-3 (the-as uint128 0) v1-2)
+    (.mov a0-1 vf10)
+    (.pcgtw a0-2 0 a0-1)
+    (.ppach a0-3 (the-as uint128 0) a0-2)
+    (zero? (logand (the-as int v1-3) (the-as int a0-3)))
+    )
+  )
+
+(defun vis-cull ((id int))
+  "Is this thing visible in the precomputed visiblity data? By draw-node id.
+   Assumes the scratchpad has the vis-list loaded."
+  (let* ((vis-byte (-> (spr-work) background vis-list (/ id 8))) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< (the-as int shifted) 0)
+    )
+  )
+
+(defun-debug vis-cull-debug ((a0-0 work-area) (id int))
+  "Like vis-cull, but you can specify a different work-area.
+   Unused."
+  (let* ((vis-byte (-> a0-0 background vis-list (/ id 8))) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< (the-as int shifted) 0)
+    )
+  )
+
+(defun error-sphere ((arg0 drawable-error) (arg1 string))
+  "Draw a sphere with an error message around this drawable-error."
+  (when *artist-error-spheres*
+    (when (vis-cull (-> arg0 id))
+      (when (sphere-cull (-> arg0 bsphere))
+        (add-debug-sphere
+          #t
+          (bucket-id debug2)
+          (-> arg0 bsphere)
+          (-> arg0 bsphere w)
+          (new 'static 'rgba :r #x80 :a #x80)
+          )
+        (add-debug-text-3d
+          #t
+          (bucket-id debug-no-zbuf1)
+          arg1
+          (-> arg0 bsphere)
+          (font-color #dadada)
+          (the-as vector2h #f)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drawable methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the drawable class is the base class for tons of things
+;; basically anything in the a tree-like structure in the level uses this
+;; so these methods are super vague and not well defined.
+;; Generally, you shouldn't call any of these unless you know the type and
+;; what they will do.
+
+(defmethod login drawable ((obj drawable))
+  "Initialize a drawable after load."
+  obj
+  )
+
+(defmethod draw drawable ((obj drawable) (arg0 drawable) (arg1 display-frame))
+  "Draw something. The meaning of this depends on the exact drawable class,
+   but in general the heavy work isn't here - this just adds stuff to lists."
+  0
+  (none)
+  )
+
+(defmethod drawable-method-11 drawable ()
+  0
+  (none)
+  )
+
+(defmethod drawable-method-12 drawable ()
+  0
+  (none)
+  )
+
+(defmethod collect-regions drawable ((obj drawable) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  "Collect a list of regions that we're in, recursively."
+  0
+  (none)
+  )
+
+(defmethod collect-stats drawable ((obj drawable))
+  "Collect statistics for debugging"
+  0
+  (none)
+  )
+
+(defmethod debug-draw drawable ((obj drawable) (arg0 drawable) (arg1 display-frame))
+  "Draw debug visualizations"
+  0
+  (none)
+  )
+
+(defmethod draw drawable-error ((obj drawable-error) (arg0 drawable-error) (arg1 display-frame))
+  "Draw a debug sphere."
+  (error-sphere arg0 (-> arg0 name))
+  0
+  (none)
+  )
+
+(defmethod unpack-vis drawable ((obj drawable) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  "Unpack vis data from arg1 to arg0, unpacking it. Return pointer to next thing."
+  arg1
+  )
+
+;; instance debug
+(define *edit-instance* (the-as string #f))
+(when *debug-segment*
+  (define *instance-mem-usage* (new 'debug 'memory-usage-block))
+  )
+
+;;hack
+(defun find-instance-by-name ((a0-0 string))
+  (the prototype-bucket #f))
 
 (defun real-main-draw-hook ()
   (local-vars (a0-96 int) (a0-98 int))
@@ -33,7 +291,7 @@
 
     ;; update render/texture upload masks
     (set! (-> *display* vu1-enable-user) (-> *display* vu1-enable-user-menu))
-    ;(set! (-> *texture-pool* texture-enable-user) (-> *texture-pool* texture-enable-user-menu))
+    (set! (-> *texture-pool* texture-enable-user) (-> *texture-pool* texture-enable-user-menu))
 
     ;; display memory stats
     ; (when *debug-segment*
@@ -126,7 +384,7 @@
 
     ;; debug draw collision stuff before processing it.
     (when *debug-segment*
-      ; (debug-draw-actors *level* *display-actor-marks*)
+      (debug-draw-actors *level* *display-actor-marks*)
       ; (collide-shape-draw-debug-marks)
       )
 
@@ -482,8 +740,8 @@
     (set! (-> s5-1 bucket-group) (dma-buffer-add-buckets (-> s5-1 calc-buf) 327))
     )
 
-  ; (service-cpads)
-  ; (service-mouse)
+  (service-cpads)
+  (service-mouse)
   ; (execute-connections *pad-engine* #f)
   (none)
   )
@@ -698,7 +956,7 @@
           )
 
         ;; screenshot/pause stuff.
-        ; (determine-pause-mode)
+        (determine-pause-mode)
         ; (when (and (nonzero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (!= (-> *screen-shot-work* size) -1))
         ;   (let ((v1-77 (-> *screen-shot-work* size)))
         ;     (set! (-> *screen-shot-work* count) (* v1-77 v1-77))
@@ -776,17 +1034,17 @@
 
       ;; initialize buckets with weird custom settings (disable z buffer)
       (default-init-buffer
-        (bucket-id bucket-318)
+        (bucket-id debug-no-zbuf1)
         (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
         (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
         )
       (default-init-buffer
-        (bucket-id debug-no-zbuf)
+        (bucket-id debug-no-zbuf2)
         (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
         (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
         )
       (default-init-buffer
-        (bucket-id bucket-321)
+        (bucket-id screen-filter)
         (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1)
         (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
         )
@@ -838,6 +1096,44 @@
       )
     arg0
     )
+  )
+
+;; definition for function determine-pause-mode
+(defun determine-pause-mode ()
+  (when (and (or (not *progress-process*) (can-go-back? (-> *progress-process* 0)))
+             (or (!= *master-mode* 'freeze) (and *debug-segment* (cpad-pressed? 0 select start) (cpad-hold? 0 l3)))
+             )
+    (if (or (cpad-pressed? 0 select start)
+            (cond
+              ((= *master-mode* 'menu)
+               (cpad-pressed? 0 r3 r2 triangle circle)
+               )
+              (*cam-layout*
+                #f
+                )
+              (else
+                #f
+                )
+              )
+            (or (and (logtest? (-> *cpad-list* cpads 0 valid) 128)
+                     (= *master-mode* 'game)
+                     (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+                     (= (-> *setting-control* user-current bg-a) 0.0)
+                     (and (= (-> *setting-control* user-current bg-a-force) 0.0)
+                          (< (seconds 1003) (-> *display* real-clock frame-counter))
+                          )
+                     )
+                (and (cpad-pressed? 0 r2) (or (= *master-mode* 'pause) (= *master-mode* 'menu)))
+                *pause-lock*
+                )
+            )
+        (toggle-pause)
+        )
+    )
+  (if (and *progress-process* (!= *master-mode* 'progress))
+      (deactivate-progress)
+      )
+  0
   )
 
 (defun swap-display ((arg0 display))

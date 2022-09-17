@@ -7,14 +7,314 @@
 
 ;; DECOMP BEGINS
 
+(defun set-letterbox-frames ((arg0 time-frame))
+  "Set the remaining time until letterboxing is removed.
+   This uses the current clock ratio of the process and the game-clock.
+   This overrides any previous letterboxing."
+  (with-pp
+    (set! (-> *game-info* letterbox-time)
+          (+ (-> *display* base-clock frame-counter)
+             (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
+             )
+          )
+    (none)
+    )
+  )
+
+(defun letterbox ()
+  "Draw letterbox bars."
+  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+         (gp-0 (-> s5-0 base))
+         )
+    (draw-sprite2d-xy-absolute s5-0 0 0 512 46 (new 'static 'rgba :a #x80))
+    (draw-sprite2d-xy-absolute s5-0 0 370 512 47 (new 'static 'rgba :a #x80))
+    (let ((a3-2 (-> s5-0 base)))
+      (let ((v1-7 (the-as dma-packet (-> s5-0 base))))
+        (set! (-> v1-7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> v1-7 vif0) (new 'static 'vif-tag))
+        (set! (-> v1-7 vif1) (new 'static 'vif-tag))
+        (set! (-> s5-0 base) (the-as pointer (&+ v1-7 16)))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        (bucket-id screen-filter)
+        gp-0
+        (the-as (pointer dma-tag) a3-2)
+        )
+      )
+    )
+  (none)
+  )
+
+(defun set-blackout-frames ((arg0 time-frame))
+  "Set the remaining time until blackout is removed.
+   Unlike letterbox, this only can increase the time, unless
+   you request 0, in which case blackout is disabled immediately"
+  (with-pp
+    (if (zero? arg0)
+        (set! (-> *game-info* blackout-time) (-> *display* base-clock frame-counter))
+        (set! (-> *game-info* blackout-time)
+              (the-as time-frame
+                (max (-> *game-info* blackout-time)
+                  (+ (-> *display* base-clock frame-counter)
+                     (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
+                     arg0
+                     )
+                  )
+                )
+              )
+        )
+    (none)
+    )
+  )
+
+(defun blackout ()
+  "Draw blackout over the whole screen.
+   This isn't used - instead they adjust some GS setting to fade the whole
+   screen to black, which is much faster than drawing over the entire screen."
+  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+         (gp-0 (-> s5-0 base))
+         )
+    (draw-sprite2d-xy-absolute s5-0 0 0 512 416 (new 'static 'rgba :a #x80))
+    (let ((a3-1 (-> s5-0 base)))
+      (let ((v1-6 (the-as object (-> s5-0 base))))
+        (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
+        (set! (-> s5-0 base) (&+ (the-as pointer v1-6) 16))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        (bucket-id debug-no-zbuf2)
+        gp-0
+        (the-as (pointer dma-tag) a3-1)
+        )
+      )
+    )
+  (none)
+  )
+
 (defun paused? ()
+  "Are we paused, or in some menu that should make us pause?"
   (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
   )
 
 (defun movie? ()
+  "Are we in a movie?"
   (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
   )
 
+(defun demo? ()
+  "Are we a demo version?"
+  (or (= *kernel-boot-message* 'demo) (= *kernel-boot-message* 'demo-shared))
+  )
+
+;; the "master-mode" is a single "mode" for the game:
+;; - 'game: normal play
+;; - 'pause: select pause (with PAUSE on screen)
+;; - 'freeze: a pause, but without PAUSE on screen
+;; - 'menu: debug menu system open
+;; - 'progress: progress menu open (start menu)
+
+(define *last-master-mode* 'game)
+
+(defun set-master-mode ((arg0 symbol))
+  "Change the master mode, updating pause masks in the kernel/sound system as needed."
+  (when (!= arg0 *master-mode*)
+    (set! *last-master-mode* *master-mode*)
+    (set! *master-mode* arg0)
+
+    ;; transition stuff:
+    (case *master-mode*
+      (('pause)
+       ;; entering pause, set pause bit in masks
+       (if (not *debug-pause*)
+           (logior! (-> *setting-control* user-default process-mask) (process-mask pause))
+           )
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze menu))
+       (set! *pause-lock* #f)
+       (sound-group-pause (sound-group sfx sog1 sog2 sog3 sog4 sog5 sog6 sog7))
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+       )
+      (('freeze)
+       (logior! (-> *setting-control* user-default process-mask) (process-mask freeze))
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask pause menu))
+       (sound-group-pause (sound-group sfx sog4))
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+       )
+      (('menu)
+       (logior! (-> *setting-control* user-default process-mask) (process-mask menu))
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause progress))
+       (sound-group-pause (sound-group sfx sog1 sog2 sog3 sog4 sog5 sog6 sog7))
+       (set! *pause-lock* #f)
+       )
+      (('progress)
+       ;; entering progress, start the process
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause menu))
+       (sound-group-pause (sound-group sfx sog1 sog2 sog3 sog4 sog5 sog6 sog7))
+       (when (not *progress-process*)
+         (activate-progress *dproc* 'main)
+         (if (not *progress-process*) ;; process didn't start, back to game.
+             (set-master-mode 'game)
+             )
+         )
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+       )
+      (('game)
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause menu))
+       (sound-group-continue (sound-group sfx sog1 sog2 sog3 sog4 sog5 sog6 sog7))
+       )
+      )
+
+    ;; update from setting-control to kernel
+    (apply-settings *setting-control*)
+    )
+
+  ;; tell the debug menu system we changed modes.
+  (if *debug-segment*
+      (menu-respond-to-pause)
+      )
+  0
+  (none)
+  )
+
+(defun pause-allowed? ()
+  "Are you allowed to pause?"
+  (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+           (!= (-> *setting-control* user-current bg-a) 0.0)
+           (!= (-> *setting-control* user-current bg-a-force) 0.0)
+           (not (-> *setting-control* user-current allow-pause))
+           (handle->process (-> *game-info* auto-save-proc))
+           (= *master-mode* 'freeze)
+           (not *target*)
+           *master-exit*
+           (not *common-text*)
+           )
+       )
+  )
+
+(defun toggle-pause ()
+  "Update the current master mode because a pause has been requested.
+   This can reject the transition, or decide to go to any mode."
+  (case *master-mode*
+    (('game)
+     (set-master-mode
+       (cond
+         ((and (logtest? (-> *cpad-list* cpads 0 valid) 128)
+               *target*
+               (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+               (= (-> *setting-control* user-current bg-a) 0.0)
+               (and (= (-> *setting-control* user-current bg-a-force) 0.0)
+                    (< (seconds 1003) (-> *display* real-clock frame-counter))
+                    )
+               )
+          ;; in 'game, controller fell out, target is spawned, can pause if it's allowed, and not in progress.
+          (if (or *progress-process* (not (-> *setting-control* user-current allow-pause)))
+              *master-mode*
+              'pause
+              )
+          )
+         ;; game -> debug menu when pressing select/start with L3.
+         ((and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+          'menu
+          )
+         ;; select in debug pauses (also check R2 here for the frame-advance feature)
+         ((and (or (cpad-hold? 0 select) (cpad-hold? 0 r2)) *debug-segment*)
+          'pause
+          )
+         ;; not debugging, not pressing start, should pause if possible
+         ((and (not *debug-segment*) (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))))
+          (if (pause-allowed?)
+              'pause
+              *master-mode* ;; and if we can't, reject
+              )
+          )
+         ;; if we can't open progress, fall back to pause
+         ((not (progress-allowed?))
+          (if (pause-allowed?)
+              'pause
+              *master-mode* ;; otherwise reject
+              )
+          )
+         ((cpad-hold? 0 start) ;; finally, if we're pressing start and pausing is impossible, open progress
+          'progress
+          )
+         (else
+           *master-mode* ;; otherwise reject
+           )
+         )
+       )
+     )
+    (('menu)
+     (set-master-mode (cond
+                        ((and *debug-segment* (cpad-hold? 0 l3) (cpad-pressed? 0 select start))
+                         'menu
+                         )
+                        ((cpad-hold? 0 select r2)
+                         (if *debug-segment*
+                             'pause
+                             *master-mode*
+                             )
+                         )
+                        ((cpad-hold? 0 r3 r2 triangle circle)
+                         'game
+                         )
+                        ((cpad-hold? 0 start)
+                         'game
+                         )
+                        (else
+                          *master-mode*
+                          )
+                        )
+                      )
+     (set! *pause-lock* #f)
+     )
+    (('pause)
+     (set-master-mode (cond
+                        ((and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+                         'menu
+                         )
+                        ((and (not *debug-segment*) (cpad-hold? 0 select))
+                         'game
+                         )
+                        ((and *cheat-mode* (cpad-hold? 0 select r2))
+                         'game
+                         )
+                        ((cpad-hold? 0 start)
+                         'game
+                         )
+                        (else
+                          *master-mode*
+                          )
+                        )
+                      )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
+     )
+    (('freeze)
+     (set-master-mode (if (and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+                          'menu
+                          *master-mode*
+                          )
+                      )
+     )
+    (('progress)
+     (if (cpad-hold? 0 start)
+         (hide-progress-screen)
+         )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
+     )
+    )
+  0
+  )
+
+;; TODO screen filter
+
+(define *cheat-temp* (the-as (pointer int32) (malloc 'global 20)))
+(define *master-exit* #f)
+(define *progress-cheat* #f)
+(define *first-boot* #t)
+
+;; TODO cheats
 
 ;; Rough loop outline:
 ;; (while *run*
@@ -56,7 +356,7 @@
     (when *debug-segment*
       ;; do all debug drawing.
       ; (debug-draw-buffers)
-      (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf))
+      (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf2))
         (when (or *display-profile* *stats-profile-bars*)
           (setup-categories! (-> arg0 frames (-> arg0 on-screen) profile-array))
           (let ((a2-0 7))
@@ -68,13 +368,13 @@
               (draw-text! *profile-array*)
               )
           )
-      ;   (when *display-deci-count*
-      ;     (let ((s2-0 draw-string-xy))
-      ;       (format (clear *temp-string*) "~D" *deci-count*)
-      ;       (s2-0 *temp-string* s3-0 448 210 (font-color default-#cddbcd) (font-flags shadow))
-      ;       )
-      ;     )
-      ;   (display-file-info)
+        (when *display-deci-count*
+          (let ((s2-0 draw-string-xy))
+            (format (clear *temp-string*) "~D" *deci-count*)
+            (s2-0 *temp-string* s3-0 448 210 (font-color default-#cddbcd) (font-flags shadow))
+            )
+          )
+        (display-file-info)
         )
       )
 
@@ -85,7 +385,7 @@
                      )
                  )
            )
-      (with-dma-buffer-add-bucket ((s3-0 buf) (bucket-id debug-no-zbuf))
+      (with-dma-buffer-add-bucket ((s3-0 buf) (bucket-id debug-no-zbuf2))
       (if (and (= *master-mode* 'pause)
                (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
                )
@@ -173,9 +473,9 @@
   (with-pp
 
     ; ;; LOAD LEVEL
-    ; (if (-> *level* loading-level)
-    ;     (load-continue (-> *level* loading-level))
-    ;     )
+    (if (-> *level* loading-level)
+        (load-continue (-> *level* loading-level))
+        )
 
     ; ;; Run blerc to modify foreground models
     ; (with-profiler 'merc *profile-merc-color*
@@ -225,18 +525,18 @@
       )
 
     ;; another level load
-    ; (if (-> *level* loading-level)
-    ;     (load-continue (-> *level* loading-level))
-    ;     )
+    (if (-> *level* loading-level)
+        (load-continue (-> *level* loading-level))
+        )
 
     ; (if *display-color-bars*
     ;     (draw-color-bars)
     ;     )
 
     ;; draw and update menus
-    ; (with-profiler 'menu-hook *profile-menu-hook-color*
-    ;   (*menu-hook*)
-    ;   )
+    (with-profiler 'menu-hook *profile-menu-hook-color*
+      (*menu-hook*)
+      )
 
     ;; load text files as needed from the menu update
     ; (load-level-text-files -1)
@@ -350,7 +650,7 @@
     ; (str-play-kick)
 
     ;; handle spawning/despawning as needed.
-    ; (level-update *level*)
+    (level-update *level*)
 
     ;; do some memory card operations, check auto-save
     ; (mc-run)
@@ -474,12 +774,12 @@
                                      )
           )
     (format 0 "SKIP: level activation in on~%")
-    ; (cond
-    ;   ((or (level-get-with-status *level* 'loaded)
-    ;        (level-get-with-status *level* 'alive)
-    ;        (level-get-with-status *level* 'active)
-    ;        )
-    ;    (activate-levels! *level*)
+    (cond
+      ((or (level-get-with-status *level* 'loaded)
+           (level-get-with-status *level* 'alive)
+           (level-get-with-status *level* 'active)
+           )
+       (activate-levels! *level*)
     ;    (when (not arg0)
     ;      (let ((gp-1 (entity-by-type camera-start)))
     ;        (when (and gp-1 (type? gp-1 entity-actor))
@@ -492,12 +792,13 @@
     ;    (if (and (= *kernel-boot-message* 'art-group) *kernel-boot-art-group*)
     ;        (anim-tester-add-object *kernel-boot-art-group*)
     ;        )
-    ;    )
-    ;   (else
-    ;     (kill-by-name "display" *active-pool*)
-    ;     (set! *dproc* #f)
-    ;     )
-    ;   )
+       )
+      (else
+        (format 0 "startup failed, killing dproc~%")
+        (kill-by-name "display" *active-pool*)
+        (set! *dproc* #f)
+        )
+      )
     )
   *dproc*
   )

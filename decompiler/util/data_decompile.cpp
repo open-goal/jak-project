@@ -163,7 +163,8 @@ goos::Object decompile_function_at_label(const DecompilerLabel& label,
                                          const LinkedObjectFile* file) {
   if (file) {
     auto other_func = file->try_get_function_at_label(label);
-    if (other_func) {
+    if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
+        other_func->ir2.expressions_succeeded) {
       return final_output_lambda(*other_func);
     }
   }
