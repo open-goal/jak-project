@@ -149,7 +149,7 @@ Form* try_cast_simplify(Form* in,
       if (div * METER_LENGTH == *fc) {
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
-            pool.form<ConstantFloatElement>(div));
+            pool.form<ConstantTokenElement>(float_to_string(div, false)));
       } else {
         lg::error("Floating point value {} could not be converted to meters.", *fc);
       }
