@@ -2,6 +2,8 @@
 
 #include <set>
 
+#include "common/log/log.h"
+
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/types2.h"
 #include "decompiler/util/type_utils.h"

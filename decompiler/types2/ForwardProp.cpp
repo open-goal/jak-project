@@ -1,4 +1,5 @@
 #include "common/util/BitUtils.h"
+#include "common/log/log.h"
 
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
