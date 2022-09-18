@@ -1081,7 +1081,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   ASSERT(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, false);
   ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

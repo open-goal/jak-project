@@ -856,6 +856,10 @@ void types2_for_div_mod_signed(types2::Type& type_out,
                                        expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
+void types2_for_div_mod_unsigned(types2::Type& type_out) {
+  type_out.type = TP_Type::make_from_ts("uint");
+}
+
 void types2_for_pcpyld(types2::Type& type_out,
                        const SimpleExpression& expr,
                        const Env& env,
@@ -1214,7 +1218,7 @@ void types2_for_add(types2::Type& type_out,
       type_out.type =
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
-    } else {
+    } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
       return;
     }
@@ -1241,7 +1245,7 @@ void types2_for_add(types2::Type& type_out,
       type_out.type =
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
-    } else {
+    } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
       return;
     }
@@ -1531,6 +1535,10 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::DIV_SIGNED:
     case SimpleExpression::Kind::MOD_SIGNED:
       types2_for_div_mod_signed(type_out, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::DIV_UNSIGNED:
+    case SimpleExpression::Kind::MOD_UNSIGNED:
+      types2_for_div_mod_unsigned(type_out);
       break;
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
@@ -2462,6 +2470,21 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   m_call_type_set = true;
 
   out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
+
+  if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
+      in_type.last_arg() == TypeSpec("array") && input_types[Register(Reg::GPR, arg_regs[2])]) {
+    // array new:
+    auto& a2 = input_types[Register(Reg::GPR, arg_regs[2])];
+    auto& a1 = input_types[Register(Reg::GPR, arg_regs[1])];
+
+    // the is_symbol() check here makes sure it's a symbol known at compile time.
+    if (a2->type && a2->type->kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL && a1->type &&
+        a1->type->is_symbol()) {
+      out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(TypeSpec(
+          "array",
+          {input_types[Register(Reg::GPR, arg_regs[2])]->type->get_type_objects_typespec()}));
+    }
+  }
 
   // we can also update register usage here.
   m_read_regs.clear();

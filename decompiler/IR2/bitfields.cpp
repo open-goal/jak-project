@@ -320,10 +320,13 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
+    auto f = try_find_field(ts, type, offset + offset_in_bitfield, size, {});
+    if (!f) {
+      return {};
+    }
     BitFieldDef def;
     def.value = value;
-    def.field_name = f.name();
+    def.field_name = f->name();
     def.is_signed = false;  // we don't know.
     return def;
   }
