@@ -2,18 +2,19 @@
 (in-package goal)
 
 ;; definition for method 0 of type drawable-group
-(defmethod new drawable-group ((allocation symbol) (type-to-make type) (arg0 int))
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
-    (set! (-> v0-0 length) arg0)
-    v0-0
+(defmethod new drawable-group ((allocation symbol) (type-to-make type) (length int))
+  "Create a new [[drawable-group]] which can hold the provided number of [[drawable]]s"
+  (let ((new-obj (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* length 4))))))
+    (set! (-> new-obj length) length)
+    new-obj
     )
   )
 
 ;; definition for method 2 of type drawable-group
 (defmethod print drawable-group ((obj drawable-group))
   (format #t "#<~A @ #x~X [~D]" (-> obj type) obj (-> obj length))
-  (dotimes (s5-0 (-> obj length))
-    (format #t " ~A" (-> obj data s5-0))
+  (dotimes (idx (-> obj length))
+    (format #t " ~A" (-> obj data idx))
     )
   (format #t ">")
   obj
@@ -35,20 +36,20 @@
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) "drawable-group")
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-6 (asize-of obj)))
-    (+! (-> arg0 data 0 used) v1-6)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15)))
+  (let ((obj-size (asize-of obj)))
+    (+! (-> arg0 data 0 used) obj-size)
+    (+! (-> arg0 data 0 total) (logand -16 (+ obj-size 15)))
     )
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (idx (-> obj length))
+    (mem-usage (-> obj data idx) arg0 arg1)
     )
   obj
   )
 
 ;; definition for method 9 of type drawable-group
 (defmethod login drawable-group ((obj drawable-group))
-  (dotimes (s5-0 (-> obj length))
-    (login (-> obj data s5-0))
+  (dotimes (idx (-> obj length))
+    (login (-> obj data idx))
     )
   obj
   )
@@ -58,8 +59,8 @@
 (defmethod draw drawable-group ((obj drawable-group) (arg0 drawable-group) (arg1 display-frame))
   (when (vis-cull (-> obj id))
     (when (sphere-cull (-> obj bsphere))
-      (dotimes (s3-0 (-> obj length))
-        (draw (-> obj data s3-0) (-> arg0 data s3-0) arg1)
+      (dotimes (idx (-> obj length))
+        (draw (-> obj data idx) (-> arg0 data idx) arg1)
         )
       )
     )
@@ -72,8 +73,8 @@
 (defmethod collect-stats drawable-group ((obj drawable-group))
   (when (vis-cull (-> obj id))
     (when (sphere-cull (-> obj bsphere))
-      (dotimes (s5-0 (-> obj length))
-        (collect-stats (-> obj data s5-0))
+      (dotimes (idx (-> obj length))
+        (collect-stats (-> obj data idx))
         )
       )
     )
@@ -86,8 +87,8 @@
 (defmethod debug-draw drawable-group ((obj drawable-group) (arg0 drawable) (arg1 display-frame))
   (when (vis-cull (-> obj id))
     (when (sphere-cull (-> obj bsphere))
-      (dotimes (s3-0 (-> obj length))
-        (debug-draw (-> obj data s3-0) (-> (the-as drawable-group arg0) data s3-0) arg1)
+      (dotimes (idx (-> obj length))
+        (debug-draw (-> obj data idx) (-> (the-as drawable-group arg0) data idx) arg1)
         )
       )
     )
@@ -97,8 +98,8 @@
 
 ;; definition for method 15 of type drawable-group
 (defmethod unpack-vis drawable-group ((obj drawable-group) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  (dotimes (s4-0 (-> obj length))
-    (set! arg1 (unpack-vis (-> obj data s4-0) arg0 arg1))
+  (dotimes (idx (-> obj length))
+    (set! arg1 (unpack-vis (-> obj data idx) arg0 arg1))
     )
   arg1
   )
