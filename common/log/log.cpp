@@ -91,14 +91,14 @@ void log_print(const char* message) {
       // Log to File
       std::string msg(message);
       fwrite(msg.c_str(), msg.length(), 1, gLogger.fp);
-      if (gLogger.flush_level <= lg::level::info) {
+      if (gLogger.flush_level <= lg::level::debug) {
         fflush(gLogger.fp);
       }
     }
 
-    if (gLogger.stdout_log_level <= lg::level::info) {
+    if (gLogger.stdout_log_level <= lg::level::debug) {
       fmt::print(message);
-      if (gLogger.flush_level <= lg::level::info) {
+      if (gLogger.flush_level <= lg::level::debug) {
         fflush(stdout);
         fflush(stderr);
       }
