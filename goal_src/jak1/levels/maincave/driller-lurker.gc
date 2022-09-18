@@ -367,8 +367,19 @@
               (eval-path-curve! (-> obj path) (-> obj root-overeride trans) f0-6 'interp)
               (when s4-0
                 (let ((f0-7 (vector-vector-xz-distance s3-1 (-> obj root-overeride trans))))
-                  (set! (-> obj path-units-per-meter) (* (/ (fabs f30-0) f0-7) (-> obj path-units-per-meter)))
-                  )
+                  #|
+                    fix for higher framerate:
+
+                    when the lurker changes directions, path-speed can get extremely close to 0
+                    when this happens, the change in u on a frame may be extremely small
+
+                    so the vector-vector-xz-distance is very small (because you didn't move much
+                    on the path) and (set! (-> obj path-units-per-meter) (* (/ (fabs f30-0) f0-7)
+                    (-> obj path-units-per-meter))) makes things blow up because that division isn't
+                    accurate for tiny numbers
+                  |#
+                  (when (> f0-7 0.00001)
+                    (set! (-> obj path-units-per-meter) (* (/ (fabs f30-0) f0-7) (-> obj path-units-per-meter)))))
                 )
               )
             )

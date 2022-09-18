@@ -169,6 +169,7 @@ enum class FixedOperatorKind {
   PROCESS_TO_HANDLE,
   PPOINTER_TO_PROCESS,
   VECTOR_4_DOT,
+  VECTOR_LENGTH,
   SEND_EVENT,
   CPAD_PRESSED_P,
   CPAD_HOLD_P,
@@ -209,7 +210,7 @@ struct UseDefInfo {
     for (auto& x : defs) {
       if (x.op_id == op_id) {
         if (x.disabled) {
-          warnings.general_warning(
+          warnings.warning(
               "disable def twice: {}. This may happen when a cond (no else) is nested inside of "
               "another conditional, but it should be rare.",
               x.op_id);

@@ -3,7 +3,7 @@
 
 class Merc2 : public BucketRenderer {
  public:
-  Merc2(const std::string& name, BucketId my_id);
+  Merc2(const std::string& name, int my_id);
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
@@ -54,7 +54,7 @@ class Merc2 : public BucketRenderer {
   void handle_matrix_dma(const DmaTransfer& dma);
   void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  u32 alloc_bones(int count, float scale);
+  u32 alloc_bones(int count);
 
   std::optional<MercRef> m_current_model = std::nullopt;
   u16 m_current_effect_enable_bits = 0;
@@ -98,6 +98,8 @@ class Merc2 : public BucketRenderer {
 
     GLuint ignore_alpha;
     GLuint decal;
+
+    GLuint gfx_hack_no_tex;
   } m_uniforms;
 
   GLuint m_vao;

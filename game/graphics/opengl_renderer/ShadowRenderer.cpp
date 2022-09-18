@@ -4,8 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-ShadowRenderer::ShadowRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
 

@@ -1000,8 +1000,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1020,8 +1018,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1656,7 +1652,7 @@ int InitHeapAndSymbol() {
   make_function_symbol_from_c("kmemclose", (void*)kmemclose);
   make_function_symbol_from_c("new-dynamic-structure", (void*)new_dynamic_structure);
   make_function_symbol_from_c("method-set!", (void*)method_set);
-  make_function_symbol_from_c("link", (void*)link_and_exec);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec);
   make_function_symbol_from_c("link-busy?", (void*)link_busy);
   make_function_symbol_from_c("link-reset", (void*)link_reset);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
@@ -1664,7 +1660,7 @@ int InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("memcpy-and-rellink", 0);
   make_raw_function_symbol_from_c("symlink2", 0);
   make_raw_function_symbol_from_c("symlink3", 0);
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   make_function_symbol_from_c("sql-query", (void*)sql_query_sync);
   make_function_symbol_from_c("mc-run", (void*)MC_run);
@@ -1739,22 +1735,22 @@ int InitHeapAndSymbol() {
   return 0;
 }
 
-u64 load(u32 file_name_in, u32 heap_in) {
+u64 load(u32 /*file_name_in*/, u32 /*heap_in*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loadb(u32 file_name_in, u32 heap_in, u32 param3) {
+u64 loadb(u32 /*file_name_in*/, u32 /*heap_in*/, u32 /*param3*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loadc(const char* file_name, kheapinfo* heap, u32 flags) {
+u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loado(u32 file_name_in, u32 heap_in) {
+u64 loado(u32 /*file_name_in*/, u32 /*heap_in*/) {
   ASSERT(false);
   return 0;
 }
@@ -1767,7 +1763,10 @@ u64 unload(u32 name) {
   return 0;
 }
 
-s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 flags) {
+s64 load_and_link(const char* /*filename*/,
+                  char* /*decode_name*/,
+                  kheapinfo* /*heap*/,
+                  u32 /*flags*/) {
   ASSERT(false);
   return 0;
 }

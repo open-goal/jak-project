@@ -209,6 +209,7 @@ void iop_runner(SystemThreadInterface& iface) {
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
+  Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   // todo!
   dma_init_globals();
@@ -244,7 +245,7 @@ void iop_runner(SystemThreadInterface& iface) {
   bool complete = false;
   start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);  // todo!
   while (complete == false) {
-    iop.kernel.dispatchAll();
+    iop.wait_run_iop(iop.kernel.dispatch());
   }
 
   // unblock the EE, the overlord is set up!
@@ -252,11 +253,12 @@ void iop_runner(SystemThreadInterface& iface) {
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
-    // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
-    // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
-    iop.wait_run_iop();
-    iop.kernel.dispatchAll();
+    // The IOP scheduler informs us of how many microseconds are left until it has something to do.
+    // So we can wait for that long or until something else needs it to wake up.
+    iop.wait_run_iop(iop.kernel.dispatch());
   }
+
+  Gfx::clear_vsync_callback();
 }
 }  // namespace
 
@@ -353,20 +355,28 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // TODO relegate this to its own function
   if (enable_display) {
     Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
-    Gfx::Exit();
   }
 
   // hack to make the IOP die quicker if it's loading/unloading music
   gMusicFade = 0;
 
+  // if we have no display, wait here for DECI to shutdown
   deci_thread.join();
-  // DECI has been killed, shutdown!
+
+  // fully shut down EE first before stopping the other threads
+  ee_thread.join();
 
   // to be extra sure
   tm.shutdown();
 
   // join and exit
   tm.join();
+
+  // kill renderer after all threads are stopped.
+  // this makes sure the std::shared_ptr<Display> is destroyed in the main thread.
+  if (enable_display) {
+    Gfx::Exit();
+  }
   lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;

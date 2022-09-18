@@ -118,7 +118,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
                            const std::vector<fs::path>& object_files,
                            const std::vector<fs::path>& str_files,
                            const Config& config)
-    : dts(config.game_version) {
+    : dts(config.game_version), m_version(config.game_version) {
   Timer timer;
 
   lg::info("-Loading types...");
@@ -359,7 +359,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   }
 
   // nope, have to add a new one.
-  ObjectFileData data;
+  ObjectFileData data(config.game_version);
   data.data.resize(obj_size);
   memcpy(data.data.data(), obj_data, obj_size);
   data.record.hash = hash;

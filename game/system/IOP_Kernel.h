@@ -5,10 +5,12 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <list>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "common/common_types.h"
@@ -22,6 +24,8 @@ class IOP_Kernel;
 namespace iop {
 struct sceSifQueueData;
 }
+
+using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
 
 struct SifRpcCommand {
   bool started = true;
@@ -57,26 +61,36 @@ struct IopThread {
     Delay,
   };
 
-  IopThread(std::string n, void (*f)(), s32 ID) : name(n), function(f), thID(ID) {
-    thread = co_create(0x300000, f);
+  IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
+      : name(std::move(n)), function(f), priority(priority), thID(ID) {
+    thread = co_create(0x300000, functionWrapper);
   }
 
   ~IopThread() { co_delete(thread); }
 
+  static void functionWrapper();
   std::string name;
   void (*function)();
   cothread_t thread;
   State state = State::Dormant;
   Wait waitType = Wait::None;
+  time_stamp resumeTime = {};
+  u32 priority = 0;
   s32 thID = -1;
 };
 
 struct Semaphore {
-  u32 option;
-  u32 attr;
-  s32 count;
-  s32 maxCount;
-  s32 initCount;
+  enum class attribute { fifo, prio };
+  Semaphore(attribute attr, s32 option, s32 init_count, s32 max_count)
+      : attr(attr), option(option), count(init_count), initCount(init_count), maxCount(max_count) {}
+
+  attribute attr{attribute::fifo};
+  u32 option{0};
+  s32 count{0};
+  s32 initCount{0};
+  s32 maxCount{0};
+
+  std::list<IopThread*> wait_list;
 };
 
 class IOP_Kernel {
@@ -84,19 +98,21 @@ class IOP_Kernel {
   IOP_Kernel() {
     // this ugly hack
     threads.reserve(16);
-    CreateThread("null-thread", nullptr);
+    CreateThread("null-thread", nullptr, 0);
     CreateMbx();
+    CreateSema(0, 0, 0, 0);
     kernel_thread = co_active();
   }
 
   ~IOP_Kernel();
 
-  s32 CreateThread(std::string n, void (*f)());
+  s32 CreateThread(std::string n, void (*f)(), u32 priority);
+  s32 ExitThread();
   void StartThread(s32 id);
-  void SuspendThread();
+  void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  void dispatchAll();
+  time_stamp dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -104,7 +120,10 @@ class IOP_Kernel {
   /*!
    * Get current thread ID.
    */
-  s32 getCurrentThread() { return _currentThread; }
+  s32 getCurrentThread() {
+    ASSERT(_currentThread);
+    return _currentThread->thID;
+  }
 
   /*!
    * Create a message box
@@ -144,7 +163,22 @@ class IOP_Kernel {
     return 0;
   }
 
-  s32 CreateSema() { return 1; }
+  s32 CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count) {
+    s32 id = semas.size();
+    semas.emplace_back((Semaphore::attribute)attr, option, init_count, max_count);
+    return id;
+  }
+
+  s32 WaitSema(s32 id);
+  s32 SignalSema(s32 id);
+  s32 PollSema(s32 id);
+
+  s32 RegisterVblankHandler(int (*handler)(void*)) {
+    vblank_handler = handler;
+    return 0;
+  }
+
+  void signal_vblank() { vblank_recieved = true; };
 
   void read_disc_sectors(u32 sector, u32 sectors, void* buffer);
   bool sif_busy(u32 id);
@@ -158,18 +192,28 @@ class IOP_Kernel {
                s32 recvSize);
 
  private:
-  void runThread(s32 id);
-  void exitThread();
+  void runThread(IopThread* thread);
+  void leaveThread();
+  void updateDelay();
+  void processWakeups();
+
+  IopThread* schedNext();
+  time_stamp nextWakeup();
+
+  s32 (*vblank_handler)(void*);
+  std::atomic_bool vblank_recieved = false;
+
   cothread_t kernel_thread;
   s32 _nextThID = 0;
-  s32 _currentThread = {-1};
+  IopThread* _currentThread = nullptr;
   std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
+  std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
   FILE* iso_disc_file = nullptr;
-  std::mutex sif_mtx;
+  std::mutex sif_mtx, wakeup_mtx;
 };
 
 #endif  // JAK_IOP_KERNEL_H

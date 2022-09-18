@@ -582,11 +582,6 @@ void inspect_basics(const Ram& ram,
   }
 }
 
-static bool ends_with(const std::string& str, const std::string& suffix) {
-  return str.size() >= suffix.size() &&
-         0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
-
 void inspect_symbols(const Ram& ram,
                      const std::unordered_map<u32, std::string>& types,
                      const SymbolMap& symbols) {
@@ -612,10 +607,7 @@ void inspect_symbols(const Ram& ram,
 }
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   fs::path dump_path;
   fs::path output_path;

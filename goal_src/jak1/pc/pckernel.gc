@@ -48,18 +48,18 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
-
   ;; change the display mode.
   (set! (-> obj display-mode) mode)
+  ;; if windowed mode, set the size properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
-  (format #t "Setting size to ~D x ~D~%" width height)
+  (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
   (cond
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
@@ -72,7 +72,6 @@
       )
     )
   (none))
-
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
   "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
@@ -99,28 +98,32 @@
 
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
-
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
   (case rate
+    ((50)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) 'pal)
+      )
     ((60)
       (set! (-> obj target-fps) rate)
       (set! (-> *setting-control* default video-mode) 'ntsc)
       )
-    ((100)
+    (else
       (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '100fps)
-      )
-    ((150)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '150fps)
+      (set! (-> *setting-control* default video-mode) 'custom)
       )
     )
   (set! (-> *setting-control* current video-mode) #f)
 
   rate)
+
+(defmethod set-monitor! pc-settings ((obj pc-settings) (monitor int))
+  "set the monitor to use when in fullscreen/borderless"
+  (set! (-> obj monitor) monitor)
+  (none))
 
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
@@ -187,8 +190,16 @@
      )
     )
 
+  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
+  ;; then default to the primary monitor
+  (when (>= (-> obj monitor) (pc-get-monitor-count))
+    (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
+    (set! (-> obj monitor) 0)
+    )
+
   ;; set fullscreen to what we want
-  (pc-set-fullscreen (-> obj display-mode) 0)
+  (pc-set-fullscreen (-> obj display-mode) (-> obj monitor))
+
   ;; set window size and fps automatically if the window lock is enabled.
   (when (-> obj window-lock?)
     (pc-set-vsync (-> obj vsync?))
@@ -236,12 +247,15 @@
 
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 8))))
-(defmacro pc-cheat-toggle-and-tune (obj cheat)
+;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
+(define *pc-cheat-temp* (new 'global 'inline-array 'uint8 PC_CHEAT_MAX))
+
+(defmacro pc-cheat-toggle-and-tune (cheats-var cheat)
+  "quickly toggle a cheat code and play an appropriate sound"
   `(begin
     (cpad-clear! 0 r1)
-    (logxor! (-> ,obj cheats) (pc-cheats ,cheat))
-    (cheats-sound-play (logtest? (-> ,obj cheats) (pc-cheats ,cheat)))
+    (logxor! ,cheats-var (pc-cheats ,cheat))
+    (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
     )
   )
 
@@ -311,6 +325,11 @@
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
 
+  ;; update auto-splitter info
+  (when (-> *pc-settings* speedrunner-mode?)
+    (with-profiler "speedrun-update-jak1"
+      (speedrun-mode-update)))
+
   (when (not (-> obj use-vis?))
     (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
     (set! (-> *video-parms* relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
@@ -356,38 +375,49 @@
 (defmethod update-cheats pc-settings ((obj pc-settings))
   "run cheats."
 
+  ;; first check for cheat inputs.
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
-    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 (s p i r i t) :extra (x)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 spirit :extra (x)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune obj eco-blue))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-blue))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 (s p i r i t) :extra (circle)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 spirit :extra (circle)
           (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune obj eco-red))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-red))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 (s p i r i t) :extra (triangle)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 spirit :extra (triangle)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
-          (pc-cheat-toggle-and-tune obj eco-green))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-green))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 (s p i r i t) :extra (square)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 spirit :extra (square)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
-          (pc-cheat-toggle-and-tune obj eco-yellow))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-yellow))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 (s t e e l)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 undead
           (logclear! (-> *target* state-flags) 16)
-          (pc-cheat-toggle-and-tune obj invinc))
+          (pc-cheat-toggle-and-tune (-> obj cheats) invinc))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
-          (pc-cheat-toggle-and-tune obj sidekick-blue))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
-          (pc-cheat-toggle-and-tune obj tunes))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 (s k y)
-          (pc-cheat-toggle-and-tune obj sky))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 bluemoon (pc-cheat-toggle-and-tune (-> obj cheats) sidekick-blue))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 boombox (pc-cheat-toggle-and-tune (-> obj cheats) tunes))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 skies (pc-cheat-toggle-and-tune (-> obj cheats) sky))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 8) 0 speclum (pc-cheat-toggle-and-tune (-> obj cheats) mirror))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 9) 0 brains (pc-cheat-toggle-and-tune (-> obj cheats) big-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 10) 0 driedup (pc-cheat-toggle-and-tune (-> obj cheats) small-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 11) 0 yourpalm (pc-cheat-toggle-and-tune (-> obj cheats) big-fist))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 12) 0 bakeonly (pc-cheat-toggle-and-tune (-> obj cheats) no-tex))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 13) 0 rodent (pc-cheat-toggle-and-tune (-> obj cheats) hard-rats))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 14) 0 lunatic (pc-cheat-toggle-and-tune (-> obj cheats) hero-mode))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 15) 0 plzstop (pc-cheat-toggle-and-tune (-> obj cheats) huge-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 16) 0 evilbabe (pc-cheat-toggle-and-tune (-> obj cheats) oh-my-goodness))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 17) 0 smart (pc-cheat-toggle-and-tune (-> obj cheats) big-head-npc))
     )
 
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
   (when *target*
+      ;; hook custom animation callback
+      (if (nonzero? (-> *target* skel))
+          (set! (-> *target* skel postbind-function) target-joint-callback-pc))
 
       (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
       ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
@@ -398,7 +428,7 @@
 
       (cond
         ;; green eco!
-        ((pc-cheats? obj eco-green)
+        ((pc-cheats? (-> obj cheats) eco-green)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (define-extern vent type)
@@ -409,14 +439,14 @@
             )
          )
         ;; red eco!
-        ((pc-cheats? obj eco-red)
+        ((pc-cheats? (-> obj cheats) eco-red)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
             )
          )
         ;; blue eco!
-        ((pc-cheats? obj eco-blue)
+        ((pc-cheats? (-> obj cheats) eco-blue)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (protect ((-> *target* event-hook))
@@ -427,7 +457,7 @@
             )
          )
         ;; yellow eco!
-        ((pc-cheats? obj eco-yellow)
+        ((pc-cheats? (-> obj cheats) eco-yellow)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
@@ -436,25 +466,28 @@
         )
       ))
 
-      (when (pc-cheats? obj invinc)
+      (when (pc-cheats? (-> obj cheats) invinc)
         (logior! (-> *target* state-flags) (state-flags invulnerable))
         )
 
       )
 
-  (if (pc-cheats? obj tunes)
+  (if (pc-cheats? (-> obj cheats) tunes)
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
 
-  (if (pc-cheats? obj sky)
-      (let ((date (new 'stack 'scf-time)))
+  (if (pc-cheats? (-> obj cheats) sky)
+      (let ((date (new 'stack-no-clear 'scf-time)))
           (scf-get-time date)
           (when (zero? (-> date stat))
-            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60)))
-        )
-      )
-  )
+            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
+          ))
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
 
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
@@ -491,8 +524,16 @@
   (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
 
   ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
-  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
-      (add-to-music-log obj 'village1 1))
+  (if (task-closed? (game-task village1-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava assistant))))
+  (if (task-closed? (game-task village2-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
+  (if (task-closed? (game-task village3-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
+  (when (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1)
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage)))
+      )
   (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
       (add-to-music-log obj 'jungleb 2))
   (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
@@ -505,10 +546,14 @@
       (add-to-music-log obj 'misty 4))
   (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
       (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task village2-levitator) (task-status need-hint))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
   (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
       (add-to-music-log obj 'swamp 1))
   (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
       (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task village3-button) (task-status need-hint))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
   (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
       (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
   (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
@@ -521,6 +566,10 @@
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
   (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (task-closed? (game-task finalboss-movies) (task-status unknown))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end)))
+      )
   (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
       (add-to-music-log obj 'credits 0)
       (add-to-music-log obj 'credits 1)
@@ -748,14 +797,15 @@
       (with-settings-scope (file)
         (case-str (file-stream-read-word file)
           (("settings")
-            (set! version (file-stream-read-int file))
+            (set! version (the pckernel-version (file-stream-read-int file)))
             (cond
-              ((= (logand version #xffffffff00000000) (logand PC_KERNEL_VERSION #xffffffff00000000))
+              ((and (= (-> version major) PC_KERNEL_VER_MAJOR)
+                    (= (-> version minor) PC_KERNEL_VER_MINOR))
                 ;; minor difference
                 )
               (else
                 ;; major difference
-                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR (bit-field int version 32 16) (bit-field int version 48 16))
+                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR (-> version major) (-> version minor))
                 (file-stream-close file)
                 (return #f)
                 )
@@ -780,12 +830,13 @@
                   (set! (-> obj aspect-custom-y) (file-stream-read-int file))
                   ;; aspect auto
                   (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file))
-                  
+
                   (unless (-> obj aspect-ratio-auto?)
                       (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))
                       )
                   )
                 (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
+                (("monitor") (set-monitor! obj (file-stream-read-int file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
                 (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
@@ -802,6 +853,8 @@
                 (("lod-force-tie") (set! (-> obj lod-force-tie) (file-stream-read-int file)))
                 (("lod-force-ocean") (set! (-> obj lod-force-ocean) (file-stream-read-int file)))
                 (("lod-force-actor") (set! (-> obj lod-force-actor) (file-stream-read-int file)))
+                (("game-language") (set! (-> *setting-control* default language) (the-as language-enum (file-stream-read-int file))))
+                (("text-language") (set! (-> obj text-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
                 (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
@@ -819,6 +872,8 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+                (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
+                (("cutscene-skips?") (set! (-> obj cutscene-skips?) (file-stream-read-symbol file)))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -845,6 +900,10 @@
                       (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
+                      (("cheats")
+                        (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
+                        (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file)))
+                        )
                       (("music")
                         (dotimes (i PC_MUSIC_LOG_LENGTH)
                           (when (!= #x29 (file-stream-get-next-char-ret file))
@@ -880,6 +939,10 @@
 
   (format 0 "pc settings file read: ~A~%" filename)
 
+  ;; restore the windowed mode resolution properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+
   #t
   )
 
@@ -896,13 +959,14 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
-    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect-state ~A ~D ~D ~A)~%" (-> *setting-control* default aspect-ratio)
                                                   (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                   (-> obj aspect-ratio-auto?))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (monitor ~D)~%" (-> obj monitor))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
     (format file "  (font-scale ~f)~%" (-> obj font-scale))
@@ -935,6 +999,8 @@
     (format file "  (use-vis? ~A)~%" (-> obj use-vis?))
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
+    (format file "  (speedrunner-mode? ~A)~%" (-> obj speedrunner-mode?))
+    (format file "  (cutscene-skips? ~A)~%" (-> obj cutscene-skips?))
     (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
     (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
     (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))
@@ -946,6 +1012,8 @@
     (format file "  (music-fadeout? ~A)~%" (-> obj music-fadeout?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
     (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
+    (format file "  (game-language ~D)~%" (-> *setting-control* default language))
+    (format file "  (text-language ~D)~%" (-> obj text-language))
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
     (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
@@ -971,6 +1039,7 @@
     (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
     (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
     |#
+    (format file "    (cheats #x~x #x~x)~%" (-> obj cheats-known) (-> obj cheats))
 
     (format file "    (music~%")
     (dotimes (i PC_MUSIC_LOG_LENGTH)
@@ -1090,8 +1159,8 @@
 
 ) ;; when debug_segment
 
-(defun-debug draw-build-revision ()
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                      (bucket-id debug-no-zbuf))
           (draw-string-xy *pc-settings-built-sha*
                           buf

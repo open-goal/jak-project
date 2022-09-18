@@ -17,7 +17,7 @@
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
-(define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
+(define-extern target-send-attack (function process uint touching-shapes-entry int int symbol :behavior target))
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 
 ;; DECOMP BEGINS
@@ -189,16 +189,16 @@
                )
              (until (ja-done? 0)
                (compute-alignment! (-> self align))
-               (align! (-> self align)
-                       (the-as align-opts (if gp-0
-                                              2
-                                              6
-                                              )
-                               )
-                       (the-as float 1.0)
-                       (the-as float 1.0)
-                       (the-as float 1.5)
-                       )
+               (align!
+                 (-> self align)
+                 (if gp-0
+                     (align-opts adjust-y-vel)
+                     (align-opts adjust-y-vel adjust-xz-vel)
+                     )
+                 (the-as float 1.0)
+                 (the-as float 1.0)
+                 (the-as float 1.5)
+                 )
                (when (and (>= 25.0 (ja-aframe-num 0)) (and (>= (ja-aframe-num 0) 21.0)
                                                            (= (-> self next-state name) 'target-flop-hit-ground)
                                                            (!= (-> self control unknown-spoolanim00) 'stuck)
@@ -812,8 +812,7 @@
                  (suspend)
                  ;; This controls the slow walk animation that occurs after landing from a jump. > 60fps was broken here so I think should not be tied to seconds-per-frame
                  ;; unknown-float01 is the magnitude of xz velocity
-                 (ja :num! (seek! max (/ (* (fmax 20480.0 (-> self control unknown-float01)) (if (or (= (-> *setting-control* current video-mode) '150fps)
-                                                                                                     (= (-> *setting-control* current video-mode) '100fps))
+                 (ja :num! (seek! max (/ (* (fmax 20480.0 (-> self control unknown-float01)) (if (= (-> *setting-control* current video-mode) 'custom)
                                                                                                  0.016666668
                                                                                                  (-> *display* seconds-per-frame)))
                                         (/ (-> *TARGET-bank* run-up-cycle-dist) (-> *TARGET-bank* run-cycle-length))
@@ -2079,7 +2078,7 @@
           (let ((gp-1 (target-send-attack
                         arg0
                         (the-as uint (-> self control unknown-symbol30))
-                        (-> arg3 param 0)
+                        (the-as touching-shapes-entry (-> arg3 param 0))
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
@@ -2444,9 +2443,7 @@
         (seek!
           (-> self control dynam gravity-length)
           (-> self control unknown-dynamics00 gravity-length)
-          (* 245760.0 (if (or (= (-> *setting-control* current video-mode) '150fps)
-                              (= (-> *setting-control* current video-mode) '100fps)
-                              )
+          (* 245760.0 (if (= (-> *setting-control* current video-mode) 'custom)
                           0.016666668
                           (-> *display* seconds-per-frame)
                           )

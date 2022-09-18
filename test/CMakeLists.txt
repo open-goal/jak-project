@@ -29,11 +29,12 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionDecode.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_decomp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_jak1_decomp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_math_decomp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DataParser.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DisasmVifDecompile.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_VuDisasm.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/game/test_newpad.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
@@ -50,7 +51,7 @@ if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
-                                 EXECUTABLE goalc-test --gtest_color=yes
+                                 EXECUTABLE goalc-test --gtest_color=yes --gtest_brief=1
                                  DEPENDENCIES goalc-test
                                  EXCLUDE "third-party/*" "/usr/include/*")
 endif()

@@ -9,7 +9,9 @@
 (defconstant DMA_BUFFER_GLOBAL_SIZE (#if (not PC_PORT)
                                          (* 1712 1024) ;; 1712K
                                          (* PROCESS_HEAP_MULT 2664 1024))) ;; 2600K x actor heap increase (usually 3x)
-(defconstant DMA_BUFFER_DEBUG_SIZE (* 8 1024 1024)) ;; 8M
+(defconstant DMA_BUFFER_DEBUG_SIZE (#if (not PC_PORT)
+                                        (* 8 1024 1024) ;; 8M
+                                        (* 16 1024 1024))) ;; 16M
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
@@ -54,19 +56,12 @@
        ;; 5 "ticks" per frame * 60 fps = 300 ticks per second.
        (set! (-> obj time-factor) 5.0)
        )
-      (('100fps)
-       (set! (-> obj time-adjust-ratio) (* 0.6 ratio))
-       (set! (-> obj seconds-per-frame) (* 0.01 ratio))
-       (set! (-> obj frames-per-second) (* 100.0 (/ 1.0 ratio)))
-       ;; 3 "ticks" per frame * 100 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 3.0)
-       )
-      (('150fps)
-       (set! (-> obj time-adjust-ratio) (* 0.4 ratio))
-       (set! (-> obj seconds-per-frame) (* (1/ 150.0) ratio))
-       (set! (-> obj frames-per-second) (* 150.0 (/ 1.0 ratio)))
-       ;; 2 "ticks" per frame * 150 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 2.0)
+      (('custom)
+       (set! (-> obj time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
+       (set! (-> obj seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
+       (set! (-> obj frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
+       ;; x "ticks" per frame * y fps = 300 ticks per second.
+       (set! (-> obj time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
        )
       (else
        (format #t "Warning: Tried to set unsupported video-mode")

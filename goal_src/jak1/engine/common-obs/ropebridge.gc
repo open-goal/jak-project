@@ -608,7 +608,21 @@
       (when (-> self do-physics?)
         (clear-spring-forces self)
         (set-vel-from-riders self)
-        (do-integration self)
+
+        ;; original
+        ;; (do-integration self)
+
+        ;; modified to try to fix crazy bridges
+        ;; instead of doing one big step when lagging, do multiple small steps.
+        ;; temporarily change time ratio to 1.0 (like we are 60 fps)
+        (let ((old-time-ratio (the int (-> *display* time-ratio))))
+          (set-time-ratios *display* 1.0)
+          ;; then do multiple steps to simulate the same amount of time, but without longer timesteps
+          (dotimes (i old-time-ratio)
+            (do-integration self)
+            )
+          (set-time-ratios *display* (the float old-time-ratio))
+          )
         )
       )
     (none)

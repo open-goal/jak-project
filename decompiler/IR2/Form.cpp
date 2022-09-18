@@ -197,8 +197,16 @@ void StoreElement::get_modified_regs(RegSet& regs) const {
 // LoadSourceElement
 /////////////////////////////
 
-LoadSourceElement::LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind)
-    : m_addr(addr), m_size(size), m_kind(kind) {
+LoadSourceElement::LoadSourceElement(Form* addr,
+                                     int size,
+                                     LoadVarOp::Kind kind,
+                                     const std::optional<IR2_RegOffset>& load_source_ro,
+                                     const TP_Type& ro_reg_type)
+    : m_addr(addr),
+      m_size(size),
+      m_kind(kind),
+      m_load_source_ro(load_source_ro),
+      m_ro_reg_type(ro_reg_type) {
   m_addr->parent_element = this;
 }
 
@@ -464,22 +472,25 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
   }
 }
 
-goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
+goos::Object SetFormFormElement::to_form_for_define(
+    const Env& env,
+    const std::optional<std::string>& docstring) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env)};
+  if (docstring) {
+    forms.push_back(pretty_print::to_symbol(fmt::format("\"{}\"", docstring.value())));
+  }
   if (m_cast_for_define) {
     // for vu-function, we just put a 0. These aren't supported
     if (*m_cast_for_define == TypeSpec("vu-function")) {
-      return pretty_print::build_list(
-          fmt::format("define"), m_dst->to_form(env),
-          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                   pretty_print::to_symbol("0")));
+      forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                               pretty_print::to_symbol("0")));
+      return pretty_print::build_list(forms);
     }
-    return pretty_print::build_list(
-        fmt::format("define"), m_dst->to_form(env),
-        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                 m_src->to_form(env)));
+    forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                             m_src->to_form(env)));
+    return pretty_print::build_list(forms);
   } else {
-    std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env),
-                                       m_src->to_form(env)};
+    forms.push_back(m_src->to_form(env));
     return pretty_print::build_list(forms);
   }
 }
@@ -1862,6 +1873,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cpad-pressed?";
     case FixedOperatorKind::CPAD_HOLD_P:
       return "cpad-hold?";
+    case FixedOperatorKind::VECTOR_LENGTH:
+      return "vector-length";
     default:
       ASSERT(false);
       return "";
@@ -3193,6 +3206,7 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
       // sp-end
       break;
     }
+    ASSERT(env.version == GameVersion::Jak1);  // need to update enums
     item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
   }
   if (!item_forms.empty()) {

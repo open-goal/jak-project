@@ -401,6 +401,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; kernel Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the kernel group is a group of files required to boot the game kernel
+
+(group "kernel" "$OUT/iso/KERNEL.CGO")
+
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; engine Group
 ;;;;;;;;;;;;;;;;;;;;;
 ;; the engine group is a group of files required to boot the game engine with no levels
@@ -1591,7 +1599,9 @@
 (goal-src-sequence
  "levels/title/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("$OUT/obj/ticky.o")
+ ("$OUT/obj/ticky.o"
+  "$OUT/obj/progress-pc.o"
+  )
 
  "title-obs.gc"
  )
@@ -1680,7 +1690,8 @@
  "engine/"
 
  :deps
- ("$OUT/ps2/pad.o")
+ ("$OUT/obj/pad.o"
+  "$OUT/obj/dma-disasm.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1692,10 +1703,32 @@
  "gfx/math-camera.gc"
  "gfx/font-h.gc"
  "load/decomp-h.gc"
- "gfx/hw/display.gc"
+ )
+
+(goal-src "engine/gfx/hw/display.gc" "decomp-h" "pckernel-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/display.o"
+  "$OUT/obj/decomp-h.o")
+ 
  "engine/connect.gc"
  "ui/text-h.gc"
  "game/settings-h.gc"
+ )
+
+(goal-src "pc/util/knuth-rand.gc" "settings-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/settings-h.o")
+
  "util/capture.gc"
  "debug/memory-usage-h.gc"
  "gfx/texture/texture.gc"
@@ -1861,7 +1894,7 @@
  "collide/collide-shape.gc"
  "collide/collide-shape-rider.gc"
  "collide/collide.gc"
- "collide/collide-planes.gc"
+;;  "collide/collide-planes.gc"
  "gfx/merc/merc-death.gc"
  "common-obs/water-h.gc"
  "camera/camera.gc"
@@ -1907,7 +1940,8 @@
  "engine/"
 
  :deps
- ("$OUT/main.o")
+ ("$OUT/obj/main.o"
+  "$OUT/obj/video.o")
 
  "collide/collide-cache.gc"
  "entity/relocate.gc"
@@ -2003,11 +2037,16 @@
  )
 
 ;; Custom or Modified Code
-(goal-src "pc/pckernel-h.gc" "dma-disasm")
-(goal-src "pc/pckernel.gc" "settings" "video")
+(goal-src "pc/features/autosplit-h.gc")
+(goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h")
+(goal-src "pc/features/speedruns-h.gc")
+(goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
+(goal-src "pc/pckernel-h.gc" "dma-buffer")
+(goal-src "pc/util/pc-anim-util.gc" "target-h")
+(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
-(goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+(goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 
 ;; the debug menu is modified to include PC specific options:

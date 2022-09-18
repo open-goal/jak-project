@@ -55,6 +55,7 @@ jobs:
           tar czf ../final/opengoal-linux-${TAG_VAL}.tar.gz .
           popd
           strip ./ci-artifacts/opengoal-linux-static/lsp/lsp
+          chmod +x ./ci-artifacts/opengoal-linux-static/lsp/lsp
           cp ./ci-artifacts/opengoal-linux-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-linux-${TAG_VAL}.bin
 
       - name: Prepare Windows Build Assets
@@ -78,3 +79,10 @@ jobs:
         run: |
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           gh release edit ${TAG_VAL} --draft=false --repo open-goal/jak-project
+
+      - name: Consume Release in the Launcher
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          repository: 'open-goal/launcher'
+          event-type: releaseLauncher

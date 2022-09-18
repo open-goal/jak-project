@@ -25,6 +25,19 @@
   (fast-link 5)
   )
 
+
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (korean)
+  (uk-english)
+  )
+
 ;; fixed symbols
 (define-extern #f symbol)
 (define-extern #t symbol)
@@ -73,7 +86,7 @@
 (define-extern process-level-heap kheap) ;; not a kheap at boot
 (define-extern stack symbol)
 (define-extern scratch symbol)
-(define-extern *stratch-top* pointer)
+(define-extern *scratch-top* pointer)
 (define-extern zero-func (function int))
 
 ;; InitHeapAndSymbol
@@ -89,6 +102,8 @@
 
 (define-extern dgo-load (function string kheap link-flag int none))
 (define-extern malloc (function symbol int pointer))
+(define-extern loado (function string kheap object))
+(define-extern link (function pointer pointer int kheap int pointer))
 
 (declare-type cpad-info basic)
 (define-extern cpad-open (function cpad-info int cpad-info))
@@ -99,12 +114,61 @@
 
 
 (define-extern scf-get-territory (function int)) ;; not actually a scf function...
+
+(define-extern scf-get-volume "Defined in the kernel" (function int))
+(define-extern scf-get-language "Defined in the kernel" (function language-enum))
+(define-extern scf-get-aspect "Defined in the kernel" (function uint))
+(define-extern *boot-video-mode* "Defined in the kernel" int)
+(define-extern *kernel-boot-message* symbol)
+
 (define-extern __read-ee-timer (function uint))
 (define-extern __mem-move (function pointer pointer uint none))
+(define-extern __send-gfx-dma-chain (function object object none))
 
-(define-extern file-stream-read (function file-stream pointer int int))
-(define-extern file-stream-open (function file-stream basic symbol file-stream))
+(define-extern file-stream-open (function file-stream string symbol file-stream))
+(define-extern file-stream-close (function file-stream file-stream))
 (define-extern file-stream-length (function file-stream int))
+(define-extern file-stream-seek (function file-stream int int int))
+(define-extern file-stream-read (function file-stream pointer int int))
+(define-extern file-stream-write (function file-stream pointer uint uint))
+
+(define-extern reset-path (function none))
+
+(define-extern install-handler (function int function int))
+(define-extern flush-cache (function int none))
+(define-extern gs-store-image (function object object object))
+(define-extern sync-path (function int int int))
+
+(define-extern kmalloc (function kheap int kmalloc-flags string pointer))
+
+(define-extern *kernel-boot-message* symbol)
+
+(define-extern new-dynamic-structure (function symbol type int structure))
+
+(define-extern mc-run (function none))
+(define-extern mc-check-result (function int))
+(declare-type mc-slot-info structure)
+(define-extern mc-get-slot-info (function int mc-slot-info none))
+(define-extern rpc-busy? (function int uint))
+(define-extern rpc-call (function int uint uint uint int uint int uint))
+(define-extern string->symbol (function string symbol))
+
+(define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
+(define-extern link-reset (function none))
+
+(define-extern kset-language (function language-enum int))
+(define-extern syncv (function int int))
+(define-extern __pc-get-mips2c (function string function))
+
+(define-extern dma-sync (function pointer int int int))
+
+(define-extern __pc-texture-upload-now (function object object none))
+(define-extern __pc-texture-relocate (function object object object none))
+
+(define-extern link-resume (function int))
+(define-extern unload (function string none))
+
+(define-extern reset-graph (function int int int int none))
 
 
 ;; PC stuff

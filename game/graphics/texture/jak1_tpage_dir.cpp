@@ -99,6 +99,6 @@ std::vector<u32> tpage_dir = {
     EXTRA_PC_PORT_TEXTURE_COUNT};
 }
 
-const std::vector<u32> get_jak1_tpage_dir() {
+const std::vector<u32>& get_jak1_tpage_dir() {
   return tpage_dir;
 }

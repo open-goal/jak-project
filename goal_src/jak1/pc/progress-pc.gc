@@ -52,6 +52,10 @@
     (1+! (-> *progress-scroll* start-index))))
 
 
+;; used in title logo
+(define *quit-to-title* #f)
+
+
 ;; ############################
 ;; CAROUSELL STUFF
 ;; ############################
@@ -138,6 +142,7 @@
 (define *graphic-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id display) :scale #t :param3 (game-option-menu monitor))
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
@@ -161,6 +166,8 @@
 (define *misc-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id cutscene-skips) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id speedrunner-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -237,14 +244,21 @@
   )
 
 (define *cheats* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sidekick-alt) :scale #t :param1 5.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-head) :scale #t :param1 9.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-small-head) :scale #t :param1 10.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-fist) :scale #t :param1 11.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-head-npc) :scale #t :param1 16.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-tunes) :scale #t :param1 6.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sky) :scale #t :param1 7.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-huge-head) :scale #t :param1 15.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-mirror) :scale #t :param1 8.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-yellow) :scale #t :param1 3.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-blue) :scale #t :param1 2.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-red) :scale #t :param1 1.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-green) :scale #t :param1 0.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-invinc) :scale #t :param1 4.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sidekick-alt) :scale #t :param1 5.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-tunes) :scale #t :param1 6.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sky) :scale #t :param1 7.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-no-tex) :scale #t :param1 12.0)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -325,16 +339,16 @@
 
 
 
-(defmacro def-language-remap-info (langs)
-  `(quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs))
+(defmacro def-language-remap-info (name langs)
+  `(define ,name (quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs)))
   )
 
-(define *language-remap-info-pc* (def-language-remap-info
-        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian)))
+(def-language-remap-info *language-remap-info-pc*
+        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian))
 (define *text-languages* (static-text-list-array
-                                  english uk-english french german spanish italian japanese))
+        english uk-english french german spanish italian japanese))
 (define *subtitle-languages* (static-text-list-array
-                                  english spanish))
+        english german spanish br-portuguese))
 
 
 
@@ -402,11 +416,23 @@
   )
 
 (defmacro add-flava-player-option (text-id flava)
-  "add a resolution button to *temp-options* with specified size"
+  "add a music player w/ flava button to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*))))
       (set! (-> option option-type) (game-option-type button-flava))
       (set! (-> option name) ,text-id)
       (set! (-> option param1) (the float ,flava))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+  )
+
+(defmacro add-monitor-option (text-id monitor)
+  "add a display button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type monitor))
+      (set! (-> option name) ,text-id)
+      (set! (-> option param1) (the float ,monitor))
       (set! (-> option scale) #t)
 
       (1+! (-> *temp-options* length))
@@ -433,7 +459,8 @@
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
         (skip? (= 'windowed display-mode))
         ;; shortcut
-        (max-options (1- (-> *temp-options* allocated-length))))
+        ;; we reserve 3 options.
+        (max-options (+ -3 (-> *temp-options* allocated-length))))
 
     ;; get screen size (for capping)
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
@@ -446,9 +473,9 @@
 
     ;; supersampling in fullscreen and stuff. this results in way too many resolution options lol.
     (when (!= display-mode 'windowed)
-        (*! sx 4)
-        (*! sy 4)
-        (*! mult 4)
+        (*! sx 2)
+        (*! sy 2)
+        (*! mult 2)
         )
 
     ;; game aspect ratio
@@ -475,15 +502,12 @@
           (true! done?))
       ))
     ;; extra funny options
-    (when (and (!= display-mode 'windowed)
-               (< (length *temp-options*) (- (-> *temp-options* allocated-length) 3)))
+    (when (!= display-mode 'windowed)
         (add-resolution-option 512 224)
-        (add-resolution-option 512 448)
-        )
+        (add-resolution-option 512 448))
 
     (add-back-option)
     )
-
 
   *temp-options*
   )
@@ -502,6 +526,15 @@
   *temp-options*
   )
 
+(defun build-monitor-options ()
+  (set! (-> *temp-options* length) 0)
+
+  (dotimes (i (pc-get-monitor-count))
+    (add-monitor-option (game-text-id display-fmt) i)
+    )
+
+  (add-back-option)
+  *temp-options*)
 
 
 
@@ -618,10 +651,13 @@
     (set! (-> *options-remap* i) #f)
     )
 
+  ;; give cheats
+  (when (task-closed? (game-task finalboss-movies) (task-status need-reminder))
+      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue tunes sky big-head small-head big-fist big-head-npc))
+      (when (>= (calculate-completion (the progress #f)) 100.0)
+          (logior! (-> *pc-settings* cheats-known) (pc-cheats invinc eco-blue eco-red eco-green eco-yellow huge-head mirror no-tex))))
+
   ;; set up options for each screen
-  (when (>= (calculate-completion (the progress #f)) 100.0)
-      (logior! (-> *pc-settings* cheats-known) (pc-cheats eco-blue eco-red eco-green eco-yellow sidekick-blue invinc tunes sky))
-      )
   (set! (-> *options-remap* (progress-screen settings)) (if (or *cheat-mode* (nonzero? (-> *pc-settings* cheats-known)))
                                                             *main-options-secrets*
                                                             *main-options-pc*))
@@ -681,6 +717,7 @@
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
   (set! (-> *options-remap* (progress-screen memcard-auto-save-disabled)) *ok-options*)
+  (set! (-> *options-remap* (progress-screen monitor))                    *temp-options*)
 
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -709,36 +746,43 @@
   (set! (-> *game-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *game-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
+
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* monitor))
+  (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
+  ;; disable changes to frame-rate while in speedrunner mode
+  (set! (-> *graphic-options-pc* 6 option-disabled-func) (lambda () (-> *pc-settings* speedrunner-mode?)))
+
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* discord-rpc?))
+  (set! (-> *misc-options* 2 value-to-modify) (&-> *pc-settings* cutscene-skips?))
+  (set! (-> *misc-options* 3 value-to-modify) (&-> *pc-settings* speedrunner-mode?))
+
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
   (set! (-> *camera-options* 3 value-to-modify) (&-> *pc-settings* third-camera-v-inverted?))
+
   (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
+
   (set! (-> *gfx-ps2-options* 0 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *gfx-ps2-options* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *gfx-ps2-options* 2 value-to-modify) (&-> *pc-settings* ps2-parts?))
   ;(set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-envmap?))
   ;(set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-actors?))
+
   (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
   (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
-  (set! (-> *cheats* 0 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 1 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 2 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 3 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 4 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 5 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 6 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 7 value-to-modify) (&-> *progress-carousell* symbol-backup))
+  (dotimes (i (1- (-> *cheats* length)))
+    (set! (-> *cheats* i value-to-modify) (&-> *progress-carousell* symbol-backup))
+    )
   ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
 
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
@@ -771,6 +815,9 @@
       (if (= (-> obj display-state-stack 0) (progress-screen title))
           (set! (-> *options-remap* (-> obj display-state)) *secrets-title*)
           (set! (-> *options-remap* (-> obj display-state)) *secrets*))
+      )
+    (((progress-screen monitor))
+      (build-monitor-options)
       )
     )
   ;; run nav code
@@ -1053,11 +1100,6 @@
                (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* on-off-backup))
                )
-              (((game-option-type cheat-toggle))
-               (if (-> *progress-state* on-off-backup)
-                   (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
-                   (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
-               )
               )
             ;; ding
             (sound-play "cursor-options")
@@ -1085,6 +1127,11 @@
          )
         ((or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
          ;; pressed x or circle. advance!
+         ;; first check if the option is disabled, if so leave early and do nothing
+         (when (and (!= (-> options (-> obj option-index) option-disabled-func) 0)
+                    ((-> options (-> obj option-index) option-disabled-func)))
+               (sound-play "menu-stats")
+               (return #f))
          (cond
            ((not (-> obj selected-option))
             ;; no option already selected.
@@ -1168,8 +1215,17 @@
                    (set-size! *pc-settings* newx newy))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
-               (cpad-clear! 0 square)
-               (cpad-clear! 0 triangle)
+               (sound-play "cursor-options")
+               (set! (-> obj next-display-state) (progress-screen invalid))
+               (commit-to-file *pc-settings*)
+               )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type monitor))
+               ;; monitor button
+               (let ((monitor (the int (-> options (-> obj option-index) param1))))
+                 (set-monitor! *pc-settings* monitor)
+                 )
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
                (sound-play "cursor-options")
                (set! (-> obj next-display-state) (progress-screen invalid))
                (commit-to-file *pc-settings*)
@@ -1201,8 +1257,6 @@
                       (set-aspect! *pc-settings* newx newy))))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
-               (cpad-clear! 0 square)
-               (cpad-clear! 0 triangle)
                (sound-play "cursor-options")
                (commit-to-file *pc-settings*)
                (set! (-> obj next-display-state) (progress-screen invalid))
@@ -1271,10 +1325,10 @@
                     )
                   )
                  (((game-option-type frame-rate))
-                  (case (-> *setting-control* default video-mode)
-                    (('ntsc 'pal) (set! (-> *progress-carousell* int-backup) 0))
-                    (('100fps) (set! (-> *progress-carousell* int-backup) 1))
-                    (('150fps) (set! (-> *progress-carousell* int-backup) 2))
+                  (case (-> *pc-settings* target-fps)
+                    ((60) (set! (-> *progress-carousell* int-backup) 0))
+                    ((100) (set! (-> *progress-carousell* int-backup) 1))
+                    ((150) (set! (-> *progress-carousell* int-backup) 2))
                     )
                   )
                  (((game-option-type language-subtitles))
@@ -1329,9 +1383,15 @@
              (set! (-> obj selected-option) #f)
              (case (-> options (-> obj option-index) option-type)
                (((game-option-type cheat-toggle))
-                 (if (-> (the (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
-                     (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
-                     (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
+                (let ((the-cheat (ash 1 (the int (-> options (-> obj option-index) param1)))))
+                    (cond
+                      ((-> (the (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
+                        (logior!   (-> *pc-settings* cheats) the-cheat))
+                      (else
+                        (logclear! (-> *pc-settings* cheats) the-cheat)
+                        (when (and *target* (= the-cheat (pc-cheats invinc)))
+                            (logclear! (-> *target* state-flags) (state-flags invulnerable)))))
+                    )
                 )
                (((game-option-type aspect-ratio))
                 ;; aspect ratio is first written to the backup. so this is for applying the change if we went through with it.
@@ -1441,11 +1501,13 @@
              ((< (-> obj option-index) 4)
               (sound-play "start-options")
               (set! (-> *progress-state* which) (-> obj option-index))
+              ;; save slot selected
               (if (zero? (-> s5-0 file (-> obj option-index) present))
                   (set! (-> obj next-display-state) (progress-screen memcard-saving))
                   (set! (-> obj next-display-state) (progress-screen memcard-data-exists))
                   )
               )
+             ;; continue without saving
              ((and (= (-> obj display-state) (progress-screen save-game-title)) (= (-> obj option-index) 4))
               (sound-play "starts-options")
               (sound-volume-off)
@@ -1488,7 +1550,12 @@
                (sound-play "cursor-options")
                (sound-volume-off)
                (set! (-> *game-info* mode) 'play)
-               (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+               ;; Start a new game differently if speedrunning mode is active
+               (cond ((-> *pc-settings* speedrunner-mode?)
+                      (speedrun-start-run))
+                     ;; start the game normally
+                     (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
                (set-master-mode 'game)
                )
              )
@@ -1502,7 +1569,12 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((-> *pc-settings* speedrunner-mode?)
+                     (speedrun-start-run))
+                    ;; start the game normally
+                    (else
+                     (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              ((nonzero? (-> obj display-state-stack 0))
@@ -1564,6 +1636,7 @@
           (((progress-screen quit))
            (cond
              ((-> *progress-state* yes-no-choice)
+              (set! *quit-to-title* #t)
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
@@ -1585,7 +1658,12 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((-> *pc-settings* speedrunner-mode?)
+                     (speedrun-start-run))
+                    ;; start the game normally
+                    (else
+                     (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              (else
@@ -1598,6 +1676,7 @@
            (cond
              ((-> *progress-state* yes-no-choice)
               (sound-play "start-options")
+              (commit-to-file *pc-settings*)
               (sound-volume-off)
               (kernel-shutdown)
               )
@@ -1641,6 +1720,7 @@
             (unkx 27)
             (unk2 0)
             (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+            (locked-str (lookup-text! *common-text* (game-text-id locked) #f))
             )
         ;; set the common params for the text drawing
         (set-width! font 370)
@@ -1687,7 +1767,12 @@
         (let ((option-str (the string #f)) ;; the option text
               (option-x 17)
               (option-y y-off)
+              (locked? #f)
               )
+          ;; Check if the option should be disabled
+          (when (and (!= (-> options index option-disabled-func) 0)
+                     ((-> options index option-disabled-func)))
+                (set! locked? #t))
           (case (-> options index option-type)
             (((game-option-type yes-no))
              ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
@@ -1700,30 +1785,39 @@
              ;; menu option or simple button. just draw its text!
              (if (nonzero? (-> options index name))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (the-as string #f))
+                 (set! option-str #f)
                  )
-             (if (and (not (-> *setting-control* default auto-save))
+             (when (and (not (-> *setting-control* default auto-save))
                       (= (game-text-id disable-auto-save) (-> options index name)))
-                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f)))
+                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f))
+                 (true! locked?))
              )
             (((game-option-type button-music))
              ;; a button for the music player. has the text "locked" sometimes!
              (if (and (nonzero? (-> options index name)) (find-music-log (progress-get-music-by-index index)))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                 (set! option-str locked-str)
                  )
              )
             (((game-option-type button-flava))
              ;; a button for the flava player. has the text "locked" sometimes!
              (if (and (nonzero? (-> options index name)) (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options index param1))))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                 (set! option-str locked-str)
                  )
              )
             (((game-option-type resolution) (game-option-type aspect-new))
              ;; resolution settings
              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
+             )
+            (((game-option-type monitor))
+              ;; monitor list
+             (set! option-str
+                   (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                  (+ 1 (the int (-> options index param1)))
+                                  )
+                   )
              )
             (else
              (cond
@@ -1774,17 +1868,10 @@
                     )
                   )
                  (((game-option-type cheat-toggle))
-                  (cond
-                    ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
-                      (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                  (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
+                      (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
                       )
-                    (else
-                      (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
-                          (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                          (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                          )
-                      )
-                    )
                   )
                  (((game-option-type display-mode)
                    (game-option-type msaa)
@@ -1900,7 +1987,31 @@
                   (((game-option-type cheat-toggle))
                     (cond
                       ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
-                       (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                       (true! locked?)
+                       (case (ash 1 (the int (-> options index param1)))
+                           (((pc-cheats eco-blue)
+                             (pc-cheats eco-green)
+                             (pc-cheats eco-red)
+                             (pc-cheats eco-yellow)
+                             (pc-cheats invinc)
+                             (pc-cheats huge-head)
+                             (pc-cheats mirror)
+                             (pc-cheats no-tex)
+                             )
+                             (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-100-percent) #f)))
+                           (((pc-cheats sky)
+                             (pc-cheats sidekick-blue)
+                             (pc-cheats tunes)
+                             (pc-cheats big-head)
+                             (pc-cheats small-head)
+                             (pc-cheats big-fist)
+                             (pc-cheats big-head-npc)
+                             )
+                             (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-beat-game) #f)))
+                           (else
+                             ;; (format 0 "weird case ~f #x~x~%" (-> options index param1) (ash 1 (the int (-> options index param1))))
+                             (set! option-str locked-str))
+                           )
                        )
                       (else
                         (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
@@ -1957,12 +2068,8 @@
                 )
               (set-color! font (cond
                                  ((and (!= index (-> obj option-index))
-                                       (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str)) ;; hacky..
+                                       (or locked? (= locked-str option-str)))
                                   ;; for "locked" options!
-                                  (font-color flat-dark-purple))
-                                 ((and (!= index (-> obj option-index))
-                                       (not (-> *setting-control* default auto-save))
-                                       (= (game-text-id disable-auto-save) (-> options index name)))
                                   (font-color flat-dark-purple))
                                  ((and (= index (-> obj option-index))
                                        (not (or (progress-scrolling?) (-> obj in-transition))))
@@ -2143,6 +2250,7 @@
           (progress-screen aspect-ratio)
           (progress-screen secrets)
           (progress-screen cheats)
+          (progress-screen monitor)
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)

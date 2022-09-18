@@ -5,6 +5,8 @@
 ;; name in dgo: gstate
 ;; dgos: KERNEL
 
+;; DECOMP BEGINS
+
 #|
 Summary of state system:
 
@@ -103,7 +105,7 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name (symbol->string proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -118,7 +120,7 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -507,5 +509,14 @@ It type checks the arguments for the entry function.
   )
 
 
-
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
 

@@ -261,7 +261,9 @@ void midi_handler::channel_pressure() {
 void midi_handler::channel_pitch() {
   u8 channel = m_status & 0xF;
   u32 pitch = (m_seq_ptr[0] << 7) | m_seq_ptr[1];
-  lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
+  (void)pitch;
+  (void)channel;
+  // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
   m_seq_ptr += 2;
 }
 

@@ -75,7 +75,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   // Print out some information
   lg::info("Detected Game Metadata:");
   lg::info("\tDetected - {}", version_info.canonical_name);
-  lg::info("\tRegion - {}", version_info.region);
+  lg::info("\tRegion - {}", get_territory_name(version_info.region));
   lg::info("\tSerial - {}", dbEntry->first);
   lg::info("\tUses Decompiler Config - {}", version_info.decomp_config);
 
@@ -106,8 +106,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
 
   Config config = read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
                                     fmt::format("{}.jsonc", version_info.decomp_config))
-                                       .string(),
-                                   {});
+                                       .string());
 
   std::vector<fs::path> dgos, objs;
 
@@ -205,6 +204,7 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
 
   if (version_info.game_name == "jak1") {
     compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
+    compiler.make_system().set_constant("*jak1-territory*", version_info.region);
   }
 
   auto project_path = file_util::get_jak_project_dir() / "goal_src" / data_subfolder / "game.gp";
@@ -223,6 +223,8 @@ void launch_game() {
 }
 
 int main(int argc, char** argv) {
+  ArgumentGuard u8_guard(argc, argv);
+
   fs::path input_file_path;
   fs::path project_path_override;
   bool flag_runall = false;
@@ -233,12 +235,6 @@ int main(int argc, char** argv) {
   bool flag_play = false;
   bool flag_folder = false;
   std::string game_name = "jak1";
-
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    lg::error("Bad encoding, needs UTF-8");
-    exit(EXIT_FAILURE);
-  }
 
   lg::initialize();
 

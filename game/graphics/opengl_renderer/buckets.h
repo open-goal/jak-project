@@ -2,6 +2,7 @@
 /*!
  * Matches the bucket-id enum in GOAL
  */
+namespace jak1 {
 enum class BucketId {
   BUCKET0 = 0,
   BUCKET1 = 1,
@@ -75,6 +76,12 @@ enum class BucketId {
   SUBTITLE = 69,
   MAX_BUCKETS = 70
 };
+}
+
+namespace jak2 {
+
+enum class BucketId { DEBUG_NO_ZBUF1 = 318, DEBUG_NO_ZBUF2 = 325, DEBUG3 = 326, MAX_BUCKETS = 327 };
+}
 
 enum class BucketCategory {
   TFRAG,

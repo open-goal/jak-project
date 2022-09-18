@@ -57,8 +57,9 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
 }
 
 OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
-                               std::shared_ptr<Loader> loader)
-    : m_render_state(texture_pool, loader) {
+                               std::shared_ptr<Loader> loader,
+                               GameVersion version)
+    : m_render_state(texture_pool, loader, version), m_version(version) {
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
@@ -70,14 +71,49 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
   // initialize all renderers
-  init_bucket_renderers();
+  switch (m_version) {
+    case GameVersion::Jak1:
+      init_bucket_renderers_jak1();
+      break;
+    case GameVersion::Jak2:
+      init_bucket_renderers_jak2();
+      break;
+    default:
+      ASSERT(false);
+  }
 }
 
+void OpenGLRenderer::init_bucket_renderers_jak2() {
+  using namespace jak2;
+  m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
+  m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
+
+  init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
+                                       BucketId::DEBUG_NO_ZBUF1, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
+                                       BucketId::DEBUG_NO_ZBUF2, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug3", BucketCategory::OTHER, BucketId::DEBUG3, 0x8000);
+
+  // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
+  for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
+    if (!m_bucket_renderers[i]) {
+      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), BucketCategory::OTHER,
+                                                i);
+    }
+
+    m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
+  }
+  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
+}
 /*!
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
-void OpenGLRenderer::init_bucket_renderers() {
-  m_bucket_categories.fill(BucketCategory::OTHER);
+void OpenGLRenderer::init_bucket_renderers_jak1() {
+  using namespace jak1;
+  m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
+  m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
+
   std::vector<tfrag3::TFragmentTreeKind> normal_tfrags = {tfrag3::TFragmentTreeKind::NORMAL,
                                                           tfrag3::TFragmentTreeKind::LOWRES};
   std::vector<tfrag3::TFragmentTreeKind> dirt_tfrags = {tfrag3::TFragmentTreeKind::DIRT};
@@ -271,15 +307,17 @@ void OpenGLRenderer::init_bucket_renderers() {
 
   std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
   // the first renderer added will be the default for sprite.
-  sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", BucketId::SPRITE));
-  sprite_renderers.push_back(std::make_unique<SpriteRenderer>("sprite-renderer", BucketId::SPRITE));
+  sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", (int)BucketId::SPRITE));
+  sprite_renderers.push_back(
+      std::make_unique<SpriteRenderer>("sprite-renderer", (int)BucketId::SPRITE));
   init_bucket_renderer<RenderMux>("sprite", BucketCategory::SPRITE, BucketId::SPRITE,
                                   std::move(sprite_renderers));  // 66
 
   init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF, 0x8000);
-  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE, 2000);
+  // an extra custom bucket!
+  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE, 6000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -343,7 +381,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
-    vif_interrupt_callback();
+    // vif_interrupt_callback(0);
     if (settings.gpu_sync) {
       glFinish();
     }
@@ -377,15 +415,18 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   if (settings.save_screenshot) {
     Fbo* screenshot_src;
+    int read_buffer;
 
     // can't screenshot from a multisampled buffer directly -
     if (m_fbo_state.resources.resolve_buffer.valid) {
       screenshot_src = &m_fbo_state.resources.resolve_buffer;
+      read_buffer = GL_COLOR_ATTACHMENT0;
     } else {
       screenshot_src = m_fbo_state.render_fbo;
+      read_buffer = GL_FRONT;
     }
     finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
-                      screenshot_src->fbo_id);
+                      screenshot_src->fbo_id, read_buffer);
   }
   if (settings.gpu_sync) {
     glFinish();
@@ -613,8 +654,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
     // trying to draw to 0 size region... opengl doesn't like this.
-    m_render_state.draw_region_w = 640;
-    m_render_state.draw_region_h = 480;
+    m_render_state.draw_region_w = 320;
+    m_render_state.draw_region_h = 240;
   }
 
   if (m_fbo_state.render_fbo->is_window) {
@@ -633,12 +674,9 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   }
 }
 
-/*!
- * This function finds buckets and dispatches them to the appropriate part.
- */
-void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
-                                      ScopedProfilerNode& prof,
-                                      bool sync_after_buckets) {
+void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
+                                           ScopedProfilerNode& prof,
+                                           bool sync_after_buckets) {
   // The first thing the DMA chain should be a call to a common default-registers chain.
   // this chain resets the state of the GS. After this is buckets
   m_category_times.fill(0);
@@ -646,6 +684,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
   m_render_state.buckets_base =
       dma.current_tag_offset() + 16;  // offset by 1 qw for the initial call
   m_render_state.next_bucket = m_render_state.buckets_base;
+  m_render_state.bucket_for_vis_copy = (int)jak1::BucketId::TFRAG_LEVEL0;
 
   // Find the default regs buffer
   auto initial_call_tag = dma.current_tag();
@@ -670,7 +709,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
   m_render_state.next_bucket += 16;
 
   // loop over the buckets!
-  for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
+  for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
     g_current_render = renderer->name_and_id();
@@ -685,12 +724,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-    vif_interrupt_callback();
+    vif_interrupt_callback(bucket_id);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
     // hack to draw the collision mesh in the middle the drawing
-    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 &&
-        Gfx::g_global_settings.collision_enable) {
+    if (bucket_id == 31 - 1 && Gfx::g_global_settings.collision_enable) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }
@@ -698,6 +736,58 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
   g_current_render = "";
 
   // TODO ending data.
+}
+
+void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
+                                           ScopedProfilerNode& prof,
+                                           bool sync_after_buckets) {
+  // The first thing the DMA chain should be a call to a common default-registers chain.
+  // this chain resets the state of the GS. After this is buckets
+  m_category_times.fill(0);
+
+  m_render_state.buckets_base = dma.current_tag_offset();  // starts at 0 in jak 2
+  m_render_state.next_bucket = m_render_state.buckets_base + 16;
+  m_render_state.bucket_for_vis_copy = 0;  // TODO
+
+  for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
+    auto& renderer = m_bucket_renderers[bucket_id];
+    auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    g_current_render = renderer->name_and_id();
+    // lg::info("Render: {} start", g_current_render);
+    renderer->render(dma, &m_render_state, bucket_prof);
+    if (sync_after_buckets) {
+      auto pp = scoped_prof("finish");
+      glFinish();
+    }
+
+    // lg::info("Render: {} end", g_current_render);
+    //  should have ended at the start of the next chain
+    ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
+    m_render_state.next_bucket += 16;
+    vif_interrupt_callback(bucket_id);
+    m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
+  }
+  vif_interrupt_callback(m_bucket_renderers.size());
+
+  // TODO ending data.
+}
+/*!
+ * This function finds buckets and dispatches them to the appropriate part.
+ */
+void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
+                                      ScopedProfilerNode& prof,
+                                      bool sync_after_buckets) {
+  m_render_state.version = m_version;
+  switch (m_version) {
+    case GameVersion::Jak1:
+      dispatch_buckets_jak1(dma, prof, sync_after_buckets);
+      break;
+    case GameVersion::Jak2:
+      dispatch_buckets_jak2(dma, prof, sync_after_buckets);
+      break;
+    default:
+      ASSERT(false);
+  }
 }
 
 /*!
@@ -708,13 +798,14 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int height,
                                        int x,
                                        int y,
-                                       GLuint fbo) {
+                                       GLuint fbo,
+                                       int read_buffer) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   GLint oldbuf;
   glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldbuf);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-  glReadBuffer(GL_COLOR_ATTACHMENT0);
+  glReadBuffer(read_buffer);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
@@ -772,7 +863,7 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-  if (alp < 1) {
+  if (alp < 1 && m_version != GameVersion::Jak2) {  // TODO: enable blackout on jak 2.
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);

@@ -26,17 +26,13 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::
 /*!
  * Parse the main config file and return decompiler config.
  */
-Config read_config_file(const std::string& path_to_config_file,
-                        const std::map<std::string, bool>& overrides) {
+Config read_config_file(const fs::path& path_to_config_file, const std::string& override_json) {
   Config config;
   auto config_str = file_util::read_text_file(path_to_config_file);
-  auto cfg = parse_commented_json(config_str, path_to_config_file);
-
-  // Override JSON
-  for (auto const& [key, val] : overrides) {
-    lg::info("[Config] - Overwriting '{}' with '{}'", key, val);
-    cfg[key] = val;
-  }
+  auto cfg = parse_commented_json(config_str, path_to_config_file.string());
+  lg::info("Config Overide: '{}'\n", override_json);
+  auto cfg_override = parse_commented_json(override_json, "");
+  cfg.update(cfg_override);
 
   int version_int = cfg.at("game_version").get<int>();
   ASSERT(version_int == 1 || version_int == 2);
@@ -75,7 +71,7 @@ Config read_config_file(const std::string& path_to_config_file,
   config.print_cfgs = cfg.at("print_cfgs").get<bool>();
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
-  config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
+  config.rip_levels = cfg.at("rip_levels").get<bool>();
   config.extract_collision = cfg.at("extract_collision").get<bool>();
   config.generate_all_types = cfg.at("generate_all_types").get<bool>();
   if (cfg.contains("old_all_types_file")) {

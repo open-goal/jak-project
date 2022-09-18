@@ -1,4 +1,4 @@
-set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 
 set(LIBCO_SOURCES
   libco.c

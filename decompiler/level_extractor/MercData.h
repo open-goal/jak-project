@@ -175,7 +175,7 @@ struct MercEffect {
   u16 tri_count;
   u16 dvert_count;
   // (dummy1           uint8                  :offset-assert 26) ??
-  u8 envmap_usage;
+  u8 envmap_or_effect_usage;
   // (extra-info       merc-extra-info        :offset-assert 28) ??
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);

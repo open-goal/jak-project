@@ -1,0 +1,115 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bounding-box
+(deftype bounding-box (structure)
+  ((min vector :inline :offset-assert   0)
+   (max vector :inline :offset-assert  16)
+   )
+  :method-count-assert 21
+  :size-assert         #x20
+  :flag-assert         #x1500000020
+  (:methods
+    (add-spheres! (_type_ (inline-array sphere) int) int 9)
+    (add-box! (_type_ bounding-box) int 10)
+    (add-point! (_type_ vector) none 11)
+    (intersects-line-segment? (_type_ vector vector) symbol 12)
+    (set-from-point-offset! (_type_ vector vector) none 13)
+    (set-from-point-offset-pad! (_type_ vector vector float) int 14)
+    (set-to-point! (_type_ vector) none 15)
+    (set-from-sphere! (_type_ sphere) none 16)
+    (set-from-spheres! (_type_ (inline-array sphere) int) int 17)
+    (get-bounding-sphere (_type_ vector) vector 18)
+    (inside-xyz? (bounding-box vector) symbol 19)
+    (inside-xz? (bounding-box vector) symbol 20)
+    )
+  )
+
+;; definition for method 3 of type bounding-box
+(defmethod inspect bounding-box ((obj bounding-box))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bounding-box)
+  (format #t "~1Tmin: ~`vector`P~%" (-> obj min))
+  (format #t "~1Tmax: ~`vector`P~%" (-> obj max))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bounding-box4w
+(deftype bounding-box4w (structure)
+  ((min vector4w :inline :offset-assert   0)
+   (max vector4w :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type bounding-box4w
+(defmethod inspect bounding-box4w ((obj bounding-box4w))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bounding-box4w)
+  (format #t "~1Tmin: ~`vector4w`P~%" (-> obj min))
+  (format #t "~1Tmax: ~`vector4w`P~%" (-> obj max))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bounding-box-both
+(deftype bounding-box-both (structure)
+  ((box   bounding-box   :inline :offset-assert   0)
+   (box4w bounding-box4w :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type bounding-box-both
+(defmethod inspect bounding-box-both ((obj bounding-box-both))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bounding-box-both)
+  (format #t "~1Tbox: #<bounding-box @ #x~X>~%" (-> obj box))
+  (format #t "~1Tbox4w: #<bounding-box4w @ #x~X>~%" (-> obj box4w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bounding-box-array
+(deftype bounding-box-array (inline-array-class)
+  ((data bounding-box :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type bounding-box-array
+(defmethod inspect bounding-box-array ((obj bounding-box-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> bounding-box-array heap-base) (the-as uint 32))
+
+
+
+

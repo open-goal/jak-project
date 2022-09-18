@@ -4,7 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
 
@@ -73,6 +73,7 @@ void Merc2::init_for_frame(SharedRenderState* render_state) {
   glUniform4f(m_uniforms.fog_color, render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
+  glUniform1i(m_uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Merc2::draw_debug_window() {
@@ -86,28 +87,31 @@ void Merc2::draw_debug_window() {
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
+  const auto& shader = shaders[ShaderId::MERC2];
+  auto id = shader.id();
   shaders[ShaderId::MERC2].activate();
-  m_uniforms.light_direction[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir0");
-  m_uniforms.light_direction[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir1");
-  m_uniforms.light_direction[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir2");
-  m_uniforms.light_color[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col0");
-  m_uniforms.light_color[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col1");
-  m_uniforms.light_color[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col2");
-  m_uniforms.light_ambient = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_ambient");
+  m_uniforms.light_direction[0] = glGetUniformLocation(id, "light_dir0");
+  m_uniforms.light_direction[1] = glGetUniformLocation(id, "light_dir1");
+  m_uniforms.light_direction[2] = glGetUniformLocation(id, "light_dir2");
+  m_uniforms.light_color[0] = glGetUniformLocation(id, "light_col0");
+  m_uniforms.light_color[1] = glGetUniformLocation(id, "light_col1");
+  m_uniforms.light_color[2] = glGetUniformLocation(id, "light_col2");
+  m_uniforms.light_ambient = glGetUniformLocation(id, "light_ambient");
 
-  m_uniforms.hvdf_offset = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hvdf_offset");
-  m_uniforms.perspective[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective0");
-  m_uniforms.perspective[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective1");
-  m_uniforms.perspective[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective2");
-  m_uniforms.perspective[3] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective3");
+  m_uniforms.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
+  m_uniforms.perspective[0] = glGetUniformLocation(id, "perspective0");
+  m_uniforms.perspective[1] = glGetUniformLocation(id, "perspective1");
+  m_uniforms.perspective[2] = glGetUniformLocation(id, "perspective2");
+  m_uniforms.perspective[3] = glGetUniformLocation(id, "perspective3");
 
-  m_uniforms.fog = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_constants");
-  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "decal_enable");
+  m_uniforms.fog = glGetUniformLocation(id, "fog_constants");
+  m_uniforms.decal = glGetUniformLocation(id, "decal_enable");
 
-  m_uniforms.fog_color = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_color");
-  m_uniforms.perspective_matrix =
-      glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective_matrix");
-  m_uniforms.ignore_alpha = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "ignore_alpha");
+  m_uniforms.fog_color = glGetUniformLocation(id, "fog_color");
+  m_uniforms.perspective_matrix = glGetUniformLocation(id, "perspective_matrix");
+  m_uniforms.ignore_alpha = glGetUniformLocation(id, "ignore_alpha");
+
+  m_uniforms.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
 }
 
 /*!
@@ -384,7 +388,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
  * Queue up some bones to be included in the bone buffer.
  * Returns the index of the first bone vector.
  */
-u32 Merc2::alloc_bones(int count, float scale) {
+u32 Merc2::alloc_bones(int count) {
   u32 first_bone_vector = m_next_free_bone_vector;
   ASSERT(count * 8 + first_bone_vector <= MAX_SHADER_BONE_VECTORS);
 
@@ -397,12 +401,10 @@ u32 Merc2::alloc_bones(int count, float scale) {
     auto* shader_mat = &m_shader_bone_vector_buffer[m_next_free_bone_vector];
     int bv = 0;
 
-    // scale the transformation matrix (todo: can we move this to the extraction)
     // and copy to the large bone buffer.
-    for (int j = 0; j < 3; j++) {
-      shader_mat[bv++] = skel_mat.tmat[j] * scale;
+    for (int j = 0; j < 4; j++) {
+      shader_mat[bv++] = skel_mat.tmat[j];
     }
-    shader_mat[bv++] = skel_mat.tmat[3];
 
     for (int j = 0; j < 3; j++) {
       shader_mat[bv++] = skel_mat.nmat[j];
@@ -487,7 +489,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     return;
   }
 
-  u32 first_bone = alloc_bones(bone_count, model->scale_xyz);
+  u32 first_bone = alloc_bones(bone_count);
 
   // allocate lights
   u32 lights = alloc_lights(m_current_lights);
@@ -577,7 +579,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
     );
 
     glVertexAttribIPointer(5,                                            // location 0 in the
-                           3,                                            // 3 floats per vert
+                           4,                                            // 3 floats per vert
                            GL_UNSIGNED_BYTE,                             // u8's
                            sizeof(tfrag3::MercVertex),                   //
                            (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array

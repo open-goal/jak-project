@@ -848,8 +848,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
-        // allow #f for any structure.
-        typecheck(form, TypeSpec("structure"), content_type);
+        // allow #f for any structure, or symbol (no longer a structure in jak 2)
+        if (content_type.base_type() != "symbol") {
+          typecheck(form, TypeSpec("structure"), content_type);
+        }
       } else {
         typecheck(form, content_type, sr.typespec());
       }
@@ -1052,7 +1054,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
-    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+    throw_compiler_error(form, "new static inline array must have type and min-size arguments");
   }
   auto content_type = parse_typespec(args.at(2), env);
   s64 min_size = get_constant_integer_or_error(args.at(3), env);
@@ -1060,8 +1062,10 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  ASSERT(deref_info.can_deref);
-  ASSERT(!deref_info.mem_deref);
+  if (!deref_info.can_deref || deref_info.mem_deref) {
+    throw_compiler_error(form, "new static inline array of type {} is currently not supported",
+                         content_type.print());
+  }
   auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);
@@ -1077,7 +1081,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   ASSERT(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, false);
   ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

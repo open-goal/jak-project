@@ -163,7 +163,8 @@ goos::Object decompile_function_at_label(const DecompilerLabel& label,
                                          const LinkedObjectFile* file) {
   if (file) {
     auto other_func = file->try_get_function_at_label(label);
-    if (other_func) {
+    if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
+        other_func->ir2.expressions_succeeded) {
       return final_output_lambda(*other_func);
     }
   }
@@ -279,7 +280,9 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
     for (int j = start; j < end; j++) {
       auto& word = obj_words.at(j / 4);
       if (word.kind() != LinkedWord::PLAIN_DATA) {
-        throw std::runtime_error("Got bad word in kind in array of values");
+        throw std::runtime_error(fmt::format(
+            "Got bad word in kind in array of values: expecting array of {}'s, got a {}\n",
+            elt_type.print(), (int)word.kind()));
       }
       elt_bytes.push_back(word.get_byte(j % 4));
     }
@@ -434,9 +437,9 @@ goos::Object decomp_ref_to_inline_array_guess_size(
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
-  int ye = align(elt_type_info->get_size_in_memory(),
-                 elt_type_info->get_inline_array_stride_alignment());
-  ASSERT(stride == ye);
+  int elt_size = align(elt_type_info->get_size_in_memory(),
+                       elt_type_info->get_inline_array_stride_alignment());
+  ASSERT(stride == elt_size);
 
   // the input is the location of the data field.
   // we expect that to be a label:
@@ -571,6 +574,29 @@ goos::Object nav_mesh_poly_arr_decompile(const std::vector<LinkedWord>& words,
                                                file, TypeSpec("nav-poly"), 8);
 }
 
+goos::Object nav_mesh_poly_arr_jak2_decompile(const std::vector<LinkedWord>& words,
+                                              const std::vector<DecompilerLabel>& labels,
+                                              int my_seg,
+                                              int field_location,
+                                              const TypeSystem& ts,
+                                              const std::vector<std::vector<LinkedWord>>& all_words,
+                                              const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("nav-poly"), 64);
+}
+
+goos::Object nav_mesh_nav_control_arr_decompile(
+    const std::vector<LinkedWord>& words,
+    const std::vector<DecompilerLabel>& labels,
+    int my_seg,
+    int field_location,
+    const TypeSystem& ts,
+    const std::vector<std::vector<LinkedWord>>& all_words,
+    const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("nav-control"), 288);
+}
+
 goos::Object nav_mesh_route_arr_decompile(const std::vector<LinkedWord>& words,
                                           const std::vector<DecompilerLabel>& labels,
                                           int my_seg,
@@ -591,6 +617,16 @@ goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& wor
                                               const LinkedObjectFile* file) {
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
                                                file, TypeSpec("sparticle-group-item"), 32);
+}
+goos::Object probe_dir_decompile(const std::vector<LinkedWord>& words,
+                                 const std::vector<DecompilerLabel>& labels,
+                                 int my_seg,
+                                 int field_location,
+                                 const TypeSystem& ts,
+                                 const std::vector<std::vector<LinkedWord>>& all_words,
+                                 const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector"), 16);
 }
 
 goos::Object decompile_sound_spec(const TypeSpec& type,
@@ -744,14 +780,17 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
-  if (use_fancy_macros) {
+  // temp hack!!
+  if (use_fancy_macros && file && file->version == GameVersion::Jak1) {
     if (type == TypeSpec("sp-field-init-spec")) {
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sparticle-group-item")) {
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_group_item(type, label, labels, words, ts, file);
     }
-    if (type == TypeSpec("sound-spec")) {
+    if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {
       return decompile_sound_spec(type, label, labels, words, ts, file);
     }
   }
@@ -769,7 +808,8 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (is_basic) {
     const auto& word = words.at(label.target_segment).at((offset_location / 4));
     if (word.kind() != LinkedWord::TYPE_PTR) {
-      throw std::runtime_error("Basic does not start with type pointer");
+      throw std::runtime_error(
+          fmt::format("Basic does not start with type pointer: {}", label.name));
     }
 
     if (word.symbol_name() != actual_type.base_type()) {
@@ -942,6 +982,7 @@ goos::Object decompile_structure(const TypeSpec& type,
             fmt::format("Dynamic value field {} in static data type {} not yet implemented",
                         field.name(), actual_type.print()));
       } else {
+        // TODO - this is getting a little unwieldly -- refactor this at some point
         if (field.name() == "data" && type.print() == "ocean-near-indices") {
           // first, get the label:
           field_defs_out.emplace_back(
@@ -955,15 +996,28 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, words, file));
-        } else if (field.name() == "vertex" && type.print() == "nav-mesh") {
+        } else if (field.name() == "vertex" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak1) {
           field_defs_out.emplace_back(
               field.name(), nav_mesh_vertex_arr_decompile(obj_words, labels, label.target_segment,
                                                           field_start, ts, words, file));
-        } else if (field.name() == "poly" && type.print() == "nav-mesh") {
+        } else if (field.name() == "poly" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak1) {
           field_defs_out.emplace_back(
               field.name(), nav_mesh_poly_arr_decompile(obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
-        } else if (field.name() == "route" && type.print() == "nav-mesh") {
+        } else if (field.name() == "poly-array" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak2) {
+          field_defs_out.emplace_back(field.name(), nav_mesh_poly_arr_jak2_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, words, file));
+        } else if (field.name() == "nav-control-array" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak2) {
+          field_defs_out.emplace_back(field.name(), nav_mesh_nav_control_arr_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, words, file));
+        } else if (field.name() == "route" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak1) {
           field_defs_out.emplace_back(
               field.name(), nav_mesh_route_arr_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, words, file));
@@ -976,6 +1030,10 @@ goos::Object decompile_structure(const TypeSpec& type,
               field.name(), decomp_ref_to_integer_array_guess_size(
                                 obj_words, labels, label.target_segment, field_start, ts, words,
                                 file, TypeSpec("uint8"), 1));
+        } else if (field.name() == "probe-dirs" && type.print() == "lightning-probe-vars") {
+          field_defs_out.emplace_back(field.name(),
+                                      probe_dir_decompile(obj_words, labels, label.target_segment,
+                                                          field_start, ts, words, file));
         } else {
           if (field.type().base_type() == "pointer") {
             if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {
@@ -1400,6 +1458,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
             (word.data & 0b111) == 0) {
           s32 val = word.data;
           result.push_back(pretty_print::to_symbol(fmt::format("(the binteger {})", val / 8)));
+        } else if (content_type == TypeSpec("type") && word.kind() == LinkedWord::TYPE_PTR) {
+          result.push_back(pretty_print::to_symbol(word.symbol_name()));
         } else {
           throw std::runtime_error(
               fmt::format("Unknown content type in boxed array of references, word idx {}",
@@ -1530,10 +1590,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         to_print = labels.at(cdr_word.label_id());
         continue;
       }
-      // invalid.
-      lg::error(
-          "There is an improper list. This is probably okay, but should be checked manually "
-          "because we could not find a test case yet.");
+      // improper
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {
@@ -1546,16 +1603,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         throw std::runtime_error(
             fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
       } else {
-        auto& word = words.at(to_print.target_segment).at(to_print.offset / 4);
-        if (word.kind() != LinkedWord::EMPTY_PTR) {
-          throw std::runtime_error(
-              fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
-        }
-        // improper list
-        lg::error(
-            "There is an improper list. This is probably okay, but should be checked manually "
-            "because we "
-            "could not find a test case yet.");
+        // improper
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
             words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts, file));

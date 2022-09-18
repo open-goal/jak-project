@@ -104,6 +104,10 @@
         "SUBTITLES DISABLED")
 (#x1042 "TEXT LANGUAGE"
         "TEXT LANGUAGE")
+(#x1043 "DISPLAY"
+        "DISPLAY")
+(#x1044 "DISPLAY ~D"
+        "DISPLAY ~D")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -163,8 +167,8 @@
         "CHEATS")
 (#x1081 "SECRETS"
         "SECRETS")
-(#x1082 "SELECT LEVEL"
-        "SELECT LEVEL")
+(#x1082 "SELECT TRACK"
+        "SELECT TRACK")
 (#x1083 "SELECT FLAVOR"
         "SELECT FLAVOUR")
 (#x1084 "FINAL BOSS"
@@ -196,6 +200,24 @@
         "ALL MUSIC TRACKS")
 (#x1097 "REAL TIME OF DAY"
         "REAL TIME OF DAY")
+(#x1098 "REACH 100% COMPLETION"
+        "REACH 100% COMPLETION")
+(#x1099 "BEAT THE GAME"
+        "BEAT THE GAME")
+(#x109a "BIG HEAD JAK"
+        "BIG HEAD JAK")
+(#x109b "SMALL HEAD JAK"
+        "SMALL HEAD JAK")
+(#x109c "BIG FIST JAK"
+        "BIG FIST JAK")
+(#x109d "BIG HEAD CHARACTERS"
+        "BIG HEAD CHARACTERS")
+(#x109e "NO TEXTURES MODE"
+        "NO TEXTURES MODE")
+(#x109f "MIRRORED WORLD"
+        "MIRRORED WORLD")
+(#x10a0 "HUGE HEAD JAK"
+        "HUGE HEAD JAK")
 
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")
@@ -334,9 +356,14 @@
 (#x1116 "NORSK"
         "NORSK")
 
+(#x1500 "SPEEDRUNNER MODE"
+        "SPEEDRUNNER MODE")
+
+(#x1501 "CUTSCENE SKIPS"
+        "CUTSCENE SKIPS")
 
 ;; -----------------
-;; test
+;; test (DO NOT TRANSLATE)
 
 (#x7fff
   "ARMOR"

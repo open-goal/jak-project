@@ -19,6 +19,11 @@ class FormElement;
 class ConditionElement;
 class FormPool;
 class DecompilerTypeSystem;
+namespace types2 {
+struct Instruction;
+struct TypeState;
+struct TypePropExtras;
+}  // namespace types2
 
 /*!
  * An atomic operation represents a single operation from the point of view of the IR2 system.
@@ -77,6 +82,12 @@ class AtomicOp {
   virtual void collect_vars(RegAccessSet& vars) const = 0;
 
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
+
+  virtual void propagate_types2(types2::Instruction& instr,
+                                const Env& env,
+                                types2::TypeState& input_types,
+                                DecompilerTypeSystem& dts,
+                                types2::TypePropExtras& extras) = 0;
 
   int op_id() const { return m_my_idx; }
   const std::vector<Register>& read_regs() const { return m_read_regs; }
@@ -176,12 +187,16 @@ class SimpleAtom {
     ASSERT(is_sym_ptr() || is_sym_val());
     return m_string;
   }
+  void mark_as_float();
+  bool is_integer_promoted_to_float() const;
+  float get_integer_promoted_to_float() const;
 
  private:
   Kind m_kind = Kind::INVALID;
   std::string m_string;  // for symbol ptr and symbol val
   s64 m_int = -1;        // for integer constant and static address label id
   RegisterAccess m_variable;
+  bool m_display_int_as_float = false;
 };
 
 /*!
@@ -240,6 +255,7 @@ class SimpleExpression {
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
     VECTOR_4_DOT,
+    VECTOR_LENGTH,  // jak 2 only.
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };
@@ -247,6 +263,11 @@ class SimpleExpression {
   // how many arguments?
   int args() const { return n_args; }
   const SimpleAtom& get_arg(int idx) const {
+    ASSERT(idx < args());
+    return m_args[idx];
+  }
+
+  SimpleAtom& get_arg(int idx) {
     ASSERT(idx < args());
     return m_args[idx];
   }
@@ -304,6 +325,11 @@ class SetVarOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   const RegisterAccess& dst() const { return m_dst; }
   const SimpleExpression& src() const { return m_src; }
@@ -334,6 +360,11 @@ class AsmOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   const Instruction& instruction() const { return m_instr; }
   const std::optional<RegisterAccess> dst() const { return m_dst; }
@@ -437,6 +468,11 @@ class SetVarConditionOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
 
  private:
@@ -463,6 +499,11 @@ class StoreOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   const SimpleExpression& addr() const { return m_addr; }
   const SimpleAtom& value() const { return m_value; }
@@ -492,9 +533,13 @@ class LoadVarOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
   void collect_vars(RegAccessSet& vars) const override;
-
   const SimpleExpression& src() const { return m_src; }
   Kind kind() const { return m_kind; }
   int size() const { return m_size; }
@@ -580,6 +625,11 @@ class BranchOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
@@ -616,6 +666,11 @@ class AsmBranchOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   bool is_likely() const { return m_likely; }
   const IR2_Condition& condition() const { return m_condition; }
@@ -653,6 +708,11 @@ class SpecialOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   Kind kind() const { return m_kind; }
 
@@ -676,6 +736,11 @@ class CallOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   const std::vector<RegisterAccess>& arg_vars() const { return m_arg_vars; }
   RegisterAccess function_var() const { return m_function_var; }
@@ -717,6 +782,11 @@ class ConditionalMoveFalseOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
 
  private:
@@ -748,6 +818,11 @@ class FunctionEndOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
   void mark_function_as_no_return_value();
   const RegisterAccess& return_var() const {
@@ -775,7 +850,13 @@ class StackSpillStoreOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
+  int offset() const { return m_offset; }
 
  private:
   SimpleAtom m_value;
@@ -798,7 +879,13 @@ class StackSpillLoadOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void propagate_types2(types2::Instruction& instr,
+                        const Env& env,
+                        types2::TypeState& input_types,
+                        DecompilerTypeSystem& dts,
+                        types2::TypePropExtras& extras) override;
   void collect_vars(RegAccessSet& vars) const override;
+  int offset() const { return m_offset; }
 
  private:
   RegisterAccess m_dst;

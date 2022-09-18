@@ -63,8 +63,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
       (file_util::get_jak_project_dir() / "decompiler" / "config" / game_name_to_config[game_name])
-          .string(),
-      {}));
+          .string()));
 
   // modify the config
   std::unordered_set<std::string> object_files;
@@ -389,11 +388,7 @@ std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name)
 }
 
 int main(int argc, char* argv[]) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   lg::initialize();
 
@@ -411,8 +406,8 @@ int main(int argc, char* argv[]) {
   app.add_flag("-d,--dump_current_output", dump_current_output,
                "Output the current output to a folder, use in conjunction with the reference test "
                "files update script");
-  app.add_flag("-m,--max_files", max_files,
-               "Limit the amount of files ran in a single test, picks the first N");
+  app.add_option("-m,--max_files", max_files,
+                 "Limit the amount of files ran in a single test, picks the first N");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -428,7 +423,7 @@ int main(int argc, char* argv[]) {
 
   lg::info("Finding files...");
   auto files = find_files(game_name, config->dgos);
-  if (max_files > 0 && max_files < files.size()) {
+  if (max_files > 0 && max_files < (int)files.size()) {
     files.erase(files.begin() + max_files, files.end());
   }
 
@@ -451,6 +446,7 @@ int main(int argc, char* argv[]) {
   auto compare_result = compare(decompiler, files, dump_current_output);
   lg::info("Compared {} lines. {}/{} files passed.", compare_result.total_lines,
            compare_result.ok_files, compare_result.total_files);
+  lg::info("Dump? {}\n", dump_current_output);
 
   if (!compare_result.failing_files.empty()) {
     lg::error("Failing files:");

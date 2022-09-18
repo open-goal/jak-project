@@ -5,6 +5,8 @@
 ;; name in dgo: gkernel-h
 ;; dgos: KERNEL
 
+;; DECOMP BEGINS
+
 (defconstant *kernel-major-version* 2)
 (defconstant *kernel-minor-version* 0)
 
@@ -212,7 +214,7 @@
     (deactivate  (_type_) none 10)
     (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
     (run-logic? (_type_) symbol 12)
-    (dummy-13 () none 13)
+    (process-tree-method-13 () none 13)
     )
   :size-assert #x24
   :method-count-assert 14
@@ -473,7 +475,7 @@
   ;; this uses the self field, which seems to always just get set to the object.
   ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (the process-tree (if the-pp (-> the-pp 0 self)))
+     (the process (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -580,6 +582,8 @@
     (new (symbol type uint) _type_ 0)
     )
   )
+
+(define-extern sql-query (function string sql-result))
 
 (defmethod new sql-result ((allocation symbol) (type-to-make type) (arg0 uint))
   "Allocate a new sql-result with enough room for arg0 entries in data."
@@ -698,4 +702,23 @@
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          (deactivate pp)
          )
+  )
+
+;; Some assembly functions in GOAL are ported to C++, then accessed from GOAL using these mips2c macros.
+(defmacro def-mips2c (name type)
+  "Define a mips2c object (typically a function)."
+  `(begin
+     (define-extern ,name ,type)
+     (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
+     )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defmacro scratchpad-object (type &key (offset 0))
+  "Access an object on the scratchpad."
+  `(the-as ,type (&+ *fake-scratchpad-data* ,offset))
   )

@@ -268,6 +268,12 @@ struct ExecutionContext {
     gprs[gpr].ds64[0] = val;  // sign extend and set
   }
 
+  void load_symbol2(int gpr, void* sym_addr) {
+    s32 val;
+    memcpy(&val, (u8*)sym_addr - 1, 4);
+    gprs[gpr].ds64[0] = val;  // sign extend and set
+  }
+
   void load_symbol_addr(int gpr, void* sym_addr) {
     gprs[gpr].du64[0] = ((const u8*)sym_addr) - g_ee_main_mem;
   }
@@ -1017,6 +1023,8 @@ struct ExecutionContext {
   void sltiu(int dst, int src, u64 imm) {
     gprs[dst].du64[0] = (gpr_src(src).du64[0] < imm) ? 1 : 0;
   }
+
+  void slti(int dst, int src, s64 imm) { gprs[dst].du64[0] = (gpr_src(src).ds64[0] < imm) ? 1 : 0; }
 
   void sll(int dst, int src, int sa) {
     u32 value = gpr_src(src).du32[0] << sa;

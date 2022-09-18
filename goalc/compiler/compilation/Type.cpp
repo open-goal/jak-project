@@ -480,7 +480,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
   lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
 
-  // skip docstring
+  // TODO - docstring - do something with the docstring!
   if (body->as_pair()->car.is_string() && !body->as_pair()->cdr.is_empty_list()) {
     body = &pair_cdr(*body);
   }
@@ -614,7 +614,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
 
-  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts);
+  // TODO!
+  auto info =
+      m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
@@ -983,8 +985,9 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       throw_compiler_error(form, "new array form got more arguments than expected");
     }
 
-    auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
-                        : m_ts.make_pointer_typespec(elt_type);
+    auto ts = is_inline && m_ts.lookup_type(elt_type)->is_reference()
+                  ? m_ts.make_inline_array_typespec(elt_type)
+                  : m_ts.make_pointer_typespec(elt_type);
     auto info = m_ts.get_deref_info(ts);
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", main_type.print(), ts.print());
@@ -1004,9 +1007,9 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       args.push_back(array_size);
     }
 
-    auto array = compile_real_function_call(form, malloc_func, args, env);
-    array->set_type(ts);
-    return array;
+    auto new_array = compile_real_function_call(form, malloc_func, args, env);
+    new_array->set_type(ts);
+    return new_array;
   } else {
     bool got_content_type = false;  // for boxed array
     std::string content_type;       // for boxed array.
@@ -1327,7 +1330,7 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  parse_defenum(rest, &m_ts);
+  parse_defenum(rest, &m_ts, {});
   return get_none();
 }
 

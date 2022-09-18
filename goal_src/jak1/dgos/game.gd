@@ -47,6 +47,7 @@
   ("connect.o" "connect")
   ("text-h.o" "text-h")
   ("settings-h.o" "settings-h")
+  ("knuth-rand.o" "knuth-rand") ;; added
   ("capture.o" "capture")
   ("memory-usage-h.o" "memory-usage-h")
   ("texture.o" "texture")
@@ -191,6 +192,11 @@
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pc-anim-util.o" "pc-anim-util") ;; added
+  ("autosplit-h.o" "autosplit-h") ;; added
+  ("autosplit.o" "autosplit") ;; added
+  ("speedruns-h.o" "speedruns-h") ;; added
+  ("speedruns.o" "speedruns") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
@@ -213,7 +219,7 @@
   ("collide-shape.o" "collide-shape")
   ("collide-shape-rider.o" "collide-shape-rider")
   ("collide.o" "collide")
-  ("collide-planes.o" "collide-planes")
+  ;; ("collide-planes.o" "collide-planes")
   ("merc-death.o" "merc-death")
   ("water-h.o" "water-h")
   ("camera.o" "camera")

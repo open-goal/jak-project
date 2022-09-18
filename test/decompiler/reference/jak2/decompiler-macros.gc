@@ -145,6 +145,45 @@
       )
   )
 
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+;; gkernel
+
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+
 (defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
   "Branch!"
   ;; evaluate the predicate
@@ -554,4 +593,328 @@
 
 (defmacro .mfc0 (&rest stuff)
   `(empty)
+  )
+
+;; pad
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+(defmacro seek! (place target rate)
+  "Macro to use seek in-place. place is the base, and where the result is stored."
+  `(set! ,place (seek ,place ,target ,rate))
+  )
+
+(defmacro seekl! (place target rate)
+  "Macro to use seekl in-place. place is the base, and where the result is stored."
+  `(set! ,place (seekl ,place ,target ,rate))
+  )
+
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )
+
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (cadr s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
+
+(defmacro get-art-by-name (obj name type)
+  "Helper macro for casting the result of get-art-by-name-method. Generated by decompiler."
+  `(the-as ,type (get-art-by-name-method ,obj ,name ,type))
+  )
+
+(defmacro ja-group (&key (chan 0))
+  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  `(if (> (-> self skel active-channels) ,chan)
+       (-> self skel root-channel ,chan frame-group))
+  )
+
+(defmacro ja-group? (group &key (chan 0))
+  "is self in this frame group on this channel? default is channel 0, which is the base channel."
+  `(= (ja-group) ,group)
+  )
+
+(defmacro ja (&key (chan 0)
+              &key (group! #f)
+              &key (num! #f)
+              &key (param0 #f)
+              &key (param1 #f)
+              &key (num-func #f)
+              &key (frame-num #f)
+              &key (frame-interp #f)
+              &key (dist #f)
+              &key (eval? #t)
+              )
+  "set various joint anim parameters for self and eval them.
+   you can use this for playing animations!
+   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
+   group!       = when not #f, set this as the new frame-group. defaults to #f
+   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
+                  #f = no func will be set, and there wont be a frame eval.
+   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
+   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   frame-num    = set the frame-num field.
+   frame-interp = set the frame-interp field.
+   dist         = set the dist field.
+   available num! functions:
+   - (+!)       = advance anim.
+   - (-!)       = reverse anim.
+   - (identity num) = play 'num' frame.
+   - (seek! target speed) = animate towards frame target at a speed.
+                            speed is optional and defaults to 1.0 when not provided.
+                            target is optional and defaults to the last frame of the animation.
+                            if you want to set the speed, you therefore must also set the target.
+                            target can be max (no quote), which is just the same as the default value.
+   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
+   - (chan channel) = copy frame from another channel.
+   - min = the start of the animation.
+   - max = the end of the animation.
+   "
+
+  (let* ((num-args (if (pair? num!) (cdr num!) '()))
+        (num! (if (pair? num!) (car num!) num!))
+        (nf (cond
+              ((or (eq? num! 'identity)
+                   (eq? num! 'min)
+                   (eq? num! 'max)
+                   )
+                   'num-func-identity)
+              ((eq? num! 'none) 'num-func-none)
+              ((eq? num! '+!) 'num-func-+!)
+              ((eq? num! '-!) 'num-func--!)
+              ((eq? num! 'seek!) 'num-func-seek!)
+              ((eq? num! 'loop!) 'num-func-loop!)
+              ((eq? num! 'blend-in!) 'num-func-blend-in!)
+              ((eq? num! 'chan) 'num-func-chan)
+              ))
+        (p0 (if param0 param0
+                (cond
+                  ((eq? num! 'chan) `(the float ,(car num-args)))
+                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
+                                                                  (if group!
+                                                                      `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                                      `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                                      )
+                                                                  (car num-args))))
+                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
+                                         (if group!
+                                             `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                             `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                             )
+                                         (car num-args)))
+                  )))
+        (p1 (if param1 param1
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
+        (frame-num (if (eq? 'max frame-num) (if group!
+                                                `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                )
+                                            frame-num))
+        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
+      )
+  `(let ((ja-ch (-> self skel root-channel ,chan)))
+      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
+      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
+      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
+      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
+      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
+      ,(if nf
+          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
+              ja-ch (the art-joint-anim ,group!) ,nf)
+          `(none))
+      ,(cond
+        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
+        ((eq? num! 'max) (if group!
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) frames num-frames))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group frames num-frames))))
+                             ))
+        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        (#t `(none))
+        )
+      ))
+  )
+
+(defmacro ja-no-eval (&key (chan 0)
+                      &key (group! #f)
+                      &key (num! #f)
+                      &key (param0 #f)
+                      &key (param1 #f)
+                      &key (num-func #f)
+                      &key (frame-num #f)
+                      &key (frame-interp #f)
+                      &key (dist #f)
+                      )
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  )
+
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
   )

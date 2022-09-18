@@ -460,11 +460,10 @@
          )
         (('clone-anim)
          (clone-anim-once
-           (the-as handle (if (handle->process (-> self cur-target-handle))
-                              (the-as int (-> self cur-target-handle))
-                              (ppointer->handle (-> self parent))
-                              )
-                   )
+           (if (handle->process (-> self cur-target-handle))
+               (the-as handle (-> self cur-target-handle))
+               (ppointer->handle (-> self parent))
+               )
            (the-as int (-> self draw origin-joint-index))
            (-> self clone-copy-trans)
            ""
@@ -541,6 +540,8 @@
     ((nonzero? (-> self skel))
      (set! (-> self new-joint-anim) (ja-group))
      (set! (-> self anim-mode) 'loop)
+     (#when PC_PORT
+       (set! (-> self skel postbind-function) process-drawable-joint-callback-pc))
      )
     (else
       (set! (-> self anim-mode) 'still)

@@ -66,14 +66,14 @@ fs::path get_user_config_dir() {
   return config_base_path / "OpenGOAL";
 }
 
-fs::path get_user_settings_dir() {
-  // TODO - jak2
-  return get_user_config_dir() / "jak1" / "settings";
+fs::path get_user_settings_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "settings";
 }
 
-fs::path get_user_memcard_dir() {
-  // TODO - jak2
-  return get_user_config_dir() / "jak1" / "saves";
+fs::path get_user_memcard_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "saves";
 }
 
 struct {
@@ -512,7 +512,7 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   return decompressed_data;
 }
 
-FILE* open_file(const fs::path& path, std::string mode) {
+FILE* open_file(const fs::path& path, const std::string& mode) {
 #ifdef _WIN32
   return _wfopen(path.wstring().c_str(), std::wstring(mode.begin(), mode.end()).c_str());
 #else
@@ -520,7 +520,7 @@ FILE* open_file(const fs::path& path, std::string mode) {
 #endif
 }
 
-std::vector<fs::path> find_files_recursively(const fs::path base_dir, const std::regex& pattern) {
+std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
     if (p.is_regular_file()) {

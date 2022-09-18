@@ -47,7 +47,6 @@ bool ame_handler::tick() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
     bool done = it->second->tick();
     if (done) {
-      fmt::print("stopping segment {}\n", it->first);
       it = m_midis.erase(it);
     } else {
       it++;
@@ -59,7 +58,6 @@ bool ame_handler::tick() {
 
 void ame_handler::start_segment(u32 id) {
   auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
-  lg::debug("starting segment {}", id);
   m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
                                                      m_locator, m_bank, this));
 }

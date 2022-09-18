@@ -11,6 +11,7 @@
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -32,6 +33,7 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 
 // added
 u32 vif1_interrupt_handler = 0;
+u32 vblank_interrupt_handler = 0;
 
 Timer ee_clock_timer;
 
@@ -41,6 +43,7 @@ void kmachine_init_globals_common() {
   modsrc = 1;
   reboot = 1;
   vif1_interrupt_handler = 0;
+  vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
 }
 
@@ -212,8 +215,17 @@ u64 CPadGetData(u64 cpad_info) {
 
 // should make sure this works the same way in jak 2
 void InstallHandler(u32 handler_idx, u32 handler_func) {
-  ASSERT(handler_idx == 5);  // vif1
-  vif1_interrupt_handler = handler_func;
+  switch (handler_idx) {
+    case 3:
+      vblank_interrupt_handler = handler_func;
+      break;
+    case 5:
+      vif1_interrupt_handler = handler_func;
+      break;
+    default:
+      printf("unknown handler: %d\n", handler_idx);
+      ASSERT(false);
+  }
 }
 
 // nothing used this in jak1, hopefully same for 2
@@ -340,6 +352,7 @@ void DecodeTime(u32 ptr) {
  */
 /*!
  * Get a 300MHz timer value.
+ * Called from EE thread
  */
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
@@ -354,7 +367,7 @@ void c_memmove(u32 dst, u32 src, u32 size) {
 }
 
 /*!
- * Returns size of window.
+ * Returns size of window. Called from game thread
  */
 void get_window_size(u32 w_ptr, u32 h_ptr) {
   if (w_ptr) {
@@ -402,6 +415,17 @@ s64 get_screen_rate(s64 vmode_idx) {
  */
 s64 get_screen_vmode_count() {
   return Gfx::get_screen_vmode_count();
+}
+
+/*!
+ * Returns the number of available monitors.
+ */
+int get_monitor_count() {
+  return Gfx::get_monitor_count();
+}
+
+int get_unix_timestamp() {
+  return std::time(nullptr);
 }
 
 void mkdir_path(u32 filepath) {
@@ -454,14 +478,22 @@ u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) 
                                                    : s7.offset;
 }
 
+void set_gfx_hack(u64 which, u32 symptr) {
+  switch (which) {
+    case 0:  // no tex
+      Gfx::g_global_settings.hack_no_tex = symptr != s7.offset;
+      break;
+  }
+}
+
 /*!
  * PC PORT FUNCTIONS END
  */
 
-void vif_interrupt_callback() {
+void vif_interrupt_callback(int bucket_id) {
   // added for the PC port for faking VIF interrupts from the graphics system.
   if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
-    call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+    call_goal(Ptr<Function>(vif1_interrupt_handler), bucket_id, 0, 0, s7.offset, g_ee_main_mem);
   }
 }
 
@@ -470,4 +502,32 @@ void vif_interrupt_callback() {
  */
 u32 offset_of_s7() {
   return s7.offset;
+}
+
+/*!
+ * Called from the game thread at initialization.
+ * The game thread is the only one to touch the mips2c function table (through the linker and
+ * through this function), so no locking is needed.
+ */
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+/*!
+ * Called from game thread to submit rendering DMA chain.
+ */
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
+}
+
+/*!
+ * Called from game thread to upload a texture outside of the main DMA chain.
+ */
+void pc_texture_upload_now(u32 page, u32 mode) {
+  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
 }

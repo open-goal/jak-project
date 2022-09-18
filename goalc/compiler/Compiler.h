@@ -74,6 +74,9 @@ class Compiler {
   void add_ignored_define_extern_symbol(const std::string& name) {
     m_allow_inconsistent_definition_symbols.insert(name);
   }
+  void add_ignored_type_definition(const std::string& type_name) {
+    m_ts.add_type_to_allowed_redefinition_list(type_name);
+  }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
@@ -567,6 +570,7 @@ class Compiler {
   Val* compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ppacb(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env);
 

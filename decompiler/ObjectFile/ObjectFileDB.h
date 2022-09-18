@@ -37,6 +37,7 @@ struct ObjectFileRecord {
  * All of the data for a single object file
  */
 struct ObjectFileData {
+  ObjectFileData(GameVersion version) : linked_data(version) {}
   std::vector<uint8_t> data;     // raw bytes
   LinkedObjectFile linked_data;  // data including linking annotations
   ObjectFileRecord record;       // name
@@ -72,11 +73,12 @@ struct LetRewriteStats {
   int attack_info = 0;
   int vector_dot = 0;
   int rand_float_gen = 0;
+  int set_let = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen;
+           vector_dot + rand_float_gen + set_let;
   }
 
   std::string print() const {
@@ -98,6 +100,7 @@ struct LetRewriteStats {
     out += fmt::format("  attack_info: {}\n", attack_info);
     out += fmt::format("  vector_dot: {}\n", vector_dot);
     out += fmt::format("  rand_float_gen: {}\n", rand_float_gen);
+    out += fmt::format("  set_let: {}\n", set_let);
     return out;
   }
 
@@ -119,6 +122,7 @@ struct LetRewriteStats {
     result.attack_info = attack_info + other.attack_info;
     result.vector_dot = vector_dot + other.vector_dot;
     result.rand_float_gen = rand_float_gen + other.rand_float_gen;
+    result.set_let = rand_float_gen + other.set_let;
     return result;
   }
 
@@ -139,6 +143,7 @@ struct LetRewriteStats {
     attack_info += other.attack_info;
     vector_dot += other.vector_dot;
     rand_float_gen += other.rand_float_gen;
+    set_let += other.set_let;
     return *this;
   }
 };
@@ -192,6 +197,29 @@ class ObjectFileDB {
   void ir2_do_segment_analysis_phase2(int seg, const Config& config, ObjectFileData& data);
   void ir2_setup_labels(const Config& config, ObjectFileData& data);
   void ir2_run_mips2c(const Config& config, ObjectFileData& data);
+  struct PerObjectAllTypeInfo {
+    std::string object_name;
+    std::unordered_set<std::string> already_seen_symbols;
+
+    // type-name : { method id : state name }
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> state_methods;
+    // symbol-name : type-name
+    std::unordered_map<std::string, std::string> symbol_types;
+
+    struct TypeInfo {
+      bool from_inspect_method = false;  // does this come from an inspect method?
+      // if from inspect method:
+      std::string type_definition;  // the deftype generated from the inspect method.
+      // if not from inspect method:
+      u32 flags = 0;
+      std::string parent;
+    };
+
+    std::vector<std::string> type_names_in_order;
+    std::unordered_map<std::string, TypeInfo> type_info;
+
+    std::string symbol_defs;
+  };
   void ir2_analyze_all_types(const fs::path& output_file,
                              const std::optional<std::string>& previous_game_types,
                              const std::unordered_set<std::string>& bad_types);
@@ -319,6 +347,11 @@ class ObjectFileDB {
     uint32_t unique_obj_files = 0;
     uint32_t unique_obj_bytes = 0;
   } stats;
+
+  GameVersion version() const { return m_version; }
+
+ private:
+  GameVersion m_version;
 };
 
 std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);

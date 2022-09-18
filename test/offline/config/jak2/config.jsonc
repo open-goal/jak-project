@@ -1,7 +1,9 @@
 {
   "dgos": [
   "CGO/KERNEL.CGO",
-  "CGO/ENGINE.CGO"
+  "CGO/ENGINE.CGO",
+  "CGO/COMMON.CGO",
+  "CGO/GAME.CGO"
   ],
 
   "skip_compile_files": [],
@@ -15,8 +17,132 @@
     "(method 10 process)",
     "(method 14 dead-pool)",
     /// GSTATE
-    "enter-state" // stack pointer asm
+    "enter-state", // stack pointer asm
+    // MATH
+    "logf", "log2f", "cube-root", "lerp-scale", "rand-vu-init", "rand-vu", "rand-vu-nostep",
+    // MATRIX
+    "matrix-axis-sin-cos-vu!", "matrix-axis-sin-cos!", "matrix-3x3-normalize!",
+    // DMA
+    "disasm-dma-list",
+    // PAD (bug)
+    "service-cpads",
+    // GEOMETRY asm
+    "closest-pt-in-triangle", "circle-circle-xz-intersect", "calculate-basis-functions-vector!", "curve-evaluate!",
+    // TIMER asm
+    "(method 9 clock)",
+    // math camera stupid broken gif crap and CLIP
+    "update-math-camera", "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
+    // quad thing
+    "(method 3 connection-minimap)",
+    "(method 3 sky-vertex)",
+    // cache asm
+    "invalidate-cache-line",
+    // sprite
+    // multiple defined
+    "(method 3 sprite-aux-list)",
+    // sprite-distort
+    "sprite-draw-distorters", // uses clipping flag.
+    // debug
+    "(method 3 debug-vertex-stats)", // multiple defined
+    // asm, weird vector dot
+    "(method 17 trsqv)",
+    // history - rgba issues
+    "history-draw",
+    // text - cfg failure
+    "load-game-text-info",
+    // - never fixed this one in jak 1, assumed there was an original bug?
+    "print-game-text",
+    // joint asm
+    "cspace<-parented-transformq-joint!", "(method 11 art-joint-anim-manager)", "make-joint-jump-tables", "joint-channel-copy!",
+    // vector-dot in stack vars
+    "joint-mod-ik-callback",
+    "joint-mod-look-at-handler",
+    // bad stack-no-clear decomp
+    "ja-play-spooled-anim",
+
+    // default menu
+    // - weird array accessing pattern, we never fixed it in jak 1
+    "all-texture-tweak-adjust",
+    "debug-menu-make-shader-menu", // requires the above, fine on it's own
+
+    // camera
+    // - vector-dot issue
+    "slave-set-rotation!",
+    "v-slrp2!",
+    "v-slrp3!",
+    // cam-master
+    // - focus understanding / decomp crashes
+    "reset-target-tracking",
+    "(method 16 camera-master)",
+    "master-track-target",
+    // cam-states
+    // - mostly decompiler crashes/hangs
+    "cam-bike-code",
+    "cam-stick-code",
+    "cam-string-code",
+    "cam-string-line-of-sight",
+    "cam-string-joystick", // whats butt-handle!
+    "cam-circular-code",
+    "cam-circular-position",
+    "cam-los-collide", // vector-dot with stack
+    // cam-update
+    "update-visible", // assertion crash when filling out bsp-header
+    // sparticle-launcher
+    // - field loaded as signed and unsigned
+    "sp-relaunch-particle-3d",
+    // - annoying arbitrary data usage functions
+    "execute-part-engine",
+    "sparticle-respawn-heights",
+    "sparticle-respawn-timer",
+    "sparticle-mode-animate",
+    "sparticle-mode-animate",
+    "sparticle-texture-animate",
+    "sparticle-texture-day-night",
+    "sparticle-motion-blur", // clipping
+    "birth-func-texture-group",
+    "(method 10 sparticle-launcher)", // very strange handling of ambiguous type
+
+    // editable - remainder
+    "(method 27 editable-face)",
+    "(method 27 editable-plane)",
+    "(method 13 editable-face)",
+    "(method 13 editable-plane)",
+    "(method 29 editable-face)",
+    "(method 12 editable-array)",
+    "insert-box",
+    "dm-editable-light-float-func",
+    "dm-editable-boolean-toggle-pick-func",
+
+    // debug
+    "add-debug-bound-internal",
+    "add-debug-bound",
+
+    // gun-util
+    "draw-beam", "(method 9 gun-info)",
+    // mood
+    "update-mood-direction", // power of two case
+    // texture
+    "(method 9 texture-page-dir)", // asm
+
+    // mysql-nav-graph
+    "(method 18 mysql-nav-graph)", // asm / dead-code
+    "(method 10 mysql-nav-graph)",
+
+    "bsp-camera-asm",
+
+    "i-hopefully-will-never-exist-dont-add-anything-after-me-please"
   ],
 
-  "skip_compile_states": {}
+  "skip_compile_states": {
+    "cam-bike": [
+      "code" // hang
+    ],
+    "cam-stick": [
+      "code"
+    ],
+    "cam-circular": [
+      "enter",
+      "event"
+    ]
+  }
 }

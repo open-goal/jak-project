@@ -19,11 +19,7 @@
 // to make it easier to test a subset of tests
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   // hopefully get a debug print on github actions
   setup_cpu_info();

@@ -5,7 +5,7 @@
 class Generic2 : public BucketRenderer {
  public:
   Generic2(const std::string& name,
-           BucketId my_id,
+           int my_id,
            u32 num_verts = 200000,
            u32 num_frags = 2000,
            u32 num_adgif = 6000,
@@ -198,5 +198,6 @@ class Generic2 : public BucketRenderer {
     GLuint index_buffer;
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
         hvdf_offset;
+    GLuint gfx_hack_no_tex;
   } m_ogl;
 };

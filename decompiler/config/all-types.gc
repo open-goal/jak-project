@@ -1030,7 +1030,7 @@
   (sidekick-hint-rounddoor #x23c)
   (sidekick-hint-lurkerm #x23d)
   (sidekick-hint-tower #x23e)
-  
+
   (sidekick-reminder-fish #x240)
 
   (firecanyon-need-cells #x24f)
@@ -1481,6 +1481,8 @@
   (subtitle-enabled             #x1040)
   (subtitle-disabled            #x1041)
   (text-language                #x1042)
+  (display                      #x1043)
+  (display-fmt                  #x1044)
   (msaa                         #x1050)
   (x-times-fmt                  #x1051)
   (2-times                      #x1052)
@@ -1526,6 +1528,15 @@
   (cheat-invinc                 #x1095)
   (cheat-tunes                  #x1096)
   (cheat-sky                    #x1097)
+  (cheat-req-100-percent        #x1098)
+  (cheat-req-beat-game          #x1099)
+  (cheat-big-head               #x109a)
+  (cheat-small-head             #x109b)
+  (cheat-big-fist               #x109c)
+  (cheat-big-head-npc           #x109d)
+  (cheat-no-tex                 #x109e)
+  (cheat-mirror                 #x109f)
+  (cheat-huge-head              #x10a0)
   (music-player                 #x10c0)
   (scene-player                 #x10c1)
   (play-credits                 #x10c2)
@@ -1597,6 +1608,8 @@
   (scene-255                    #x12ff)
   (hint-0                       #x1300)
   (hint-511                     #x14ff)
+  (speedrunner-mode             #x1500)
+  (cutscene-skips               #x1501)
 ;; GAME-TEXT-ID ENUM ENDS
   )
 
@@ -4219,13 +4232,13 @@
 
 (deftype cpad-list (basic)
   ((num-cpads int32     :offset-assert 4)
-   (cpads     cpad-info 2 :offset-assert 8) ;; guess
+   (cpads     cpad-info 4 :offset-assert 8) ;; guess, modified from 2->4 for PC 4-pad support
    )
   (:methods
     (new (symbol type) _type_ 0))
   :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
 
 ;; - Functions
@@ -6287,7 +6300,6 @@
   :flag-assert         #x900000008
   )
 
-
 ;; ----------------------
 ;; File - capture
 ;; Source Path - engine/gfx/capture.gc
@@ -6576,7 +6588,7 @@
 ;; - Types
 
 (deftype joint (basic)
-  ((name      basic          :offset-assert 4)
+  ((name      string         :offset-assert 4)
    (number    int32          :offset-assert 8)
    (parent    joint          :offset-assert 12)
    (bind-pose matrix :inline :offset-assert 16)
@@ -11419,8 +11431,8 @@
    (up              uint8                  :offset-assert 136)
    (nose            uint8                  :offset-assert 137)
    (ear             uint8                  :offset-assert 138)
-   (shutting-down?  basic                  :offset-assert 140)
-   (parented-scale? basic                  :offset 128)
+   (shutting-down?  symbol                 :offset-assert 140)
+   (parented-scale? symbol                 :offset 128)
    )
   :method-count-assert 16
   :size-assert         #x90
@@ -11433,7 +11445,7 @@
     (reset-blend! (_type_) _type_ 12)
     (set-twist! (_type_ float float float) vector 13)
     (set-trs! (_type_ vector quaternion vector) none 14)
-    (shut-down! (_type_) float 15)
+    (shut-down! (_type_) none 15)
     )
   )
 
@@ -11464,13 +11476,13 @@
 
 (deftype joint-mod-set-local (basic)
   ((transform       transformq :inline :offset-assert 16)
-   (set-rotation    basic              :offset-assert 64)
-   (set-scale       basic              :offset-assert 68)
-   (set-translation basic              :offset-assert 72)
-   (enable          basic              :offset-assert 76)
+   (set-rotation    symbol             :offset-assert 64)
+   (set-scale       symbol             :offset-assert 68)
+   (set-translation symbol             :offset-assert 72)
+   (enable          symbol             :offset-assert 76)
    )
   (:methods
-    (new (symbol type process-drawable int basic basic basic) _type_)
+    (new (symbol type process-drawable int symbol symbol symbol) _type_)
     )
   :method-count-assert 9
   :size-assert         #x50
@@ -15737,6 +15749,7 @@
   (flava-player)
   (memcard-disable-auto-save)
   (memcard-auto-save-disabled)
+  (monitor)
 
   ;; the last one!
   (max)
@@ -15770,6 +15783,7 @@
   (button-music)
   (button-flava)
   (cheat-toggle)
+  (monitor)
   )
 
 (defenum game-option-menu
@@ -18874,7 +18888,6 @@
 
 ;; - Unknowns
 
-;;(define-extern sky-base-polygons object) ;; unknown type
 (define-extern sky-base-polygons (inline-array sky-vertex))
 
 
@@ -20803,7 +20816,7 @@
 (define-extern birth-func-target-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern birth-func-vector-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern part-tracker-track-target-joint (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 3rd arg could also be a vector
-(define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target))
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target))
 
 
 ;; ----------------------
@@ -20950,10 +20963,10 @@
 
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
-(define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
+(define-extern target-send-attack (function process uint touching-shapes-entry int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
+(define-extern target-attacked (function symbol attack-info process touching-shapes-entry (state symbol attack-info target) object :behavior target))
 (define-extern target-apply-tongue (function vector symbol :behavior target))
-(define-extern get-intersect-point (function vector touching-prims-entry control-info process vector))
+(define-extern get-intersect-point (function vector touching-prims-entry control-info touching-shapes-entry vector))
 (define-extern target-powerup-effect (function symbol none :behavior target))
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
@@ -21046,7 +21059,7 @@
 (define-extern death-movie-remap (function int int int))
 (define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)) ;; TODO - not confirmed -- sunken-elevator
 (define-extern target-hit-effect (function attack-info none :behavior target))
-(define-extern target-hit-setup-anim (function attack-info object :behavior target))
+(define-extern target-hit-setup-anim (function attack-info none :behavior target))
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
 (define-extern target-hit-push (function vector matrix float float attack-info object :behavior target))
