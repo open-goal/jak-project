@@ -5923,7 +5923,14 @@
     (level-method-11 () none 11) ;; (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (compute-memory-usage (_type_ object) memory-usage-block 14)
+    (compute-memory-usage!
+      "Calculates the memory usage of the level, returns and stores the [[memory-usage-block]]
+       in `mem-usage-block` as well as the total size in `mem-usage`
+
+       @param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
+       @returns The [[memory-usage-block]] representing the footprint of the level
+       @see [[memory-usage-block::10]]"
+      (_type_ symbol) memory-usage-block 14)
     (inside-boxes-check (_type_ vector) symbol 15)
     (level-method-16 () none 16) ;; (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (load-continue (_type_) _type_ 17)
@@ -7536,9 +7543,13 @@
   :size-assert         #x710
   :flag-assert         #xc00000710
   (:methods
-    (reset! (_type_) _type_ 9)
-    (memory-usage-block-method-10 () none 10) ;; (calculate-total (_type_) int 10)
-    (print-mem-usage (_type_ level object) none 11)
+    (reset!
+      "Sets `length` to 0 as well as resets all fields except `name` in the associated [[memory-usage-info]]"
+      (_type_) _type_ 9)
+    (calculate-total
+      "@returns The total sum of all [[memory-usage-info]] `total`s"
+      (_type_) int 10)
+    (print-mem-usage (_type_ level object) _type_ 11)
     )
   )
 
@@ -28099,24 +28110,13 @@
 ;; memory-usage                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype memory-usage-block (basic)
-  ()
-  :method-count-assert 12
-  :size-assert         #x710
-  :flag-assert         #xc00000710
-  ;; Failed to read fields.
-  (:methods
-    (memory-usage-block-method-9 () none 9) ;; (reset! (_type_) _type_ 9)
-    (memory-usage-block-method-10 () none 10) ;; (calculate-total (_type_) int 10)
-    (memory-usage-block-method-11 () none 11) ;; (print-mem-usage (_type_ level object) none 11)
-    )
-  )
-|#
-
-(define-extern mem-size (function basic symbol int int))
-;; (define-extern *max-dma* object) ;; int
-
+(define-extern mem-size
+  "@param data The [[basic]] to call `mem-usage` on
+   @param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
+   @param arg2 TODO - unsure, some sort of bitfield
+   @returns The total memory footprint of the provided [[basic]]"
+  (function basic symbol int int))
+(define-extern *max-dma* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity                         ;;
