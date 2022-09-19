@@ -44,6 +44,13 @@ TEST(VuDisasm, Emerc) {
   EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/emerc-vu1"));
 }
 
+TEST(VuDisasm, Shrub_Jak2) {
+  auto data = get_test_data("jak2/shrub");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/shrub"));
+}
+
 TEST(VuDisasm, Sprite_Jak2) {
   auto data = get_test_data("jak2/sprite");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);

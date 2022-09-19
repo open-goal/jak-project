@@ -12311,13 +12311,14 @@
   )
 
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((next        uint32     4 :offset-assert 64) ;; guessed by decompiler
-   (count       uint16     4 :offset-assert 80) ;; guessed by decompiler
-   (mod-count   uint16     4 :offset-assert 88) ;; guessed by decompiler
-   (last        dma-packet 4 :offset-assert 96) ;; guessed by decompiler
-   (next-clear  uint128      :offset 64)
-   (count-clear uint64       :offset 80)
-   (last-clear  uint128      :offset 96)
+  ((next                uint32     4 :offset-assert 64) ;; guessed by decompiler
+   (count               uint16     4 :offset-assert 80) ;; guessed by decompiler
+   (mod-count           uint16     4 :offset-assert 88) ;; guessed by decompiler
+   (last                dma-packet 4 :offset-assert 96) ;; guessed by decompiler
+   (next-clear          uint128      :offset 64)
+   (count-clear         uint64       :offset 80)
+   (count-clear-qword   uint128      :offset 80)
+   (last-clear          uint128      :offset 96)
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -17231,7 +17232,7 @@
 (deftype shrub-view-data (structure)
   ((data           uint128 3       :offset-assert 0) ;; guessed by decompiler
    (texture-giftag gs-gif-tag   :inline :offset 0) ;; was qword
-   (consts         vector  :inline :offset 16)
+   (consts         vector  :inline :offset 16 :score -1)
    (fog-clamp      vector  :inline :offset 32)
    (tex-start-ptr  int32           :offset 16)
    (gifbufsum      float           :offset 16)
@@ -17359,7 +17360,7 @@
    (vertex-tmpl dma-packet :inline :offset-assert 64)
    (mscal-tmpl  dma-packet :inline :offset-assert 80)
    (init-tmpl   dma-packet :inline :offset-assert 96)
-   (init-data   uint32     8       :offset-assert 112) ;; guessed by decompiler
+   (init-data   qword    2 :inline :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x90
@@ -22512,8 +22513,8 @@
 ;; (define-extern generic-setup-constants function) ;; (function generic-constants int none)
 ;; (define-extern generic-add-constants function) ;; (function dma-buffer int none)
 ;; (define-extern generic-setup-shrub-constants function)
-;; (define-extern generic-add-shrub-constants function)
-;; (define-extern generic-init-buf function) ;; (function dma-buffer int gs-zbuf none)
+(define-extern generic-add-shrub-constants (function dma-buffer int int int none))
+(define-extern generic-init-buf (function dma-buffer int gs-zbuf none))
 ;; (define-extern generic-vu1-init-buf function)
 ;; (define-extern generic-vu1-init-buf-special function)
 (define-extern generic-vu1-init-buffers (function none))
@@ -22890,18 +22891,14 @@
 ;; shrubbery                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-#|
 (deftype dma-test (structure)
-  ((data UNKNOWN 101 :offset-assert 0)
+  ((data qword 101 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x650
   :flag-assert         #x900000650
   )
-|#
 
-#|
 (deftype dma-test-work (structure)
   ((upload dma-packet :inline :offset-assert 0)
    (end    dma-packet :inline :offset-assert 16)
@@ -22910,26 +22907,25 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern mem-usage-shrub-walk function) ;; (function draw-node int memory-usage-block int draw-node)
-;; (define-extern shrub-vu1-block object) ;; vu-function
-;; (define-extern shrub-num-tris function) ;; (function shrubbery uint)
-(define-extern shrub-make-perspective-matrix (function matrix matrix)) ;;
-;; (define-extern shrub-init-view-data function) ;; (function shrub-view-data symbol)
-;; (define-extern shrub-upload-view-data function) ;; (function dma-buffer symbol)
-;; (define-extern shrub-time function) ;; (function int int int int int int)
-;; (define-extern shrub-do-init-frame function) ;; (function dma-buffer symbol)
-;; (define-extern shrub-init-frame function) ;; (function dma-buffer gs-test none)
-;; (define-extern shrub-upload-model function) ;; (function shrubbery dma-buffer int symbol)
-;; (define-extern draw-inline-array-instance-shrub function) ;; (function dma-buffer drawable int (inline-array prototype-bucket-shrub) none)
-;; (define-extern draw-prototype-inline-array-shrub function) ;; (function int (inline-array prototype-bucket-shrub) pointer)
-;; (define-extern draw-drawable-tree-instance-shrub function) ;; (function drawable-tree-instance-shrub level none)
-;; (define-extern *dma-test* object)
-;; (define-extern *dma-test-work* object)
-;; (define-extern init-dma-test function)
-;; (define-extern dma-test-func function)
-;; (define-extern move-test-func function)
+(define-extern mem-usage-shrub-walk (function draw-node int memory-usage-block int draw-node))
+(define-extern shrub-vu1-block vu-function)
+(define-extern shrub-num-tris (function shrubbery uint))
+(define-extern shrub-make-perspective-matrix (function matrix matrix matrix))
+(define-extern shrub-init-view-data (function shrub-view-data symbol))
+(define-extern shrub-upload-view-data (function dma-buffer symbol))
+(define-extern shrub-time (function int int int int int int))
+(define-extern shrub-do-init-frame (function dma-buffer symbol))
+(define-extern shrub-init-frame (function dma-buffer gs-test symbol))
+(define-extern shrub-upload-model (function shrubbery dma-buffer int symbol))
+(define-extern draw-inline-array-instance-shrub (function dma-buffer drawable int (inline-array prototype-bucket-shrub) none))
+(define-extern draw-prototype-inline-array-shrub (function int (inline-array prototype-bucket-shrub) pointer))
+(define-extern draw-drawable-tree-instance-shrub (function drawable-tree-instance-shrub level none))
+(define-extern *dma-test* dma-test)
+(define-extern *dma-test-work* dma-test-work)
+(define-extern init-dma-test (function none))
+(define-extern dma-test-func (function none))
+(define-extern move-test-func (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shrub-work                     ;;
