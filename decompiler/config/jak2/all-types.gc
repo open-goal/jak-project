@@ -3684,10 +3684,10 @@
   :flag-assert #x900000008
   )
 
-;; the GS's DISPLAY registers make settings for the display position on the screen regarding
-;; information on Rectangular Area Read Output Circuit n for the PCRTC.
-;; write-only
 (deftype gs-display (uint64)
+  "the GS's DISPLAY registers make settings for the display position on the screen regarding
+   information on Rectangular Area Read Output Circuit n for the PCRTC.
+   write-only"
   ((dx    uint16 :offset 0  :size 12)
    (dy    uint16 :offset 12 :size 11)
    (magh  uint8  :offset 23 :size 4)
@@ -3698,9 +3698,9 @@
   :flag-assert #x900000008
   )
 
-;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
-;; write-only
 (deftype gs-bgcolor (uint64)
+  "the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
+   write-only"
   ((r  uint8 :offset 0)
    (g  uint8 :offset 8)
    (b  uint8 :offset 16)
@@ -3708,11 +3708,12 @@
   :flag-assert #x900000008
   )
 
-;; the GS's CSR register sets and obtains various GS statuses.
-;; read-write. the fields have different effects depending on whether they're being read from
-;; or written to.
-;; bits 5 and 6 (0x20 and 0x40) should be zero
 (deftype gs-csr (uint64)
+  "the GS's CSR register sets and obtains various GS statuses.
+   read-write. the fields have different effects depending on whether they're being read from
+   or written to.
+
+   bits 5 and 6 (0x20 and 0x40) should be zero"
   ((signal  uint8 :offset 0  :size 1)
    (finish  uint8 :offset 1  :size 1)
    (hsint   uint8 :offset 2  :size 1)
@@ -23657,8 +23658,6 @@
 ;; settings                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern set-aspect-ratio (function symbol none))
-(define-extern set-video-mode (function symbol none))
 (define-extern scf-get-volume "Defined in the kernel" (function int))
 (define-extern scf-get-language "Defined in the kernel" (function language-enum))
 (define-extern scf-get-aspect "Defined in the kernel" (function uint))
@@ -28016,14 +28015,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *video-mode* int)
-;; (define-extern set-video-mode function) ;; (function symbol none)
-(define-extern get-video-mode (function symbol))
-(define-extern set-aspect-ratio (function symbol none))
-(define-extern get-aspect-ratio (function symbol))
-(define-extern set-progressive-scan (function symbol none))
-(define-extern get-progressive-scan (function symbol))
+(define-extern set-video-mode
+  "Set related settings to the video mode in the settings, [[*video-params*]] and the [[*video-mode*]]
+   `ntsc` has a [[*video-mode*]] value of `0`, where as `pal` has a value of `1`
+
+   Will also set a bunch of common settings related to profiling and the camera to finalize the switch
+
+   @param tv-format Recognizes `ntsc` and `pal`"
+  (function symbol none))
+(define-extern get-video-mode
+  "@returns the current video mode, for example `ntsc` or `pal`"
+  (function symbol))
+(define-extern set-aspect-ratio
+  "Set [[*video-params*]] aspect-ratio related settings based on the mode provided.
+   @param aspect Recognizes `aspect4x3` and `aspect16x9`"
+  (function symbol none))
+(define-extern get-aspect-ratio
+  "@returns The current aspect ratio mode setting" (function symbol))
+(define-extern set-progressive-scan
+  "Flip the progressive scan setting flag depending on the value provided
+   @param val The value to set the progressive scan flag to"
+  (function symbol none))
+(define-extern get-progressive-scan
+  "@returns If using progressive scan is currently set in the settings"
+  (function symbol))
 (define-extern *smode2* int)
-(define-extern set-graphics-mode (function none))
+(define-extern set-graphics-mode "TODO" (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main                           ;;
