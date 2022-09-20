@@ -62,6 +62,8 @@ int main(int argc, char** argv) {
       lg::error("Could not setup project path!");
       return 1;
     }
+  } else if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
   }
 
   if (auto_find_user) {
