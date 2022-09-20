@@ -47401,12 +47401,12 @@
 ;; nav-graph-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type nav-node structure)
 (deftype nav-branch (structure)
-  ((node              UNKNOWN 2 :offset-assert 0)
-   (src-node          basic     :offset-assert 0)
-   (dest-node         basic     :offset-assert 4)
-   (temp-dest-node-id int32     :offset-assert 4)
+  ((node              nav-node 2 :offset-assert 0)
+   (src-node          nav-node     :offset 0)
+   (dest-node         nav-node     :offset 4)
+   (temp-dest-node-id int32     :offset 4)
    (speed-limit       uint8     :offset-assert 8)
    (density           uint8     :offset-assert 9)
    (clock-type        uint8     :offset-assert 10)
@@ -47422,11 +47422,20 @@
   (:methods
     (nav-branch-method-9 () none 9)
     (nav-branch-method-10 () none 10)
-    (nav-branch-method-11 () none 11)
-    (nav-branch-method-12 () none 12)
-    (nav-branch-method-13 () none 13)
-    (nav-branch-method-14 () none 14)
-    (nav-branch-method-15 () none 15)
+    (nav-branch-method-11
+      "TODO
+      @returns `density * 0.0078125` - is this some kind of trick?"
+      (_type_) float 11)
+    (nav-branch-method-12
+      "TODO
+      @returns `speed-limit * 1024.0`"
+      (_type_) float 12)
+    (nav-branch-method-13
+      "TODO
+       @returns `width * 256.0`"
+      (_type_) float 13)
+    (user-limit-reached? (_type_) symbol 14)
+    (nav-branch-method-15 "TODO - checks that `dest-node`'s `id` isn't #FFFF" (_type_) symbol 15)
     (nav-branch-method-16 () none 16)
     (nav-branch-method-17 () none 17)
     (nav-branch-method-18 () none 18)
@@ -47434,15 +47443,37 @@
     (nav-branch-method-20 () none 20)
     )
   )
-|#
 
-#|
+(defenum nav-node-flag-byte
+  "The same as [[nav-node-flag]] but more compact"
+  :type uint8
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4))
+
 (deftype nav-node (structure)
-  ()
+  (
+    (data uint32 8 :offset-assert 0 :score -999)
+    (position vector :inline :offset 0)
+    (pos-x float :offset 0)
+    (pos-y float :offset 4)
+    (pos-z float :offset 8)
+    (angle uint16 :offset 12)
+    (id uint16 :offset 14)
+    (radius uint8 :offset 16)
+    (branch-count int8 :offset 17)
+    (flags nav-node-flag-byte :offset 18)
+    (pad0 int8 1 :offset 19)
+    (branch-array uint32 :offset 20)
+    (nav-mesh-id uint32 :offset 24)
+    (level level :offset 28)
+  )
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; Failed to read fields.
   (:methods
     (nav-node-method-9 () none 9)
     (nav-node-method-10 () none 10)
@@ -47453,15 +47484,24 @@
     (nav-node-method-15 () none 15)
     (nav-node-method-16 () none 16)
     (nav-node-method-17 () none 17)
-    (nav-node-method-18 () none 18)
+    (get-position
+      "@param! ret The [[vector]] that is modified to hold the result
+       @returns the `position` [[vector]] with a `w` component of `1.0`"
+      (_type_ vector) vector 18)
+    ;; TODO - stack guessing pointer-float fails, calls `sincos!` with a value from the stack
+    ;; Stack Guess: 16 is a (pointer float)
+    ;; Assertion failed: 'type.base_type() != "pointer"'
+    ;;     Source: C:/Users/xtvas/Repositories/opengoal/jak-project/decompiler/types2/types2.cpp:751
+    ;;     Function: void __cdecl decompiler::types2::run(decompiler::types2::Output &, const decompiler::types2::Input &)
     (nav-node-method-19 () none 19)
-    (nav-node-method-20 () none 20)
-    (nav-node-method-21 () none 21)
+    (get-angle (_type_) float 20)
+    (nav-node-method-21
+      "TODO
+       @returns `radius * 1024.0"
+      (_type_) float 21)
     )
   )
-|#
 
-#|
 (deftype nav-graph-link (structure)
   ((id            uint32           :offset-assert 0)
    (dest-graph-id uint32           :offset-assert 4)
@@ -47474,13 +47514,11 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype nav-graph (basic)
   ((node-count   int16     :offset-assert 4)
    (branch-count int16     :offset-assert 6)
-   (node-array   uint32    :offset-assert 8)
+   (node-array   (inline-array nav-node)    :offset-assert 8)
    (branch-array uint32    :offset-assert 12)
    (link-count   int16     :offset-assert 16)
    (pad2         uint16    :offset-assert 18)
@@ -47489,7 +47527,7 @@
    (pad0         uint16    :offset-assert 26)
    (patched      basic     :offset-assert 28)
    (id           uint32    :offset-assert 32)
-   (pad1         UNKNOWN 6 :offset-assert 36)
+   (pad1         uint32 6 :offset-assert 36)
    )
   :method-count-assert 45
   :size-assert         #x3c
@@ -47527,13 +47565,16 @@
     (nav-graph-method-38 () none 38)
     (nav-graph-method-39 () none 39)
     (nav-graph-method-40 () none 40)
-    (nav-graph-method-41 () none 41)
+    (node-at-idx
+      "Get the `nav-node` at a given position.
+       @param idx The position in the `node-array` to return
+       @returns the [[nav-node]] if it can be found, otherwise return [[#f]]"
+      (_type_ int) nav-node 41)
     (nav-graph-method-42 () none 42)
     (nav-graph-method-43 () none 43)
     (nav-graph-method-44 () none 44)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
