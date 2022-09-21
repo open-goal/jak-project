@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: nav-graph-h.gc
-;; name in dgo: nav-graph-h
-;; dgos: CWI
-
-;; DECOMP BEGINS
-
+;; definition of type nav-branch
 (deftype nav-branch (structure)
   ((node              nav-node 2 :offset-assert   0)
    (src-node          nav-node   :offset          0)
@@ -40,7 +35,30 @@
     )
   )
 
+;; definition for method 3 of type nav-branch
+(defmethod inspect nav-branch ((obj nav-branch))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'nav-branch)
+  (format #t "~1Tnode[2] @ #x~X~%" (-> obj node))
+  (format #t "~1Tsrc-node: ~A~%" (-> obj src-node))
+  (format #t "~1Tdest-node: ~A~%" (-> obj dest-node))
+  (format #t "~1Ttemp-dest-node-id: ~D~%" (-> obj dest-node))
+  (format #t "~1Tspeed-limit: ~D~%" (-> obj speed-limit))
+  (format #t "~1Tdensity: ~D~%" (-> obj density))
+  (format #t "~1Tclock-type: ~D~%" (-> obj clock-type))
+  (format #t "~1Tclock-mask: ~D~%" (-> obj clock-mask))
+  (format #t "~1Tmax-user-count: ~D~%" (-> obj max-user-count))
+  (format #t "~1Tuser-count: ~D~%" (-> obj user-count))
+  (format #t "~1Twidth: ~D~%" (-> obj width))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type nav-node
 (deftype nav-node (structure)
   ((data         uint32             8       :offset-assert   0)
    (position     vector             :inline :offset          0)
@@ -77,44 +95,94 @@
     )
   )
 
+;; definition for method 3 of type nav-node
+(defmethod inspect nav-node ((obj nav-node))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-14)
+    )
+  (format #t "[~8x] ~A~%" obj 'nav-node)
+  (format #t "~1Tdata[32] @ #x~X~%" (-> obj position))
+  (format #t "~1Tposition: ~`vector`P~%" (-> obj position))
+  (format #t "~1Tpos-x: ~f~%" (-> obj position x))
+  (format #t "~1Tpos-y: ~f~%" (-> obj position y))
+  (format #t "~1Tpos-z: ~f~%" (-> obj position z))
+  (format #t "~1Tangle: ~D~%" (-> obj angle))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tradius: ~D~%" (-> obj radius))
+  (format #t "~1Tbranch-count: ~D~%" (-> obj branch-count))
+  (format #t "~1Tflags: #x~X : (nav-node-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (nav-node-flag-byte blocked)) (nav-node-flag-byte blocked))
+        (format #t "blocked ")
+        )
+    (if (= (logand s5-0 (nav-node-flag-byte selected)) (nav-node-flag-byte selected))
+        (format #t "selected ")
+        )
+    (if (= (logand s5-0 (nav-node-flag-byte pedestrian)) (nav-node-flag-byte pedestrian))
+        (format #t "pedestrian ")
+        )
+    (if (= (logand s5-0 (nav-node-flag-byte visited)) (nav-node-flag-byte visited))
+        (format #t "visited ")
+        )
+    (if (= (logand s5-0 (nav-node-flag-byte hidden)) (nav-node-flag-byte hidden))
+        (format #t "hidden ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tpad0[1] @ #x~X~%" (-> obj pad0))
+  (format #t "~1Tbranch-array: #x~X~%" (-> obj branch-array))
+  (format #t "~1Tnav-mesh-id: ~D~%" (-> obj nav-mesh-id))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (label cfg-14)
+  obj
+  )
 
+;; definition for method 11 of type nav-branch
 (defmethod nav-branch-method-11 nav-branch ((obj nav-branch))
   "TODO
       @returns `density * 0.0078125` - is this some kind of trick?"
   (* 0.0078125 (the float (-> obj density)))
   )
 
+;; definition for method 12 of type nav-branch
 (defmethod nav-branch-method-12 nav-branch ((obj nav-branch))
   "TODO
       @returns `speed-limit * 1024.0`"
   (* 1024.0 (the float (-> obj speed-limit)))
   )
 
+;; definition for method 13 of type nav-branch
 (defmethod nav-branch-method-13 nav-branch ((obj nav-branch))
   "TODO
        @returns `width * 256.0`"
   (* 256.0 (the float (-> obj width)))
   )
 
+;; definition for method 14 of type nav-branch
 (defmethod user-limit-reached? nav-branch ((obj nav-branch))
   (>= (-> obj user-count) (-> obj max-user-count))
   )
 
+;; definition for method 15 of type nav-branch
 (defmethod nav-branch-method-15 nav-branch ((obj nav-branch))
   "TODO - checks that `dest-node`'s `id` isn't #FFFF"
   (!= (-> obj dest-node id) #xffff)
   )
 
+;; definition for method 21 of type nav-node
 (defmethod nav-node-method-21 nav-node ((obj nav-node))
   "TODO
        @returns `radius * 1024.0"
   (* 1024.0 (the float (-> obj radius)))
   )
 
+;; definition for method 20 of type nav-node
 (defmethod get-angle nav-node ((obj nav-node))
   (the float (-> obj angle))
   )
 
+;; definition for method 19 of type nav-node
 (defmethod calc-sine-and-cosine! nav-node ((obj nav-node) (ret vector))
   "Computes the sine and cosine of the `angle`.
        @param! ret The result <cosine, 0.0, -(sine), 1.0>
@@ -131,6 +199,8 @@
   ret
   )
 
+;; definition for method 18 of type nav-node
+;; INFO: Used lq/sq
 (defmethod get-position nav-node ((obj nav-node) (ret vector))
   "@param! ret The [[vector]] that is modified to hold the result
        @returns the `position` [[vector]] with a `w` component of `1.0`"
@@ -139,6 +209,7 @@
   ret
   )
 
+;; definition of type nav-graph-link
 (deftype nav-graph-link (structure)
   ((id            uint32           :offset-assert   0)
    (dest-graph-id uint32           :offset-assert   4)
@@ -152,7 +223,24 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type nav-graph-link
+(defmethod inspect nav-graph-link ((obj nav-graph-link))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'nav-graph-link)
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tdest-graph-id: ~D~%" (-> obj dest-graph-id))
+  (format #t "~1Tsrc-branch-id: ~D~%" (-> obj src-branch-id))
+  (format #t "~1Tdest-node-id: ~D~%" (-> obj dest-node-id))
+  (format #t "~1Tdest-graph: ~A~%" (-> obj dest-graph))
+  (format #t "~1Tdummy-node: #<nav-node @ #x~X>~%" (-> obj dummy-node))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type nav-graph
 (deftype nav-graph (basic)
   ((node-count   int16                     :offset-assert   4)
    (branch-count int16                     :offset-assert   6)
@@ -210,7 +298,30 @@
     )
   )
 
+;; definition for method 3 of type nav-graph
+(defmethod inspect nav-graph ((obj nav-graph))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tnode-count: ~D~%" (-> obj node-count))
+  (format #t "~1Tbranch-count: ~D~%" (-> obj branch-count))
+  (format #t "~1Tnode-array: #x~X~%" (-> obj node-array))
+  (format #t "~1Tbranch-array: #x~X~%" (-> obj branch-array))
+  (format #t "~1Tlink-count: ~D~%" (-> obj link-count))
+  (format #t "~1Tpad2: ~D~%" (-> obj pad2))
+  (format #t "~1Tlink-array: #x~X~%" (-> obj link-array))
+  (format #t "~1Tfirst-node: ~D~%" (-> obj first-node))
+  (format #t "~1Tpad0: ~D~%" (-> obj pad0))
+  (format #t "~1Tpatched: ~A~%" (-> obj patched))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tpad1[6] @ #x~X~%" (-> obj pad1))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 41 of type nav-graph
 (defmethod node-at-idx nav-graph ((obj nav-graph) (idx int))
   "Get the `nav-node` at a given position.
        @param idx The position in the `node-array` to return
@@ -223,8 +334,5 @@
     )
   )
 
+;; failed to figure out what this is:
 0
-
-
-
-
