@@ -1582,7 +1582,9 @@
     (global-y-angle-to-point (_type_ vector) float 23)
     (relative-y-angle-to-point (_type_ vector) float 24)
     (roll-relative-to-gravity (_type_) float 25)
-    (set-and-limit-velocity (_type_ int vector float) trsqv 26)
+    (set-and-limit-velocity
+      "TODO - arg1 is an bitfield of some sort"
+      (_type_ int vector float) trsqv :behavior process 26)
     (get-quaternion (_type_) quaternion 27)
     )
   )
@@ -13703,11 +13705,21 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_ 0)
-    (align-control-method-9 () none 9) ;; (compute-alignment! (_type_) transformq 9)
-    (align-control-method-10 () none 10) ;; (align! (_type_ align-opts float float float) trsqv 10)
-    (align-control-method-11 () none 11) ;; (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv 11)
-    (align-control-method-12 () none 12) ;; (first-transform (_type_) transform 12)
-    (align-control-method-13 () none 13) ;; (snd-transform (_type_) transform 13)
+    (compute-alignment! (_type_) transformq 9)
+    (align!
+      "As long as [[align-flags::0]] is not set call [[process-drawable::16]] on the process being controlled
+       using the arguments passed to construct a [[vector]] - <`x`, `y`, `z`, 1.0>
+
+       @returns the `root` of the [[process-drawable]] after the method returns
+       @see [[process-drawable::16]]"
+      (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process 11)
+    (first-transform
+      "@returns The first of the two [[transforms]] held by the object"
+      (_type_) transform 12)
+    (second-transform
+      "@returns The second of the two [[transforms]] held by the object"
+      (_type_) transform 13)
     )
   )
 
@@ -13829,7 +13841,7 @@
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string object) draw-control 15)
-    (process-drawable-method-16 () none 16) ;; (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
+    (apply-alignment (_type_ align-opts transformq vector) object 16)
     (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
     (process-drawable-method-19 () none 19) ;; (evaluate-joint-control (_type_) none 19)
@@ -14442,7 +14454,7 @@
     (pov-camera-playing () _type_ :state 22) ;; (pov-camera-playing () _type_ :state 22)
     (pov-camera-start-playing () _type_ :state 23) ;; (pov-camera-start-playing () _type_ :state 23)
     (pov-camera-startup () _type_ :state 24) ;; (pov-camera-startup () _type_ :state 24)
-    (check-for-abort (_type_) symbol :behavior pov-camera 25)
+    (abort? (_type_) symbol :behavior pov-camera 25)
     (target-grabbed? (_type_) symbol 26)
     (pov-camera-method-27 () none 27) ;; (pre-startup-callback (_type_) none 27)
     (pov-camera-method-28 () none 28) ;; (target-released? () symbol 28)
