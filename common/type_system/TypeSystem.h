@@ -225,6 +225,8 @@ class TypeSystem {
                            bool allow_type_alias = false) const;
   bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
+  bool is_type_descendent_from(const std::string& type_name,
+                               const std::string& ancestor_type_name) const;
   int get_next_method_id(const Type* type) const;
 
   bool is_bitfield_type(const std::string& type_name) const;
@@ -262,6 +264,23 @@ class TypeSystem {
   void add_type_to_allowed_redefinition_list(const std::string& type_name) {
     m_types_allowed_to_be_redefined.push_back(type_name);
   }
+
+  std::vector<std::string> search_types_by_parent_type(
+      const std::string parent_type,
+      const std::vector<std::string>& existing_matches = {});
+
+  std::vector<std::string> search_types_by_size(
+      const int search_size,
+      const std::vector<std::string>& existing_matches = {});
+
+  struct TypeSearchFieldInput {
+    std::string field_type_name;
+    int field_offset;
+  };
+
+  std::vector<std::string> search_types_by_fields(
+      const std::vector<TypeSearchFieldInput> search_fields,
+      const std::vector<std::string>& existing_matches = {});
 
  private:
   std::string lca_base(const std::string& a, const std::string& b) const;

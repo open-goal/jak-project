@@ -1304,6 +1304,138 @@ int TypeSystem::get_size_in_type(const Field& field) const {
   }
 }
 
+std::vector<std::string> TypeSystem::search_types_by_parent_type(
+    const std::string parent_type,
+    const std::vector<std::string>& existing_matches) {
+  std::vector<std::string> results = {};
+  // If we've been given a list of already matched types, narrow it down from there, otherwise
+  // iterate through the entire map
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      try {
+        if (is_type_descendent_from(type_name, parent_type)) {
+          results.push_back(type_name);
+        }
+      } catch (std::exception& e) {
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      try {
+        if (is_type_descendent_from(type_name, parent_type)) {
+          results.push_back(type_name);
+        }
+      } catch (std::exception& e) {
+      }
+    }
+  }
+
+  return results;
+}
+
+std::vector<std::string> TypeSystem::search_types_by_size(
+    const int search_size,
+    const std::vector<std::string>& existing_matches) {
+  std::vector<std::string> results = {};
+  // If we've been given a list of already matched types, narrow it down from there, otherwise
+  // iterate through the entire map
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      try {
+        if (m_types[type_name]->get_size_in_memory() == search_size) {
+          results.push_back(type_name);
+        }
+      } catch (std::exception& e) {
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      try {
+        if (type_info->get_size_in_memory() == search_size) {
+          results.push_back(type_name);
+        }
+      } catch (std::exception& e) {
+      }
+    }
+  }
+
+  return results;
+}
+
+std::vector<std::string> TypeSystem::search_types_by_fields(
+    const std::vector<TypeSearchFieldInput> search_fields,
+    const std::vector<std::string>& existing_matches) {
+  // TODO - maybe support partial matches eventually
+  std::vector<std::string> results = {};
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      try {
+        // For each type, look at it's fields
+        if (dynamic_cast<StructureType*>(m_types[type_name].get()) != nullptr) {
+          bool type_valid = true;
+          auto struct_type = dynamic_cast<StructureType*>(m_types[type_name].get());
+          for (const auto& req_field : search_fields) {
+            bool field_valid = false;
+            // iterate through the type's fields until one is found with the right offset
+            // once found, check the underlying type name, if it doesn't match it's invalid
+            // if we don't find one with that offset, it's also invalid
+            for (const auto& type_field : struct_type->fields()) {
+              if (type_field.offset() == req_field.field_offset &&
+                  type_field.type().base_type() == req_field.field_type_name) {
+                field_valid = true;
+                break;
+              }
+            }
+            if (!field_valid) {
+              type_valid = false;
+              break;
+            }
+          }
+          if (type_valid) {
+            results.push_back(type_name);
+          }
+        }
+
+      } catch (std::exception& e) {
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      try {
+        // For each type, look at it's fields
+        if (dynamic_cast<StructureType*>(type_info.get()) != nullptr) {
+          bool type_valid = true;
+          auto struct_type = dynamic_cast<StructureType*>(type_info.get());
+          for (const auto& req_field : search_fields) {
+            bool field_valid = false;
+            // iterate through the type's fields until one is found with the right offset
+            // once found, check the underlying type name, if it doesn't match it's invalid
+            // if we don't find one with that offset, it's also invalid
+            for (const auto& type_field : struct_type->fields()) {
+              if (type_field.offset() == req_field.field_offset &&
+                  type_field.type().base_type() == req_field.field_type_name) {
+                field_valid = true;
+                break;
+              }
+            }
+            if (!field_valid) {
+              type_valid = false;
+              break;
+            }
+          }
+          if (type_valid) {
+            results.push_back(type_name);
+          }
+        }
+
+      } catch (std::exception& e) {
+      }
+    }
+  }
+
+  return results;
+}
+
 /*!
  * Add a simple structure type - don't use this outside of add_builtin_types as it forces you to do
  * things in the wrong order.
@@ -1513,6 +1645,18 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) c
   }
 
   return path;
+}
+
+bool TypeSystem::is_type_descendent_from(const std::string& type_name,
+                                         const std::string& ancestor_type_name) const {
+  auto path_tree = get_path_up_tree(type_name);
+  // Look through the tree to see if the ancestor name occurs
+  for (const auto& name : path_tree) {
+    if (name == ancestor_type_name) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /*!
