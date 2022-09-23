@@ -1305,7 +1305,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
 }
 
 std::vector<std::string> TypeSystem::search_types_by_parent_type(
-    const std::string parent_type,
+    const std::string& parent_type,
     const std::vector<std::string>& existing_matches) {
   std::vector<std::string> results = {};
   // If we've been given a list of already matched types, narrow it down from there, otherwise
@@ -1363,7 +1363,7 @@ std::vector<std::string> TypeSystem::search_types_by_size(
 }
 
 std::vector<std::string> TypeSystem::search_types_by_fields(
-    const std::vector<TypeSearchFieldInput> search_fields,
+    const std::vector<TypeSearchFieldInput>& search_fields,
     const std::vector<std::string>& existing_matches) {
   // TODO - maybe support partial matches eventually
   std::vector<std::string> results = {};

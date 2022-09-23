@@ -266,7 +266,7 @@ class TypeSystem {
   }
 
   std::vector<std::string> search_types_by_parent_type(
-      const std::string parent_type,
+      const std::string& parent_type,
       const std::vector<std::string>& existing_matches = {});
 
   std::vector<std::string> search_types_by_size(
@@ -279,7 +279,7 @@ class TypeSystem {
   };
 
   std::vector<std::string> search_types_by_fields(
-      const std::vector<TypeSearchFieldInput> search_fields,
+      const std::vector<TypeSearchFieldInput>& search_fields,
       const std::vector<std::string>& existing_matches = {});
 
  private:
