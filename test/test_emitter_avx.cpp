@@ -702,3 +702,38 @@ TEST(EmitterAVX, VPAND) {
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "C5E1DBDBC4C161DBDDC591DBDBC4C111DBDDC561DBEBC44161DBEDC511DBEBC44111DBED");
 }
+
+TEST(EmitterAVX, VPACKUSWB) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::vpackuswb(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::vpackuswb(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::vpackuswb(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::vpackuswb(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::vpackuswb(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::vpackuswb(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::vpackuswb(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::vpackuswb(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "C5E167DBC4C16167DDC59167DBC4C11167DDC56167EBC4416167EDC51167EBC4411167ED");
+}
+
+TEST(EmitterAVX, VPSRLW) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::ph_srl(XMM0 + 3, XMM0 + 4, 3));
+  tester.emit(IGen::ph_srl(XMM0 + 3, XMM0 + 14, 4));
+  tester.emit(IGen::ph_srl(XMM0 + 13, XMM0 + 4, 5));
+  tester.emit(IGen::ph_srl(XMM0 + 13, XMM0 + 14, 6));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5E171D403C4C16171D604C59171D405C4C11171D606");
+}
+
+TEST(EmitterAVX, VPSLLW) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::ph_sll(XMM0 + 3, XMM0 + 4, 3));
+  tester.emit(IGen::ph_sll(XMM0 + 3, XMM0 + 14, 4));
+  tester.emit(IGen::ph_sll(XMM0 + 13, XMM0 + 4, 5));
+  tester.emit(IGen::ph_sll(XMM0 + 13, XMM0 + 14, 6));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5E171F403C4C16171F604C59171F405C4C11171F606");
+}

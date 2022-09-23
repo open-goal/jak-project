@@ -123,7 +123,7 @@
     (new (symbol type uint) _type_ 0)
     (frame-counter-delta (_type_ history-elt) time-frame 9)
     (update-entries! (_type_) history-elt 10)
-    (history-iterator-method-11 (_type_ history-elt) float 11)
+    (get-age (_type_ history-elt) float 11)
     )
   )
 
@@ -265,9 +265,8 @@
   (the-as history-elt #f)
   )
 
-(defmethod history-iterator-method-11 history-iterator ((obj history-iterator) (arg0 history-elt))
-  "TODO - Unsure of the purpose
-      `min(1.0, ((history-elt.timestamp - 1) + frame-counter) / (max-age + 1)) - 1.0`"
+(defmethod get-age history-iterator ((obj history-iterator) (arg0 history-elt))
+  "Get the age of a history element"
   (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
                       (the float (+ (-> obj max-age) 1))
                       )
@@ -431,6 +430,125 @@
     )
   #f
   (label cfg-71)
+  0
+  (none)
+  )
+
+(defun history-draw ((arg0 history-iterator))
+  (local-vars (sv-16 vector) (sv-20 vector) (sv-24 pat-surface))
+  (set! sv-16 (the-as vector #f))
+  (set! sv-20 (the-as vector #f))
+  (set! sv-24 (new 'static 'pat-surface))
+  (until #f
+    (let ((s5-0 (update-entries! arg0)))
+      (if (not s5-0)
+          (goto cfg-34)
+          )
+      (when (logtest? (-> arg0 channel-mask) (ash 1 (-> s5-0 channel)))
+        (let* ((f0-0 (get-age arg0 s5-0))
+               (v1-8 (the int (lerp 4.0 128.0 f0-0)))
+               )
+          (case (-> s5-0 channel)
+            (((history-channel trans))
+             (if sv-16
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-16
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffff00 (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffff00 (shl v1-8 24))))
+                 )
+             (set! sv-16 (-> s5-0 vector))
+             )
+            (((history-channel intersect))
+             (if sv-20
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-20
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffffff (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffffff (shl v1-8 24))))
+                 )
+             (set! sv-20 (-> s5-0 vector))
+             )
+            (((history-channel transv))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior (shl v1-8 24) #xff00))
+               )
+             )
+            (((history-channel transv-in))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x408040 (shl v1-8 24)))
+               )
+             )
+            (((history-channel transv-out))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x404080 (shl v1-8 24)))
+               )
+             )
+            (((history-channel local-normal) (history-channel surface-normal))
+             (let ((t1-7
+                     (logand (the-as uint (-> *pat-mode-info* (-> sv-24 mode) hilite-color)) (the-as uint #xffffffff00ffffff))
+                     )
+                   )
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 (-> s5-0 vector)
+                 (meters 1.0)
+                 (the-as rgba (logior t1-7 (shl v1-8 24)))
+                 )
+               )
+             )
+            (((history-channel pat))
+             (set! sv-24 (the-as pat-surface (-> s5-0 vector x)))
+             )
+            (((history-channel friction))
+             (let ((f0-3 (-> s5-0 vector x))
+                   (a3-10 (new 'stack-no-clear 'vector))
+                   )
+               (set-vector! a3-10 0.0 (* -8192.0 f0-3) 0.0 1.0)
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 a3-10
+                 (meters 0.00024414062)
+                 (the-as rgba (logior #xffffff (shl v1-8 24)))
+                 )
+               )
+             )
+            )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-34)
   0
   (none)
   )
