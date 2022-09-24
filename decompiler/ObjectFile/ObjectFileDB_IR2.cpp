@@ -609,7 +609,12 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
           }
 
           lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
-          func.warnings.warning("Function may read a register that is not set: {}", x.to_string());
+          if (x.to_string() == "f31") {
+            func.warnings.warning("Function may read a register that is not set: {}",
+                                  x.to_string());
+          } else {
+            func.warnings.error("Function may read a register that is not set: {}", x.to_string());
+          }
         }
       }
     }
