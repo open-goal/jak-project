@@ -175,15 +175,11 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
                   bsp_header.texture_remap_table, tex_db, level_data, false);
     } else if (draw_tree->my_type() == "drawable-tree-instance-shrub") {
-      if (db.version() == GameVersion::Jak2) {
-        lg::warn("skipping drawable-tree-instance-shrub extraction for jak 2");
-      } else {
-        auto as_shrub_tree =
-            dynamic_cast<level_tools::shrub_types::DrawableTreeInstanceShrub*>(draw_tree.get());
-        ASSERT(as_shrub_tree);
-        extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
-                      bsp_header.texture_remap_table, tex_db, {}, level_data, false);
-      }
+      auto as_shrub_tree =
+          dynamic_cast<level_tools::shrub_types::DrawableTreeInstanceShrub*>(draw_tree.get());
+      ASSERT(as_shrub_tree);
+      extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
+                    bsp_header.texture_remap_table, tex_db, {}, level_data, false);
     } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" && extract_collision) {
       auto as_collide_frags =
           dynamic_cast<level_tools::DrawableTreeCollideFragment*>(draw_tree.get());

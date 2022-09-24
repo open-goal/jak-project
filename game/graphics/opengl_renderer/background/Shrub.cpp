@@ -17,8 +17,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -27,6 +28,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
       dma.read_and_advance();
     }
     ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+  if (dma.current_tag_offset() == render_state->next_bucket) {
     return;
   }
 

@@ -410,7 +410,7 @@ void TFragment::read_from_file(TypedRef ref,
     ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
     ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
   } else {
-    lg::warn("Skipping padding check in TFragment");
+    ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
   }
 }
 
@@ -1416,7 +1416,7 @@ void InstanceShrubbery::read_from_file(TypedRef ref,
   id = read_plain_data_field<s16>(ref, "id", dts);
   origin.read_from_file(get_field_ref(ref, "origin", dts));
   wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
-  color_indices = read_plain_data_field<u32>(ref, "color-indices", dts);
+  color_indices = read_plain_data_field<u32>(ref, "color", dts);
   flat_normal.read_from_file(get_field_ref(ref, "flat-normal", dts));
 }
 
@@ -1778,14 +1778,10 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     return tree;
   }
 
-  if (version == GameVersion::Jak2) {
-    lg::warn("skipping drawable-tree-instance-shrub reading for jak 2");
-  } else {
-    if (ref.type->get_name() == "drawable-tree-instance-shrub") {
-      auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
-      tree->read_from_file(ref, dts, stats, version);
-      return tree;
-    }
+  if (ref.type->get_name() == "drawable-tree-instance-shrub") {
+    auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
+    tree->read_from_file(ref, dts, stats, version);
+    return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-collide-fragment") {
