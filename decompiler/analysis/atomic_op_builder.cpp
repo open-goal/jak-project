@@ -537,6 +537,11 @@ std::unique_ptr<AtomicOp> convert_mtc1_1(const Instruction& i0, int idx) {
 }
 
 std::unique_ptr<AtomicOp> convert_mfc1_1(const Instruction& i0, int idx) {
+  if (i0.get_dst(0).is_reg(rr0()) && i0.get_src(0).is_reg(Register(Reg::FPR, 31))) {
+    // mfc r0, f31 is a nop
+    return std::make_unique<SpecialOp>(SpecialOp::Kind::NOP, idx);
+  }
+
   if (i0.get_dst(0).is_reg(rr0()) || i0.get_dst(0).is_reg(make_gpr(Reg::AT)) ||
       i0.get_dst(0).is_reg(rra())) {
     // sometimes mfc1 r0, f31 is used like a 'nop'. No idea why.
