@@ -8022,7 +8022,7 @@
     (draw (_type_ _type_ display-frame) none 10)
     (drawable-method-11 () none 11) ;; (collide-with-box (_type_ int collide-list) none 11)
     (drawable-method-12 () none 12) ;; (collide-y-probe (_type_ int collide-list) none 12)
-    (collect-stats (_type_) none 13) ;; (collide-ray (_type_ int collide-list) none 13)
+    (collect-stats (_type_) none 13)
     (debug-draw (_type_ drawable display-frame) none 14)
     (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15) ;;
     (collect-regions (_type_ sphere int region-prim-list) none 16)
@@ -8048,15 +8048,20 @@
 
 
 (deftype drawable-group (drawable)
-  ((length int16 :offset 6)
+  ((length  int16 :offset 6)
    (data    drawable :dynamic  :offset-assert 32)
    )
   :method-count-assert 17
   :size-assert         #x20
   :flag-assert         #x1100000020
-  ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type int) _type_ 0)
+     (new "Create a new [[drawable-group]] which can hold the provided number of [[drawable]]s" (symbol type int) _type_ 0)
+     ;; TODO - child docstrings
+     ;; collect-stats "For each [[drawable]] that is visible (see [[vis-cull]]) and within the defined `bsphere` (see [[sphere-cull]]), call the respective [[drawable::13]]"
+     ;; debug-draw "For each [[drawable]] that is visible (see [[vis-cull]]) and within the defined `bsphere` (see [[sphere-cull]]), call the respective [[drawable::14]]"
+     ;; unpack-vis "Calls [[drawable::15]] for each [[drawable]] and TODO sets the second arg as the result.  This means that the overall result will be that of the last [[drawable::15]] call"
+     ;; debug-draw "For each [[drawable]] that is visible (see [[vis-cull]]) and within the defined `bsphere` (see [[sphere-cull]]), call the respective [[drawable::10]]"
+     ;; login "For each [[drawable]], call [[drawable::9]]"
     )
   )
 
@@ -8071,6 +8076,7 @@
   :method-count-assert 17
   :size-assert         #x20
   :flag-assert         #x1100000020
+  ;; NOTE - all methods (except for `length`) are stubs
   (:methods
     )
   )
@@ -8130,6 +8136,14 @@
 (deftype drawable-tree-array (drawable-group)
   ((trees drawable-tree :dynamic :offset 32 :score 100))
   :flag-assert #x1100000020
+  (:methods
+    ;; TODO - child docstrings
+    ;; "draw - Based on the `display?` symbol in the [[*level*]]'s [[*draw-index*]], draw (see [[drawable::10]] anything that is NOT:
+    ;;   - `'special`
+    ;;   - [[#f]]"
+    ;; collect-stats "For each [[drawable-tree]] call the respective [[drawable::13]]"
+    ;; debug-draw "For each [[drawable-tree]] call the respective [[drawable::14]]"
+    )
   )
 
 
@@ -20636,12 +20650,14 @@
   )
 
 (deftype path-control (basic)
-  ((flags      path-control-flag             :offset-assert 4) ;; guessed by decompiler
-   (name       symbol                        :offset-assert 8) ;; guessed by decompiler
-   (process    process-drawable              :offset-assert 12) ;; guessed by decompiler
+  "An abstraction around a [[curve]], providing tools such as:
+   - debug drawing
+   - conveniant vertex accessing
+   - vertex finding/searching algorithms"
+  ((flags      path-control-flag             :offset-assert 4)
+   (name       symbol                        :offset-assert 8)
+   (process    process-drawable              :offset-assert 12)
    (curve      curve                 :inline :offset-assert 16)
-   (num-cverts int32                         :offset 20)
-   (cverts     (inline-array vector)         :offset 16) ;; guessed by decompiler
    )
   :method-count-assert 27
   :size-assert         #x24
@@ -20649,33 +20665,105 @@
   (:methods
     (new (symbol type process symbol float entity symbol) _type_ 0)
     (debug-draw (_type_) none 9)
-    (path-control-method-10 () none 10) ;; (eval-path-curve-div! (_type_ vector float symbol) vector 10)
-    (path-control-method-11 () none 11) ;; (get-random-point (_type_ vector) vector 11)
-    (path-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ vector float) vector 12)
-    (path-control-method-13 () none 13) ;; (eval-path-curve! (_type_ vector float symbol) vector 13)
-    (path-control-method-14 () none 14) ;; (TODO-RENAME-14 (_type_ vector float) vector 14)
-    (path-control-method-15 () none 15) ;; (length-as-float (_type_) float 15)
-    (path-control-method-16 () none 16) ;; (path-distance (_type_) float 16)
+    (get-point-in-path!
+      "Depending on the value of `idx`, the result can be quite different:
+       - if `idx` is less than `0.0` - return the first vertex in the path
+       - if `idx` is greater than the number of vertices in the path, return the last vertex
+       - if `search-type` is equal to `exact` OR `idx` is an integral number (ex 1.0), return that vertex
+       - otherwise, do a linear interpolation between the vertex at `idx` (truncated) and the next vertex
+         using the fractional component of `idx` as the interpolant, return this result
+
+       @param! ret The [[vector]] that is used to hold the return value
+       @param idx Either the vertex index or also partially the interpolant in a LERP
+       @param search-type The only recognized value is `exact`
+       @returns Either a distinct vertex along the path, or some fractional point between two vertices"
+      (_type_ vector float symbol) vector 10)
+    (get-random-point
+      "Attempts to retrieve a random point along the path, returns the [[*null-vector*]] if no vertices are defined"
+      (_type_ vector) vector :behavior process 11)
+    (displacement-between-two-points-copy!
+      "Calls [[path-control::26]] with the provided args
+       @see [[path-control::26]]"
+      (_type_ vector float float) vector 12)
+    (displacement-between-two-points-normalized!
+      "Calls [[path-control::26], with the provided `idx`
+       @param! ret The [[vector]] the result is stored within
+       @param  idx The vertex index
+       @returns The resulting displacement vector, normalized
+       @see [[path-control::26]]"
+      (_type_ vector float) vector 13)
+    (get-point-at-percent-along-path!
+      "@param! ret The [[vector]] that is used to hold the return value
+       @param percent The percentage along the path
+       @param search-type The only recognized value is `exact`
+       @returns the point closest to some arbitrary percentage along the path
+       @see [[path-control::10]]"
+      (_type_ vector float symbol) vector 14)
+    (displacement-between-points-at-percent-scaled!
+      "Calls [[path-control::12], with the `idx` at a given percent along the path
+       @param ret The [[vector]] that is used to hold the return value
+       @param percent The percentage along the path to find the first index
+       @param mag Multiplied by the number of points in the path and scales the resulting vector
+       @returns The displacement between the last two points of the path scaled to the magnitude equal to the number of points in the path"
+      (_type_ vector float float) vector 15)
+    (displacement-between-points-at-percent-normalized!
+      "Calls [[path-control::13], with the `idx` at a given percent along the path
+       @param! ret The [[vector]] the result is stored within
+       @param  percent The percentage along the path
+       @returns The resulting displacement vector, normalized
+       @see [[path-control::13]]
+       @see [[path-control::14]]"
+      (_type_ vector float) vector 16)
     (get-num-segments (_type_) float 17)
-    (path-control-method-18 () none 18) ;; (should-display? (_type_) symbol 18)
-    (get-num-verts (_type_) int 19) ;; (TODO-RENAME-19 (_type_) float 19)
-    (path-distance-equal-spacing (_type_ float) float 20) ;; (TODO-RENAME-20 (_type_) float 20)
+    (total-distance
+      "Calcuate the total path length by summing the distance between each adjacent [[curve]] vertex"
+      (_type_) float 18)
+    (get-num-verts (_type_) int 19)
+    (path-distance-equal-spacing (_type_ float) float 20)
     (average-segment-length (_type_ float) float 21)
-    (path-control-method-22 () none 22)
-    (path-control-method-23 () none 23)
-    (path-control-method-24 () none 24)
+    (get-furthest-point-on-path
+      "@param point The point to calculate distance from
+       @returns the `vertex-idx.interpolant` value to the point on the path furthest away from the `point`
+       @see [[path-control::10]]"
+      (_type_ vector) float 22)
+    (get-path-percentage-at-furthest-point
+      "@param point The point to calculate distance from
+       @returns the percentage of path completion from the point on the path furthest away from the `point`
+       @see [[path-control::14]]"
+      (_type_ vector) float 23)
+    (path-control-method-24 "TODO" (_type_ vector) vector 24)
     (should-display-marks? (_type_) symbol 25)
-    (path-control-method-26 () none 26)
+    (displacement-between-two-points!
+      "Return value can differ quite a bit:
+       - If [[path-control-flag::4]] is set OR there are less than 2 vertices OR `idx` is less than `0.0` - return [[*null-vector*]]
+       - Otherwise, find the scaled (by `mag`) displacement vector between two points in the path:
+         - If `idx` is not beyond the second last vertex, the result is between vertex `idx` and `idx+1`
+         - else, the result is between the second last vertex and the last
+
+       @param! ret The [[vector]] that is used to hold the return value
+       @param idx The vertex index
+       @param mag The magnitude to scale the resulting displacement vector by
+       @returns The displacement [[vector]] between two points in the path, the last 2, or the [[*null-vector*]]"
+      (_type_ vector float float) vector 26)
     )
   )
 
 (deftype curve-control (path-control)
+  "Identical in terms of data to a [[path-control]] but has different implementation"
   ()
   :method-count-assert 27
   :size-assert         #x24
   :flag-assert         #x1b00000024
   (:methods
      (new (symbol type process symbol float) _type_ 0)
+     ;; TODO - child docstrings
+     ;; 10
+     ;; 12 - "Calls [[path-control::26]] with the `idx` at a given percent along the path @see [[path-control::26]]"
+     ;; 26
+     ;; 15
+     ;; 16
+     ;; 13 - different, just calls [[curve-evaluate!]]
+     ;; 18 - "Returns total path length of the [[curve]], will lazily calculate and set the [[curve]]'s `length` via [[curve::4]]"
     )
   )
 
