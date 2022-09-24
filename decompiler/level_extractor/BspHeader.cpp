@@ -1355,7 +1355,6 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
                  word.symbol_name() == "collide-hash-fragment") {
         done = true;
       } else {
-        fmt::print("unknown next thing: {}\n", word.symbol_name());
         ASSERT(word.symbol_name() == "draw-node" || word.symbol_name() == "instance-shrubbery");
       }
     }
