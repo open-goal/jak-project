@@ -184,7 +184,7 @@ TP_Type get_type_symbol_ptr(const std::string& name) {
   if (name == "#f") {
     return TP_Type::make_false();
   } else {
-    return TP_Type::make_from_ts("symbol");
+    return TP_Type::make_symbol(name);
   }
 }
 
@@ -2478,14 +2478,15 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
 
   if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
-      in_type.last_arg() == TypeSpec("array") && input_types[Register(Reg::GPR, arg_regs[2])]) {
+      in_tp.method_from_type() == TypeSpec("array") &&
+      input_types[Register(Reg::GPR, arg_regs[2])]) {
     // array new:
     auto& a2 = input_types[Register(Reg::GPR, arg_regs[2])];
     auto& a1 = input_types[Register(Reg::GPR, arg_regs[1])];
+    auto& a0 = input_types[Register(Reg::GPR, arg_regs[0])];
 
-    // the is_symbol() check here makes sure it's a symbol known at compile time.
-    if (a2->type && a2->type->kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL && a1->type &&
-        a1->type->is_symbol()) {
+    if (a0->type && a0->type->is_symbol() && a2->type &&
+        a2->type->kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL && a1->type) {
       out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(TypeSpec(
           "array",
           {input_types[Register(Reg::GPR, arg_regs[2])]->type->get_type_objects_typespec()}));
