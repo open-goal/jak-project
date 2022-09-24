@@ -51,7 +51,7 @@ if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
-                                 EXECUTABLE goalc-test --gtest_color=yes --gtest_brief=1
+                                 EXECUTABLE goalc-test --gtest_color=yes --gtest_brief=1 --gtest_filter="-*MANUAL_TEST*"
                                  DEPENDENCIES goalc-test
                                  EXCLUDE "third-party/*" "/usr/include/*")
 endif()
