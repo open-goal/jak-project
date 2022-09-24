@@ -92,6 +92,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
   init_bucket_renderer<TFragment>("tfrag-l1-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L1_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+  init_bucket_renderer<Shrub>("shrub-l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L0_SHRUB);
+  init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
   init_bucket_renderer<TFragment>("tfrag-t-l0-alpha", BucketCategory::TFRAG,
                                   BucketId::TFRAG_T_L0_ALPHA,
                                   std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 0);
