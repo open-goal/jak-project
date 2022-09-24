@@ -80,7 +80,14 @@ enum class BucketId {
 
 namespace jak2 {
 
-enum class BucketId { DEBUG_NO_ZBUF1 = 318, DEBUG_NO_ZBUF2 = 325, DEBUG3 = 326, MAX_BUCKETS = 327 };
+enum class BucketId {
+  TFRAG_L0_TFRAG = 8,
+  TFRAG_L1_TFRAG = 19,
+  DEBUG_NO_ZBUF1 = 318,
+  DEBUG_NO_ZBUF2 = 325,
+  DEBUG3 = 326,
+  MAX_BUCKETS = 327
+};
 }
 
 enum class BucketCategory {

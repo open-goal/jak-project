@@ -1779,11 +1779,16 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     return tree;
   }
 
-  if (ref.type->get_name() == "drawable-tree-instance-shrub") {
-    auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
-    tree->read_from_file(ref, dts, stats, version);
-    return tree;
+  if (version == GameVersion::Jak2) {
+    lg::warn("skipping drawable-tree-instance-shrub reading for jak 2");
+  } else {
+    if (ref.type->get_name() == "drawable-tree-instance-shrub") {
+      auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
+      tree->read_from_file(ref, dts, stats, version);
+      return tree;
+    }
   }
+
 
   if (ref.type->get_name() == "drawable-tree-collide-fragment") {
     auto tree = std::make_unique<DrawableTreeCollideFragment>();

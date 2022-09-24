@@ -46,8 +46,8 @@ void TFragment::render(DmaFollower& dma,
   // unless we are a child, in which case our parent took this already.
   if (!m_child_mode) {
     auto data0 = dma.read_and_advance();
-    ASSERT(data0.vif1() == 0);
-    ASSERT(data0.vif0() == 0);
+    ASSERT(data0.vifcode1().kind == VifCode::Kind::NOP);
+    ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
     ASSERT(data0.size_bytes == 0);
   }
 
@@ -106,10 +106,15 @@ void TFragment::render(DmaFollower& dma,
   }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    dma.read_and_advance();
+     dma.read_and_advance();
   }
 
-  ASSERT(!level_name.empty());
+  // ASSERT(!level_name.empty());
+  if (level_name.empty()) {
+    fmt::print("level name was empty!\n");
+    fmt::print("{}\n", m_pc_port_data.cam_trans.to_string_aligned());
+    return;
+  }
   {
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;
@@ -140,7 +145,7 @@ void TFragment::render(DmaFollower& dma,
     }
 
     auto t3prof = prof.make_scoped_child("t3");
-    m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
+    m_tfrag3.render_all_trees(m_tfrag3.lod(), settings, render_state, t3prof);
   }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {

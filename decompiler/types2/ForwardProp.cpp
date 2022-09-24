@@ -261,10 +261,16 @@ bool backprop_tagged_type(const TP_Type& expected_type,
 
     case types2::Tag::BLOCK_ENTRY:
       // don't update if we're updating to exactly the same thing.
-      if (actual_type.tag.block_entry->selected_type &&
-          actual_type.tag.block_entry->selected_type == expected_type) {
-        return false;
+      if (actual_type.tag.block_entry->selected_type) {
+        if (actual_type.tag.block_entry->selected_type == expected_type) {
+          return false;
+        }
+        if (actual_type.tag.block_entry->selected_type->typespec().base_type() == "vector" &&
+            expected_type.typespec().base_type() == "vector4") {
+          return false;
+        }
       }
+
       {
         actual_type.tag.block_entry->updated = true;
         actual_type.tag.block_entry->selected_type = expected_type;
