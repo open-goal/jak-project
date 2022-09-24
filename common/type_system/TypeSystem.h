@@ -225,8 +225,6 @@ class TypeSystem {
                            bool allow_type_alias = false) const;
   bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
-  bool is_type_descendent_from(const std::string& type_name,
-                               const std::string& ancestor_type_name) const;
   int get_next_method_id(const Type* type) const;
 
   bool is_bitfield_type(const std::string& type_name) const;

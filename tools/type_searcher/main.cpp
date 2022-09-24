@@ -61,27 +61,33 @@ int main(int argc, char** argv) {
   std::vector<std::string> potential_types = {};
 
   // First filter by parent type is available
-  potential_types = dts.ts.search_types_by_parent_type(parent_type);
+  if (!parent_type.empty()) {
+    potential_types = dts.ts.search_types_by_parent_type(parent_type);
+  }
 
   // Filter out types by size next
-  potential_types = dts.ts.search_types_by_size(type_size, potential_types);
+  if (type_size != -1) {
+    potential_types = dts.ts.search_types_by_size(type_size, potential_types);
+  }
 
   // Filter out by fields
-  std::vector<TypeSystem::TypeSearchFieldInput> search_fields = {};
   if (!field_json.empty()) {
-    auto data = parse_commented_json(field_json, "--fields arg");
-    for (auto& item : data) {
-      TypeSystem::TypeSearchFieldInput new_field;
-      try {
-        new_field.field_offset = item.at("offset").get<int>();
-        new_field.field_type_name = item.at("type").get<std::string>();
-        search_fields.push_back(new_field);
-      } catch (std::exception& ex) {
-        fmt::print("Bad field search entry - {}", ex.what());
+    std::vector<TypeSystem::TypeSearchFieldInput> search_fields = {};
+    if (!field_json.empty()) {
+      auto data = parse_commented_json(field_json, "--fields arg");
+      for (auto& item : data) {
+        TypeSystem::TypeSearchFieldInput new_field;
+        try {
+          new_field.field_offset = item.at("offset").get<int>();
+          new_field.field_type_name = item.at("type").get<std::string>();
+          search_fields.push_back(new_field);
+        } catch (std::exception& ex) {
+          fmt::print("Bad field search entry - {}", ex.what());
+        }
       }
     }
+    potential_types = dts.ts.search_types_by_fields(search_fields, potential_types);
   }
-  potential_types = dts.ts.search_types_by_fields(search_fields, potential_types);
 
   auto results = nlohmann::json::array({});
   for (const auto& val : potential_types) {
