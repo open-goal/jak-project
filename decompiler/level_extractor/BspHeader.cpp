@@ -1789,7 +1789,6 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     }
   }
 
-
   if (ref.type->get_name() == "drawable-tree-collide-fragment") {
     auto tree = std::make_unique<DrawableTreeCollideFragment>();
     tree->read_from_file(ref, dts, stats, version);

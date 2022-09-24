@@ -490,7 +490,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     info.proto_flag = proto.flags;
     // flag of 2 means it should use the generic renderer (determined from EE asm)
     // for now, we ignore this and use TIE on everything.
-    info.uses_generic = (proto.flags == 2); // possibly different in jak 2
+    info.uses_generic = (proto.flags == 2);  // possibly different in jak 2
     // for debug, remember the name
     info.name = proto.name;
     // wind "stiffness" nonzero value means it has the wind effect

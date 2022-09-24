@@ -106,13 +106,10 @@ void TFragment::render(DmaFollower& dma,
   }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
-     dma.read_and_advance();
+    dma.read_and_advance();
   }
 
-  // ASSERT(!level_name.empty());
   if (level_name.empty()) {
-    fmt::print("level name was empty!\n");
-    fmt::print("{}\n", m_pc_port_data.cam_trans.to_string_aligned());
     return;
   }
   {
@@ -145,7 +142,7 @@ void TFragment::render(DmaFollower& dma,
     }
 
     auto t3prof = prof.make_scoped_child("t3");
-    m_tfrag3.render_all_trees(m_tfrag3.lod(), settings, render_state, t3prof);
+    m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
   }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
