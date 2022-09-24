@@ -1582,7 +1582,9 @@
     (global-y-angle-to-point (_type_ vector) float 23)
     (relative-y-angle-to-point (_type_ vector) float 24)
     (roll-relative-to-gravity (_type_) float 25)
-    (set-and-limit-velocity (_type_ int vector float) trsqv 26)
+    (set-and-limit-velocity
+      "TODO - arg1 is an bitfield of some sort"
+      (_type_ int vector float) trsqv :behavior process 26)
     (get-quaternion (_type_) quaternion 27)
     )
   )
@@ -1766,8 +1768,8 @@
 (define-extern *cos-poly-vec* vector)
 (define-extern vector-cos-rad! (function vector vector vector))
 (define-extern vector-sincos-rad! (function vector vector vector int))
-(define-extern sincos-rad! (function (pointer float) float int))
-(define-extern sincos! (function (pointer float) float int))
+(define-extern sincos-rad! (function vector float int))
+(define-extern sincos! (function vector float int))
 (define-extern vector-rad<-vector-deg! (function vector vector none))
 (define-extern vector-rad<-vector-deg/2! (function vector vector int))
 (define-extern vector-sincos! (function vector vector vector int))
@@ -3684,10 +3686,10 @@
   :flag-assert #x900000008
   )
 
-;; the GS's DISPLAY registers make settings for the display position on the screen regarding
-;; information on Rectangular Area Read Output Circuit n for the PCRTC.
-;; write-only
 (deftype gs-display (uint64)
+  "the GS's DISPLAY registers make settings for the display position on the screen regarding
+   information on Rectangular Area Read Output Circuit n for the PCRTC.
+   write-only"
   ((dx    uint16 :offset 0  :size 12)
    (dy    uint16 :offset 12 :size 11)
    (magh  uint8  :offset 23 :size 4)
@@ -3698,9 +3700,9 @@
   :flag-assert #x900000008
   )
 
-;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
-;; write-only
 (deftype gs-bgcolor (uint64)
+  "the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
+   write-only"
   ((r  uint8 :offset 0)
    (g  uint8 :offset 8)
    (b  uint8 :offset 16)
@@ -3708,11 +3710,12 @@
   :flag-assert #x900000008
   )
 
-;; the GS's CSR register sets and obtains various GS statuses.
-;; read-write. the fields have different effects depending on whether they're being read from
-;; or written to.
-;; bits 5 and 6 (0x20 and 0x40) should be zero
 (deftype gs-csr (uint64)
+  "the GS's CSR register sets and obtains various GS statuses.
+   read-write. the fields have different effects depending on whether they're being read from
+   or written to.
+
+   bits 5 and 6 (0x20 and 0x40) should be zero"
   ((signal  uint8 :offset 0  :size 1)
    (finish  uint8 :offset 1  :size 1)
    (hsint   uint8 :offset 2  :size 1)
@@ -5924,7 +5927,14 @@
     (level-method-11 () none 11) ;; (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (compute-memory-usage (_type_ object) memory-usage-block 14)
+    (compute-memory-usage!
+      "Calculates the memory usage of the level, returns and stores the [[memory-usage-block]]
+       in `mem-usage-block` as well as the total size in `mem-usage`
+
+       @param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
+       @returns The [[memory-usage-block]] representing the footprint of the level
+       @see [[memory-usage-block::10]]"
+      (_type_ symbol) memory-usage-block 14)
     (inside-boxes-check (_type_ vector) symbol 15)
     (level-method-16 () none 16) ;; (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (load-continue (_type_) _type_ 17)
@@ -7545,9 +7555,13 @@
   :size-assert         #x710
   :flag-assert         #xc00000710
   (:methods
-    (reset! (_type_) _type_ 9)
-    (memory-usage-block-method-10 () none 10) ;; (calculate-total (_type_) int 10)
-    (print-mem-usage (_type_ level object) none 11)
+    (reset!
+      "Sets `length` to 0 as well as resets all fields except `name` in the associated [[memory-usage-info]]"
+      (_type_) _type_ 9)
+    (calculate-total
+      "@returns The total sum of all [[memory-usage-info]] `total`s"
+      (_type_) int 10)
+    (print-mem-usage (_type_ level object) _type_ 11)
     )
   )
 
@@ -13714,11 +13728,21 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_ 0)
-    (align-control-method-9 () none 9) ;; (compute-alignment! (_type_) transformq 9)
-    (align-control-method-10 () none 10) ;; (align! (_type_ align-opts float float float) trsqv 10)
-    (align-control-method-11 () none 11) ;; (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv 11)
-    (align-control-method-12 () none 12) ;; (first-transform (_type_) transform 12)
-    (align-control-method-13 () none 13) ;; (snd-transform (_type_) transform 13)
+    (compute-alignment! (_type_) transformq 9)
+    (align!
+      "As long as [[align-flags::0]] is not set call [[process-drawable::16]] on the process being controlled
+       using the arguments passed to construct a [[vector]] - <`x`, `y`, `z`, 1.0>
+
+       @returns the `root` of the [[process-drawable]] after the method returns
+       @see [[process-drawable::16]]"
+      (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process 11)
+    (first-transform
+      "@returns The first of the two [[transforms]] held by the object"
+      (_type_) transform 12)
+    (second-transform
+      "@returns The second of the two [[transforms]] held by the object"
+      (_type_) transform 13)
     )
   )
 
@@ -13840,7 +13864,7 @@
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string object) draw-control 15)
-    (process-drawable-method-16 () none 16) ;; (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
+    (apply-alignment (_type_ align-opts transformq vector) object 16)
     (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
     (process-drawable-method-19 () none 19) ;; (evaluate-joint-control (_type_) none 19)
@@ -14437,7 +14461,7 @@
 (deftype pov-camera (process-drawable)
   ((flags             pov-camera-flag :offset-assert 200) ;; pov-camera-flag
    (debounce-start-time time-frame    :offset-assert 208) ;; time-frame
-   (notify-handle       uint64        :offset-assert 216) ;; handle
+   (notify-handle       handle        :offset-assert 216) ;; handle
    (anim-name           string        :offset-assert 224) ;; guessed by decompiler
    (command-list        pair          :offset-assert 228) ;; guessed by decompiler
    (mask-to-clear       process-mask  :offset-assert 232) ;; guessed by decompiler
@@ -14448,16 +14472,16 @@
   :size-assert         #xf4
   :flag-assert         #x1e008000f4
   (:methods
-    (pov-camera-method-20 () none 20) ;; (pov-camera-abort () _type_ :state 20)
-    (pov-camera-method-21 () none 21) ;; (pov-camera-done-playing () _type_ :state 21)
-    (pov-camera-method-22 () none 22) ;; (pov-camera-playing () _type_ :state 22)
-    (pov-camera-method-23 () none 23) ;; (pov-camera-start-playing () _type_ :state 23)
-    (pov-camera-method-24 () none 24) ;; (pov-camera-startup () _type_ :state 24)
-    (pov-camera-method-25 () none 25) ;; (check-for-abort (_type_) symbol 25)
-    (pov-camera-method-26 () none 26) ;; (target-grabbed? (_type_) symbol 26)
+    (pov-camera-abort () _type_ :state 20) ;; (pov-camera-abort () _type_ :state 20)
+    (pov-camera-done-playing () _type_ :state 21) ;; (pov-camera-done-playing () _type_ :state 21)
+    (pov-camera-playing () _type_ :state 22) ;; (pov-camera-playing () _type_ :state 22)
+    (pov-camera-start-playing () _type_ :state 23) ;; (pov-camera-start-playing () _type_ :state 23)
+    (pov-camera-startup () _type_ :state 24) ;; (pov-camera-startup () _type_ :state 24)
+    (abort? (_type_) symbol :behavior pov-camera 25)
+    (target-grabbed? (_type_) symbol 26)
     (pov-camera-method-27 () none 27) ;; (pre-startup-callback (_type_) none 27)
     (pov-camera-method-28 () none 28) ;; (target-released? () symbol 28)
-    (pov-camera-method-29 () none 29) ;; (set-stack-size! (_type_) none 29)
+    (target-released? (_type_) symbol 29) ;; (set-stack-size! (_type_) none 29)
     )
   )
 
@@ -23751,8 +23775,6 @@
 ;; settings                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern set-aspect-ratio (function symbol none))
-(define-extern set-video-mode (function symbol none))
 (define-extern scf-get-volume "Defined in the kernel" (function int))
 (define-extern scf-get-language "Defined in the kernel" (function language-enum))
 (define-extern scf-get-aspect "Defined in the kernel" (function uint))
@@ -26362,10 +26384,10 @@
 ;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
 ;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
 (define-extern lightning-tracker-init (function lightning-spec time-frame symbol process-drawable vector vector none))
-;; (define-extern process-grab? function) ;; (function process symbol :behavior camera-tracker)
-;; (define-extern process-release? function) ;; (function process symbol :behavior process)
+(define-extern process-grab? (function process symbol symbol :behavior process))
+(define-extern process-release? (function process symbol :behavior process))
 ;; (define-extern camera-look-at function) ;; (function pair uint process :behavior camera-tracker)
-;; (define-extern ja-anim-done? function) ;; (function process symbol)
+(define-extern ja-anim-done? (function process symbol)) ;; 
 ;; (define-extern camera-pov-from function) ;; (function pair uint process :behavior camera-tracker)
 ;; (define-extern cam-launcher-joystick function) ;; (function vector :behavior camera-slave)
 ;; (define-extern cam-launcher-shortfall state) ;; (state camera-slave)
@@ -28110,14 +28132,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *video-mode* int)
-;; (define-extern set-video-mode function) ;; (function symbol none)
-(define-extern get-video-mode (function symbol))
-(define-extern set-aspect-ratio (function symbol none))
-(define-extern get-aspect-ratio (function symbol))
-(define-extern set-progressive-scan (function symbol none))
-(define-extern get-progressive-scan (function symbol))
+(define-extern set-video-mode
+  "Set related settings to the video mode in the settings, [[*video-params*]] and the [[*video-mode*]]
+   `ntsc` has a [[*video-mode*]] value of `0`, where as `pal` has a value of `1`
+
+   Will also set a bunch of common settings related to profiling and the camera to finalize the switch
+
+   @param tv-format Recognizes `ntsc` and `pal`"
+  (function symbol none))
+(define-extern get-video-mode
+  "@returns the current video mode, for example `ntsc` or `pal`"
+  (function symbol))
+(define-extern set-aspect-ratio
+  "Set [[*video-params*]] aspect-ratio related settings based on the mode provided.
+   @param aspect Recognizes `aspect4x3` and `aspect16x9`"
+  (function symbol none))
+(define-extern get-aspect-ratio
+  "@returns The current aspect ratio mode setting" (function symbol))
+(define-extern set-progressive-scan
+  "Flip the progressive scan setting flag depending on the value provided
+   @param val The value to set the progressive scan flag to"
+  (function symbol none))
+(define-extern get-progressive-scan
+  "@returns If using progressive scan is currently set in the settings"
+  (function symbol))
 (define-extern *smode2* int)
-(define-extern set-graphics-mode (function none))
+(define-extern set-graphics-mode "TODO" (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main                           ;;
@@ -28204,24 +28244,13 @@
 ;; memory-usage                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype memory-usage-block (basic)
-  ()
-  :method-count-assert 12
-  :size-assert         #x710
-  :flag-assert         #xc00000710
-  ;; Failed to read fields.
-  (:methods
-    (memory-usage-block-method-9 () none 9) ;; (reset! (_type_) _type_ 9)
-    (memory-usage-block-method-10 () none 10) ;; (calculate-total (_type_) int 10)
-    (memory-usage-block-method-11 () none 11) ;; (print-mem-usage (_type_ level object) none 11)
-    )
-  )
-|#
-
-(define-extern mem-size (function basic symbol int int))
-;; (define-extern *max-dma* object) ;; int
-
+(define-extern mem-size
+  "@param data The [[basic]] to call `mem-usage` on
+   @param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
+   @param arg2 TODO - unsure, some sort of bitfield
+   @returns The total memory footprint of the provided [[basic]]"
+  (function basic symbol int int))
+(define-extern *max-dma* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity                         ;;
@@ -28803,11 +28832,11 @@
 ;; pov-camera                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
-;; (define-extern pov-camera-init-by-other function) ;; (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)
-;; (define-extern othercam-calc function) ;; (function float none)
-;; (define-extern othercam-running state) ;; (state othercam)
-;; (define-extern othercam-init-by-other function) ;; (function process-taskable symbol symbol symbol none :behavior othercam)
+(define-extern pov-camera-play-and-reposition (function art-joint-anim vector float none :behavior pov-camera))
+(define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)) ;; 
+(define-extern othercam-calc (function float float)) ;; 
+(define-extern othercam-running (state othercam))
+(define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam)) ;; (function process-taskable symbol symbol symbol none :behavior othercam)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; powerups                       ;;
@@ -28920,8 +28949,8 @@
 ;; (define-extern hud-init-by-other function) ;; (function int none :behavior hud)
 ;; (define-extern hide-hud function) ;; (function none)
 ;; (define-extern enable-hud function) ;; (function none)
-;; (define-extern hide-hud-quick function) ;; (function none)
-(define-extern show-hud (function object none)) ;;
+(define-extern hide-hud-quick (function symbol none))
+(define-extern show-hud (function object none))
 ;; (define-extern hud-hidden? function) ;; (function symbol)
 ;; (define-extern set-hud-piece-position! function)
 ;; (define-extern set-as-offset-from! function)
@@ -47489,12 +47518,12 @@
 ;; nav-graph-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type nav-node structure)
 (deftype nav-branch (structure)
-  ((node              UNKNOWN 2 :offset-assert 0)
-   (src-node          basic     :offset-assert 0)
-   (dest-node         basic     :offset-assert 4)
-   (temp-dest-node-id int32     :offset-assert 4)
+  ((node              nav-node 2 :offset-assert 0)
+   (src-node          nav-node     :offset 0)
+   (dest-node         nav-node     :offset 4)
+   (temp-dest-node-id int32     :offset 4)
    (speed-limit       uint8     :offset-assert 8)
    (density           uint8     :offset-assert 9)
    (clock-type        uint8     :offset-assert 10)
@@ -47510,11 +47539,20 @@
   (:methods
     (nav-branch-method-9 () none 9)
     (nav-branch-method-10 () none 10)
-    (nav-branch-method-11 () none 11)
-    (nav-branch-method-12 () none 12)
-    (nav-branch-method-13 () none 13)
-    (nav-branch-method-14 () none 14)
-    (nav-branch-method-15 () none 15)
+    (nav-branch-method-11
+      "TODO
+      @returns `density * 0.0078125` - is this some kind of trick?"
+      (_type_) float 11)
+    (nav-branch-method-12
+      "TODO
+      @returns `speed-limit * 1024.0`"
+      (_type_) float 12)
+    (nav-branch-method-13
+      "TODO
+       @returns `width * 256.0`"
+      (_type_) float 13)
+    (user-limit-reached? (_type_) symbol 14)
+    (nav-branch-method-15 "TODO - checks that `dest-node`'s `id` isn't #FFFF" (_type_) symbol 15)
     (nav-branch-method-16 () none 16)
     (nav-branch-method-17 () none 17)
     (nav-branch-method-18 () none 18)
@@ -47522,15 +47560,37 @@
     (nav-branch-method-20 () none 20)
     )
   )
-|#
 
-#|
+(defenum nav-node-flag-byte
+  "The same as [[nav-node-flag]] but more compact"
+  :type uint8
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4))
+
 (deftype nav-node (structure)
-  ()
+  (
+    (data uint32 8 :offset-assert 0 :score -999)
+    (position vector :inline :offset 0)
+    (pos-x float :offset 0)
+    (pos-y float :offset 4)
+    (pos-z float :offset 8)
+    (angle uint16 :offset 12)
+    (id uint16 :offset 14)
+    (radius uint8 :offset 16)
+    (branch-count int8 :offset 17)
+    (flags nav-node-flag-byte :offset 18)
+    (pad0 int8 1 :offset 19)
+    (branch-array uint32 :offset 20)
+    (nav-mesh-id uint32 :offset 24)
+    (level level :offset 28)
+  )
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; Failed to read fields.
   (:methods
     (nav-node-method-9 () none 9)
     (nav-node-method-10 () none 10)
@@ -47541,15 +47601,23 @@
     (nav-node-method-15 () none 15)
     (nav-node-method-16 () none 16)
     (nav-node-method-17 () none 17)
-    (nav-node-method-18 () none 18)
-    (nav-node-method-19 () none 19)
-    (nav-node-method-20 () none 20)
-    (nav-node-method-21 () none 21)
+    (get-position
+      "@param! ret The [[vector]] that is modified to hold the result
+       @returns the `position` [[vector]] with a `w` component of `1.0`"
+      (_type_ vector) vector 18)
+    (calc-sine-and-cosine!
+      "Computes the sine and cosine of the `angle`.
+       @param! ret The result <cosine, 0.0, -(sine), 1.0>
+       @returns Nothing, the result will be in `ret`"
+      (_type_ vector) vector 19)
+    (get-angle (_type_) float 20)
+    (nav-node-method-21
+      "TODO
+       @returns `radius * 1024.0"
+      (_type_) float 21)
     )
   )
-|#
 
-#|
 (deftype nav-graph-link (structure)
   ((id            uint32           :offset-assert 0)
    (dest-graph-id uint32           :offset-assert 4)
@@ -47562,13 +47630,11 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype nav-graph (basic)
   ((node-count   int16     :offset-assert 4)
    (branch-count int16     :offset-assert 6)
-   (node-array   uint32    :offset-assert 8)
+   (node-array   (inline-array nav-node)    :offset-assert 8)
    (branch-array uint32    :offset-assert 12)
    (link-count   int16     :offset-assert 16)
    (pad2         uint16    :offset-assert 18)
@@ -47577,7 +47643,7 @@
    (pad0         uint16    :offset-assert 26)
    (patched      basic     :offset-assert 28)
    (id           uint32    :offset-assert 32)
-   (pad1         UNKNOWN 6 :offset-assert 36)
+   (pad1         uint32 6 :offset-assert 36)
    )
   :method-count-assert 45
   :size-assert         #x3c
@@ -47615,13 +47681,16 @@
     (nav-graph-method-38 () none 38)
     (nav-graph-method-39 () none 39)
     (nav-graph-method-40 () none 40)
-    (nav-graph-method-41 () none 41)
+    (node-at-idx
+      "Get the `nav-node` at a given position.
+       @param idx The position in the `node-array` to return
+       @returns the [[nav-node]] if it can be found, otherwise return [[#f]]"
+      (_type_ int) nav-node 41)
     (nav-graph-method-42 () none 42)
     (nav-graph-method-43 () none 43)
     (nav-graph-method-44 () none 44)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

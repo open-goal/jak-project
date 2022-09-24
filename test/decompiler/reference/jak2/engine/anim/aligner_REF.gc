@@ -1,14 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: aligner.gc
-;; name in dgo: aligner
-;; dgos: ENGINE, GAME
-
-;; og:manually-modified:defmethod compute-alignment! align-control
-
-;; DECOMP BEGINS
-
+;; definition for method 9 of type align-control
+;; INFO: Used lq/sq
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod compute-alignment! align-control ((obj align-control))
@@ -29,23 +23,14 @@
             (((joint-control-command stack) (joint-control-command stack1))
              )
             (else
-                                        ; TODO - support decompiling the return-from-thread
-                                        ; TODO - properly decompile the `go`to
-                                        ; (when (!= (-> v1-5 type) art-joint-anim)
-                                        ;  (let
-                                        ;   ((t9-0 (the-as (function object object object object) enter-state))
-                                        ;    (a0-7 "align joint-anim")
-                                        ;    )
-                                        ;   (set! (-> pp next-state) process-drawable-art-error)
-                                        ;   (t9-0 a0-7 (the-as none a1-0) a2-0)
-                                        ;   )
-                                        ;  (.lw ra-0 return-from-thread s7-0)
-                                        ;  (.jr ra-0)
-                                        ;  (nop!)
-                                        ;  0
-                                        ;  )
-             0
-             )
+              (when (!= (-> v1-7 type) art-joint-anim)
+                (go process-drawable-art-error "align joint-anim")
+                (.lw ra-0 return-from-thread s7-0)
+                (.jr ra-0)
+                (nop!)
+                0
+                )
+              )
             )
           )
         )
@@ -139,17 +124,20 @@
     )
   )
 
+;; definition for method 12 of type align-control
 ;; WARN: Return type mismatch (inline-array transform) vs transform.
 (defmethod first-transform align-control ((obj align-control))
   "@returns The first of the two [[transforms]] held by the object"
   (the-as transform (-> obj transform))
   )
 
+;; definition for method 13 of type align-control
 (defmethod second-transform align-control ((obj align-control))
   "@returns The second of the two [[transforms]] held by the object"
   (-> obj transform 1)
   )
 
+;; definition for method 10 of type align-control
 (defmethod align! align-control ((obj align-control) (options align-opts) (x float) (y float) (z float))
   "As long as [[align-flags::0]] is not set call [[process-drawable::16]] on the process being controlled
        using the arguments passed to construct a [[vector]] - <`x`, `y`, `z`, 1.0>
@@ -172,6 +160,7 @@
   (-> obj process root)
   )
 
+;; definition for method 26 of type trsqv
 (defmethod set-and-limit-velocity trsqv ((obj trsqv) (unkBitfield int) (limit vector) (arg2 float))
   "TODO - arg1 is an bitfield of some sort"
   (let ((transv (-> obj transv)))
@@ -193,6 +182,7 @@
   obj
   )
 
+;; definition for method 11 of type align-control
 (defmethod align-vel-and-quat-only! align-control ((obj align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
   (when (zero? (logand (-> obj flags) (align-flags disabled)))
     (let ((s5-0 (-> obj delta)))
