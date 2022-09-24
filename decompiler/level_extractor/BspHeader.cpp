@@ -1355,7 +1355,6 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
                  word.symbol_name() == "collide-hash-fragment") {
         done = true;
       } else {
-        fmt::print("unknown next thing: {}\n", word.symbol_name());
         ASSERT(word.symbol_name() == "draw-node" || word.symbol_name() == "instance-shrubbery");
       }
     }
@@ -1779,10 +1778,14 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     return tree;
   }
 
-  if (ref.type->get_name() == "drawable-tree-instance-shrub") {
-    auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
-    tree->read_from_file(ref, dts, stats, version);
-    return tree;
+  if (version == GameVersion::Jak2) {
+    lg::warn("skipping drawable-tree-instance-shrub reading for jak 2");
+  } else {
+    if (ref.type->get_name() == "drawable-tree-instance-shrub") {
+      auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
+      tree->read_from_file(ref, dts, stats, version);
+      return tree;
+    }
   }
 
   if (ref.type->get_name() == "drawable-tree-collide-fragment") {

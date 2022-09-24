@@ -407,16 +407,27 @@
 
 
     (with-profiler 'background *profile-background-color*
-      ;; (init-background)
-      ;; (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen)))
+      ;; Run the background renderers!
+
+      ;; first, reset the background-work
+      (init-background)
+
+      ;; next, collect all levels that are registered with the engine
+      ;; this will call the drawable system's draw method on the levels which adds all
+      ;; trees known to the background system to *background-work*.
+      (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen)))
+
+      ;; execute all background drawing
       (reset! (-> *perf-stats* data (perf-stat-bucket background)))
-      ;; (finish-background)
+      (finish-background)
       (read! (-> *perf-stats* data (perf-stat-bucket background)))
-      ; (update-wait-stats (-> *perf-stats* data (perf-stat-bucket background))
-      ;                    (-> *background-work* wait-to-vu0)
-      ;                    (the-as uint 0)
-      ;                    (the-as uint 0)
-      ;                    )
+
+      ;; update VU stats for background draw.
+      (update-wait-stats (-> *perf-stats* data (perf-stat-bucket background))
+                         (-> *background-work* wait-to-vu0)
+                         (the-as uint 0)
+                         (the-as uint 0)
+                         )
       )
 
     (end-perf-stat-collection)
@@ -922,7 +933,7 @@
       ;(-> s4-0 global-buf)
 
       ;; post-draw buffer setup
-      ; (tfrag-vu1-init-buffers)
+      (tfrag-vu1-init-buffers)
       ; (tie-vu1-init-buffers)
       ; (merc-vu1-init-buffers)
       ; (emerc-vu1-init-buffers)

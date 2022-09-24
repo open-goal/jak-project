@@ -88,6 +88,13 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
   m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
 
+  init_bucket_renderer<TFragment>("tfrag-l0-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L0_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+  init_bucket_renderer<TFragment>("tfrag-l1-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L1_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+  init_bucket_renderer<TFragment>("tfrag-t-l0-alpha", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_T_L0_ALPHA,
+                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 0);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF1, 0x8000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,

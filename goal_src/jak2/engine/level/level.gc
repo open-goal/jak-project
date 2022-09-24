@@ -763,6 +763,11 @@
        )
       (else
         (start-debug "load-begin, no borrow~%")
+        (dotimes (i 7)
+          (start-debug "lev ~8S bits #b~b~%"
+                      (-> *level* level i name)
+                      (-> *level* level i memory-mask))
+          )
         ;; not borrowing, we have to find our own memory.
         ;; there's a bit mask to indicate which sections of memory are used, with 6 bits.
 
@@ -826,34 +831,34 @@
             (((load-buffer-mode medium))
              ;; need 3 bits in the mask.
              ;; like large, check both ends.
-             (when (memory-unused? *level* #xb000111)
+             (when (memory-unused? *level* #b000111)
                (set! bits-to-use 7)
                (goto cfg-83)
                )
-             (when (memory-unused? *level* #xb111000)
+             (when (memory-unused? *level* #b111000)
                (set! offset-in-level-heap 73) ;; weird sizing
-               (set! bits-to-use #xb111000)
+               (set! bits-to-use #b111000)
                (goto cfg-83)
                )
              )
             (((load-buffer-mode small-center))
              ;; only one place for us to go, in the center
-             (when (memory-unused? *level* #xb001100)
+             (when (memory-unused? *level* #b001100)
                (set! offset-in-level-heap 48)
-               (set! bits-to-use #xb1100)
+               (set! bits-to-use #b1100)
                (goto cfg-83)
                )
              )
             (((load-buffer-mode small-edge))
              ;; check one side
-             (when (memory-unused? *level* #xb000011)
-               (set! bits-to-use #xb000011)
+             (when (memory-unused? *level* #b000011)
+               (set! bits-to-use #b000011)
                (goto cfg-83)
                )
              ;; and the other
-             (when (memory-unused? *level* #xb110000)
+             (when (memory-unused? *level* #b110000)
                (set! offset-in-level-heap 98)
-               (set! bits-to-use #xb110000)
+               (set! bits-to-use #b110000)
                (goto cfg-83)
                )
              )
@@ -905,7 +910,7 @@
              0
              )
             (else
-              (start-debug "successfully found load: size #x~X, bits #b~6,'0B, offset ~D~%"
+              (start-debug "successfully found load: size #x~X, bits #x~X, offset ~D~%"
                            heap-size bits-to-use offset-in-level-heap)
               ;; found a spot, set mask.
               (set! (-> obj memory-mask) (the-as uint bits-to-use))
@@ -2148,7 +2153,7 @@
                   'demo
                   )
                  (*debug-segment*
-                   'prison
+                   'prison ;; 'ctysluma
                    )
                  (else
                    'title
@@ -2934,6 +2939,21 @@
     (if (and (not *debug-segment*) (< v1-186 #x10000))
         (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (sar v1-186 10))
         )
+    )
+
+  ;; pc port added
+  (let ((lev-names (new 'stack-no-clear 'array 'string 6)))
+    (dotimes (i 6)
+      (cond
+        ((= (-> obj level i status) 'inactive)
+         (set! (-> lev-names i) "none")
+         )
+        (else
+          (set! (-> lev-names i) (symbol->string (-> obj level i nickname)))
+          )
+        )
+      )
+    (__pc-set-levels lev-names)
     )
   0
   (none)

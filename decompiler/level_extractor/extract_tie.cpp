@@ -6,6 +6,9 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+// Jak 2 notes:
+// - proto flags are currently ignored, but stored.
+
 namespace decompiler {
 
 /// <summary>
@@ -339,6 +342,7 @@ struct TieProtoInfo {
   std::string name;
   std::vector<TieInstanceInfo> instances;
   bool uses_generic = false;
+  u32 proto_flag;
   float stiffness = 0;  // wind
   u32 generic_flag;
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
@@ -483,11 +487,10 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
   for (size_t i = 0; i < protos.size(); i++) {
     const auto& proto = protos[i];
     auto& info = out->at(i);
-    // the flags can either be 0 or 2.
-    ASSERT(proto.flags == 0 || proto.flags == 2);
+    info.proto_flag = proto.flags;
     // flag of 2 means it should use the generic renderer (determined from EE asm)
     // for now, we ignore this and use TIE on everything.
-    info.uses_generic = (proto.flags == 2);
+    info.uses_generic = (proto.flags == 2);  // possibly different in jak 2
     // for debug, remember the name
     info.name = proto.name;
     // wind "stiffness" nonzero value means it has the wind effect
