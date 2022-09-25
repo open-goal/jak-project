@@ -8,54 +8,56 @@
 (define-extern deactivate-progress (function none))
 (define-extern progress-allowed? (function symbol))
 (define-extern hide-progress-screen (function none))
+(declare-type menu-option basic)
+(declare-type menu-option-list basic)
 
 ;; DECOMP BEGINS
 
 (deftype progress (process-drawable)
-  ((current-options    basic              :offset-assert 200)
-   (menu-transition    float              :offset-assert 204)
-   (option-index       int32              :offset-assert 208)
-   (want-option-index  int32              :offset-assert 212)
-   (next-option-index  int32              :offset-assert 216)
-   (graphic-index      int32              :offset-assert 220)
-   (selected-option    basic              :offset-assert 224)
-   (current            basic              :offset-assert 228)
-   (next               basic              :offset-assert 232)
-   (ring-angle         float              :offset-assert 236)
-   (ring-want-angle    float              :offset-assert 240)
-   (init-quat          quaternion :inline :offset-assert 256)
-   (pos-transition     float              :offset-assert 272)
-   (anim-frame         float              :offset-assert 276)
-   (swing              float              :offset-assert 280)
-   (main-menu          basic              :offset-assert 284)
-   (state-stack        int32      5       :offset-assert 288)
-   (option-index-stack int32      5       :offset-assert 308)
-   (state-pos          int32              :offset-assert 328)
-   (secret-buying      basic              :offset-assert 332)
-   (secret-buy-choice  basic              :offset-assert 336)
-   (sliding            float              :offset-assert 340)
-   (sliding-off        float              :offset-assert 344)
-   (scanlines-alpha    float              :offset-assert 348)
-   (sliding-height     float              :offset-assert 352)
+  ((current-options    menu-option-list         :offset-assert 200)
+   (menu-transition    float                    :offset-assert 204)
+   (option-index       int32                    :offset-assert 208)
+   (want-option-index  int32                    :offset-assert 212)
+   (next-option-index  int32                    :offset-assert 216)
+   (graphic-index      int32                    :offset-assert 220)
+   (selected-option    symbol                   :offset-assert 224)
+   (current            symbol                   :offset-assert 228)
+   (next               symbol                   :offset-assert 232)
+   (ring-angle         float                    :offset-assert 236)
+   (ring-want-angle    float                    :offset-assert 240)
+   (init-quat          quaternion       :inline :offset-assert 256)
+   (pos-transition     float                    :offset-assert 272)
+   (anim-frame         float                    :offset-assert 276)
+   (swing              float                    :offset-assert 280)
+   (main-menu          symbol                   :offset-assert 284)
+   (state-stack        symbol           5       :offset-assert 288)
+   (option-index-stack int32            5       :offset-assert 308)
+   (state-pos          int32                    :offset-assert 328)
+   (secret-buying      basic                    :offset-assert 332)
+   (secret-buy-choice  basic                    :offset-assert 336)
+   (sliding            float                    :offset-assert 340)
+   (sliding-off        float                    :offset-assert 344)
+   (scanlines-alpha    float                    :offset-assert 348)
+   (sliding-height     float                    :offset-assert 352)
    )
   :heap-base #xf0
   :method-count-assert 33
   :size-assert         #x164
   :flag-assert         #x2100f00164
   (:methods
-    (progress-method-20 () none 20)
-    (progress-method-21 () none 21)
-    (progress-method-22 () none 22)
-    (progress-method-23 () none 23)
-    (progress-method-24 () none 24)
-    (progress-method-25 () none 25)
-    (progress-method-26 () none 26)
+    (come-in () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (go-away () _type_ :state 22)
+    (gone () _type_ :state 23)
+    (init-defaults (_type_) connection 24)
+    (progress-method-25 (_type_) none 25)
+    (progress-method-26 (_type_) object 26)
     (can-go-back? (_type_) symbol 27)
-    (progress-method-28 () none 28)
-    (progress-method-29 () none 29)
-    (progress-method-30 () none 30)
-    (progress-method-31 () none 31)
-    (progress-method-32 () none 32)
+    (progress-method-28 (_type_ symbol) symbol 28)
+    (progress-method-29 (_type_) int 29)
+    (progress-method-30 (_type_) int 30)
+    (set-next-state (_type_ symbol int) int 31)
+    (set-menu-options (_type_ symbol) int 32)
     )
   )
 
@@ -68,14 +70,14 @@
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (menu-option-method-9 () none 9)
+    (respond-progress (_type_ progress object symbol) int 9)
     (menu-option-method-10 () none 10)
     (menu-option-method-11 () none 11)
     )
   )
 
 (deftype menu-on-off-option (menu-option)
-  ((value-to-modify uint32  :offset-assert  48)
+  ((value-to-modify pointer  :offset-assert  48)
    )
   :method-count-assert 12
   :size-assert         #x34
@@ -83,7 +85,7 @@
   )
 
 (deftype menu-yes-no-option (menu-option)
-  ((value-to-modify uint32  :offset-assert  48)
+  ((value-to-modify pointer  :offset-assert  48)
    )
   :method-count-assert 12
   :size-assert         #x34
@@ -109,7 +111,7 @@
   )
 
 (deftype menu-slider-option (menu-option)
-  ((value-to-modify uint32               :offset-assert  48)
+  ((value-to-modify pointer              :offset-assert  48)
    (sprites         hud-sprite 5 :inline :offset-assert  64)
    )
   :method-count-assert 12
@@ -351,7 +353,7 @@
 
 (deftype secret-item-option (menu-option)
   ((cost        int32   :offset-assert  48)
-   (can-toggle  basic   :offset-assert  52)
+   (can-toggle  symbol  :offset-assert  52)
    (flag        uint32  :offset-assert  56)
    (avail-after uint16  :offset-assert  60)
    )
@@ -375,14 +377,14 @@
   )
 
 (deftype menu-option-list (basic)
-  ((y-center int32  :offset-assert   4)
-   (y-space  int32  :offset-assert   8)
-   (scale    float  :offset-assert  12)
-   (options  basic  :offset-assert  16)
+  ((y-center int32                :offset-assert   4)
+   (y-space  int32                :offset-assert   8)
+   (scale    float                :offset-assert  12)
+   (options  menu-option :dynamic :offset-assert  16)
    )
   :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
 
 (deftype menu-qr-option (menu-option)
@@ -419,8 +421,8 @@
   )
 
 (deftype menu-graphic-option (menu-option)
-  ((last-move       uint64  :offset-assert  48)
-   (value-to-modify uint32  :offset         60)
+  ((last-move       uint64   :offset-assert  48)
+   (value-to-modify pointer  :offset         60)
    )
   :method-count-assert 12
   :size-assert         #x40
@@ -457,8 +459,8 @@
   )
 
 (deftype menu-game-option (menu-option)
-  ((last-move       uint64  :offset-assert  48)
-   (value-to-modify uint32  :offset         60)
+  ((last-move       uint64   :offset-assert  48)
+   (value-to-modify pointer  :offset         60)
    )
   :method-count-assert 12
   :size-assert         #x40

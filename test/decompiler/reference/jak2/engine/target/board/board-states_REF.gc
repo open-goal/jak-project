@@ -1,39 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: board-states.gc
-;; name in dgo: board-states
-;; dgos: ENGINE, GAME
-
-(define-extern target-time-to-ground (function time-frame :behavior target))
-(define-extern jump-hit-ground-stuck? (function symbol :behavior target))
-(define-extern target-board-start (state object target))
-(define-extern target-board-handler (function process int symbol event-message-block object :behavior target))
-(define-extern ground-tween-initialize (function ground-tween-info uint uint uint uint uint uint ground-tween-info :behavior target))
-(define-extern ground-tween-update (function ground-tween-info float float none :behavior target))
-(define-extern can-play-stance-amibent? (function symbol :behavior target))
-(define-extern ja-blend-eval (function int :behavior process-drawable))
-(define-extern spawn-projectile (function type projectile-init-by-other-params process-tree dead-pool (pointer process)))
-(define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
-(define-extern target-grab (state target))
-(define-extern target-clone-anim (state handle target))
-(define-extern clone-anim (function handle symbol string none :behavior process-drawable))
-(define-extern lightning-probe-callback (function lightning-tracker none))
-(define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
-(define-extern target-death (state symbol target))
-(define-extern target-hit-effect (function attack-info none :behavior target))
-(define-extern demo? (function symbol))
-(define-extern hide-hud-quick (function symbol none))
-(define-extern *smack-mods* surface)
-(define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-(define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
-
-(declare-type grenade projectile)
-
-;; DECOMP BEGINS
-
-(format 0 "SKIP: target-board-clone-anim in board-states~%")
-
+;; definition for function vector-vector-angle
 (defun vector-vector-angle ((arg0 vector) (arg1 vector))
   (let ((s4-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'matrix))
@@ -46,6 +14,8 @@
     )
   )
 
+;; definition for function target-board-anim-trans
+;; WARN: Return type mismatch float vs none.
 (defbehavior target-board-anim-trans target ()
   (let ((f26-0 (deg-
                  (quaternion-vector-y-angle (-> self control dir-targ) (-> self control local-normal))
@@ -126,6 +96,9 @@
   (none)
   )
 
+;; definition for function target-board-spin-check
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defbehavior target-board-spin-check target ()
   (when (and (or (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
                  (and (cpad-hold? (-> self control unknown-cpad-info00 number) r1)
@@ -288,6 +261,8 @@
   (none)
   )
 
+;; definition for function target-board-halfpipe-trans
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-board-halfpipe-trans target ()
   (when (and (logtest? (focus-status halfpipe) (-> self focus-status)) *camera*)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -318,6 +293,8 @@
   (none)
   )
 
+;; definition for function target-board-resolve-points
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-board-resolve-points target ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (when (= (-> self board main mode) (joint-mod-mode rotate))
     (let ((f0-1 (fabs (-> self board troty-cum))))
@@ -343,6 +320,13 @@
   (none)
   )
 
+;; definition for function target-board-ground-check
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+;; ERROR: Function may read a register that is not set: a0
+;; ERROR: Function may read a register that is not set: a1
+;; ERROR: Function may read a register that is not set: a2
+;; ERROR: Function may read a register that is not set: a3
 (defbehavior target-board-ground-check target ()
   (local-vars (a0-4 object) (a1-0 object) (a2-3 number) (a3-0 number))
   (rlet ((acc :class vf)
@@ -501,6 +485,8 @@
     )
   )
 
+;; definition for function target-board-halfpipe-check
+;; INFO: Used lq/sq
 (defbehavior target-board-halfpipe-check target ()
   (local-vars (v0-3 collide-action))
   (let ((gp-0 (vector-flatten!
@@ -540,6 +526,7 @@
     )
   )
 
+;; definition for function target-board-jump-trans
 (defbehavior target-board-jump-trans target ()
   (when (and (!= (-> self state-time) (-> self clock frame-counter)) (jump-hit-ground-stuck?))
     (set! (-> self board jump-land-time) (-> self clock frame-counter))
@@ -562,6 +549,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-board-start (target)
   :event target-board-handler
   :exit target-board-exit
@@ -574,6 +562,7 @@
   :post target-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-stance (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -831,6 +820,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-duck-stance (target)
   :event (-> target-board-stance event)
   :enter (behavior ()
@@ -940,6 +930,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-jump (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (= arg2 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
@@ -1157,6 +1148,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-halfpipe (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -1429,6 +1421,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-falling (target)
   :event target-board-handler
   :enter (behavior ()
@@ -1512,6 +1505,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-jump-kick (target)
   :event target-board-handler
   :enter (behavior ()
@@ -1563,6 +1557,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-wall-kick (target)
   :event target-board-handler
   :enter (behavior ((arg0 vector) (arg1 float))
@@ -1612,6 +1607,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-flip (target)
   :event (-> target-board-jump event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1794,6 +1790,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-hold (target)
   :event (-> target-board-jump event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1998,6 +1995,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-trickx (target)
   :event (-> target-board-jump event)
   :enter (-> target-board-hold enter)
@@ -2107,6 +2105,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-hit-ground (target)
   :event target-board-handler
   :enter (behavior ()
@@ -2191,6 +2190,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-turn-to (target)
   :event target-board-handler
   :enter (behavior ((arg0 vector) (arg1 time-frame))
@@ -2263,6 +2263,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-ride-edge (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -2558,6 +2559,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-board-grenade (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -2691,6 +2693,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-get-on (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -2864,6 +2867,7 @@
   :post target-board-post
   )
 
+;; failed to figure out what this is:
 (defstate target-board-pegasus (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -2967,6 +2971,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-board-get-off (target)
   :event (-> target-board-get-on event)
   :enter (behavior ((arg0 object) (arg1 symbol))
@@ -3173,6 +3178,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-board-grab (target)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (cond
@@ -3237,34 +3243,36 @@
   :post target-board-post
   )
 
-;; (defstate target-board-clone-anim (target)
-;;   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-;;     (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
-;;         (set! (-> self control unknown-word04) (the-as uint #f))
-;;         )
-;;     ((-> target-board-grab event) arg0 arg1 arg2 arg3)
-;;     )
-;;   :enter (-> target-clone-anim enter)
-;;   :exit (behavior ()
-;;     (set! (-> self control unknown-vector04 y) (the-as float (-> self control unknown-word04)))
-;;     (set! (-> self control unknown-vector05 y) (-> self control unknown-vector04 y))
-;;     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
-;;     ((-> target-clone-anim exit))
-;;     ((-> target-board-start exit))
-;;     (vector-reset! (-> self control transv))
-;;     (none)
-;;     )
-;;   :code (behavior ((arg0 handle))
-;;     (set! (-> self control unknown-word04) (the-as uint (-> self control unknown-vector04 y)))
-;;     (set! (-> self control unknown-vector04 y) 0.0)
-;;     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
-;;     (clone-anim arg0 #t "")
-;;     (go target-board-stance)
-;;     (none)
-;;     )
-;;   :post target-no-ja-move-post
-;;   )
+;; failed to figure out what this is:
+(defstate target-board-clone-anim (target)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+        (set! (-> self control unknown-word04) (the-as uint #f))
+        )
+    ((-> target-board-grab event) arg0 arg1 arg2 arg3)
+    )
+  :enter (-> target-clone-anim enter)
+  :exit (behavior ()
+    (set! (-> self control unknown-vector04 y) (the-as float (-> self control unknown-word04)))
+    (set! (-> self control unknown-vector05 y) (-> self control unknown-vector04 y))
+    (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
+    ((-> target-clone-anim exit))
+    ((-> target-board-start exit))
+    (vector-reset! (-> self control transv))
+    (none)
+    )
+  :code (behavior ((arg0 handle))
+    (set! (-> self control unknown-word04) (the-as uint (-> self control unknown-vector04 y)))
+    (set! (-> self control unknown-vector04 y) 0.0)
+    (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
+    (clone-anim arg0 #t "")
+    (go target-board-stance)
+    (none)
+    )
+  :post target-no-ja-move-post
+  )
 
+;; failed to figure out what this is:
 (defstate target-board-hit (target)
   :event target-board-handler
   :exit (behavior ()
