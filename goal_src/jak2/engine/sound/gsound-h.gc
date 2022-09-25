@@ -64,38 +64,30 @@
   :bitfield #t
   :type uint8
   (sfx)
-  (sog1)
-  (sog2)
+  (music)
+  (dialog) ;; same as jak 1 dialog
   (sog3)
-  (sog4)
-  (sog5)
+  (ambient)
+  (dialog2) ;; more dialog
   (sog6)
   (sog7)
-  ; (sfx)
-  ; (music)
-  ; (dialog)
-  ; (sog3)
-  ; (ambient)
-  ; (sog5)
-  ; (sog6)
-  ; (sog7)
   )
 
 (defenum sound-mask
   :bitfield #t
   :type uint16
-  (volume)
-  (pitch)
-  (bend)
-  (unused)
-  (time)
-  (trans)
-  (fo-min)
-  (fo-max)
-  (fo-curve)
-  (sm09)
-  (sm10)
-  (sm11)
+  (volume)    ;; 1
+  (pitch)     ;; 2
+  (bend)      ;; 4
+  (unused)    ;; 8
+  (time)      ;; 10
+  (trans)     ;; 20
+  (fo-min)    ;; 40
+  (fo-max)    ;; 80
+  (fo-curve)  ;; 100
+  (sm-unk1)
+  (sm-unk2)
+  (reg0)
   )
 
 (defenum stream-status
@@ -105,12 +97,12 @@
   (ststatus-one         1) ;; another way to be playing
   (ststatus-two         2)
   (ststatus-three       3)
-  (ststatus-four        4) ;; is playing?
+  (ststatus-four        4) ;; normal playing
   (ststatus-five        5)
   (ststatus-six         6) ;; another way to be playing.
   (ststatus-seven       7)
   (ststatus-eight       8)
-  (ststatus-nine        9)
+  (ststatus-nine        9) ;; stopping?
   )
 
 (defenum stereo-mode
@@ -136,6 +128,40 @@
       )
     `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
     )
+  )
+
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (fo-curve 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? fo-curve) (cons! snd-mask 'fo-curve))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :fo-curve ,fo-curve
+          :mask (sound-mask ,@snd-mask)
+          ))
   )
 
 ;; DECOMP BEGINS

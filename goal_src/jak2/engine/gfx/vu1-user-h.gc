@@ -5,9 +5,21 @@
 ;; name in dgo: vu1-user-h
 ;; dgos: ENGINE, GAME
 
-;; The DMA buckets
-;; name format:
-;;  <what renderer>-<what level>-<what tpage>
+;; this file contains shared enums for the various renderers.
+
+;; Renderers will output data to "buckets", which are later spliced together into a single
+;; very large dma chain.
+
+;; With the exception of a few special case buckets, there's a bucket for
+;; <renderer>-<special_modes>-<draw-level>-<tpage>
+;; unlike jak 1, the "draw level index" is separate from the normal level index.
+
+;; for example: tie-s-l1-tfrag
+;;  - will be filled by the TIE renderer
+;;  - special "s" (scissor) variant of TIE
+;;  - using geometry of level 1
+;;  - while the tfrag tpage is in VRAM
+
 (defenum bucket-id
   :type int32
   :bitfield #f
@@ -397,7 +409,7 @@
   (debug3              326)
   )
 
-
+;; bit mask to select a renderer
 (defenum vu1-renderer-mask
   :type uint64
   :bitfield #t
@@ -438,6 +450,7 @@
   (depth-cue)
   )
 
+;; bit mask to select tpages for upload
 (defenum texture-enable-mask
   :type uint64
   :bitfield #t
@@ -460,12 +473,14 @@
   (tex16 16)
   )
 
+;; also used in u32's sometimes
 (defenum texture-enable-mask-u32
   :type uint32
   :bitfield #t
   :copy-entries texture-enable-mask
   )
 
+;; texture page kinds for Jak 2. Pris2 is the actual name.
 (defenum tpage-category
   :type int8
   (tfrag  0)

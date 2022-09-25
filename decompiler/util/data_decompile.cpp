@@ -692,7 +692,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
   if (bend) {
     throw std::runtime_error("static sound-spec bend was not zero.");
   }
-  if (fo_curve) {
+  if (fo_curve && file->version == GameVersion::Jak1) {
     throw std::runtime_error("static sound-spec fo_curve was not zero.");
   }
   if (priority) {
@@ -743,6 +743,10 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
     implicit_mask |= 1 << 7;
     the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-max {}", fo_max)));
   }
+  if (fo_curve != 0) {
+    implicit_mask |= (1 << 8);
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-curve {}", fo_curve)));
+  }
 
   if (mask < implicit_mask) {
     throw std::runtime_error(
@@ -781,16 +785,18 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   // temp hack!!
-  if (use_fancy_macros && file && file->version == GameVersion::Jak1) {
-    if (type == TypeSpec("sp-field-init-spec")) {
-      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-      return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+  if (use_fancy_macros && file) {
+    if (file->version == GameVersion::Jak1) {
+      if (type == TypeSpec("sp-field-init-spec")) {
+        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
+        return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+      }
+      if (type == TypeSpec("sparticle-group-item")) {
+        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
+        return decompile_sparticle_group_item(type, label, labels, words, ts, file);
+      }
     }
-    if (type == TypeSpec("sparticle-group-item")) {
-      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-      return decompile_sparticle_group_item(type, label, labels, words, ts, file);
-    }
-    if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {
+    if (type == TypeSpec("sound-spec")) {
       return decompile_sound_spec(type, label, labels, words, ts, file);
     }
   }
