@@ -6574,9 +6574,9 @@
 (defenum game-text-id
   :type uint32
   :bitfield #f
-;; GAME-TEXT-ID ENUM BEGINS
   (pause 257)
-;; GAME-TEXT-ID ENUM ENDS
+  (subtitles-enabled 781)
+  (subtitles-disabled 782)
 )
 
 
@@ -7848,15 +7848,16 @@
 ;; +++main-h:scene-controls
 (defenum scene-controls
   :type int64
-  (all-off 0)
-  (channel 1)
-  (anim-name 2)
-  (dma-size 4)
-  (bounds-spheres 8)
-  (actors 16)
-  (actor-marks 32)
-  (special-fma-spheres 64)
-  (all-on 95))
+  :bitfield #t
+  (all-off)
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres)
+  (all-on))
 ;; ---main-h:scene-controls
 
 (define-extern *display-scene-control* scene-controls)
@@ -8248,7 +8249,6 @@
   :method-count-assert 19
   :size-assert         #x20
   :flag-assert         #x1300000020
-  ;; Failed to read fields.
   (:methods
     (drawable-tree-region-prim-method-17 () none 17)
     (debug-print (_type_ vector object) none 18)
@@ -8257,7 +8257,7 @@
 
 
 (deftype drawable-inline-array-region-prim (drawable-inline-array)
-  ((data drawable-region-prim 1 :inline)
+  ((data drawable-region-prim 1 :inline :offset-assert 32)
    (pad uint8 4))
   :flag-assert #x1100000044
   )
@@ -11843,7 +11843,8 @@
   (reverse-races)
   (hero-mode)
   (big-head)
-  (little-head))
+  (little-head)
+  (game-secret-unknown))
 
 (deftype game-info (basic)
   ((mode                   symbol               :offset-assert   4)
@@ -14173,13 +14174,14 @@
 ;; scene-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type scene-player basic)
 (deftype scene-actor (basic)
-  ((name                basic   :offset-assert 4)
+  ((name                string   :offset-assert 4)
    (level               basic   :offset-assert 8)
-   (art-group           basic   :offset-assert 12)
-   (prefix              basic   :offset-assert 16)
-   (draw-frames         basic   :offset-assert 20)
-   (scissor-frames      basic   :offset-assert 24)
+   (art-group           string   :offset-assert 12)
+   (prefix              string   :offset-assert 16)
+   (draw-frames         pair   :offset-assert 20) ;; some form of pair?
+   (scissor-frames      pair   :offset-assert 24)
    (camera              int16   :offset-assert 28)
    (light-index         uint8   :offset-assert 30)
    (shadow-mask         uint8   :offset-assert 31)
@@ -14190,36 +14192,36 @@
    (shadow-volume-joint basic   :offset-assert 48)
    (draw-seg            uint64  :offset-assert 56)
    (no-draw-seg         uint64  :offset-assert 64)
-   (process             uint64  :offset-assert 72)
+   (process             handle  :offset-assert 72)
    )
   :method-count-assert 10
   :size-assert         #x50
   :flag-assert         #xa00000050
   (:methods
-    (scene-actor-method-9 () none 9)
+    (scene-actor-method-9 (_type_ scene-player) (pointer process) 9)
     )
   )
 
 (deftype scene (art-group)
   ((mask-to-clear    uint32           :offset-assert 32)
-   (entity           basic            :offset-assert 36)
-   (art-group        basic            :offset-assert 40)
-   (anim             basic            :offset-assert 44)
+   (entity           string            :offset-assert 36)
+   (art-group        string            :offset-assert 40)
+   (anim             string            :offset-assert 44)
    (parts            int32            :offset-assert 48)
    (command-list     basic            :offset-assert 52)
-   (cut-list         basic            :offset-assert 56)
+   (cut-list         pair            :offset-assert 56)
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
-   (draw-target      basic            :offset-assert 88)
+   (draw-target      level-load-info            :offset-assert 88)
    (abort            basic            :offset-assert 92)
-   (actor            basic            :offset-assert 96)
-   (load-point       basic            :offset-assert 100)
-   (end-point        basic            :offset-assert 104)
+   (actor            (array scene-actor)            :offset-assert 96)
+   (load-point       string            :offset-assert 100)
+   (end-point        string            :offset-assert 104)
    (borrow           basic            :offset-assert 108)
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
-   (music-volume     float            :offset-assert 120)
+  (music-volume     float            :offset-assert 120)
    (blackout-end     basic            :offset-assert 124)
    (peaceful         basic            :offset-assert 128)
    (music-delay      float            :offset-assert 132)
@@ -14230,26 +14232,26 @@
   :size-assert         #x8e
   :flag-assert         #x110000008e
   (:methods
-    (scene-method-15 () none 15)
-    (scene-method-16 () none 16)
+    (scene-method-15 (_type_ spool-anim) none 15)
+    (scene-method-16 (_type_) _type_ 16)
     )
   )
 
 (deftype scene-player (process-drawable)
-  ((scene-list           basic              :offset-assert 200)
-   (scene                basic              :offset-assert 204)
+  ((scene-list           (pointer symbol)              :offset-assert 200)
+   (scene                scene              :offset-assert 204)
    (scene-index          int32              :offset-assert 208)
-   (anim                 basic              :offset-assert 212)
-   (next-anim            basic              :offset-assert 216)
-   (camera               uint64             :offset-assert 224)
-   (main-entity          basic              :offset-assert 232)
+   (anim                 spool-anim              :offset-assert 212)
+   (next-anim            spool-anim              :offset-assert 216)
+   (camera               handle             :offset-assert 224)
+   (main-entity          entity-actor              :offset-assert 232)
    (wait                 basic              :offset-assert 236)
    (old-target-pos       transformq :inline :offset-assert 240)
    (pre-cut-frame        basic              :offset-assert 288)
-   (preload-continue     basic              :offset-assert 292)
+   (preload-continue     string              :offset-assert 292)
    (dma-max              uint32             :offset-assert 296)
    (gui-id               uint32             :offset-assert 300)
-   (aborted?             basic              :offset-assert 304)
+   (aborted?             symbol              :offset-assert 304)
    (scene-start-time     time-frame             :offset-assert 312)
    (targ-speed           float              :offset-assert 320)
    (cur-speed            float              :offset-assert 324)
@@ -14263,12 +14265,12 @@
   :size-assert         #x178
   :flag-assert         #x1a01000178
   (:methods
-    (scene-player-method-20 () none 20)
-    (scene-player-method-21 () none 21)
-    (scene-player-method-22 () none 22)
-    (scene-player-method-23 () none 23)
-    (scene-player-method-24 () none 24)
-    (scene-player-method-25 () none 25)
+    (wait (symbol) _type_ :state 20)
+    (release () _type_ :state 21)
+    (play-anim () _type_ :state 22)
+    (scene-player-method-23 (_type_ string symbol) none 23)
+    (scene-player-method-24 (_type_ basic symbol) scene 24)
+    (scene-player-method-25 (_type_ float) none 25)
     )
   )
 
@@ -18246,7 +18248,7 @@
   :size-assert         #x2d60
   :flag-assert         #xd00002d60
   (:methods
-    (region-prim-area-method-9 () none 9)
+    (region-prim-area-method-9 (_type_) none 9)
     (region-prim-area-method-10 () none 10)
     (region-prim-area-method-11 () none 11)
     (region-prim-area-method-12 () none 12)
@@ -22994,7 +22996,7 @@
   )
 |#
 
-;; (define-extern unpack-comp-rle function) ;; (function (pointer int8) (pointer int8) none)
+(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) none)) ;; 
 ;; (define-extern unpack-comp-huf function) ;; (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none)
 (define-extern unpack-comp-lzo (function object object none))
 ;; (define-extern pack-comp-rle function)
@@ -23770,7 +23772,7 @@
 ;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
 (define-extern auto-save-command (function symbol int int process-tree symbol none))
 (define-extern auto-save-check (function none))
-;; (define-extern auto-save-user function)
+(define-extern auto-save-user (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
@@ -26234,7 +26236,7 @@
 ;; (define-extern can-display-query? function)
 (define-extern talker-surpress! (function none))
 ;; (define-extern talker-displayed? function)
-;; (define-extern kill-current-talker function)
+(define-extern kill-current-talker (function symbol pair symbol none)) ;; see (exit play-anim scene-player)
 (define-extern string->talker-speech (function string talker-speech-class))
 (define-extern talker-spawn-func (function talker-speech-class process-tree vector basic int))
 ;; (define-extern talker-init function)
@@ -28315,7 +28317,7 @@
 (define-extern entity-task-complete-off (function entity none))
 (define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
 (define-extern find-nearest-entity (function vector type entity))
-(define-extern entity-speed-test (function string none))
+(define-extern entity-speed-test (function string entity))
 (define-extern dump-entity-remap (function object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28798,19 +28800,12 @@
 ;; scene                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype scene-stage (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
-  :flag-assert         #xf00000080
-  ;; Failed to read fields.
-  (:methods
-    )
-  )
-|#
+  :flag-assert         #xf00000080)
 
-#|
 (deftype subtitle-work (structure)
   ((draw-tmpl dma-gif-packet :inline :offset-assert 0)
    (color0    vector4w       :inline :offset-assert 32)
@@ -28820,13 +28815,12 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-;; (define-extern scene-decode-continue function)
-;; (define-extern scene-lookup function)
-;; (define-extern *subtitle-work* object)
-;; (define-extern draw-subtitle-image function)
-;; (define-extern process-drawable-draw-subtitles function)
+(define-extern scene-decode-continue (function basic continue-point))
+(define-extern scene-lookup "TODO - basic can be a string or a scene" (function basic scene))
+(define-extern *subtitle-work* subtitle-work)
+(define-extern draw-subtitle-image (function subtitle-image font-context pointer))
+(define-extern process-drawable-draw-subtitles (function none :behavior process-drawable))
 (define-extern scene-player-init (function string symbol object none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
