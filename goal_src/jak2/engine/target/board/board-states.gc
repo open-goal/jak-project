@@ -32,8 +32,6 @@
 
 ;; DECOMP BEGINS
 
-(format 0 "SKIP: target-board-clone-anim in board-states~%")
-
 (defun vector-vector-angle ((arg0 vector) (arg1 vector))
   (let ((s4-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'matrix))
@@ -46,6 +44,7 @@
     )
   )
 
+;; WARN: Return type mismatch float vs none.
 (defbehavior target-board-anim-trans target ()
   (let ((f26-0 (deg-
                  (quaternion-vector-y-angle (-> self control dir-targ) (-> self control local-normal))
@@ -126,6 +125,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior target-board-spin-check target ()
   (when (and (or (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
                  (and (cpad-hold? (-> self control unknown-cpad-info00 number) r1)
@@ -343,6 +343,11 @@
   (none)
   )
 
+;; WARN: Return type mismatch symbol vs none.
+;; ERROR: Function may read a register that is not set: a0
+;; ERROR: Function may read a register that is not set: a1
+;; ERROR: Function may read a register that is not set: a2
+;; ERROR: Function may read a register that is not set: a3
 (defbehavior target-board-ground-check target ()
   (local-vars (a0-4 object) (a1-0 object) (a2-3 number) (a3-0 number))
   (rlet ((acc :class vf)
@@ -950,7 +955,7 @@
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
     (local-vars
       (sv-144 (function vector entity-actor skeleton-group vector none :behavior manipy))
-      (sv-160 entity)
+      (sv-160 entity-actor)
       )
     (if (= arg2 'hit)
         (set! arg2 #f)
@@ -3237,33 +3242,33 @@
   :post target-board-post
   )
 
-;; (defstate target-board-clone-anim (target)
-;;   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-;;     (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
-;;         (set! (-> self control unknown-word04) (the-as uint #f))
-;;         )
-;;     ((-> target-board-grab event) arg0 arg1 arg2 arg3)
-;;     )
-;;   :enter (-> target-clone-anim enter)
-;;   :exit (behavior ()
-;;     (set! (-> self control unknown-vector04 y) (the-as float (-> self control unknown-word04)))
-;;     (set! (-> self control unknown-vector05 y) (-> self control unknown-vector04 y))
-;;     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
-;;     ((-> target-clone-anim exit))
-;;     ((-> target-board-start exit))
-;;     (vector-reset! (-> self control transv))
-;;     (none)
-;;     )
-;;   :code (behavior ((arg0 handle))
-;;     (set! (-> self control unknown-word04) (the-as uint (-> self control unknown-vector04 y)))
-;;     (set! (-> self control unknown-vector04 y) 0.0)
-;;     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
-;;     (clone-anim arg0 #t "")
-;;     (go target-board-stance)
-;;     (none)
-;;     )
-;;   :post target-no-ja-move-post
-;;   )
+(defstate target-board-clone-anim (target)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+        (set! (-> self control unknown-word04) (the-as uint #f))
+        )
+    ((-> target-board-grab event) arg0 arg1 arg2 arg3)
+    )
+  :enter (-> target-clone-anim enter)
+  :exit (behavior ()
+    (set! (-> self control unknown-vector04 y) (the-as float (-> self control unknown-word04)))
+    (set! (-> self control unknown-vector05 y) (-> self control unknown-vector04 y))
+    (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
+    ((-> target-clone-anim exit))
+    ((-> target-board-start exit))
+    (vector-reset! (-> self control transv))
+    (none)
+    )
+  :code (behavior ((arg0 handle))
+    (set! (-> self control unknown-word04) (the-as uint (-> self control unknown-vector04 y)))
+    (set! (-> self control unknown-vector04 y) 0.0)
+    (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
+    (clone-anim arg0 #t "")
+    (go target-board-stance)
+    (none)
+    )
+  :post target-no-ja-move-post
+  )
 
 (defstate target-board-hit (target)
   :event target-board-handler
