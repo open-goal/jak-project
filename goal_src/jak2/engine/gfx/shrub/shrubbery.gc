@@ -456,7 +456,7 @@
   (set! (-> *instance-shrub-work* wind-vectors) (-> tree info wind-vectors))
   (set! (-> *instance-shrub-work* wait-to-spr) (the-as uint 0))
   (set! (-> *instance-shrub-work* wait-from-spr) (the-as uint 0))
-  (when (logtest? (vu1-renderer-mask rn15 rn16 rn17 rn18) (-> *display* vu1-enable-user))
+  (when (logtest? (vu1-renderer-mask shrubbery shrub-near billboard shrubbery-vanish) (-> *display* vu1-enable-user))
     (let* ((proto-array (-> tree info prototype-inline-array-shrub))
            (proto-array-len (-> proto-array length))
            (proto-array-data (-> proto-array data))
@@ -473,18 +473,62 @@
         (when (nonzero? (-> tree length))
           (let ((dma-start (-> *display* frames (-> *display* on-screen) global-buf base)))
 
+            ;; remove PS2 drawing
+            #|
             (reset! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
             (draw-inline-array-instance-shrub
-              dma-buff
-              (&+ (-> tree data 0) 32)
-              (-> (the-as drawable-group (-> tree data 0)) length)
-              proto-array-data
-              )
+            dma-buff
+            (&+ (-> tree data 0) 32)
+            (-> (the-as drawable-group (-> tree data 0)) length)
+            proto-array-data
+            )
             (read! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
 
             (reset! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
             (draw-prototype-inline-array-shrub proto-array-len proto-array-data)
             (read! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
+            |#
+
+            ;; PC port drawing for shrubs
+            (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask shrubbery))
+              (let* ((shrub-dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
+                     (dma-start (-> shrub-dma-buff base)))
+                (add-pc-tfrag3-data shrub-dma-buff (-> *level* draw-level *draw-index*))
+                (let ((a3-22 (-> shrub-dma-buff base)))
+                  (let ((v1-57 (the-as object (-> shrub-dma-buff base))))
+                    (set! (-> (the-as dma-packet v1-57) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                    (set! (-> (the-as dma-packet v1-57) vif0) (new 'static 'vif-tag))
+                    (set! (-> (the-as dma-packet v1-57) vif1) (new 'static 'vif-tag))
+                    (set! (-> shrub-dma-buff base) (&+ (the-as pointer v1-57) 16))
+                    )
+                  (dma-bucket-insert-tag
+                    (-> *display* frames (-> *display* on-screen) bucket-group)
+                    (cond
+                      ((zero? *draw-index*)
+                       (bucket-id shrub-l0-shrub)
+                       )
+                      ((= *draw-index* 1)
+                       (bucket-id shrub-l1-shrub)
+                       )
+                      ((= *draw-index* 2)
+                       (bucket-id shrub-l2-shrub)
+                       )
+                      ((= *draw-index* 3)
+                       (bucket-id shrub-l3-shrub)
+                       )
+                      ((= *draw-index* 4)
+                       (bucket-id shrub-l4-shrub)
+                       )
+                      (else
+                        (bucket-id shrub-l5-shrub)
+                        )
+                      )
+                    dma-start
+                    (the-as (pointer dma-tag) a3-22)
+                    )
+                  )
+                )
+              )
 
             (let ((v1-33 *dma-mem-usage*))
               (when (nonzero? v1-33)
@@ -529,12 +573,12 @@
   )
 
 (defmethod collect-stats drawable-tree-instance-shrub ((obj drawable-tree-instance-shrub))
-  (when (logtest? (vu1-renderer-mask rn15 rn16 rn17 rn18) (-> *display* vu1-enable-user))
+  (when (logtest? (vu1-renderer-mask shrubbery shrub-near billboard shrubbery-vanish) (-> *display* vu1-enable-user))
     (let* ((v1-4 (-> obj info prototype-inline-array-shrub))
            (gp-0 (the-as object (-> v1-4 data)))
            )
       (countdown (s5-0 (-> v1-4 length))
-        (when (logtest? (vu1-renderer-mask rn16) (-> *display* vu1-enable-user))
+        (when (logtest? (vu1-renderer-mask shrub-near) (-> *display* vu1-enable-user))
           (let ((v1-8 (-> (the-as prototype-bucket-shrub gp-0) count 0))
                 (a1-2 (-> (the-as prototype-bucket-shrub gp-0) geometry 0))
                 )
@@ -547,7 +591,7 @@
               )
             )
           )
-        (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask rn15))
+        (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask shrubbery))
           (let ((s4-0 (-> (the-as prototype-bucket-shrub gp-0) count 1))
                 (v1-14 (-> (the-as prototype-bucket-shrub gp-0) geometry 1))
                 )
@@ -572,7 +616,7 @@
               )
             )
           )
-        (when (logtest? (vu1-renderer-mask rn18) (-> *display* vu1-enable-user))
+        (when (logtest? (vu1-renderer-mask shrubbery-vanish) (-> *display* vu1-enable-user))
           (let ((s4-1 (-> (the-as prototype-bucket-shrub gp-0) count 2))
                 (v1-32 (-> (the-as prototype-bucket-shrub gp-0) geometry 2))
                 )
@@ -597,7 +641,7 @@
               )
             )
           )
-        (when (logtest? (vu1-renderer-mask rn17) (-> *display* vu1-enable-user))
+        (when (logtest? (vu1-renderer-mask billboard) (-> *display* vu1-enable-user))
           (let ((v1-50 (-> (the-as prototype-bucket-shrub gp-0) count 3)))
             (when (nonzero? v1-50)
               (+! (-> *terrain-stats* billboard groups) 1)
