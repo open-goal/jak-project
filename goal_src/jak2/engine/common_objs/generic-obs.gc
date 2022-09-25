@@ -5,5 +5,91 @@
 ;; name in dgo: generic-obs
 ;; dgos: ENGINE, GAME
 
+(define-extern ja-post (function none :behavior process-drawable))
+(define-extern merc-blend-shape (function process-drawable object))
+(define-extern merc-eye-anim (function process-drawable none))
+
 ;; DECOMP BEGINS
 
+(defbehavior clone-anim-once process-drawable ((arg0 handle) (arg1 symbol) (arg2 string))
+  (logclear! (-> self skel status) (joint-control-status valid-spooled-frame))
+  (let ((gp-0 (handle->process arg0)))
+    (if gp-0
+        (joint-control-copy! (-> self skel) (-> (the-as process-drawable gp-0) skel))
+        )
+    (cond
+      ((and (the-as process-drawable gp-0) (joint-control-remap!
+                                             (-> self skel)
+                                             (-> self draw art-group)
+                                             (-> (the-as process-drawable gp-0) draw art-group)
+                                             '()
+                                             0
+                                             arg2
+                                             )
+            )
+       (when arg1
+         (let* ((s5-1 (-> self root))
+                (a0-7 (if (type? s5-1 collide-shape)
+                          (the-as collide-shape s5-1)
+                          )
+                      )
+                )
+           (if a0-7
+               (collide-shape-method-29 a0-7 (-> (the-as process-drawable gp-0) root trans))
+               (set! (-> self root trans quad) (-> (the-as process-drawable gp-0) root trans quad))
+               )
+           )
+         (quaternion-copy! (-> self root quat) (-> (the-as process-drawable gp-0) root quat))
+         )
+       (if (logtest? (-> (the-as process-drawable gp-0) skel status) (joint-control-status valid-spooled-frame))
+           (logior! (-> self skel status) (joint-control-status valid-spooled-frame))
+           )
+       (logclear! (-> self draw status) (draw-control-status no-draw no-draw-temp uninited))
+       (if (or (zero? (-> self skel active-channels)) (not (-> self skel root-channel 0 frame-group)))
+           (logior! (-> self draw status) (draw-control-status no-draw-temp))
+           )
+       (let* ((gp-1 self)
+              (v1-38 (if (type? gp-1 manipy)
+                         gp-1
+                         )
+                     )
+              )
+         (if (and v1-38 (not (-> (the-as manipy v1-38) draw?)))
+             (logior! (-> self draw status) (draw-control-status no-draw-temp))
+             )
+         )
+       (joint-control-method-10 (-> self skel))
+       (draw-control-method-14 (-> self draw) (-> self node-list) (-> self skel))
+       (let ((a0-22 (-> self skel effect)))
+         (if a0-22
+             ((method-of-object a0-22 effect-control-method-9))
+             )
+         )
+       (if (logtest? (-> self skel status) (joint-control-status blend-shape blend-shape-valid))
+           (merc-blend-shape self)
+           )
+       (if (logtest? (-> self skel status) (joint-control-status eye-anim-valid eye-anim))
+           (merc-eye-anim self)
+           )
+       )
+      (else
+        (set! (-> self skel active-channels) (the-as uint 0))
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (ja-post)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defbehavior clone-anim process-drawable ((arg0 handle) (arg1 symbol) (arg2 string))
+  (ja-post)
+  (while (handle->process arg0)
+    (clone-anim-once arg0 #t arg2)
+    (suspend)
+    )
+  (logclear! (-> self skel status) (joint-control-status valid-spooled-frame))
+  0
+  (none)
+  )

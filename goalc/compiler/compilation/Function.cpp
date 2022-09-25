@@ -204,6 +204,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (args.has_named("behavior")) {
       const std::string behavior_type = symbol_string(args.get_named("behavior"));
       auto self_var = new_func_env->make_gpr(m_ts.make_typespec(behavior_type));
+      self_var->mark_as_settable();
       IRegConstraint constr;
       constr.contrain_everywhere = true;
       constr.desired_register = emitter::gRegInfo.get_process_reg();
