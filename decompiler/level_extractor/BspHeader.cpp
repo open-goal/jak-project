@@ -410,7 +410,7 @@ void TFragment::read_from_file(TypedRef ref,
     ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
     ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
   } else {
-    lg::warn("Skipping padding check in TFragment");
+    ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
   }
 }
 
@@ -1355,7 +1355,6 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
                  word.symbol_name() == "collide-hash-fragment") {
         done = true;
       } else {
-        fmt::print("unknown next thing: {}\n", word.symbol_name());
         ASSERT(word.symbol_name() == "draw-node" || word.symbol_name() == "instance-shrubbery");
       }
     }
@@ -1417,7 +1416,7 @@ void InstanceShrubbery::read_from_file(TypedRef ref,
   id = read_plain_data_field<s16>(ref, "id", dts);
   origin.read_from_file(get_field_ref(ref, "origin", dts));
   wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
-  color_indices = read_plain_data_field<u32>(ref, "color-indices", dts);
+  color_indices = read_plain_data_field<u32>(ref, "color", dts);
   flat_normal.read_from_file(get_field_ref(ref, "flat-normal", dts));
 }
 

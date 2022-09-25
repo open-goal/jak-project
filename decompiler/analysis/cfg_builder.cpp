@@ -741,7 +741,8 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       if (branch_info_i.written_and_unused.find(reg->reg()) ==
           branch_info_i.written_and_unused.end()) {
         lg::error("Branch delay register used improperly: {}", reg->to_string(func.ir2.env));
-        throw std::runtime_error("Bad delay slot in clean_up_cond_no_else_final");
+        throw std::runtime_error("Bad delay slot in clean_up_cond_no_else_final: OP " +
+                                 std::to_string(branch->op()->op_id()));
       }
       // ASSERT(branch_info_i.written_and_unused.find(reg->reg()) !=
       //       branch_info_i.written_and_unused.end());

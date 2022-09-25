@@ -72,6 +72,13 @@ TEST(VuDisasm, SpriteGlow_Jak2) {
   EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/sprite-glow"));
 }
 
+TEST(VuDisasm, Tie_Jak2) {
+  auto data = get_test_data("jak2/tie");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/tie"));
+}
+
 TEST(VuDisasm, SpriteDistort) {
   auto data = get_test_data("sprite-distort");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);

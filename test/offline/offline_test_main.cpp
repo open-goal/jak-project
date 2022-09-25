@@ -290,7 +290,8 @@ std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
 }
 
 std::vector<DecompilerFile> find_files(const std::string& game_name,
-                                       const std::vector<std::string>& dgos) {
+                                       const std::vector<std::string>& dgos,
+                                       const std::string& single_file) {
   std::vector<DecompilerFile> result;
 
   auto base_dir =
@@ -300,7 +301,9 @@ std::vector<DecompilerFile> find_files(const std::string& game_name,
   for (const auto& path : ref_file_paths) {
     auto ref_name = path.filename().replace_extension().string();
     ref_name.erase(ref_name.begin() + ref_name.find("_REF"), ref_name.end());
-    ref_file_names[ref_name] = path;
+    if (single_file.empty() || ref_name == single_file) {
+      ref_file_names[ref_name] = path;
+    }
   }
 
   lg::info("Found {} reference files", ref_file_paths.size());
@@ -397,6 +400,7 @@ int main(int argc, char* argv[]) {
   std::string game_name;
   // Useful for testing in debug mode (dont have to wait for everything to finish)
   int max_files = -1;
+  std::string single_file = "";
 
   CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
   app.add_option("--iso_data_path", iso_data_path, "The path to the folder with the ISO data files")
@@ -408,6 +412,9 @@ int main(int argc, char* argv[]) {
                "files update script");
   app.add_option("-m,--max_files", max_files,
                  "Limit the amount of files ran in a single test, picks the first N");
+  app.add_option("-f,--file", single_file,
+                 "Limit the offline test routine to a single file to decompile/compile -- useful "
+                 "when you are just iterating on a single file");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -422,7 +429,7 @@ int main(int argc, char* argv[]) {
   }
 
   lg::info("Finding files...");
-  auto files = find_files(game_name, config->dgos);
+  auto files = find_files(game_name, config->dgos, single_file);
   if (max_files > 0 && max_files < (int)files.size()) {
     files.erase(files.begin() + max_files, files.end());
   }

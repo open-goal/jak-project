@@ -727,7 +727,15 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // deref thing is one of the field names. Otherwise, array.
           if (field_name == "content-type" || field_name == "length" ||
               field_name == "allocated-length" || field_name == "type" || field_name == "data") {
-            result = get_field_of_structure(struct_type, result, field_name, env);
+            // if accessing data, give the more specific pointer type.
+            if (field_name == "data" && result->type().has_single_arg()) {
+              auto elt_type = m_ts.make_pointer_typespec(result->type().get_single_arg());
+              result = get_field_of_structure(struct_type, result, field_name, env);
+              result->set_type(elt_type);
+            } else {
+              // otherwise, deref as normal
+              result = get_field_of_structure(struct_type, result, field_name, env);
+            }
             continue;
           }
         } else {

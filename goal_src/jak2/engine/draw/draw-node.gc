@@ -5,5 +5,48 @@
 ;; name in dgo: draw-node
 ;; dgos: ENGINE, GAME
 
+;; todo: draw-node-cull
+
 ;; DECOMP BEGINS
 
+(defmethod collect-regions draw-node ((obj draw-node) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  (dotimes (s2-0 arg1)
+    (if (spheres-overlap? arg0 (the-as sphere (-> obj bsphere)))
+        (collect-regions (-> obj child) arg0 (the-as int (-> obj child-count)) arg2)
+        )
+    (&+! obj 32)
+    )
+  0
+  (none)
+  )
+
+(defmethod inspect drawable-inline-array-node ((obj drawable-inline-array-node))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+    )
+  obj
+  )
+
+(defmethod mem-usage drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 64 (-> arg0 length)))
+  (set! (-> arg0 data 63 name) "draw-node")
+  (+! (-> arg0 data 63 count) (-> obj length))
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 63 used) v1-6)
+    (+! (-> arg0 data 63 total) (logand -16 (+ v1-6 15)))
+    )
+  obj
+  )
+
+(defmethod asize-of drawable-inline-array-node ((obj drawable-inline-array-node))
+  (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> obj length) -1) 32)))
+  )
+
+(defmethod collect-regions drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  (collect-regions (the-as draw-node (-> obj data)) arg0 (-> obj length) arg2)
+  0
+  (none)
+  )
