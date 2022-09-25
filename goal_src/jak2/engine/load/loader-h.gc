@@ -14,6 +14,8 @@
 
 ;; DECOMP BEGINS
 
+;; load-dir is an array of references to loaded things.
+;; it's used to handle art groups that are loaded as part of a level load.
 (deftype load-dir (basic)
   ((lev          level           :offset-assert   4)
    (string-array (array string)  :offset-assert   8)
@@ -29,6 +31,7 @@
     )
   )
 
+;; specialization of load-dir for art-groups specificially.
 (deftype load-dir-art-group (load-dir)
   ((art-group-array (array art-group)  :offset  12)
    )
@@ -41,6 +44,7 @@
   )
 
 (defmethod new load-dir ((allocation symbol) (type-to-make type) (arg0 int) (arg1 level))
+  "Allocate a new load-dir that can hold arg0 items, for the given level."
   (let ((s4-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> s4-0 lev) arg1)
     (set! (-> s4-0 string-array)
@@ -54,12 +58,14 @@
   )
 
 (defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (arg0 int) (arg1 level))
+  "Allocate a new load-dir-art-group that can hold arg0 art-groups, for the given level."
   (let ((v0-0 ((method-of-type load-dir new) allocation type-to-make arg0 arg1)))
     (set! (-> v0-0 data-array content-type) art-group)
     (the-as load-dir-art-group v0-0)
     )
   )
 
+;; an external-art-buffer is a buffer that streamed files use.
 (deftype external-art-buffer (basic)
   ((index                      int32                                         :offset-assert   4)
    (other                      external-art-buffer                           :offset-assert   8)
@@ -99,6 +105,7 @@
 
 
 (defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (arg0 int) (arg1 function) (arg2 symbol))
+  "Allocate a new external-art-buffer"
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 index) arg0)
     (set! (-> v0-0 init-heap) (the-as (function external-art-buffer object) arg1))
@@ -119,6 +126,7 @@
     )
   )
 
+;; a spool-anim is metadata for an animation that will be loaded in chunks to a pair of external-art-buffers
 (deftype spool-anim (basic)
   ((name         string               :offset         16)
    (anim-name    basic                :offset-assert  20)
@@ -134,7 +142,7 @@
   :flag-assert         #x90000002c
   )
 
-
+;; the external-art-control manages loading chunks from spool-anims to external-art-buffer.
 (deftype external-art-control (basic)
   ((buffer                   external-art-buffer 2         :offset-assert   4)
    (rec                      spool-anim          3 :inline :offset-assert  16)
