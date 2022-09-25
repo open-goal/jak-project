@@ -1,76 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rigid-body-h.gc
-;; name in dgo: rigid-body-h
-;; dgos: GAME, COMMON
-
-;; +++rigid-body-flag
-(defenum rigid-body-flag
-  :bitfield #t
-  :type uint32
-  (display-marks 0)
-  (enable-physics 1)
-  (enable-collision 2)
-  (active 3)
-  (debug 4)
-  (blocker 5)
-  )
-;; ---rigid-body-flag
-
-;; +++rigid-body-object-flag
-(defenum rigid-body-object-flag
-  :bitfield #t
-  :type uint64
-  (enable-collision 0)
-  (disturbed 1)
-  (damaged 2)
-  (dead 3)
-  (player-touching 4)
-  (player-edge-grabbing 5)
-  (player-standing-on 6)
-  (player-impulse-force 7)
-  (player-contact-force 8)
-  (persistent 9)
-  (in-air 10)
-  (on-ground 11)
-  (on-flight-level 12)
-  (riding 13)
-  (player-driving 14)
-  (waiting-for-player 15)
-  (ignition 16)
-  (turbo-boost 17)
-  (reverse-gear 18)
-  (slide 19)
-  (hard-turn 20)
-  (jump 21)
-  (jump-sound 22)
-  (ai-driving 23)
-  (traffic-managed 24)
-  (flight-level-transition 25)
-  (flight-level-transition-ending 26)
-  (camera-bike-mode 27)
-  (camera-rapid-track-mode 28)
-  (camera 29)
-  (alert 30)
-  (in-pursuit 31)
-  (target-in-sight 32)
-  (rammed-target 33)
-  (draw-marks 34)
-  (hack-edit-graph-mode 35)
-  (measure-control-parameters 36)
-  (lights-on 37)
-  (lights-update 38)
-  (lights-dead 39)
-  (no-hijack 40)
-  (player-grabbed 41)
-  (nav-spheres 42)
-  (idle-sound 43)
-  )
-;; ---rigid-body-object-flag
-
-;; DECOMP BEGINS
-
+;; definition of type rigid-body-info
 (deftype rigid-body-info (structure)
   ((mass                float          :offset-assert   0)
    (inv-mass            float          :offset-assert   4)
@@ -92,7 +23,29 @@
     )
   )
 
+;; definition for method 3 of type rigid-body-info
+(defmethod inspect rigid-body-info ((obj rigid-body-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body-info)
+  (format #t "~1Tmass: ~f~%" (-> obj mass))
+  (format #t "~1Tinv-mass: ~f~%" (-> obj inv-mass))
+  (format #t "~1Tlinear-damping: ~f~%" (-> obj linear-damping))
+  (format #t "~1Tangular-damping: ~f~%" (-> obj angular-damping))
+  (format #t "~1Tbounce-factor: ~f~%" (-> obj bounce-factor))
+  (format #t "~1Tfriction-factor: ~f~%" (-> obj friction-factor))
+  (format #t "~1Tbounce-mult-factor: ~f~%" (-> obj bounce-mult-factor))
+  (format #t "~1Tcm-offset-joint: ~`vector`P~%" (-> obj cm-offset-joint))
+  (format #t "~1Tinv-inertial-tensor: #<matrix @ #x~X>~%" (-> obj inv-inertial-tensor))
+  (format #t "~1Tinertial-tensor: #<matrix @ #x~X>~%" (-> obj inertial-tensor))
+  (format #t "~1Tinertial-tensor-box[3] @ #x~X~%" (-> obj inertial-tensor-box))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type rigid-body-object-extra-info
 (deftype rigid-body-object-extra-info (structure)
   ((max-time-step      float   :offset-assert   0)
    (gravity            meters  :offset-assert   4)
@@ -105,7 +58,22 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type rigid-body-object-extra-info
+(defmethod inspect rigid-body-object-extra-info ((obj rigid-body-object-extra-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body-object-extra-info)
+  (format #t "~1Tmax-time-step: ~f~%" (-> obj max-time-step))
+  (format #t "~1Tgravity: (meters ~m)~%" (-> obj gravity))
+  (format #t "~1Tidle-distance: (meters ~m)~%" (-> obj idle-distance))
+  (format #t "~1Tattack-force-scale: ~f~%" (-> obj attack-force-scale))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type rigid-body-object-constants
 (deftype rigid-body-object-constants (structure)
   ((info               rigid-body-info              :inline :offset-assert   0)
    (mass               float                                :offset          0)
@@ -132,7 +100,37 @@
   :flag-assert         #x9000000d0
   )
 
+;; definition for method 3 of type rigid-body-object-constants
+(defmethod inspect rigid-body-object-constants ((obj rigid-body-object-constants))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body-object-constants)
+  (format #t "~1Tinfo: #<rigid-body-info @ #x~X>~%" (&-> obj mass))
+  (format #t "~1Tmass: ~f~%" (-> obj mass))
+  (format #t "~1Tinv-mass: ~f~%" (-> obj inv-mass))
+  (format #t "~1Tcm-joint-x: (meters ~m)~%" (-> obj cm-joint-x))
+  (format #t "~1Tcm-joint-y: (meters ~m)~%" (-> obj cm-joint-y))
+  (format #t "~1Tcm-joint-z: (meters ~m)~%" (-> obj cm-joint-z))
+  (format #t "~1Tlinear-damping: ~f~%" (-> obj linear-damping))
+  (format #t "~1Tangular-damping: ~f~%" (-> obj angular-damping))
+  (format #t "~1Tbounce-factor: ~f~%" (-> obj bounce-factor))
+  (format #t "~1Tfriction-factor: ~f~%" (-> obj friction-factor))
+  (format #t "~1Tinertial-tensor-x: (meters ~m)~%" (-> obj inertial-tensor-x))
+  (format #t "~1Tinertial-tensor-y: (meters ~m)~%" (-> obj inertial-tensor-y))
+  (format #t "~1Tinertial-tensor-z: (meters ~m)~%" (-> obj inertial-tensor-z))
+  (format #t "~1Textra: #<rigid-body-object-extra-info @ #x~X>~%" (&-> obj max-time-step))
+  (format #t "~1Tmax-time-step: ~f~%" (-> obj max-time-step))
+  (format #t "~1Tgravity: (meters ~m)~%" (-> obj gravity))
+  (format #t "~1Tidle-distance: (meters ~m)~%" (-> obj idle-distance))
+  (format #t "~1Tattack-force-scale: ~f~%" (-> obj attack-force-scale))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type rigid-body-impact
 (deftype rigid-body-impact (structure)
   ((point    vector :inline :offset-assert   0)
    (normal   vector :inline :offset-assert  16)
@@ -147,7 +145,25 @@
   :flag-assert         #x900000040
   )
 
+;; definition for method 3 of type rigid-body-impact
+(defmethod inspect rigid-body-impact ((obj rigid-body-impact))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body-impact)
+  (format #t "~1Tpoint: ~`vector`P~%" (-> obj point))
+  (format #t "~1Tnormal: ~`vector`P~%" (-> obj normal))
+  (format #t "~1Tvelocity: ~`vector`P~%" (-> obj velocity))
+  (format #t "~1Timpulse: ~f~%" (-> obj impulse))
+  (format #t "~1Tpat: ~D~%" (-> obj pat))
+  (format #t "~1Trbody: ~A~%" (-> obj rbody))
+  (format #t "~1Tprim-id: ~D~%" (-> obj prim-id))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type rigid-body
 (deftype rigid-body (structure)
   ((work           basic                   :offset-assert   0)
    (info           rigid-body-info         :offset-assert   4)
@@ -198,7 +214,57 @@
     )
   )
 
+;; definition for method 3 of type rigid-body
+(defmethod inspect rigid-body ((obj rigid-body))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-16)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body)
+  (format #t "~1Twork: ~A~%" (-> obj work))
+  (format #t "~1Tinfo: #<rigid-body-info @ #x~X>~%" (-> obj info))
+  (format #t "~1Tflags: #x~X : (rigid-body-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (rigid-body-flag active)) (rigid-body-flag active))
+        (format #t "active ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag blocker)) (rigid-body-flag blocker))
+        (format #t "blocker ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag enable-physics)) (rigid-body-flag enable-physics))
+        (format #t "enable-physics ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag display-marks)) (rigid-body-flag display-marks))
+        (format #t "display-marks ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag enable-collision)) (rigid-body-flag enable-collision))
+        (format #t "enable-collision ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag debug)) (rigid-body-flag debug))
+        (format #t "debug ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tforce-callback: ~A~%" (-> obj force-callback))
+  (format #t "~1Tblocked-by: ~A~%" (-> obj blocked-by))
+  (format #t "~1Ttime-remaining: ~f~%" (-> obj time-remaining))
+  (format #t "~1Tstep-count: ~D~%" (-> obj step-count))
+  (format #t "~1Tposition: ~`vector`P~%" (-> obj position))
+  (format #t "~1Trot: ~`vector`P~%" (-> obj rotation))
+  (format #t "~1Trotation: #<quaternion @ #x~X>~%" (-> obj rotation))
+  (format #t "~1Tlin-momentum: ~`vector`P~%" (-> obj lin-momentum))
+  (format #t "~1Tang-momentum: ~`vector`P~%" (-> obj ang-momentum))
+  (format #t "~1Tforce: ~`vector`P~%" (-> obj force))
+  (format #t "~1Ttorque: ~`vector`P~%" (-> obj torque))
+  (format #t "~1Tlin-velocity: ~`vector`P~%" (-> obj lin-velocity))
+  (format #t "~1Tang-velocity: ~`vector`P~%" (-> obj ang-velocity))
+  (format #t "~1Tmatrix: #<matrix @ #x~X>~%" (-> obj matrix))
+  (format #t "~1Tinv-i-world: #<matrix @ #x~X>~%" (-> obj inv-i-world))
+  (label cfg-16)
+  obj
+  )
 
+;; definition of type rigid-body-control
 (deftype rigid-body-control (basic)
   ((process        process                 :offset-assert   4)
    (state          rigid-body      :inline :offset-assert  16)
@@ -245,90 +311,159 @@
     )
   )
 
+;; definition for method 3 of type rigid-body-control
+(defmethod inspect rigid-body-control ((obj rigid-body-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-16)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tstate: #<rigid-body @ #x~X>~%" (-> obj state))
+  (format #t "~1Twork: ~A~%" (-> obj state work))
+  (format #t "~1Tinfo: #<rigid-body-info @ #x~X>~%" (-> obj state info))
+  (format #t "~1Tflags: #x~X : (rigid-body-flag " (-> obj state flags))
+  (let ((s5-0 (-> obj state flags)))
+    (if (= (logand s5-0 (rigid-body-flag active)) (rigid-body-flag active))
+        (format #t "active ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag blocker)) (rigid-body-flag blocker))
+        (format #t "blocker ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag enable-physics)) (rigid-body-flag enable-physics))
+        (format #t "enable-physics ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag display-marks)) (rigid-body-flag display-marks))
+        (format #t "display-marks ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag enable-collision)) (rigid-body-flag enable-collision))
+        (format #t "enable-collision ")
+        )
+    (if (= (logand s5-0 (rigid-body-flag debug)) (rigid-body-flag debug))
+        (format #t "debug ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tforce-callback: ~A~%" (-> obj state force-callback))
+  (format #t "~1Tblocked-by: ~A~%" (-> obj state blocked-by))
+  (format #t "~1Ttime-remaining: ~f~%" (-> obj state time-remaining))
+  (format #t "~1Tstep-count: ~D~%" (-> obj state step-count))
+  (format #t "~1Tposition: ~`vector`P~%" (-> obj state position))
+  (format #t "~1Trot: ~`vector`P~%" (-> obj state rotation))
+  (format #t "~1Trotation: #<quaternion @ #x~X>~%" (-> obj state rotation))
+  (format #t "~1Tlin-momentum: ~`vector`P~%" (-> obj state lin-momentum))
+  (format #t "~1Tang-momentum: ~`vector`P~%" (-> obj state ang-momentum))
+  (format #t "~1Tforce: ~`vector`P~%" (-> obj state force))
+  (format #t "~1Ttorque: ~`vector`P~%" (-> obj state torque))
+  (format #t "~1Tlin-velocity: ~`vector`P~%" (-> obj state lin-velocity))
+  (format #t "~1Tang-velocity: ~`vector`P~%" (-> obj state ang-velocity))
+  (format #t "~1Tmatrix: #<matrix @ #x~X>~%" (-> obj state matrix))
+  (format #t "~1Tinv-i-world: #<matrix @ #x~X>~%" (-> obj state inv-i-world))
+  (label cfg-16)
+  obj
+  )
 
+;; definition for method 9 of type rigid-body-control
 (defmethod rigid-body-control-method-9 rigid-body-control ((obj rigid-body-control))
   (rigid-body-method-9 (-> obj state))
   (none)
   )
 
+;; definition for method 10 of type rigid-body-control
 (defmethod rigid-body-control-method-10 rigid-body-control ((obj rigid-body-control))
   (rigid-body-method-10 (-> obj state))
   (none)
   )
 
+;; definition for method 11 of type rigid-body-control
 (defmethod rigid-body-control-method-11 rigid-body-control ((obj rigid-body-control))
   (rigid-body-method-11 (-> obj state))
   (none)
   )
 
+;; definition for method 12 of type rigid-body-control
 (defmethod rigid-body-control-method-12 rigid-body-control ((obj rigid-body-control) (arg0 float))
   (rigid-body-method-12 (-> obj state) arg0)
   (none)
   )
 
+;; definition for method 13 of type rigid-body-control
 (defmethod rigid-body-control-method-13 rigid-body-control ((obj rigid-body-control))
   (rigid-body-method-13 (-> obj state))
   (none)
   )
 
+;; definition for method 14 of type rigid-body-control
 (defmethod rigid-body-control-method-14 rigid-body-control ((obj rigid-body-control) (arg0 float))
   (rigid-body-method-14 (-> obj state) arg0)
   (none)
   )
 
+;; definition for method 15 of type rigid-body-control
 (defmethod clear-force-torque! rigid-body-control ((obj rigid-body-control))
   (clear-force-torque! (-> obj state))
   (none)
   )
 
+;; definition for method 16 of type rigid-body-control
 (defmethod clear-momentum! rigid-body-control ((obj rigid-body-control))
   (clear-momentum! (-> obj state))
   (none)
   )
 
+;; definition for method 17 of type rigid-body-control
 (defmethod rigid-body-control-method-17 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
   (rigid-body-method-18 (-> obj state) arg0 arg1)
   (none)
   )
 
+;; definition for method 18 of type rigid-body-control
 (defmethod rigid-body-control-method-18 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
   (rigid-body-method-19 (-> obj state) arg0 arg1)
   (none)
   )
 
+;; definition for method 19 of type rigid-body-control
 (defmethod rigid-body-control-method-19 rigid-body-control ((obj rigid-body-control) (arg0 vector))
   (rigid-body-method-20 (-> obj state) arg0)
   (none)
   )
 
+;; definition for method 20 of type rigid-body-control
 (defmethod rigid-body-control-method-20 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector) (arg2 float))
   (rigid-body-method-21 (-> obj state) arg0 arg1 arg2)
   (none)
   )
 
+;; definition for method 21 of type rigid-body-control
 (defmethod rigid-body-control-method-21 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
   (rigid-body-method-22 (-> obj state) arg0 arg1)
   )
 
+;; definition for method 22 of type rigid-body-control
 (defmethod rigid-body-control-method-22 rigid-body-control ((obj rigid-body-control) (arg0 vector))
   (rigid-body-method-23 (-> obj state) arg0)
   )
 
+;; definition for method 23 of type rigid-body-control
 (defmethod rigid-body-control-method-23 rigid-body-control ((obj rigid-body-control))
   (rigid-body-method-24 (-> obj state))
   (none)
   )
 
+;; definition for method 24 of type rigid-body-control
 (defmethod rigid-body-control-method-24 rigid-body-control ((obj rigid-body-control) (arg0 rigid-body-info) (arg1 vector) (arg2 quaternion) (arg3 basic))
   (rigid-body-method-25 (-> obj state) arg0 arg1 arg2 arg3)
   (none)
   )
 
+;; definition for method 25 of type rigid-body-control
 (defmethod rigid-body-control-method-25 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 quaternion))
   (rigid-body-method-26 (-> obj state) arg0 arg1)
   (none)
   )
 
+;; definition of type rigid-body-object
 (deftype rigid-body-object (process-focusable)
   ((info                  rigid-body-object-constants         :offset-assert 204)
    (flags                 rigid-body-object-flag              :offset-assert 208)
@@ -373,7 +508,58 @@
     )
   )
 
+;; definition for method 3 of type rigid-body-object
+(defmethod inspect rigid-body-object ((obj rigid-body-object))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-22)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinfo: #<rigid-body-object-constants @ #x~X>~%" (-> obj info))
+  (format #t "~2Tflags: #x~X : (rigid-body-object-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (rigid-body-object-flag dead)) (rigid-body-object-flag dead))
+        (format #t "dead ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag damaged)) (rigid-body-object-flag damaged))
+        (format #t "damaged ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag player-contact-force)) (rigid-body-object-flag player-contact-force))
+        (format #t "player-contact-force ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag disturbed)) (rigid-body-object-flag disturbed))
+        (format #t "disturbed ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag enable-collision)) (rigid-body-object-flag enable-collision))
+        (format #t "enable-collision ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag player-edge-grabbing)) (rigid-body-object-flag player-edge-grabbing))
+        (format #t "player-edge-grabbing ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag player-touching)) (rigid-body-object-flag player-touching))
+        (format #t "player-touching ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag player-standing-on)) (rigid-body-object-flag player-standing-on))
+        (format #t "player-standing-on ")
+        )
+    (if (= (logand s5-0 (rigid-body-object-flag player-impulse-force)) (rigid-body-object-flag player-impulse-force))
+        (format #t "player-impulse-force ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~2Tmax-time-step: ~f~%" (-> obj max-time-step))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
+  (format #t "~2Tplayer-touch-time: ~D~%" (-> obj player-touch-time))
+  (format #t "~2Tdisturbed-time: ~D~%" (-> obj disturbed-time))
+  (format #t "~2Tplayer-force-position: #<vector @ #x~X>~%" (-> obj player-force-position))
+  (format #t "~2Tplayer-force: #<vector @ #x~X>~%" (-> obj player-force))
+  (label cfg-22)
+  obj
+  )
 
+;; definition of type rigid-body-queue
 (deftype rigid-body-queue (structure)
   ((count int8       :offset-assert   0)
    (array uint64 128 :offset          8)
@@ -392,3 +578,23 @@
     (rigid-body-queue-method-16 () none 16)
     )
   )
+
+;; definition for method 3 of type rigid-body-queue
+(defmethod inspect rigid-body-queue ((obj rigid-body-queue))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rigid-body-queue)
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tarray[128] @ #x~X~%" (-> obj array))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

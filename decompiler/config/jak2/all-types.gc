@@ -31358,6 +31358,7 @@
   :flag-assert         #x900000040
   )
 
+;; +++rigid-body-h:rigid-body-flag
 (defenum rigid-body-flag
   :bitfield #t
   :type uint32
@@ -31368,6 +31369,7 @@
   (debug 4)
   (blocker 5)
   )
+;; ---rigid-body-h:rigid-body-flag
 
 (deftype rigid-body (structure)
   ((work           basic              :offset-assert 0)
@@ -31393,9 +31395,9 @@
   :size-assert         #x120
   :flag-assert         #x2000000120
   (:methods
-    (rigid-body-method-9 () none 9)
-    (rigid-body-method-10 () none 10)
-    (rigid-body-method-11 () none 11)
+    (rigid-body-method-9 (_type_) none 9)
+    (rigid-body-method-10 (_type_) none 10)
+    (rigid-body-method-11 (_type_) none 11)
     (rigid-body-method-12 (_type_ float) none 12)
     (rigid-body-method-13 (_type_) none 13)
     (rigid-body-method-14 (_type_ float) none 14)
@@ -31445,12 +31447,12 @@
   :size-assert         #x130
   :flag-assert         #x1a00000130
   (:methods
-    (rigid-body-control-method-9 () none 9)
-    (rigid-body-control-method-10 () none 10)
-    (rigid-body-control-method-11 () none 11)
+    (rigid-body-control-method-9 (_type_) none 9)
+    (rigid-body-control-method-10 (_type_) none 10)
+    (rigid-body-control-method-11 (_type_) none 11)
     (rigid-body-control-method-12 (_type_ float) none 12)
     (rigid-body-control-method-13 (_type_) none 13)
-    (rigid-body-control-method-14 () none 14)
+    (rigid-body-control-method-14 (_type_ float) none 14)
     (clear-force-torque! (_type_) none 15)
     (clear-momentum! (_type_) none 16)
     (rigid-body-control-method-17 (_type_ vector vector) none 17)
@@ -31465,6 +31467,7 @@
     )
   )
 
+;; +++rigid-body-h:rigid-body-object-flag
 (defenum rigid-body-object-flag
   :bitfield #t
   :type uint64
@@ -31513,6 +31516,7 @@
   (nav-spheres 42)
   (idle-sound 43)
   )
+;; ---rigid-body-h:rigid-body-object-flag
 
 (deftype rigid-body-object (process-focusable)
   ((info                  rigid-body-object-constants :offset-assert 204)
@@ -48349,8 +48353,43 @@
     )
   )
 
+;; +++vehicle-h:vehicle-controller-flag
+(defenum vehicle-controller-flag
+  :type uint32
+  :bitfield #t
+  (debug)
+  (draw-marks)
+  (left-turn)
+  (on-straightaway)
+  (do-turn)
+  (blocking-dest-node)
+  (attached)
+  (off-path)
+  (ignore-others)
+  (direct-mode)
+  (recovery-mode)
+  (no-slowing-for-turns))
+;; ---vehicle-h:vehicle-controller-flag
+
 (deftype vehicle-controller (structure)
-  ((pad uint32 36))
+  (
+    (flags vehicle-controller-flag :offset-assert 0)
+    (traffic symbol :offset-assert 4)
+    (branch nav-branch :offset-assert 8)
+    (target-speed-offset meters :offset-assert 12)
+    (target-speed meters :offset-assert 16)
+    (choose-branch-callback symbol :offset-assert 20)
+    (turn-accel meters :offset-assert 24)
+    (max-turn-speed meters :offset-assert 28)
+    (path-prev-point vector :inline :offset-assert 32)
+    (turn-enter-point vector :inline :offset-assert 48)
+    (turn-exit-point vector :inline :offset-assert 64)
+    (path-dest-point vector :inline :offset 64)
+    (turn-enter-dir vector :inline :offset-assert 80)
+    (turn-exit-dir vector :inline :offset-assert 96)
+    (dest-circle vector :inline :offset-assert 112)
+    (target-point vector :inline :offset-assert 128)
+  )
   :method-count-assert 22
   :size-assert         #x90
   :flag-assert         #x1600000090
@@ -48604,7 +48643,7 @@
    (dim           int16   2 :offset-assert 24)
    (x-dim         int16     :offset 24)
    (z-dim         int16     :offset 26)
-   (data          (pointer int8)    :offset-assert 28) ;; 2240 elements for the traffic-height-map
+   (data          (pointer int8)    :offset-assert 28) ;; 2240 words for the traffic-height-map - this could be so many things, but its something with an `int8` at offset 0
    )
   :method-count-assert 15
   :size-assert         #x20
