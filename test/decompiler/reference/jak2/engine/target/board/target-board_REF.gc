@@ -1737,9 +1737,7 @@
 ;; definition for function target-board-real-post
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-;; ERROR: Function may read a register that is not set: a3
 (defbehavior target-board-real-post target ()
-  (local-vars (a3-0 object))
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
       (update-rates! (-> self clock) (/ f30-0 (the float gp-1)))
@@ -1764,20 +1762,13 @@
               (-> self control unknown-matrix01 vector 2)
               (* -42.666668 (+ -128.0 (the float (-> self control unknown-cpad-info00 leftx))))
               )
-            (let ((t9-7 add-debug-vector)
-                  (a0-4 #t)
-                  (a1-2 318)
-                  (a2-1 (-> self control trans))
-                  )
-              (set! a3-0 s5-0)
-              (t9-7
-                a0-4
-                (the-as bucket-id a1-2)
-                a2-1
-                (the-as vector a3-0)
-                (meters 2.0)
-                (the-as rgba (-> (new 'static 'array uint64 1 #x8000ff00) 0))
-                )
+            (add-debug-vector
+              #t
+              (bucket-id debug-no-zbuf1)
+              (-> self control trans)
+              s5-0
+              (meters 2.0)
+              (the-as rgba (-> (new 'static 'array uint64 1 #x8000ff00) 0))
               )
             )
           (turn-to-vector s5-0 (-> self control unknown-float12))
@@ -1794,24 +1785,27 @@
                    (zero? (logand (-> self control unknown-surface01 flags) (surface-flag turn-to-vel)))
                    (>= (- (-> self clock frame-counter) (-> self board unknown-time-frame00)) (seconds 0.1))
                    )
-          (let* ((s3-0 (vector-flatten!
-                         (new 'stack-no-clear 'vector)
-                         (vector-negate! (new 'stack-no-clear 'vector) (-> self control dynam gravity-normal))
-                         (-> self control local-normal)
-                         )
-                       )
-                 (a2-4 (forward-up-nopitch->quaternion
-                         (new 'stack-no-clear 'quaternion)
-                         s3-0
-                         (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ))
-                         )
-                       )
-                 (t9-14 quaternion-slerp!)
-                 (a0-24 (-> self control dir-targ))
-                 (a1-8 (-> self control dir-targ))
+          (let* ((s3-0
+                   (vector-flatten!
+                     (new 'stack-no-clear 'vector)
+                     (vector-negate! (new 'stack-no-clear 'vector) (-> self control dynam gravity-normal))
+                     (-> self control local-normal)
+                     )
+                   )
+                 (a2-4
+                   (forward-up-nopitch->quaternion
+                     (new 'stack-no-clear 'quaternion)
+                     s3-0
+                     (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ))
+                     )
+                   )
                  )
-            (set! a3-0 (* 0.05 (fabs (-> self control unknown-float24))))
-            (t9-14 a0-24 a1-8 a2-4 (the-as float a3-0))
+            (quaternion-slerp!
+              (-> self control dir-targ)
+              (-> self control dir-targ)
+              a2-4
+              (* 0.05 (fabs (-> self control unknown-float24)))
+              )
             )
           )
         (if (cpad-pressed? (-> self control unknown-cpad-info00 number) l1)
@@ -1833,14 +1827,7 @@
            (mode-set! (-> self board main) (joint-mod-mode rotate))
            (twist-set! (-> self board main) (the-as float #f) (-> self board troty) (the-as float #f))
            (mode-set! (-> self board board 0 main) (joint-mod-mode rotate))
-           (let* ((a0-34 (-> self board board 0 main))
-                  (t9-21 (method-of-object a0-34 twist-set!))
-                  (a1-13 #f)
-                  (a2-7 (-> self board troty))
-                  )
-             (set! a3-0 #f)
-             (t9-21 a0-34 (the-as float a1-13) a2-7 (the-as float a3-0))
-             )
+           (twist-set! (-> self board board 0 main) (the-as float #f) (-> self board troty) (the-as float #f))
            )
           (else
             (cond
@@ -1848,13 +1835,13 @@
                (let ((f0-24 (fabs (-> self board troty-cum))))
                  (cond
                    ((>= f0-24 191146.67)
-                    (add-to-trick-list (-> self board) (board-tricks board-spin) 4000.0 (the-as float a3-0))
+                    (add-to-trick-list (-> self board) (board-tricks board-spin) 4000.0)
                     )
                    ((>= f0-24 126520.89)
-                    (add-to-trick-list (-> self board) (board-tricks board-spin) 2000.0 (the-as float a3-0))
+                    (add-to-trick-list (-> self board) (board-tricks board-spin) 2000.0)
                     )
                    ((>= f0-24 49152.0)
-                    (add-to-trick-list (-> self board) (board-tricks board-spin) 500.0 (the-as float a3-0))
+                    (add-to-trick-list (-> self board) (board-tricks board-spin) 500.0)
                     )
                    )
                  )
@@ -1920,17 +1907,10 @@
           ((and (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
                 (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
                 )
-           (let ((s5-5 seek)
-                 (s4-4 (-> self board cushion-offset))
-                 (s3-3 lerp-scale)
-                 (s2-0 (-> *TARGET_BOARD-bank* cushion))
-                 (s1-0 0.0)
-                 (a2-16 (target-height-above-ground))
-                 )
-             (set! a3-0 0.0)
-             (set! (-> self board cushion-offset)
-                   (s5-5 s4-4 (s3-3 s2-0 s1-0 a2-16 (the-as float a3-0) 12288.0) (* 20480.0 (-> self clock seconds-per-frame)))
-                   )
+           (seek!
+             (-> self board cushion-offset)
+             (lerp-scale (-> *TARGET_BOARD-bank* cushion) 0.0 (target-height-above-ground) 0.0 12288.0)
+             (* 20480.0 (-> self clock seconds-per-frame))
              )
            )
           ((logtest? (-> self focus-status) (focus-status on-water))
@@ -2869,7 +2849,7 @@
 
 ;; definition for method 9 of type board-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod add-to-trick-list board-info ((obj board-info) (arg0 board-tricks) (arg1 float) (arg2 float))
+(defmethod add-to-trick-list board-info ((obj board-info) (arg0 board-tricks) (arg1 float))
   "Add specified trick and point amount to trick list."
   (send-event (handle->process (-> obj process 0 notify)) 'notify 'trick-point arg0)
   (when (and (< (-> obj trick-count) 16)
