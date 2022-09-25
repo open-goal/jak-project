@@ -83,6 +83,8 @@ namespace jak2 {
 enum class BucketId {
   TFRAG_L0_TFRAG = 8,
   TFRAG_L1_TFRAG = 19,
+  SHRUB_L0_SHRUB = 74,
+  SHRUB_L1_SHRUB = 83,
   TFRAG_T_L0_ALPHA = 128,
   DEBUG_NO_ZBUF1 = 318,
   DEBUG_NO_ZBUF2 = 325,

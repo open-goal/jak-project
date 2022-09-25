@@ -263,8 +263,7 @@ s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
   }
 
   if (prop.has_side_effects) {
-    throw_compiler_error(in, "Value {} cannot be used as a constant - it has side effects.",
-                         in.print());
+    throw_compiler_error(in, "Value {} cannot be used as a constant.", in.print());
   } else {
     if (prop.value.is_int()) {
       return prop.value.as_int();

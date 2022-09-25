@@ -12,3 +12,6 @@ add_executable(memory_dump_tool
         memory_dump_tool/main.cpp)
 target_link_libraries(memory_dump_tool common decomp)
 
+add_executable(type_searcher
+        type_searcher/main.cpp)
+target_link_libraries(type_searcher common decomp)

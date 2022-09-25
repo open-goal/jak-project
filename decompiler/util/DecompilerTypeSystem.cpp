@@ -318,6 +318,9 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::LABEL_ADDR:
         *changed = false;
         return existing;
+      case TP_Type::Kind::SYMBOL:
+        *changed = true;
+        return TP_Type::make_from_ts("symbol");
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
