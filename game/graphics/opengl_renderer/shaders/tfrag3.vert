@@ -15,7 +15,7 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
+const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
 
 void main() {
 
