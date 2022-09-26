@@ -668,7 +668,7 @@ void Debugger::read_symbol_table_jak2() {
       str_buff[127] = '\0';
 
       // GOAL sym - s7
-      auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
+      auto sym_offset = s32(offset + st_base) - s32(m_debug_context.s7);
       ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
       ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
 
@@ -695,7 +695,6 @@ void Debugger::read_symbol_table_jak2() {
 
       m_symbol_name_to_offset_map[str] = sym_offset;
       m_symbol_offset_to_name_map[sym_offset] = str;
-      fmt::print("sym {} offset #x{:x}\n", str, sym_offset);
       m_symbol_name_to_value_map[str] = sym_val;
     }
   }
