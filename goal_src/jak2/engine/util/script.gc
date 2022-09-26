@@ -1627,56 +1627,50 @@
 
 (let ((v1-87 (-> *script-form* 38)))
   (set! (-> v1-87 name) 'setting-pers)
-  (set! (-> v1-87 spec) '((return macro (none))
-                          (function macro (symbol))
-                          (setting macro (symbol))
-                          &key
-                          (mode eval (object) #f)
-                          (value macro (bfloat pair) (new 'static 'bfloat))
-                          (mask eval (binteger) 0)
-                          (time macro (pair) 0)
-                          )
+  (set! (-> v1-87 spec)
+        '((return macro (none))
+          (function macro (symbol))
+          (setting macro (symbol))
+          &key
+          (mode eval (object) #f)
+          (value macro (bfloat pair) (new 'static 'bfloat))
+          (mask eval (binteger) 0)
+          (time macro (pair) 0)
+          )
         )
-  (set! (-> v1-87 func) (the-as
-                          (function script-context object)
-                          (lambda ((arg0 script-context))
-                            "
+  (set! (-> v1-87 func)
+        (the-as
+          (function script-context object)
+          (lambda ((arg0 script-context))
+            "
   (setting-pers ambient-volume :mode 'rel :value 0.5)
   "
-                            (local-vars (sv-16 pair) (sv-24 object) (sv-32 object) (sv-48 object))
-                            (when (-> arg0 side-effect?)
-                              (set! sv-16 (-> arg0 expr))
-                              (set! sv-24 (eval! arg0 (the-as pair (-> arg0 param 5))))
-                              (set! sv-32 (gpr->fpr (if (pair? (-> arg0 param 3))
-                                                        (eval! arg0 (the-as pair (-> arg0 param 3)))
-                                                        (command-get-float (-> arg0 param 3) 0.0)
-                                                        )
-                                                    )
-                                    )
-                              (let* ((s5-0 *setting-control*)
-                                     (s4-0 (method-of-object s5-0 persist-with-delay))
-                                     (s3-0 sv-16)
-                                     (s2-0 sv-24)
-                                     (s1-0 (-> arg0 param 1))
-                                     (s0-0 (-> arg0 param 2))
-                                     )
-                                (set! sv-48 (gpr->fpr sv-32))
-                                (let ((t2-0 (command-get-int (-> arg0 param 4) 0)))
-                                  (s4-0
-                                    s5-0
-                                    (the-as symbol s3-0)
-                                    (the-as time-frame s2-0)
-                                    (the-as symbol s1-0)
-                                    (the-as symbol s0-0)
-                                    (the-as float sv-48)
-                                    t2-0
-                                    )
+            (local-vars (sv-16 pair) (sv-24 object) (sv-32 float) (sv-48 float))
+            (when (-> arg0 side-effect?)
+              (set! sv-16 (-> arg0 expr))
+              (set! sv-24 (eval! arg0 (the-as pair (-> arg0 param 5))))
+              (set! sv-32 (the-as float (if (pair? (-> arg0 param 3))
+                                            (eval! arg0 (the-as pair (-> arg0 param 3)))
+                                            (command-get-float (-> arg0 param 3) 0.0)
+                                            )
                                   )
-                                )
-                              )
-                            (none)
-                            )
-                          )
+                    )
+              (let* ((s5-0 *setting-control*)
+                     (s4-0 (method-of-object s5-0 persist-with-delay))
+                     (s3-0 sv-16)
+                     (s2-0 sv-24)
+                     (s1-0 (-> arg0 param 1))
+                     (s0-0 (-> arg0 param 2))
+                     )
+                (set! sv-48 sv-32)
+                (let ((t2-0 (command-get-int (-> arg0 param 4) 0)))
+                  (s4-0 s5-0 (the-as symbol s3-0) (the-as time-frame s2-0) (the-as symbol s1-0) (the-as symbol s0-0) sv-48 t2-0)
+                  )
+                )
+              )
+            (none)
+            )
+          )
         )
   )
 
@@ -2252,12 +2246,12 @@
                     (if (not gp-0)
                         (set! s0-0 (command-get-entity (-> arg0 param 2) (the-as entity #f)))
                         )
-                    (if (not (the-as process-drawable s4-0))
+                    (if (not s4-0)
                         (set! s1-0 (command-get-entity (-> arg0 param 3) (the-as entity #f)))
                         )
-                    (when (or (and gp-0 (the-as process-drawable s4-0)) (and s0-0 s1-0))
+                    (when (or (and gp-0 s4-0) (and s0-0 s1-0))
                       (cond
-                        ((and gp-0 (the-as process-drawable s4-0))
+                        ((and gp-0 s4-0)
                          (set! s5-2 #t)
                          (let ((s0-1 (-> arg0 param 4))
                                (s1-1 (-> arg0 param 5))
@@ -2285,29 +2279,23 @@
                              )
                            (cond
                              (s1-1
-                               (let ((v1-32
-                                       (the-as
-                                         joint
-                                         (get-art-by-name-method (-> (the-as process-drawable s4-0) draw jgeo) (the-as string s1-1) (the-as type #f))
-                                         )
-                                       )
-                                     )
+                               (let ((v1-32 (the-as joint (get-art-by-name-method (-> s4-0 draw jgeo) (the-as string s1-1) (the-as type #f)))))
                                  (cond
                                    (v1-32
                                      (set! sv-64 (+ (-> v1-32 number) 1))
-                                     (let ((a1-12 (-> (the-as process-drawable s4-0) node-list data sv-64)))
+                                     (let ((a1-12 (-> s4-0 node-list data sv-64)))
                                        (vector<-cspace! sv-52 a1-12)
                                        )
                                      )
                                    (else
                                      (format 0 "ERROR: SCRIPT: lightning-tracker: unknown to-joint ~A in:~%~T~A~%" s1-1 (-> arg0 expr))
-                                     (set! (-> sv-52 quad) (-> (the-as process-drawable s4-0) root trans quad))
+                                     (set! (-> sv-52 quad) (-> s4-0 root trans quad))
                                      )
                                    )
                                  )
                                )
                              (else
-                               (set! (-> sv-52 quad) (-> (the-as process-drawable s4-0) root trans quad))
+                               (set! (-> sv-52 quad) (-> s4-0 root trans quad))
                                )
                              )
                            )
@@ -2344,17 +2332,22 @@
                       :to (cond
                         (s5-2
                           (empty)
-                          s4-0
+                          (the-as process-drawable s4-0)
                           )
                         (else
-                          (set! s4-0 (ppointer->process (-> *setting-control* user-current movie)))
+                          (let ((v1-48 (-> *setting-control* user-current movie)))
+                            (set! s4-0 (if v1-48
+                                           (the-as process-drawable (-> v1-48 0 self))
+                                           )
+                                  )
+                            )
                           (cond
                             (s4-0
                               (empty)
-                              s4-0
+                              (the-as process-drawable s4-0)
                               )
                             (else
-                              *entity-pool*
+                              (the-as process-drawable *entity-pool*)
                               )
                             )
                           )
