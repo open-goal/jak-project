@@ -5,6 +5,31 @@
 ;; name in dgo: task-control
 ;; dgos: ENGINE, GAME
 
+(defenum fail-mission-flags
+  :bitfield #t
+  :type uint8
+  (famflags-0)
+  (famflags-1)
+  (famflags-2)
+  (famflags-3)
+  (famflags-4)
+  (famflags-5)
+  (famflags-6)
+  (famflags-7)
+  )
+
+(defenum fail-mission-message
+  :type uint8
+  (fammsg-0)
+  (fammsg-1)
+  (fammsg-2)
+  (fammsg-3)
+  (fammsg-4)
+  (fammsg-5)
+  )
+
+(declare-type fail-mission process)
+
 ;; DECOMP BEGINS
 
 (deftype fail-mission-params (structure)
@@ -1562,12 +1587,12 @@
          (when (or (and (logtest? (-> self flags) (fail-mission-flags famflags-0))
                         (>= (- (-> self clock frame-counter) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
                         )
-                   (or (logtest? (pad-buttons padbut-8) (-> *cpad-list* cpads 0 button0-rel 0))
+                   (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
                        (logtest? (-> self flags) (fail-mission-flags famflags-3))
                        )
                    )
-           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons padbut-8))
-           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons padbut-8))
+           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
            (persist-with-delay *setting-control* 'fail (seconds 10) 'bg-a 'abs 1.0 0)
            (go-virtual resetting)
            )
@@ -1578,11 +1603,11 @@
        )
       (((fail-mission-message fammsg-1))
        (until #f
-         (when (or (logtest? (pad-buttons padbut-8) (-> *cpad-list* cpads 0 button0-rel 0))
+         (when (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
                    (logtest? (-> self flags) (fail-mission-flags famflags-3))
                    )
-           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons padbut-8))
-           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons padbut-8))
+           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
            (set! (-> self retry) #t)
            (while (not (process-release? *target*))
              (suspend)
@@ -2182,7 +2207,8 @@
   :virtual #t
   :event task-manager-event-handler
   :exit (behavior ()
-    (disable *screen-filter*)
+    ;; todo
+    ; (disable *screen-filter*)
     (none)
     )
   :code (behavior ()

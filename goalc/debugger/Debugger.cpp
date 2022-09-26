@@ -695,6 +695,7 @@ void Debugger::read_symbol_table_jak2() {
 
       m_symbol_name_to_offset_map[str] = sym_offset;
       m_symbol_offset_to_name_map[sym_offset] = str;
+      fmt::print("sym {} offset #x{:x}\n", str, sym_offset);
       m_symbol_name_to_value_map[str] = sym_val;
     }
   }
