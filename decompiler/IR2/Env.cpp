@@ -154,14 +154,14 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
                     type_in_reg.print(), type_in_reg.print());
                 ASSERT(false);
               }
-            }
 
-            if (type_of_var != type_in_reg) {
-              // TODO - use the when possible?
-              VariableWithCast result;
-              result.cast = TypeSpec(x.type_name);
-              result.name = lookup_name;
-              return result;
+              if (type_of_var != type_in_reg) {
+                // TODO - use the when possible?
+                VariableWithCast result;
+                result.cast = TypeSpec(x.type_name);
+                result.name = lookup_name;
+                return result;
+              }
             }
           }
         }
