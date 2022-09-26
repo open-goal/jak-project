@@ -584,7 +584,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
   body->elts().erase(body->elts().begin());
 
   return pool.alloc_element<CounterLoopElement>(CounterLoopElement::Kind::COUNTDOWN,
-                                                in->entries().at(0).dest, *lt_var, *inc_var,
+                                                in->entries().at(0).dest, *lt_var, ra,
                                                 in->entries().at(0).src, body);
 }
 
