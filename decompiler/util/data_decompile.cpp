@@ -971,7 +971,7 @@ goos::Object decompile_structure(const TypeSpec& type,
 
     // first, let's see if it's a value or reference
     auto field_type_info = ts.lookup_type_allow_partial_def(field.type());
-    if (!field_type_info->is_reference()) {
+    if (!field_type_info->is_reference() && field.type() != TypeSpec("object")) {
       // value type. need to get bytes.
       ASSERT(!field.is_inline());
       if (field.is_array()) {
@@ -1159,9 +1159,15 @@ goos::Object decompile_structure(const TypeSpec& type,
           if (field.type() == TypeSpec("symbol")) {
             continue;
           }
-          field_defs_out.emplace_back(
-              field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
-                                               words, ts, file));
+          if (field.type() == TypeSpec("object")) {
+            field_defs_out.emplace_back(
+                field.name(),
+                decompile_at_label_guess_type(labels.at(word.label_id()), labels, words, ts, file));
+          } else {
+            field_defs_out.emplace_back(
+                field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
+                                                 words, ts, file));
+          }
         } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
@@ -1560,8 +1566,9 @@ goos::Object decompile_pair(const DecompilerLabel& label,
     } else {
       auto& word = words.at(label.target_segment).at(label.offset / 4);
       if (word.kind() != LinkedWord::EMPTY_PTR) {
-        throw std::runtime_error(
-            fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
+        throw std::runtime_error(fmt::format(
+            "Based on alignment, expected to get empty list for pair, but didn't. Label - {}",
+            label.name));
       }
       return pretty_print::to_symbol("'()");
     }
