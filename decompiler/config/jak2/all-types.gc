@@ -10440,7 +10440,7 @@
     (get-skeleton-origin (_type_) vector 9)
     (draw-control-method-10 () none 10) ;; (lod-set! (_type_ int) none 10)
     (draw-control-method-11 () none 11) ;; (lods-assign! (_type_ lod-set) none 11)
-    (draw-control-method-12 (_type_ int int) none 12)
+    (draw-control-method-12 (_type_ uint int) none 12)
     (draw-control-method-13 () none 13)
     (draw-control-method-14 (_type_ cspace-array joint-control) none 14)
     )
@@ -11928,7 +11928,7 @@
    (letterbox-time         time-frame           :offset-assert 400)
    (hint-play-time         time-frame           :offset-assert 408)
    (display-text-time      time-frame           :offset-assert 416)
-   (display-text-handle    uint64               :offset-assert 424)
+   (display-text-handle    handle               :offset-assert 424)
    (death-movie-tick       int32                :offset-assert 432)
    (want-auto-save         symbol               :offset-assert 436)
    (auto-save-proc         handle               :offset-assert 440)
@@ -11936,8 +11936,8 @@
    (auto-save-card         int32                :offset-assert 452)
    (auto-save-which        int32                :offset-assert 456)
    (auto-save-count        int32                :offset-assert 460)
-   (pov-camera-handle      uint64               :offset-assert 464)
-   (other-camera-handle    uint64               :offset-assert 472)
+   (pov-camera-handle      handle               :offset-assert 464)
+   (other-camera-handle    handle               :offset-assert 472)
    (controller             handle            2  :offset-assert 480)
    (race-timer             uint64               :offset-assert 496)
    (race-current-lap-count int32                :offset-assert 504)
@@ -20147,7 +20147,7 @@
     (go-away () _type_ :state 22) ;; (adjust-icons (_type_) none 22)
     (gone () _type_ :state 23) ;; (adjust-ratios (_type_ symbol symbol) none 23)
     (init-defaults "Initialize default menu settings." (_type_) connection 24) ;; (draw-fuel-cell-screen (_type_ int) none 24)
-    (progress-method-25 (_type_) none 25) ;; (draw-money-screen (_type_ int) none 25)
+    (progress-method-25 (_type_ object object symbol) none 25) ;; (draw-money-screen (_type_ int) none 25)
     (progress-method-26 (_type_) object 26) ;; (draw-buzzer-screen (_type_ int) none 26)
     (can-go-back? (_type_) symbol 27) ;; (draw-notice-screen (_type_) none 27)
     (progress-method-28 (_type_ symbol) symbol 28) ;; (draw-options (_type_ int int float) none 28)
@@ -20161,20 +20161,25 @@
 (deftype menu-option (basic)
   ((name  uint32    :offset-assert 4)
    (scale basic     :offset-assert 8)
-   (box   bounding-box  1 :inline :offset-assert 16) ;; no idea
+   (unknown function :offset-assert 12)
+   ;; No idea what is going on here....
+   ;; but i believe they are all `menu-options` -- look at `(method 24 progress)`
+   ;; i think it might just be that each menu "page" can have 8 menu-options on it, and maybe printing "box" was just to make inspects nicer?
+   (box   menu-option 1 :offset-assert 16)
+   (unknown-options menu-option 7 :offset-assert 20)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (respond-progress "Handle progress menu navigation logic." (_type_ progress object symbol) int 9)
-    (menu-option-method-10 () none 10)
+    (respond-progress "Handle progress menu navigation logic." (_type_ progress object) int :behavior progress 9)
+    (menu-option-method-10 (_type_ progress font-context int symbol) none 10)
     (menu-option-method-11 () none 11)
     )
   )
 
 (deftype menu-on-off-option (menu-option)
-  ((value-to-modify pointer  :offset-assert 48)
+  ((value-to-modify (pointer symbol)  :offset-assert 48)
    )
   :method-count-assert 12
   :size-assert         #x34
@@ -20194,8 +20199,8 @@
   )
 
 (deftype menu-language-option (menu-option)
-  ((language-selection  uint64  :offset-assert 48)
-   (language-direction  basic   :offset-assert 56)
+  ((language-selection  language-enum  :offset-assert 48)
+   (language-direction  symbol  :offset-assert 56)
    (language-transition basic   :offset-assert 60)
    (language-x-offset   int32   :offset-assert 64)
    )
@@ -20536,7 +20541,7 @@
    (prev-item-index int32     :offset-assert 52)
    (num-items       int32     :offset-assert 56)
    (num-hero-items  int32     :offset-assert 60)
-   (secret-items    basic     :offset-assert 64)
+   (secret-items    (array secret-item-option)     :offset-assert 64)
    (last-move       uint64    :offset-assert 72)
    (sprites         hud-sprite 2 :inline :offset-assert 80)
    )
@@ -20547,11 +20552,13 @@
     )
   )
 
+;; ohhhh man i wish OpenGOAL had generics -- would be awesome if you could create a menu-option-list<menu-secret-option>
+;; for example, and then `options T ...` and then everything could just figure it out with type safety
 (deftype menu-option-list (basic)
   ((y-center int32  :offset-assert 4)
    (y-space  int32  :offset-assert 8)
    (scale    float  :offset-assert 12)
-   (options  menu-option :dynamic :offset-assert 16) ;; dynamic is a guess
+   (options  menu-option :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -20560,7 +20567,7 @@
 
 (deftype menu-qr-option (menu-option)
   ((last-move       uint64  :offset-assert 48)
-   (value-to-modify uint32  :offset 60)
+   (value-to-modify function  :offset 60)
    )
   :method-count-assert 12
   :size-assert         #x40
@@ -29135,17 +29142,17 @@
 (define-extern *progressive-mode-warning-options* menu-option-list)
 (define-extern *progressive-mode-ok-options* menu-option-list)
 (define-extern *quit-options* menu-option-list)
-(define-extern *select-start-options* menu-option-list)
-(define-extern *select-scene-options* menu-option-list)
+(define-extern *select-start-options* "List of [[menu-select-start-option]]" menu-option-list)
+(define-extern *select-scene-options* "List of [[menu-select-scene-option]]" menu-option-list)
 (define-extern *bigmap-options* menu-option-list)
-(define-extern *missions-options* menu-option-list)
-(define-extern *highscores-options* menu-option-list)
+(define-extern *missions-options* "List of [[menu-missions-option]]" menu-option-list)
+(define-extern *highscores-options* "List of [[menu-highscores-option]]" menu-option-list)
 (define-extern *secret-options* menu-option-list)
 (define-extern *language-name-remap* (array game-text-id))
-(define-extern *stereo-mode-name-remap* menu-option-list)
-(define-extern *hud-ring-graphic-remap* menu-option-list)
-(define-extern *hud-ring-kiosk-graphic-remap* menu-option-list)
-(define-extern *hud-ring-demo-graphic-remap* menu-option-list)
+(define-extern *stereo-mode-name-remap* (array uint64))
+(define-extern *hud-ring-graphic-remap* (array uint64)) ;; these are probably bitfields of some kind
+(define-extern *hud-ring-kiosk-graphic-remap* (array uint64))
+(define-extern *hud-ring-demo-graphic-remap* (array uint64))
 (define-extern *hud-select-scene-act1* menu-option-list)
 (define-extern *hud-select-scene-act2* menu-option-list)
 (define-extern *hud-select-scene-act3* menu-option-list)
@@ -29209,7 +29216,8 @@
   )
 
 (deftype hud-ring-cell (process-drawable)
-  ((joint-idx     int32   :offset-assert 200)
+  ((parent-override (pointer progress) :offset 16 :score 999)
+   (joint-idx     int32   :offset-assert 200)
    (init-angle    degrees :offset-assert 204)
    (graphic-index int32   :offset-assert 208)
    )
@@ -29234,8 +29242,8 @@
 (define-extern deactivate-progress (function none))
 (define-extern hide-progress-screen (function none))
 (define-extern progress-allowed? (function symbol))
-(define-extern menu-update-purchase-secrets (function secret-item-option none))
-;; (define-extern progress-trans function)
+(define-extern menu-update-purchase-secrets (function menu-secret-option none))
+(define-extern progress-trans (function none :behavior progress)) ;; TODO - assertion hit when defining behavior
 (define-extern begin-scan (function hud-box progress int))
 (define-extern end-scan (function hud-box float int))
 (define-extern progress-post (function none :behavior progress))
@@ -29262,7 +29270,7 @@
   :flag-assert         #x900000028
   )
 
-(define-extern progress-selected (function int :behavior progress))
+(define-extern progress-selected (function int none :behavior progress))
 ;; (define-extern draw-percent-bar function) ;; (function int int float rgba none)
 ;; (define-extern draw-highlight function)
 ;; (define-extern draw-busy-loading function)
@@ -29282,7 +29290,7 @@
 ;; (define-extern end-scissor-level function)
 ;; (define-extern print-language-name function) ;; (function int font-context int symbol font-context)
 ;; (define-extern unlocked-secret-menu? function)
-(define-extern memcard-unlocked-secrets? (function symbol none))
+(define-extern memcard-unlocked-secrets? (function symbol symbol))
 ;; (define-extern num-unlocked-secret? function)
 ;; (define-extern print-menu-text function)
 ;; (define-extern draw-yes-no function)

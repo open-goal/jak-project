@@ -39,7 +39,7 @@
     (go-away () _type_ :state 22)
     (gone () _type_ :state 23)
     (init-defaults (_type_) connection 24)
-    (progress-method-25 (_type_) none 25)
+    (progress-method-25 (_type_ object object symbol) none 25)
     (progress-method-26 (_type_) object 26)
     (can-go-back? (_type_) symbol 27)
     (progress-method-28 (_type_ symbol) symbol 28)
@@ -90,16 +90,18 @@
 
 ;; definition of type menu-option
 (deftype menu-option (basic)
-  ((name  uint32                 :offset-assert   4)
-   (scale basic                  :offset-assert   8)
-   (box   bounding-box 1 :inline :offset-assert  16)
+  ((name    uint32        :offset-assert   4)
+   (scale   basic         :offset-assert   8)
+   (unknown basic         :offset-assert  12)
+   (box     menu-option 1 :offset-assert  16)
+   (padding uint32      7 :offset-assert  20)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (respond-progress (_type_ progress object symbol) int 9)
-    (menu-option-method-10 () none 10)
+    (respond-progress (_type_ progress object) int :behavior progress 9)
+    (menu-option-method-10 (_type_ progress font-context int symbol) none 10)
     (menu-option-method-11 () none 11)
     )
   )
@@ -990,13 +992,13 @@
 
 ;; definition of type menu-secret-option
 (deftype menu-secret-option (menu-option)
-  ((item-index      int32                :offset-assert  48)
-   (prev-item-index int32                :offset-assert  52)
-   (num-items       int32                :offset-assert  56)
-   (num-hero-items  int32                :offset-assert  60)
-   (secret-items    basic                :offset-assert  64)
-   (last-move       uint64               :offset-assert  72)
-   (sprites         hud-sprite 2 :inline :offset-assert  80)
+  ((item-index      int32                                :offset-assert  48)
+   (prev-item-index int32                                :offset-assert  52)
+   (num-items       int32                                :offset-assert  56)
+   (num-hero-items  int32                                :offset-assert  60)
+   (secret-items    (array secret-item-option)           :offset-assert  64)
+   (last-move       uint64                               :offset-assert  72)
+   (sprites         hud-sprite                 2 :inline :offset-assert  80)
    )
   :method-count-assert 12
   :size-assert         #xd0
@@ -1053,8 +1055,8 @@
 
 ;; definition of type menu-qr-option
 (deftype menu-qr-option (menu-option)
-  ((last-move       uint64  :offset-assert  48)
-   (value-to-modify uint32  :offset         60)
+  ((last-move       uint64    :offset-assert  48)
+   (value-to-modify function  :offset         60)
    )
   :method-count-assert 12
   :size-assert         #x40
