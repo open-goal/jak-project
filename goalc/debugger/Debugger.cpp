@@ -1100,8 +1100,7 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
     pos += op_mov_string.length();
     auto r14_pos = result.find(sym_false_string, pos);
     if (r14_pos < result.find(op_mov_string, pos)) {
-      result.replace(r14_pos, sym_false_string.length(),
-                     fmt::format(", '{}", get_symbol_name_from_offset(0)));
+      result.replace(r14_pos, sym_false_string.length(), fmt::format(", '#f"));
     }
   }
 

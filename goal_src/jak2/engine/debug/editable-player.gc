@@ -6,11 +6,8 @@
 ;; dgos: ENGINE, GAME
 
 ;; og:ignore-form:insert-box
-;; og:ignore-form:dm-editable-light-float-func
-;; og:ignore-form:dm-editable-boolean-toggle-pick-func
 
 (define-extern insert-box (function editable-array vector none))
-(define-extern editable-menu-context-make-menus (function debug-menu-context none))
 (define-extern editable-player-init (function symbol none :behavior editable-player))
 
 ;; DECOMP BEGINS
@@ -2435,9 +2432,68 @@
     )
   )
 
-;; ERROR: failed type prop at 36: add failed: editable uint
-
-;; WARN: Return type mismatch symbol vs object.
+(defun dm-editable-light-float-func ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+  (cond
+    ((not *editable*)
+     arg3
+     )
+    ((= arg1 (debug-menu-msg press))
+     (let* ((s4-0 (-> *editable* 0 current length))
+            (s3-0 0)
+            (s2-0 (-> *editable* 0 current data s3-0))
+            )
+       (while (< s3-0 s4-0)
+         (when (and s2-0 (logtest? (-> s2-0 flags) (editable-flag selected)))
+           (let ((a0-7 (if (type? s2-0 editable-light)
+                           s2-0
+                           )
+                       )
+                 )
+             (when (the-as editable a0-7)
+               (set! (-> (&+ (the-as (pointer float) a0-7) (/ arg0 8)) 0) arg2)
+               (logior! (-> (the-as editable a0-7) flags) (editable-flag changed))
+               (let ((v1-15 (-> (the-as editable a0-7) region)))
+                 (if v1-15
+                     (set! (-> v1-15 changed) #t)
+                     )
+                 )
+               (update-light-sphere-from-editable-light (the-as editable-light a0-7))
+               )
+             )
+           )
+         (+! s3-0 1)
+         (set! s2-0 (-> *editable* 0 current data s3-0))
+         )
+       )
+     (the-as float #f)
+     )
+    (else
+      (let ((f30-0 arg3))
+        (let* ((s5-1 (-> *editable* 0 current length))
+               (s4-1 0)
+               (s3-1 (-> *editable* 0 current data s4-1))
+               )
+          (while (< s4-1 s5-1)
+            (when (and s3-1 (logtest? (-> s3-1 flags) (editable-flag selected)))
+              (let ((v1-29 (if (type? s3-1 editable-light)
+                               s3-1
+                               )
+                           )
+                    )
+                (if (the-as editable v1-29)
+                    (set! f30-0 (-> (&+ (the-as (pointer float) v1-29) (/ arg0 8)) 0))
+                    )
+                )
+              )
+            (+! s4-1 1)
+            (set! s3-1 (-> *editable* 0 current data s4-1))
+            )
+          )
+        f30-0
+        )
+      )
+    )
+  )
 
 (defun dm-cam-externalize2 ((arg0 symbol) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
@@ -2467,10 +2523,22 @@
       )
   )
 
-;; ERROR: failed type prop at 5: add failed: editable-player int
+(defun dm-editable-boolean-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (cond
+    (*editable*
+      (let ((v1-3 (&+ (the-as (pointer symbol) (-> *editable* 0)) (/ arg0 8))))
+        (if (= arg1 (debug-menu-msg press))
+            (set! (-> v1-3 0) (not (-> v1-3 0)))
+            )
+        (-> v1-3 0)
+        )
+      )
+    (else
+      #f
+      )
+    )
+  )
 
-
-;; WARN: Return type mismatch debug-menu-context vs none.
 (defun editable-menu-context-make-menus ((arg0 debug-menu-context))
   (debug-menu-make-from-template
     arg0
@@ -2649,7 +2717,7 @@
        (function "Exit" 1 editable-menu-command)
        )
     )
-  (none)
+  arg0
   )
 
 (editable-menu-context-make-menus *editable-menu-context*)
