@@ -519,6 +519,12 @@ void Env::add_stack_structure_hint(const StackStructureHint& hint) {
     case StackStructureHint::ContainerType::NONE: {
       // parse the type spec.
       TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+      if (base_typespec.base_type() == "object") {
+        throw std::runtime_error(
+            fmt::format("Got a stack structure hint for type object at offset {}. This is usually "
+                        "a sign that stack structure guessing got inconsistent types.",
+                        hint.stack_offset));
+      }
       auto type_info = dts->ts.lookup_type(base_typespec);
       // just a plain object on the stack.
       if (!type_info->is_reference()) {
