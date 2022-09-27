@@ -379,7 +379,7 @@ void types2_for_label(types2::Type& type_out,
                                              env.file->labels.at(label_idx).name));
       } else {
         auto& name = env.file->labels.at(label_idx).name;
-        fmt::print("Encountered unknown label: {}\n", name);
+        // fmt::print("Encountered unknown label: {}\n", name);
         instr.unknown_label_tag = std::make_unique<types2::UnknownLabel>();
         instr.unknown_label_tag->label_idx = label_idx;
         instr.unknown_label_tag->label_name = name;
@@ -1035,7 +1035,7 @@ void types2_addr_on_stack(types2::Type& type_out,
       throw std::runtime_error(
           fmt::format("Failed to find a stack variable or structure at offset {}", offset));
     } else {
-      fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
+      // fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
       instr.unknown_stack_structure_tag = std::make_unique<types2::UnknownStackStructure>();
       instr.unknown_stack_structure_tag->stack_offset = offset;
       type_out.tag.unknown_stack_structure = instr.unknown_stack_structure_tag.get();
