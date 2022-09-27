@@ -1557,6 +1557,31 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus_cross(
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_vector_plus_float_times(
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
+  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(),
+                                                 m_expr.get_arg(2).var(), m_expr.get_arg(3).var()},
+                                                env, pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 4; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    TypeSpec desired_type(i == 3 ? "float" : "vector");
+    if (arg_type.typespec() != desired_type) {
+      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2),
+                         popped_args.at(3)});
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_vector_float_product(
     const Env& env,
     FormPool& pool,
@@ -2453,6 +2478,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::VECTOR_LENGTH:
       update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_LENGTH, env, pool, stack,
                                           result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      update_from_stack_vector_plus_float_times(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(

@@ -5,8 +5,6 @@
 ;; name in dgo: texture-h
 ;; dgos: ENGINE, GAME
 
-;; TODO document and method names with texture.gc
-
 (declare-type texture-page basic)
 (declare-type texture-pool basic)
 (declare-type fog-texture-work structure)
@@ -32,6 +30,7 @@
 
 ;; DECOMP BEGINS
 
+;; unique identifier for a texture, as the tpage number and index of the texture within the tpage
 (deftype texture-id (uint32)
   ((index uint16 :offset   8 :size  12)
    (page  uint16 :offset  20 :size  12)
@@ -41,6 +40,7 @@
   :flag-assert         #x900000004
   )
 
+;; a chunk of vram.
 (deftype texture-pool-segment (structure)
   ((dest uint32  :offset-assert   0)
    (size uint32  :offset-assert   4)
@@ -52,6 +52,7 @@
   :flag-assert         #x900000008
   )
 
+;; the manager for the VRAM.
 (deftype texture-pool (basic)
   ((top                      int32                                                                 :offset-assert   4)
    (cur                      int32                                                                 :offset-assert   8)
@@ -93,6 +94,9 @@
     )
   )
 
+;; mask where each bit indicates if some part of a tpage is used, by a texture.
+;; additionally, the w component holds a minimum distance. The texture is only needed
+;; if the distance to the object is smaller than this.
 (deftype texture-mask (structure)
   ((mask vector4w :inline :offset-assert   0)
    (dist float            :offset         12)
@@ -104,6 +108,8 @@
   :flag-assert         #x900000010
   )
 
+;; grouping of three masks, corresponding to the 3 segments of the texture.
+;; so mask 0 is needed if segment 0 of the texture is needed, etc...
 (deftype texture-masks (structure)
   ((data texture-mask 3 :inline :offset-assert   0)
    )
@@ -112,6 +118,7 @@
   :flag-assert         #x900000030
   )
 
+;; group of all texture-masks for a given tpage
 (deftype texture-masks-array (inline-array-class)
   ((data texture-masks :inline :dynamic :offset-assert  16)
    )
@@ -121,9 +128,13 @@
   )
 (set! (-> texture-masks-array heap-base) (the-as uint 48))
 
+
+;; these globals are used during login. The level loading system sets this to the appropriate
+;; mask/mask array, and the login methods of drawables will fill these out.
 (define *texture-masks* (the-as texture-masks #f))
 (define *texture-masks-array* (the-as texture-masks-array #f))
 
+;; metadata for a texture.
 (deftype texture (basic)
   ((w            int16                 :offset-assert   4)
    (h            int16                 :offset-assert   6)
@@ -146,6 +157,9 @@
   :flag-assert         #x900000070
   )
 
+;; metadata for a "segment" of a texture page.
+;; Each texture page has 3 segments - smaller number segments have higher detail
+;; mips.
 (deftype texture-page-segment (structure)
   ((block-data pointer  :offset-assert   0)
    (size       uint32   :offset-assert   4)
@@ -159,12 +173,20 @@
   )
 
 (defun texture-mip->segment ((arg0 int) (arg1 int))
+  "Figure out which segment of a tpage a given mip level of a texture will be in.
+   arg0 is the mip level, arg1 is the total number of mips.
+   higher mip level is lower detail."
   (if (>= 2 arg1)
       (+ (- -1 arg0) arg1)
       (max 0 (- 2 arg0))
       )
   )
 
+;; a collection of textures. there is a tpage per category per level.
+;; these tpages are loaded from the DVD.
+;; eg: prison tfrag is its own tpage.
+;; the tpage has multiple textures, and 3 segments. lower number segments
+;; are larger and have hi-res versions of textures.
 (deftype texture-page (basic)
   ((info      file-info                      :offset-assert   4)
    (name      string                         :offset-assert   8)
@@ -190,6 +212,8 @@
     )
   )
 
+;; a pointer to an adgif-shader, stored in bits 8-32. This allows them to fit into
+;; an adgif shader easily.
 (deftype shader-ptr (uint32)
   ((shader uint32 :offset   8 :size  24)
    )
@@ -198,6 +222,8 @@
   :flag-assert         #x900000004
   )
 
+;; an overlay structure containing a shader-ptr that points to the next adgif shader
+;; in a linked list.
 (deftype texture-link (structure)
   ((next shader-ptr  1 :offset-assert   0)
    )
@@ -206,6 +232,10 @@
   :flag-assert         #x900000004
   )
 
+;; an entry for a texture in the texture-page-dir.
+;; the texture-page-dir contains an entry for each tpage.
+;; Each entry contains a reference to the tpage, and a linked list of shaders
+;; using it.
 (deftype texture-page-dir-entry (structure)
   ((length int16         :offset-assert   0)
    (status uint16        :offset-assert   2)
@@ -219,6 +249,8 @@
   :flag-assert         #x90000000c
   )
 
+;; the list of all texture pages.
+;; this is static data loaded from the DVD at boot.
 (deftype texture-page-dir (basic)
   ((length  int32                            :offset-assert   4)
    (entries texture-page-dir-entry 1 :inline :offset-assert   8)
@@ -232,6 +264,8 @@
     )
   )
 
+;; unused in jak 2, but metadata for postponing tpage copies until a second frame, to have a smaller
+;; impact on frame times when loading.
 (deftype texture-relocate-later (basic)
   ((memcpy symbol                  :offset-assert   4)
    (dest   uint32                  :offset-assert   8)
@@ -257,6 +291,10 @@
   (bit-9 9)
   )
 
+;; GS texturing/blending settings, called adgif-shader.
+;; these are used by many different renderers and partially managed by the texture system.
+;; for example, the texture system will automatically update tbp to point to the location
+;; of texture.
 (deftype adgif-shader (structure)
   ((quad       qword           5 :inline :offset-assert   0)
    (prims      gs-reg64        10        :offset          0)
@@ -291,6 +329,7 @@
   )
 (set! (-> adgif-shader-array heap-base) (the-as uint 80))
 
+;; metadata about an area of vram set aside for fancy dynamic texture effects (sky, eye, etc)
 (deftype texture-base (structure)
   ((vram-page  uint32  :offset-assert   0)
    (vram-block uint32  :offset-assert   4)
@@ -301,6 +340,7 @@
   :flag-assert         #x90000000c
   )
 
+;; GS swizzling tables.
 
 (define ct32-24-block-table
         (new 'static 'boxed-array :type int32
