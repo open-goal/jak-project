@@ -24,7 +24,8 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
-                                const LinkedObjectFile* file);
+                                const LinkedObjectFile* file,
+                                bool in_static_pair = false);
 goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,

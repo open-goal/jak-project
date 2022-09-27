@@ -160,12 +160,18 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
 }
 
 goos::Object decompile_function_at_label(const DecompilerLabel& label,
-                                         const LinkedObjectFile* file) {
+                                         const LinkedObjectFile* file,
+                                         bool in_static_pair) {
   if (file) {
     auto other_func = file->try_get_function_at_label(label);
     if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
         other_func->ir2.expressions_succeeded) {
-      return final_output_lambda(*other_func);
+      auto out = final_output_lambda(*other_func);
+      if (in_static_pair) {
+        return pretty_print::build_list("unquote", out);
+      } else {
+        return out;
+      }
     }
   }
   return pretty_print::to_symbol(fmt::format("<lambda at {}>", label.name));
@@ -180,13 +186,14 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
-                                const LinkedObjectFile* file) {
+                                const LinkedObjectFile* file,
+                                bool in_static_pair) {
   if (type == TypeSpec("string")) {
     return decompile_string_at_label(label, words);
   }
 
   if (ts.tc(TypeSpec("function"), type)) {
-    return decompile_function_at_label(label, file);
+    return decompile_function_at_label(label, file, in_static_pair);
   }
 
   if (ts.tc(TypeSpec("array"), type)) {
@@ -1523,13 +1530,13 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
       return decompile_pair(label, labels, words, ts, false, file);
     }
 
-    return decompile_at_label(*guessed_type, label, labels, words, ts, file);
+    return decompile_at_label(*guessed_type, label, labels, words, ts, file, true);
   } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
     // do nothing, the default is zero?
     return pretty_print::to_symbol("0");
   } else if (word.kind() == LinkedWord::SYM_PTR) {
     // never quote symbols in a list.
-    return pretty_print::to_symbol(fmt::format("{}", word.symbol_name()));
+    return pretty_print::to_symbol(word.symbol_name());
   } else if (word.kind() == LinkedWord::EMPTY_PTR) {
     return pretty_print::to_symbol("'()");
   } else if (word.kind() == LinkedWord::PLAIN_DATA && (word.data & 0b111) == 0) {
