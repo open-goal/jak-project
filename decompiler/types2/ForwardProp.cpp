@@ -265,16 +265,20 @@ bool backprop_tagged_type(const TP_Type& expected_type,
         if (actual_type.tag.block_entry->selected_type == expected_type) {
           return false;
         }
-        if (actual_type.tag.block_entry->selected_type->typespec().base_type() == "vector" &&
-            expected_type.typespec().base_type() == "vector4") {
-          return false;
-        }
       }
 
       {
-        actual_type.tag.block_entry->updated = true;
-        actual_type.tag.block_entry->selected_type = expected_type;
-        return true;
+        if (!actual_type.tag.block_entry->selected_type) {
+          actual_type.tag.block_entry->selected_type = expected_type;
+          actual_type.tag.block_entry->updated = true;
+          return true;
+        } else {
+          bool changed = false;
+          actual_type.tag.block_entry->selected_type = dts.tp_lca(
+              actual_type.tag.block_entry->selected_type.value(), expected_type, &changed);
+          actual_type.tag.block_entry->updated = changed;
+          return changed;
+        }
       }
 
     case types2::Tag::UNKNOWN_LABEL:
@@ -284,8 +288,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
       } else {
         auto& tag = actual_type.tag.unknown_label;
         actual_type.tag.unknown_label->selected_type = expected_type.typespec();
-        fmt::print("Label Guess: {} is a {}\n", tag->label_name,
-                   actual_type.tag.unknown_label->selected_type->print());
         return true;
       }
 
@@ -296,8 +298,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
       } else {
         auto& tag = actual_type.tag.unknown_stack_structure;
         actual_type.tag.unknown_stack_structure->selected_type = expected_type.typespec();
-        fmt::print("Stack Guess: {} is a {}\n", tag->stack_offset,
-                   actual_type.tag.unknown_stack_structure->selected_type->print());
         return true;
       }
 
@@ -1438,7 +1438,7 @@ void types2_for_vector_float_product(types2::Type& type_out,
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 0 ? "vector" : "float"),
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 2 ? "float" : "vector"),
                                        *arg_type, dts)) {
         extras.needs_rerun = true;
       }
