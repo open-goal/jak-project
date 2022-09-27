@@ -29,12 +29,7 @@ struct Node {
   std::string atom_str;
 
   // number of quotes this is wrapped in.
-  enum class QuoteKind {
-    QUOTE,
-    UNQUOTE,
-    QUASIQUOTE,
-    UNQUOTE_SPLICING
-  };
+  enum class QuoteKind { QUOTE, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING };
   std::vector<QuoteKind> quotes;
 
   Node* parent = nullptr;
