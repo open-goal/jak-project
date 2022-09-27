@@ -1,37 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: task-control.gc
-;; name in dgo: task-control
-;; dgos: ENGINE, GAME
-
-(defenum fail-mission-flags
-  :bitfield #t
-  :type uint8
-  (famflags-0)
-  (famflags-1)
-  (famflags-2)
-  (famflags-3)
-  (famflags-4)
-  (famflags-5)
-  (famflags-6)
-  (famflags-7)
-  )
-
-(defenum fail-mission-message
-  :type uint8
-  (fammsg-0)
-  (fammsg-1)
-  (fammsg-2)
-  (fammsg-3)
-  (fammsg-4)
-  (fammsg-5)
-  )
-
-(declare-type fail-mission process)
-
-;; DECOMP BEGINS
-
+;; definition of type fail-mission-params
 (deftype fail-mission-params (structure)
   ((message        fail-mission-message  :offset-assert   0)
    (flags          fail-mission-flags    :offset-assert   1)
@@ -46,7 +16,25 @@
   :flag-assert         #x900000018
   )
 
+;; definition for method 3 of type fail-mission-params
+(defmethod inspect fail-mission-params ((obj fail-mission-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'fail-mission-params)
+  (format #t "~1Tmessage: ~D~%" (-> obj message))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tretry-continue: ~A~%" (-> obj retry-continue))
+  (format #t "~1Tfail-continue: ~A~%" (-> obj fail-continue))
+  (format #t "~1Treset-delay: ~D~%" (-> obj reset-delay))
+  (format #t "~1Ttask: ~D~%" (-> obj task))
+  (format #t "~1Tfail-message: ~D~%" (-> obj fail-message))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type fail-mission-control
 (deftype fail-mission-control (basic)
   ((process          handle   :offset-assert   8)
    (handle-init-hack pointer  :offset          8)
@@ -62,13 +50,28 @@
     )
   )
 
+;; definition for method 3 of type fail-mission-control
+(defmethod inspect fail-mission-control ((obj fail-mission-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: ~D~%" (-> obj process))
+  (format #t "~1Thandle-init-hack: ~A~%" (-> obj handle-init-hack))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *fail-mission-control*, type fail-mission-control
 (define *fail-mission-control* (new 'static 'fail-mission-control :handle-init-hack #f))
 
+;; definition for function game-task-node->string
 (defun game-task-node->string ((arg0 game-task-node))
   (-> *game-info* sub-task-list arg0 name)
   )
 
+;; definition for function update-task-masks
 (defun update-task-masks ((arg0 symbol))
   (with-pp
     (if (= arg0 'none)
@@ -85,19 +88,18 @@
         0
         )
       )
-    ;; TODO minimap
-    ;; (let ((s5-0 (the-as connection-pers (-> *minimap* engine alive-list-override))))
-    ;;   (while s5-0
-    ;;     (let ((s4-0 (the-as connection-minimap s5-0)))
-    ;;       (if (and (logtest? (-> s4-0 flags) (minimap-flag task-graph))
-    ;;                (not (open? (-> *game-info* sub-task-list (-> s4-0 node))))
-    ;;                )
-    ;;           (logior! (-> s4-0 flags) (minimap-flag fade-out))
-    ;;           )
-    ;;       )
-    ;;     (set! s5-0 (-> s5-0 next))
-    ;;     )
-    ;;   )
+    (let ((s5-0 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+      (while s5-0
+        (let ((s4-0 (the-as connection-minimap s5-0)))
+          (if (and (logtest? (-> s4-0 flags) (minimap-flag task-graph))
+                   (not (open? (-> *game-info* sub-task-list (-> s4-0 node))))
+                   )
+              (logior! (-> s4-0 flags) (minimap-flag fade-out))
+              )
+          )
+        (set! s5-0 (-> s5-0 next))
+        )
+      )
     (let ((borrow-eval (lambda ((arg0 pair))
                          (let ((a0-1 (car arg0)))
                            (while (not (null? arg0))
@@ -157,20 +159,20 @@
                       (let ((node-open-ev (-> node when-open node-ev-i)))
                         (case (-> node-open-ev actor)
                           (((game-task-actor minimap))
-                          ;;  (let ((v1-67 (minimap-method-12
-                          ;;                 *minimap*
-                          ;;                 *dproc*
-                          ;;                 (-> node-open-ev icon)
-                          ;;                 (the-as int (-> node-open-ev icon))
-                          ;;                 (the-as vector #f)
-                          ;;                 i
-                          ;;                 )
-                          ;;               )
-                          ;;        )
-                          ;;    (if v1-67
-                          ;;        (logior! (-> v1-67 flags) (minimap-flag task-graph))
-                          ;;        )
-                          ;;    )
+                           (let ((v1-67 (minimap-method-12
+                                          *minimap*
+                                          *dproc*
+                                          (-> node-open-ev icon)
+                                          (the-as int (-> node-open-ev icon))
+                                          (the-as vector #f)
+                                          i
+                                          )
+                                        )
+                                 )
+                             (if v1-67
+                                 (logior! (-> v1-67 flags) (minimap-flag task-graph))
+                                 )
+                             )
                            )
                           )
                         )
@@ -198,6 +200,7 @@
     )
   )
 
+;; definition for method 22 of type level
 (defmethod level-method-22 level ((obj level) (arg0 symbol))
   (if (= arg0 'none)
       (return 0)
@@ -474,6 +477,7 @@
   0
   )
 
+;; definition for function play-clean
 (defun play-clean ((arg0 symbol))
   (set! *display-entity-errors* #f)
   (set! *display-profile* #f)
@@ -492,6 +496,7 @@
   0
   )
 
+;; definition for function play-task
 (defun play-task ((arg0 game-task) (arg1 symbol) (arg2 symbol))
   (play-clean arg1)
   (let ((gp-1 (-> *game-info* play-list arg0)))
@@ -514,6 +519,7 @@
     )
   )
 
+;; definition for function restart-mission
 (defun restart-mission ()
   (let ((restart? #t))
     (let ((mgr-status #f))
@@ -590,6 +596,7 @@
   0
   )
 
+;; definition for function task-node-by-name
 (defun task-node-by-name ((arg0 string))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (dotimes (i (-> game-nodes length))
@@ -605,6 +612,7 @@
   (the-as game-task-node-info #f)
   )
 
+;; definition for function task-resolution-close!
 (defun task-resolution-close! ((arg0 game-task))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (dotimes (i (-> game-nodes length))
@@ -621,6 +629,7 @@
   #f
   )
 
+;; definition for function task-close!
 (defun task-close! ((arg0 string))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (dotimes (i (-> game-nodes length))
@@ -640,6 +649,7 @@
   #f
   )
 
+;; definition for function task-closed?
 (defun task-closed? ((arg0 string))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (dotimes (i (-> game-nodes length))
@@ -656,6 +666,7 @@
   #f
   )
 
+;; definition for function open-task-nodes
 (defun open-task-nodes ((arg0 (array game-task-node-info)))
   (local-vars (a3-4 symbol))
   (set! (-> arg0 length) 0)
@@ -688,6 +699,7 @@
   arg0
   )
 
+;; definition for method 2 of type game-task-node-info
 (defmethod print game-task-node-info ((obj game-task-node-info))
   (format
     #t
@@ -709,6 +721,7 @@
   obj
   )
 
+;; definition for method 9 of type game-task-node-info
 (defmethod close! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
   (when (zero? (logand (-> obj flags) (game-task-node-flag closed)))
     (let ((task-node-close-func
@@ -802,17 +815,20 @@
   0
   )
 
+;; definition for function task-node-closed?
 (defun task-node-closed? ((arg0 game-task-node))
   (let ((node (-> *game-info* sub-task-list arg0)))
     (logtest? (-> node flags) (game-task-node-flag closed))
     )
   )
 
+;; definition for function task-node-close!
 (defun task-node-close! ((arg0 game-task-node))
   (close! (-> *game-info* sub-task-list arg0) 'event)
   0
   )
 
+;; definition for method 10 of type game-task-node-info
 (defmethod open! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
   (local-vars (v1-19 symbol))
   (when (logtest? (-> obj flags) (game-task-node-flag closed))
@@ -853,12 +869,14 @@
   0
   )
 
+;; definition for function task-node-open?
 (defun task-node-open? ((arg0 game-task-node))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (open? (-> game-nodes arg0))
     )
   )
 
+;; definition for method 11 of type game-task-node-info
 (defmethod open? game-task-node-info ((obj game-task-node-info))
   (local-vars (a1-1 symbol))
   (let ((game-nodes (-> *game-info* sub-task-list))
@@ -888,6 +906,7 @@
     )
   )
 
+;; definition for function task-node-open!
 (defun task-node-open! ((arg0 game-task-node))
   (let ((game-node (-> *game-info* sub-task-list arg0)))
     (dotimes (p-i 4)
@@ -900,6 +919,7 @@
   0
   )
 
+;; definition for method 13 of type game-task-node-info
 (defmethod eval-add game-task-node-info ((obj game-task-node-info))
   (case (-> obj add)
     (((game-task-node-command none))
@@ -973,6 +993,7 @@
   0
   )
 
+;; definition for function task-node-reset
 (defun task-node-reset ((arg0 symbol))
   (let ((game-nodes (-> *game-info* sub-task-list)))
     (dotimes (i (-> game-nodes length))
@@ -1018,6 +1039,7 @@
   0
   )
 
+;; definition (debug) for function task-node-dump
 (defun-debug task-node-dump ((arg0 symbol))
   (let ((gp-0 (-> *game-info* sub-task-list)))
     (dotimes (s5-0 (-> gp-0 length))
@@ -1052,6 +1074,7 @@
   #f
   )
 
+;; definition for method 2 of type game-task-event
 (defmethod print game-task-event ((obj game-task-event))
   (let* ((t9-0 format)
          (a0-1 #t)
@@ -1309,6 +1332,7 @@
   obj
   )
 
+;; definition for method 0 of type game-task-control
 (defmethod new game-task-control ((allocation symbol) (type-to-make type) (arg0 game-task-actor))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 actor) arg0)
@@ -1316,6 +1340,7 @@
     )
   )
 
+;; definition for method 9 of type game-task-control
 (defmethod game-task-control-method-9 game-task-control ((obj game-task-control))
   (with-pp
     (let ((gp-0 (new 'static 'game-task-event :scene #f)))
@@ -1386,6 +1411,7 @@
     )
   )
 
+;; definition of type fail-mission
 (deftype fail-mission (process)
   ((message        fail-mission-message  :offset-assert 128)
    (flags          fail-mission-flags    :offset-assert 129)
@@ -1410,11 +1436,36 @@
     )
   )
 
+;; definition for method 3 of type fail-mission
+(defmethod inspect fail-mission ((obj fail-mission))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tmessage: ~D~%" (-> obj message))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tretry-continue: ~A~%" (-> obj retry-continue))
+  (format #t "~2Tfail-continue: ~A~%" (-> obj fail-continue))
+  (format #t "~2Treset-delay: ~D~%" (-> obj reset-delay))
+  (format #t "~2Tgrabbed-time: ~D~%" (-> obj grabbed-time))
+  (format #t "~2Tretry: ~A~%" (-> obj retry))
+  (format #t "~2Ttask: ~D~%" (-> obj task))
+  (format #t "~2Tmessage-id: ~D~%" (-> obj message-id))
+  (format #t "~2Tfail-message: ~D~%" (-> obj fail-message))
+  (format #t "~2Tstinger: ~D~%" (-> obj stinger))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 12 of type fail-mission
 (defmethod run-logic? fail-mission ((obj fail-mission))
   #t
   )
 
+;; definition for method 16 of type fail-mission
 (defmethod print-text fail-mission ((obj fail-mission))
   (when (and (zero? (logand (-> obj flags) (fail-mission-flags famflags-6)))
              (= (gui-control-method-17 *gui-control* (the-as sound-id (-> obj message-id))) (gui-action playing))
@@ -1475,6 +1526,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (fail-mission)
   :virtual #t
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1637,6 +1689,7 @@
     )
   )
 
+;; definition for method 10 of type fail-mission
 ;; WARN: Return type mismatch process vs none.
 (defmethod deactivate fail-mission ((obj fail-mission))
   (set-filter-color! 1.0 1.0 1.0)
@@ -1649,6 +1702,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate resetting (fail-mission)
   :virtual #t
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1747,6 +1801,7 @@
     )
   )
 
+;; definition for function fail-mission-init-by-other
 (defbehavior fail-mission-init-by-other fail-mission ((arg0 fail-mission-params))
   (set! (-> self message) (-> arg0 message))
   (set! (-> self flags) (-> arg0 flags))
@@ -1806,6 +1861,7 @@
   (go-virtual idle)
   )
 
+;; definition for method 11 of type fail-mission-control
 (defmethod start! fail-mission-control ((obj fail-mission-control) (arg0 fail-mission-params))
   (when (not (handle->process (-> obj process)))
     (let ((v1-4 (process-spawn fail-mission arg0 :to *entity-pool*)))
@@ -1817,20 +1873,24 @@
     )
   )
 
+;; definition for method 12 of type fail-mission-control
 (defmethod reset! fail-mission-control ((obj fail-mission-control))
   (send-event (handle->process (-> obj process)) 'reset)
   )
 
+;; definition for method 9 of type fail-mission-control
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod reset? fail-mission-control ((obj fail-mission-control))
   (the-as symbol (send-event (handle->process (-> obj process)) 'query 'reset))
   )
 
+;; definition for method 10 of type fail-mission-control
 ;; WARN: Return type mismatch process vs fail-mission.
 (defmethod get-proc fail-mission-control ((obj fail-mission-control))
   (the-as fail-mission (handle->process (-> obj process)))
   )
 
+;; definition for method 12 of type game-task-node-info
 (defmethod copy-hooks! game-task-node-info ((obj game-task-node-info) (arg0 game-task-node-info))
   (when (and (-> obj info) (-> arg0 info))
     (countdown (v1-3 7)
@@ -1840,6 +1900,7 @@
   obj
   )
 
+;; definition for method 7 of type task-manager
 ;; WARN: Return type mismatch process vs task-manager.
 (defmethod relocate task-manager ((obj task-manager) (arg0 int))
   (if (nonzero? (-> obj link))
@@ -1848,6 +1909,7 @@
   (the-as task-manager ((method-of-type process relocate) obj arg0))
   )
 
+;; definition for function task-manager-init-by-other
 (defbehavior task-manager-init-by-other task-manager ((arg0 game-task-node-info) (arg1 symbol))
   (stack-size-set! (-> self main-thread) 1024)
   (add-connection *task-manager-engine* self nothing self arg0 #f)
@@ -1873,6 +1935,7 @@
   (go-virtual wait)
   )
 
+;; definition for method 20 of type task-manager
 (defmethod kill-all-children task-manager ((obj task-manager))
   (while (-> obj child)
     (deactivate (ppointer->process (-> obj child)))
@@ -1880,6 +1943,7 @@
   0
   )
 
+;; definition for method 21 of type task-manager
 (defmethod check-time task-manager ((obj task-manager))
   (with-pp
     (when (nonzero? (-> obj start-time))
@@ -1906,6 +1970,7 @@
     )
   )
 
+;; definition for method 19 of type task-manager
 (defmethod initialize! task-manager ((obj task-manager))
   (set! (-> obj info) (-> obj node-info info))
   (countdown (v1-2 32)
@@ -1927,6 +1992,7 @@
   0
   )
 
+;; definition for method 10 of type task-manager
 (defmethod deactivate task-manager ((obj task-manager))
   (with-pp
     (let ((s5-0 pp))
@@ -1946,6 +2012,7 @@
     )
   )
 
+;; definition for function task-manager-event-handler
 (defbehavior task-manager-event-handler task-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 object))
   (case arg2
@@ -2060,6 +2127,7 @@
     )
   )
 
+;; definition for method 22 of type task-manager
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod task-manager-method-22 task-manager ((obj task-manager))
   (with-pp
@@ -2087,6 +2155,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait (task-manager)
   :virtual #t
   :event task-manager-event-handler
@@ -2129,6 +2198,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (task-manager)
   :virtual #t
   :event task-manager-event-handler
@@ -2158,6 +2228,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate complete (task-manager)
   :virtual #t
   :event task-manager-event-handler
@@ -2204,12 +2275,12 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate fail (task-manager)
   :virtual #t
   :event task-manager-event-handler
   :exit (behavior ()
-    ;; todo
-    ; (disable *screen-filter*)
+    (disable *screen-filter*)
     (none)
     )
   :code (behavior ()
@@ -2303,6 +2374,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate retry (task-manager)
   :virtual #t
   :event task-manager-event-handler
