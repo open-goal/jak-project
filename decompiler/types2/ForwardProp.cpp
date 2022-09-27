@@ -379,7 +379,7 @@ void types2_for_label(types2::Type& type_out,
                                              env.file->labels.at(label_idx).name));
       } else {
         auto& name = env.file->labels.at(label_idx).name;
-        fmt::print("Encountered unknown label: {}\n", name);
+        // fmt::print("Encountered unknown label: {}\n", name);
         instr.unknown_label_tag = std::make_unique<types2::UnknownLabel>();
         instr.unknown_label_tag->label_idx = label_idx;
         instr.unknown_label_tag->label_name = name;
@@ -1035,7 +1035,7 @@ void types2_addr_on_stack(types2::Type& type_out,
       throw std::runtime_error(
           fmt::format("Failed to find a stack variable or structure at offset {}", offset));
     } else {
-      fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
+      // fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
       instr.unknown_stack_structure_tag = std::make_unique<types2::UnknownStackStructure>();
       instr.unknown_stack_structure_tag->stack_offset = offset;
       type_out.tag.unknown_stack_structure = instr.unknown_stack_structure_tag.get();
@@ -1448,6 +1448,26 @@ void types2_for_vector_float_product(types2::Type& type_out,
   type_out.type = TP_Type::make_from_ts(TypeSpec("vector"));
 }
 
+void types2_for_vector_plus_float_times(types2::Type& type_out,
+                                        const SimpleExpression& expr,
+                                        types2::TypeState& input_types,
+                                        const DecompilerTypeSystem& dts,
+                                        types2::TypePropExtras& extras) {
+  // backprop to make inputs vector
+  for (int i = 0; i < expr.args(); i++) {
+    auto& arg = expr.get_arg(i);
+    auto& arg_type = input_types[arg.var().reg()];
+    if (arg_type->tag.has_tag()) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 3 ? "float" : "vector"),
+                                       *arg_type, dts)) {
+        extras.needs_rerun = true;
+      }
+    }
+  }
+
+  type_out.type = TP_Type::make_from_ts(TypeSpec("vector"));
+}
+
 void types2_for_float_to_int(types2::Type& type_out,
                              const SimpleExpression& expr,
                              types2::TypeState& input_types,
@@ -1583,6 +1603,10 @@ void types2_for_expr(types2::Type& type_out,
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       types2_for_vector_float_product(type_out, expr, input_types, dts, extras);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      types2_for_vector_plus_float_times(type_out, expr, input_types, dts, extras);
+      break;
     case SimpleExpression::Kind::PCPYLD:
       types2_for_pcpyld(type_out, expr, env, input_types, dts);
       break;
