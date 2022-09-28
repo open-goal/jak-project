@@ -978,10 +978,12 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<PAD_ANALOG_ANY>"},
     {"~Y~1L~+8H\\c91~Z~6L~-8H\\c9e~Z~+24H~6L\\ca4~Z~+40H", "<PAD_ANALOG_LEFT_RIGHT>"},
     {"~Y~1L\\c91~Z~6L~-15V\\c9c~Z~+13V~6L\\c98~Z~+26H", "<PAD_ANALOG_UP_DOWN>"},
+
+    // icons
+    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"},
+    {"~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_TODO>"},
     // TODO
     // - ~Y~22L\ca1~Z~22L~+17H~-13V\ca2~Z~22L~+17H~+14V\ca0~Z~22L~+32H\ca3~Z~+56H
-    // - ~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H
-    // - ~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H
     // - ~Y~1L\c85~Z~3L\c8c~Z~7L\c8e~\c5d~-1H~Y~1L\c85~Z~3L\c8d~Z~7L\c8f~Z~+26H
     // - ~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H
     // - ~Y~1L\c85~\c5d~-1H~Y~1L\c85~Z~-11H~3L\c86~Z~+26H
@@ -989,11 +991,11 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     // flags
     {"~Y~6L\\c81~Z~+15H~1L\\c81~Z~+30H~3L\\c81~Z~+45H", "<FLAG_ITALIAN>"},
     {"~Y~5L\\c85~Z~3L\\c8b~\\c5d~-1H~Y~5L\\c85~Z~3L\\c8b~Z~+26H", "<FLAG_SPAIN>"},
-    {"~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~\\c5d~-1H~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~Z~+26H",
-     "<FLAG_GERMAN>"},
+    {"~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~\\c5d~-1H~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~Z~+26H", "<FLAG_GERMAN>"},
     {"~Y~7L\\c81~Z~+15H~1L\\c81~Z~+30H~3L\\c81~Z~+47H", "<FLAG_FRANCE>"},
     {"~Y~1L\\c85~Z~3L\\c9a~Z~7L\\c9b~\\c5d~-1H~Y~1L\\c85~Z~3L\\c90~Z~+26H", "<FLAG_UK>"},
-    {"~Y~1L\\c85~Z~39L\\c87~\\c5d~-1H~Y~1L\\c85~Z~39L\\c88~Z~-11H~7L\\c8a~Z~-11H~3L\\c89~Z~+26H", "<FLAG_JAPAN>"},
+    {"~Y~1L\\c85~Z~39L\\c87~\\c5d~-1H~Y~1L\\c85~Z~39L\\c88~Z~-11H~7L\\c8a~Z~-11H~3L\\c89~Z~+26H",
+     "<FLAG_JAPAN>"},
     {"~Y~1L\\c85~\\c5d~-1H~Y~1L\\c85~Z~-11H~3L\\c86~Z~+26H", "<FLAG_SOUTH_KOREA>"},
 
     // weird stuff
@@ -1010,14 +1012,14 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<SUPERSCRIPT_QUOTE>"},  // used for the 4<__> place in spanish.  the 5th uses the same
                               // character but looks different...?
     {"~Y~-6Hº~Z~+10H", "°"},
-    {"\\c5e", "œ"}, // ligature o+e
+    {"\\c5e", "œ"},  // ligature o+e
 
     // Color / Emphasis
     {"~[~1L", "<COLOR_WHITE>"},
     {"~[~32L", "<COLOR_DEFAULT>"}};
 
 static std::vector<EncodeInfo> s_encode_info_jak2 = {
-    {"_", {0x03}},  // large space
+    {"_", {0x03}},      // large space
     {"ˇ", {0x10}},      // caron
     {"`", {0x11}},      // grave accent
     {"'", {0x12}},      // apostrophe
