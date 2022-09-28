@@ -3,33 +3,9 @@
 
 ;; definition for method 9 of type trajectory
 (defmethod compute-trans-at-time trajectory ((obj trajectory) (arg0 float) (arg1 vector))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 arg1))
-      (let ((a3-0 (-> obj initial-position))
-            (t0-0 (-> obj initial-velocity))
-            (f0-0 arg0)
-            )
-        (.lvf vf2 (&-> t0-0 quad))
-        (.lvf vf1 (&-> a3-0 quad))
-        (let ((a3-1 f0-0))
-          (.mov vf3 a3-1)
-          )
-        )
-      (.add.x.vf vf4 vf0 vf0 :mask #b1000)
-      (.mul.x.vf acc vf2 vf3)
-      (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
-      (.svf (&-> v1-0 quad) vf4)
-      )
-    (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> obj gravity)))
-    arg1
-    )
+  (vector+float*! arg1 (-> obj initial-position) (-> obj initial-velocity) arg0)
+  (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> obj gravity)))
+  arg1
   )
 
 ;; definition for method 10 of type trajectory
@@ -255,43 +231,20 @@
 ;; definition for method 10 of type point-tracker
 ;; INFO: Used lq/sq
 (defmethod point-tracker-method-10 point-tracker ((obj point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         )
-    (init-vf0-vector)
-    (cond
-      ((>= 0.0 arg3)
-       (set! (-> arg0 quad) (-> arg1 quad))
-       )
-      ((>= arg3 1.0)
-       (set! (-> arg0 quad) (-> arg2 quad))
-       )
-      (else
-        (let ((a1-1 arg0))
-          (let ((v1-3 arg2)
-                (a0-6 (vector-! (new 'stack-no-clear 'vector) arg1 arg2))
-                (f0-3 (- 1.0 arg3))
-                )
-            (.lvf vf2 (&-> a0-6 quad))
-            (.lvf vf1 (&-> v1-3 quad))
-            (let ((v1-4 f0-3))
-              (.mov vf3 v1-4)
-              )
-            )
-          (.add.x.vf vf4 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf2 vf3)
-          (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
-          (.svf (&-> a1-1 quad) vf4)
-          (vector-lerp! arg0 a1-1 arg2 arg3)
-          )
+  (cond
+    ((>= 0.0 arg3)
+     (set! (-> arg0 quad) (-> arg1 quad))
+     )
+    ((>= arg3 1.0)
+     (set! (-> arg0 quad) (-> arg2 quad))
+     )
+    (else
+      (let ((a1-2 (vector+float*! arg0 arg2 (vector-! (new 'stack-no-clear 'vector) arg1 arg2) (- 1.0 arg3))))
+        (vector-lerp! arg0 a1-2 arg2 arg3)
         )
       )
-    arg0
     )
+  arg0
   )
 
 ;; definition for method 11 of type point-tracker

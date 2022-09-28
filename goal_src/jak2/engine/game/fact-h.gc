@@ -112,6 +112,7 @@
   )
 
 (declare-type entity res-lump)
+(declare-type entity-actor entity)
 (declare-type target process-focusable)
 (define-extern process-task-mask (function process task-mask))
 
@@ -157,6 +158,7 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
+
 
 (define *FACT-bank* (new 'static 'fact-bank
                       :eco-level-max 2.0
@@ -217,12 +219,13 @@
     )
   )
 
+
 (deftype fact-info-target (fact-info)
   ((eco-type                   int32       :offset-assert  40)
    (eco-level                  float       :offset-assert  44)
    (eco-pickup-time            time-frame  :offset-assert  48)
    (eco-timeout                time-frame  :offset-assert  56)
-   (eco-source                 uint64      :offset-assert  64)
+   (eco-source                 handle      :offset-assert  64)
    (eco-source-time            time-frame  :offset-assert  72)
    (health                     float       :offset-assert  80)
    (health-max                 float       :offset-assert  84)
@@ -262,6 +265,7 @@
     )
   )
 
+
 (deftype fact-info-enemy (fact-info)
   ((speed            float          :offset-assert  40)
    (idle-distance    meters         :offset-assert  44)
@@ -285,21 +289,24 @@
     )
   )
 
+
 (deftype fact-info-crate (fact-info)
   ((suck-count int32  :offset-assert  40)
    )
-  (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
-    )
   :method-count-assert 12
   :size-assert         #x2c
   :flag-assert         #xc0000002c
+  (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
+    )
   )
 
+
+;; WARN: Return type mismatch object vs fact-info.
 (defmethod new fact-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
-  (local-vars (sv-16 fact-info) (sv-20 entity) (sv-24 task-mask))
+  (local-vars (sv-16 fact-info) (sv-20 res-lump) (sv-24 task-mask))
   (set! sv-16 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
-  (set! sv-20 (-> arg0 entity))
+  (set! sv-20 (the-as res-lump (-> arg0 entity)))
   (set! sv-24 (process-task-mask arg0))
   (when (zero? sv-16)
     (go process-drawable-art-error "memory")
@@ -308,7 +315,7 @@
   (set! (-> sv-16 process) arg0)
   (set! (-> sv-16 pickup-type) arg1)
   (set! (-> sv-16 pickup-amount) arg2)
-  (let ((s4-1 (-> ((method-of-type res-lump lookup-tag-idx) sv-20 'eco-info 'base -1000000000.0) lo)))
+  (let ((s4-1 (-> (lookup-tag-idx sv-20 'eco-info 'base -1000000000.0) lo)))
     (when (>= (the-as int s4-1) 0)
       (let ((s3-0 (the-as int s4-1))
             (s2-0 (-> sv-20 tag s4-1))
@@ -356,6 +363,7 @@
   :flag-assert         #x900000008
   )
 
+
 (define *fact-info-enemy-defaults* (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80)))
 
 (defmethod new fact-info-enemy ((allocation symbol)
@@ -367,7 +375,7 @@
                               )
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((gp-0 (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make arg0 arg2 arg3))))
-    (let ((s5-0 (the res-lump (-> gp-0 process entity))))
+    (let ((s5-0 (the-as res-lump (-> gp-0 process entity))))
       (set! (-> gp-0 speed) (res-lump-float s5-0 'speed :default 1.0))
       (set! (-> gp-0 idle-distance) (res-lump-float s5-0 'idle-distance :default (-> arg1 0)))
       (set! (-> gp-0 notice-top) (res-lump-float s5-0 'notice-top :default 4096000.0))
@@ -378,7 +386,7 @@
       (set! (-> gp-0 enemy-options) (res-lump-value s5-0 'enemy-options enemy-option :time -1000000000.0))
       (let ((s4-1 0))
         (set! sv-16 (new 'static 'res-tag))
-        (let ((v1-11 (res-lump-data s5-0 'trigger pointer :tag-ptr (& sv-16) :time -1000000000.0)))
+        (let ((v1-11 (res-lump-data s5-0 'trigger pointer :tag-ptr (& sv-16))))
           (when v1-11
             (set! (-> gp-0 enemy-options) (logior (enemy-option has-trigger) (-> gp-0 enemy-options)))
             (let ((a0-13 0))
@@ -402,7 +410,7 @@
               )
         (when (logtest? s4-1 2)
           (set! sv-32 (new 'static 'res-tag))
-          (let ((v1-20 (res-lump-data s5-0 'trig-ag pointer :tag-ptr (& sv-32) :time -1000000000.0)))
+          (let ((v1-20 (res-lump-data s5-0 'trig-ag pointer :tag-ptr (& sv-32))))
             (if (and v1-20 (nonzero? (-> sv-32 elt-count)))
                 (set! (-> gp-0 trig-actor-group) (the-as uint v1-20))
                 (clear-mask-bits gp-0 2)
@@ -427,7 +435,7 @@
 
 (defmethod new fact-info-crate ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
   (let ((gp-0 (the-as fact-info-crate ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (let ((a0-1 (the res-lump (-> gp-0 process entity))))
+    (let ((a0-1 (the-as res-lump (-> gp-0 process entity))))
       (set! (-> gp-0 suck-count) (res-lump-value a0-1 'suck-count int :time -1000000000.0))
       )
     gp-0
@@ -436,10 +444,8 @@
 
 (defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
   (let ((gp-0 (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (set! (-> gp-0 eco-source) (the-as uint #f))
+    (set! (-> gp-0 eco-source) (the-as handle #f))
     (reset! gp-0 #f)
     gp-0
     )
   )
-
-
