@@ -950,10 +950,10 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
                             s64 in,
                             bool no_head) {
   ASSERT(type_info->is_bitfield());
-  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (in == -1) {
     return nullptr;
   }
+  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (no_head) {
     ASSERT(elts.size() >= 1);
   }

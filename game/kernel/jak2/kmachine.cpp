@@ -424,10 +424,12 @@ int ShutdownMachine() {
   return 0;
 }
 
-Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
+u32 MouseGetData(u32 _mouse) {
   // stubbed out in the actual game
   static double px = 0;
   static double py = 0;
+
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
 
   mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
@@ -442,7 +444,7 @@ Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
   mouse->deltay = last_cursor_y_position - py;
   px = last_cursor_x_position;
   py = last_cursor_y_position;
-  return mouse;
+  return _mouse;
 }
 
 /*!

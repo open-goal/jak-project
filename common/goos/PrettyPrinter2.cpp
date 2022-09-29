@@ -29,10 +29,13 @@ struct Node {
   std::string atom_str;
 
   // number of quotes this is wrapped in.
-  u32 quoted = 0;
+  enum class QuoteKind { QUOTE, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING };
+  std::vector<QuoteKind> quotes;
 
   Node* parent = nullptr;
   u32 my_depth = 0;
+
+  int get_quote_length() const;
 
   void link(Node* this_parent, std::vector<Node*>* bfs_order, u32 depth) {
     parent = this_parent;
@@ -86,6 +89,30 @@ struct Node {
   u8 sub_elt_indent = 0;
 };
 
+inline const std::string quote_symbol(Node::QuoteKind kind) {
+  switch (kind) {
+    case Node::QuoteKind::QUOTE:
+      return "'";
+    case Node::QuoteKind::QUASIQUOTE:
+      return "`";
+    case Node::QuoteKind::UNQUOTE:
+      return ",";
+    case Node::QuoteKind::UNQUOTE_SPLICING:
+      return ",@";
+    default:
+      ASSERT_MSG(false, fmt::format("invalid quote kind {}", kind));
+      return "[invalid]";
+  }
+}
+
+int Node::get_quote_length() const {
+  int out = 0;
+  for (auto& q : quotes) {
+    out += quote_symbol(q).length();
+  }
+  return out;
+}
+
 Node to_node(const goos::Object& obj) {
   switch (obj.type) {
     case goos::ObjectType::EMPTY_LIST:
@@ -100,13 +127,22 @@ Node to_node(const goos::Object& obj) {
       return Node(obj.print());
 
     case goos::ObjectType::PAIR: {
-      // we've got three cases: quoted thing, proper list, improper list.
+      // we've got four cases: quoted thing, unquoted thing, proper list, improper list.
+
+      // there's probably a better way to do this but i am lazy
       auto& first = obj.as_pair()->car;
-      if (first.is_symbol() && first.as_symbol()->name == "quote") {
+      if (first.is_symbol("quote")) {
         auto& second = obj.as_pair()->cdr;
         if (second.is_pair() && second.as_pair()->cdr.is_empty_list()) {
           Node result = to_node(second.as_pair()->car);
-          result.quoted++;
+          result.quotes.push_back(Node::QuoteKind::QUOTE);
+          return result;
+        }
+      } else if (first.is_symbol("unquote")) {
+        auto& second = obj.as_pair()->cdr;
+        if (second.is_pair() && second.as_pair()->cdr.is_empty_list()) {
+          Node result = to_node(second.as_pair()->car);
+          result.quotes.push_back(Node::QuoteKind::UNQUOTE);
           return result;
         }
       }
@@ -148,13 +184,13 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
     Node* node = *it;
     switch (node->kind) {
       case Node::Kind::ATOM:
-        node->text_len = node->atom_str.length() + node->quoted;
+        node->text_len = node->atom_str.length() + node->get_quote_length();
         break;
       case Node::Kind::IMPROPER_LIST:
       case Node::Kind::LIST: {
         if (node->break_list) {
           // special case compute first line length
-          int first_line_len = 1 + node->quoted;  // open paren + quotes
+          int first_line_len = 1 + node->get_quote_length();  // open paren + quotes
           int nodes_on_first_line =
               std::min(int(node->child_nodes.size()), int(node->top_line_count));
           if (nodes_on_first_line > 0) {
@@ -176,7 +212,7 @@ void recompute_lengths(const std::vector<Node*>& bfs_order) {
 
           node->text_len = max_line_len;
         } else {
-          node->text_len = 1 + node->quoted;  // open paren + quotes
+          node->text_len = 1 + node->get_quote_length();  // open paren + quotes
           for (auto& child : node->child_nodes) {
             node->text_len += (child.text_len + 1);  // space or close paren.
           }
@@ -292,7 +328,7 @@ int run_algorithm(const std::vector<Node*>& bfs_order, int line_length) {
   // - too long
   // - not already split.
   // the "magic" of v2 is:
-  // the "too long" check above igores the sublist.
+  // the "too long" check above ignores the sublist.
 
   int num_broken = 0;
   std::optional<s32> min_depth;
@@ -334,8 +370,8 @@ void append_node_to_string(const Node* node,
   for (int i = 0; i < init_indent_level; i++) {
     str.push_back(' ');
   }
-  for (u32 i = 0; i < node->quoted; i++) {
-    str.push_back('\'');
+  for (auto q : node->quotes) {
+    str.append(quote_symbol(q));
   }
   switch (node->kind) {
     case Node::Kind::ATOM:
@@ -347,7 +383,7 @@ void append_node_to_string(const Node* node,
         str.push_back('(');
         size_t node_idx = 0;
 
-        int listing_indent = next_indent_level + node->quoted + node->sub_elt_indent;
+        int listing_indent = next_indent_level + node->get_quote_length() + node->sub_elt_indent;
         int extra_indent = 0;
         int old_indent = listing_indent;
         if (node->top_line_count) {
@@ -401,7 +437,7 @@ void append_node_to_string(const Node* node,
       } else {
         str.push_back('(');
         ASSERT(!node->child_nodes.empty());
-        int listing_indent = next_indent_level + node->quoted;
+        int listing_indent = next_indent_level + node->get_quote_length();
         int extra_indent = 1;
         int c0 = 0;
         for (auto& child : node->child_nodes) {

@@ -30,7 +30,7 @@
     (die () _type_ :state 23)
     )
   )
-  
+
 
 (deftype gun-info (basic)
   ((process                (pointer target)           :offset-assert   4)
@@ -56,9 +56,9 @@
    (gun-roty-rel           degrees                    :offset-assert 144)
    (gun-roty               degrees                    :offset-assert 148)
    (gun-roty-targ          degrees                    :offset-assert 152)
-   (hips                   basic                      :offset-assert 156)
-   (upper-body             basic                      :offset-assert 160)
-   (chest                  basic                      :offset-assert 164)
+   (hips                   joint-mod                  :offset-assert 156)
+   (upper-body             joint-mod                  :offset-assert 160)
+   (chest                  joint-mod                  :offset-assert 164)
    (fire-dir-rot           degrees                    :offset-assert 168)
    (fire-dir               vector           2 :inline :offset-assert 176)
    (fire-point             vector           :inline   :offset-assert 208)
@@ -109,7 +109,7 @@
    (top-anim-tilt-up       degrees                    :offset-assert 600)
    (attack-combo           combo-tracker    :inline   :offset-assert 608)
    (combo-window-start     time-frame                 :offset-assert 656)
-   (combo-window-state     uint32                     :offset-assert 664)
+   (combo-window-state     symbol                     :offset-assert 664)
    (combo-fire-delay       uint32                     :offset-assert 668)
    (charge-ammo            float                      :offset-assert 672)
    (charge-start-time      time-frame                 :offset-assert 680)
@@ -124,6 +124,7 @@
     )
   )
 
+
 (defbehavior want-to-gun? process ((arg0 target) (arg1 symbol))
   (local-vars (v1-36 symbol))
   (and (logtest? (-> arg0 game features) (game-feature unk-game-feature-06))
@@ -131,7 +132,7 @@
        (zero? (logand (focus-status dead hit board mech dark teleporting) (-> arg0 focus-status)))
        (zero? (logand (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control unknown-surface01 flags)))
        (zero? (logand (state-flags sf18) (-> arg0 state-flags)))
-       (logtest? (the-as game-feature (logand (-> *setting-control* user-current features) 960))
+       (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow gun-red gun-blue gun-dark))
                  (-> arg0 game features)
                  )
        (or (zero? (logand (-> arg0 control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck?))
@@ -149,7 +150,7 @@
            (-> arg0 gun latch?)
            )
        (not (-> arg0 skel top-anim frame-group))
-       (>= (- (-> self clock frame-counter) (-> arg0 control unknown-time-frame12)) (seconds 0.1))
+       (>= (- (-> self clock frame-counter) (-> arg0 control unknown-time-frame20)) (seconds 0.1))
        )
   )
 

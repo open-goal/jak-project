@@ -253,7 +253,7 @@ _mips2c_call_windows:
   ret
 
 
-;; Call C++ code on windows, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
+;; Call C++ code on windows, from GOAL. Put arguments on the stack and put a pointer to this array in the first arg.
 global _stack_call_win32
 _stack_call_win32:
   pop rax
@@ -334,18 +334,18 @@ _call_goal_asm_linux:
   ;; RDI - first arg
   ;; RSI - second arg
   ;; RDX - third arg
-  ;; RCX - function pointer (goes in r13)
-  ;; R8  - st (goes in r14)
+  ;; RCX - function pointer
+  ;; R8  - st (goes in r14 and r13)
   ;; R9  - off (goes in r15)
 
-  ;; set GOAL function pointer
-  mov r13, rcx
-  ;; offset
-  mov r14, r8
+  ;; set GOAL process
+  mov r13, r8
   ;; symbol table
+  mov r14, r8
+  ;; offset
   mov r15, r9
   ;; call GOAL by function pointer
-  call r13
+  call rcx
 
   ;; retore x86 registers.
   pop r15
@@ -401,8 +401,8 @@ _call_goal_on_stack_asm_linux:
   ;; RDI - stack pointer
   ;; RSI - unused
   ;; RDX - unused
-  ;; RCX - function pointer (goes in r13)
-  ;; R8  - st (goes in r14)
+  ;; RCX - function pointer
+  ;; R8  - st (goes in r14 and r13)
   ;; R9  - off (goes in r15)
 
   ;; x86 saved registers we need to modify for GOAL should be saved
@@ -418,13 +418,13 @@ _call_goal_on_stack_asm_linux:
   push rsi
 
   ;; set GOAL function pointer
-  mov r13, rcx
-  ;; offset
-  mov r14, r8
+  mov r13, r8
   ;; symbol table
+  mov r14, r8
+  ;; offset
   mov r15, r9
   ;; call GOAL by function pointer
-  call r13
+  call rcx
 
   ;; get old stack pointer
   pop rsi
@@ -472,11 +472,11 @@ _call_goal_asm_win32:
   mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
   mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
   mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
-  mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
-  mov r15, [rsp + 184] ;; symbol table
-  mov r14, [rsp + 176] ;; offset
+  mov r15, [rsp + 184] ;; offset
+  mov r14, [rsp + 176] ;; symbol table
+  mov r13, r14 ;; r13 is GOAL process, set to #f (same as symbol table) TODO: verify on PS2
   
-  call r13
+  call r9 ;; r9 is GOAL t9, r9 is windows fourth argument (not sure this is correct. maybe rax instead?)
 
   movups xmm7, [rsp]
   add rsp, 16
@@ -520,15 +520,6 @@ _call_goal8_asm_win32:
   movups [rsp], xmm6
   sub rsp, 16
   movups [rsp], xmm7
-
- ;; mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
- ;; mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
- ;; mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
- ;; mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
- ;; mov r15, [rsp + 184] ;; symbol table
- ;; mov r14, [rsp + 176] ;; offset
-
- ;; call r13
 
   mov r13, r9 ;; pp
   mov r15, [rsp + 184] ;; symbol table
@@ -606,11 +597,11 @@ _call_goal_on_stack_asm_win32:
   mov rsp, rcx
   push rsi
 
-  mov r13, rdx ;; fp
+  mov r13, r8  ;; pp
   mov r14, r8  ;; st
   mov r15, r9  ;; offset
 
-  call r13
+  call rdx
 
   ;; restore stack
   pop rsi

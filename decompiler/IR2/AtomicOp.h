@@ -255,7 +255,8 @@ class SimpleExpression {
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
     VECTOR_4_DOT,
-    VECTOR_LENGTH,  // jak 2 only.
+    VECTOR_LENGTH,            // jak 2 only.
+    VECTOR_PLUS_FLOAT_TIMES,  // jak 2 only.
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };
@@ -279,6 +280,11 @@ class SimpleExpression {
                    const SimpleAtom& arg0,
                    const SimpleAtom& arg1,
                    const SimpleAtom& arg2);
+  SimpleExpression(Kind kind,
+                   const SimpleAtom& arg0,
+                   const SimpleAtom& arg1,
+                   const SimpleAtom& arg2,
+                   const SimpleAtom& arg3);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   std::string to_string(const Env& env) const;
   bool operator==(const SimpleExpression& other) const;
@@ -300,7 +306,7 @@ class SimpleExpression {
 
  private:
   Kind m_kind = Kind::INVALID;
-  SimpleAtom m_args[3];
+  SimpleAtom m_args[4];
   s8 n_args = -1;
 };
 

@@ -40,13 +40,13 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool enable_merc_xgkick = true;
-  math::Vector<u8, 4> fog_color;
+  math::Vector<u8, 4> fog_color = math::Vector<u8, 4>{0, 0, 0, 0};
   float fog_intensity = 1.f;
   bool no_multidraw = false;
 
   void reset();
   bool has_pc_data = false;
-  LevelVis occlusion_vis[2];
+  LevelVis occlusion_vis[6];
 
   math::Vector4f camera_planes[4];
   math::Vector4f camera_matrix[4];

@@ -90,8 +90,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
 
   init_bucket_renderer<TFragment>("tfrag-l0-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L0_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+  init_bucket_renderer<Tie3>("tie-l0-tfrag", BucketCategory::TIE, BucketId::TIE_L0_TFRAG, 0);
   init_bucket_renderer<TFragment>("tfrag-l1-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L1_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 1);
+  init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
   init_bucket_renderer<Shrub>("shrub-l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L0_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
   init_bucket_renderer<TFragment>("tfrag-t-l0-alpha", BucketCategory::TFRAG,
@@ -773,7 +775,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-    vif_interrupt_callback(bucket_id);
+    vif_interrupt_callback(bucket_id + 1);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
   }
   vif_interrupt_callback(m_bucket_renderers.size());
