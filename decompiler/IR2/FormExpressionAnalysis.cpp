@@ -4431,66 +4431,6 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   }
   return nullptr;
 }
-}  // namespace
-
-FormElement* ConditionElement::make_zero_check_generic(const Env& env,
-                                                       FormPool& pool,
-                                                       const std::vector<Form*>& source_forms,
-                                                       const std::vector<TypeSpec>& source_types) {
-  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
-  ASSERT(source_forms.size() == 1);
-
-  auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
-  if (enum_type_info && !enum_type_info->is_bitfield()) {
-    // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
-    auto mr = match(
-        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                    {make_int_uint_cast_matcher(Matcher::any(0)),
-                     Matcher::match_or({Matcher::any_integer(1),
-                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
-        source_forms.at(0));
-    if (mr.matched) {
-      s64 value = mr.maps.ints.at(1);
-      value = -value;
-      auto enum_constant = cast_to_int_enum(enum_type_info, pool, env, value);
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
-    }
-  }
-
-  {
-    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                {Matcher::any(0), Matcher::any_integer(1)}),
-                    source_forms.at(0));
-    if (mr.matched) {
-      s64 value = -mr.maps.ints.at(1);
-      auto value_form = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(value));
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          std::vector<Form*>{mr.maps.forms.at(0), value_form});
-    }
-  }
-
-  auto nice_constant = try_make_constant_from_int_for_compare(0, source_types.at(0), pool, env);
-  if (nice_constant) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::EQ),
-        std::vector<Form*>{source_forms.at(0), nice_constant});
-  }
-
-  /*
-  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
-  if (as_logtest) {
-    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
-    auto not_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
-    return not_form;
-  }
-   */
-
-  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
-}
 
 FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   /*
@@ -4545,6 +4485,68 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
     }
   }
   return nullptr;
+}
+}  // namespace
+
+FormElement* ConditionElement::make_zero_check_generic(const Env& env,
+                                                       FormPool& pool,
+                                                       const std::vector<Form*>& source_forms,
+                                                       const std::vector<TypeSpec>& source_types) {
+  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
+  ASSERT(source_forms.size() == 1);
+
+  auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
+  if (enum_type_info && !enum_type_info->is_bitfield()) {
+    // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
+    auto mr = match(
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                    {make_int_uint_cast_matcher(Matcher::any(0)),
+                     Matcher::match_or({Matcher::any_integer(1),
+                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
+        source_forms.at(0));
+    if (mr.matched) {
+      s64 value = mr.maps.ints.at(1);
+      value = -value;
+      auto enum_constant = cast_to_int_enum(enum_type_info, pool, env, value);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
+    }
+  }
+
+  {
+    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                {Matcher::any(0), Matcher::any_integer(1)}),
+                    source_forms.at(0));
+    if (mr.matched) {
+      s64 value = -mr.maps.ints.at(1);
+      auto value_form = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(value));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), value_form});
+    }
+  }
+
+  auto nice_constant = try_make_constant_from_int_for_compare(0, source_types.at(0), pool, env);
+  if (nice_constant) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::EQ),
+        std::vector<Form*>{source_forms.at(0), nice_constant});
+  }
+
+  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
+  if (as_logtest) {
+    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+    auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
+    if (as_cpad_macro) {
+      logtest_form = pool.alloc_single_form(nullptr, as_cpad_macro);
+    }
+    auto not_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+    return not_form;
+  }
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
 FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
@@ -5744,7 +5746,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
 
   Form* val = nullptr;
 
-  if (!val && on_zero) {
+  if (on_zero) {
     auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
     if (as_logtest) {
       auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
