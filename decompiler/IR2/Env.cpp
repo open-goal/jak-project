@@ -155,14 +155,14 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
                     type_in_reg.print(), type_in_reg.print());
                 ASSERT(false);
               }
-            }
 
-            if (type_of_var != type_in_reg) {
-              // TODO - use the when possible?
-              VariableWithCast result;
-              result.cast = TypeSpec(x.type_name);
-              result.name = lookup_name;
-              return result;
+              if (type_of_var != type_in_reg) {
+                // TODO - use the when possible?
+                VariableWithCast result;
+                result.cast = TypeSpec(x.type_name);
+                result.name = lookup_name;
+                return result;
+              }
             }
           }
         }
@@ -520,6 +520,12 @@ void Env::add_stack_structure_hint(const StackStructureHint& hint) {
     case StackStructureHint::ContainerType::NONE: {
       // parse the type spec.
       TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+      if (base_typespec.base_type() == "object") {
+        throw std::runtime_error(
+            fmt::format("Got a stack structure hint for type object at offset {}. This is usually "
+                        "a sign that stack structure guessing got inconsistent types.",
+                        hint.stack_offset));
+      }
       auto type_info = dts->ts.lookup_type(base_typespec);
       // just a plain object on the stack.
       if (!type_info->is_reference()) {

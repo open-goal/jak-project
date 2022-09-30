@@ -1875,6 +1875,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cpad-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
+    case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
+      return "vector+float*!";
     default:
       ASSERT(false);
       return "";

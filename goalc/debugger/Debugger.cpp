@@ -668,7 +668,7 @@ void Debugger::read_symbol_table_jak2() {
       str_buff[127] = '\0';
 
       // GOAL sym - s7
-      auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
+      auto sym_offset = s32(offset + st_base) - s32(m_debug_context.s7);
       ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
       ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
 
@@ -1100,8 +1100,7 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
     pos += op_mov_string.length();
     auto r14_pos = result.find(sym_false_string, pos);
     if (r14_pos < result.find(op_mov_string, pos)) {
-      result.replace(r14_pos, sym_false_string.length(),
-                     fmt::format(", '{}", get_symbol_name_from_offset(0)));
+      result.replace(r14_pos, sym_false_string.length(), fmt::format(", '#f"));
     }
   }
 

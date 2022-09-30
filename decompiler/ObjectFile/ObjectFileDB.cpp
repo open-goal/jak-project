@@ -680,34 +680,39 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
 }
 
 std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
-  lg::info("- Finding game text...");
-  std::string text_string = "COMMON";
-  Timer timer;
-  int file_count = 0;
-  int string_count = 0;
-  int char_count = 0;
-  std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
+  try {
+    lg::info("- Finding game text...");
+    std::string text_string = "COMMON";
+    Timer timer;
+    int file_count = 0;
+    int string_count = 0;
+    int char_count = 0;
+    std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
 
-  for_each_obj([&](ObjectFileData& data) {
-    if (data.name_in_dgo.substr(1) == text_string) {
-      file_count++;
-      auto statistics = process_game_text(data, cfg.text_version);
-      string_count += statistics.total_text;
-      char_count += statistics.total_chars;
-      if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
-        ASSERT(false);
+    for_each_obj([&](ObjectFileData& data) {
+      if (data.name_in_dgo.substr(1) == text_string) {
+        file_count++;
+        auto statistics = process_game_text(data, cfg.text_version);
+        string_count += statistics.total_text;
+        char_count += statistics.total_chars;
+        if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
+          ASSERT(false);
+        }
+        text_by_language_by_id[statistics.language] = std::move(statistics.text);
       }
-      text_by_language_by_id[statistics.language] = std::move(statistics.text);
+    });
+
+    lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
+             string_count, char_count, timer.getMs());
+
+    if (text_by_language_by_id.empty()) {
+      return {};
     }
-  });
-
-  lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
-           string_count, char_count, timer.getMs());
-
-  if (text_by_language_by_id.empty()) {
+    return write_game_text(cfg.text_version, text_by_language_by_id);
+  } catch (std::runtime_error& e) {
+    lg::warn("Error when extracting game text: {}", e.what());
     return {};
   }
-  return write_game_text(cfg.text_version, text_by_language_by_id);
 }
 
 std::string ObjectFileDB::process_game_count_file() {
