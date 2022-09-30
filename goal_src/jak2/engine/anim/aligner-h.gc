@@ -9,6 +9,11 @@
   :bitfield #t
   :type uint32
   (disabled) ;; keep object velocity
+  (af01)
+  (af02)
+  (af03)
+  (af04)
+  (af05)
   )
 
 (defenum align-opts
@@ -47,14 +52,16 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_ 0)
-    (align-control-method-9 () none 9)
-    (align-control-method-10 () none 10)
-    (align-control-method-11 () none 11)
-    (align-control-method-12 () none 12)
-    (align-control-method-13 () none 13)
+    (compute-alignment! (_type_) transformq 9)
+    (align! (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process 11)
+    (first-transform (_type_) transform 12)
+    (second-transform (_type_) transform 13)
     )
   )
 
+
+;; WARN: Return type mismatch object vs align-control.
 (defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (when (zero? obj)

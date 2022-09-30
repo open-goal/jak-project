@@ -424,10 +424,12 @@ int ShutdownMachine() {
   return 0;
 }
 
-Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
+u32 MouseGetData(u32 _mouse) {
   // stubbed out in the actual game
   static double px = 0;
   static double py = 0;
+
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
 
   mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
@@ -442,7 +444,7 @@ Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
   mouse->deltay = last_cursor_y_position - py;
   px = last_cursor_x_position;
   py = last_cursor_y_position;
-  return mouse;
+  return _mouse;
 }
 
 /*!
@@ -473,6 +475,19 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+void pc_set_levels(u32 lev_list) {
+  std::vector<std::string> levels;
+  for (int i = 0; i < 6; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::set_levels(levels);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -482,7 +497,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
-  // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);

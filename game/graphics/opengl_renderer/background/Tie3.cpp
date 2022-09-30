@@ -10,6 +10,17 @@ Tie3::Tie3(const std::string& name, int my_id, int level_id)
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+
+  m_wind_data.paused = 0;
+  math::Vector4f ones(1, 1, 1, 1);
+  m_wind_data.wind_normal = ones;
+  m_wind_data.wind_temp = ones;
+  for (auto& wv : m_wind_data.wind_array) {
+    wv = ones;
+  }
+  for (auto& wf : m_wind_data.wind_force) {
+    wf = 1.f;
+  }
 }
 
 Tie3::~Tie3() {
@@ -301,8 +312,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -314,11 +326,18 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     return;
   }
 
-  auto gs_test = dma.read_and_advance();
-  ASSERT(gs_test.size_bytes == 32);
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    return;
+  }
 
-  auto tie_consts = dma.read_and_advance();
-  ASSERT(tie_consts.size_bytes == 9 * 16);
+  auto gs_test = dma.read_and_advance();
+  if (gs_test.size_bytes == 160) {
+  } else {
+    ASSERT(gs_test.size_bytes == 32);
+
+    auto tie_consts = dma.read_and_advance();
+    ASSERT(tie_consts.size_bytes == 9 * 16);
+  }
 
   auto mscalf = dma.read_and_advance();
   ASSERT(mscalf.size_bytes == 0);
@@ -327,6 +346,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   ASSERT(row.size_bytes == 32);
 
   auto next = dma.read_and_advance();
+  if (next.size_bytes == 32) {
+    next = dma.read_and_advance();
+  }
   ASSERT(next.size_bytes == 0);
 
   auto pc_port_data = dma.read_and_advance();
@@ -334,9 +356,12 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
-  auto wind_data = dma.read_and_advance();
-  ASSERT(wind_data.size_bytes == sizeof(WindWork));
-  memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  if (render_state->version == GameVersion::Jak1) {
+    auto wind_data = dma.read_and_advance();
+    ASSERT(wind_data.size_bytes == sizeof(WindWork));
+    memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  } else {
+  }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     dma.read_and_advance();

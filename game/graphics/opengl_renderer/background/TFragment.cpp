@@ -46,8 +46,8 @@ void TFragment::render(DmaFollower& dma,
   // unless we are a child, in which case our parent took this already.
   if (!m_child_mode) {
     auto data0 = dma.read_and_advance();
-    ASSERT(data0.vif1() == 0);
-    ASSERT(data0.vif0() == 0);
+    ASSERT(data0.vifcode1().kind == VifCode::Kind::NOP);
+    ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
     ASSERT(data0.size_bytes == 0);
   }
 
@@ -109,7 +109,9 @@ void TFragment::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 
-  ASSERT(!level_name.empty());
+  if (level_name.empty()) {
+    return;
+  }
   {
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;

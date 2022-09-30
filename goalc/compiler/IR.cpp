@@ -1600,6 +1600,9 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PAND:
       function = ".pand";
       break;
+    case Kind::PACKUSWB:
+      function = ".packuswb";
+      break;
     default:
       ASSERT(false);
   }
@@ -1687,6 +1690,9 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::PAND:
       gen->add_instr(IGen::parallel_bitwise_and(dst, src2, src1), irec);
       break;
+    case Kind::PACKUSWB:
+      gen->add_instr(IGen::vpackuswb(dst, src1, src2), irec);
+      break;
     default:
       ASSERT(false);
   }
@@ -1770,6 +1776,14 @@ std::string IR_Int128Math2Asm::print() {
       use_imm = true;
       function = ".pw.sra";
       break;
+    case Kind::PH_SLL:
+      use_imm = true;
+      function = ".ph.sll";
+      break;
+    case Kind::PH_SRL:
+      use_imm = true;
+      function = ".ph.srl";
+      break;
     case Kind::VPSRLDQ:
       use_imm = true;
       function = ".VPSRLDQ";
@@ -1828,6 +1842,19 @@ void IR_Int128Math2Asm::do_codegen(emitter::ObjectGenerator* gen,
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
+      break;
+    case Kind::PH_SLL:
+      // you are technically allowed to put values > 32 in here.
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
+      gen->add_instr(IGen::ph_sll(dst, src, *m_imm), irec);
+      break;
+    case Kind::PH_SRL:
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
+      gen->add_instr(IGen::ph_srl(dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRA:
       ASSERT(m_imm.has_value());

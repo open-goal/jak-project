@@ -763,6 +763,11 @@
        )
       (else
         (start-debug "load-begin, no borrow~%")
+        (dotimes (i 7)
+          (start-debug "lev ~8S bits #b~b~%"
+                      (-> *level* level i name)
+                      (-> *level* level i memory-mask))
+          )
         ;; not borrowing, we have to find our own memory.
         ;; there's a bit mask to indicate which sections of memory are used, with 6 bits.
 
@@ -826,34 +831,34 @@
             (((load-buffer-mode medium))
              ;; need 3 bits in the mask.
              ;; like large, check both ends.
-             (when (memory-unused? *level* #xb000111)
+             (when (memory-unused? *level* #b000111)
                (set! bits-to-use 7)
                (goto cfg-83)
                )
-             (when (memory-unused? *level* #xb111000)
+             (when (memory-unused? *level* #b111000)
                (set! offset-in-level-heap 73) ;; weird sizing
-               (set! bits-to-use #xb111000)
+               (set! bits-to-use #b111000)
                (goto cfg-83)
                )
              )
             (((load-buffer-mode small-center))
              ;; only one place for us to go, in the center
-             (when (memory-unused? *level* #xb001100)
+             (when (memory-unused? *level* #b001100)
                (set! offset-in-level-heap 48)
-               (set! bits-to-use #xb1100)
+               (set! bits-to-use #b1100)
                (goto cfg-83)
                )
              )
             (((load-buffer-mode small-edge))
              ;; check one side
-             (when (memory-unused? *level* #xb000011)
-               (set! bits-to-use #xb000011)
+             (when (memory-unused? *level* #b000011)
+               (set! bits-to-use #b000011)
                (goto cfg-83)
                )
              ;; and the other
-             (when (memory-unused? *level* #xb110000)
+             (when (memory-unused? *level* #b110000)
                (set! offset-in-level-heap 98)
-               (set! bits-to-use #xb110000)
+               (set! bits-to-use #b110000)
                (goto cfg-83)
                )
              )
@@ -905,7 +910,7 @@
              0
              )
             (else
-              (start-debug "successfully found load: size #x~X, bits #b~6,'0B, offset ~D~%"
+              (start-debug "successfully found load: size #x~X, bits #x~X, offset ~D~%"
                            heap-size bits-to-use offset-in-level-heap)
               ;; found a spot, set mask.
               (set! (-> obj memory-mask) (the-as uint bits-to-use))
@@ -1058,7 +1063,7 @@
                )
            )
          )
-       (when (nonzero? build-masks) (build-masks s5-0)) ;; ADDED nonzero check.
+        (build-masks s5-0)
        )
      (set! (-> *login-state* state) -1)
      (set! (-> *login-state* pos) (the-as uint 0))
@@ -1172,7 +1177,7 @@
         (let ((current-array (-> lstate elt (-> lstate state))))
           (cond
             ((= (-> current-array type) drawable-inline-array-tfrag)
-             (set! *texture-masks-array* (-> lev bsp tfrag-texture-masks-array))
+             (set! *texture-masks-array* (-> lev bsp tfrag-masks))
              (cond
                ((< login-state-pos (-> (the-as drawable-inline-array-tfrag current-array) length))
                 (dotimes (s2-2 200)
@@ -1200,16 +1205,14 @@
                        (set! proto (-> proto-array array-data (the-as uint login-state-pos)))
                        (+! (-> protos prototype-max-qwc) 32)
                        (cond
-                         ((logtest? (-> proto flags) 4)
-                          (set! *texture-masks* (-> *level* level *level-index* bsp tmask0 data (-> proto texture-masks-index)))
+                         ((logtest? (-> proto flags) (prototype-flags tpage-alpha))
+                          (set! *texture-masks* (-> *level* level *level-index* bsp alpha-masks data (-> proto texture-masks-index)))
                           )
-                         ((logtest? (-> proto flags) 128)
-                          (set! *texture-masks* (-> *level* level *level-index* bsp tmask2 data (-> proto texture-masks-index)))
+                         ((logtest? (-> proto flags) (prototype-flags tpage-water))
+                          (set! *texture-masks* (-> *level* level *level-index* bsp water-masks data (-> proto texture-masks-index)))
                           )
                          (else
-                           (set! *texture-masks*
-                                 (-> *level* level *level-index* bsp tfrag-texture-masks-array data (-> proto texture-masks-index))
-                                 )
+                           (set! *texture-masks* (-> *level* level *level-index* bsp tfrag-masks data (-> proto texture-masks-index)))
                            )
                          )
                        (when (and *debug-segment* (-> *screen-shot-work* highres-enable))
@@ -1239,16 +1242,14 @@
                  (dotimes (proto2-idx (-> proto-array length))
                    (let ((proto2 (-> proto-array array-data proto2-idx)))
                      (cond
-                       ((logtest? (-> proto2 flags) 4)
-                        (set! *texture-masks* (-> *level* level *level-index* bsp tmask0 data (-> proto2 texture-masks-index)))
+                       ((logtest? (-> proto2 flags) (prototype-flags tpage-alpha))
+                        (set! *texture-masks* (-> *level* level *level-index* bsp alpha-masks data (-> proto2 texture-masks-index)))
                         )
-                       ((logtest? (-> proto2 flags) 128)
-                        (set! *texture-masks* (-> *level* level *level-index* bsp tmask2 data (-> proto2 texture-masks-index)))
+                       ((logtest? (-> proto2 flags) (prototype-flags tpage-water))
+                        (set! *texture-masks* (-> *level* level *level-index* bsp water-masks data (-> proto2 texture-masks-index)))
                         )
                        (else
-                         (set! *texture-masks*
-                               (-> *level* level *level-index* bsp tfrag-texture-masks-array data (-> proto2 texture-masks-index))
-                               )
+                         (set! *texture-masks* (-> *level* level *level-index* bsp tfrag-masks data (-> proto2 texture-masks-index)))
                          )
                        )
                      (let ((envmap-shader (-> proto2 envmap-shader)))
@@ -1423,10 +1424,8 @@
          (birth (-> obj bsp))
          (set! (-> obj status) 'alive)
          (set! (-> obj render?) #t)
-         (format 0 "SKIP: copy-perms-to-level~%")
-         (format #t "SKIP: copy-perms-to-level~%")
 
-         ;(copy-perms-to-level! *game-info* obj)
+         (copy-perms-to-level! *game-info* obj)
          (send-event *camera* 'level-activate (-> obj name))
          (send-event *target* 'level-activate (-> obj name))
          (when (and (-> obj info login-func) s1-0)
@@ -1439,7 +1438,7 @@
          )
        (let ((s1-2 (-> obj status)))
          (set! (-> obj status) 'active)
-         (when (nonzero? update-task-masks) (update-task-masks 'level)) ;; added nonzero check
+         (update-task-masks 'level)
          (assign-draw-indices *level*)
          (let ((s0-0 (-> obj bsp nav-meshes)))
            (when (nonzero? s0-0)
@@ -1751,7 +1750,7 @@
      #t
      )
     (else
-      (zero? (-> obj bsp require-force-inside))
+      (zero? (-> obj bsp cam-outside-bsp))
       )
     )
   )
@@ -2152,7 +2151,8 @@
                   'demo
                   )
                  (*debug-segment*
-                   'prison
+                   ;;'prison
+                   'ctysluma
                    )
                  (else
                    'title
@@ -2223,10 +2223,9 @@
     )
   (start-debug "PLAY: starting dproc~%")
   (on #t)
-  (format 0 "SKIP: initialize game info~%")
-  ; (if arg1
-  ;     (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
-  ;     )
+  (if arg1
+      (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+      )
   (kmemclose)
   (kmemclose)
   0
@@ -2761,7 +2760,7 @@
         (when (= (-> v1-96 status) 'active)
           (if (and (= (-> v1-96 status) 'active)
                    (!= (-> v1-96 display?) 'special)
-                   (nonzero? (-> v1-96 bsp require-force-inside))
+                   (nonzero? (-> v1-96 bsp cam-outside-bsp))
                    )
               (format *stdcon* "~3Loutside of bsp ~S~%~0L" (-> v1-96 name))
               )
@@ -2938,6 +2937,21 @@
     (if (and (not *debug-segment*) (< v1-186 #x10000))
         (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (sar v1-186 10))
         )
+    )
+
+  ;; pc port added
+  (let ((lev-names (new 'stack-no-clear 'array 'string 6)))
+    (dotimes (i 6)
+      (cond
+        ((= (-> obj level i status) 'inactive)
+         (set! (-> lev-names i) "none")
+         )
+        (else
+          (set! (-> lev-names i) (symbol->string (-> obj level i nickname)))
+          )
+        )
+      )
+    (__pc-set-levels lev-names)
     )
   0
   (none)
