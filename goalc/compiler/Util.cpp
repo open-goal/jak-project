@@ -72,7 +72,7 @@ std::vector<std::string> Compiler::run_test_from_file(const std::string& source_
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
+    lg::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     throw e;
   }
 }
@@ -98,7 +98,7 @@ std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
+    lg::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
     throw e;
   }
 }

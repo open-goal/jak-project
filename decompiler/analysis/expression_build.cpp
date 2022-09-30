@@ -47,7 +47,7 @@ bool convert_to_expressions(
       info.second.name_override = rename->second;
     }
     //     debug
-    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    // lg::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
     //         info.second.tp_type.print());
   }
 

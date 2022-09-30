@@ -1,5 +1,6 @@
 #include <set>
 
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Env.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -66,7 +67,7 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   auto b = m_entries.at(var_b.m_entry_id);
   ASSERT(a.reg == b.reg);
   if (b.var_id == 0) {
-    //    fmt::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
+    //    lg::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
 
     for (auto& entry : m_entries) {
       if (entry.var_id == a.var_id && entry.reg == a.reg) {
@@ -75,7 +76,7 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
     }
     a.var_id = b.var_id;
   } else {
-    //    fmt::print("Merge {} <- {}\n", to_string(var_a), to_string(var_b));
+    //    lg::print("Merge {} <- {}\n", to_string(var_a), to_string(var_b));
 
     for (auto& entry : m_entries) {
       if (entry.var_id == b.var_id && entry.reg == b.reg) {
@@ -101,17 +102,17 @@ void VarMapSSA::merge_to_first(const VarSSA& var_a, const VarSSA& var_b) {
   auto& a = m_entries.at(var_a.m_entry_id);
   auto b = m_entries.at(var_b.m_entry_id);
 
-  //  fmt::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
+  //  lg::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
   ASSERT(a.reg == b.reg);
 
   //  for (auto& entry : m_entries) {
   for (size_t i = 0; i < m_entries.size(); i++) {
     auto& entry = m_entries.at(i);
     if (entry.var_id == b.var_id && entry.reg == b.reg) {
-      //      fmt::print("remap extra {} var_id from {} to {}\n", i, entry.var_id, a.var_id);
+      //      lg::print("remap extra {} var_id from {} to {}\n", i, entry.var_id, a.var_id);
       entry.var_id = a.var_id;
     } else {
-      //      fmt::print("no remap at {} (prev is {} {})\n", i, entry.reg.to_charp(), entry.var_id);
+      //      lg::print("no remap at {} (prev is {} {})\n", i, entry.reg.to_charp(), entry.var_id);
     }
   }
   b.var_id = a.var_id;
@@ -163,7 +164,7 @@ void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& rema
 
 void VarMapSSA::debug_print_map() const {
   for (auto& entry : m_entries) {
-    fmt::print("[{:02d}] {} {}\n", entry.entry_id, entry.reg.to_charp(), entry.var_id);
+    lg::print("[{:02d}] {} {}\n", entry.entry_id, entry.reg.to_charp(), entry.var_id);
   }
 }
 
@@ -1012,7 +1013,7 @@ void promote_register_class(const Function& func,
   }
 
   for (const auto& promotion : promote_map) {
-    // fmt::print("Promote {} to {}\n", promotion.first.print(), "uint128");
+    // lg::print("Promote {} to {}\n", promotion.first.print(), "uint128");
 
     // first reads:
     auto read_info = try_lookup_read(result, promotion.first);
@@ -1068,21 +1069,21 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
       debug_in += fmt::format(" out: {}\n\n", reg_to_string(block_info.output));
     }
 
-    fmt::print("Debug Input\n{}\n----------------------------------\n", debug_in);
+    lg::print("Debug Input\n{}\n----------------------------------\n", debug_in);
   }
 
   // Create and convert to SSA
   auto ssa = make_rc_ssa(function, rui, ops);
 
   if (debug_prints) {
-    fmt::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
+    lg::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
   }
 
   // eliminate PHIs that are not needed, still keeping us in SSA.
   while (ssa.simplify()) {
   }
   if (debug_prints) {
-    fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
+    lg::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
 
   // merge special registers
@@ -1099,7 +1100,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
 
   ssa.merge_all_phis();
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    lg::print("{}", ssa.print());
   }
   if (debug_prints) {
     ssa.map.debug_print_map();
@@ -1110,7 +1111,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   // do rename
   ssa.remap(arg_count(function));
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    lg::print("{}", ssa.print());
   }
 
   if (function.ir2.env.has_type_analysis()) {

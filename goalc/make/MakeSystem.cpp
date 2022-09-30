@@ -1,6 +1,7 @@
 #include "MakeSystem.h"
 
 #include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
@@ -89,8 +90,8 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
   m_goos.eval(data, m_goos.global_environment.as_env_ptr());
-  fmt::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
-             (int)timer.getMs());
+  lg::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
+            (int)timer.getMs());
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,
@@ -256,8 +257,8 @@ std::vector<std::string> MakeSystem::get_dependencies(const std::string& target)
 
   get_dependencies(target, target, &result, &added_deps);
 
-  fmt::print("Successfully found all {} dependencies for target in {:.3f}s\n", result.size(),
-             timer.getSeconds());
+  lg::print("Successfully found all {} dependencies for target in {:.3f}s\n", result.size(),
+            timer.getSeconds());
   return result;
 }
 
@@ -312,8 +313,8 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
     }
   }
 
-  fmt::print("Found that {} of {} targets do need rebuilding in {:.3f}s\n", result.size(),
-             all_deps.size(), timer.getSeconds());
+  lg::print("Found that {} of {} targets do need rebuilding in {:.3f}s\n", result.size(),
+            all_deps.size(), timer.getSeconds());
   return result;
 }
 
@@ -328,9 +329,9 @@ void print_input(const std::vector<std::string>& in, char end) {
     all_names += name;
   }
   if (all_names.length() > 70) {
-    fmt::print("{}...{}", all_names.substr(0, 70 - 3), end);
+    lg::print("{}...{}", all_names.substr(0, 70 - 3), end);
   } else {
-    fmt::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
+    lg::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
   }
 }
 }  // namespace
@@ -338,21 +339,21 @@ void print_input(const std::vector<std::string>& in, char end) {
 bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
   std::string target = m_path_map.apply_remaps(target_in);
   auto deps = get_dependencies(target);
-  //  fmt::print("All deps:\n");
+  //  lg::print("All deps:\n");
   //  for (auto& dep : deps) {
-  //    fmt::print("{}\n", dep);
+  //    lg::print("{}\n", dep);
   //  }
   if (!force) {
     deps = filter_dependencies(deps);
   }
 
-  //  fmt::print("Filt deps:\n");
+  //  lg::print("Filt deps:\n");
   //  for (auto& dep : filtered_deps) {
-  //    fmt::print("{}\n", dep);
+  //    lg::print("{}\n", dep);
   //  }
 
   Timer make_timer;
-  fmt::print("Building {} targets...\n", deps.size());
+  lg::print("Building {} targets...\n", deps.size());
   int i = 0;
   for (auto& to_make : deps) {
     Timer step_timer;
@@ -360,10 +361,10 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
     auto& tool = m_tools.at(rule->tool);
     int percent = (100.0 * (1 + (i++)) / (deps.size())) + 0.5;
     if (verbose) {
-      fmt::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
-                 rule->input.size() > 1 ? ", ..." : "");
+      lg::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
+                rule->input.size() > 1 ? ", ..." : "");
     } else {
-      fmt::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
+      lg::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
       print_input(rule->input, '\r');
     }
 
@@ -371,35 +372,35 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
     try {
       success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg}, m_path_map);
     } catch (std::exception& e) {
-      fmt::print("\n");
-      fmt::print("Error: {}\n", e.what());
+      lg::print("\n");
+      lg::print("Error: {}\n", e.what());
     }
     if (!success) {
-      fmt::print("Build failed on {}{}.\n", rule->input.at(0),
-                 rule->input.size() > 1 ? ", ..." : "");
+      lg::print("Build failed on {}{}.\n", rule->input.at(0),
+                rule->input.size() > 1 ? ", ..." : "");
       throw std::runtime_error("Build failed.");
       return false;
     }
 
     if (verbose) {
       if (step_timer.getSeconds() > 0.05) {
-        fmt::print(fg(fmt::color::yellow), " {:.3f}\n", step_timer.getSeconds());
+        lg::print(fg(fmt::color::yellow), " {:.3f}\n", step_timer.getSeconds());
       } else {
-        fmt::print(" {:.3f}\n", step_timer.getSeconds());
+        lg::print(" {:.3f}\n", step_timer.getSeconds());
       }
     } else {
       if (step_timer.getSeconds() > 0.05) {
-        fmt::print("[{:3d}%] [{:8s}] ", percent, tool->name());
-        fmt::print(fg(fmt::color::yellow), "{:.3f} ", step_timer.getSeconds());
+        lg::print("[{:3d}%] [{:8s}] ", percent, tool->name());
+        lg::print(fg(fmt::color::yellow), "{:.3f} ", step_timer.getSeconds());
         print_input(rule->input, '\n');
       } else {
-        fmt::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
+        lg::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
         print_input(rule->input, '\n');
       }
     }
   }
-  fmt::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
-             make_timer.getSeconds());
+  lg::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
+            make_timer.getSeconds());
   return true;
 }
 

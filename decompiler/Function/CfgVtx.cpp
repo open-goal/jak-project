@@ -2314,18 +2314,18 @@ bool ControlFlowGraph::find_short_circuits() {
     ShortCircuit::Entry candidate = {vtx, vtx->next};
     CfgVtx* end = vtx->next->succ_branch;
 
-    //    fmt::print("Starting loop\n");
+    //    lg::print("Starting loop\n");
 
     while (true) {
       // check candidate:
       if (!candidate.condition || !candidate.likely_delay || !end) {
-        //        fmt::print("reject begin {} {} {}\n", !!candidate.condition,
+        //        lg::print("reject begin {} {} {}\n", !!candidate.condition,
         //        !!candidate.likely_delay,
         //                   !!end);
         return true;
       }
 
-      //      fmt::print(" try {} and {} end {}\n", candidate.condition->to_string(),
+      //      lg::print(" try {} and {} end {}\n", candidate.condition->to_string(),
       //                 candidate.likely_delay->to_string(), end->to_string());
 
       if (candidate.condition->next == end) {
@@ -2337,13 +2337,13 @@ bool ControlFlowGraph::find_short_circuits() {
           candidate.likely_delay = nullptr;
           entries.push_back(candidate);
 
-          //          fmt::print("all done!");
+          //          lg::print("all done!");
           break;
         }
       }
 
       if (!candidate.condition->next || !candidate.condition->succ_branch) {
-        //        fmt::print(" fail 0 {}, {}\n", !!candidate.condition->next,
+        //        lg::print(" fail 0 {}, {}\n", !!candidate.condition->next,
         //                   !!candidate.condition->succ_branch);
         return true;
       }
@@ -2353,12 +2353,12 @@ bool ControlFlowGraph::find_short_circuits() {
           candidate.condition->next != candidate.condition->succ_branch ||
           !candidate.condition->end_branch.branch_likely ||
           candidate.condition->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
-        //        fmt::print("  fail 1 {} {} {} {}\n", !candidate.condition->next,
+        //        lg::print("  fail 1 {} {} {} {}\n", !candidate.condition->next,
         //                   candidate.condition->next != candidate.condition->succ_branch,
         //                   !candidate.condition->end_branch.branch_likely,
         //                   candidate.condition->end_branch.kind !=
         //                   CfgVtx::DelaySlotKind::NO_DELAY);
-        //        fmt::print(" fail 1 condition->next {}, condition->succ_branch {}\n",
+        //        lg::print(" fail 1 condition->next {}, condition->succ_branch {}\n",
         //                   candidate.condition->next->to_string(),
         //                   candidate.condition->succ_branch->to_string());
         return true;
@@ -2367,7 +2367,7 @@ bool ControlFlowGraph::find_short_circuits() {
       if (entries.empty() && candidate.likely_delay->next == end) {
         entries.push_back(candidate);
 
-        //        fmt::print("all don2!");
+        //        lg::print("all don2!");
         break;
       }
 
@@ -2376,7 +2376,7 @@ bool ControlFlowGraph::find_short_circuits() {
           !candidate.likely_delay->end_branch.branch_always ||
           candidate.likely_delay->end_branch.branch_likely ||
           candidate.likely_delay->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
-        //        fmt::print("  fail 2 {} {} {} {} {} {} {}\n", candidate.likely_delay->pred.size()
+        //        lg::print("  fail 2 {} {} {} {} {} {} {}\n", candidate.likely_delay->pred.size()
         //        != 1,
         //                   !!candidate.likely_delay->succ_ft,
         //                   !candidate.likely_delay->succ_branch,
@@ -2385,21 +2385,21 @@ bool ControlFlowGraph::find_short_circuits() {
         //                   !!candidate.likely_delay->end_branch.branch_likely,
         //                   candidate.likely_delay->end_branch.kind !=
         //                   CfgVtx::DelaySlotKind::NO_DELAY);
-        //        fmt::print("delay {} has ft {}\n", candidate.likely_delay->to_string(),
+        //        lg::print("delay {} has ft {}\n", candidate.likely_delay->to_string(),
         //                   candidate.likely_delay->succ_ft->to_string());
         return true;
       }
 
       // slot -> end
       if (candidate.likely_delay->succ_branch != end) {
-        //        fmt::print("  fail 3\n");
+        //        lg::print("  fail 3\n");
         return true;
       }
 
       // root -> next root
       if (!candidate.condition->next->next ||
           candidate.condition->next->next != candidate.condition->succ_ft) {
-        //        fmt::print("  fail 4\n");
+        //        lg::print("  fail 4\n");
         return true;
       }
 
@@ -2411,10 +2411,10 @@ bool ControlFlowGraph::find_short_circuits() {
 
       // pre next root check
       if (next_root->pred.size() != 1) {
-        //        fmt::print("  fail 5\n");
+        //        lg::print("  fail 5\n");
         return true;
       }
-      //      fmt::print("on to next!\n");
+      //      lg::print("on to next!\n");
     }
 
     auto new_sc = alloc<ShortCircuit>();
@@ -2614,7 +2614,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
                                             const CondWithElseLengthHack& cond_with_else_hack,
                                             const std::unordered_set<int>& blocks_ending_in_asm_br,
                                             GameVersion version) {
-  // fmt::print("START {}\n", func.guessed_name.to_string());
+  // lg::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());

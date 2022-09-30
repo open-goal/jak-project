@@ -86,22 +86,20 @@ void log_message(level log_level, LogTime& now, const char* message) {
 
 void log_print(const char* message) {
   {
+    // We always immediately flush prints because since it has no associated level
+    // it could be anything from a fatal error to a useless debug log.
     std::lock_guard<std::mutex> lock(gLogger.mutex);
     if (gLogger.fp) {
       // Log to File
       std::string msg(message);
       fwrite(msg.c_str(), msg.length(), 1, gLogger.fp);
-      if (gLogger.flush_level <= lg::level::debug) {
-        fflush(gLogger.fp);
-      }
+      fflush(gLogger.fp);
     }
 
-    if (gLogger.stdout_log_level <= lg::level::debug) {
+    if (gLogger.stdout_log_level < lg::level::off) {
       fmt::print(message);
-      if (gLogger.flush_level <= lg::level::debug) {
-        fflush(stdout);
-        fflush(stderr);
-      }
+      fflush(stdout);
+      fflush(stderr);
     }
   }
 }

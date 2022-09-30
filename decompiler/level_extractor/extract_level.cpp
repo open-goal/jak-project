@@ -141,7 +141,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
   /*
   level_tools::PrintSettings settings;
   settings.expand_collide = true;
-  fmt::print("{}\n", bsp_header.print(settings));
+  lg::print("{}\n", bsp_header.print(settings));
    */
 
   const std::set<std::string> tfrag_trees = {
@@ -190,7 +190,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       extract_collide_frags(as_collide_frags, all_ties, fmt::format("{}-{}-collide", dgo_name, i++),
                             level_data, false);
     } else {
-      // fmt::print("  unsupported tree {}\n", draw_tree->my_type());
+      // lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
   level_data.level_name = level_name;

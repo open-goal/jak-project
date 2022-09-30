@@ -359,7 +359,7 @@ void TFragment::read_from_file(TypedRef ref,
     tfrag_debug_print_unpack(dmas[1].ref, dma_qwc[1]);
 
     // next "level0"
-    //  fmt::print("DMA LEVEL0 {}, {} qwc:\n", dmas[0].label_name, dma_qwc[3]);
+    //  lg::print("DMA LEVEL0 {}, {} qwc:\n", dmas[0].label_name, dma_qwc[3]);
     //  tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[3]);
 
     // next "level1"
@@ -405,7 +405,7 @@ void TFragment::read_from_file(TypedRef ref,
   // todo shader
 
   ASSERT(num_colors / 4 == color_count);
-  // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
+  // lg::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
   if (version == GameVersion::Jak1) {
     ASSERT(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
     ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
@@ -921,7 +921,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       break;
     case GameVersion::Jak2:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
-      fmt::print("flag: {}\n", flags);
+      lg::print("flag: {}\n", flags);
       break;
     default:
       ASSERT(false);

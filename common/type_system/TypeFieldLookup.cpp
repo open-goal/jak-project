@@ -486,15 +486,15 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
 
   /*
   if (multi_result.results.size() > 1) {
-    fmt::print("Multiple:\n");
+    lg::print("Multiple:\n");
     for (auto& result : multi_result.results) {
-      fmt::print("  [{}] [{}] ", result.total_score, result.result_type.print());
+      lg::print("  [{}] [{}] ", result.total_score, result.result_type.print());
       for (auto& tok : result.tokens) {
-        fmt::print("{} ", tok.print());
+        lg::print("{} ", tok.print());
       }
-      fmt::print("\n");
+      lg::print("\n");
     }
-    fmt::print("\n\n\n");
+    lg::print("\n\n\n");
   }
    */
 

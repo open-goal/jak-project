@@ -403,7 +403,7 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_regs.push_back(var.reg());
         } else {
           // auto var_id = env.get_program_var_id(var);
-          //          fmt::print(
+          //          lg::print(
           //              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd:
           //              {}) ({} "
           //              "{})\n",
@@ -414,7 +414,7 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           //          if (var.to_string(env) == "a3-0") {
           //            for (auto& use : use_def.uses) {
           //              if (!use.disabled) {
-          //                fmt::print("  at instruction {}\n", use.op_id);
+          //                lg::print("  at instruction {}\n", use.op_id);
           //              }
           //            }
           //          }
@@ -1232,7 +1232,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           }
         }
       }
-      // fmt::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
+      // lg::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
       // rd.has_variable_token());
 
       if (idx_of_success >= 0) {
@@ -3237,11 +3237,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
 
         if (should_use_virtual) {
-          // fmt::print("STACK\n{}\n\n", stack.print(env));
+          // lg::print("STACK\n{}\n\n", stack.print(env));
           auto pop = pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects,
                                   {}, {2})
                          .at(0);
-          // fmt::print("GOT: {}\n", pop->to_string(env));
+          // lg::print("GOT: {}\n", pop->to_string(env));
           arg_forms.at(0) = pop;
           auto head = mr.maps.forms.at(1);
 
@@ -3856,7 +3856,7 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
     return nullptr;
   }
 
-  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // lg::print("Matched condition {} in {}\n", condition_var.to_string(env),
   // value->to_string(env));
 
   auto* menv = const_cast<Env*>(&env);
@@ -3910,7 +3910,7 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
     return nullptr;
   }
 
-  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // lg::print("Matched condition {} in {}\n", condition_var.to_string(env),
   // value->to_string(env));
 
   auto* menv = const_cast<Env*>(&env);
@@ -4046,7 +4046,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
           stack.push_value_to_reg(write_as_value, as_ja_group, true,
                                   env.get_variable_type(final_destination, false));
         } else {
-          //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+          //        lg::print("func {} final destination {} type {}\n", env.func->name(),
           //                   final_destination.to_string(env),
           //                   env.get_variable_type(final_destination, false).print());
           stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
@@ -4214,24 +4214,24 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
-      //      fmt::print("func: {}\n", env.func->name());
+      //      lg::print("func: {}\n", env.func->name());
       //
-      //      fmt::print("checking:\n");
+      //      lg::print("checking:\n");
       //      for (auto& t : source_types) {
-      //        fmt::print("  {}\n", t.print());
+      //        lg::print("  {}\n", t.print());
       //      }
 
       auto expected_type = env.get_variable_type(*last_var, true);
-      //       fmt::print("The expected type is {}\n", expected_type.print());
+      //       lg::print("The expected type is {}\n", expected_type.print());
       auto result_type =
           source_types.empty() ? expected_type : env.dts->ts.lowest_common_ancestor(source_types);
-      //       fmt::print("but we actually got {}\n", result_type.print());
+      //       lg::print("but we actually got {}\n", result_type.print());
 
       Form* result_value = pool.alloc_single_form(nullptr, this);
       if (!env.dts->ts.tc(expected_type, result_type)) {
         result_value = pool.form<CastElement>(expected_type, result_value);
       }
-      //      fmt::print("{}\n", result_value->to_string(env));
+      //      lg::print("{}\n", result_value->to_string(env));
 
       stack.push_value_to_reg(*last_var, result_value, true,
                               env.get_variable_type(*last_var, false));
@@ -5322,7 +5322,7 @@ void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
 
   auto op = pool.alloc_element<TranslatedAsmBranch>(
       branch_condition, m_branch_delay, m_branch_op->label_id(), m_branch_op->is_likely());
-  // fmt::print("rewrote as {}\n", op->to_string(env));
+  // lg::print("rewrote as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 
@@ -5380,7 +5380,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   ASSERT(!m_op->likely());
   auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
                                                     m_op->label_id(), m_op->likely());
-  // fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
+  // lg::print("rewrote (non-asm) as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 

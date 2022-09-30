@@ -298,8 +298,8 @@ void handle_frag(const std::string& debug_name,
                  MercMemory& memory) {
   (void)frag_ctrl;
   (void)debug_name;
-  // fmt::print("handling frag: {}\n", debug_name);
-  // fmt::print("{}\n", frag.print());
+  // lg::print("handling frag: {}\n", debug_name);
+  // lg::print("{}\n", frag.print());
 
   // we'll iterate through the lump and rgba data
   int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
@@ -491,7 +491,7 @@ void handle_frag(const std::string& debug_name,
       //      dst1_adc = dst0_adc && (mat0_flag >= 0);
       //      dst0_adc = !dst0_adc;
       //      dst1_adc = !dst1_adc;
-      //      fmt::print("{}\n", dst1_adc);
+      //      lg::print("{}\n", dst1_adc);
     }
 
     // write to two spots in memory
@@ -511,7 +511,7 @@ void handle_frag(const std::string& debug_name,
     memory.memory.at(vtx.dst1 + 2).kind = MercOutputQuadword::Kind::INVALID;
 
     /*
-    fmt::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
+    lg::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
                vtx.pos.to_string_aligned(), dst0_adc, dst1_adc, mat1_flag);
                */
 
@@ -760,7 +760,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 srcdst_ptr = frag.header.srcdest_off;
     for (u32 sci = 0; sci < frag.header.samecopy_cnt; sci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("sci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("sci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle].memory.at(src);
       u32 dst = cpy[1];
@@ -782,7 +782,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // "cross" copy from the other output buffer
     for (u32 cci = 0; cci < frag.header.crosscopy_cnt; cci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("cci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("cci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle ^ 1].memory.at(src);
       u32 dst = cpy[1];

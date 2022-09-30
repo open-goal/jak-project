@@ -319,7 +319,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
   }
 
   // auto first_use_of_in = *first_result.maps.regs.at(reg_input_1);
-  // fmt::print("reg1: {}\n", first_use_of_in.to_string(env));
+  // lg::print("reg1: {}\n", first_use_of_in.to_string(env));
 
   auto setup_matcher = Matcher::set_var(
       Matcher::deref(Matcher::any_reg(reg_input_2), false,
@@ -401,7 +401,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     menv->disable_use(in3);
 
     auto repopped = stack.pop_reg(in1, {}, env, true);
-    // fmt::print("repopped: {}\n", repopped->to_string(env));
+    // lg::print("repopped: {}\n", repopped->to_string(env));
 
     if (!repopped) {
       repopped = var_to_form(in1, pool);

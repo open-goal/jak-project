@@ -150,7 +150,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     auto name = obj_filename_to_name(obj.string());
     if (auto it = config.object_patches.find(name); it != config.object_patches.end()) {
       // print the file CRC
-      fmt::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
+      lg::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
       // write patch file if necessary
       if (config.write_patches) {
         // this is the "target" file we want to patch to
@@ -741,10 +741,10 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
-      // fmt::print("art-group {}:\n", obj.to_unique_name());
+      // lg::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
-      // fmt::print("  length: {}\n", length);
+      // lg::print("  length: {}\n", length);
       std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
@@ -772,7 +772,7 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
         art_group_elts[i] = unique_name;
-        // fmt::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // lg::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
       }
       db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
