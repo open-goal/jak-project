@@ -771,6 +771,30 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; L CITY WIDE A
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "LWIDEA.DGO" "lwidea.gd")
+
+(copy-textures 2929 2930)
+
+(copy-gos
+  "citizen-fat-ag"
+  "citizen-norm-ag"
+  "crimson-guard-ag"
+  "citizen-chick-ag"
+  "hellcat-ag"
+  "carc-ag"
+  "cara-ag"
+  "carb-ag"
+  "citizen-norm-rider-ag"
+  "crimson-bike-ag"
+  "bikec-ag"
+  "bikeb-ag"
+  "bikea-ag"
+  "lwidea")
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; CITY SLUM A
 ;;;;;;;;;;;;;;;;;;;;;
 

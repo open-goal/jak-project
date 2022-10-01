@@ -775,20 +775,31 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           }
         }
 
-        cmd->finished_first_obj = 1;
-        cmd->status = CMD_STATUS_IN_PROGRESS;
+        if (cmd->buffer1 != cmd->buffer2) {
+          cmd->finished_first_obj = 1;
+          cmd->status = CMD_STATUS_IN_PROGRESS;
 
-        // select a buffer for next time.
-        if (cmd->buffer_toggle == 1) {
-          cmd->selectedBuffer = cmd->buffer1;
+          // select a buffer for next time.
+          if (cmd->buffer_toggle == 1) {
+            cmd->selectedBuffer = cmd->buffer1;
+          } else {
+            cmd->selectedBuffer = cmd->buffer2;
+          }
+
+          // we've processed the command, go wake up the DGO RPC thread.
+          // doesn't terminate the command (ReleaseMessage does this, ReturnMessage just
+          // wakes up the caller while keeping the command alive).
+          ReturnMessage(cmd);
         } else {
-          cmd->selectedBuffer = cmd->buffer2;
+          // total hack
+          if (cmd->finished_first_obj == 0) {
+            s32 isSync = LookMbx(sync_mbx);  // did we get a "sync" message?
+            if (!isSync) {
+              goto cleanup_and_return;
+            }
+            cmd->finished_first_obj = 1;
+          }
         }
-
-        // we've processed the command, go wake up the DGO RPC thread.
-        // doesn't terminate the command (ReleaseMessage does this, ReturnMessage just
-        // wakes up the caller while keeping the command alive).
-        ReturnMessage(cmd);
 
         // toggle buffer
         if (cmd->buffer_toggle == 1) {
@@ -800,7 +811,7 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
         }
 
         // setup for next run
-        if (cmd->objects_loaded + 1 == cmd->dgo_header.object_count) {
+        if (cmd->objects_loaded + 1 == cmd->dgo_header.object_count && cmd->buffer1 != cmd->buffer2) {
           cmd->dgo_state = DgoState::Read_Last_Obj;
         } else {
           cmd->dgo_state = DgoState::Read_Obj_Header;
@@ -850,6 +861,7 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           cmd->objHeader.size = (cmd->objHeader.size + 0xf) & 0xfffffff0;
           cmd->dgo_state = DgoState::Read_Obj_data;
           cmd->bytes_processed = 0;
+          printf("OVERLORD loading %s to %p\n", cmd->objHeader.name, cmd->ee_destination_buffer);
         }
       } break;
 
@@ -873,7 +885,8 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           if (cmd->objects_loaded == cmd->dgo_header.object_count) {
             cmd->dgo_state = DgoState::Finish_Dgo;
           } else {
-            cmd->dgo_state = DgoState::Finish_Obj;
+            cmd->dgo_state = (cmd->buffer1 == cmd->buffer2) ? DgoState::Finish_Obj_NoDoubleBuffer
+                                                            : DgoState::Finish_Obj;
             cmd->bytes_processed = 0;
           }
         }
@@ -884,6 +897,18 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
         return_value = CMD_STATUS_DONE;
         goto cleanup_and_return;
       }
+
+      case DgoState::Finish_Obj_NoDoubleBuffer: {
+        // new, added for jak2
+        cmd->status = CMD_STATUS_IN_PROGRESS;
+        if (cmd->buffer_toggle == 1) {
+          cmd->selectedBuffer = cmd->buffer1;
+        } else {
+          cmd->selectedBuffer = cmd->buffer2;
+        }
+        ReturnMessage(cmd);
+        cmd->dgo_state = DgoState::Finish_Obj;
+      } break;
 
       default:
         printf("unknown dgoState!\n");
@@ -1339,6 +1364,8 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
   scmd.buffer_heaptop = (u8*)(u64)(cmd->buffer_heap_top);
   scmd.fr = fr;
 
+  printf("LOAD DGO -- 0x%x\n", cmd->buffer1);
+
   // send the command to ISO Thread
   SendMbx(iso_mbx, &scmd);
 
@@ -1368,12 +1395,18 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
  * This will return when there's another loaded obj.
  */
 void LoadNextDGO(RPC_Dgo_Cmd* cmd) {
+  printf("LOAD NEXT DGO -- 0x%x\n", cmd->buffer1);
+
   if (scmd.cmd_id == 0) {
     // something went wrong.
     cmd->result = DGO_RPC_RESULT_ERROR;
   } else {
     // update heap location
     scmd.buffer_heaptop = (u8*)(u64)cmd->buffer_heap_top;
+    if (g_game_version != GameVersion::Jak1) {
+      scmd.buffer1 = (u8*)(u64)cmd->buffer1;
+      scmd.buffer2 = (u8*)(u64)cmd->buffer2;
+    }
     // allow DGO state machine to advance
     SendMbx(sync_mbx, nullptr);
     // wait for another load to finish.

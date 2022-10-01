@@ -2818,7 +2818,7 @@
   (tex-l2-shrub         91)   ;; tex
   (shrub-l2-shrub       92)   ;; shrub
   (shrub-n-l2-shrub     93)   ;; shrub
-  (billboard-l2-shrub    94)   ;; shrub
+  (billboard-l2-shrub   94)   ;; shrub
   (shrub-v-l2-shrub     95)   ;; shrub
   (shrub-nt-l2-shrub    96)   ;; shrub
   (merc-l2-shrub        97)   ;; merc
@@ -6165,7 +6165,7 @@
        @see [[memory-usage-block::10]]"
       (_type_ symbol) memory-usage-block 14)
     (inside-boxes-check (_type_ vector) symbol 15)
-    (level-method-16 () none 16) ;; (update-vis! (_type_ level-vis-info uint uint) symbol 16)
+    (update-vis! (_type_ level-vis-info uint (pointer uint8)) symbol 16)
     (load-continue (_type_) _type_ 17)
     (load-begin (_type_) _type_ 18)
     (login-begin (_type_) _type_ 19)
@@ -17713,6 +17713,7 @@
    ;; 0                                                                 28
    (all-visible-list         (pointer uint16)            :offset-assert 32)
    (visible-list-length      int16                       :offset-assert 36)
+   (extra-vis-list-length    int16                       :offset-assert 38)
    (drawable-trees           drawable-tree-array         :offset-assert 40)
    (pat                      pointer                     :offset-assert 44)
    (pat-length               int32                       :offset-assert 48)
@@ -17747,8 +17748,7 @@
    ;; 200 is some array
    ;; 204 is maybe that array's length
    (wind-array-length int32 :offset 204)
-   ;; 216 is a vector array
-   ;;  (vec-array (pointer vector) :offset 216) ; TODO see - `update-visible` hits assertion
+   (vis-spheres              vector-array                       :offset 216)
    (region-tree              drawable-tree-region-prim          :offset 252)
 
    (tfrag-masks              texture-masks-array         :offset-assert 256)
@@ -17769,6 +17769,8 @@
 
    (bsp-scale                vector :inline              :offset-assert 288)
    (bsp-offset               vector :inline              :offset-assert 304)
+
+
 
 
    (unk-data                 uint32 18                          :offset 180)
@@ -23700,7 +23702,6 @@
 ;; decomp                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype huf-dictionary-node (structure)
   ((zero uint16  :offset-assert 0)
    (one  uint16  :offset-assert 2)
@@ -23709,12 +23710,11 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern unpack-comp-rle function) ;; (function (pointer int8) (pointer int8) none)
-;; (define-extern unpack-comp-huf function) ;; (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none)
-(define-extern unpack-comp-lzo (function object object none))
-;; (define-extern pack-comp-rle function)
+(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) none))
+(define-extern unpack-comp-huf (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
+(define-extern unpack-comp-lzo (function (pointer uint8) (pointer uint8) none))
+(define-extern pack-comp-rle (function (pointer uint8) (pointer uint8) int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; background                     ;;
@@ -32071,15 +32071,14 @@
   )
 |#
 
-#|
 (deftype nav-enemy (enemy)
-  ((frustration-point       vector :inline :offset-assert 540)
-   (move-dest               vector :inline :offset-assert 556)
-   (frustration-time        time-frame         :offset-assert 572) ;; time-frame
-   (blocked-start-time      time-frame         :offset-assert 580)
-   (restore-nav-radius-time time-frame         :offset-assert 588)
-   (nav-radius-backup       float          :offset-assert 596)
-   (circle-radial-dist      float          :offset-assert 240)
+  ((frustration-point       vector :inline :offset-assert 544)
+   (move-dest               vector :inline :offset-assert 560)
+   (frustration-time        time-frame         :offset-assert 576) ;; time-frame
+   (blocked-start-time      time-frame         :offset-assert 584)
+   (restore-nav-radius-time time-frame         :offset-assert 592)
+   (nav-radius-backup       float          :offset-assert 600)
+   (circle-radial-dist      float          :offset 244)
    )
   :method-count-assert 178
   :size-assert         #x25c
@@ -32128,7 +32127,6 @@
     (nav-enemy-method-177 () none 177)
     )
   )
-|#
 
 #|
 (deftype nav-enemy-debug-control-info (basic)
@@ -49304,9 +49302,9 @@
 ;; citizen-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype citizen (nav-enemy)
-  ()
+  (
+   (pad uint8 :offset 963))
   :method-count-assert 201
   :size-assert         #x3c4
   :flag-assert         #xc9035003c4
@@ -49337,7 +49335,6 @@
     (citizen-method-200 () none 200)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50137,23 +50134,22 @@
   )
 |#
 
-#|
 (deftype civilian (citizen)
-  ((info              basic          :offset-assert 960)
-   (anim-panic-run    int32          :offset-assert 964)
-   (anim-on-ground    int32          :offset-assert 968)
-   (anim-dive         int32          :offset-assert 972)
-   (anim-get-up-front int32          :offset-assert 976)
-   (anim-get-up-back  int32          :offset-assert 980)
-   (last-second-pos   vector :inline :offset-assert 988)
-   (last-distance     float          :offset-assert 1004)
-   (next-time         time-frame         :offset-assert 1012)
-   (dive-target-point vector :inline :offset-assert 1020)
-   (dive-reaction     float          :offset-assert 1036)
-   (allow-dive        basic          :offset-assert 1040)
-   (dive-finished?    basic          :offset-assert 1044)
-   (hit-face          uint32         :offset-assert 1048)
-   (seat              int32          :offset-assert 1052)
+  ((info              basic          :offset-assert 964)
+   (anim-panic-run    int32          :offset-assert 968)
+   (anim-on-ground    int32          :offset-assert 972)
+   (anim-dive         int32          :offset-assert 976)
+   (anim-get-up-front int32          :offset-assert 980)
+   (anim-get-up-back  int32          :offset-assert 984)
+   (last-second-pos   vector :inline :offset-assert 992)
+   (last-distance     float          :offset-assert 1008)
+   (next-time         time-frame         :offset-assert 1016)
+   (dive-target-point vector :inline :offset-assert 1024)
+   (dive-reaction     float          :offset-assert 1040)
+   (allow-dive        basic          :offset-assert 1044)
+   (dive-finished?    basic          :offset-assert 1048)
+   (hit-face          uint32         :offset-assert 1052)
+   (seat              int32          :offset-assert 1056)
    )
   :method-count-assert 218
   :size-assert         #x424
@@ -50178,7 +50174,6 @@
     (civilian-method-217 () none 217)
     )
   )
-|#
 
 ;; (define-extern civilian-flee-post function)
 ;; (define-extern civilian-avoid-danger-post function)
@@ -50275,7 +50270,6 @@
 ;; citizen-fat                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype citizen-fat (civilian)
   ()
   :method-count-assert 218
@@ -50284,7 +50278,6 @@
   (:methods
     )
   )
-|#
 
 ;; (define-extern *citizen-fat-global-info* civilian-global-info)
 ;; (define-extern *citizen-fat-nav-enemy-info* nav-enemy-info)

@@ -10,7 +10,7 @@
 
 namespace {
 // turn on printf's for debugging linking issues.
-constexpr bool link_debug_printfs = false;
+constexpr bool link_debug_printfs = true;
 
 bool is_opengoal_object(const void* data) {
   auto* header = (const LinkHeaderV2*)data;
@@ -144,7 +144,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
     m_opengoal = false;
     // not an open goal object.
     if (link_debug_printfs) {
-      printf("Linking GOAL style object\n");
+      printf("Linking GOAL style object %s\n", name);
     }
 
     // initialize
@@ -213,6 +213,8 @@ void link_control::begin(Ptr<uint8_t> object_file,
       auto old_object_data = m_object_data;
       m_link_block_ptr =
           old_object_data + header_v4->code_size + sizeof(LinkHeaderV4) + BASIC_OFFSET;
+      printf("link block @ 0x%x\n", m_link_block_ptr.offset);
+      kheapstatus(m_heap);
       m_object_data = old_object_data + sizeof(LinkHeaderV4);
       m_code_size = header_v4->code_size;
     }
@@ -248,10 +250,12 @@ Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable) {
     relocPtr = next_reloc;
     objPtr = objPtr + (result & 0xfffffffc);
     u32 objValue = *(objPtr.cast<u32>());
+    printf("link @ 0x%x val 0x%x (result 0x%x)\n", objPtr.offset, linkObj.offset, result);
     if (objValue == 0xffffffff) {
       *(objPtr.cast<u32>()) = linkObj.offset;
     } else {
       // I don't think we should hit this ever.
+      printf("val is 0x%x ptr %p\n", objValue, relocPtr - 1);
       ASSERT(false);
     }
   } while (*relocPtr);
