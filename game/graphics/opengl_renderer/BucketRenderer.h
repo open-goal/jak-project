@@ -39,7 +39,6 @@ struct SharedRenderState {
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
-  bool enable_merc_xgkick = true;
   math::Vector<u8, 4> fog_color = math::Vector<u8, 4>{0, 0, 0, 0};
   float fog_intensity = 1.f;
   bool no_multidraw = false;
@@ -77,6 +76,7 @@ struct SharedRenderState {
   int draw_offset_y = 0;
 
   int bucket_for_vis_copy = 0;
+  int num_vis_to_copy = 0;
   GameVersion version;
 };
 
