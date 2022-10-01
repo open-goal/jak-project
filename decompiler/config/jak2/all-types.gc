@@ -13684,7 +13684,7 @@
     (new (symbol type lightning-spec process float) _type_)
     (change-mode (_type_ lightning-mode) lightning-mode 9)
     (get-mode (_type_) lightning-mode 10)
-    (set-point (_type_ int vector) none 11)
+    (set-point! (_type_ int vector) none 11)
     (set-first-meet-point (_type_ vector) none 12)
     (set-last-meet-point (_type_ vector) none 13)
     )
@@ -31212,12 +31212,12 @@
 ;; sampler                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sampler-mem* object)
-;; (define-extern *sampler-compare* object)
-;; (define-extern *sampler-count* object)
+(define-extern *sampler-mem* symbol)
+(define-extern *sampler-compare* int)
+(define-extern *sampler-count* int)
 ;; (define-extern timer0-handler function)
-;; (define-extern sampler-start function)
-;; (define-extern sampler-stop function)
+(define-extern sampler-start (function none))
+(define-extern sampler-stop (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; default-menu                   ;;
@@ -31590,22 +31590,20 @@
 ;; blocking-plane                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype blocking-plane (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 999))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:methods
     (idle () _type_ :state 20)
-    (blocking-plane-method-21 () none 21)
+    (blocking-plane-method-21 (_type_ (inline-array vector) float) none 21)
     )
   )
-|#
 
-;; (define-extern blocking-plane-init-by-other function) ;; (function curve-control int none :behavior blocking-plane)
-;; (define-extern blocking-plane-spawn function) ;; (function curve-control none :behavior process)
-;; (define-extern blocking-plane-destroy function) ;; (function none)
+(define-extern blocking-plane-init-by-other (function (inline-array vector) float none :behavior blocking-plane))
+(define-extern blocking-plane-spawn (function curve-control (inline-array vector) float none :behavior process)) ;; 
+(define-extern blocking-plane-destroy (function none :behavior blocking-plane)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; idle-control                   ;;
@@ -33642,10 +33640,9 @@
 ;; elec-gate                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype elec-gate-params (structure)
-  ((bolt-spec       basic  :offset-assert 0)
-   (ring-spec       basic  :offset-assert 4)
+  ((bolt-spec       lightning-spec  :offset-assert 0)
+   (ring-spec       lightning-spec  :offset-assert 4)
    (ring-radius-min float  :offset-assert 8)
    (ring-radius-max float  :offset-assert 12)
    (speed-mult      float  :offset-assert 16)
@@ -33654,12 +33651,10 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype elec-gate-bolt (structure)
-  ((ring        UNKNOWN 2 :offset-assert 0)
-   (bolt        basic     :offset-assert 8)
+  ((ring        lightning-control   2 :offset-assert 0) ;; guess
+   (bolt        lightning-control     :offset-assert 8)
    (ring-radius float     :offset-assert 12)
    (pos         float     :offset-assert 16)
    )
@@ -33667,9 +33662,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype elec-wall (structure)
   ((pos vector :inline :offset-assert 0)
    (dir vector :inline :offset-assert 16)
@@ -33678,49 +33671,44 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype elec-gate (process-drawable)
-  ((params             elec-gate-params         :offset-assert 196)
-   (path-l             basic                    :offset-assert 148)
-   (path-r             basic                    :offset-assert 200)
-   (l-bolt             UNKNOWN          5       :offset-assert 204)
-   (part-on            basic                    :offset-assert 164)
-   (part-off           basic                    :offset-assert 364)
-   (part-spawner-left  basic                    :offset-assert 368)
-   (part-spawner-right basic                    :offset-assert 372)
-   (on-start           basic                    :offset-assert 376)
-   (on-stop            basic                    :offset-assert 380)
-   (dividing-wall      elec-wall        :inline :offset-assert 396)
-   (plane              UNKNOWN          2       :offset-assert 428)
-   (wall-y             float                    :offset-assert 492)
-   (wall-xz            float                    :offset-assert 496)
-   (lightning-quality  float                    :offset-assert 500)
-   (quality-enabled?   basic                    :offset-assert 504)
+  ((params             elec-gate-params         :offset-assert 200)
+   (path-l             path-control             :offset 152)
+   (path-r             path-control             :offset-assert 204)
+   (l-bolt             elec-gate-bolt      5 :inline :offset-assert 208)
+   (part-on            sparticle-launch-control                    :offset 168)
+   (part-off           sparticle-launch-control                    :offset-assert 368)
+   (part-spawner-left  part-spawner                    :offset-assert 372)
+   (part-spawner-right part-spawner                    :offset-assert 376)
+   (on-start           basic                    :offset-assert 380)
+   (on-stop            basic                    :offset-assert 384)
+   (dividing-wall      elec-wall        :inline :offset-assert 400)
+   (plane              elec-wall      2 :inline :offset-assert 432)
+   (wall-y             float                    :offset-assert 496)
+   (wall-xz            float                    :offset-assert 500)
+   (lightning-quality  float                    :offset-assert 504)
+   (quality-enabled?   symbol                   :offset-assert 508)
    )
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  ;; field on-start uses ~A with a signed load field on-stop uses ~A with a signed load
   (:methods
     (idle () _type_ :state 20)
     (active () _type_ :state 21)
     (shutdown () _type_ :state 22)
-    (elec-gate-method-23 () none 23)
-    (elec-gate-method-24 () none 24)
-    (elec-gate-method-25 () none 25)
-    (elec-gate-method-26 () none 26)
-    (elec-gate-method-27 () none 27)
-    (elec-gate-method-28 () none 28)
-    (elec-gate-method-29 () none 29)
+    (elec-gate-method-23 (_type_) elec-gate-params 23)
+    (elec-gate-method-24 "virtual" (_type_) none 24)
+    (elec-gate-method-25 "virtual" (_type_) none 25)
+    (elec-gate-method-26 (_type_) none 26)
+    (elec-gate-method-27 (_type_ sparticle-launch-control) none 27)
+    (elec-gate-method-28 (_type_ int) none 28)
+    (elec-gate-method-29 (_type_ float) none 29)
     )
   )
-|#
 
-#|
 (deftype fort-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
@@ -33728,57 +33716,40 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
   :flag-assert         #x1e01900204
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype caspad-elec-gate (elec-gate)
   ()
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype castle-elec-gate (elec-gate)
   ()
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype palroof-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
   :flag-assert         #x1e01900204
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-;; (define-extern *default-elec-gate-params* object)
-;; (define-extern elec-gate-post function)
-;; (define-extern *caspad-elec-gate-params* object)
+(define-extern *default-elec-gate-params* elec-gate-params)
+(define-extern elec-gate-post (function none :behavior elec-gate))
+(define-extern *caspad-elec-gate-params* elec-gate-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-guard-turret-button        ;;
