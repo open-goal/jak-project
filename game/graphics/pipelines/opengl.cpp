@@ -38,6 +38,8 @@ namespace {
 
 constexpr bool run_dma_copy = false;
 
+constexpr PerGameVersion<int> fr3_level_count(3, 7);
+
 struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
@@ -72,8 +74,9 @@ struct GraphicsData {
   GraphicsData(GameVersion version)
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>(version)),
-        loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" /
-                                        game_version_names[version] / "fr3")),
+        loader(std::make_shared<Loader>(
+            file_util::get_jak_project_dir() / "out" / game_version_names[version] / "fr3",
+            fr3_level_count[version])),
         ogl_renderer(texture_pool, loader, version),
         version(version) {}
 };

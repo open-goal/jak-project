@@ -16,7 +16,7 @@ class Loader {
  public:
   static constexpr float TIE_LOAD_BUDGET = 1.5f;
   static constexpr float SHARED_TEXTURE_LOAD_BUDGET = 3.f;
-  Loader(const fs::path& base_path);
+  Loader(const fs::path& base_path, int max_levels);
   ~Loader();
   void update(TexturePool& tex_pool);
   void update_blocking(TexturePool& tex_pool);
@@ -53,4 +53,5 @@ class Loader {
   std::vector<std::unique_ptr<LoaderStage>> m_loader_stages;
 
   fs::path m_base_path;
+  int m_max_levels = 0;
 };

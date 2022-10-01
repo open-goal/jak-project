@@ -17,7 +17,8 @@ std::string uppercase_string(const std::string& s) {
 }
 }  // namespace
 
-Loader::Loader(const fs::path& base_path) : m_base_path(base_path) {
+Loader::Loader(const fs::path& base_path, int max_levels)
+    : m_base_path(base_path), m_max_levels(max_levels) {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
   m_loader_stages = make_loader_stages();
 }
@@ -333,7 +334,7 @@ void Loader::update(TexturePool& texture_pool) {
     auto evt = scoped_prof("gpu-unload");
     // try to remove levels.
     Timer unload_timer;
-    if (m_loaded_tfrag3_levels.size() >= 3) {
+    if ((int)m_loaded_tfrag3_levels.size() >= m_max_levels) {
       for (auto& lev : m_loaded_tfrag3_levels) {
         if (lev.second->frames_since_last_used > 180) {
           std::unique_lock<std::mutex> lk(texture_pool.mutex());
