@@ -267,7 +267,7 @@ void LoadDGOTest() {
     }
 
     // okay to load the next one
-    ASSERT(false); // this is different per version, annoyingly. This function is unused though,
+    ASSERT(false);  // this is different per version, annoyingly. This function is unused though,
     // so let's be lazy for now...
     // ContinueLoadingDGO(Ptr<u8>(0x4000000));
   }

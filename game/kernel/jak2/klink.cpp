@@ -15,7 +15,7 @@
 
 #include "third-party/fmt/core.h"
 
-static constexpr bool link_debug_printfs = true;
+static constexpr bool link_debug_printfs = false;
 
 /*!
  * Make progress on linking.
@@ -390,7 +390,6 @@ uint32_t link_control::jak2_work_v2() {
     // otherwise go straight into the next state.
     m_state = LINK_V2_STATE_OFFSETS;
     m_segment_process = 0;
-    return 0; // hack
   }
 
   // init offset phase
@@ -468,7 +467,6 @@ uint32_t link_control::jak2_work_v2() {
     m_reloc_ptr.offset++;
     m_state = 2;
     m_segment_process = 0;
-    return 0; // hack
   }
 
   if (m_state == 2) {  // GOAL object fixup
@@ -505,7 +503,6 @@ uint32_t link_control::jak2_work_v2() {
         }
         m_reloc_ptr.offset += strlen(name) + 1;
         // DECOMPILER->hookStartSymlinkV3(_state - 1, _objectData, std::string(name));
-        printf("reloc ptr is 0x%x 0x%p\n", m_reloc_ptr.offset, m_reloc_ptr.c());
         m_reloc_ptr = c_symlink2(m_object_data, goalObj, m_reloc_ptr);
         // DECOMPILER->hookFinishSymlinkV3();
         if (*m_reloc_ptr == 0) {

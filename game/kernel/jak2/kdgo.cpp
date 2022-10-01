@@ -16,8 +16,8 @@ namespace jak2 {
  * @param heapPtr : pointer to heap so the IOP could try to load directly into a heap if it wants.
  * This should be updated after each object file load to make sure the IOP knows the exact location
  * of the end of the GOAL heap data.
- * DONE,
- * EXACT
+ *
+ * Unlike jak 1, we update buffer1 and buffer2 here for borrow heap loads.
  */
 void ContinueLoadingDGO(Ptr<u8> b1, Ptr<u8> b2, Ptr<u8> heapPtr) {
   u32 msgID = sMsgNum;

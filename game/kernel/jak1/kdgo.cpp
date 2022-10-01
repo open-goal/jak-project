@@ -3,12 +3,12 @@
 #include "common/common_types.h"
 #include "common/log/log.h"
 
+#include "game/common/dgo_rpc_types.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/jak1/klink.h"
-#include "game/common/dgo_rpc_types.h"
 
 namespace jak1 {
 
