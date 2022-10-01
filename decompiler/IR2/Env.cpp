@@ -7,6 +7,7 @@
 #include "Form.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/math_util.h"
 
 #include "decompiler/analysis/atomic_op_builder.h"
@@ -175,7 +176,7 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
         // note - this may be stricter than needed. but that's ok.
 
         if (type_of_var != type_of_reg) {
-          //        fmt::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var
+          //        lg::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var
           //        type
           //        {}\n ",
           //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
@@ -190,7 +191,7 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
         // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the
         // move is eliminated so the RegisterAccess points to the "wrong" place.
         //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
-        //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
+        //        lg::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
         //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
         //        pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
         //      }

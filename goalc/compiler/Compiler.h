@@ -417,38 +417,38 @@ class Compiler {
   [[noreturn]] void throw_compiler_error(const goos::Object& code,
                                          const std::string& str,
                                          Args&&... args) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
-    fmt::print("{}\n", code.print());
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    lg::print("{}\n", code.print());
     throw CompilerException("Compilation Error");
   }
 
   template <typename... Args>
   [[noreturn]] void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
     throw CompilerException("Compilation Error");
   }
 
   template <typename... Args>
   void print_compiler_warning(const std::string& str, Args&&... args) {
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      lg::print(str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      lg::print(str + '\n', std::forward<Args>(args)...);
     }
   }
 

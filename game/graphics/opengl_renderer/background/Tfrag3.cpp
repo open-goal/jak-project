@@ -1,5 +1,7 @@
 #include "Tfrag3.h"
 
+#include "common/log/log.h"
+
 #include "third-party/imgui/imgui.h"
 
 Tfrag3::Tfrag3() {
@@ -161,7 +163,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("TFRAG setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("TFRAG setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;

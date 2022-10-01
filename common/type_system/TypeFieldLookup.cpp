@@ -7,6 +7,8 @@
 
 #include "TypeSystem.h"
 
+#include "common/log/log.h"
+
 #include "third-party/fmt/core.h"
 
 namespace {
@@ -452,8 +454,8 @@ void try_reverse_lookup(const FieldReverseLookupInput& input,
                         FieldReverseMultiLookupOutput* output,
                         int max_count) {
   if (debug_reverse_lookup) {
-    fmt::print(" try_reverse_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
+    lg::debug(" try_reverse_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
+              input.offset, input.deref.has_value(), input.stride);
   }
 
   auto base_input_type = input.base_type.base_type();
@@ -484,15 +486,15 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
 
   /*
   if (multi_result.results.size() > 1) {
-    fmt::print("Multiple:\n");
+    lg::print("Multiple:\n");
     for (auto& result : multi_result.results) {
-      fmt::print("  [{}] [{}] ", result.total_score, result.result_type.print());
+      lg::print("  [{}] [{}] ", result.total_score, result.result_type.print());
       for (auto& tok : result.tokens) {
-        fmt::print("{} ", tok.print());
+        lg::print("{} ", tok.print());
       }
-      fmt::print("\n");
+      lg::print("\n");
     }
-    fmt::print("\n\n\n");
+    lg::print("\n\n\n");
   }
    */
 
@@ -510,8 +512,8 @@ FieldReverseMultiLookupOutput TypeSystem::reverse_field_multi_lookup(
     const FieldReverseLookupInput& input,
     int max_count) const {
   if (debug_reverse_lookup) {
-    fmt::print("reverse_field_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
+    lg::debug("reverse_field_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
+              input.offset, input.deref.has_value(), input.stride);
   }
 
   FieldReverseMultiLookupOutput result;

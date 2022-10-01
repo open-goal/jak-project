@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 
@@ -414,15 +415,15 @@ VuProgram VuDisassembler::disassemble(void* data, int size_bytes, bool debug_pri
 
     // debug
     if (debug_print) {
-      fmt::print("{}\n", to_string(VuInstructionPair{upper_instr, lower_instr}));
+      lg::print("{}\n", to_string(VuInstructionPair{upper_instr, lower_instr}));
     }
   }
 
   name_labels();
 
   if (debug_print) {
-    fmt::print("----------------------------------\n");
-    fmt::print("{}\n", to_string(prog));
+    lg::print("----------------------------------\n");
+    lg::print("{}\n", to_string(prog));
   }
 
   return prog;
@@ -1014,7 +1015,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          instr.src.at(1).to_string(m_label_names));
     default:
       unk++;
-      fmt::print("unknown 0 is {}\n", to_string(instr));
+      lg::print("unknown 0 is {}\n", to_string(instr));
 
       return "ASSERT(false);";  //"???";
   }
@@ -1022,7 +1023,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
 unknown:
 
   unk++;
-  fmt::print("unknown 1 is {}\n", to_string(instr));
+  lg::print("unknown 1 is {}\n", to_string(instr));
 
   return "ASSERT(false);";
 }
@@ -1262,7 +1263,7 @@ std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog, bool mips2
       }
     }
   }
-  fmt::print("TOTAL unk: {}\n", unk);
+  lg::print("TOTAL unk: {}\n", unk);
   return result;
 }
 

@@ -77,11 +77,11 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       // TODO - having this logic here isn't great.
       auto stride = align(field_type_info->get_size_in_memory(),
                           field_type_info->get_inline_array_stride_alignment());
-      fmt::print("decompiler {} stride {} {} = {}\n", field_type_info->get_name(),
-                 field_type_info->get_size_in_memory(),
-                 field_type_info->get_inline_array_stride_alignment(),
-                 align(field_type_info->get_size_in_memory(),
-                       field_type_info->get_inline_array_stride_alignment()));
+      lg::info("decompiler {} stride {} {} = {}", field_type_info->get_name(),
+               field_type_info->get_size_in_memory(),
+               field_type_info->get_inline_array_stride_alignment(),
+               align(field_type_info->get_size_in_memory(),
+                     field_type_info->get_inline_array_stride_alignment()));
 
       if (dynamic_cast<BasicType*>(field_type_info)) {
         throw std::runtime_error("Plan basic arrays not supported yet");
@@ -363,7 +363,7 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     const LinkedObjectFile* /*file*/,
     const TypeSpec& array_elt_type,
     int stride) {
-  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify types
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -392,13 +392,13 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     end_offset = end_label.offset;
   }
 
-  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
   // size_elts,leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
@@ -440,7 +440,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -470,13 +470,13 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     end_offset = end_label.offset;
   }
 
-  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
   // size_elts,leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
@@ -643,7 +643,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
                                   const TypeSystem& ts,
                                   const LinkedObjectFile* file) {
   // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -863,7 +863,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     if (is_basic || !type_info->is_packed()) {
       throw std::runtime_error(error);
     } else {
-      // fmt::print("{}\n", error);
+      // lg::print("{}\n", error);
     }
   }
 
