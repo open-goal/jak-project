@@ -3,6 +3,7 @@
 #include <set>
 #include <thread>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"
@@ -38,18 +39,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
  */
 bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   if (file.segments != 1) {
-    fmt::print("Got {} segments, but expected 1\n", file.segments);
+    lg::error("Got {} segments, but expected 1", file.segments);
     return false;
   }
 
   auto& first_word = file.words_by_seg.at(0).at(0);
   if (first_word.kind() != decompiler::LinkedWord::TYPE_PTR) {
-    fmt::print("Expected the first word to be a type pointer, but it wasn't.\n");
+    lg::error("Expected the first word to be a type pointer, but it wasn't.");
     return false;
   }
 
   if (first_word.symbol_name() != "bsp-header") {
-    fmt::print("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name());
+    lg::error("Expected to get a bsp-header, but got {} instead.", first_word.symbol_name());
     return false;
   }
 
@@ -126,7 +127,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
   }
   std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
-  fmt::print("Processing level {} ({})\n", dgo_name, level_name);
+  lg::info("Processing level {} ({})", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
@@ -140,7 +141,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
   /*
   level_tools::PrintSettings settings;
   settings.expand_collide = true;
-  fmt::print("{}\n", bsp_header.print(settings));
+  lg::print("{}\n", bsp_header.print(settings));
    */
 
   const std::set<std::string> tfrag_trees = {
@@ -189,7 +190,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       extract_collide_frags(as_collide_frags, all_ties, fmt::format("{}-{}-collide", dgo_name, i++),
                             level_data, false);
     } else {
-      // fmt::print("  unsupported tree {}\n", draw_tree->my_type());
+      // lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
   level_data.level_name = level_name;
@@ -228,10 +229,10 @@ void extract_common(const ObjectFileDB& db,
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
 
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
@@ -265,10 +266,10 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(level_data, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());

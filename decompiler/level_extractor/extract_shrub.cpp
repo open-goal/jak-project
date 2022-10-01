@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -157,8 +158,8 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   // ADGIF 0
   bool weird = (u8)ad.tex0_addr != (u32)GsRegisterAddress::TEX0_1;
   if (weird) {
-    fmt::print("----------------  WEIRD: 0x{:x}\n", ad.tex0_addr);
-    fmt::print("i have {} verts\n", count);
+    lg::info("----------------  WEIRD: 0x{:x}", ad.tex0_addr);
+    lg::info("i have {} verts", count);
   } else {
     ASSERT(ad.tex0_data == 0 || ad.tex0_data == 0x800000000);  // note: decal?? todo
   }
@@ -171,7 +172,7 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   u32 new_tex = remap_texture(original_tex, map);
   // try remapping it
   if (original_tex != new_tex) {
-    fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+    lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
   }
   // texture the texture page/texture index, and convert to a PC port texture ID
   u32 tpage = new_tex >> 20;
@@ -181,7 +182,7 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   auto tex = tdb.textures.find(tex_combo);
   ASSERT(tex != tdb.textures.end());
   if (weird) {
-    fmt::print("tex: {}\n", tex->second.name);
+    lg::info("tex: {}", tex->second.name);
   }
 
   // ADGIF 2
@@ -251,7 +252,7 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
     memcpy(adgif_data.data(), frag.textures.data(), frag.textures.size());
 
     if (frag_idx == 0 && proto.name == "vil2-cattail.mb") {
-      fmt::print("Skipping broken village2 thing\n");
+      lg::info("Skipping broken village2 thing");
       continue;
     }
 

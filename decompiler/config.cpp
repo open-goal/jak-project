@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
@@ -29,7 +30,7 @@ Config read_config_file(const fs::path& path_to_config_file, const std::string& 
   Config config;
   auto config_str = file_util::read_text_file(path_to_config_file);
   auto cfg = parse_commented_json(config_str, path_to_config_file.string());
-  fmt::print("Config Overide: '{}'\n", override_json);
+  lg::info("Config Overide: '{}'\n", override_json);
   auto cfg_override = parse_commented_json(override_json, "");
   cfg.update(cfg_override);
 

@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 
 #include "decompiler/IR2/AtomicOp.h"
@@ -56,8 +57,8 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       }
       // the previously selected type is gone... not sure what we can do here, but complain and
       // use the first one (highest scored).
-      fmt::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
-                 desired_type.print());
+      lg::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
+                desired_type.print());
       type.type = TP_Type::make_from_ts(out.front().result_type);
       return;
     } else {
@@ -379,7 +380,7 @@ void types2_for_label(types2::Type& type_out,
                                              env.file->labels.at(label_idx).name));
       } else {
         auto& name = env.file->labels.at(label_idx).name;
-        // fmt::print("Encountered unknown label: {}\n", name);
+        // lg::print("Encountered unknown label: {}\n", name);
         instr.unknown_label_tag = std::make_unique<types2::UnknownLabel>();
         instr.unknown_label_tag->label_idx = label_idx;
         instr.unknown_label_tag->label_name = name;
@@ -1035,7 +1036,7 @@ void types2_addr_on_stack(types2::Type& type_out,
       throw std::runtime_error(
           fmt::format("Failed to find a stack variable or structure at offset {}", offset));
     } else {
-      // fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
+      // lg::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
       instr.unknown_stack_structure_tag = std::make_unique<types2::UnknownStackStructure>();
       instr.unknown_stack_structure_tag->stack_offset = offset;
       type_out.tag.unknown_stack_structure = instr.unknown_stack_structure_tag.get();
@@ -1363,8 +1364,8 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
-  fmt::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
-             !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
+  lg::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
+            !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
 
   throw std::runtime_error(
       fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
@@ -1800,11 +1801,11 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
 
                 // temp warning if we have multiple store types
                 if (location_type.size() > 1) {
-                  fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+                  lg::print("StoreOp::propagate_types2: multiple possible store types: ");
                   for (auto& t : location_type) {
-                    fmt::print("{} ", t.print());
+                    lg::print("{} ", t.print());
                   }
-                  fmt::print("\n");
+                  lg::print("\n");
                 }
 
                 if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
@@ -2075,13 +2076,13 @@ bool load_var_op_determine_type(types2::Type& type_out,
           }
         } else {
           /*
-          fmt::print("ambiguous deref. Choices are:\n");
+          lg::print("ambiguous deref. Choices are:\n");
           for (auto& result : rd.results) {
-            fmt::print(" {} : ", result.result_type.print());
+            lg::print(" {} : ", result.result_type.print());
             for (auto& tok : result.tokens) {
-              fmt::print("{} ", tok.print());
+              lg::print("{} ", tok.print());
             }
-            fmt::print("\n");
+            lg::print("\n");
           }
            */
 

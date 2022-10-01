@@ -176,35 +176,35 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       bool term;
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
-        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-        fmt::print(loc_info);
+        lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+        lg::print(loc_info);
       }
 
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      fmt::print("{}\n", pretty_print::to_string(code, 120));
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+      lg::print("{}\n", pretty_print::to_string(code, 120));
 
       if (term) {
         ce.print_err_stack = false;
       }
       std::string line(80, '-');
       line.push_back('\n');
-      fmt::print(line);
+      lg::print(line);
     }
     throw ce;
   }
 
   catch (std::runtime_error& e) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
-    fmt::print(fmt::emphasis::bold, "{}\n", e.what());
+    lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    lg::print(fmt::emphasis::bold, "{}\n", e.what());
     bool term;
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-      fmt::print(loc_info);
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+      lg::print(loc_info);
     }
 
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    fmt::print("{}\n", pretty_print::to_string(code, 120));
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+    lg::print("{}\n", pretty_print::to_string(code, 120));
 
     CompilerException ce("Compiler Exception");
     if (term) {
@@ -212,7 +212,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     }
     std::string line(80, '-');
     line.push_back('\n');
-    fmt::print(line);
+    lg::print(line);
     throw ce;
   }
 }
@@ -251,13 +251,13 @@ void Compiler::color_object_file(FileEnv* env) {
 
     if (regalloc_result_2.ok) {
       if (regalloc_result_2.num_spilled_vars > 0) {
-        // fmt::print("Function {} has {} spilled vars.\n", f->name(),
+        // lg::print("Function {} has {} spilled vars.\n", f->name(),
         //  regalloc_result_2.num_spilled_vars);
       }
       num_spills_in_file += regalloc_result_2.num_spills;
       f->set_allocations(std::move(regalloc_result_2));
     } else {
-      fmt::print(
+      lg::print(
           "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
           "the v1 allocator.\n",
           f->name());
@@ -281,8 +281,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
-        fmt::print("{}\n",
-                   debug_info->disassemble_function_by_name(f->name(), &ok, &m_goos.reader));
+        lg::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok, &m_goos.reader));
       }
     }
     auto stats = gen.get_obj_stats();

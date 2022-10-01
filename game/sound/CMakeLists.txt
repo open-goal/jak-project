@@ -18,7 +18,7 @@ set(SOUND_SOURCES
   )
 
 add_library(sound STATIC ${SOUND_SOURCES})
-target_link_libraries(sound PRIVATE fmt cubeb)
+target_link_libraries(sound PRIVATE fmt cubeb common)
 
 add_executable(sndplay 989snd/sndplay.cpp)
 if(WIN32)

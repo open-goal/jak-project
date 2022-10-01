@@ -46,10 +46,14 @@ void log_message(level log_level, LogTime& now, const char* message) {
   auto now_milliseconds = now.tv.tv_usec / 1000;
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now_seconds));
   std::string date_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now_seconds));
+  std::string time_condensed = fmt::format("[{}]:{:03d}]", date_time_buffer, now_milliseconds);
 #else
   char date_time_buffer[128];
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now.tim));
   std::string date_string = fmt::format("[{}]", date_time_buffer);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now.tim));
+  std::string time_condensed = fmt::format("[{}]", date_time_buffer);
 #endif
 
   {
@@ -65,17 +69,38 @@ void log_message(level log_level, LogTime& now, const char* message) {
     }
 
     if (log_level >= gLogger.stdout_log_level) {
-      fmt::print("{} [", date_string);
+      fmt::print("{} [", time_condensed);
       fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
         fflush(stdout);
+        fflush(stderr);
       }
     }
   }
 
   if (log_level == level::die) {
     exit(-1);
+  }
+}
+
+void log_print(const char* message) {
+  {
+    // We always immediately flush prints because since it has no associated level
+    // it could be anything from a fatal error to a useless debug log.
+    std::lock_guard<std::mutex> lock(gLogger.mutex);
+    if (gLogger.fp) {
+      // Log to File
+      std::string msg(message);
+      fwrite(msg.c_str(), msg.length(), 1, gLogger.fp);
+      fflush(gLogger.fp);
+    }
+
+    if (gLogger.stdout_log_level < lg::level::off) {
+      fmt::print(message);
+      fflush(stdout);
+      fflush(stderr);
+    }
   }
 }
 }  // namespace internal

@@ -28,7 +28,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) {
   glGetShaderiv(m_vert_shader, GL_COMPILE_STATUS, &compile_ok);
   if (!compile_ok) {
     glGetShaderInfoLog(m_vert_shader, len, nullptr, err);
-    lg::error("Failed to compile vertex shader {}:\n{}\n", shader_name.c_str(), err);
+    lg::error("Failed to compile vertex shader {}:\n{}", shader_name.c_str(), err);
     m_is_okay = false;
     return;
   }
@@ -41,7 +41,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) {
   glGetShaderiv(m_frag_shader, GL_COMPILE_STATUS, &compile_ok);
   if (!compile_ok) {
     glGetShaderInfoLog(m_frag_shader, len, nullptr, err);
-    lg::error("Failed to compile fragment shader {}:\n{}\n", shader_name.c_str(), err);
+    lg::error("Failed to compile fragment shader {}:\n{}", shader_name.c_str(), err);
     m_is_okay = false;
     return;
   }
@@ -54,7 +54,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) {
   glGetProgramiv(m_program, GL_LINK_STATUS, &compile_ok);
   if (!compile_ok) {
     glGetProgramInfoLog(m_program, len, nullptr, err);
-    lg::error("Failed to link shader {}:\n{}\n", shader_name.c_str(), err);
+    lg::error("Failed to link shader {}:\n{}", shader_name.c_str(), err);
     m_is_okay = false;
     return;
   }

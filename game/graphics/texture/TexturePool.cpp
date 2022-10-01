@@ -136,11 +136,9 @@ void TexturePool::unload_texture(PcTextureId tex_id, u64 gpu_id) {
     ASSERT(false);
     return;
   }
-  if (tex->is_placeholder) {
-    fmt::print("trying to unload something that was already placholdered: {} {}\n",
-               get_debug_texture_name(tex_id), tex->gpu_textures.size());
-  }
-  ASSERT(!tex->is_placeholder);
+  ASSERT_MSG(!tex->is_placeholder,
+             fmt::format("trying to unload something that was already placholdered: {} {}\n",
+                         get_debug_texture_name(tex_id), tex->gpu_textures.size()));
   auto it = std::find_if(tex->gpu_textures.begin(), tex->gpu_textures.end(),
                          [&](const auto& a) { return a.gl == gpu_id; });
   ASSERT(it != tex->gpu_textures.end());

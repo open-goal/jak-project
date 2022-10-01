@@ -1,5 +1,7 @@
 #include "SpriteRenderer.h"
 
+#include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
@@ -614,7 +616,7 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+    lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
     tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);

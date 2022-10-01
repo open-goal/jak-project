@@ -148,6 +148,7 @@ void SavePeripheralSettings() {
 void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
   Pad::DefaultMapping(g_settings.pad_mapping_info);
 
+  lg::info("reading {}", filepath.string());
   auto file_txt = file_util::read_text_file(filepath);
   auto configuration = parse_commented_json(file_txt, filepath.string());
 

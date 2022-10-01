@@ -326,10 +326,7 @@ goos::Object decompile_sparticle_rot_x(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord>& words,
                                                     const std::string& field_name,
                                                     const std::string& flag_name) {
-  if (flag_name != "plain-v1") {
-    fmt::print("Bad {} {}\n", field_name, flag_name);
-  }
-  ASSERT(flag_name == "plain-v1");
+  ASSERT_MSG(flag_name == "plain-v1", fmt::format("Bad {} {}\n", field_name, flag_name));
   if (word_as_s32(words.at(2)) == 0 && word_as_s32(words.at(3)) == 1) {
     return decompile_sparticle_int_init(words, field_name, flag_name);
   }
@@ -451,7 +448,7 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
                                             const TypeSystem& ts,
                                             const LinkedObjectFile* /*file*/) {
   // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -530,7 +527,7 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
   }
 
   result += ')';
-  // fmt::print("Result: {}\n", result);
+  // lg::print("Result: {}\n", result);
   return pretty_print::to_symbol(result);
 }
 
@@ -541,7 +538,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                                             const TypeSystem& ts,
                                             const LinkedObjectFile* file) {
   auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -623,7 +620,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
     }
   }
 
-  // fmt::print("Result: {}\n\n", result.print());
+  // lg::print("Result: {}\n\n", result.print());
   return result;
 }
 
@@ -708,7 +705,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
     }
   }
 
-  // fmt::print("Result: {}\n\n", result.print());
+  // lg::print("Result: {}\n\n", result.print());
   return result;
 }
 }  // namespace decompiler

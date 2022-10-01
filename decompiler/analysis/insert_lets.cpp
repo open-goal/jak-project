@@ -3,6 +3,7 @@
 #include <limits>
 #include <tuple>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
@@ -55,7 +56,7 @@ std::vector<Form*> path_up_tree(Form* in, const Env&) {
       in = nullptr;
     }
   }
-  //  lg::warn("DONE\n");
+  //  lg::warn("DONE");
   return path;
 }
 
@@ -65,7 +66,7 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     return b;
   }
   //
-  //  fmt::print("lca {} ({}) and {} ({})\n", a->to_string(env), (void*)a, b->to_string(env),
+  //  lg::print("lca {} ({}) and {} ({})\n", a->to_string(env), (void*)a, b->to_string(env),
   //   (void*)b);
 
   auto a_up = path_up_tree(a, env);
@@ -84,12 +85,10 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     ai--;
     bi--;
   }
-  if (!result) {
-    fmt::print("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env), b->to_string(env));
-  }
-  ASSERT(result);
+  ASSERT_MSG(result, fmt::format("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env),
+                                 b->to_string(env)));
 
-  // fmt::print("{}\n\n", result->to_string(env));
+  // lg::print("{}\n\n", result->to_string(env));
   return result;
 }
 
@@ -333,7 +332,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
 
   auto body = in->body();
   if (body->size() < 4) {  // from, num-params, message, call
-    // fmt::print(" fail: size\n");
+    // lg::print(" fail: size\n");
     return nullptr;
   }
 
@@ -379,7 +378,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
     if (!from_mr.matched) {
       return nullptr;
     }
-    fmt::print("case 1: {}\n", from_mr.maps.forms.at(1)->to_string(env));
+    lg::print("case 1: {}\n", from_mr.maps.forms.at(1)->to_string(env));
     not_proc = true;
   }
 
@@ -399,13 +398,13 @@ FormElement* rewrite_as_send_event(LetElement* in,
       Matcher::any_integer(1));
   auto num_params_mr = match(set_num_params_matcher, body->at(1));
   if (!num_params_mr.matched) {
-    // fmt::print(" fail: pc1\n");
+    // lg::print(" fail: pc1\n");
     return nullptr;
   }
   int param_count = num_params_mr.maps.ints.at(1);
   ASSERT(param_count >= 0 && param_count < 7);
   if (body->size() != 4 + param_count) {
-    // fmt::print(" fail: pc3\n");
+    // lg::print(" fail: pc3\n");
     return nullptr;
   }
 
@@ -416,7 +415,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
       Matcher::any(1));
   auto set_message_mr = match(set_message_matcher, body->at(2));
   if (!set_message_mr.matched) {
-    // fmt::print(" fail: msg1\n");
+    // lg::print(" fail: msg1\n");
     return nullptr;
   }
   Form* message_name = set_message_mr.maps.forms.at(1);
@@ -440,7 +439,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
         Matcher::any(1));
     auto set_param_mr = match(set_param_matcher, set_form);
     if (!set_param_mr.matched) {
-      // fmt::print(" fail: pv {} 1: {}\n", param_idx, set_form->to_string(env));
+      // lg::print(" fail: pv {} 1: {}\n", param_idx, set_form->to_string(env));
       return nullptr;
     }
 
@@ -2066,7 +2065,7 @@ LetStats insert_lets(const Function& func,
 
   // Part 2, figure out the lca form which contains all uses of a var
   for (auto& kv : var_info) {
-    // fmt::print("--------------------- {}\n", kv.first);
+    // lg::print("--------------------- {}\n", kv.first);
     Form* lca = nullptr;
     for (auto fe : kv.second.elts_using_var) {
       lca = lca_form(lca, fe->parent_form, env);
@@ -2078,7 +2077,7 @@ LetStats insert_lets(const Function& func,
   // Part 3, find the minimum range of FormElement's within the lca form that contain
   // all uses. This is the minimum possible range for a set!
   for (auto& kv : var_info) {
-    // fmt::print("Setting range for let {}\n", kv.first);
+    // lg::print("Setting range for let {}\n", kv.first);
     kv.second.start_idx = std::numeric_limits<int>::max();
     kv.second.end_idx = std::numeric_limits<int>::min();
 
@@ -2099,14 +2098,14 @@ LetStats insert_lets(const Function& func,
         got_one = true;
         kv.second.start_idx = std::min(kv.second.start_idx, i);
         kv.second.end_idx = std::max(kv.second.end_idx, i + 1);
-        // fmt::print("update range {} to {} because of {}\n", kv.second.start_idx,
+        // lg::print("update range {} to {} because of {}\n", kv.second.start_idx,
         // kv.second.end_idx, kv.second.lca_form->at(i)->to_string(env));
       }
     }
     ASSERT(got_one);
   }
 
-  // fmt::print("\n");
+  // lg::print("\n");
 
   // Part 4, sort the var infos in descending size.
   // this simplifies future passes.
@@ -2150,7 +2149,7 @@ LetStats insert_lets(const Function& func,
         }
       }
       // success!
-      // fmt::print("Want let for {} range {} to {}\n",
+      // lg::print("Want let for {} range {} to {}\n",
       // env.get_variable_name(first_form_as_set->dst()), info.start_idx, info.end_idx);
       if (allowed) {
         LetInsertion li;
@@ -2163,7 +2162,7 @@ LetStats insert_lets(const Function& func,
         stats.vars_in_lets++;
       }
     } else {
-      // fmt::print("fail for {} : {}\n", info.var_name, first_form->to_string(env));
+      // lg::print("fail for {} : {}\n", info.var_name, first_form->to_string(env));
     }
   }
 
@@ -2179,7 +2178,7 @@ LetStats insert_lets(const Function& func,
           if (let_b.start_elt > let_a.start_elt && let_b.start_elt < let_a.end_elt &&
               let_b.end_elt > let_a.end_elt) {
             changed = true;
-            // fmt::print("Resized {}'s end to {}\n", let_a.set_form->dst().to_string(env),
+            // lg::print("Resized {}'s end to {}\n", let_a.set_form->dst().to_string(env),
             // let_b.end_elt);
             let_a.end_elt = let_b.end_elt;
           }

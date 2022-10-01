@@ -658,7 +658,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
       if (instr.kind == InstructionKind::SLL && instr.get_dst(0).get_reg() == make_gpr(Reg::V0) &&
           instr.get_src(0).get_reg() == make_gpr(Reg::RA) && instr.get_src(1).get_imm() == 0) {
         // done!
-        //        fmt::print("Got type {} parent {}\n", type_name, parent_type);
+        //        lg::print("Got type {} parent {}\n", type_name, parent_type);
         dts.add_type_parent(type_name, parent_type);
         DecompilerLabel flag_label = file.labels.at(label_idx);
         u64 word = file.read_data_word(flag_label);
@@ -667,7 +667,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
         word |= (word2 << 32);
         types_defined.push_back(type_name);
         dts.add_type_flags(type_name, word);
-        //        fmt::print("Flags are 0x{:x}\n", word);
+        //        lg::print("Flags are 0x{:x}\n", word);
         state = 0;
         continue;
       }

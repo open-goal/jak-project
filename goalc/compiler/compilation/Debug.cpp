@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -57,19 +58,19 @@ Val* Compiler::compile_dbg(const goos::Object& form, const goos::Object& rest, E
   (void)rest;
   (void)env;
   if (!m_debugger.is_valid()) {
-    fmt::print("[Debugger] Could not start debugger because there is no valid debugging context\n");
+    lg::print("[Debugger] Could not start debugger because there is no valid debugging context\n");
     return get_none();
   }
 
   if (m_debugger.is_attached()) {
-    fmt::print("[Debugger] Could not start debugger because the debugger is already attached.\n");
+    lg::print("[Debugger] Could not start debugger because the debugger is already attached.\n");
     return get_none();
   }
 
   if (m_debugger.attach_and_break()) {
-    fmt::print("Debugger connected.\n");
+    lg::print("Debugger connected.\n");
   } else {
-    fmt::print("ERROR\n");
+    lg::print("ERROR\n");
   }
 
   return get_none();
@@ -81,21 +82,21 @@ Val* Compiler::compile_dbs(const goos::Object& form, const goos::Object& rest, E
   (void)rest;
   (void)env;
 
-  fmt::print(" Listener connected? {}\n", m_listener.is_connected());
-  fmt::print(" Debugger context? {}\n", m_debugger.is_valid());
+  lg::print(" Listener connected? {}\n", m_listener.is_connected());
+  lg::print(" Debugger context? {}\n", m_debugger.is_valid());
   if (m_debugger.is_valid()) {
-    fmt::print(" Attached? {}\n", m_debugger.is_attached());
+    lg::print(" Attached? {}\n", m_debugger.is_attached());
 
     if (m_debugger.is_attached()) {
-      fmt::print(" Halted? {}\n", m_debugger.is_halted());
+      lg::print(" Halted? {}\n", m_debugger.is_halted());
     }
 
-    fmt::print(" Context: {}\n", m_debugger.get_context_string());
+    lg::print(" Context: {}\n", m_debugger.get_context_string());
   }
 
   if (m_debugger.is_valid()) {
   } else {
-    fmt::print("There is no valid debug context from the target.");
+    lg::print("There is no valid debug context from the target.");
   }
 
   return get_none();
@@ -110,8 +111,8 @@ Val* Compiler::compile_cont(const goos::Object& form, const goos::Object& rest, 
   if (m_debugger.is_valid() && m_debugger.is_attached() && m_debugger.is_halted()) {
     m_debugger.do_continue();
   } else {
-    fmt::print("Couldn't do :cont. Valid {}, attached {}, halted {}\n", m_debugger.is_valid(),
-               m_debugger.is_attached(), m_debugger.is_halted());
+    lg::print("Couldn't do :cont. Valid {}, attached {}, halted {}\n", m_debugger.is_valid(),
+              m_debugger.is_attached(), m_debugger.is_halted());
   }
 
   return get_none();
@@ -126,8 +127,8 @@ Val* Compiler::compile_stop(const goos::Object& form, const goos::Object& rest, 
   if (m_debugger.is_valid() && m_debugger.is_attached() && m_debugger.is_halted()) {
     m_debugger.detach();
   } else {
-    fmt::print("Couldn't do :stop. Valid {}, attached {}, halted {}\n", m_debugger.is_valid(),
-               m_debugger.is_attached(), m_debugger.is_halted());
+    lg::print("Couldn't do :stop. Valid {}, attached {}, halted {}\n", m_debugger.is_valid(),
+              m_debugger.is_attached(), m_debugger.is_halted());
   }
 
   return get_none();
@@ -142,8 +143,8 @@ Val* Compiler::compile_break(const goos::Object& form, const goos::Object& rest,
   if (m_debugger.is_valid() && m_debugger.is_attached() && m_debugger.is_running()) {
     m_debugger.do_break();
   } else {
-    fmt::print("Couldn't do :break. Valid {}, attached {}, running {}\n", m_debugger.is_valid(),
-               m_debugger.is_attached(), m_debugger.is_running());
+    lg::print("Couldn't do :break. Valid {}, attached {}, running {}\n", m_debugger.is_valid(),
+              m_debugger.is_attached(), m_debugger.is_running());
   }
 
   return get_none();
@@ -152,7 +153,7 @@ Val* Compiler::compile_break(const goos::Object& form, const goos::Object& rest,
 Val* Compiler::compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   if (!m_debugger.is_halted()) {
-    fmt::print("Couldn't dump memory. Must be attached and halted.\n");
+    lg::print("Couldn't dump memory. Must be attached and halted.\n");
     return get_none();
   }
 
@@ -165,7 +166,7 @@ Val* Compiler::compile_dump_all(const goos::Object& form, const goos::Object& re
   if (!m_debugger.read_memory(buffer + EE_MAIN_MEM_LOW_PROTECT,
                               EE_MAIN_MEM_SIZE - EE_MAIN_MEM_LOW_PROTECT,
                               EE_MAIN_MEM_LOW_PROTECT)) {
-    fmt::print("Reading memory failed, not dumping.\n");
+    lg::print("Reading memory failed, not dumping.\n");
   } else {
     file_util::write_binary_file(file_util::get_file_path({dest_file}), buffer, EE_MAIN_MEM_SIZE);
   }
@@ -203,18 +204,18 @@ void mem_print(T* data, int count, u32 start_addr, PrintMode mode) {
   for (int i = 0; i < count; i++) {
     if ((i % elt_per_line) == 0) {
       // first in line, so we should print the GOAL address
-      fmt::print(" 0x{:08x}: ", start_addr + (i * sizeof(T)));
+      lg::print(" 0x{:08x}: ", start_addr + (i * sizeof(T)));
     }
 
     // print the thing
-    fmt::print(format_string, data[i]);
+    lg::print(format_string, data[i]);
 
     if ((i % elt_per_line) == (elt_per_line - 1)) {
       // last in line, newline!
-      fmt::print("\n");
+      lg::print("\n");
     }
   }
-  fmt::print("\n");
+  lg::print("\n");
 }
 }  // namespace
 
@@ -363,8 +364,8 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
                          addr, addr + size, EE_MAIN_MEM_LOW_PROTECT, EE_MAIN_MEM_SIZE);
   }
 
-  fmt::print("{}\n", m_debugger.get_info_about_addr(addr));
-  fmt::print("{}\n", m_debugger.disassemble_x86_with_symbols(size, addr));
+  lg::print("{}\n", m_debugger.get_info_about_addr(addr));
+  lg::print("{}\n", m_debugger.disassemble_x86_with_symbols(size, addr));
 
   return get_none();
 }
@@ -417,9 +418,9 @@ Val* Compiler::compile_d_sym_name(const goos::Object& form, const goos::Object& 
 
   auto sym_name = m_debugger.get_symbol_name_from_offset(ofs);
   if (sym_name) {
-    fmt::print("symbol name for symbol {:X}h is {}\n", ofs, sym_name);
+    lg::print("symbol name for symbol {:X}h is {}\n", ofs, sym_name);
   } else {
-    fmt::print("symbol {:X}h is not loaded or is invalid\n", ofs);
+    lg::print("symbol {:X}h is not loaded or is invalid\n", ofs);
   }
 
   return get_none();

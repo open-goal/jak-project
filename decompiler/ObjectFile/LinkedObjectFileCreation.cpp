@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "common/link_types.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
 

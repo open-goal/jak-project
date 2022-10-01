@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/math_util.h"
 
@@ -18,11 +19,11 @@
 namespace {
 template <typename... Args>
 [[noreturn]] void throw_typesystem_error(const std::string& str, Args&&... args) {
-  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Type Error! --\n");
+  lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Type Error! --\n");
   if (!str.empty() && str.back() == '\n') {
-    fmt::print(fg(fmt::color::yellow), str, std::forward<Args>(args)...);
+    lg::print(fg(fmt::color::yellow), str, std::forward<Args>(args)...);
   } else {
-    fmt::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
+    lg::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
   }
 
   throw std::runtime_error(
@@ -63,8 +64,8 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
       if (m_allow_redefinition ||
           std::find(m_types_allowed_to_be_redefined.begin(), m_types_allowed_to_be_redefined.end(),
                     kv->second->get_name()) != m_types_allowed_to_be_redefined.end()) {
-        fmt::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
-                   kv->second->get_name(), kv->second->print(), type->print());
+        lg::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
+                  kv->second->get_name(), kv->second->print(), type->print());
         // extra dangerous, we have allowed type redefinition!
 
         // keep the unique_ptr around, just in case somebody references this old type pointer.
@@ -1530,11 +1531,11 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
   if (!success) {
     if (print_on_error) {
       if (error_source_name.empty()) {
-        fmt::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
-                   expected.print());
+        lg::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
+                  expected.print());
       } else {
-        fmt::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n",
-                   error_source_name, actual.print(), expected.print());
+        lg::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n", error_source_name,
+                  actual.print(), expected.print());
       }
     }
 
