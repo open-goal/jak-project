@@ -1,0 +1,410 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type plat
+(deftype plat (base-plat)
+  ((path-pos float              :offset-assert 272)
+   (sound-id sound-id           :offset-assert 276)
+   (sync     sync-eased :inline :offset-assert 280)
+   )
+  :heap-base #xd0
+  :method-count-assert 37
+  :size-assert         #x144
+  :flag-assert         #x2500d00144
+  (:methods
+    (plat-idle () _type_ :state 34)
+    (plat-path-active () _type_ :state 35)
+    (plat-method-36 (_type_) none 36)
+    )
+  )
+
+;; definition for method 3 of type plat
+(defmethod inspect plat ((obj plat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(let ((a0-2 (new 'static 'skeleton-group
+              :name "skel-plat"
+              :extra #f
+              :info #f
+              :art-group-name "plat"
+              :bounds (new 'static 'vector :y -2048.0 :w 12288.0)
+              :max-lod 2
+              :version #x7
+              )
+            )
+      )
+  (set! (-> a0-2 jgeo) 0)
+  (set! (-> a0-2 janim) 4)
+  (set! (-> a0-2 mgeo 0) 1)
+  (set! (-> a0-2 lod-dist 0) 81920.0)
+  (set! (-> a0-2 mgeo 1) 2)
+  (set! (-> a0-2 lod-dist 1) 163840.0)
+  (set! (-> a0-2 mgeo 2) 3)
+  (set! (-> a0-2 lod-dist 2) 4095996000.0)
+  (add-to-loading-level a0-2)
+  )
+
+;; definition for method 30 of type plat
+;; WARN: Return type mismatch art-group vs none.
+(defmethod base-plat-method-30 plat ((obj plat))
+  (art-group-get-by-name *level* "skel-plat" (the-as (pointer uint32) #f))
+  (none)
+  )
+
+;; definition for method 31 of type plat
+;; WARN: Return type mismatch int vs none.
+(defmethod base-plat-method-31 plat ((obj plat))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    ((method-of-object s5-0 collide-shape-method-54))
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collde-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> obj root-override) (the-as collide-shape-moving s5-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 33 of type plat
+;; WARN: Return type mismatch int vs none.
+(defmethod base-plat-method-33 plat ((obj plat))
+  0
+  (none)
+  )
+
+;; definition for method 32 of type plat
+;; WARN: Return type mismatch int vs none.
+(defmethod base-plat-method-32 plat ((obj plat))
+  0
+  (none)
+  )
+
+;; definition for method 36 of type plat
+;; WARN: Return type mismatch object vs none.
+(defmethod plat-method-36 plat ((obj plat))
+  (cond
+    ((logtest? (-> obj path flags) (path-control-flag not-found))
+     (go (method-of-object obj plat-idle))
+     )
+    ((> (-> obj sync period) 0)
+     (go (method-of-object obj plat-path-active))
+     )
+    (else
+      (go (method-of-object obj plat-idle))
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate plat-idle (plat)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :trans (behavior ()
+    (base-plat-method-27 self)
+    (none)
+    )
+  :code (behavior ()
+    (plat-trans)
+    (rider-post)
+    (suspend)
+    (until #f
+      (when (not (-> self bouncing))
+        (plat-trans)
+        (rider-post)
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend)
+        0
+        )
+      (while (-> self bouncing)
+        (plat-trans)
+        (rider-post)
+        (suspend)
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate plat-path-active (plat)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
+  :trans (behavior ()
+    (set! (-> self path-pos) (get-norm! (-> self sync) 0))
+    (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+    (if (< (vector-vector-distance (-> self root-override trans) (ear-trans 0)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (-> self root-override trans))
+        )
+    (plat-trans)
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior plat) plat-post)
+  )
+
+;; definition for method 11 of type plat
+(defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (base-plat-method-31 obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj (the-as skeleton-group (base-plat-method-30 obj)) (the-as pair 0))
+  (collide-shape-method-46 (-> obj root-override))
+  (base-plat-method-28 obj)
+  (base-plat-method-32 obj)
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-15 0))
+      (if (not (logtest? (-> obj fact options) (actor-option loop)))
+          (set! v1-15 (logior v1-15 1))
+          )
+      (set! (-> a1-4 sync-type) (the-as basic 'sync-eased))
+      (set! (-> a1-4 sync-flags) (the-as sync-flags v1-15))
+      )
+    (set! (-> a1-4 period) (the-as uint 1200))
+    (set! (-> a1-4 entity) arg0)
+    (set! (-> a1-4 percent) 0.0)
+    (set! (-> a1-4 ease-in) 0.15)
+    (set! (-> a1-4 ease-out) 0.15)
+    (set! (-> a1-4 pause-in) 0.0)
+    (set! (-> a1-4 pause-out) 0.0)
+    (initialize! (-> obj sync) a1-4)
+    )
+  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj sound-id) (new-sound-id))
+  (cond
+    ((logtest? (-> obj path flags) (path-control-flag not-found))
+     (set! (-> obj path-pos) 0.0)
+     (base-plat-method-33 obj)
+     (plat-method-36 obj)
+     )
+    ((> (-> obj sync period) 0)
+     (set! (-> obj path-pos) (get-norm! (-> obj sync) 0))
+     (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
+     (base-plat-method-33 obj)
+     (plat-method-36 obj)
+     )
+    (else
+      (set! (-> obj path-pos) 0.0)
+      (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
+      (base-plat-method-33 obj)
+      (plat-method-36 obj)
+      )
+    )
+  (none)
+  )
+
+;; definition of type drop-plat
+(deftype drop-plat (base-plat)
+  ((art-name        string             :offset-assert 272)
+   (anim            spool-anim         :offset-assert 276)
+   (break-anim-name string             :offset-assert 280)
+   (safe-time       time-frame         :offset-assert 288)
+   (hit-point       vector     :inline :offset-assert 304)
+   )
+  :heap-base #xc0
+  :method-count-assert 36
+  :size-assert         #x140
+  :flag-assert         #x2400c00140
+  (:methods
+    (idle () _type_ :state 34)
+    (fall (symbol) _type_ :state 35)
+    )
+  )
+
+;; definition for method 3 of type drop-plat
+(defmethod inspect drop-plat ((obj drop-plat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
+  (format #t "~2Tanim: ~A~%" (-> obj anim))
+  (format #t "~2Tbreak-anim-name: ~A~%" (-> obj break-anim-name))
+  (format #t "~2Tsafe-time: ~D~%" (-> obj safe-time))
+  (format #t "~2Thit-point: ~`vector`P~%" (-> obj hit-point))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 7 of type drop-plat
+;; WARN: Return type mismatch base-plat vs drop-plat.
+(defmethod relocate drop-plat ((obj drop-plat) (arg0 int))
+  (if (nonzero? (-> obj break-anim-name))
+      (&+! (-> obj break-anim-name) arg0)
+      )
+  (let ((v1-5 (-> obj anim buffer)))
+    (if (and (>= (the-as int v1-5) (-> *kernel-context* relocating-min))
+             (< (the-as int v1-5) (-> *kernel-context* relocating-max))
+             )
+        (&+! (-> obj anim buffer) arg0)
+        )
+    )
+  (the-as drop-plat ((method-of-type base-plat relocate) obj arg0))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (drop-plat)
+  :virtual #t
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('touch 'attack 'bonk)
+       (let* ((s5-0 arg0)
+              (a0-5 (if (type? s5-0 process-focusable)
+                        (the-as process-focusable s5-0)
+                        )
+                    )
+              )
+         (cond
+           ((and a0-5 (logtest? (-> a0-5 focus-status) (focus-status edge-grab)))
+            (set! (-> self safe-time) (+ (-> self clock frame-counter) (seconds 0.2)))
+            (return (the-as object #f))
+            )
+           ((< (- (-> self clock frame-counter) (-> self safe-time)) (seconds 0.05))
+            (return (the-as object #f))
+            )
+           )
+         )
+       (set! (-> self hit-point quad) (-> self root-override trans quad))
+       (let ((a0-13 (if (type? arg0 process-focusable)
+                        (the-as process-focusable arg0)
+                        )
+                    )
+             )
+         (set! (-> self hit-point quad) (-> (get-trans a0-13 0) quad))
+         )
+       (if (zero? (-> self bounce-time))
+           (base-plat-method-29 self)
+           )
+       #f
+       )
+      )
+    )
+  :trans (the-as (function none :behavior drop-plat) plat-trans)
+  :code (behavior ()
+    (gui-control-method-9
+      *gui-control*
+      self
+      (gui-channel art-load)
+      (gui-action queue)
+      (-> self anim name)
+      -99.0
+      0
+      )
+    (until #f
+      (when (not (-> self bouncing))
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend)
+        0
+        )
+      (while (-> self bouncing)
+        (suspend)
+        )
+      (go-virtual fall #f)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior drop-plat) plat-post)
+  )
+
+;; failed to figure out what this is:
+(defstate fall (drop-plat)
+  :virtual #t
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('edge-grabbed)
+       (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+           (send-event arg0 'end-mode)
+           )
+       )
+      (('die)
+       (go-virtual fall #t)
+       )
+      )
+    )
+  :enter (behavior ((arg0 symbol))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :exit (behavior ()
+    (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
+    (none)
+    )
+  :trans (the-as (function none :behavior drop-plat) rider-trans)
+  :code (behavior ((arg0 symbol))
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (let ((v1-1 (-> self root-override root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (not arg0)
+        (ja-play-spooled-anim
+          (-> self anim)
+          (ja-group)
+          (the-as art-joint-anim #f)
+          (the-as (function process-drawable symbol) false-func)
+          )
+        )
+    (ja-channel-set! 0)
+    (suspend)
+    (logior! (-> self mask) (process-mask sleep))
+    (suspend)
+    0
+    (none)
+    )
+  :post (the-as (function none :behavior drop-plat) rider-post)
+  )
+
+
+
+
