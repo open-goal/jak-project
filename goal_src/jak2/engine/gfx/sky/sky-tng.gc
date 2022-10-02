@@ -7,3 +7,66 @@
 
 ;; DECOMP BEGINS
 
+
+;; TODO
+(defmethod update-time-and-speed sky-work ((obj sky-work) (arg0 float) (arg1 float))
+  (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
+      (set! arg1 (* 10.0 arg1))
+      )
+  (sky-make-sun-data obj 0 arg0)
+  (sky-make-sun-data obj 1 arg0)
+  (sky-make-moon-data obj arg0)
+  (+! (-> obj off-s) (the int (* -8.0 arg1)))
+  (+! (-> obj off-t) (the int (* 2.0 arg1)))
+  (set! (-> obj time) arg0)
+  0
+  (none)
+  )
+
+(defmethod update-colors-for-time sky-work ((obj sky-work) (arg0 float))
+  0
+  0
+  0.0
+  (let ((s5-0 *no-cloud-mood-color-table*))
+    (let ((s3-0 (-> *level* default-level mood-context))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (let* ((v1-3 (the int arg0))
+             (f0-4 (- arg0 (the float v1-3)))
+             (f1-3 (- 1.0 f0-4))
+             (a0-3 (/ v1-3 24))
+             (a1-2 (-> *mood-interp-table* hour (- v1-3 (* 24 a0-3))))
+             (a0-6 (-> a1-2 snapshot1))
+             (v1-7 (-> a1-2 snapshot2))
+             (f0-6 (+ (* f1-3 (-> a1-2 morph-start)) (* f0-4 (-> a1-2 morph-end))))
+             )
+        (cond
+          ((= a0-6 v1-7)
+           (set! (-> obj sun0-color quad) (-> s5-0 data a0-6 lgt-color quad))
+           )
+          (else
+            (let ((a1-5 (-> s5-0 data a0-6))
+                  (v1-11 (-> s5-0 data v1-7))
+                  )
+              (vector4-lerp! (the-as vector (-> obj sun0-color)) (-> a1-5 lgt-color) (-> v1-11 lgt-color) f0-6)
+              )
+            )
+          )
+        )
+      (set! (-> obj sun0-color-lower quad) (-> s3-0 times 1 quad))
+      (set! (-> obj ambi-color-lower quad) (-> s3-0 times 0 quad))
+      (set-vector! s4-0 1.9921875 1.9921875 1.9921875 1.0)
+      (vector4-lerp!
+        (the-as vector (-> obj ambi-color))
+        (the-as vector (-> obj ambi-color-lower))
+        s4-0
+        (-> *mood-control* lightning-flash)
+        )
+      )
+    (set! (-> obj sun0-color quad) (-> obj sun0-color quad))
+    (set! (-> obj sun1-color quad) (-> s5-0 data 7 lgt-color quad))
+    (set! (-> obj moon-color quad) (-> s5-0 data 6 lgt-color quad))
+    )
+  0
+  (none)
+  )
