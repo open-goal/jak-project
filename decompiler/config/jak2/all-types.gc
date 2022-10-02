@@ -6693,7 +6693,7 @@
 
 (deftype connection (connectable)
   ((param0 basic     :offset-assert 16)
-   (param1 int32     :offset-assert 20) ;; guessed by decompiler
+   (param1 basic     :offset-assert 20) ;; guessed by decompiler
    (param2 int32     :offset-assert 24) ;; guessed by decompiler
    (param3 int32     :offset-assert 28) ;; guessed by decompiler
    (quad   uint128 2 :offset 0) ;; guessed by decompiler
@@ -22149,7 +22149,7 @@
 ;; actor-hash-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *actor-list* pointer) ;; some array of something.
+(define-extern *actor-list* (pointer collide-shape)) ;; some array of something.
 (define-extern *actor-list-length* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32601,7 +32601,6 @@
 ;; conveyor                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype conveyor-section (structure)
   ((start      vector :inline :offset-assert 0)
    (trailing   plane  :inline :offset-assert 16)
@@ -32612,48 +32611,39 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype conveyor-section-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             conveyor-section :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype conveyor (process-drawable)
-  ((speed                float          :offset-assert 196)
-   (belt-radius          float          :offset-assert 200)
-   (pull-y-threshold     float          :offset-assert 204)
-   (speed-mult-array     uint32         :offset-assert 208)
-   (speed-mult-array-len int8           :offset-assert 212)
-   (sections             basic          :offset-assert 216)
-   (leading              plane  :inline :offset-assert 220)
-   (collide-bounds       sphere :inline :offset-assert 236)
+  ((speed                float          :offset-assert 200)
+   (belt-radius          float          :offset-assert 204)
+   (pull-y-threshold     float          :offset-assert 208)
+   (speed-mult-array     (array float)         :offset-assert 212)
+   (speed-mult-array-len int8           :offset-assert 216)
+   (sections             conveyor-section-array          :offset-assert 220)
+   (leading              plane  :inline :offset-assert 224)
+   (collide-bounds       sphere :inline :offset-assert 240)
    )
   :method-count-assert 28
   :size-assert         #x100
   :flag-assert         #x1c00800100
   (:methods
     (idle () _type_ :state 20)
-    (conveyor-method-21 () none 21)
-    (conveyor-method-22 () none 22)
-    (conveyor-method-23 () none 23)
-    (conveyor-method-24 () none 24)
-    (conveyor-method-25 () none 25)
-    (conveyor-method-26 () none 26)
-    (conveyor-method-27 () none 27)
+    (conveyor-method-21 (_type_) float 21)
+    (conveyor-method-22 (_type_) none 22)
+    (conveyor-method-23 (_type_) none 23)
+    (conveyor-method-24 (_type_) none 24)
+    (conveyor-method-25 (_type_) object 25)
+    (conveyor-method-26 (_type_ process-focusable) none 26)
+    (conveyor-method-27 (_type_) symbol 27)
     )
   )
-|#
 
-#|
 (deftype strip-conveyor (conveyor)
   ()
   :method-count-assert 28
@@ -32662,9 +32652,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype lgconveyor (conveyor)
   ()
   :method-count-assert 28
@@ -32673,14 +32661,12 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elevator                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype elevator-params (structure)
   ((xz-threshold float   :offset-assert 0)
    (y-threshold  float   :offset-assert 4)
@@ -32692,9 +32678,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype path-step (structure)
   ((next-pos float  :offset-assert 0)
    (dist     float  :offset-assert 4)
@@ -32703,63 +32687,54 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype path-step-inline-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             path-step :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype elevator (base-plat)
-  ((params                       elevator-params :inline :offset-assert 268)
-   (path-seq                     basic                   :offset-assert 292)
-   (path-dest                    float                   :offset-assert 296)
-   (bottom-top                   UNKNOWN         2       :offset-assert 300)
-   (move-pos                     UNKNOWN         2       :offset-assert 308)
-   (move-dist                    float                   :offset-assert 316)
-   (path-pos                     float                   :offset-assert 320)
-   (path-eased-pos               float                   :offset-assert 324)
-   (ride-timer                   uint64                  :offset-assert 332)
-   (sticky-player-last-ride-time time-frame                  :offset-assert 340)
-   (elevator-status              uint64                  :offset-assert 348)
-   (on-activate                  basic                   :offset-assert 356)
-   (on-deactivate                basic                   :offset-assert 360)
+  ((params                       elevator-params :inline :offset-assert 272)
+   (path-seq                     path-step-inline-array  :offset-assert 296)
+   (path-dest                    float                   :offset-assert 300)
+   (bottom-top                   float           2       :offset-assert 304)
+   (move-pos                     float           2       :offset-assert 312)
+   (move-dist                    float                   :offset-assert 320)
+   (path-pos                     float                   :offset-assert 324)
+   (path-eased-pos               float                   :offset-assert 328)
+   (ride-timer                   uint64                  :offset-assert 336)
+   (sticky-player-last-ride-time time-frame              :offset-assert 344)
+   (elevator-status              uint64                  :offset-assert 352)
+   (on-activate                  basic                   :offset-assert 360)
+   (on-deactivate                basic                   :offset-assert 364)
    )
   :method-count-assert 49
   :size-assert         #x170
   :flag-assert         #x3100f00170
-  ;; field on-activate uses ~A with a signed load field on-deactivate uses ~A with a signed load
   (:methods
     (dormant () _type_ :state 34)
     (waiting () _type_ :state 35)
     (running () _type_ :state 36)
     (arrived () _type_ :state 37)
-    (elevator-method-38 () none 38)
-    (elevator-method-39 () none 39)
-    (elevator-method-40 () none 40)
-    (elevator-method-41 () none 41)
-    (elevator-method-42 () none 42)
-    (elevator-method-43 () none 43)
-    (elevator-method-44 () none 44)
-    (elevator-method-45 () none 45)
-    (elevator-method-46 () none 46)
-    (elevator-method-47 () none 47)
-    (elevator-method-48 () none 48)
+    (elevator-method-38 (_type_) none 38)
+    (elevator-method-39 (_type_ int int) none 39)
+    (elevator-method-40 (_type_) object 40)
+    (elevator-method-41 (_type_) none 41)
+    (elevator-method-42 (_type_) none 42)
+    (elevator-method-43 (_type_) object 43)
+    (elevator-method-44 (_type_) symbol 44)
+    (elevator-method-45 (_type_) symbol 45)
+    (elevator-method-46 (_type_) none 46)
+    (elevator-method-47 (_type_ vector vector symbol symbol) symbol 47)
+    (elevator-method-48 (_type_) none 48)
     )
   )
-|#
 
-;; (define-extern ease-value-in-out function)
-;; (define-extern elevator-event function)
-;; (define-extern move-post function)
+(define-extern ease-value-in-out (function float float float))
+(define-extern elevator-event (function process int symbol event-message-block object :behavior elevator))
+(define-extern move-post (function none :behavior elevator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body                     ;;
@@ -40922,9 +40897,8 @@
 ;; sewer-obs2                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-elevator (elevator)
-  ((sound-id uint32  :offset-assert 364)
+  ((sound-id sound-id  :offset-assert 368)
    )
   :method-count-assert 50
   :size-assert         #x174
@@ -40933,7 +40907,6 @@
     (sew-elevator-method-49 () none 49)
     )
   )
-|#
 
 #|
 (deftype sew-valve (process-drawable)
