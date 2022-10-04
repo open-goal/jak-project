@@ -1,17 +1,45 @@
 #include "workspace.h"
 
+#include <iomanip>
 #include <regex>
+#include <sstream>
 
 #include "common/log/log.h"
 
 #include "lsp/protocol/common_types.h"
 
+std::string url_encode(const std::string& value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << std::hex;
+
+  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+
+    // Keep alphanumeric and other accepted characters intact
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '/') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << std::uppercase;
+    escaped << '%' << std::setw(2) << int((unsigned char)c);
+    escaped << std::nouppercase;
+  }
+
+  return escaped.str();
+}
+
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
-  // Replace slash type on windows
   std::string path_str = path.string();
+  // Replace slash type on windows
 #ifdef _WIN32
   std::replace(path_str.begin(), path_str.end(), '\\', '/');
 #endif
+  // vscode works with proper URL encoded URIs for file paths
+  // which means we have to roll our own...
+  path_str = url_encode(path_str);
   return fmt::format("file:///{}", path_str);
 }
 
@@ -33,7 +61,7 @@ std::optional<WorkspaceIRFile> Workspace::get_tracked_ir_file(const LSPSpec::URI
   return m_tracked_ir_files[file_uri];
 }
 
-std::optional<goos::TextDb::ShortInfo> Workspace::get_symbol_info_from_all_types(
+std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
     const std::string& symbol_name,
     const LSPSpec::DocumentUri& all_types_uri) {
   if (m_tracked_all_types_files.count(all_types_uri) == 0) {
@@ -43,7 +71,7 @@ std::optional<goos::TextDb::ShortInfo> Workspace::get_symbol_info_from_all_types
   if (dts.symbol_metadata_map.count(symbol_name) == 0) {
     return {};
   }
-  return dts.symbol_metadata_map.at(symbol_name).definition_info;
+  return dts.symbol_metadata_map.at(symbol_name);
 }
 
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
@@ -55,7 +83,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
     m_tracked_ir_files[file_uri] = file;
     if (!file.m_all_types_uri.empty()) {
       if (m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
-        lg::debug("new all-types file - {}", file_uri);
+        lg::debug("new all-types file - {}", file.m_all_types_uri);
         m_tracked_all_types_files[file.m_all_types_uri] = WorkspaceAllTypesFile(
             file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
@@ -135,12 +163,11 @@ void WorkspaceIRFile::find_all_types_path(const std::string& line) {
 
   if (std::regex_search(line, matches, regex)) {
     if (matches.size() == 3) {
-      auto game_version = matches[1];
-      auto all_types_path = matches[2];
+      const auto& game_version = matches[1];
+      const auto& all_types_path = matches[2];
       lg::debug("Found DTS Path - {} : {}", game_version.str(), all_types_path.str());
       auto all_types_uri = uri_from_path(fs::path(all_types_path.str()));
       lg::debug("DTS URI - {}", all_types_uri);
-
       if (valid_game_version(game_version.str())) {
         m_game_version = game_name_to_version(game_version.str());
         m_all_types_uri = all_types_uri;
@@ -160,7 +187,7 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
   if (std::regex_search(line, matches, regex)) {
     // NOTE - assumes we can only find 1 function per line
     if (matches.size() == 2) {
-      auto match = matches[1];
+      const auto& match = matches[1];
       lg::info("Adding Symbol - {}", match.str());
       LSPSpec::DocumentSymbol new_symbol;
       new_symbol.m_name = match.str();
@@ -181,7 +208,6 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
 
   std::regex end_function("^;; \\.endfunction\\s*$");
   if (std::regex_match(line, end_function)) {
-    lg::debug("Found end of previous function on line - {}", line);
     // Set the previous symbols end-line
     if (!m_symbols.empty()) {
       m_symbols[m_symbols.size() - 1].m_range.m_end.m_line = line_num_zero_based - 1;
@@ -206,8 +232,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
   if (std::regex_search(line, info_matches, info_regex)) {
     // NOTE - assumes we can only find 1 function per line
     if (info_matches.size() == 2) {
-      auto match = info_matches[1];
-      lg::debug("Found info-level diagnostic - {}", match.str());
+      const auto& match = info_matches[1];
       LSPSpec::Diagnostic new_diag;
       new_diag.m_severity = LSPSpec::DiagnosticSeverity::Information;
       new_diag.m_message = match.str();
@@ -221,8 +246,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
   if (std::regex_search(line, warn_matches, warn_regex)) {
     // NOTE - assumes we can only find 1 function per line
     if (warn_matches.size() == 2) {
-      auto match = warn_matches[1];
-      lg::debug("Found warn-level diagnostic - {}", match.str());
+      const auto& match = warn_matches[1];
       LSPSpec::Diagnostic new_diag;
       new_diag.m_severity = LSPSpec::DiagnosticSeverity::Warning;
       new_diag.m_message = match.str();
@@ -236,8 +260,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
   if (std::regex_search(line, error_matches, error_regex)) {
     // NOTE - assumes we can only find 1 function per line
     if (error_matches.size() == 2) {
-      auto match = error_matches[1];
-      lg::debug("Found error-level diagnostic - {}", match.str());
+      const auto& match = error_matches[1];
       LSPSpec::Diagnostic new_diag;
       new_diag.m_severity = LSPSpec::DiagnosticSeverity::Error;
       new_diag.m_message = match.str();
@@ -257,8 +280,7 @@ std::optional<std::string> WorkspaceIRFile::get_mips_instruction_at_position(
   std::regex regex("[\\w\\.]+");
 
   if (std::regex_search(line, matches, regex)) {
-    auto match = matches[0];
-    lg::info("hover first match - {}", match.str());
+    const auto& match = matches[0];
     auto match_start = matches.position(0);
     auto match_end = match_start + match.length();
     if (position.m_character >= match_start && position.m_character <= match_end) {
@@ -273,18 +295,15 @@ std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
     const LSPSpec::Position position) {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
-  lg::debug("symbol checking - '{}'", line);
   std::smatch matches;
   std::regex regex("[\\w\\.\\-_!<>*]+");
   std::regex_token_iterator<std::string::iterator> rend;
 
   std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);
   while (match != rend) {
-    lg::debug("match - '{}'", match->str());
     auto match_start = std::distance(line.begin(), match->first);
     auto match_end = match_start + match->length();
     if (position.m_character >= match_start && position.m_character <= match_end) {
-      lg::debug("returning");
       return match->str();
     }
     match++;

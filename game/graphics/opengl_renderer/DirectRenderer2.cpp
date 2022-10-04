@@ -97,7 +97,7 @@ void DirectRenderer2::reset_state() {
   m_state = {};
   m_stats = {};
   if (m_next_free_draw || m_vertices.next_vertex || m_vertices.next_index) {
-    fmt::print("[{}] Call to reset_state while there was pending draw data!\n", m_name);
+    lg::warn("[{}] Call to reset_state while there was pending draw data!", m_name);
   }
   reset_buffers();
 }
@@ -156,10 +156,10 @@ void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfi
 
 void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
-  fmt::print("------------------------\n");
+  lg::debug("------------------------");
   for (u32 draw_idx = 0; draw_idx < m_next_free_draw; draw_idx++) {
     const auto& draw = m_draw_buffer[draw_idx];
-    fmt::print("{}", draw.to_single_line_string());
+    lg::debug("{}", draw.to_single_line_string());
     setup_opengl_for_draw_mode(draw, render_state);
     setup_opengl_tex(0, draw.tbp, draw.mode.get_filt_enable(), draw.mode.get_clamp_s_enable(),
                      draw.mode.get_clamp_t_enable(), render_state);
@@ -354,11 +354,10 @@ void DirectRenderer2::setup_opengl_tex(u16 unit,
   if (!tex) {
     // TODO Add back
     if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
-
+      lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
@@ -444,9 +443,8 @@ void DirectRenderer2::render_gif_data(const u8* data,
               ASSERT(false);  // handle_tex0_1_packed(data + offset);
               break;
             default:
-              fmt::print("Register {} is not supported in packed mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -468,9 +466,8 @@ void DirectRenderer2::render_gif_data(const u8* data,
               ASSERT(false);  // handle_xyzf2(register_data, render_state, prof);
               break;
             default:
-              fmt::print("Register {} is not supported in reglist mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in reglist mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 8;  // PACKED = quadwords
         }

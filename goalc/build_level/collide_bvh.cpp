@@ -108,7 +108,7 @@ void split_along_dim(std::vector<CollideFace>& faces,
   std::sort(faces.begin(), faces.end(), [=](const CollideFace& a, const CollideFace& b) {
     return a.bsphere[dim] < b.bsphere[dim];
   });
-  fmt::print("splitting with size: {}\n", faces.size());
+  lg::print("splitting with size: {}\n", faces.size());
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
   out1->insert(out1->end(), faces.begin() + split_idx, faces.end());
@@ -304,7 +304,7 @@ CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
   }
 
   for (auto [size, count] : size_histogram) {
-    fmt::print(" [{:3d}] {:3d} ({})\n", size, count, size * count);
+    lg::print(" [{:3d}] {:3d} ({})\n", size, count, size * count);
   }
 
   return tree;

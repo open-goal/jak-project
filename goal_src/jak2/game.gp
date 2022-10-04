@@ -659,8 +659,161 @@
   "blocking-plane-ag"
   )
 
+;;;;;;;;;;;;;;;;;;;;;
+;; COMMON CITY STUFF
+;;;;;;;;;;;;;;;;;;;;;
 
+(copy-gos
+  "fort-entry-gate-ag"
+  )
 
+;;;;;;;;;;;;;;;;;;;;;
+;; PRISON
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "PRI.DGO" "pri.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ("$OUT/obj/los-control.o")
+ "fortress/prison/intro-texture.gc"
+ "fortress/prison/prison-part.gc"
+ "fortress/prison/prison-obs.gc"
+ )
+
+(copy-textures 1578 1950 1579 2647)
+
+(copy-gos
+  "daxter-highres-ag"
+  "prsn-torture-ag"
+  "prsn-chair-shackle-ag"
+  "prsn-hang-cell-ag"
+  "warp-gate-b-ag"
+  "prsn-vent-fan-ag"
+  "prsn-cell-door-ag"
+  "prison-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; CITY WIDE
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CWI.DGO" "cwi.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ("$OUT/obj/los-control.o")
+ "city/common/nav-graph-h.gc"
+ "city/common/traffic-engine-h.gc"
+ "city/common/vehicle-h.gc"
+ "city/common/citizen-h.gc"
+ "city/common/height-map-h.gc"
+ "city/common/ctywide-obs-h.gc"
+ "city/common/height-map.gc"
+ "city/common/traffic-height-map.gc"
+ "city/common/nav-graph.gc"
+ "city/common/vehicle-rider.gc"
+ "city/common/vehicle-control.gc"
+ "city/common/vehicle-part.gc"
+ "city/common/vehicle-effects.gc"
+ "city/common/vehicle.gc"
+ "city/common/vehicle-util.gc"
+ "city/common/vehicle-physics.gc"
+ "city/common/vehicle-states.gc"
+ "city/common/vehicle-guard.gc"
+ "city/common/transport.gc"
+ "city/common/bike.gc"
+ "city/common/car.gc"
+ "city/common/test-bike.gc"
+ "city/common/test-car.gc"
+ "city/common/citizen.gc"
+ "city/common/civilian.gc"
+ "city/common/guard.gc"
+ "city/common/citizen-norm.gc"
+ "city/common/citizen-fat.gc"
+ "city/common/citizen-chick.gc"
+ "city/common/citizen-enemy.gc"
+ "city/common/metalhead-predator.gc"
+ "city/common/metalhead-grunt.gc"
+ "city/common/metalhead-flitter.gc"
+ "city/common/traffic-engine.gc"
+ "city/common/trail-graph.gc"
+ "city/common/trail.gc"
+ "city/common/traffic-manager.gc"
+ "city/common/ctywide-texture.gc"
+ "city/common/ctywide-part.gc"
+ "city/common/ctywide-obs.gc"
+ "city/common/ctywide-tasks.gc"
+ "city/common/ctywide-scenes.gc"
+ "city/common/ctywide-speech.gc"
+ "city/common/ctyport-obs.gc"
+ "city/common/target-pilot.gc"
+ "city/common/pilot-states.gc"
+ "city/common/searchlight.gc"
+ )
+
+(copy-textures 1264 1266 1265 1674 1118 1657)
+
+(copy-gos
+  "jak-pilot+0-ag"
+  "baron-statue-ag"
+  "cty-guard-turret-ag"
+  "vehicle-explosion-ag"
+  "barons-ship-lores-ag"
+  "propa-ag"
+  "vehicle-turret-ag"
+  "lurker-pipe-lid-ag"
+  "searchlight-ag"
+  "burning-bush-ag"
+  "stadium-barrier-ag"
+  "security-wall-ag"
+  "ctywide-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; L CITY WIDE A
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "LWIDEA.DGO" "lwidea.gd")
+
+(copy-textures 2929 2930)
+
+(copy-gos
+  "citizen-fat-ag"
+  "citizen-norm-ag"
+  "crimson-guard-ag"
+  "citizen-chick-ag"
+  "hellcat-ag"
+  "carc-ag"
+  "cara-ag"
+  "carb-ag"
+  "citizen-norm-rider-ag"
+  "crimson-bike-ag"
+  "bikec-ag"
+  "bikeb-ag"
+  "bikea-ag"
+  "lwidea")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; CITY SLUM A
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CTA.DGO" "cta.gd")
+
+(goal-src-sequence
+ "levels/city/slums/"
+ :deps ("$OUT/obj/los-control.o")
+ "ctysluma-part.gc"
+ "neon-baron-part.gc"
+ )
+
+(copy-textures 974 973 1680 1021 1646)
+
+(copy-gos
+"cty-fruit-stand-ag"
+"hide-door-a-ag"
+"ctysluma-vis"
+)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group

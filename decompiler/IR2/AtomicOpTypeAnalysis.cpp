@@ -76,7 +76,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (m_string == "#f") {
         return TP_Type::make_false();
       } else {
-        return TP_Type::make_from_ts("symbol");
+        return TP_Type::make_symbol(m_string);
       }
     case Kind::SYMBOL_VAL: {
       if (m_string == "#f") {
@@ -314,7 +314,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
     auto rd = dts.ts.reverse_field_lookup(rd_in);
     if (rd.success) {
       auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
-      fmt::print("Matched a stack variable! {}\n", result.print());
+      lg::print("Matched a stack variable! {}\n", result.print());
       return result;
     }
      */
@@ -1423,6 +1423,20 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   m_call_type_set = true;
 
   end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
+
+  if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
+      in_type.last_arg() == TypeSpec("array")) {
+    // array new:
+    auto& a2 = input.get(Register(Reg::GPR, arg_regs[2]));  // elt type
+    auto& a1 = input.get(Register(Reg::GPR, arg_regs[1]));  // array
+    auto& a0 = input.get(Register(Reg::GPR, arg_regs[0]));  // allocation
+
+    if (a2.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&
+        in_tp.method_from_type() == TypeSpec("array") && a0.is_symbol()) {
+      end_types.get(Register(Reg::GPR, Reg::V0)) =
+          TP_Type::make_from_ts(TypeSpec("array", {a2.get_type_objects_typespec()}));
+    }
+  }
 
   // we can also update register usage here.
   m_read_regs.clear();

@@ -34,7 +34,7 @@ bool CompilerTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
     options.write = true;
     m_compiler->asm_file(options);
   } catch (std::exception& e) {
-    fmt::print("Compilation failed: {}\n", e.what());
+    lg::print("Compilation failed: {}\n", e.what());
     return false;
   }
   return true;

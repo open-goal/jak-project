@@ -4,6 +4,8 @@
 
 #include "ame_handler.h"
 
+#include "common/log/log.h"
+
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -261,7 +263,7 @@ void midi_handler::channel_pitch() {
   u32 pitch = (m_seq_ptr[0] << 7) | m_seq_ptr[1];
   (void)pitch;
   (void)channel;
-  // fmt::print("{}: pitch ch{:01x} {:04x}\n", m_time, channel, pitch);
+  // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
   m_seq_ptr += 2;
 }
 
@@ -303,7 +305,7 @@ void midi_handler::system_event() {
         m_seq_ptr = ptr;
 
         if (!cont) {
-          // fmt::print("{:x} track stopped by ame\n", (u64)this);
+          // lg::debug("{:x} track stopped by ame", (u64)this);
           m_track_complete = true;
         }
       } else {
@@ -325,8 +327,7 @@ bool midi_handler::tick() {
     step();
   } catch (midi_error& e) {
     m_track_complete = true;
-    fmt::print("MIDI Error: {}\n", e.what());
-
+    lg::error("MIDI Error: {}", e.what());
     fmt::print("Sequence following: ");
     for (int i = 0; i < 10; i++) {
       fmt::print("{:x} ", m_seq_ptr[i]);

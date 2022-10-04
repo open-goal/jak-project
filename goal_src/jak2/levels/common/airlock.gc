@@ -87,7 +87,7 @@
 
 (defmethod init-airlock! com-airlock ((obj com-airlock))
   (process-entity-status! obj (entity-perm-status subtask-complete) #f)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj were-behind?) #f)
   (set! (-> obj inner?)
@@ -149,7 +149,10 @@
          (when (and (< f30-0 0.0) (< 0.0 (-> obj last-distance)))
            (let ((s5-1 (res-lump-struct (-> obj entity) 'on-cross structure)))
              (if s5-1
-                 (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) s5-1)
+                 (eval!
+                   (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+                   (the-as pair s5-1)
+                   )
                  )
              )
            )
@@ -186,7 +189,9 @@
                  (set! (-> obj were-behind?) #t)
                  )
              (and (< (-> obj latch-closed-time) (-> self clock frame-counter))
-                  (or (not (and *target* (logtest? (focus-status pilot teleporting) (-> *target* focus-status)))) (< f30-0 -409.6))
+                  (or (not (and *target* (logtest? (focus-status pilot teleporting) (-> *target* focus-status))))
+                      (< f30-0 -409.6)
+                      )
                   (or (and (< f30-0 (-> obj open-distance))
                            (or (not (-> obj were-behind?)) (< f30-0 20480.0))
                            (and (or (< 409.6 f30-0)
@@ -200,7 +205,7 @@
                                     )
                                 (and (eval!
                                        (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-                                       (the-as structure (-> obj open-test))
+                                       (the-as pair (-> obj open-test))
                                        )
                                      (-> *setting-control* user-current airlock)
                                      )
@@ -228,7 +233,7 @@
   (with-pp
     (let ((gp-1 (eval!
                   (new 'stack 'script-context (the-as basic (process->ppointer pp)) pp (the-as vector #f))
-                  (-> obj level-name)
+                  (the-as pair (-> obj level-name))
                   )
                 )
           (s4-0 #f)
@@ -241,19 +246,22 @@
              )
          )
         (arg0
-          (let* ((s3-0 gp-1) (s2-0 (car s3-0))) (while (not (null? s3-0))
-                                                  (let ((v1-4 (level-status *level* (the-as symbol s2-0))))
-                                                    (if (not (or (= v1-4 'loaded) (= v1-4 'active)))
-                                                        (return #f)
-                                                        )
-                                                    )
-                                                  (if (= s2-0 'ctywide)
-                                                      (set! s4-0 (-> ctywide borrow-level 1))
-                                                      )
-                                                  (set! s3-0 (cdr s3-0))
-                                                  (set! s2-0 (car s3-0))
-                                                  )
+          (let* ((s3-0 gp-1)
+                 (s2-0 (car s3-0))
+                 )
+            (while (not (null? s3-0))
+              (let ((v1-4 (level-status *level* (the-as symbol s2-0))))
+                (if (not (or (= v1-4 'loaded) (= v1-4 'active)))
+                    (return #f)
+                    )
                 )
+              (if (= s2-0 'ctywide)
+                  (set! s4-0 (-> ctywide borrow-level 1))
+                  )
+              (set! s3-0 (cdr s3-0))
+              (set! s2-0 (car (the-as pair s3-0)))
+              )
+            )
           (when s4-0
             (let ((v1-17 (level-status *level* s4-0)))
               (if (not (or (= v1-17 'loaded) (= v1-17 'active)))
@@ -272,25 +280,28 @@
                     )
                 )
               (set! gp-1 (cdr gp-1))
-              (set! a1-7 (car gp-1))
+              (set! a1-7 (car (the-as pair gp-1)))
               )
             )
           #t
           )
         (else
-          (let* ((v1-33 gp-1) (a0-11 (car v1-33))) (while (not (null? v1-33))
-                                                     (dotimes (a1-10 6)
-                                                       (if (= a0-11 (-> *load-state* want a1-10 name))
-                                                           (goto cfg-50)
-                                                           )
-                                                       )
-                                                     #t
-                                                     (return #f)
-                                                     (label cfg-50)
-                                                     (set! v1-33 (cdr v1-33))
-                                                     (set! a0-11 (car v1-33))
-                                                     )
+          (let* ((v1-33 gp-1)
+                 (a0-11 (car v1-33))
+                 )
+            (while (not (null? v1-33))
+              (dotimes (a1-10 6)
+                (if (= a0-11 (-> *load-state* want a1-10 name))
+                    (goto cfg-50)
+                    )
                 )
+              #t
+              (return #f)
+              (label cfg-50)
+              (set! v1-33 (cdr v1-33))
+              (set! a0-11 (car (the-as pair v1-33)))
+              )
+            )
           #t
           )
         )
@@ -314,9 +325,8 @@
   (-> obj gear-rotv)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod play-city-voice-sound com-airlock ((obj com-airlock) (arg0 symbol))
-  (let ((gp-0 (the-as array #f)))
+  (let ((gp-0 (the-as (array string) #f)))
     (case arg0
       (('enter)
        (set! gp-0 (new 'static 'boxed-array :type string "cityv005" "cityv006" "cityv007" "cityv008" "cityv009"))
@@ -482,7 +492,10 @@
                (begin
                  (let ((gp-0 (res-lump-struct (-> self entity) 'on-activate structure)))
                    (if gp-0
-                       (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) gp-0)
+                       (eval!
+                         (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+                         (the-as pair gp-0)
+                         )
                        )
                    )
                  (destination-loaded? self #f)
@@ -547,15 +560,24 @@
              ()
              (let ((gp-0 (res-lump-struct (-> self entity) 'on-exit structure)))
                (if (and gp-0 (not *scene-player*))
-                   (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) gp-0)
+                   (eval!
+                     (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+                     (the-as pair gp-0)
+                     )
                    )
                )
-             (when (-> self were-behind?)
-               (let ((gp-1 (res-lump-struct (-> self entity) 'on-inside structure)))
-                 (set! (-> self were-behind?) #f)
-                 (if (and gp-1 (not *scene-player*))
-                     (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) gp-1)
-                     )
+             (the-as
+               pair
+               (when (-> self were-behind?)
+                 (let ((gp-1 (res-lump-struct (-> self entity) 'on-inside structure)))
+                   (set! (-> self were-behind?) #f)
+                   (if (and gp-1 (not *scene-player*))
+                       (eval!
+                         (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+                         (the-as pair gp-1)
+                         )
+                       )
+                   )
                  )
                )
              )
@@ -610,7 +632,10 @@
       (when (< 0.0 (check-crossing-distance self (target-pos 0) #f))
         (let ((gp-3 (res-lump-struct (-> self entity) 'on-deactivate structure)))
           (if (and gp-3 (not *scene-player*))
-              (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) gp-3)
+              (eval!
+                (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+                (the-as pair gp-3)
+                )
               )
           )
         )
@@ -744,7 +769,10 @@
       (process-entity-status! self (entity-perm-status subtask-complete) #t)
       (let ((s5-10 (res-lump-struct (-> self entity) 'on-enter structure)))
         (if s5-10
-            (eval! (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f)) s5-10)
+            (eval!
+              (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+              (the-as pair s5-10)
+              )
             )
         )
       (if (and (-> self sound-open)
@@ -865,69 +893,15 @@
   (set! (-> obj pre-open-frame) 35.0)
   (set! (-> obj lock-frame) 45.0)
   (set! (-> obj open-frame) 45.0)
-  (set! (-> obj sound-pre-open) (new 'static 'sound-spec
-                                  :num 1.0
-                                  :group (sound-group sfx)
-                                  :sound-name (static-sound-name "airlock-slider")
-                                  :volume #x400
-                                  )
-        )
-  (set! (-> obj sound-pre-open-stop) (new 'static 'sound-spec
-                                       :num 1.0
-                                       :group (sound-group sfx)
-                                       :sound-name (static-sound-name "airlock-slide-e")
-                                       :volume #x400
-                                       )
-        )
-  (set! (-> obj sound-open) (new 'static 'sound-spec
-                              :num 1.0
-                              :group (sound-group sfx)
-                              :sound-name (static-sound-name "airlock-seal")
-                              :volume #x400
-                              )
-        )
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "airlock-open")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "airlock-hit")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-post-close) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "airlock-slider")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-post-close-stop) (new 'static 'sound-spec
-                                         :num 1.0
-                                         :group (sound-group sfx)
-                                         :sound-name (static-sound-name "airlock-slide-e")
-                                         :volume #x400
-                                         )
-        )
+  (set! (-> obj sound-pre-open) (static-sound-spec "airlock-slider"))
+  (set! (-> obj sound-pre-open-stop) (static-sound-spec "airlock-slide-e"))
+  (set! (-> obj sound-open) (static-sound-spec "airlock-seal"))
+  (set! (-> obj sound-open-loop) (static-sound-spec "airlock-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "airlock-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "airlock-open"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "airlock-hit"))
+  (set! (-> obj sound-post-close) (static-sound-spec "airlock-slider"))
+  (set! (-> obj sound-post-close-stop) (static-sound-spec "airlock-slide-e"))
   (go (method-of-object obj close) #t)
   (none)
   )
@@ -990,76 +964,16 @@
                   )
         )
   (set! (-> obj pre-open-speed) 0.9)
-  (set! (-> obj sound-gear) (new 'static 'sound-spec
-                              :num 1.0
-                              :group (sound-group sfx)
-                              :sound-name (static-sound-name "airlock-gear")
-                              :volume #x400
-                              )
-        )
-  (set! (-> obj sound-pre-open) (new 'static 'sound-spec
-                                  :num 1.0
-                                  :group (sound-group sfx)
-                                  :sound-name (static-sound-name "airlock-slider")
-                                  :volume #x400
-                                  )
-        )
-  (set! (-> obj sound-pre-open-stop) (new 'static 'sound-spec
-                                       :num 1.0
-                                       :group (sound-group sfx)
-                                       :sound-name (static-sound-name "airlock-slide-e")
-                                       :volume #x400
-                                       )
-        )
-  (set! (-> obj sound-lock-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-turn")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-lock-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-unlock")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open) (new 'static 'sound-spec
-                              :num 1.0
-                              :group (sound-group sfx)
-                              :sound-name (static-sound-name "airlock-seal")
-                              :volume #x400
-                              )
-        )
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "airlock-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "airlock-open")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "airlock-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-gear) (static-sound-spec "airlock-gear"))
+  (set! (-> obj sound-pre-open) (static-sound-spec "airlock-slider"))
+  (set! (-> obj sound-pre-open-stop) (static-sound-spec "airlock-slide-e"))
+  (set! (-> obj sound-lock-loop) (static-sound-spec "airlock-turn"))
+  (set! (-> obj sound-lock-stop) (static-sound-spec "airlock-unlock"))
+  (set! (-> obj sound-open) (static-sound-spec "airlock-seal"))
+  (set! (-> obj sound-open-loop) (static-sound-spec "airlock-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "airlock-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "airlock-open"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "airlock-hit"))
   (go (method-of-object obj close) #t)
   (none)
   )
@@ -1129,34 +1043,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "door-stop-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "door-stop-close")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "door-stop-open"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "door-stop-close"))
   (go (method-of-object obj close) #t)
   (none)
   )
@@ -1226,34 +1116,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-open-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-close-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
   (set! (-> obj door-radius) 8192.0)
   (go (method-of-object obj close) #t)
   (none)
@@ -1312,34 +1178,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wing-door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wing-open-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wing-door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wing-close-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wing-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wing-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wing-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wing-close-hit"))
   (go (method-of-object obj close) #t)
   (none)
   )
@@ -1419,34 +1261,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-slide")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-slide")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-slide"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-door-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-slide"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-door-hit"))
   (set! (-> obj sound-behind?) #t)
   (go (method-of-object obj close) #t)
   (none)
@@ -1517,34 +1335,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-open-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-close-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
   (set! (-> obj door-radius) 8192.0)
   (go (method-of-object obj close) #t)
   (none)
@@ -1615,34 +1409,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-open-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-close-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
   (set! (-> obj door-radius) 8192.0)
   (go (method-of-object obj close) #t)
   (none)
@@ -1713,38 +1483,10 @@
     (the-as pair 0)
     )
   (init-airlock! obj)
-  (set! (-> obj sound-open-loop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-door-open")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-open-stop) (new 'static 'sound-spec
-                                   :num 1.0
-                                   :group (sound-group sfx)
-                                   :sound-name (static-sound-name "wood-open-hit")
-                                   :volume #x400
-                                   )
-        )
-  (set! (-> obj sound-close-loop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-door-close")
-                                    :volume #x400
-                                    )
-        )
-  (set! (-> obj sound-close-stop) (new 'static 'sound-spec
-                                    :num 1.0
-                                    :group (sound-group sfx)
-                                    :sound-name (static-sound-name "wood-close-hit")
-                                    :volume #x400
-                                    )
-        )
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
   (go (method-of-object obj close) #t)
   (none)
   )
-
-
-
-

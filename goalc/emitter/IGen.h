@@ -2424,11 +2424,32 @@ class IGen {
     return instr;
   }
 
+  static Instruction ph_srl(Register dst, Register src, u8 imm) {
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
+    // VEX.128.66.0F.WIG 71 /2 ib VPSRLW
+    Instruction instr(0x71);
+    instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
   static Instruction pw_sll(Register dst, Register src, u8 imm) {
     ASSERT(dst.is_xmm());
     ASSERT(src.is_xmm());
     // VEX.128.66.0F.WIG 72 /6 ib VPSLLD xmm1, xmm2, imm8
     Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+  static Instruction ph_sll(Register dst, Register src, u8 imm) {
+    ASSERT(dst.is_xmm());
+    ASSERT(src.is_xmm());
+    // VEX.128.66.0F.WIG 71 /6 ib VPSLLW xmm1, xmm2, imm8
+    Instruction instr(0x71);
     instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
                                 VexPrefix::P_66);
     instr.set(Imm(1, imm));
@@ -2712,6 +2733,19 @@ class IGen {
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
                                 VexPrefix::P_F3);
     instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction vpackuswb(Register dst, Register src0, Register src1) {
+    ASSERT(dst.is_xmm());
+    ASSERT(src0.is_xmm());
+    ASSERT(src1.is_xmm());
+    // VEX.128.66.0F.WIG 67 /r VPACKUSWB xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+
+    Instruction instr(0x67);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
     return instr;
   }
 };

@@ -11,6 +11,7 @@
 #include "game/graphics/opengl_renderer/Sprite3.h"
 #include "game/graphics/opengl_renderer/SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
+#include "game/graphics/opengl_renderer/VisDataHandler.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
@@ -87,9 +88,24 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   using namespace jak2;
   m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
   m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
-
-  init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
-                                       BucketId::DEBUG_NO_ZBUF, 0x8000);
+  init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::SPECIAL_BUCKET_2);
+  init_bucket_renderer<TFragment>("tfrag-l0-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L0_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
+  init_bucket_renderer<Tie3>("tie-l0-tfrag", BucketCategory::TIE, BucketId::TIE_L0_TFRAG, 0);
+  init_bucket_renderer<TFragment>("tfrag-l1-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L1_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 1);
+  init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
+  init_bucket_renderer<Shrub>("shrub-l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L0_SHRUB);
+  init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
+  init_bucket_renderer<TFragment>("tfrag-t-l0-alpha", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_T_L0_ALPHA,
+                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 0);
+  init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
+                                       BucketId::DEBUG_NO_ZBUF1, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
+                                       BucketId::DEBUG_NO_ZBUF2, 0x8000);
+  init_bucket_renderer<DirectRenderer>("debug3", BucketCategory::OTHER, BucketId::DEBUG3, 0x8000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -440,7 +456,6 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
-  ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
 
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -682,6 +697,7 @@ void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
       dma.current_tag_offset() + 16;  // offset by 1 qw for the initial call
   m_render_state.next_bucket = m_render_state.buckets_base;
   m_render_state.bucket_for_vis_copy = (int)jak1::BucketId::TFRAG_LEVEL0;
+  m_render_state.num_vis_to_copy = 2;
 
   // Find the default regs buffer
   auto initial_call_tag = dma.current_tag();
@@ -744,7 +760,8 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
 
   m_render_state.buckets_base = dma.current_tag_offset();  // starts at 0 in jak 2
   m_render_state.next_bucket = m_render_state.buckets_base + 16;
-  m_render_state.bucket_for_vis_copy = 0;  // TODO
+  m_render_state.bucket_for_vis_copy = (int)jak2::BucketId::SPECIAL_BUCKET_2;
+  m_render_state.num_vis_to_copy = 6;
 
   for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
@@ -761,7 +778,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-    vif_interrupt_callback(bucket_id);
+    vif_interrupt_callback(bucket_id + 1);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
   }
   vif_interrupt_callback(m_bucket_renderers.size());

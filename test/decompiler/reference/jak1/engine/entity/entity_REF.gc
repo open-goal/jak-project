@@ -327,7 +327,7 @@
         )
     (let ((s5-1 format)
           (s4-0 "~C~C~C")
-          (a2-0 (if (and arg0 (zero? (logand (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
+          (a2-0 (if (and arg0 (not (logtest? (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
                     114
                     32
                     )
@@ -1498,7 +1498,7 @@
                  )
       )
     )
-  (when (zero? (logand (-> obj status) (entity-perm-status user-set-from-cstage)))
+  (when (not (logtest? (-> obj status) (entity-perm-status user-set-from-cstage)))
     (set! (-> obj user-uint64) (the-as uint 0))
     0
     )
@@ -1589,7 +1589,7 @@
 
 ;; definition for method 12 of type process-drawable
 (defmethod run-logic? process-drawable ((obj process-drawable))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
               (vector-vector-distance (-> obj root trans) (math-camera-pos))
               )
@@ -1601,7 +1601,7 @@
 
 ;; definition for method 9 of type entity-links
 (defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and (zero? (logand (-> obj perm status) (entity-perm-status bit-0 dead)))
+  (and (not (logtest? (-> obj perm status) (entity-perm-status bit-0 dead)))
        (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )

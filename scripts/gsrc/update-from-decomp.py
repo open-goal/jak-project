@@ -93,6 +93,7 @@ lines_to_ignore = [
     ";; failed to figure",
     ";; Used lq/sq",
     ";; this part is debug only",
+    ";; WARN: Return type mismatch int vs none"
 ]
 
 if decomp_ignore_errors:
@@ -180,6 +181,19 @@ else:
 if args.preserve:
     handle_dangling_blocks(comments, final_lines, debug_lines)
 
-# Step 4: Write it out
+# Step 4.a: Remove excessive new-lines from the end of the output, only leave a single empty new-line
+lines_to_ignore = 0
+i = len(final_lines) - 1
+while i > 0 and (final_lines[i] == "\n" or final_lines[i] == "0\n"):
+    print(final_lines[i])
+    lines_to_ignore = lines_to_ignore + 1
+    i = i - 1
+
+print("ignoring - {}".format(lines_to_ignore))
+
+# Step 4.b: Write it out
 with open(gsrc_path, "w") as f:
-    f.writelines(final_lines)
+    i = 0
+    while i + lines_to_ignore < len(final_lines):
+        f.write(final_lines[i])
+        i = i + 1

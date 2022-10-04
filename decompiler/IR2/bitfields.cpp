@@ -1,6 +1,7 @@
 #include "bitfields.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/Range.h"
 
@@ -320,10 +321,13 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
+    auto f = try_find_field(ts, type, offset + offset_in_bitfield, size, {});
+    if (!f) {
+      return {};
+    }
     BitFieldDef def;
     def.value = value;
-    def.field_name = f.name();
+    def.field_name = f->name();
     def.is_signed = false;  // we don't know.
     return def;
   }
@@ -560,7 +564,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     // in this case, we expect the value we're oring with to be the appropriate mask for the field.
 
-    fmt::print("Rare bitfield set!\n");
+    lg::info("Rare bitfield set!");
     u64 value = step.amount;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -618,7 +622,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
   }
   lg::error("Current: {}", step.print());
   if (m_got_pcpyud) {
-    lg::error("Got pcpyud\n");
+    lg::error("Got pcpyud");
   }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");
@@ -947,10 +951,10 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
                             s64 in,
                             bool no_head) {
   ASSERT(type_info->is_bitfield());
-  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (in == -1) {
     return nullptr;
   }
+  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (no_head) {
     ASSERT(elts.size() >= 1);
   }

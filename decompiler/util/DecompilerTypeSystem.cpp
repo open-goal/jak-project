@@ -102,7 +102,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       }
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);
-      lg::error("{} when parsing decompiler type file:\n{}", e.what(), info);
+      lg::error("{} when parsing decompiler type file:{}", e.what(), info);
       throw e;
     }
   });
@@ -184,8 +184,8 @@ void DecompilerTypeSystem::add_symbol(const std::string& name,
   } else {
     if (ts.tc(type_spec, skv->second)) {
     } else {
-      lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
-               skv->second.print(), type_spec.print());
+      lg::warn("Attempting to redefine type of symbol {} from {} to {}", name, skv->second.print(),
+               type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }
@@ -318,6 +318,9 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::LABEL_ADDR:
         *changed = false;
         return existing;
+      case TP_Type::Kind::SYMBOL:
+        *changed = true;
+        return TP_Type::make_from_ts("symbol");
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:

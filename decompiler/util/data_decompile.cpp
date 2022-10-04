@@ -77,11 +77,11 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       // TODO - having this logic here isn't great.
       auto stride = align(field_type_info->get_size_in_memory(),
                           field_type_info->get_inline_array_stride_alignment());
-      fmt::print("decompiler {} stride {} {} = {}\n", field_type_info->get_name(),
-                 field_type_info->get_size_in_memory(),
-                 field_type_info->get_inline_array_stride_alignment(),
-                 align(field_type_info->get_size_in_memory(),
-                       field_type_info->get_inline_array_stride_alignment()));
+      lg::info("decompiler {} stride {} {} = {}", field_type_info->get_name(),
+               field_type_info->get_size_in_memory(),
+               field_type_info->get_inline_array_stride_alignment(),
+               align(field_type_info->get_size_in_memory(),
+                     field_type_info->get_inline_array_stride_alignment()));
 
       if (dynamic_cast<BasicType*>(field_type_info)) {
         throw std::runtime_error("Plan basic arrays not supported yet");
@@ -160,11 +160,18 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
 }
 
 goos::Object decompile_function_at_label(const DecompilerLabel& label,
-                                         const LinkedObjectFile* file) {
+                                         const LinkedObjectFile* file,
+                                         bool in_static_pair) {
   if (file) {
     auto other_func = file->try_get_function_at_label(label);
-    if (other_func) {
-      return final_output_lambda(*other_func);
+    if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
+        other_func->ir2.expressions_succeeded) {
+      auto out = final_output_lambda(*other_func);
+      if (in_static_pair) {
+        return pretty_print::build_list("unquote", out);
+      } else {
+        return out;
+      }
     }
   }
   return pretty_print::to_symbol(fmt::format("<lambda at {}>", label.name));
@@ -179,13 +186,14 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
-                                const LinkedObjectFile* file) {
+                                const LinkedObjectFile* file,
+                                bool in_static_pair) {
   if (type == TypeSpec("string")) {
     return decompile_string_at_label(label, words);
   }
 
   if (ts.tc(TypeSpec("function"), type)) {
-    return decompile_function_at_label(label, file);
+    return decompile_function_at_label(label, file, in_static_pair);
   }
 
   if (ts.tc(TypeSpec("array"), type)) {
@@ -355,7 +363,7 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     const LinkedObjectFile* /*file*/,
     const TypeSpec& array_elt_type,
     int stride) {
-  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify types
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -384,13 +392,13 @@ goos::Object decomp_ref_to_integer_array_guess_size(
     end_offset = end_label.offset;
   }
 
-  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
   // size_elts,leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
@@ -432,7 +440,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -462,13 +470,13 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     end_offset = end_label.offset;
   }
 
-  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
   // size_elts,leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
@@ -635,7 +643,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
                                   const TypeSystem& ts,
                                   const LinkedObjectFile* file) {
   // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -691,7 +699,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
   if (bend) {
     throw std::runtime_error("static sound-spec bend was not zero.");
   }
-  if (fo_curve) {
+  if (fo_curve && file->version == GameVersion::Jak1) {
     throw std::runtime_error("static sound-spec fo_curve was not zero.");
   }
   if (priority) {
@@ -720,6 +728,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
     // volume is fixed point, and floats should round towards zero, so we convert specific ints
     // to better-looking floats that end up being the same value.
     // there should be a more automated way to do this, but i am a bit lazy.
+    // TODO try fixed point print i made some time ago
     switch (volume) {
       case 0x2cc:
         volf = 70;
@@ -741,6 +750,10 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
   if (fo_max != 0) {
     implicit_mask |= 1 << 7;
     the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-max {}", fo_max)));
+  }
+  if (fo_curve != 0) {
+    implicit_mask |= (1 << 8);
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-curve {}", fo_curve)));
   }
 
   if (mask < implicit_mask) {
@@ -780,16 +793,18 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   // temp hack!!
-  if (use_fancy_macros && file && file->version == GameVersion::Jak1) {
-    if (type == TypeSpec("sp-field-init-spec")) {
-      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-      return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+  if (use_fancy_macros && file) {
+    if (file->version == GameVersion::Jak1) {
+      if (type == TypeSpec("sp-field-init-spec")) {
+        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
+        return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+      }
+      if (type == TypeSpec("sparticle-group-item")) {
+        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
+        return decompile_sparticle_group_item(type, label, labels, words, ts, file);
+      }
     }
-    if (type == TypeSpec("sparticle-group-item")) {
-      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-      return decompile_sparticle_group_item(type, label, labels, words, ts, file);
-    }
-    if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {
+    if (type == TypeSpec("sound-spec")) {
       return decompile_sound_spec(type, label, labels, words, ts, file);
     }
   }
@@ -848,7 +863,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     if (is_basic || !type_info->is_packed()) {
       throw std::runtime_error(error);
     } else {
-      // fmt::print("{}\n", error);
+      // lg::print("{}\n", error);
     }
   }
 
@@ -1521,13 +1536,13 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
       return decompile_pair(label, labels, words, ts, false, file);
     }
 
-    return decompile_at_label(*guessed_type, label, labels, words, ts, file);
+    return decompile_at_label(*guessed_type, label, labels, words, ts, file, true);
   } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
     // do nothing, the default is zero?
     return pretty_print::to_symbol("0");
   } else if (word.kind() == LinkedWord::SYM_PTR) {
     // never quote symbols in a list.
-    return pretty_print::to_symbol(fmt::format("{}", word.symbol_name()));
+    return pretty_print::to_symbol(word.symbol_name());
   } else if (word.kind() == LinkedWord::EMPTY_PTR) {
     return pretty_print::to_symbol("'()");
   } else if (word.kind() == LinkedWord::PLAIN_DATA && (word.data & 0b111) == 0) {
@@ -1549,12 +1564,14 @@ goos::Object decompile_pair(const DecompilerLabel& label,
                             const LinkedObjectFile* file) {
   if ((label.offset % 8) != 2) {
     if ((label.offset % 4) != 0) {
-      throw std::runtime_error(fmt::format("Invalid alignment for pair {}\n", label.offset % 16));
+      throw std::runtime_error(
+          fmt::format("Invalid alignment for pair {} at {}\n", label.offset % 16, label.name));
     } else {
       auto& word = words.at(label.target_segment).at(label.offset / 4);
       if (word.kind() != LinkedWord::EMPTY_PTR) {
         throw std::runtime_error(
-            fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
+            fmt::format("Based on alignment, expected to get empty list for pair at {}, but didn't",
+                        label.name));
       }
       return pretty_print::to_symbol("'()");
     }

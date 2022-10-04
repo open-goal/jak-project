@@ -150,7 +150,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     auto name = obj_filename_to_name(obj.string());
     if (auto it = config.object_patches.find(name); it != config.object_patches.end()) {
       // print the file CRC
-      fmt::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
+      lg::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
       // write patch file if necessary
       if (config.write_patches) {
         // this is the "target" file we want to patch to
@@ -219,7 +219,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     }
   }
 
-  lg::info("ObjectFileDB Initialized\n");
+  lg::info("ObjectFileDB Initialized");
   if (obj_files_by_name.empty()) {
     lg::error(
         "No object files have been added. Check that there are input files and the allowed_objects "
@@ -496,7 +496,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -511,7 +511,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_label_timer.getMs());
 }
 
 /*!
@@ -617,7 +617,7 @@ void ObjectFileDB::find_code(const Config& config) {
   auto total_ops = combined_stats.code_bytes / 4;
   lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
            100.f * (float)combined_stats.decoded_ops / total_ops);
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
 /*!
@@ -643,7 +643,7 @@ void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
   file_util::write_text_file(file_name, all_scripts);
 
   lg::info("Found scripts:");
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
 std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& output_path) {
@@ -680,34 +680,39 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
 }
 
 std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
-  lg::info("- Finding game text...");
-  std::string text_string = "COMMON";
-  Timer timer;
-  int file_count = 0;
-  int string_count = 0;
-  int char_count = 0;
-  std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
+  try {
+    lg::info("- Finding game text...");
+    std::string text_string = "COMMON";
+    Timer timer;
+    int file_count = 0;
+    int string_count = 0;
+    int char_count = 0;
+    std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
 
-  for_each_obj([&](ObjectFileData& data) {
-    if (data.name_in_dgo.substr(1) == text_string) {
-      file_count++;
-      auto statistics = process_game_text(data, cfg.text_version);
-      string_count += statistics.total_text;
-      char_count += statistics.total_chars;
-      if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
-        ASSERT(false);
+    for_each_obj([&](ObjectFileData& data) {
+      if (data.name_in_dgo.substr(1) == text_string) {
+        file_count++;
+        auto statistics = process_game_text(data, cfg.text_version);
+        string_count += statistics.total_text;
+        char_count += statistics.total_chars;
+        if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
+          ASSERT(false);
+        }
+        text_by_language_by_id[statistics.language] = std::move(statistics.text);
       }
-      text_by_language_by_id[statistics.language] = std::move(statistics.text);
+    });
+
+    lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
+             string_count, char_count, timer.getMs());
+
+    if (text_by_language_by_id.empty()) {
+      return {};
     }
-  });
-
-  lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
-           string_count, char_count, timer.getMs());
-
-  if (text_by_language_by_id.empty()) {
+    return write_game_text(cfg.text_version, text_by_language_by_id);
+  } catch (std::runtime_error& e) {
+    lg::warn("Error when extracting game text: {}", e.what());
     return {};
   }
-  return write_game_text(cfg.text_version, text_by_language_by_id);
 }
 
 std::string ObjectFileDB::process_game_count_file() {
@@ -736,10 +741,10 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
-      // fmt::print("art-group {}:\n", obj.to_unique_name());
+      // lg::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
-      // fmt::print("  length: {}\n", length);
+      // lg::print("  length: {}\n", length);
       std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
@@ -767,7 +772,7 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
         art_group_elts[i] = unique_name;
-        // fmt::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // lg::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
       }
       db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
@@ -790,7 +795,7 @@ void ObjectFileDB::extract_art_info() {
     }
   });
 
-  lg::info("Processed art groups: in {:.2f} ms\n", timer.getMs());
+  lg::info("Processed art groups: in {:.2f} ms", timer.getMs());
 }
 
 /*!
@@ -817,7 +822,7 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
     file_util::write_text_file(filename, result);
   }
 
-  lg::info("Written art group info: in {:.2f} ms\n", timer.getMs());
+  lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
 
 void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {

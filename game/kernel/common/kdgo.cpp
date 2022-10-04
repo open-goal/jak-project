@@ -233,30 +233,6 @@ Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
 }
 
 /*!
- * Instruct the IOP to continue loading the next object.
- * Only should be called once it is safe to overwrite the previous.
- * @param heapPtr : pointer to heap so the IOP could try to load directly into a heap if it wants.
- * This should be updated after each object file load to make sure the IOP knows the exact location
- * of the end of the GOAL heap data.
- * DONE,
- * EXACT
- */
-void ContinueLoadingDGO(Ptr<u8> heapPtr) {
-  u32 msgID = sMsgNum;
-  RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
-  sMsgNum = sMsgNum ^ 1;
-  sendBuff->result = DGO_RPC_RESULT_INIT;
-  sMsg[msgID].buffer1 = 0;
-  sMsg[msgID].buffer2 = 0;
-  sMsg[msgID].buffer_heap_top = heapPtr.offset;
-  // the IOP will wait for this RpcCall to continue the DGO state machine.
-  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_NEXT_FNO, true, sendBuff, sizeof(RPC_Dgo_Cmd), sendBuff,
-          sizeof(RPC_Dgo_Cmd));
-  // this async RPC call will complete when the next object is fully loaded.
-  sLastMsg = sendBuff;
-}
-
-/*!
  * Load the TEST.DGO file.
  * Presumably used for debugging DGO loads.
  * We don't have the TEST.DGO file, so this isn't very useful.
@@ -291,7 +267,9 @@ void LoadDGOTest() {
     }
 
     // okay to load the next one
-    ContinueLoadingDGO(Ptr<u8>(0x4000000));
+    ASSERT(false);  // this is different per version, annoyingly. This function is unused though,
+    // so let's be lazy for now...
+    // ContinueLoadingDGO(Ptr<u8>(0x4000000));
   }
 
   sShowStallMsg = lastShowStall;

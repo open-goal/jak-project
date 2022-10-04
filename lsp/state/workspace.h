@@ -69,9 +69,9 @@ class Workspace {
   void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
   void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
   std::optional<WorkspaceIRFile> get_tracked_ir_file(const LSPSpec::URI& file_uri);
-  std::optional<goos::TextDb::ShortInfo> get_symbol_info_from_all_types(
+  std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
-      const std::string& all_types_uri);
+      const LSPSpec::DocumentUri& all_types_uri);
 
  private:
   bool m_initialized = false;

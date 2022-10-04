@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 
 #include "decompiler/IR2/AtomicOp.h"
@@ -56,8 +57,8 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       }
       // the previously selected type is gone... not sure what we can do here, but complain and
       // use the first one (highest scored).
-      fmt::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
-                 desired_type.print());
+      lg::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
+                desired_type.print());
       type.type = TP_Type::make_from_ts(out.front().result_type);
       return;
     } else {
@@ -184,7 +185,7 @@ TP_Type get_type_symbol_ptr(const std::string& name) {
   if (name == "#f") {
     return TP_Type::make_false();
   } else {
-    return TP_Type::make_from_ts("symbol");
+    return TP_Type::make_symbol(name);
   }
 }
 
@@ -261,14 +262,24 @@ bool backprop_tagged_type(const TP_Type& expected_type,
 
     case types2::Tag::BLOCK_ENTRY:
       // don't update if we're updating to exactly the same thing.
-      if (actual_type.tag.block_entry->selected_type &&
-          actual_type.tag.block_entry->selected_type == expected_type) {
-        return false;
+      if (actual_type.tag.block_entry->selected_type) {
+        if (actual_type.tag.block_entry->selected_type == expected_type) {
+          return false;
+        }
       }
+
       {
-        actual_type.tag.block_entry->updated = true;
-        actual_type.tag.block_entry->selected_type = expected_type;
-        return true;
+        if (!actual_type.tag.block_entry->selected_type) {
+          actual_type.tag.block_entry->selected_type = expected_type;
+          actual_type.tag.block_entry->updated = true;
+          return true;
+        } else {
+          bool changed = false;
+          actual_type.tag.block_entry->selected_type = dts.tp_lca(
+              actual_type.tag.block_entry->selected_type.value(), expected_type, &changed);
+          actual_type.tag.block_entry->updated = changed;
+          return changed;
+        }
       }
 
     case types2::Tag::UNKNOWN_LABEL:
@@ -278,8 +289,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
       } else {
         auto& tag = actual_type.tag.unknown_label;
         actual_type.tag.unknown_label->selected_type = expected_type.typespec();
-        fmt::print("Label Guess: {} is a {}\n", tag->label_name,
-                   actual_type.tag.unknown_label->selected_type->print());
         return true;
       }
 
@@ -290,8 +299,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
       } else {
         auto& tag = actual_type.tag.unknown_stack_structure;
         actual_type.tag.unknown_stack_structure->selected_type = expected_type.typespec();
-        fmt::print("Stack Guess: {} is a {}\n", tag->stack_offset,
-                   actual_type.tag.unknown_stack_structure->selected_type->print());
         return true;
       }
 
@@ -373,7 +380,7 @@ void types2_for_label(types2::Type& type_out,
                                              env.file->labels.at(label_idx).name));
       } else {
         auto& name = env.file->labels.at(label_idx).name;
-        fmt::print("Encountered unknown label: {}\n", name);
+        // lg::print("Encountered unknown label: {}\n", name);
         instr.unknown_label_tag = std::make_unique<types2::UnknownLabel>();
         instr.unknown_label_tag->label_idx = label_idx;
         instr.unknown_label_tag->label_name = name;
@@ -856,6 +863,10 @@ void types2_for_div_mod_signed(types2::Type& type_out,
                                        expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
+void types2_for_div_mod_unsigned(types2::Type& type_out) {
+  type_out.type = TP_Type::make_from_ts("uint");
+}
+
 void types2_for_pcpyld(types2::Type& type_out,
                        const SimpleExpression& expr,
                        const Env& env,
@@ -1025,7 +1036,7 @@ void types2_addr_on_stack(types2::Type& type_out,
       throw std::runtime_error(
           fmt::format("Failed to find a stack variable or structure at offset {}", offset));
     } else {
-      fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
+      // lg::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
       instr.unknown_stack_structure_tag = std::make_unique<types2::UnknownStackStructure>();
       instr.unknown_stack_structure_tag->stack_offset = offset;
       type_out.tag.unknown_stack_structure = instr.unknown_stack_structure_tag.get();
@@ -1214,7 +1225,7 @@ void types2_for_add(types2::Type& type_out,
       type_out.type =
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
-    } else {
+    } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
       return;
     }
@@ -1241,7 +1252,7 @@ void types2_for_add(types2::Type& type_out,
       type_out.type =
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
-    } else {
+    } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
       return;
     }
@@ -1353,8 +1364,8 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
-  fmt::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
-             !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
+  lg::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
+            !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
 
   throw std::runtime_error(
       fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
@@ -1428,7 +1439,27 @@ void types2_for_vector_float_product(types2::Type& type_out,
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 0 ? "vector" : "float"),
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 2 ? "float" : "vector"),
+                                       *arg_type, dts)) {
+        extras.needs_rerun = true;
+      }
+    }
+  }
+
+  type_out.type = TP_Type::make_from_ts(TypeSpec("vector"));
+}
+
+void types2_for_vector_plus_float_times(types2::Type& type_out,
+                                        const SimpleExpression& expr,
+                                        types2::TypeState& input_types,
+                                        const DecompilerTypeSystem& dts,
+                                        types2::TypePropExtras& extras) {
+  // backprop to make inputs vector
+  for (int i = 0; i < expr.args(); i++) {
+    auto& arg = expr.get_arg(i);
+    auto& arg_type = input_types[arg.var().reg()];
+    if (arg_type->tag.has_tag()) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts(i == 3 ? "float" : "vector"),
                                        *arg_type, dts)) {
         extras.needs_rerun = true;
       }
@@ -1532,6 +1563,10 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::MOD_SIGNED:
       types2_for_div_mod_signed(type_out, expr, env, input_types, dts);
       break;
+    case SimpleExpression::Kind::DIV_UNSIGNED:
+    case SimpleExpression::Kind::MOD_UNSIGNED:
+      types2_for_div_mod_unsigned(type_out);
+      break;
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
     case SimpleExpression::Kind::MAX_SIGNED:
@@ -1569,6 +1604,10 @@ void types2_for_expr(types2::Type& type_out,
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       types2_for_vector_float_product(type_out, expr, input_types, dts, extras);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      types2_for_vector_plus_float_times(type_out, expr, input_types, dts, extras);
+      break;
     case SimpleExpression::Kind::PCPYLD:
       types2_for_pcpyld(type_out, expr, env, input_types, dts);
       break;
@@ -1762,11 +1801,11 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
 
                 // temp warning if we have multiple store types
                 if (location_type.size() > 1) {
-                  fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+                  lg::print("StoreOp::propagate_types2: multiple possible store types: ");
                   for (auto& t : location_type) {
-                    fmt::print("{} ", t.print());
+                    lg::print("{} ", t.print());
                   }
-                  fmt::print("\n");
+                  lg::print("\n");
                 }
 
                 if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
@@ -2037,13 +2076,13 @@ bool load_var_op_determine_type(types2::Type& type_out,
           }
         } else {
           /*
-          fmt::print("ambiguous deref. Choices are:\n");
+          lg::print("ambiguous deref. Choices are:\n");
           for (auto& result : rd.results) {
-            fmt::print(" {} : ", result.result_type.print());
+            lg::print(" {} : ", result.result_type.print());
             for (auto& tok : result.tokens) {
-              fmt::print("{} ", tok.print());
+              lg::print("{} ", tok.print());
             }
-            fmt::print("\n");
+            lg::print("\n");
           }
            */
 
@@ -2462,6 +2501,22 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   m_call_type_set = true;
 
   out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
+
+  if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
+      in_tp.method_from_type() == TypeSpec("array") &&
+      input_types[Register(Reg::GPR, arg_regs[2])]) {
+    // array new:
+    auto& a2 = input_types[Register(Reg::GPR, arg_regs[2])];
+    auto& a1 = input_types[Register(Reg::GPR, arg_regs[1])];
+    auto& a0 = input_types[Register(Reg::GPR, arg_regs[0])];
+
+    if (a0->type && a0->type->is_symbol() && a2->type &&
+        a2->type->kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL && a1->type) {
+      out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(TypeSpec(
+          "array",
+          {input_types[Register(Reg::GPR, arg_regs[2])]->type->get_type_objects_typespec()}));
+    }
+  }
 
   // we can also update register usage here.
   m_read_regs.clear();

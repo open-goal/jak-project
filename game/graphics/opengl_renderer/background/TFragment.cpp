@@ -46,8 +46,8 @@ void TFragment::render(DmaFollower& dma,
   // unless we are a child, in which case our parent took this already.
   if (!m_child_mode) {
     auto data0 = dma.read_and_advance();
-    ASSERT(data0.vif1() == 0);
-    ASSERT(data0.vif0() == 0);
+    ASSERT(data0.vifcode1().kind == VifCode::Kind::NOP);
+    ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
     ASSERT(data0.size_bytes == 0);
   }
 
@@ -60,17 +60,17 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
-  if (m_my_id == render_state->bucket_for_vis_copy) {
-    DmaTransfer transfers[2];
+  if (m_my_id == render_state->bucket_for_vis_copy &&
+      dma.current_tag_vifcode1().kind == VifCode::Kind::PC_PORT) {
+    DmaTransfer transfers[20];
 
-    transfers[0] = dma.read_and_advance();
-    auto next0 = dma.read_and_advance();
-    ASSERT(next0.size_bytes == 0);
-    transfers[1] = dma.read_and_advance();
-    auto next1 = dma.read_and_advance();
-    ASSERT(next1.size_bytes == 0);
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
+      transfers[i] = dma.read_and_advance();
+      auto next0 = dma.read_and_advance();
+      ASSERT(next0.size_bytes == 0);
+    }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
       if (transfers[i].size_bytes == 128 * 16) {
         if (render_state->use_occlusion_culling) {
           render_state->occlusion_vis[i].valid = true;
@@ -109,7 +109,9 @@ void TFragment::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 
-  ASSERT(!level_name.empty());
+  if (level_name.empty()) {
+    return;
+  }
   {
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;

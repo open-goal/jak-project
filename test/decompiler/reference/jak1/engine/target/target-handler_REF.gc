@@ -35,7 +35,7 @@
       object
       (cond
         ((= v1-0 'get-pickup)
-         (when (zero? (logand (-> self state-flags) (state-flags dying)))
+         (when (not (logtest? (-> self state-flags) (state-flags dying)))
            (let ((s4-0 (-> arg3 param 0))
                  (f28-0 (the-as float (-> arg3 param 1)))
                  )
@@ -310,7 +310,7 @@
     (set! (-> s5-0 shove-back) arg0)
     (set! (-> s5-0 shove-up) arg1)
     (set! (-> s5-0 angle)
-          (if (zero? (logand (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf)))
+          (if (not (logtest? (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf)))
               'air
               'shove
               )
@@ -340,7 +340,7 @@
                            (arg3 touching-shapes-entry)
                            (arg4 (state symbol attack-info target))
                            )
-  (when (zero? (logand (-> self state-flags) (state-flags being-attacked)))
+  (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (cond
       ((or (logtest? (-> self state-flags) (state-flags invulnerable timed-invulnerable invuln-powerup))
            (and (logtest? (-> arg1 mask) (attack-mask mode))
@@ -382,7 +382,7 @@
       )
     (set! (-> self attack-info-rec prev-state) (-> self state))
     (logior! (-> self attack-info-rec mask) (attack-mask atki13))
-    (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
+    (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
       (set! (-> self attack-info-rec attacker) (process->handle arg2))
       (logior! (-> self attack-info-rec mask) (attack-mask attacker))
       )
@@ -732,7 +732,7 @@
 
 ;; definition for function target-apply-tongue
 (defbehavior target-apply-tongue target ((arg0 vector))
-  (when (zero? (logand (-> self state-flags) (state-flags being-attacked)))
+  (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (logior! (-> self state-flags) (state-flags prevent-attack prevent-duck remove-prevents))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self control trans))))
       (set! (-> self control unknown-float41) (lerp-scale
@@ -771,7 +771,7 @@
     (('shove)
      (when (!= (-> self next-state name) 'target-hit)
        (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 104)
-       (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
+       (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
          (set! (-> self attack-info-rec attacker) (process->handle arg0))
          (logior! (-> self attack-info-rec mask) (attack-mask attacker))
          )
@@ -861,7 +861,7 @@
      (go target-edge-grab)
      )
     (('pole-grab)
-     (if (zero? (logand (-> self control root-prim prim-core action) (collide-action ca-8)))
+     (if (not (logtest? (-> self control root-prim prim-core action) (collide-action ca-8)))
          (go target-pole-cycle (process->handle (the-as process (-> arg3 param 0))))
          )
      )

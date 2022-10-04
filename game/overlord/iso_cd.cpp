@@ -390,7 +390,7 @@ void LoadDiscID() {
   for (uint32_t i = 0; i < SECTOR_SIZE / 4; i++) {
     CD_ID_SectorSum += CD_ID_Sector[i];
   }
-  lg::info("[OVERLORD] DISK_ID.DIZ OK 0x{:x}\n", CD_ID_SectorSum);
+  lg::info("[OVERLORD] DISK_ID.DIZ OK 0x{:x}", CD_ID_SectorSum);
 }
 
 /*!

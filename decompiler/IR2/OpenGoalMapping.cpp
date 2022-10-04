@@ -31,12 +31,13 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
 
     // Parallel Pack
     {InstructionKind::PPACH, {".ppach", {MOD::QWORD_CAST}}},
+    {InstructionKind::PPACB, {".ppacb", {MOD::QWORD_CAST}}},
 
     // Parallel Compares
     {InstructionKind::PCEQB, {".pceqb", {}}},
     // {InstructionKind::PCEQH, {".pceqh", {}}},
     {InstructionKind::PCEQW, {".pceqw", {}}},
-    // {InstructionKind::PCGTB, {".pcgtb", {}}},
+    {InstructionKind::PCGTB, {".pcgtb", {}}},
     // {InstructionKind::PCGTH, {".pcgth", {}}},
     {InstructionKind::PCGTW, {".pcgtw", {}}},
 
@@ -151,6 +152,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::VITOF12, {"vitof12.xyzw", {MOD::DEST_MASK}}},
     {InstructionKind::VFTOI12, {"vftoi12.xyzw", {MOD::DEST_MASK}}},
     {InstructionKind::VITOF15, {"vitof15.xyzw", {MOD::DEST_MASK}}},
+    {InstructionKind::VFTOI15, {"vftoi15.xyzw", {MOD::DEST_MASK}}},
 
     //// Status Checks
     {InstructionKind::VCLIP, {"TODO.VCLIP", {}}},
