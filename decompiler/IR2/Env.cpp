@@ -11,6 +11,7 @@
 
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/Function/Function.h"
 
 namespace decompiler {
 
@@ -25,12 +26,21 @@ const char* get_reg_name(int idx) {
   }
 }
 
-void Env::set_remap_for_function(const TypeSpec& ts) {
-  int nargs = ts.arg_count() - 1;
-  for (int i = 0; i < nargs; i++) {
-    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i));
+void Env::set_remap_for_function(const Function& func) {
+  std::vector<std::string> default_arg_names = {};
+  if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE || func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE) {
+    default_arg_names = get_state_handler_arg_names(func.guessed_name.handler_kind);
   }
-  if (ts.try_get_tag("behavior")) {
+  int nargs = func.type.arg_count() - 1;
+  for (int i = 0; i < nargs; i++) {
+    if (default_arg_names.size() > i) {
+      m_var_remap[get_reg_name(i)] = default_arg_names.at(i);
+    }
+    else {
+      m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i));
+    }
+  }
+  if (func.type.try_get_tag("behavior")) {
     m_var_remap["s6-0"] = "self";
     m_pp_mapped_by_behavior = true;
   } else {
@@ -66,6 +76,7 @@ void Env::set_remap_for_method(const TypeSpec& ts) {
     m_var_remap["s6-0"] = "pp";
   }
 }
+
 
 void Env::map_args_from_config(const std::vector<std::string>& args_names,
                                const std::unordered_map<std::string, std::string>& var_names) {
