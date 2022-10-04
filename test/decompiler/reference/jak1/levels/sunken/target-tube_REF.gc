@@ -456,13 +456,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-tube-start (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        'tube
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go
              target-jump
@@ -472,20 +472,20 @@
              )
            )
           (('touched)
-           (send-event arg0 'attack (-> arg3 param 0) 'tube 0 0)
+           (send-event proc 'attack (-> event param 0) 'tube 0 0)
            #f
            )
           (('attack 'attack-or-shove 'attack-invinc)
            (target-attacked
              'attack-or-shove
-             (the-as attack-info (-> arg3 param 1))
-             arg0
-             (the-as touching-shapes-entry (-> arg3 param 0))
+             (the-as attack-info (-> event param 1))
+             proc
+             (the-as touching-shapes-entry (-> event param 0))
              target-tube-hit
              )
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -1007,13 +1007,13 @@
 ;; failed to figure out what this is:
 (defstate slide-control-ride (slide-control)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('end-mode)
        (go-virtual slide-control-watch)
        )
       (('update)
-       (let* ((s4-0 arg0)
+       (let* ((s4-0 proc)
               (gp-0 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
                         s4-0
                         )
@@ -1022,10 +1022,10 @@
          (if gp-0
              (find-target-point (-> (the-as process-drawable gp-0) root trans))
              )
-         (set! (-> (the-as vector (-> arg3 param 0)) quad) (-> self trans quad))
-         (set! (-> (the-as vector (-> arg3 param 1)) quad) (-> self rot quad))
-         (set! (-> (the-as vector (-> arg3 param 2)) quad) (-> self side quad))
-         (eval-path-curve-div! (-> self path) (the-as vector (-> arg3 param 3)) (+ 0.2 (-> self pos)) 'interp)
+         (set! (-> (the-as vector (-> event param 0)) quad) (-> self trans quad))
+         (set! (-> (the-as vector (-> event param 1)) quad) (-> self rot quad))
+         (set! (-> (the-as vector (-> event param 2)) quad) (-> self side quad))
+         (eval-path-curve-div! (-> self path) (the-as vector (-> event param 3)) (+ 0.2 (-> self pos)) 'interp)
          (if (>= (-> self pos) (+ -0.2 (the float (+ (-> self path curve num-cverts) -1))))
              (send-event gp-0 'end-mode)
              )

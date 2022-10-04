@@ -792,10 +792,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-flut-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (and (= arg2 'touched)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (and (= event-type 'touched)
                ((method-of-type touching-shapes-entry prims-touching?)
-                (the-as touching-shapes-entry (-> arg3 param 0))
+                (the-as touching-shapes-entry (-> event param 0))
                 (-> self control)
                 (the-as uint 6)
                 )
@@ -806,22 +806,22 @@
                     )
                   )
                )
-      (send-event arg0 'bonk (-> arg3 param 0) (-> self control ground-impact-vel))
+      (send-event proc 'bonk (-> event param 0) (-> self control ground-impact-vel))
       (when (target-send-attack
-              arg0
+              proc
               (the-as uint 'flut-bonk)
-              (the-as touching-shapes-entry (-> arg3 param 0))
+              (the-as touching-shapes-entry (-> event param 0))
               (-> self control unknown-dword50)
               (-> self control unknown-dword51)
               )
         )
       )
-    (case arg2
+    (case event-type
       (('jump)
-       (go target-flut-jump (the-as float (-> arg3 param 0)) (the-as float (-> arg3 param 0)))
+       (go target-flut-jump (the-as float (-> event param 0)) (the-as float (-> event param 0)))
        )
       (else
-        (target-flut-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-flut-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1191,19 +1191,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-flut-running-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 224)
            )
           (let ((gp-1 (target-send-attack
-                        arg0
+                        proc
                         (the-as uint (-> self control unknown-symbol30))
-                        (the-as touching-shapes-entry (-> arg3 param 0))
+                        (the-as touching-shapes-entry (-> event param 0))
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
@@ -1211,8 +1211,8 @@
                 )
             (when gp-1
               (set! (-> self control unknown-uint20) (the-as uint (-> *display* base-frame-counter)))
-              (let ((v1-9 (if (and (nonzero? arg0) (type-type? (-> arg0 type) process-drawable))
-                              arg0
+              (let ((v1-9 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable))
+                              proc
                               )
                           )
                     )
@@ -1243,12 +1243,12 @@
             )
           )
          (else
-           (target-flut-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-flut-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (else
-        (target-flut-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-flut-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1460,10 +1460,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-flut-air-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'touched)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'touched)
              ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> arg3 param 0))
+              (the-as touching-shapes-entry (-> event param 0))
               (-> self control)
               (the-as uint 6)
               )
@@ -1474,14 +1474,14 @@
                   )
                 )
              )
-        (send-event arg0 'bonk (-> arg3 param 0) (-> self control ground-impact-vel))
+        (send-event proc 'bonk (-> event param 0) (-> self control ground-impact-vel))
         )
-    (case arg2
+    (case event-type
       (('jump)
-       (go target-flut-jump (the-as float (-> arg3 param 0)) (the-as float (-> arg3 param 0)))
+       (go target-flut-jump (the-as float (-> event param 0)) (the-as float (-> event param 0)))
        )
       (else
-        (target-flut-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-flut-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2161,21 +2161,21 @@
 
 ;; failed to figure out what this is:
 (defstate target-flut-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go target-flut-stance)
            )
           (('clone-anim)
-           (go target-flut-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-flut-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -2203,11 +2203,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-flut-clone-anim (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
         (set! (-> self control unknown-uint20) (the-as uint #f))
         )
-    ((-> target-flut-grab event) arg0 arg1 arg2 arg3)
+    ((-> target-flut-grab event) proc arg1 event-type event)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()

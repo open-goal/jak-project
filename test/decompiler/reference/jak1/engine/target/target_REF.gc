@@ -2022,19 +2022,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-running-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 224)
            )
           (let ((gp-1 (target-send-attack
-                        arg0
+                        proc
                         (the-as uint (-> self control unknown-symbol30))
-                        (the-as touching-shapes-entry (-> arg3 param 0))
+                        (the-as touching-shapes-entry (-> event param 0))
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
@@ -2042,8 +2042,8 @@
                 )
             (when gp-1
               (set! (-> self control unknown-uint20) (the-as uint (-> *display* base-frame-counter)))
-              (let ((v1-9 (if (and (nonzero? arg0) (type-type? (-> arg0 type) process-drawable))
-                              arg0
+              (let ((v1-9 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable))
+                              proc
                               )
                           )
                     )
@@ -2073,12 +2073,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2302,15 +2302,15 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack-air (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -2621,14 +2621,14 @@
 
 ;; failed to figure out what this is:
 (defstate target-flop (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((let ((v1-0 arg2))
+        ((let ((v1-0 event-type))
            (= v1-0 'swim)
            )
          (cond
@@ -2650,7 +2650,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -2864,13 +2864,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('swim)
        #f
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2938,11 +2938,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-wheel (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (= arg2 'touched)
-        (send-event arg0 'roll)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (= event-type 'touched)
+        (send-event proc 'roll)
         )
-    (target-standard-event-handler arg0 arg1 arg2 arg3)
+    (target-standard-event-handler proc arg1 event-type event)
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
