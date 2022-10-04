@@ -1634,14 +1634,14 @@
 ;; failed to figure out what this is:
 (defstate idle (editable-player)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 none))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as
         object
         (cond
           ((= v1-0 'execute)
-           (let ((a2-1 (-> arg3 param 0)))
+           (let ((a2-1 (-> event param 0)))
              (case a2-1
                ((28 27 35 29 31 32)
                 (editable-array-method-13
@@ -1677,26 +1677,26 @@
            (deactivate self)
            )
           ((= v1-0 'menu)
-           (set! v0-0 (the-as none (+ (-> self clock frame-counter) (the-as time-frame (-> arg3 param 0)))))
+           (set! v0-0 (the-as none (+ (-> self clock frame-counter) (the-as time-frame (-> event param 0)))))
            (set! (-> self close-menu-time) (the-as time-frame v0-0))
            v0-0
            )
           ((or (= v1-0 'on-enter) (= v1-0 'on-exit) (= v1-0 'on-inside))
            (let ((s4-0 (-> self current region)))
              (when s4-0
-               (let ((gp-1 (-> arg3 param 0)))
+               (let ((gp-1 (-> event param 0)))
                  (set! (-> *syntax-context* got-error?) #f)
                  (eval! *syntax-context* (the-as pair gp-1))
                  (when (not (-> *syntax-context* got-error?))
                    (set! (-> s4-0 changed) #t)
                    (cond
-                     ((= arg2 'on-enter)
+                     ((= event-type 'on-enter)
                       (set! (-> s4-0 on-enter) (the-as string gp-1))
                       )
-                     ((= arg2 'on-inside)
+                     ((= event-type 'on-inside)
                       (set! (-> s4-0 on-inside) (the-as string gp-1))
                       )
-                     ((= arg2 'on-exit)
+                     ((= event-type 'on-exit)
                       (set! (-> s4-0 on-exit) (the-as string gp-1))
                       )
                      )
@@ -1709,7 +1709,7 @@
              )
            )
           ((= v1-0 'select)
-           (let ((gp-2 (-> arg3 param 0)))
+           (let ((gp-2 (-> event param 0)))
              (editable-array-method-9 (-> self current) (editable-command select-none) (the-as editable-array #f))
              (let* ((s5-1 (-> self current length))
                     (s4-1 0)
@@ -1747,7 +1747,7 @@
                               )
                        )
                    (when v1-60
-                     (set! (-> v1-60 name) (the-as string (-> arg3 param 0)))
+                     (set! (-> v1-60 name) (the-as string (-> event param 0)))
                      (logior! (-> v1-60 flags) (editable-flag changed))
                      (let ((v1-61 (-> v1-60 region)))
                        (if v1-61
@@ -1764,7 +1764,7 @@
            #f
            )
           ((= v1-0 'level)
-           (let ((gp-3 (lookup-level-info (the-as symbol (-> arg3 param 0)))))
+           (let ((gp-3 (lookup-level-info (the-as symbol (-> event param 0)))))
              (when (-> gp-3 dbname)
                (let* ((s5-3 (-> self current length))
                       (s4-3 0)
@@ -1795,10 +1795,10 @@
            (-> self current level)
            )
           ((= v1-0 'direction)
-           (let* ((f30-0 (the-as float (-> arg3 param 0)))
-                  (f28-0 (the-as float (-> arg3 param 1)))
-                  (f26-0 (the-as float (-> arg3 param 2)))
-                  (f24-0 (if (and (zero? (-> arg3 param 0)) (zero? (-> arg3 param 1)) (zero? (-> arg3 param 2)))
+           (let* ((f30-0 (the-as float (-> event param 0)))
+                  (f28-0 (the-as float (-> event param 1)))
+                  (f26-0 (the-as float (-> event param 2)))
+                  (f24-0 (if (and (zero? (-> event param 0)) (zero? (-> event param 1)) (zero? (-> event param 2)))
                              0.0
                              1.0
                              )
@@ -1833,10 +1833,10 @@
            #f
            )
           ((= v1-0 'color)
-           (let* ((f30-1 (the-as float (-> arg3 param 0)))
-                  (f28-1 (the-as float (-> arg3 param 1)))
-                  (f26-1 (the-as float (-> arg3 param 2)))
-                  (f24-1 (the-as float (-> arg3 param 3)))
+           (let* ((f30-1 (the-as float (-> event param 0)))
+                  (f28-1 (the-as float (-> event param 1)))
+                  (f26-1 (the-as float (-> event param 2)))
+                  (f24-1 (the-as float (-> event param 3)))
                   (gp-5 (-> self current length))
                   (s5-5 0)
                   (s4-5 (-> self current data s5-5))
@@ -1866,8 +1866,8 @@
            #f
            )
           ((= v1-0 'param)
-           (let ((s5-6 (-> arg3 param 0))
-                 (f30-2 (the-as float (-> arg3 param 1)))
+           (let ((s5-6 (-> event param 0))
+                 (f30-2 (the-as float (-> event param 1)))
                  )
              (when (and (>= (the-as int s5-6) 0) (>= 2 (the-as int s5-6)))
                (let* ((gp-6 (-> self current length))

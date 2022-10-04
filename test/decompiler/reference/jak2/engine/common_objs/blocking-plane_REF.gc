@@ -11,7 +11,7 @@
   :flag-assert         #x16005000c8
   (:methods
     (idle () _type_ :state 20)
-    (blocking-plane-method-21 (_type_ (inline-array vector) float) none 21)
+    (init! (_type_ (inline-array vector) float) none 21)
     )
   )
 
@@ -50,27 +50,27 @@
 ;; failed to figure out what this is:
 (defstate idle (blocking-plane)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((evt-type event-type))
       (the-as object (cond
-                       ((= v1-0 'on)
+                       ((= evt-type 'on)
                         (cond
                           ((nonzero? (-> self root-override))
-                           (let ((v1-3 (-> self root-override root-prim)))
-                             (set! (-> v1-3 prim-core collide-as) (-> self root-override backup-collide-as))
-                             (let ((v0-0 (the-as int (-> self root-override backup-collde-with))))
-                               (set! (-> v1-3 prim-core collide-with) (the-as collide-spec v0-0))
+                           (let ((prim (-> self root-override root-prim)))
+                             (set! (-> prim prim-core collide-as) (-> self root-override backup-collide-as))
+                             (let ((v0-0 (the-as int (-> self root-override backup-collide-with))))
+                               (set! (-> prim prim-core collide-with) (the-as collide-spec v0-0))
                                v0-0
                                )
                              )
                            )
                           (else
-                            (let ((gp-0 (-> self child)))
-                              (while gp-0
-                                (let ((s5-0 (ppointer->process gp-0)))
-                                  (set! gp-0 (-> gp-0 0 brother))
-                                  (if (type? s5-0 blocking-plane)
-                                      (send-event s5-0 'on)
+                            (let ((proc-child-ptr-0 (-> self child)))
+                              (while proc-child-ptr-0
+                                (let ((proc-child-0 (ppointer->process proc-child-ptr-0)))
+                                  (set! proc-child-ptr-0 (-> proc-child-ptr-0 0 brother))
+                                  (if (type? proc-child-0 blocking-plane)
+                                      (send-event proc-child-0 'on)
                                       )
                                   )
                                 )
@@ -79,7 +79,7 @@
                             )
                           )
                         )
-                       ((= v1-0 'off)
+                       ((= evt-type 'off)
                         (cond
                           ((nonzero? (-> self root-override))
                            (let ((v1-13 (-> self root-override root-prim)))
@@ -89,12 +89,12 @@
                            0
                            )
                           (else
-                            (let ((gp-1 (-> self child)))
-                              (while gp-1
-                                (let ((s5-1 (ppointer->process gp-1)))
-                                  (set! gp-1 (-> gp-1 0 brother))
-                                  (if (type? s5-1 blocking-plane)
-                                      (send-event s5-1 'off)
+                            (let ((proc-child-ptr-1 (-> self child)))
+                              (while proc-child-ptr-1
+                                (let ((proc-child-1 (ppointer->process proc-child-ptr-1)))
+                                  (set! proc-child-ptr-1 (-> proc-child-ptr-1 0 brother))
+                                  (if (type? proc-child-1 blocking-plane)
+                                      (send-event proc-child-1 'off)
                                       )
                                   )
                                 )
@@ -113,9 +113,10 @@
 ;; definition for method 21 of type blocking-plane
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blocking-plane-method-21 blocking-plane ((obj blocking-plane) (arg0 (inline-array vector)) (arg1 float))
-  (let ((s3-0 (-> arg0 0))
-        (s4-0 (-> arg0 1))
+(defmethod init! blocking-plane ((obj blocking-plane) (vec-pair (inline-array vector)) (height float))
+  "TODO - but sets up the plane given 2 vectors and a height"
+  (let ((s3-0 (-> vec-pair 0))
+        (s4-0 (-> vec-pair 1))
         )
     0.0
     (* 0.5 (vector-vector-distance s3-0 s4-0))
@@ -131,7 +132,7 @@
       (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
       (let ((v1-6 (-> s2-0 root-prim)))
         (set! (-> s2-0 backup-collide-as) (-> v1-6 prim-core collide-as))
-        (set! (-> s2-0 backup-collde-with) (-> v1-6 prim-core collide-with))
+        (set! (-> s2-0 backup-collide-with) (-> v1-6 prim-core collide-with))
         )
       (set! (-> obj root-override) s2-0)
       )
@@ -140,11 +141,11 @@
           )
       (vector+! (-> s2-1 trans) s3-0 s4-0)
       (vector-float*! (-> s2-1 trans) (-> s2-1 trans) 0.5)
-      (+! (-> s2-1 trans y) (* 0.5 arg1))
+      (+! (-> s2-1 trans y) (* 0.5 height))
       (vector-! (the-as vector (-> s1-0 vector)) s4-0 s3-0)
       (let ((f30-1 (vector-normalize-ret-len! (the-as vector (-> s1-0 vector)) 1.0)))
         (set! (-> s2-1 scale x) (* 0.00024414062 f30-1))
-        (set! (-> s2-1 scale y) (* 0.00024414062 arg1))
+        (set! (-> s2-1 scale y) (* 0.00024414062 height))
         (set! (-> s2-1 scale z) 0.0)
         (set! (-> s1-0 vector 1 quad) (-> (new 'static 'vector :y 1.0 :w 1.0) quad))
         (vector-cross! (-> s1-0 vector 2) (the-as vector (-> s1-0 vector)) (-> s1-0 vector 1))
@@ -152,11 +153,11 @@
         (matrix->quaternion (-> s2-1 quat) s1-0)
         (let ((v1-20 (-> obj root-override root-prim local-sphere)))
           (set! (-> v1-20 x) 0.0)
-          (set! (-> v1-20 y) (* 0.00024414062 (* 0.5 arg1)))
+          (set! (-> v1-20 y) (* 0.00024414062 (* 0.5 height)))
           (set! (-> v1-20 z) 0.0)
           (let ((f0-17 0.5)
                 (f1-7 (* f30-1 f30-1))
-                (f2-2 arg1)
+                (f2-2 height)
                 )
             (set! (-> v1-20 w) (* f0-17 (sqrtf (+ f1-7 (* f2-2 f2-2)))))
             )
@@ -176,11 +177,12 @@
 
 ;; definition for function blocking-plane-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior blocking-plane-init-by-other blocking-plane ((arg0 (inline-array vector)) (arg1 float))
-  (if (not arg0)
+(defbehavior blocking-plane-init-by-other blocking-plane ((vec-pair (inline-array vector)) (height float))
+  "Calls [[blocking-plane::21]] with the given args"
+  (if (not vec-pair)
       (deactivate self)
       )
-  (blocking-plane-method-21 self arg0 arg1)
+  (init! self vec-pair height)
   (go-virtual idle)
   (none)
   )
@@ -246,12 +248,12 @@
 ;; definition for function blocking-plane-destroy
 ;; WARN: Return type mismatch int vs none.
 (defbehavior blocking-plane-destroy blocking-plane ()
-  (let ((gp-0 (-> self child)))
-    (while gp-0
-      (let ((s5-0 (ppointer->process gp-0)))
-        (set! gp-0 (-> gp-0 0 brother))
-        (if (type? s5-0 blocking-plane)
-            (deactivate s5-0)
+  (let ((child-proc-ptr (-> self child)))
+    (while child-proc-ptr
+      (let ((child-proc (ppointer->process child-proc-ptr)))
+        (set! child-proc-ptr (-> child-proc-ptr 0 brother))
+        (if (type? child-proc blocking-plane)
+            (deactivate child-proc)
             )
         )
       )
@@ -259,7 +261,3 @@
   0
   (none)
   )
-
-
-
-

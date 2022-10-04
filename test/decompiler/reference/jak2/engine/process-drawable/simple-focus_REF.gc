@@ -30,6 +30,7 @@
 
 ;; definition for method 20 of type simple-focus
 (defmethod get-trans simple-focus ((obj simple-focus) (arg0 int))
+  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
   (-> obj root trans)
   )
 
@@ -44,11 +45,11 @@
 ;; failed to figure out what this is:
 (defstate idle (simple-focus)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (when (= v1-0 'move-trans)
                        (let ((v0-0 (-> self root trans)))
-                         (set! (-> v0-0 quad) (-> (the-as vector (-> arg3 param 0)) quad))
+                         (set! (-> v0-0 quad) (-> (the-as vector (-> event param 0)) quad))
                          v0-0
                          )
                        )
@@ -61,10 +62,11 @@
 ;; definition for function simple-focus-init-by-other
 ;; WARN: Return type mismatch object vs none.
 (defbehavior simple-focus-init-by-other simple-focus ()
-  (let ((gp-0 (new 'process 'trsqv)))
-    (set! (-> self root) gp-0)
-    (vector-identity! (-> gp-0 scale))
-    (quaternion-identity! (-> gp-0 quat))
+  "Initializes the new [[simple-focus]]. `first-time?` will be set to [[#t]]"
+  (let ((root (new 'process 'trsqv)))
+    (set! (-> self root) root)
+    (vector-identity! (-> root scale))
+    (quaternion-identity! (-> root quat))
     )
   (logclear! (-> self mask) (process-mask enemy))
   (set! (-> self first-time?) #t)
@@ -72,7 +74,3 @@
   (go-virtual idle)
   (none)
   )
-
-
-
-

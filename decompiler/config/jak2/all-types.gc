@@ -13649,6 +13649,7 @@
 
 (defenum lightning-mode
   :type uint8
+  (lm-1 -1)
   (lm0 0)
   (lm1 1)
   (lm2 2)
@@ -15911,7 +15912,7 @@
    (penetrate-using penetrate)
    (penetrated-by penetrate)
    (backup-collide-as collide-spec)
-   (backup-collde-with collide-spec)
+   (backup-collide-with collide-spec)
    (event-priority uint8)
    (rider-max-momentum float)
    )
@@ -15921,7 +15922,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_ 0)
-    (collide-shape-method-28 () none 28) ;; (move-by-vector! (_type_ vector) none 28)
+    (move-by-vector! (_type_ vector) none 28) ;; (move-by-vector! (_type_ vector) none 28)
     (collide-shape-method-29 (_type_ vector) none 29) ;; (alloc-riders (_type_ int) none 29)
     (collide-shape-method-30 () none 30) ;; (move-to-point! (_type_ vector) none 30)
     (collide-shape-method-31 () none 31) ;; (debug-draw (_type_) none 31)
@@ -16943,7 +16944,9 @@
   :size-assert         #xcc
   :flag-assert         #x1b005000cc
   (:methods
-    (get-trans (_type_ int) vector 20)
+    (get-trans
+      "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
+      (_type_ int) vector 20)
     (get-quat (_type_) quaternion 21)
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_) none 23)
@@ -19155,7 +19158,7 @@
   )
 
 (deftype actor-reference (structure)
-  ((actor entity  :offset-assert 0)
+  ((actor entity-actor  :offset-assert 0)
    (id    uint32  :offset-assert 4)
    )
   :pack-me
@@ -22136,7 +22139,7 @@
   (:methods
     (spatial-hash-method-34 () none 34)
     (spatial-hash-method-35 () none 35)
-    (spatial-hash-method-36 () none 36)
+    (spatial-hash-method-36 (_type_ sphere (pointer collide-shape) int) int 36)
     (spatial-hash-method-37 () none 37)
     (spatial-hash-method-38 () none 38)
     (spatial-hash-method-39 () none 39)
@@ -29126,7 +29129,7 @@
 (define-extern entity-birth-no-kill (function entity process))
 (define-extern entity-task-complete-on (function entity none))
 (define-extern entity-task-complete-off (function entity none))
-(define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
+(define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status)) ;;
 (define-extern find-nearest-entity (function vector type entity))
 (define-extern entity-speed-test (function string none))
 (define-extern dump-entity-remap (function object object none))
@@ -31213,12 +31216,23 @@
 ;; sampler                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *sampler-mem* symbol)
-(define-extern *sampler-compare* int)
-(define-extern *sampler-count* int)
+(define-extern *sampler-mem* "A pointer to where the sampled data should be stored" pointer)
+(define-extern *sampler-compare*
+  "The value used to set the EE register's `Timer 0 Compare Value`.  Always `1`"
+  uint)
+(define-extern *sampler-count*
+  "Incremented everytime a metric is sampled
+   @see [[timer0-handler]]"
+  int)
 (define-extern timer0-handler (function none))
-(define-extern sampler-start (function none))
-(define-extern sampler-stop (function none))
+(define-extern sampler-start
+  "Reset the [[timer-bank]] EE registers.
+   - If [[*sampler-mem*]] is undefined, allocate 16.7MB in the debug segment
+   - and when [[*sampler-mem*]] is defined, initialize the [[timer-bank]] fully.  Reset [[*sampler-count*]] to 0 as well"
+  (function none))
+(define-extern sampler-stop
+  "Sets the [[timer-bank]] mode EE register to 0"
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; default-menu                   ;;
@@ -31598,13 +31612,17 @@
   :flag-assert         #x16005000c8
   (:methods
     (idle () _type_ :state 20)
-    (blocking-plane-method-21 (_type_ (inline-array vector) float) none 21)
+    (init!
+      "TODO - but sets up the plane given 2 vectors and a height"
+      (_type_ (inline-array vector) float) none 21)
     )
   )
 
-(define-extern blocking-plane-init-by-other (function (inline-array vector) float none :behavior blocking-plane))
-(define-extern blocking-plane-spawn (function curve-control (inline-array vector) float none :behavior process)) ;; 
-(define-extern blocking-plane-destroy (function none :behavior blocking-plane)) ;; 
+(define-extern blocking-plane-init-by-other
+  "Calls [[blocking-plane::21]] with the given args"
+  (function (inline-array vector) float none :behavior blocking-plane))
+(define-extern blocking-plane-spawn (function curve-control (inline-array vector) float none :behavior process))
+(define-extern blocking-plane-destroy (function none :behavior blocking-plane))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; idle-control                   ;;
@@ -32447,24 +32465,45 @@
    (smush        smush-control :inline :offset-assert 208)
    (basetrans    vector        :inline :offset-assert 240)
    (bounce-time  time-frame            :offset-assert 256)
-   (bouncing     basic                 :offset-assert 264)
+   (bouncing     symbol                :offset-assert 264)
    (bounce-scale meters                :offset-assert 268)
    )
   :method-count-assert 34
   :size-assert         #x110
   :flag-assert         #x2200900110
   (:methods
-    (base-plat-method-27 (_type_) none 27)
-    (base-plat-method-28 (_type_) none 28)
-    (base-plat-method-29 (_type_) none :behavior base-plat 29)
-    (base-plat-method-30 (_type_) none 30)
-    (base-plat-method-31 (_type_) none 31)
+    (execute-effects
+      "Executes various ancillary tasks with the platform, such as spawning particles or playing the associated sound"
+      (_type_) none 27)
+    (stop-bouncing!
+      "Sets `bouncing` to false and resets related settings to their defaults"
+      (_type_) none 28)
+    (start-bouncing!
+      "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
+       and translate the platform via the `smush`
+       @see [[smush-control]]"
+      (_type_) none :behavior base-plat 29)
+    (get-art-group
+      "@returns The associated [[art-group]]"
+      (_type_) art-group 30)
+    (base-plat-method-31 "TODO - collision stuff" (_type_) none 31)
     (base-plat-method-32 (_type_) none 32)
     (base-plat-method-33 (_type_) none 33)
     )
   )
 
+(defenum eco-door-flags
+  :bitfield #t
+  :type int32
+  (ecdf00)
+  (ecdf01)
+  (auto-close)
+  (one-way)
+  )
+
+
 (deftype eco-door (process-drawable)
+  "@unused - Likely a left-over from Jak 1"
   ((root-override  collide-shape        :offset 128 :score 100)
    (speed          float                :offset-assert 200)
    (open-distance  float                :offset-assert 204)
@@ -32473,7 +32512,7 @@
    (open-sound     sound-name              :offset-assert 240) ;; sound-name
    (close-sound    sound-name              :offset-assert 256) ;; sound-name
    (state-actor    entity-actor         :offset-assert 272) ;; guessed by decompiler
-   (flags          int32                :offset-assert 276) ;; eco-door-flags
+   (flags          eco-door-flags                :offset-assert 276) ;; eco-door-flags
    (locked         symbol               :offset-assert 280) ;; guessed by decompiler
    (auto-close     symbol               :offset-assert 284) ;; guessed by decompiler
    (one-way        symbol               :offset-assert 288) ;; guessed by decompiler
@@ -32482,21 +32521,43 @@
   :size-assert         #x124
   :flag-assert         #x1b00b00124
   (:methods
-    (door-closed () _type_ :state 20) ;; (door-closed () _type_ :state 20)
-    (door-opening () _type_ :state 21) ;; (door-opening () _type_ :state 21)
-    (door-open () _type_ :state 22) ;; (door-open () _type_ :state 22)
-    (door-closing () _type_ :state 23) ;; (door-closing () _type_ :state 23)
-    (eco-door-method-24 (_type_) none 24) ;; (TODO-RENAME-24 (_type_) none 24)
+    (door-closed () _type_ :state 20)
+    (door-opening () _type_ :state 21)
+    (door-open () _type_ :state 22)
+    (door-closing () _type_ :state 23)
+    (lock-according-to-task!
+      "If the associated subtask is completed, lock the door if [[eco-door-flags:0]] is set
+       otherwise, lock it if [[eco-door-flags:0]] is set"
+      (_type_) none 24)
     (eco-door-method-25 (_type_) none 25) ;; (TODO-RENAME-25 (_type_) none 25)
-    (eco-door-method-26 (_type_) none 26) ;; (dummy-26 (_type_) none 26)
+    (stub
+      "@unused - Stub with no overrides"
+      (_type_) none 26)
     )
   )
 
-(define-extern plat-code (function none :behavior base-plat)) ;; 
-(define-extern plat-trans (function none :behavior base-plat)) ;; 
-(define-extern plat-post (function none :behavior base-plat)) ;; 
-(define-extern plat-event (function process int symbol event-message-block object :behavior base-plat)) ;; 
-(define-extern eco-door-event-handler (function process int symbol event-message-block object :behavior eco-door)) ;; 
+(define-extern plat-code
+  "After calling [[transform-post]] for 2 consecutive frames, put the process to sleep if it's not bouncing
+   otherwise, continue bouncing...forever!
+   @see [[transform-post]]"
+   (function none :behavior base-plat))
+(define-extern plat-trans
+  "If the platform is `bouncing`, move the platform accordingly with the [[smush-control]]
+   - If the amplitude of the `smush` has hit `0.0` then stop bouncing
+
+   If we aren't bouncing however, TODO - CSHAPE"
+  (function none :behavior base-plat))
+(define-extern plat-post (function none :behavior base-plat))
+(define-extern plat-event
+  "Handles platform related events.  Presently all this does is:
+   - if `event-type` is [['bonk]], then call [[base-plat:29]]"
+  (function process int symbol event-message-block object :behavior base-plat))
+(define-extern eco-door-event-handler
+  "If the `event-type` is `'trigger`, flip the `locked` flag on the door
+   and play the respective sound
+
+   @unused - likely a leftover from Jak 1"
+  (function process int symbol event-message-block object :behavior eco-door))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; plat                           ;;
@@ -32513,7 +32574,12 @@
   (:methods
     (plat-idle () _type_ :state 34)
     (plat-path-active () _type_ :state 35)
-    (plat-method-36 (_type_) none 36)
+    (plat-path-sync
+      "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
+       otherwise, [[plat::34]]
+
+       @see [[sync-eased]]"
+      (_type_) object 36)
     )
   )
 
@@ -32538,9 +32604,18 @@
 ;; basebutton                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum button-status
+  :type uint16
+  :bitfield #t
+  (pressed)
+  (button-status-1)
+  (button-status-2)
+  (button-status-3)
+  (button-status-4))
+
 (deftype basebutton (process-focusable)
   (
-    (button-status uint16 :offset-assert 204)
+    (button-status button-status :offset-assert 204)
     (notify-actor entity-actor :offset-assert 208)
     (actor-group (pointer actor-group) :offset-assert 212)
     (actor-group-count int32 :offset-assert 216)
@@ -32563,14 +32638,23 @@
     (going-down () _type_ :state 28) ;; (arm-trigger-event! (_type_) symbol 28)
     (going-up () _type_ :state 29) ;; (TODO-RENAME-29 (_type_ symbol entity) none 29)
     (up-idle () _type_ :state 30) ;; (move-to-vec-or-quat! (_type_ vector quaternion) quaternion 30)
-    (basebutton-method-31 (_type_) none 31) ;; (press! (_type_ symbol) int 31)
-    (basebutton-method-32 (_type_) none 32)
-    (basebutton-method-33 (_type_) none 33)
-    (basebutton-method-34 (_type_) none 34)
-    (basebutton-method-35 (_type_) none 35)
-    (basebutton-method-36 (_type_ symbol) none 36)
-    (basebutton-method-37 (_type_ vector quaternion) none 37)
-    (basebutton-method-38 (_type_ symbol) none 38)
+    (reset! (_type_) none 31) ;; (press! (_type_ symbol) int 31)
+    (idle-state-transition
+      "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
+      (_type_) object 32)
+    (basebutton-method-33 "TODO - joint stuff" (_type_) none 33)
+    (basebutton-method-34 "TODO - collision stuff" (_type_) none 34)
+    (prepare-trigger-event!
+      "Sets `event-going-down` to `'trigger`"
+      (_type_) none 35)
+    (send-event!
+      "Prepares an [[event-message-block]] using the provided type to send an event to:
+       - the `notify-actor`
+       - every [[entity-actor]] in the `actor-group` array
+       @see [[entity-actor]]"
+      (_type_ symbol) none :behavior basebutton 36)
+    (move-to! (_type_ vector quaternion) none 37)
+    (press! (_type_ symbol) entity-perm-status 38)
     )
   )
 
@@ -32592,8 +32676,8 @@
     (idle () _type_ :state 20)
     (fire () _type_ :state 21)
     (smush () _type_ :state 22)
-    (bouncer-method-23 (_type_) none 23)
-    (bouncer-method-24 (_type_) none 24)
+    (init-skeleton! (_type_) none 23)
+    (bouncer-method-24 "TODO - collision stuff" (_type_) none 24)
     )
   )
 
@@ -32634,13 +32718,28 @@
   :flag-assert         #x1c00800100
   (:methods
     (idle () _type_ :state 20)
-    (conveyor-method-21 (_type_) float 21)
-    (conveyor-method-22 (_type_) none 22)
-    (conveyor-method-23 (_type_) none 23)
-    (conveyor-method-24 (_type_) none 24)
-    (conveyor-method-25 (_type_) object 25)
-    (conveyor-method-26 (_type_ process-focusable) none 26)
-    (conveyor-method-27 (_type_) symbol 27)
+    (conveyor-method-21
+      "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
+      (_type_) float 21)
+    (get-art-group
+      "@returns The respective [[art-group]] for the [[conveyor]]"
+      (_type_) art-group 22)
+    (reset-root!
+      "Re-initializes the `root` [[trsqv]]"
+      (_type_) none 23)
+    (init!
+      "Initializes defaults for things like the `speed` and `belt-radius`"
+      (_type_) none 24)
+    (set-and-get-ambient-sound!
+      "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+       and return it as well.  Otherwise, set it to `0`"
+      (_type_) ambient-sound 25)
+    (conveyor-method-26
+      "TODO - conveyor section related, perhaps related to moving the process along the belt?"
+      (_type_ process-focusable) symbol :behavior conveyor 26)
+    (conveyor-method-27
+      "TODO - collision related, has some dead code as well (previous iteration?)"
+      (_type_) symbol 27)
     )
   )
 
@@ -32667,12 +32766,25 @@
 ;; elevator                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum elevator-flags
+  :type uint64
+  :bitfield #t
+  (elevator-flags-0)
+  (elevator-flags-1)
+  (elevator-flags-2)
+  (elevator-flags-3)
+  (elevator-flags-4)
+  (prevent-jump)
+  (elevator-flags-6)
+  (elevator-flags-7)
+  )
+
 (deftype elevator-params (structure)
   ((xz-threshold float   :offset-assert 0)
    (y-threshold  float   :offset-assert 4)
    (start-pos    float   :offset-assert 8)
    (move-rate    float   :offset-assert 12)
-   (flags        uint64  :offset-assert 16)
+   (flags        elevator-flags  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -32695,6 +32807,14 @@
   :flag-assert         #x900000010
   )
 
+(defenum elevator-status
+  :type uint64
+  :bitfield #t
+  (elevator-status-0)
+  (elevator-status-1)
+  (moving)
+  )
+
 (deftype elevator (base-plat)
   ((params                       elevator-params :inline :offset-assert 272)
    (path-seq                     path-step-inline-array  :offset-assert 296)
@@ -32706,7 +32826,7 @@
    (path-eased-pos               float                   :offset-assert 328)
    (ride-timer                   uint64                  :offset-assert 336)
    (sticky-player-last-ride-time time-frame              :offset-assert 344)
-   (elevator-status              uint64                  :offset-assert 352)
+   (elevator-status              elevator-status                  :offset-assert 352)
    (on-activate                  basic                   :offset-assert 360)
    (on-deactivate                basic                   :offset-assert 364)
    )
@@ -32719,20 +32839,55 @@
     (running () _type_ :state 36)
     (arrived () _type_ :state 37)
     (elevator-method-38 (_type_) none 38)
-    (elevator-method-39 (_type_ int int) none 39)
-    (elevator-method-40 (_type_) object 40)
-    (elevator-method-41 (_type_) none 41)
-    (elevator-method-42 (_type_) none 42)
-    (elevator-method-43 (_type_) object 43)
+    (calc-dist-between-points!
+      "Calculates the distance between two points in the elevator's path.
+
+       @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
+       @param path-point-y The second point in the distance calculation"
+      (_type_ int int) none 39)
+    (elevator-method-40
+      "TODO - need to figure out some flags to be confident about this"
+      (_type_) object 40)
+    (init-defaults!
+      "Initializes default settings related to the [[elevator]]:
+       - `elevator-xz-threshold`
+       - `elevator-y-threshold`
+       - `elevator-start-pos`
+       - `elevator-move-rate`
+       - `elevator-flags`"
+      (_type_) none 41)
+    (clear-ambient-sound!
+      "Might be a virtual function, but clears the object's [[ambient-sound]]"
+      (_type_) none 42)
+    (elevator-method-43 (_type_ vector float float) symbol 43)
     (elevator-method-44 (_type_) symbol 44)
-    (elevator-method-45 (_type_) symbol 45)
-    (elevator-method-46 (_type_) none 46)
-    (elevator-method-47 (_type_ vector vector symbol symbol) symbol 47)
-    (elevator-method-48 (_type_) none 48)
+    (elevator-method-45
+      "@returns Stub, or always returns [[#t]]"
+      (_type_) symbol 45)
+    (move-to-next-point!
+      "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
+       do so.
+       @see [[elevator::47]]"
+      (_type_) none 46)
+    (find-closest-point-in-path!
+      "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
+       the provided [[vector]]
+
+       @param vec The point at which distance calculations are based off
+       @param! next-step If a point is found, `next-pos` will be set to the correct point
+       @param arg2 TODO
+       @param arg3 TODO
+       @returns [[#t]] if a point in the path was found"
+      (_type_ vector path-step symbol symbol) symbol 47)
+    (elevator-method-48 "TODO - collision related" (_type_) none 48)
     )
   )
 
-(define-extern ease-value-in-out (function float float float))
+(define-extern ease-value-in-out
+  "TODO - the math in this function is full of duplication and isn't totally clear
+   but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
+   which is obviously useful for an elevator."
+  (function float float float))
 (define-extern elevator-event (function process int symbol event-message-block object :behavior elevator))
 (define-extern move-post (function none :behavior elevator))
 
@@ -32991,7 +33146,9 @@
     )
   )
 
-(define-extern simple-focus-init-by-other (function none :behavior simple-focus))
+(define-extern simple-focus-init-by-other 
+  "Initializes the new [[simple-focus]]. `first-time?` will be set to [[#t]]"
+  (function none :behavior simple-focus))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; simple-nav-sphere              ;;
@@ -33673,13 +33830,30 @@
     (idle () _type_ :state 20)
     (active () _type_ :state 21)
     (shutdown () _type_ :state 22)
-    (elec-gate-method-23 (_type_) elec-gate-params 23)
+    (get-params
+      "@returns [[*default-elec-gate-params*]] by default"
+      (_type_) elec-gate-params 23)
     (elec-gate-method-24 "virtual" (_type_) none 24)
-    (elec-gate-method-25 "virtual" (_type_) none 25)
-    (elec-gate-method-26 (_type_) none 26)
-    (elec-gate-method-27 (_type_ sparticle-launch-control) none 27)
-    (elec-gate-method-28 (_type_ int) none 28)
-    (elec-gate-method-29 (_type_ float) none 29)
+    (set-palette!
+      "Sets the [[elec-gate]]'s `palette-id` appropriately"
+      (_type_) none 25)
+    (set-state!
+      "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
+       make the gate `idle`.
+
+       Otherwise, the gate will be `active`."
+      (_type_) none 26)
+    (spawn-particles
+      "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
+      (_type_ sparticle-launch-control) none 27)
+    (set-elec-scale-if-close!
+      "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
+       @see [[elec-gate::29]]" (_type_ float) none 28)
+    (set-elec-scale!
+      "Calls associated mood functions to set the scale with the value provided
+       @see mood-funcs
+       @see mood-funcs2"
+      (_type_ float) none 29)
     )
   )
 

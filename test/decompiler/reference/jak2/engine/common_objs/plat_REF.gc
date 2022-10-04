@@ -14,7 +14,7 @@
   (:methods
     (plat-idle () _type_ :state 34)
     (plat-path-active () _type_ :state 35)
-    (plat-method-36 (_type_) none 36)
+    (plat-path-sync (_type_) object 36)
     )
   )
 
@@ -58,32 +58,32 @@
   )
 
 ;; definition for method 30 of type plat
-;; WARN: Return type mismatch art-group vs none.
-(defmethod base-plat-method-30 plat ((obj plat))
+(defmethod get-art-group plat ((obj plat))
+  "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-plat" (the-as (pointer uint32) #f))
-  (none)
   )
 
 ;; definition for method 31 of type plat
 ;; WARN: Return type mismatch int vs none.
 (defmethod base-plat-method-31 plat ((obj plat))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
-      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
-      (set! (-> s5-0 total-prims) (the-as uint 1))
-      (set! (-> s5-0 root-prim) s4-0)
+  "TODO - collision stuff"
+  (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-spec pusher))
+      (set! (-> collision-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> collision-mesh prim-core action) (collide-action solid rideable))
+      (set! (-> collision-mesh transform-index) 0)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 0.0 0.0 13107.2)
+      (set! (-> collision-shape total-prims) (the-as uint 1))
+      (set! (-> collision-shape root-prim) collision-mesh)
       )
-    ((method-of-object s5-0 collide-shape-method-54))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (let ((v1-11 (-> s5-0 root-prim)))
-      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
-      (set! (-> s5-0 backup-collde-with) (-> v1-11 prim-core collide-with))
+    ((method-of-object collision-shape collide-shape-method-54))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (let ((prim (-> collision-shape root-prim)))
+      (set! (-> collision-shape backup-collide-as) (-> prim prim-core collide-as))
+      (set! (-> collision-shape backup-collide-with) (-> prim prim-core collide-with))
       )
-    (set! (-> obj root-override) (the-as collide-shape-moving s5-0))
+    (set! (-> obj root-override) (the-as collide-shape-moving collision-shape))
     )
   0
   (none)
@@ -104,8 +104,11 @@
   )
 
 ;; definition for method 36 of type plat
-;; WARN: Return type mismatch object vs none.
-(defmethod plat-method-36 plat ((obj plat))
+(defmethod plat-path-sync plat ((obj plat))
+  "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
+       otherwise, [[plat::34]]
+
+       @see [[sync-eased]]"
   (cond
     ((logtest? (-> obj path flags) (path-control-flag not-found))
      (go (method-of-object obj plat-idle))
@@ -117,7 +120,6 @@
       (go (method-of-object obj plat-idle))
       )
     )
-  (none)
   )
 
 ;; failed to figure out what this is:
@@ -125,7 +127,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
   :trans (behavior ()
-    (base-plat-method-27 self)
+    (execute-effects self)
     (none)
     )
   :code (behavior ()
@@ -186,33 +188,34 @@
   )
 
 ;; definition for method 11 of type plat
-(defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! plat ((obj plat) (entity entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (base-plat-method-31 obj)
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj (the-as skeleton-group (base-plat-method-30 obj)) (the-as pair 0))
+  (process-drawable-from-entity! obj entity)
+  (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
   (collide-shape-method-46 (-> obj root-override))
-  (base-plat-method-28 obj)
+  (stop-bouncing! obj)
   (base-plat-method-32 obj)
   (set! (-> obj fact)
         (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
+  (let ((params (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-15 0))
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-15 (logior v1-15 1))
           )
-      (set! (-> a1-4 sync-type) (the-as basic 'sync-eased))
-      (set! (-> a1-4 sync-flags) (the-as sync-flags v1-15))
+      (set! (-> params sync-type) (the-as basic 'sync-eased))
+      (set! (-> params sync-flags) (the-as sync-flags v1-15))
       )
-    (set! (-> a1-4 period) (the-as uint 1200))
-    (set! (-> a1-4 entity) arg0)
-    (set! (-> a1-4 percent) 0.0)
-    (set! (-> a1-4 ease-in) 0.15)
-    (set! (-> a1-4 ease-out) 0.15)
-    (set! (-> a1-4 pause-in) 0.0)
-    (set! (-> a1-4 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-4)
+    (set! (-> params period) (the-as uint 1200))
+    (set! (-> params entity) entity)
+    (set! (-> params percent) 0.0)
+    (set! (-> params ease-in) 0.15)
+    (set! (-> params ease-out) 0.15)
+    (set! (-> params pause-in) 0.0)
+    (set! (-> params pause-out) 0.0)
+    (initialize! (-> obj sync) params)
     )
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
@@ -221,19 +224,19 @@
     ((logtest? (-> obj path flags) (path-control-flag not-found))
      (set! (-> obj path-pos) 0.0)
      (base-plat-method-33 obj)
-     (plat-method-36 obj)
+     (plat-path-sync obj)
      )
     ((> (-> obj sync period) 0)
      (set! (-> obj path-pos) (get-norm! (-> obj sync) 0))
      (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
      (base-plat-method-33 obj)
-     (plat-method-36 obj)
+     (plat-path-sync obj)
      )
     (else
       (set! (-> obj path-pos) 0.0)
       (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
       (base-plat-method-33 obj)
-      (plat-method-36 obj)
+      (plat-path-sync obj)
       )
     )
   (none)
@@ -294,17 +297,17 @@
 ;; failed to figure out what this is:
 (defstate idle (drop-plat)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack 'bonk)
-       (let* ((s5-0 arg0)
-              (a0-5 (if (type? s5-0 process-focusable)
-                        (the-as process-focusable s5-0)
-                        )
-                    )
+       (let* ((proc-temp proc)
+              (proc-focus (if (type? proc-temp process-focusable)
+                              (the-as process-focusable proc-temp)
+                              )
+                          )
               )
          (cond
-           ((and a0-5 (logtest? (-> a0-5 focus-status) (focus-status edge-grab)))
+           ((and proc-focus (logtest? (-> proc-focus focus-status) (focus-status edge-grab)))
             (set! (-> self safe-time) (+ (-> self clock frame-counter) (seconds 0.2)))
             (return (the-as object #f))
             )
@@ -312,17 +315,15 @@
             (return (the-as object #f))
             )
            )
-         )
-       (set! (-> self hit-point quad) (-> self root-override trans quad))
-       (let ((a0-13 (if (type? arg0 process-focusable)
-                        (the-as process-focusable arg0)
-                        )
-                    )
-             )
-         (set! (-> self hit-point quad) (-> (get-trans a0-13 0) quad))
+         (set! (-> self hit-point quad) (-> self root-override trans quad))
+         (set! proc-focus (if (type? proc process-focusable)
+                              (the-as process-focusable proc)
+                              )
+               )
+         (set! (-> self hit-point quad) (-> (get-trans proc-focus 0) quad))
          )
        (if (zero? (-> self bounce-time))
-           (base-plat-method-29 self)
+           (start-bouncing! self)
            )
        #f
        )
@@ -359,11 +360,11 @@
 ;; failed to figure out what this is:
 (defstate fall (drop-plat)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('edge-grabbed)
        (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
-           (send-event arg0 'end-mode)
+           (send-event proc 'end-mode)
            )
        )
       (('die)
@@ -404,7 +405,3 @@
     )
   :post (the-as (function none :behavior drop-plat) rider-post)
   )
-
-
-
-

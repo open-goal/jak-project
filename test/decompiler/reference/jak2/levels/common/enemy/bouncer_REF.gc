@@ -15,7 +15,7 @@
     (idle () _type_ :state 20)
     (fire () _type_ :state 21)
     (smush () _type_ :state 22)
-    (bouncer-method-23 (_type_) none 23)
+    (init-skeleton! (_type_) none 23)
     (bouncer-method-24 (_type_) none 24)
     )
   )
@@ -60,25 +60,25 @@
 ;; failed to figure out what this is:
 (defstate idle (bouncer)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((evt-type event-type))
       (the-as
         object
         (cond
-          ((= v1-0 'bonk)
+          ((= evt-type 'bonk)
            (when ((method-of-type touching-shapes-entry touching-shapes-entry-method-12)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
+                  (the-as touching-shapes-entry (-> event param 0))
                   (the-as collide-shape (-> self root))
                   (the-as uint 1)
                   )
-             (when (send-event arg0 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
+             (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
                (sound-play "trampoline")
                (go-virtual fire)
                )
              )
            )
-          ((= v1-0 'touch)
-           (let ((gp-2 (-> arg3 param 0)))
+          ((= evt-type 'touch)
+           (let ((gp-2 (-> event param 0)))
              (cond
                (((method-of-type touching-shapes-entry touching-shapes-entry-method-13)
                  (the-as touching-shapes-entry gp-2)
@@ -118,9 +118,9 @@
                )
              )
            )
-          ((= v1-0 'attack)
-           (let ((v1-28 (the-as object (-> arg3 param 1)))
-                 (a0-17 (-> arg3 param 0))
+          ((= evt-type 'attack)
+           (let ((v1-28 (the-as object (-> event param 1)))
+                 (a0-17 (-> event param 0))
                  (a2-7 0)
                  )
              (cond
@@ -137,7 +137,7 @@
                               (the-as collide-shape (-> self root))
                               (the-as uint a2-7)
                               )
-                             (send-event arg0 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
+                             (send-event proc 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
                              )
                         )
                (sound-play "trampoline")
@@ -165,14 +165,14 @@
 ;; failed to figure out what this is:
 (defstate smush (bouncer)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (set! (-> self state-time) (-> self clock frame-counter))
        #f
        )
       (else
-        ((-> (method-of-object self idle) event) arg0 arg1 arg2 arg3)
+        ((-> (method-of-object self idle) event) proc arg1 event-type event)
         )
       )
     )
@@ -228,7 +228,7 @@
 
 ;; definition for method 23 of type bouncer
 ;; WARN: Return type mismatch int vs none.
-(defmethod bouncer-method-23 bouncer ((obj bouncer))
+(defmethod init-skeleton! bouncer ((obj bouncer))
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-bouncer" (the-as (pointer uint32) #f)))
@@ -241,22 +241,23 @@
 ;; definition for method 24 of type bouncer
 ;; WARN: Return type mismatch int vs none.
 (defmethod bouncer-method-24 bouncer ((obj bouncer))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 0)
-      (set-vector! (-> v1-2 local-sphere) 0.0 3072.0 0.0 6963.2)
-      (set! (-> s5-0 total-prims) (the-as uint 1))
-      (set! (-> s5-0 root-prim) v1-2)
+  "TODO - collision stuff"
+  (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> collision-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> collision-mesh prim-core action) (collide-action solid))
+      (set! (-> collision-mesh transform-index) 0)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 3072.0 0.0 6963.2)
+      (set! (-> collision-shape total-prims) (the-as uint 1))
+      (set! (-> collision-shape root-prim) collision-mesh)
       )
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s5-0 root-prim)))
-      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s5-0 backup-collde-with) (-> v1-5 prim-core collide-with))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (let ((prim (-> collision-shape root-prim)))
+      (set! (-> collision-shape backup-collide-as) (-> prim prim-core collide-as))
+      (set! (-> collision-shape backup-collide-with) (-> prim prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> obj root) collision-shape)
     )
   0
   (none)
@@ -268,7 +269,7 @@
   (set! (-> obj mods) #f)
   (bouncer-method-24 obj)
   (process-drawable-from-entity! obj arg0)
-  (bouncer-method-23 obj)
+  (init-skeleton! obj)
   (nav-mesh-connect-from-ent (the-as entity-nav-mesh obj))
   (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
   (go (method-of-object obj idle))

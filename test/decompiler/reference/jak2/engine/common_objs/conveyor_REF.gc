@@ -72,11 +72,11 @@
   (:methods
     (idle () _type_ :state 20)
     (conveyor-method-21 (_type_) float 21)
-    (conveyor-method-22 (_type_) none 22)
-    (conveyor-method-23 (_type_) none 23)
-    (conveyor-method-24 (_type_) none 24)
-    (conveyor-method-25 (_type_) object 25)
-    (conveyor-method-26 (_type_ process-focusable) none 26)
+    (get-art-group (_type_) art-group 22)
+    (reset-root! (_type_) none 23)
+    (init! (_type_) none 24)
+    (set-and-get-ambient-sound! (_type_) ambient-sound 25)
+    (conveyor-method-26 (_type_ process-focusable) symbol :behavior conveyor 26)
     (conveyor-method-27 (_type_) symbol 27)
     )
   )
@@ -104,24 +104,26 @@
 
 ;; definition for method 7 of type conveyor
 ;; WARN: Return type mismatch process-drawable vs conveyor.
-(defmethod relocate conveyor ((obj conveyor) (arg0 int))
-  (&+! (-> obj sections) arg0)
+(defmethod relocate conveyor ((obj conveyor) (new-addr int))
+  (&+! (-> obj sections) new-addr)
   (the-as
     conveyor
-    ((the-as (function process-drawable int process-drawable) (find-parent-method conveyor 7)) obj arg0)
+    ((the-as (function process-drawable int process-drawable) (find-parent-method conveyor 7)) obj new-addr)
     )
   )
 
 ;; definition for method 22 of type conveyor
-;; WARN: Return type mismatch symbol vs none.
-(defmethod conveyor-method-22 conveyor ((obj conveyor))
+;; WARN: Return type mismatch symbol vs art-group.
+(defmethod get-art-group conveyor ((obj conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
   (go process-drawable-art-error "invalid type")
-  (none)
+  (the-as art-group #f)
   )
 
 ;; definition for method 23 of type conveyor
 ;; WARN: Return type mismatch int vs none.
-(defmethod conveyor-method-23 conveyor ((obj conveyor))
+(defmethod reset-root! conveyor ((obj conveyor))
+  "Re-initializes the `root` [[trsqv]]"
   (set! (-> obj root) (new 'process 'trsqv))
   0
   (none)
@@ -130,22 +132,20 @@
 ;; definition for method 24 of type conveyor
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod conveyor-method-24 conveyor ((obj conveyor))
-  (local-vars (r0-0 uint128) (v1-6 uint128) (sv-16 int))
+(defmethod init! conveyor ((obj conveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (local-vars (tag res-tag))
   (set! (-> obj speed) 24576.0)
   (set! (-> obj belt-radius) 11878.4)
   (set! (-> obj pull-y-threshold) 10240.0)
   (set! (-> obj speed-mult-array) #f)
   (set! (-> obj speed-mult-array-len) 0)
-  (let ((a0-1 (-> obj entity)))
-    (set! sv-16 0)
-    (let ((v1-4 (res-lump-data a0-1 'scale-factor pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
-      (when v1-4
-        (set! (-> obj speed-mult-array) (the-as (array float) v1-4))
-        (let ((v1-5 (the-as uint128 sv-16)))
-          (.pcpyud v1-6 v1-5 r0-0)
-          )
-        (set! (-> obj speed-mult-array-len) (shr (* (the-as int v1-6) 2) 49))
+  (let ((entity (-> obj entity)))
+    (set! tag (new 'static 'res-tag))
+    (let ((scale-factor (res-lump-data entity 'scale-factor pointer :tag-ptr (& tag))))
+      (when scale-factor
+        (set! (-> obj speed-mult-array) (the-as (array float) scale-factor))
+        (set! (-> obj speed-mult-array-len) (the-as int (-> tag elt-count)))
         )
       )
     )
@@ -154,21 +154,27 @@
   )
 
 ;; definition for method 25 of type conveyor
-(defmethod conveyor-method-25 conveyor ((obj conveyor))
-  (let ((v1-1 (res-lump-value (-> obj entity) 'options uint128 :time -1000000000.0)))
-    (cond
-      ((not (logtest? #x10000 v1-1))
-       (let ((v0-1
-               (the-as object (new 'process 'ambient-sound (static-sound-spec "conveyor" :fo-max 80) (-> obj root trans)))
+;; WARN: Return type mismatch object vs ambient-sound.
+(defmethod set-and-get-ambient-sound! conveyor ((obj conveyor))
+  "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+       and return it as well.  Otherwise, set it to `0`"
+  (let ((actor-options (res-lump-value (-> obj entity) 'options actor-option :time -1000000000.0)))
+    (the-as
+      ambient-sound
+      (cond
+        ((not (logtest? (actor-option no-amb-sound) actor-options))
+         (let ((sound
+                 (the-as object (new 'process 'ambient-sound (static-sound-spec "conveyor" :fo-max 80) (-> obj root trans)))
+                 )
                )
-             )
-         (set! (-> obj sound) (the-as ambient-sound v0-1))
-         v0-1
+           (set! (-> obj sound) (the-as ambient-sound sound))
+           sound
+           )
          )
-       )
-      (else
-        (set! (-> obj sound) (the-as ambient-sound 0))
-        0
+        (else
+          (set! (-> obj sound) (the-as ambient-sound 0))
+          0
+          )
         )
       )
     )
@@ -176,53 +182,53 @@
 
 ;; definition for method 26 of type conveyor
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch symbol vs none.
-;; WARN: Function (method 26 conveyor) has a return type of none, but the expression builder found a return statement.
-(defmethod conveyor-method-26 conveyor ((obj conveyor) (arg0 process-focusable))
-  (with-pp
-    (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> (get-trans arg0 0) quad))
-      (set! (-> s4-0 w) 1.0)
-      (when (>= (vector4-dot s4-0 (the-as vector (-> obj leading))) 0.0)
-        (let* ((a1-2 (-> obj sections))
-               (a2-0 (-> a1-2 length))
-               )
-          (dotimes (a0-3 a2-0)
-            (let ((v1-8 (-> a1-2 data a0-3)))
-              (when (< (vector4-dot s4-0 (the-as vector (-> v1-8 trailing))) 0.0)
-                (let ((a1-3 (new 'stack-no-clear 'vector)))
-                  (vector-! a1-3 s4-0 (-> v1-8 start))
-                  (when (>= (-> obj belt-radius) (fabs (vector-dot a1-3 (-> v1-8 radial-dir))))
-                    (let* ((f0-7 (vector-dot a1-3 (-> v1-8 pull-dir)))
-                           (f1-6 (- (-> a1-3 y) (* (-> v1-8 pull-dir y) f0-7)))
-                           )
-                      (when (>= (-> obj pull-y-threshold) (fabs f1-6))
-                        (let ((a2-8 (new 'stack-no-clear 'vector)))
-                          (let ((f0-10 (-> obj speed)))
-                            (if (< a0-3 (-> obj speed-mult-array-len))
-                                (set! f0-10 (* f0-10 (-> (the-as (pointer float) (+ (the-as uint (-> obj speed-mult-array)) (* a0-3 4))))))
-                                )
-                            (vector-float*! a2-8 (-> v1-8 pull-dir) (* f0-10 (-> pp clock seconds-per-frame)))
-                            )
-                          (send-event arg0 'push-trans a2-8 3000)
+(defmethod conveyor-method-26 conveyor ((obj conveyor) (proc-focus process-focusable))
+  "TODO - conveyor section related, perhaps related to moving the process along the belt?"
+  (let ((vec (new 'stack-no-clear 'vector)))
+    (set! (-> vec quad) (-> (get-trans proc-focus 0) quad))
+    (set! (-> vec w) 1.0)
+    (when (>= (vector4-dot vec (the-as vector (-> obj leading))) 0.0)
+      (let* ((sections (-> obj sections))
+             (section-count (-> sections length))
+             )
+        (dotimes (section-idx section-count)
+          (let ((section (-> sections data section-idx)))
+            (when (< (vector4-dot vec (the-as vector (-> section trailing))) 0.0)
+              (let ((vec-temp (new 'stack-no-clear 'vector)))
+                (vector-! vec-temp vec (-> section start))
+                (when (>= (-> obj belt-radius) (fabs (vector-dot vec-temp (-> section radial-dir))))
+                  (let* ((f0-7 (vector-dot vec-temp (-> section pull-dir)))
+                         (f1-6 (- (-> vec-temp y) (* (-> section pull-dir y) f0-7)))
+                         )
+                    (when (>= (-> obj pull-y-threshold) (fabs f1-6))
+                      (let ((a2-8 (new 'stack-no-clear 'vector)))
+                        (let ((f0-10 (-> obj speed)))
+                          (if (< section-idx (-> obj speed-mult-array-len))
+                              (set! f0-10
+                                    (* f0-10 (-> (the-as (pointer float) (+ (the-as uint (-> obj speed-mult-array)) (* section-idx 4)))))
+                                    )
+                              )
+                          (vector-float*! a2-8 (-> section pull-dir) (* f0-10 (-> self clock seconds-per-frame)))
                           )
+                        (send-event proc-focus 'push-trans a2-8 3000)
                         )
                       )
                     )
                   )
-                (return #f)
                 )
+              (return #f)
               )
             )
           )
         )
+      #f
       )
-    (none)
     )
   )
 
 ;; definition for method 27 of type conveyor
 (defmethod conveyor-method-27 conveyor ((obj conveyor))
+  "TODO - collision related, has some dead code as well (previous iteration?)"
   (local-vars (a0-10 float) (a2-5 float) (a2-12 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -233,14 +239,9 @@
          )
     (init-vf0-vector)
     (set! *actor-list-length* 0)
-    (when #t
-      (let ((t9-0 (method-of-object *actor-hash* spatial-hash-method-36)))
-        (-> obj collide-bounds)
-        *actor-list*
-        256
-        (set! *actor-list-length* (the-as int (t9-0)))
+    (if #t
+        (set! *actor-list-length* (spatial-hash-method-36 *actor-hash* (-> obj collide-bounds) *actor-list* 256))
         )
-      )
     (when #t
       (let ((a0-2 (-> *collide-player-list* alive-list next0)))
         *collide-player-list*
@@ -366,6 +367,7 @@
 ;; definition for method 21 of type conveyor
 ;; INFO: Used lq/sq
 (defmethod conveyor-method-21 conveyor ((obj conveyor))
+  "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
   (local-vars (sv-32 conveyor-section) (sv-48 conveyor-section))
   (let* ((s5-0 (-> obj path))
          (s4-0 (-> s5-0 curve num-cverts))
@@ -439,16 +441,16 @@
 ;; definition for method 11 of type conveyor
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! conveyor ((obj conveyor) (arg0 entity-actor))
-  (conveyor-method-23 obj)
+  (reset-root! obj)
   (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj (the-as skeleton-group (conveyor-method-22 obj)) (the-as pair 0))
+  (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (if (< (-> obj path curve num-cverts) 2)
       (go process-drawable-art-error "bad path")
       )
-  (conveyor-method-24 obj)
-  (conveyor-method-25 obj)
+  (init! obj)
+  (set-and-get-ambient-sound! obj)
   (conveyor-method-21 obj)
   (ja-post)
   (go (method-of-object obj idle))
@@ -496,10 +498,9 @@
   )
 
 ;; definition for method 22 of type strip-conveyor
-;; WARN: Return type mismatch art-group vs none.
-(defmethod conveyor-method-22 strip-conveyor ((obj strip-conveyor))
+(defmethod get-art-group strip-conveyor ((obj strip-conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-strip-conveyor" (the-as (pointer uint32) #f))
-  (none)
   )
 
 ;; definition of type lgconveyor
@@ -545,15 +546,15 @@
   )
 
 ;; definition for method 22 of type lgconveyor
-;; WARN: Return type mismatch art-group vs none.
-(defmethod conveyor-method-22 lgconveyor ((obj lgconveyor))
+(defmethod get-art-group lgconveyor ((obj lgconveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-lgconveyor" (the-as (pointer uint32) #f))
-  (none)
   )
 
 ;; definition for method 24 of type lgconveyor
 ;; WARN: Return type mismatch float vs none.
-(defmethod conveyor-method-24 lgconveyor ((obj lgconveyor))
+(defmethod init! lgconveyor ((obj lgconveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
   (set! (-> obj speed) 30720.0)
   (set! (-> obj belt-radius) 11878.4)
   (set! (-> obj pull-y-threshold) 10240.0)
@@ -587,7 +588,3 @@
     (none)
     )
   )
-
-
-
-
