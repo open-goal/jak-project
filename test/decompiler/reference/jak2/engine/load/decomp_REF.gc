@@ -1,18 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: decomp.gc
-;; name in dgo: decomp
-;; dgos: ENGINE, GAME
-
-;; This file has compression/decompression functions used for compressed visibility data, bigmap data, and
-;; joint animations (not the joint-anim-compressed stuff, an outer layer of lzo compression of those)
-;; It also has the update-vis! method of level, which handles the details of decompression.
-;; Luckily for us, the IOP ramdisk vis stuff from Jak 1 is gone!
-;; It's not super clear to me why they ditched this system. Maybe the visibility data is a lot smaller in jak 2.
-
-;; DECOMP BEGINS
-
 ;; definition for function unpack-comp-rle
 ;; WARN: Return type mismatch (pointer int8) vs none.
 (defun unpack-comp-rle ((arg0 (pointer int8)) (arg1 (pointer int8)))
@@ -167,7 +155,7 @@
         (set! a2-6 (-> arg1 0))
         (set! arg1 (&-> arg1 1))
         (b! (>= (the-as int a2-6) 16) cfg-18)
-        (let ((a2-10 (the-as (pointer uint8) (&- (&- (&-> arg0 -2049) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4))))))
+        (let ((a2-10 (&- (&- (&-> arg0 -2049) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4)))))
           (set! arg1 (&-> arg1 1))
           (set! (-> arg0 0) (-> a2-10 0))
           (set! (-> arg0 1) (-> a2-10 1))
@@ -180,7 +168,7 @@
         (label cfg-18)
         (b! (< (the-as int a2-6) 64) cfg-20)
         (let ((a3-23
-                (the-as (pointer uint8) (&- (&- (&-> arg0 -1) (the-as uint (logand (/ (the-as int a2-6) 4) 7))) (the-as uint (* (-> arg1 0) 8))))
+                (&- (&- (&-> arg0 -1) (the-as uint (logand (/ (the-as int a2-6) 4) 7))) (the-as uint (* (-> arg1 0) 8)))
                 )
               )
           (set! arg1 (&-> arg1 1))
@@ -188,7 +176,7 @@
             (b! #t cfg-36 :delay (nop!))
             (label cfg-20)
             (b! (< (the-as int a2-6) 32) cfg-27)
-            (set! a2-13 (the-as int (logand a2-6 31)))
+            (set! a2-13 (logand a2-6 31))
             (b! (nonzero? a2-13) cfg-26 :delay (empty-form))
             (b! #t cfg-24 :delay (nop!))
             (label cfg-23)
@@ -196,16 +184,16 @@
             (set! arg1 (&-> arg1 1))
             (label cfg-24)
             (b! (zero? (-> arg1 0)) cfg-23 :delay (nop!))
-            (set! a2-13 (the-as int (+ (-> arg1 0) 31 a2-13)))
+            (set! a2-13 (+ (-> arg1 0) 31 a2-13))
             (set! arg1 (&-> arg1 1))
             (label cfg-26)
-            (set! a3-23 (the-as (pointer uint8) (&- (&-> arg0 -1) (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64))))))
+            (set! a3-23 (&- (&-> arg0 -1) (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64)))))
             (set! arg1 (&-> arg1 2))
             (b! #t cfg-36 :delay (nop!))
             (label cfg-27)
             (b! (< (the-as int a2-6) 16) cfg-35)
-            (let ((a3-32 (the-as (pointer uint8) (&- arg0 (the-as uint (shl (logand a2-6 8) 11))))))
-              (set! a2-13 (the-as int (logand a2-6 7)))
+            (let ((a3-32 (&- arg0 (the-as uint (shl (logand a2-6 8) 11)))))
+              (set! a2-13 (logand a2-6 7))
               (b! (nonzero? a2-13) cfg-33 :delay (empty-form))
               (b! #t cfg-31 :delay (nop!))
               (label cfg-30)
@@ -213,18 +201,18 @@
               (set! arg1 (&-> arg1 1))
               (label cfg-31)
               (b! (zero? (-> arg1 0)) cfg-30 :delay (nop!))
-              (set! a2-13 (the-as int (+ (-> arg1 0) 7 a2-13)))
+              (set! a2-13 (+ (-> arg1 0) 7 a2-13))
               (set! arg1 (&-> arg1 1))
               (label cfg-33)
               (let ((a3-33 (&- a3-32 (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64))))))
                 (set! arg1 (&-> arg1 2))
                 (b! (= a3-33 arg0) cfg-47 :delay (nop!))
-                (set! a3-23 (&-> (the-as (pointer uint8) a3-33) -16384))
+                (set! a3-23 (&-> a3-33 -16384))
                 )
               )
             (b! #t cfg-36 :delay (nop!))
             (label cfg-35)
-            (let ((a2-16 (the-as (pointer uint8) (&- (&- (&-> arg0 -1) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4))))))
+            (let ((a2-16 (&- (&- (&-> arg0 -1) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4)))))
               (set! arg1 (&-> arg1 1))
               (set! (-> arg0 0) (-> a2-16 0))
               (set! (-> arg0 1) (-> a2-16 1))
@@ -343,14 +331,14 @@
                                                    )
                                        )
                                )
-              (spad-start (&-> (the-as (pointer int8) *fake-scratchpad-data*) 0))
-              (spad-end (the-as (pointer int8) (&+ *fake-scratchpad-data* 2048)))
+              (spad-start (&-> (the-as (pointer int8) #x70000000) 0))
+              (spad-end (the-as (pointer int8) (+ 2048 #x70000000)))
               (list-len (-> obj bsp visible-list-length))
               )
           (when (zero? (the-as vis-info-flag lower-flag-bits))
             (let ((qwc (/ (+ list-len 15) 16)))
               (dotimes (a0-19 qwc)
-                (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-19 16)))) (the int128 0))
+                (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-19 16)))) 0)
                 )
               )
             (mem-copy! spad-start (the-as (pointer uint8) vis-buf) list-len)
@@ -361,7 +349,7 @@
                 ((= comp-mode 1)
                  (let ((qwc2 (/ (+ list-len 15) 16)))
                    (dotimes (a0-23 qwc2)
-                     (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-23 16)))) (the int128 0))
+                     (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-23 16)))) 0)
                      )
                    )
                  (set! extra-vis-length (-> obj bsp extra-vis-list-length))

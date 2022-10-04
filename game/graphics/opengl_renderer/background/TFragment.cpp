@@ -60,17 +60,17 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
-  if (m_my_id == render_state->bucket_for_vis_copy) {
-    DmaTransfer transfers[2];
+  if (m_my_id == render_state->bucket_for_vis_copy &&
+      dma.current_tag_vifcode1().kind == VifCode::Kind::PC_PORT) {
+    DmaTransfer transfers[20];
 
-    transfers[0] = dma.read_and_advance();
-    auto next0 = dma.read_and_advance();
-    ASSERT(next0.size_bytes == 0);
-    transfers[1] = dma.read_and_advance();
-    auto next1 = dma.read_and_advance();
-    ASSERT(next1.size_bytes == 0);
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
+      transfers[i] = dma.read_and_advance();
+      auto next0 = dma.read_and_advance();
+      ASSERT(next0.size_bytes == 0);
+    }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
       if (transfers[i].size_bytes == 128 * 16) {
         if (render_state->use_occlusion_culling) {
           render_state->occlusion_vis[i].valid = true;

@@ -7,31 +7,32 @@
 
 #include <algorithm>
 
-#include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
+#include "third-party/fmt/core.h"
 /*!
  * Print out the input data for debugging.
  */
 void print_allocate_input(const AllocationInput& in) {
-  fmt::print("[RegAlloc] Debug Input Program:\n");
+  lg::print("[RegAlloc] Debug Input Program:\n");
   if (in.instructions.size() == in.debug_instruction_names.size()) {
     for (size_t i = 0; i < in.instructions.size(); i++) {
-      //      fmt::print(" [{}] {} -> {}\n", in.debug_instruction_names.at(i),
+      //      lg::print(" [{}] {} -> {}\n", in.debug_instruction_names.at(i),
       //                 in.instructions.at(i).print());
-      fmt::print(" [{:3d}] {:30} -> {:30}\n", i, in.debug_instruction_names.at(i),
-                 in.instructions.at(i).print());
+      lg::print(" [{:3d}] {:30} -> {:30}\n", i, in.debug_instruction_names.at(i),
+                in.instructions.at(i).print());
     }
   } else {
     for (const auto& instruction : in.instructions) {
-      fmt::print(" [{:3d}] {}\n", instruction.print());
+      lg::print(" [{:3d}] {}\n", instruction.print());
     }
   }
-  fmt::print("[RegAlloc] Debug Input Constraints:\n");
+  lg::print("[RegAlloc] Debug Input Constraints:\n");
   for (const auto& c : in.constraints) {
-    fmt::print(" {}\n", c.to_string());
+    lg::print(" {}\n", c.to_string());
   }
 
-  fmt::print("\n");
+  lg::print("\n");
 }
 
 /*!

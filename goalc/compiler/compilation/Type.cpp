@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "common/type_system/state.h"
@@ -371,8 +372,8 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   auto kv = m_symbol_types.find(result.type.base_type());
   if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
     // we already have something that's not a type with the same name, this is bad.
-    fmt::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
-               kv->second.print());
+    lg::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
+              kv->second.print());
   }
   // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
@@ -958,7 +959,7 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
   auto result = compile(args.unnamed.at(0), env)->to_reg(form, env);
-  fmt::print("[TYPE] {} {}\n", result->type().print(), result->print());
+  lg::print("[TYPE] {} {}\n", result->type().print(), result->print());
   return result;
 }
 

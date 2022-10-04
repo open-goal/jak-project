@@ -49,35 +49,35 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
     if (ce.print_err_stack) {
       bool good_info = false;
       auto info = m_goos.reader.db.get_info_for(o, &good_info);
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
-      fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+      lg::print("{}\n", pretty_print::to_string(goos_result, 120));
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+      lg::print(fg(fmt::color::orange), "{}\n", name.print());
       if (good_info) {
-        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
-        fmt::print("{}\n", info);
+        lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+        lg::print("{}\n", info);
         ce.print_err_stack = false;
       }
       std::string line(80, '-');
       line.push_back('\n');
-      fmt::print(line);
+      lg::print(line);
     }
 
     throw;
   } catch (std::runtime_error& e) {
     bool good_info = false;
     auto info = m_goos.reader.db.get_info_for(o, &good_info);
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
-    fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+    lg::print("{}\n", pretty_print::to_string(goos_result, 120));
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+    lg::print(fg(fmt::color::orange), "{}\n", name.print());
     if (good_info) {
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
-      fmt::print("{}\n", info);
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+      lg::print("{}\n", info);
     }
     std::string line(80, '-');
     line.push_back('\n');
-    fmt::print(line);
+    lg::print(line);
 
     throw;
   }

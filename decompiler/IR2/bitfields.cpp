@@ -1,6 +1,7 @@
 #include "bitfields.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/Range.h"
 
@@ -563,7 +564,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     // in this case, we expect the value we're oring with to be the appropriate mask for the field.
 
-    fmt::print("Rare bitfield set!\n");
+    lg::info("Rare bitfield set!");
     u64 value = step.amount;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -621,7 +622,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
   }
   lg::error("Current: {}", step.print());
   if (m_got_pcpyud) {
-    lg::error("Got pcpyud\n");
+    lg::error("Got pcpyud");
   }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");
