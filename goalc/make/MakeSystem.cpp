@@ -375,7 +375,7 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
       fmt::print("Error: {}\n", e.what());
     }
     if (!success) {
-      fmt::print("Build failed on {}{}.\n", rule->input.at(0),
+      fmt::print("Build failed on {}{}\n", rule->input.at(0),
                  rule->input.size() > 1 ? ", ..." : "");
       throw std::runtime_error("Build failed.");
       return false;
