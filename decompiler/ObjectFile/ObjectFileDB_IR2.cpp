@@ -50,7 +50,7 @@ void ObjectFileDB::analyze_functions_ir2(
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
     Timer file_timer;
-    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
+    lg::info("[{:3d}/{}]------ {}", file_idx++, total_file_count, data.to_unique_name());
     ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
@@ -125,7 +125,7 @@ void ObjectFileDB::analyze_functions_ir2(
       });
     }
 
-    fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
+    lg::info("Done in {:.2f}ms", file_timer.getMs());
   });
 
   lg::info("{}", stats.let.print());
@@ -172,7 +172,7 @@ void ObjectFileDB::ir2_setup_labels(const Config& config, ObjectFileData& data) 
           std::make_unique<LabelDB>(config_labels, data.linked_data.labels, dts);
       analyze_labels(data.linked_data.label_db.get(), &data.linked_data);
     } catch (const std::exception& e) {
-      lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
+      lg::die("Error parsing labels for {}: {}", data.to_unique_name(), e.what());
     }
   }
 }
@@ -296,7 +296,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} global  {:.2f}%", total_named_global_functions,
            100.f * total_named_global_functions / total_functions);
   lg::info("{:4d} methods {:.2f}%", total_methods, 100.f * total_methods / total_functions);
-  lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
+  lg::info("{:4d} logins  {:.2f}%", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,

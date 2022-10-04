@@ -2,6 +2,8 @@
 
 #include "Sprite3.h"
 
+#include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
@@ -1069,7 +1071,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     tex = render_state->texture_pool->lookup(tbp);
 
     if (!tex) {
-      fmt::print("Failed to find texture at {}, using random\n", tbp);
+      lg::warn("Failed to find texture at {}, using random", tbp);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
     ASSERT(tex);
@@ -1216,8 +1218,8 @@ void Sprite3::update_mode_from_alpha1(u64 val, DrawMode& mode) {
   }
 
   else {
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
+    lg::error("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
+              (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     ASSERT(false);
   }

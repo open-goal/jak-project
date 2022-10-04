@@ -138,7 +138,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                "POSITION wasn't float");
     // for (auto& attrib : attributes) {
-    // fmt::print("attrib: {}\n", attrib.first);
+    // lg::print("attrib: {}\n", attrib.first);
     //}
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
@@ -796,10 +796,10 @@ void extract(const Input& in,
           for (int j = 0; j < 3; j++) {
             float output_dist = face.bsphere.w() - (face.bsphere.xyz() - face.v[j]).length();
             if (output_dist < 0) {
-              fmt::print("{}\n", output_dist);
-              fmt::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
-                         face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
-              fmt::print("bsphere: {}\n", face.bsphere.to_string_aligned());
+              lg::print("{}\n", output_dist);
+              lg::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
+                        face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
+              lg::print("bsphere: {}\n", face.bsphere.to_string_aligned());
             }
           }
           face.pat = pat.pat;

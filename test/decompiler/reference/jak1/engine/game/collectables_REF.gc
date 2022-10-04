@@ -503,7 +503,7 @@
       object
       (cond
         ((= arg2 'eco-blue)
-         (when (and (zero? (logand (-> self flags) (collectable-flags fading ignore-blue)))
+         (when (and (not (logtest? (-> self flags) (collectable-flags fading ignore-blue)))
                     (!= (-> self next-state name) 'pickup)
                     (begin (check-blue-suck (the-as process-drawable arg0)) #t)
                     (logtest? (-> self flags) (collectable-flags can-collect))
@@ -1213,7 +1213,7 @@
 
 ;; definition for method 12 of type money
 (defmethod run-logic? money ((obj money))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> obj draw))
                (logtest? (-> obj draw status) (draw-status was-drawn))
                (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root-override pause-adjust-distance))
@@ -2183,10 +2183,10 @@
        (go-virtual jump)
        )
       ((and gp-1
-            (zero? (logand (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
+            (not (logtest? (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
                            (fact-options skip-jump-anim)
                            )
-                   )
+                 )
             (zero? (logand (-> self fact options) (fact-options skip-jump-anim)))
             )
        (set! (-> self jump-pos quad) (-> (the-as vector gp-1) quad))

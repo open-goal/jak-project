@@ -119,14 +119,14 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
             menv->disable_use(src_var);
           }
 
-          // fmt::print("marked {} as dead set\n", to_string(env));
+          // lg::print("marked {} as dead set\n", to_string(env));
         }
       } else if (m_src.get_arg(0).is_sym_val() && m_src.get_arg(0).get_str() == "#f" &&
                  m_dst.reg().allowed_local_gpr()) {
         auto& ri = env.reg_use().op.at(m_my_idx);
         if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
           result->mark_as_dead_false();
-          // fmt::print("marked {} as dead set false\n", to_string(env));
+          // lg::print("marked {} as dead set false\n", to_string(env));
         }
       }
     }

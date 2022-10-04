@@ -1,5 +1,7 @@
 #include "Shrub.h"
 
+#include "common/log/log.h"
+
 Shrub::Shrub(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
@@ -184,7 +186,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("Shrub setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("Shrub setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;

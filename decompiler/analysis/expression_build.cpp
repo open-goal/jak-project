@@ -1,5 +1,6 @@
 #include "expression_build.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
@@ -46,7 +47,7 @@ bool convert_to_expressions(
       info.second.name_override = rename->second;
     }
     //     debug
-    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    // lg::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
     //         info.second.tp_type.print());
   }
 
