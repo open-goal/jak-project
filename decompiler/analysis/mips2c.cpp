@@ -2,6 +2,7 @@
 
 #include "mips2c.h"
 
+#include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/print_float.h"
 #include "decompiler/Disasm/InstructionMatching.h"
@@ -1075,6 +1076,10 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3(i0, instr_str, "adds");
     case InstructionKind::SUBS:
       return handle_generic_op3(i0, instr_str, "subs");
+    case InstructionKind::MINS:
+      return handle_generic_op3(i0, instr_str, "mins");
+    case InstructionKind::MAXS:
+      return handle_generic_op3(i0, instr_str, "maxs");
     case InstructionKind::XOR:
       return handle_generic_op3(i0, instr_str, "xor_");
     case InstructionKind::AND:
@@ -1183,7 +1188,7 @@ struct JumpTableBlock {
 void run_mips2c_jump_table(Function* f,
                            const std::vector<int>& jump_table_locations,
                            GameVersion version) {
-  fmt::print("mips2c-jump on {}\n", f->name());
+  lg::info("mips2c-jump on {}", f->name());
   u32 magic_code = std::hash<std::string>()(f->name());
   std::unordered_map<int, int> loc_to_block;
   for (size_t bb_idx = 0; bb_idx < f->basic_blocks.size(); bb_idx++) {

@@ -7,6 +7,7 @@
 #include "deftype.h"
 
 #include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
 
 #include "third-party/fmt/core.h"
 
@@ -402,7 +403,7 @@ StructureDefResult parse_structure_def(
           fmt::format("Process heap underflow in type {}: heap-base is {} vs. auto-detected {}",
                       type->get_name(), flags.heap_base, auto_hb));
       //} else if (flags.heap_base != auto_hb) {
-      //  fmt::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
+      //  lg::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
       //             flags.heap_base, auto_hb);
     }
   }
@@ -623,14 +624,14 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
       new_type->set_pack(true);
     }
     if (sr.allow_misaligned) {
-      fmt::print(
+      lg::print(
           "[TypeSystem] :allow-misaligned was set on {}, which is a basic and cannot "
           "be misaligned\n",
           name);
       throw std::runtime_error("invalid pack option on basic");
     }
     if (sr.always_stack_singleton) {
-      fmt::print(
+      lg::print(
           "[TypeSystem] :always-stack-singleton was set on {}, which is a basic and cannot "
           "be a stack singleton\n",
           name);

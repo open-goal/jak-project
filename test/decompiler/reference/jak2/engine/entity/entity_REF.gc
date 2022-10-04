@@ -465,7 +465,7 @@
         )
     (let ((s5-1 format)
           (s4-0 "~C~C~C")
-          (a2-0 (if (and arg0 (zero? (logand (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
+          (a2-0 (if (and arg0 (not (logtest? (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
                     114
                     32
                     )
@@ -2170,7 +2170,7 @@
                  )
       )
     )
-  (when (zero? (logand (-> obj status) (entity-perm-status bit-5)))
+  (when (not (logtest? (-> obj status) (entity-perm-status bit-5)))
     (set! (-> obj user-uint64) (the-as uint 0))
     0
     )
@@ -2231,7 +2231,7 @@
       )
     )
   (let ((s5-1 (lambda ((arg0 process))
-                (if (zero? (logand (-> arg0 mask) (process-mask no-kill)))
+                (if (not (logtest? (-> arg0 mask) (process-mask no-kill)))
                     (deactivate arg0)
                     )
                 (none)
@@ -2286,7 +2286,7 @@
 
 ;; definition for method 12 of type process-drawable
 (defmethod run-logic? process-drawable ((obj process-drawable))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
               (vector-vector-distance (-> obj root trans) (math-camera-pos))
               )
@@ -2298,7 +2298,7 @@
 
 ;; definition for method 9 of type entity-links
 (defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and (zero? (logand (-> obj perm status) (entity-perm-status bit-0 dead)))
+  (and (not (logtest? (-> obj perm status) (entity-perm-status bit-0 dead)))
        (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )
@@ -2386,7 +2386,7 @@
                         )
                        (else
                          (if (and (-> v1-54 process)
-                                  (zero? (logand (-> v1-54 perm status) (entity-perm-status no-kill)))
+                                  (not (logtest? (-> v1-54 perm status) (entity-perm-status no-kill)))
                                   (zero? (logand (-> v1-54 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> v1-54 entity))
@@ -2404,7 +2404,7 @@
                  (dotimes (s2-1 s3-2)
                    (let ((v1-67 (-> s4-3 data s2-1)))
                      (cond
-                       ((zero? (logand (-> v1-67 kill-mask) sv-32))
+                       ((not (logtest? (-> v1-67 kill-mask) sv-32))
                         (when (not (or (-> v1-67 process) (logtest? (-> v1-67 perm status) (entity-perm-status bit-0 dead))))
                           (birth! (-> v1-67 entity))
                           (set! sv-24 (+ sv-24 1))
@@ -2415,7 +2415,7 @@
                         )
                        (else
                          (if (and (-> v1-67 process)
-                                  (zero? (logand (-> v1-67 perm status) (entity-perm-status no-kill)))
+                                  (not (logtest? (-> v1-67 perm status) (entity-perm-status no-kill)))
                                   (zero? (logand (-> v1-67 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> v1-67 entity))
@@ -2434,7 +2434,7 @@
                    (let ((s1-0 (-> s4-4 data s2-2)))
                      (cond
                        ((and (< (vector-vector-distance (-> s1-0 trans) sv-16) (-> *ACTOR-bank* birth-dist))
-                             (zero? (logand (-> s1-0 perm status) (entity-perm-status bit-9 bit-10)))
+                             (not (logtest? (-> s1-0 perm status) (entity-perm-status bit-9 bit-10)))
                              (zero? (logand (-> s1-0 kill-mask) sv-32))
                              )
                         (when (not (or (-> s1-0 process) (logtest? (-> s1-0 perm status) (entity-perm-status bit-0 dead))))
@@ -2447,7 +2447,7 @@
                         )
                        (else
                          (if (and (-> s1-0 process)
-                                  (zero? (logand (-> s1-0 perm status) (entity-perm-status no-kill)))
+                                  (not (logtest? (-> s1-0 perm status) (entity-perm-status no-kill)))
                                   (zero? (logand (-> s1-0 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> s1-0 entity))
@@ -2468,8 +2468,8 @@
                       (set! sv-48 (-> s3-4 data s1-1))
                       (cond
                         ((and (is-object-visible? s4-1 (-> sv-48 vis-id))
-                              (zero? (logand (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))
-                              (zero? (logand (-> sv-48 kill-mask) sv-32))
+                              (not (logtest? (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))
+                              (not (logtest? (-> sv-48 kill-mask) sv-32))
                               (or (-> s4-1 vis-info 0) (< (vector-vector-distance (-> sv-48 trans) sv-16) (-> sv-48 vis-dist)))
                               )
                          (when (not (or (-> sv-48 process) (logtest? (-> sv-48 perm status) (entity-perm-status bit-0 dead)) s0-0))
@@ -2492,7 +2492,7 @@
                          )
                         (else
                           (when (and (-> sv-48 process)
-                                     (zero? (logand (-> sv-48 perm status) (entity-perm-status no-kill)))
+                                     (not (logtest? (-> sv-48 perm status) (entity-perm-status no-kill)))
                                      (zero? (logand (-> sv-48 process mask) (process-mask no-kill)))
                                      )
                             (kill! (-> sv-48 entity))

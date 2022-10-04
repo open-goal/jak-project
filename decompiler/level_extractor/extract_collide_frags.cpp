@@ -179,7 +179,7 @@ void extract_pats(CollideListItem& item) {
     auto pat_idx = deref_u8(item.mesh->packed_data, byte_offset++);
 
     u32 pat = deref_u32(item.mesh->pat_array, pat_idx);
-    // fmt::print("pat @ {} is 0x{:x}\n", pat_idx, pat);
+    // lg::print("pat @ {} is 0x{:x}\n", pat_idx, pat);
     f.pat = pat;
   }
 }

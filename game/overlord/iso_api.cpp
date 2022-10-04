@@ -56,7 +56,7 @@ s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
 }
 
 s32 LoadISOFileChunkToEE(FileRecord* file, uint32_t dest_addr, uint32_t length, uint32_t offset) {
-  lg::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}\n", file->name, length, offset);
+  lg::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}", file->name, length, offset);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_OFFSET_CMD_ID;
   cmd.messagebox_to_reply = 0;

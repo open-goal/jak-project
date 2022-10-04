@@ -5,9 +5,6 @@
 ;; name in dgo: cam-update
 ;; dgos: ENGINE, GAME
 
-;; TODO
-;; og:ignore-form:update-visible
-
 ;; DECOMP BEGINS
 
 (defun plane-from-points ((arg0 (inline-array plane)) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 int))
@@ -97,7 +94,168 @@
 
 (define *update-leaf-when-outside-bsp* #t)
 
-;; ERROR: failed type prop at 290: Could not figure out load: (set! v1 (l.w s3))
+(defun update-visible ((arg0 math-camera))
+  (local-vars (s4-0 level-vis-info))
+  (when (not *artist-fix-visible*)
+    (dotimes (s5-0 (-> *level* length))
+      (let ((v1-5 (-> *level* level s5-0)))
+        (when (= (-> v1-5 status) 'active)
+          (if (and (nonzero? (-> v1-5 bsp nodes)) (or *update-leaf-when-outside-bsp* (-> v1-5 inside-boxes)))
+              (bsp-camera-asm (-> v1-5 bsp) (-> arg0 trans))
+              )
+          )
+        )
+      )
+    (dotimes (gp-1 (-> *level* length))
+      (let ((s5-1 (-> *level* level gp-1)))
+        (when (= (-> s5-1 status) 'active)
+          (let ((a2-0 (/ (+ (-> s5-1 bsp visible-list-length) 15) 16)))
+            (set! (-> s5-1 all-visible?) (if (-> s5-1 all-visible?)
+                                             (-> s5-1 all-visible?)
+                                             #t
+                                             )
+                  )
+            (cond
+              ((or (not (-> s5-1 force-all-visible?)) (-> s5-1 inside-boxes))
+               (cond
+                 ((or *artist-all-visible* (not (-> s5-1 vis-info 0)))
+                  (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                  (if (= (-> s5-1 all-visible?) 'loading)
+                      (set! (-> s5-1 all-visible?) #t)
+                      )
+                  )
+                 ((begin
+                    (set! s4-0 (-> s5-1 vis-info (-> s5-1 vis-self-index)))
+                    (let ((v1-32 #f))
+                      (when (and s4-0 (-> s4-0 from-bsp))
+                        (set! v1-32 (logtest? (vis-info-flag vis-valid) (-> s4-0 flags)))
+                        (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx))
+                            (set! v1-32 #f)
+                            )
+                        )
+                      v1-32
+                      )
+                    )
+                  (if (!= (-> s5-1 all-visible?) 'loading)
+                      (set! (-> s5-1 all-visible?) #f)
+                      )
+                  (when (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (the-as (pointer uint8) (-> s4-0 string-block)))
+                    (countdown (v1-40 8)
+                      (let ((a0-27 (-> s5-1 vis-info v1-40)))
+                        (when a0-27
+                          (if (!= a0-27 s4-0)
+                              (set! (-> a0-27 current-vis-string) (the-as uint -1))
+                              )
+                          )
+                        )
+                      )
+                    (set! (-> s5-1 all-visible?) #f)
+                    )
+                  )
+                 ((and (= (-> s5-1 all-visible?) 'loading) (-> *level* play?))
+                  )
+                 (else
+                   (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                   )
+                 )
+               )
+              (else
+                (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (if (and *artist-fix-visible* (cpad-pressed? 0 r2))
+      (set! *fix-visible-level-mask* (logand (+ *fix-visible-level-mask* 1) 63))
+      )
+  (dotimes (gp-2 (-> *level* length))
+    (let ((s5-2 (-> *level* level gp-2)))
+      (when (= (-> s5-2 status) 'active)
+        (cond
+          ((or *artist-fix-visible* *stats-bsp*)
+           (set! (-> s5-2 render?) (zero? (logand *fix-visible-level-mask* (ash 1 (-> s5-2 index)))))
+           (format
+             *stdcon*
+             "~0kleaf-index ~8S ~C = ~d node ~d ~S ~S~%"
+             (-> s5-2 name)
+             (if (not (logtest? *fix-visible-level-mask* (ash 1 (-> s5-2 index))))
+                 88
+                 32
+                 )
+             (-> s5-2 bsp current-leaf-idx)
+             (-> s5-2 bsp cam-box-idx)
+             (if (zero? (-> s5-2 bsp cam-using-back))
+                 "front"
+                 "back"
+                 )
+             (if (nonzero? (-> s5-2 bsp cam-outside-bsp))
+                 "outside"
+                 ""
+                 )
+             )
+           )
+          (else
+            (set! (-> s5-2 render?) #t)
+            )
+          )
+        (when (and *artist-fix-visible* (zero? (logand *fix-visible-level-mask* (ash 1 (-> s5-2 index)))))
+          (let ((s4-1 (-> s5-2 bsp current-leaf-idx))
+                (s3-0 (-> s5-2 bsp vis-spheres))
+                )
+            (-> s5-2 bsp unk-data 17)
+            (when (nonzero? s3-0)
+              (dotimes (s2-0 (-> s3-0 length))
+                (let* ((v1-93 (the int (-> s3-0 data s2-0 w)))
+                       (a0-43 (abs v1-93))
+                       )
+                  (when (= a0-43 s4-1)
+                    (if (>= v1-93 0)
+                        (add-debug-sphere #t (bucket-id debug2) (-> s3-0 data s2-0) (meters 1) (new 'static 'rgba :b #xff :a #x80))
+                        (add-debug-sphere #t (bucket-id debug2) (-> s3-0 data s2-0) (meters 1) (new 'static 'rgba :r #xff :a #x80))
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          (when (nonzero? (-> s5-2 bsp nodes))
+            (let ((v1-107 (-> s5-2 bsp nodes (-> s5-2 bsp cam-box-idx)))
+                  (a2-9 (new 'stack-no-clear 'vector))
+                  )
+              (set! (-> a2-9 quad) (-> s5-2 bsp bsp-offset quad))
+              (let ((a3-6 (new 'stack-no-clear 'vector)))
+                (set! (-> a3-6 quad) (-> s5-2 bsp bsp-offset quad))
+                (cond
+                  ((zero? (-> s5-2 bsp cam-using-back))
+                   (+! (-> a2-9 x) (the float (* (the-as int (-> v1-107 front-box-min x)) (the int (-> s5-2 bsp bsp-scale x)))))
+                   (+! (-> a2-9 y) (the float (* (the-as int (-> v1-107 front-box-min y)) (the int (-> s5-2 bsp bsp-scale y)))))
+                   (+! (-> a2-9 z) (the float (* (the-as int (-> v1-107 front-box-min z)) (the int (-> s5-2 bsp bsp-scale z)))))
+                   (+! (-> a3-6 x) (the float (* (the-as int (-> v1-107 front-box-max x)) (the int (-> s5-2 bsp bsp-scale x)))))
+                   (+! (-> a3-6 y) (the float (* (the-as int (-> v1-107 front-box-max y)) (the int (-> s5-2 bsp bsp-scale y)))))
+                   (+! (-> a3-6 z) (the float (* (the-as int (-> v1-107 front-box-max z)) (the int (-> s5-2 bsp bsp-scale z)))))
+                   )
+                  (else
+                    (+! (-> a2-9 x) (the float (* (the-as int (-> v1-107 back-box-min x)) (the int (-> s5-2 bsp bsp-scale x)))))
+                    (+! (-> a2-9 y) (the float (* (the-as int (-> v1-107 back-box-min y)) (the int (-> s5-2 bsp bsp-scale y)))))
+                    (+! (-> a2-9 z) (the float (* (the-as int (-> v1-107 back-box-min z)) (the int (-> s5-2 bsp bsp-scale z)))))
+                    (+! (-> a3-6 x) (the float (* (the-as int (-> v1-107 back-box-max x)) (the int (-> s5-2 bsp bsp-scale x)))))
+                    (+! (-> a3-6 y) (the float (* (the-as int (-> v1-107 back-box-max y)) (the int (-> s5-2 bsp bsp-scale y)))))
+                    (+! (-> a3-6 z) (the float (* (the-as int (-> v1-107 back-box-max z)) (the int (-> s5-2 bsp bsp-scale z)))))
+                    )
+                  )
+                (add-debug-box #t (bucket-id debug2) a2-9 a3-6 (new 'static 'rgba :g #xff :b #xff :a #x80))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
 
 (define *save-camera-inv-rot* (new 'global 'matrix))
 

@@ -7,6 +7,7 @@
 #include "Debugger.h"
 
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
 #include "common/util/Timer.h"
@@ -130,7 +131,7 @@ bool Debugger::attach_and_break() {
 
       // this may fail if you crash at exactly the wrong time. todo - remove?
       if (info.kind != xdbg::SignalInfo::BREAK) {
-        fmt::print("[Debugger] got signal {} when expecting break.\n", (int)info.kind);
+        lg::print("[Debugger] got signal {} when expecting break.\n", (int)info.kind);
       }
 
       // open the memory of the process
@@ -146,13 +147,13 @@ bool Debugger::attach_and_break() {
 
       auto signal_count = get_signal_count();
       if (signal_count != 0) {
-        fmt::print("[Debugger] got signal count of {} in attach_and_break\n", signal_count);
+        lg::print("[Debugger] got signal count of {} in attach_and_break\n", signal_count);
       }
       return true;
     }
   } else {
-    fmt::print("[Debugger] attach_and_break can't be done when valid = {} and attached = {}\n",
-               is_valid(), m_attached);
+    lg::print("[Debugger] attach_and_break can't be done when valid = {} and attached = {}\n",
+              is_valid(), m_attached);
   }
   return false;
 }
@@ -221,15 +222,15 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
 }
 
 std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
-  fmt::print("Backtrace:\n");
+  lg::print("Backtrace:\n");
   std::vector<BacktraceFrame> bt;
 
   if (rip == m_debug_context.base) {
     // we jumped to NULL.
-    fmt::print("Jumped to GOAL 0x0. Attempting to find previous function.\n");
+    lg::print("Jumped to GOAL 0x0. Attempting to find previous function.\n");
     u64 next_rip = 0;
     if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-      fmt::print("  failed to read return address off of the stack\n");
+      lg::print("  failed to read return address off of the stack\n");
       return {};
     }
 
@@ -239,8 +240,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
   int fails = 0;
   while (true) {
-    fmt::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
-               rip, rip - m_debug_context.base);
+    lg::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
+              rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
@@ -248,16 +249,16 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
       fails = 0;
-      fmt::print("<====================== CALL STACK ======================>\n");
-      fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
+      lg::print("<====================== CALL STACK ======================>\n");
+      lg::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
-      fmt::print("{}\n", disasm.text);
+      lg::print("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
       if (!read_memory_if_safe<u64>(&next_rip, rsp_at_call - m_debug_context.base)) {
-        fmt::print("Invalid return address encountered!\n");
+        lg::print("Invalid return address encountered!\n");
         break;
       }
 
@@ -267,14 +268,14 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
     } else {
       if (!frame.rip_info.knows_function) {
         if (fails == 0) {
-          fmt::print("Unknown Function at rip\n");
+          lg::print("Unknown Function at rip\n");
         }
 
         /*
         bool found = false;
         if (s32(rip - m_debug_context.base) > 0 &&
             m_symbol_name_to_value_map.find("function") != m_symbol_name_to_value_map.cend()) {
-          fmt::print("Attempting to find function at this address.\n");
+          lg::print("Attempting to find function at this address.\n");
           u32 function_sym_val = m_symbol_name_to_value_map.at("function");
           u32 goal_pc = u32(rip - m_debug_context.base) & -8;
 
@@ -290,21 +291,21 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
             if (wordval == function_sym_val) {
               // found a function!
-              fmt::print("Found function after {} bytes!\n",
+              lg::print("Found function after {} bytes!\n",
                          (rip - m_debug_context.base) - goal_pc);
               break;
             }
           }
 
           if (goal_pc <= symtable_end) {
-            fmt::print("Could not find function within this address.\n");
+            lg::print("Could not find function within this address.\n");
           } else {
             rip = goal_pc + m_debug_context.base + BASIC_OFFSET;
             found = true;
           }
         } else*/
         if (fails > 70) {
-          fmt::print(
+          lg::print(
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
               "stack frame is too long.\n");
           break;
@@ -312,7 +313,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
         if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base - 8)) {
-          fmt::print("Invalid return address encountered!\n");
+          lg::print("Invalid return address encountered!\n");
           break;
         }
 
@@ -321,10 +322,10 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
-        fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
+        lg::print("Function {} has no debug info.\n", frame.rip_info.function_name);
         break;
       } else {
-        fmt::print("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+        lg::print("Function {} with no stack frame data.\n", frame.rip_info.function_name);
         break;
       }
     }
@@ -417,21 +418,21 @@ void Debugger::update_break_info() {
   // todo adjust rip if break instruction????
 
   m_memory_map = m_listener->build_memory_map();
-  // fmt::print("{}", m_memory_map.print());
+  // lg::print("{}", m_memory_map.print());
   read_symbol_table();
   m_regs_valid = false;
   if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
-    fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+    lg::print("[Debugger] get_regs_now failed after break, something is wrong\n");
   } else {
     m_regs_valid = true;
-    fmt::print("{}", m_regs_at_break.print_gprs());
+    lg::print("{}", m_regs_at_break.print_gprs());
   }
 
   if (regs_valid()) {
     m_break_info = get_rip_info(m_regs_at_break.rip);
     update_continue_info();
     auto dis = disassemble_at_rip(m_break_info);
-    fmt::print("{}\n", dis.text);
+    lg::print("{}\n", dis.text);
 
     get_backtrace(m_regs_at_break.rip, m_regs_at_break.gprs[emitter::RSP]);
   }
@@ -528,7 +529,7 @@ void Debugger::read_symbol_table_jak1() {
 
   if (!xdbg::read_goal_memory(mem.data(), SYM_TABLE_MEM_SIZE, st_base, m_debug_context,
                               m_memory_handle)) {
-    fmt::print("Read failed during read_symbol_table\n");
+    lg::print("Read failed during read_symbol_table\n");
     return;
   }
   reads++;
@@ -562,8 +563,8 @@ void Debugger::read_symbol_table_jak1() {
         sym_type = sym->type;
       } else {
         if (sym_type != sym->type) {
-          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}: addr 0x{:x}\n", sym_type,
-                     sym->type, offset + st_base + (uint64_t)m_debug_context.base);
+          lg::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}: addr 0x{:x}\n", sym_type,
+                    sym->type, offset + st_base + (uint64_t)m_debug_context.base);
           return;
         }
       }
@@ -575,7 +576,7 @@ void Debugger::read_symbol_table_jak1() {
       char str_buff[128];
       if (!xdbg::read_goal_memory((u8*)str_buff, 128, info->str + 4, m_debug_context,
                                   m_memory_handle)) {
-        fmt::print("Read symbol string failed during read_symbol_table\n");
+        lg::print("Read symbol string failed during read_symbol_table\n");
         return;
       }
       reads++;
@@ -590,7 +591,7 @@ void Debugger::read_symbol_table_jak1() {
 
       std::string str(str_buff);
       if (str.length() >= 50) {
-        fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
+        lg::print("Invalid symbol #x{:x}!\n", sym_offset);
         continue;
       }
 
@@ -603,7 +604,7 @@ void Debugger::read_symbol_table_jak1() {
           // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
           str += "-hack-copy";
         } else {
-          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
+          lg::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
           continue;
           // ASSERT(false);
         }
@@ -616,8 +617,8 @@ void Debugger::read_symbol_table_jak1() {
   }
 
   ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
-  fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
-             m_symbol_name_to_offset_map.size(), timer.getMs());
+  lg::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
+            m_symbol_name_to_offset_map.size(), timer.getMs());
 }
 
 void Debugger::read_symbol_table_jak2() {
@@ -637,7 +638,7 @@ void Debugger::read_symbol_table_jak2() {
 
   if (!xdbg::read_goal_memory(mem.data(), SYM_TABLE_MEM_SIZE, st_base, m_debug_context,
                               m_memory_handle)) {
-    fmt::print("Read failed during read_symbol_table\n");
+    lg::print("Read failed during read_symbol_table\n");
     return;
   }
   reads++;
@@ -659,7 +660,7 @@ void Debugger::read_symbol_table_jak2() {
       // now get the string.
       char str_buff[128];
       if (!xdbg::read_goal_memory((u8*)str_buff, 128, info + 4, m_debug_context, m_memory_handle)) {
-        fmt::print("Read symbol string failed during read_symbol_table\n");
+        lg::print("Read symbol string failed during read_symbol_table\n");
         return;
       }
       reads++;
@@ -674,7 +675,7 @@ void Debugger::read_symbol_table_jak2() {
 
       std::string str(str_buff);
       if (str.length() >= 50) {
-        fmt::print("Invalid symbol #x{:x}!\n", sym_offset);
+        lg::print("Invalid symbol #x{:x}!\n", sym_offset);
         continue;
       }
 
@@ -687,7 +688,7 @@ void Debugger::read_symbol_table_jak2() {
           // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
           str += "-hack-copy";
         } else {
-          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
+          lg::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
           continue;
           // ASSERT(false);
         }
@@ -700,8 +701,8 @@ void Debugger::read_symbol_table_jak2() {
   }
 
   ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
-  fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
-             m_symbol_name_to_offset_map.size(), timer.getMs());
+  lg::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
+            m_symbol_name_to_offset_map.size(), timer.getMs());
 }
 
 /*!
@@ -941,8 +942,8 @@ void Debugger::add_addr_breakpoint(u32 addr) {
     std::unique_lock<std::mutex> lock(m_watcher_mutex);
     auto kv = m_addr_breakpoints.find(addr);
     if (kv != m_addr_breakpoints.end()) {
-      fmt::print("Breakpoint at address 0x{:08x} already exists as breakpoint {}\n", addr,
-                 kv->second.id);
+      lg::print("Breakpoint at address 0x{:08x} already exists as breakpoint {}\n", addr,
+                kv->second.id);
       return;
     }
 
@@ -950,13 +951,13 @@ void Debugger::add_addr_breakpoint(u32 addr) {
     bp.goal_addr = addr;
     bp.id = m_addr_breakpoints.size();
     if (!read_memory(&bp.old_data, 1, addr)) {
-      fmt::print("Failed to read memory for breakpoint, not adding breakpoint\n");
+      lg::print("Failed to read memory for breakpoint, not adding breakpoint\n");
       return;
     }
 
     u8 int3 = 0xcc;
     if (!write_memory(&int3, 1, addr)) {
-      fmt::print("Failed to write memory for breakpoint, not adding breakpoint\n");
+      lg::print("Failed to write memory for breakpoint, not adding breakpoint\n");
       return;
     }
 
@@ -970,12 +971,12 @@ void Debugger::remove_addr_breakpoint(u32 addr) {
     update_continue_info();
     auto kv = m_addr_breakpoints.find(addr);
     if (kv == m_addr_breakpoints.end()) {
-      fmt::print("Breakpoint at address 0x{:08x} does not exist\n", addr);
+      lg::print("Breakpoint at address 0x{:08x} does not exist\n", addr);
       return;
     }
 
     if (!write_memory(&kv->second.old_data, 1, addr)) {
-      fmt::print("Failed to remove breakpoint\n");
+      lg::print("Failed to remove breakpoint\n");
       return;
     }
 

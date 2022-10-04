@@ -134,8 +134,8 @@ Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object&
   auto ret = constant_propagation_dispatch(form, env);
   size_t end_size = code_size(env);
   if (start_size != end_size) {
-    fmt::print("Compiler bug in constant propagation. Code was generated: {} vs {}\n", start_size,
-               end_size);
+    lg::print("Compiler bug in constant propagation. Code was generated: {} vs {}\n", start_size,
+              end_size);
     ASSERT(false);
   }
   return ret;

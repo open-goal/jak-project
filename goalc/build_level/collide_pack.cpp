@@ -82,7 +82,7 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
     math::Vector3f vf14_base_trans_float(result.base[0], result.base[1], result.base[2]);
     vf13_combo_offset -= vf14_base_trans_float;
     v -= vf13_combo_offset;
-    fmt::print("error {}\n", (v - input[i]).to_string_aligned());;
+    lg::print("error {}\n", (v - input[i]).to_string_aligned());;
   }
    */
 
@@ -201,8 +201,8 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     // first part of packed_data is the u16 vertex data:
     frag_out.vertex_count = indexed.vertices_u16.vertex.size();
     if (frag_out.vertex_count > 128) {
-      fmt::print("frag with too many vertices: {} had {} tris\n", frag_out.vertex_count,
-                 frag_in.faces.size());
+      lg::print("frag with too many vertices: {} had {} tris\n", frag_out.vertex_count,
+                frag_in.faces.size());
       lg::error("SHOULD CRASH\n");
     }
     // the

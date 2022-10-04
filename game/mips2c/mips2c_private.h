@@ -1289,10 +1289,15 @@ struct ExecutionContext {
       fprs[dst] = fprs[src0] / fprs[src1];
     }
   }
+
   void divs(int dst, int src0, int src1) {
     // ASSERT(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
+
+  void mins(int dst, int src0, int src1) { fprs[dst] = std::min(fprs[src0], fprs[src1]); }
+  void maxs(int dst, int src0, int src1) { fprs[dst] = std::max(fprs[src0], fprs[src1]); }
+
   void negs(int dst, int src) {
     u32 v;
     memcpy(&v, &fprs[src], 4);

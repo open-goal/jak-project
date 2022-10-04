@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -45,7 +46,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   if (as_tie_instances) {
     for (auto& elt : as_tie_instances->instances) {
       if (elt.id != start) {
-        fmt::print("bad inst: exp {} got {}\n", start, elt.id);
+        lg::error("bad inst: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -55,7 +56,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   } else if (as_nodes) {
     for (auto& elt : as_nodes->draw_nodes) {
       if (elt.id != start) {
-        fmt::print("bad node: exp {} got {}\n", start, elt.id);
+        lg::error("bad node: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -63,7 +64,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
     *end = start;
     return true;
   } else {
-    fmt::print("bad node array type: {}\n", array->my_type());
+    lg::error("bad node array type: {}", array->my_type());
     return false;
   }
 }
@@ -550,7 +551,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         // try remapping it
         u32 new_tex = remap_texture(original_tex, map);
         if (original_tex != new_tex) {
-          fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+          lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
         }
         // texture the texture page/texture index, and convert to a PC port texture ID
         u32 tpage = new_tex >> 20;
@@ -565,7 +566,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
         // todo: figure out if this matters. maybe this is decal?
         if (ra_tex0_val == 0x800000000) {
-          // fmt::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
+          // lg::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
         }
 
         // mipmap settings. we ignore, but get the hidden value
@@ -784,7 +785,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // vi06 will be one of our gifbufs we can use.
       u16 vi06;
       memcpy(&vi06, &vf_gifbufs.y(), sizeof(u16));
-      // fmt::print("vi06: {}\n", vi06);
+      // lg::print("vi06: {}\n", vi06);
       ASSERT(vi06 == 470 || vi06 == 286 || vi06 == 654);  // should be one of the three gifbufs.
 
       //    lqi.xyzw vf02, vi_point_ptr        |  suby.xz vf_gifbufs, vf_gifbufs, vf_gifbufs
@@ -801,7 +802,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // and vi05 is our other buffer.
       u16 vi05;
       memcpy(&vi05, &vf_gifbufs.x(), sizeof(u16));
-      // fmt::print("vi05: {}\n", vi05);
+      // lg::print("vi05: {}\n", vi05);
       // check that we understand the buffer rotation.
       if (vi06 == 470) {
         ASSERT(vi05 == 286);
@@ -831,7 +832,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 
       // store adgifs in one buffer.
       frag.prog_info.adgif_offset_in_gif_buf_qw.push_back(vi03 - vi05);
-      // fmt::print("adgifs at offset {}\n", frag.prog_info.adgif_offset_in_gif_buf_qw.back());
+      // lg::print("adgifs at offset {}\n", frag.prog_info.adgif_offset_in_gif_buf_qw.back());
       //    sqi.xyzw vf01, vi03        |  nop
       //    sqi.xyzw vf02, vi03        |  nop
       //    sqi.xyzw vf03, vi03        |  nop
@@ -889,7 +890,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // u16 vf04_w = frag.other_gif_data.at(11);
       ASSERT(vi_ind >= frag.adgifs.size());  // at least 1 draw per shader.
       ASSERT(vi_ind < 1000);                 // check for insane value.
-      // fmt::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
+      // lg::print("got: {}, other size: {}\n", vi_ind, frag.other_gif_data.size());
 
       //    iaddi vi_point_ptr, vi_point_ptr, -0x2     |  subw.w vf07, vf07, vf07
       vi_point_ptr -= 2;
@@ -910,7 +911,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       vi04 = frag.ilw_other_gif(vi_point_ptr, 2);
       // offset
 
-      // fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind - 1);
+      // lg::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind - 1);
 
       //    iaddi vi_ind, vi_ind, -0x1     |  nop
       vi_ind--;
@@ -934,7 +935,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
         vi_ind--;  // dec remaining tag
         //    sq.xyzw vf07, 0(vi03)      |  nop
         info.address = vi03 - vi05;  // store the template. but this doesn't have size or anything.
-        // fmt::print("strgif at {}, {}\n", vi03, vi04);
+        // lg::print("strgif at {}, {}\n", vi03, vi04);
 
         //    iswr.x vi07, vi03          |  nop
         info.nloop = vi07 & 0x7fff;
@@ -961,7 +962,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
         //    ibne vi00, vi_ind, L3        |  nop
         //    lq.xyz vf07, 967(vi08)     |  nop
         next_mode = vi08;
-        // fmt::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind);
+        // lg::print("[{}] 7: {} 8: {} 4: {}, for {}\n", vi_point_ptr, vi07, vi08, vi04, vi_ind);
         frag.prog_info.str_gifs.push_back(info);
       }
 
@@ -1017,13 +1018,13 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       vf05 = muli64_xyz(vf05);
       //    mtir vi07, vf04.y          |  itof0.xyzw vf06, vf06
       vi07 = vf04_y;
-      // fmt::print("bonus points: {}\n", vi07);
+      // lg::print("bonus points: {}\n", vi07);
       vf06 = itof0(vf06);
 
       //    L5:
       Vector4f vf07;
     top_of_points_loop:
-      // fmt::print("{}/{}\n", vi05, vi06);
+      // lg::print("{}/{}\n", vi05, vi06);
       //    lqi.xyzw vf07, vi05        |  itof12.xyz vf16, vf16
       vf07 = frag.lq_points_allow_past_end(vi05);
       vi05++;
@@ -1278,10 +1279,10 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 
 void debug_print_info(const std::vector<TieProtoInfo>& out) {
   for (auto& proto : out) {
-    fmt::print("[{:40}]\n", proto.name);
-    fmt::print("  generic: {}\n", proto.uses_generic);
-    fmt::print("  use count: {}\n", proto.instances.size());
-    fmt::print("  stiffness: {}\n", proto.stiffness);
+    lg::debug("[{:40}]", proto.name);
+    lg::debug("  generic: {}", proto.uses_generic);
+    lg::debug("  use count: {}", proto.instances.size());
+    lg::debug("  stiffness: {}", proto.stiffness);
   }
 }
 
@@ -1379,7 +1380,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // iadd vi_tgt_bp2_ptr, vi_tgt_bp2_ptr, vi01   |  nop
       tgt_bp2_ptr += vi01;
 
-      // fmt::print("b tgts: {} {}\n", tgt_bp1_ptr, tgt_bp2_ptr);
+      // lg::print("b tgts: {} {}\n", tgt_bp1_ptr, tgt_bp2_ptr);
       // lqi.xyzw vf_vtx2, vi_point_ptr              |  mul.xyz vf_pos02, vf_pos02, Q
       // div Q, vf00.w, vf_pos13.w                   |  mul.xyz vf_tex0, vf_tex0, Q
       // mtir vi_ind, vf_inds.z                      |  addx.w vtx_0, vtx_0, vf_gifbufs
@@ -1388,13 +1389,13 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // iadd vi_tgt_ip2_ptr, vi_tgt_ip2_ptr, vi01   |  madday.xyzw ACC, vf_mtx1, vf_vtx2
       tgt_ip1_ptr += vi01;
       tgt_ip2_ptr += vi01;
-      // fmt::print("i tgts: {} {}\n", tgt_ip1_ptr, tgt_ip2_ptr);
+      // lg::print("i tgts: {} {}\n", tgt_ip1_ptr, tgt_ip2_ptr);
       // lq.xyzw vf_mtx3, 838(vi_ind)                |  ftoi4.xyz vf_res02, vf_pos02
       // ibeq vi_tgt_bp1_ptr, vi_dest_ptr, L40       |  maddz.xyzw vf_pos02, vf_clr1, vf_vtx2
       // iadd vi_kick_addr, vi_kick_addr, vi01       |  nop
       kick_addr += vi01;
       if (tgt_bp1_ptr == dest_ptr) {
-        fmt::print("DRAW FINISH 1 (no points)\n");
+        lg::info("DRAW FINISH 1 (no points)");
         goto program_end;
       }
 
@@ -1485,7 +1486,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           float vtx_w = vert_pos.w() + frag.prog_info.gifbufs.x();
           dest_ptr = float_to_u16(vtx_w);
           auto tex_coord = frag.lq_points(point_ptr);
-          // fmt::print("texw: [{}] {}\n", point_ptr, tex_coord.w());
+          // lg::print("texw: [{}] {}\n", point_ptr, tex_coord.w());
           point_ptr++;
           float tex_w = tex_coord.w() + frag.prog_info.gifbufs.x();
           u16 dest2_ptr = float_to_u16(tex_w);
@@ -1499,7 +1500,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
 
-          // fmt::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
+          // lg::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
 
@@ -1974,8 +1975,8 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
   }
 
   else {
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
+    lg::error("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
+              (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     ASSERT(false);
   }

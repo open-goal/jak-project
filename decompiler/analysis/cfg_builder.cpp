@@ -4,6 +4,7 @@
  */
 
 #include "cfg_builder.h"
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -716,7 +717,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       ASSERT(fr.has_value());
       cne->final_destination = *fr;
     } else {
-      fmt::print("failed to clean up cond_no_else_final: {}\n", func.name());
+      lg::print("failed to clean up cond_no_else_final: {}\n", func.name());
       ASSERT(false);
     }
   }
@@ -753,7 +754,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
     for (size_t i = 0; i < cne->entries.size(); i++) {
       if (func.ir2.env.has_reg_use()) {
         auto reg = cne->entries.at(i).false_destination;
-        // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
+        // lg::warn("Disable def of {} at {}", reg->to_string(func.ir2.env), reg->idx());
         func.ir2.env.disable_def(*reg, func.warnings);
       }
     }
@@ -1181,7 +1182,7 @@ SetVarOp get_delay_op(const Function& f, const BlockVtx* vtx) {
   auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
   auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
   if (!delay) {
-    fmt::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
+    lg::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
     ASSERT(false);
   }
   return *delay;
@@ -1196,7 +1197,7 @@ LoadVarOp get_delay_load_op(const Function& f, const BlockVtx* vtx) {
   auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
   auto* delay = dynamic_cast<LoadVarOp*>(delay_op.get());
   if (!delay) {
-    fmt::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
+    lg::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
     ASSERT(false);
   }
   return *delay;
@@ -1248,69 +1249,69 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   // get the branch ir's
   auto b0_ptr = cfg_to_ir(pool, f, b0_c);  // should be begin.
   if (b0_ptr->size() <= 2) {
-    fmt::print("fail1\n");
+    lg::print("fail1\n");
     return nullptr;
   }
   auto b1_ptr = cfg_to_ir(pool, f, b1_c);
   if (b1_ptr->size() <= 1) {
-    fmt::print("fail2\n");
+    lg::print("fail2\n");
     return nullptr;
   }
   auto b2_ptr = cfg_to_ir(pool, f, b2_c);
   if (b2_ptr->size() <= 1) {
-    fmt::print("fail3\n");
+    lg::print("fail3\n");
     return nullptr;
   }
   auto b3_ptr = cfg_to_ir(pool, f, b3_c);
   auto b3_ir = dynamic_cast<SetVarElement*>(b3_ptr->try_as_single_element());
   if (!b3_ir) {
-    fmt::print("fail4\n");
+    lg::print("fail4\n");
     return nullptr;
   }
 
   // identify the left shift
   auto set_shift_left = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 3));
   if (!set_shift_left) {
-    fmt::print("fail5\n");
+    lg::print("fail5\n");
     return nullptr;
   }
   auto temp_reg0 = set_shift_left->dst();
   auto shift_left =
       dynamic_cast<SimpleExpressionElement*>(set_shift_left->src()->try_as_single_element());
   if (!shift_left || shift_left->expr().kind() != SimpleExpression::Kind::LEFT_SHIFT) {
-    fmt::print("fail6\n");
+    lg::print("fail6\n");
     return nullptr;
   }
   auto src_reg = shift_left->expr().get_arg(0).var();
   auto sa_left = shift_left->expr().get_arg(1);
   if (!sa_left.is_int() || sa_left.get_int() != 61) {
-    fmt::print("fail7\n");
+    lg::print("fail7\n");
     return nullptr;
   }
 
   // identify the right shift
   auto set_shift_right = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 2));
   if (!set_shift_right) {
-    fmt::print("fail8\n");
+    lg::print("fail8\n");
     return nullptr;
   }
   if (set_shift_right->dst().reg() != set_shift_left->dst().reg()) {
-    fmt::print("fail9\n");
+    lg::print("fail9\n");
     return nullptr;
   }
   auto shift_right =
       dynamic_cast<SimpleExpressionElement*>(set_shift_right->src()->try_as_single_element());
   if (!shift_right || shift_right->expr().kind() != SimpleExpression::Kind::RIGHT_SHIFT_LOGIC) {
-    fmt::print("fail10\n");
+    lg::print("fail10\n");
     return nullptr;
   }
   if (temp_reg0.reg() != shift_right->expr().get_arg(0).var().reg()) {
-    fmt::print("fail11\n");
+    lg::print("fail11\n");
     return nullptr;
   }
   auto sa_right = shift_right->expr().get_arg(1);
   if (!sa_right.is_int() || sa_right.get_int() != 61) {
-    fmt::print("fail12\n");
+    lg::print("fail12\n");
     return nullptr;
   }
 
@@ -1320,7 +1321,7 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   if (!first_branch || !is_set_symbol_value(b0_delay_op, "binteger") ||
       first_branch->op()->condition().kind() != IR2_Condition::Kind::ZERO ||
       !first_branch->op()->likely()) {
-    fmt::print("fail13\n");
+    lg::print("fail13\n");
     return nullptr;
   }
   auto temp_reg = first_branch->op()->condition().src(0).var();
@@ -1329,19 +1330,19 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
 
   // branch 1
   if (b1_ptr->size() != 2) {
-    fmt::print("fail14\n");
+    lg::print("fail14\n");
     return nullptr;
   }
   auto second_branch_pre_op = dynamic_cast<SetVarElement*>(b1_ptr->at(0));
   if (!second_branch_pre_op) {
-    fmt::print("fail15\n");
+    lg::print("fail15\n");
     return nullptr;
   }
   {
     auto pos = second_branch_pre_op->src();
     auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
     if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(4)) {
-      fmt::print("fail16\n");
+      lg::print("fail16\n");
       return nullptr;
     }
   }
@@ -1357,30 +1358,30 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
       second_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
       !second_branch->op()->condition().src(1).is_var() ||
       second_branch->op()->condition().src(1).var().reg() != temp_reg1.reg()) {
-    fmt::print("fail17\n");
+    lg::print("fail17\n");
     return nullptr;
   }
 
   if (!b1_d) {
-    fmt::print("fail18\n");
+    lg::print("fail18\n");
     return nullptr;
   }
   auto b1_delay_op = get_delay_load_op(f, b1_d);
   if (b1_delay_op.kind() != LoadVarOp::Kind::UNSIGNED || b1_delay_op.size() != 4) {
-    fmt::print("fail19\n");
+    lg::print("fail19\n");
     return nullptr;
   }
   IR2_RegOffset ro;
   if (!get_as_reg_offset(b1_delay_op.src(), &ro)) {
-    fmt::print("fail20\n");
+    lg::print("fail20\n");
     return nullptr;
   }
   if (ro.offset != -4) {
-    fmt::print("fail21\n");
+    lg::print("fail21\n");
     return nullptr;
   }
   if (ro.reg != src_reg.reg() || b1_delay_op.get_set_destination().reg() != dst_reg.reg()) {
-    fmt::print("fail22\n");
+    lg::print("fail22\n");
     return nullptr;
   }
 
@@ -1394,19 +1395,19 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
     lw a0, pair(s7)
    */
   if (b2_ptr->size() != 2) {
-    fmt::print("fail23\n");
+    lg::print("fail23\n");
     return nullptr;
   }
   auto third_branch_pre_op = dynamic_cast<SetVarElement*>(b2_ptr->at(0));
   if (!third_branch_pre_op) {
-    fmt::print("fail24\n");
+    lg::print("fail24\n");
     return nullptr;
   }
   {
     auto pos = third_branch_pre_op->src();
     auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
     if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(2)) {
-      fmt::print("fail25\n");
+      lg::print("fail25\n");
       return nullptr;
     }
   }
@@ -1417,22 +1418,22 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
       third_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
       !third_branch->op()->condition().src(1).is_var() ||
       third_branch->op()->condition().src(1).var().reg() != temp_reg2.reg()) {
-    fmt::print("fail26\n");
+    lg::print("fail26\n");
     return nullptr;
   }
 
   if (!b2_d) {
-    fmt::print("fail27\n");
+    lg::print("fail27\n");
     return nullptr;
   }
   auto b2_delay_op = get_delay_op(f, b2_d);
   if (!is_set_symbol_value(b2_delay_op, "pair") || b2_delay_op.dst().reg() != dst_reg.reg()) {
-    fmt::print("fail28\n");
+    lg::print("fail28\n");
     return nullptr;
   }
 
   if (!is_set_symbol_value(b3_ir, "symbol")) {
-    fmt::print("fail29\n");
+    lg::print("fail29\n");
     return nullptr;
   }
 
@@ -1708,22 +1709,22 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
             auto& ao = f.ir2.atomic_ops->ops.at(j);
             if (contains(ao->write_regs(), consumed.reg())) {
               ri.written_and_unused.insert(consumed.reg());
-              //            fmt::print("GOT 3, making {} wau by {}\n", consumed.reg().to_charp(),
+              //            lg::print("GOT 3, making {} wau by {}\n", consumed.reg().to_charp(),
               //                       ao->to_string(f.ir2.env));
               // HACK - regenerate:
               if (add_map.at(j - start_op) != -1) {
-                //              fmt::print("regenerating {} to ", output->at(add_map.at(j -
+                //              lg::print("regenerating {} to ", output->at(add_map.at(j -
                 //              start_op))->to_string(f.ir2.env));
                 output->at(add_map.at(j - start_op)) =
                     f.ir2.atomic_ops->ops.at(j)->get_as_form(pool, f.ir2.env);
-                //              fmt::print("{}\n", output->at(add_map.at(j -
+                //              lg::print("{}\n", output->at(add_map.at(j -
                 //              start_op))->to_string(f.ir2.env));
               }
               break;
             }
 
             if (contains(ao->read_regs(), consumed.reg())) {
-              //            fmt::print("GOT 2, making {} consumed by {}\n",
+              //            lg::print("GOT 2, making {} consumed by {}\n",
               //            consumed.reg().to_charp(),
               //                       ao->to_string(f.ir2.env));
               ri.consumes.insert(consumed.reg());
@@ -1896,8 +1897,8 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
         auto& op = f.ir2.atomic_ops->ops.at(delay_start);
         auto op_as_expr = dynamic_cast<SetVarOp*>(op.get());
         if (!op_as_expr) {
-          fmt::print("bad in {}\n", f.name());
-          fmt::print("{}\n", op->to_string(f.ir2.env));
+          lg::print("bad in {}\n", f.name());
+          lg::print("{}\n", op->to_string(f.ir2.env));
         }
         ASSERT(op_as_expr);
         e.branch_delay = *op_as_expr;
