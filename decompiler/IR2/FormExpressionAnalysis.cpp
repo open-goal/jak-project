@@ -3225,7 +3225,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump" || tp_type.method_from_type().base_type() == "entity-actor";
+        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump" ||
+                           tp_type.method_from_type().base_type() == "entity-actor";
         bool should_use_virtual =
             env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(), tp_type.method_id());
 
