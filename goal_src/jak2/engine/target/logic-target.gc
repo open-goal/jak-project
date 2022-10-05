@@ -673,7 +673,7 @@
              (< 0.7 (-> self control unknown-float27))
              (and (< (-> self control unknown-float05) 8192.0)
                   (logtest? (-> self control status) (cshape-moving-flags t-wall))
-                  (zero? (logand (-> self control status) (cshape-moving-flags t-act)))
+                  (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
                   (or (= (-> self control unknown-pat-surface00 event) (pat-event hide))
                       (let ((a0-2 (level-get-target-inside *level*)))
                         (and a0-2 (logtest? (-> a0-2 info level-flags) 1))
@@ -821,7 +821,7 @@
       gp-1
       (meters 0.2)
       "target"
-      (the-as rgba (-> (new 'static 'array uint64 1 #x8000ffff) 0))
+      (new 'static 'rgba :r #xff :g #xff :a #x80)
       )
     )
   )
@@ -984,7 +984,7 @@
                   )
               (vector-matrix*! s2-0 s3-1 (-> self control unknown-matrix01))
               (let ((f28-0 (vector-vector-xz-distance s3-1 s4-0)))
-                (when (and (zero? (logand (-> self control status) (cshape-moving-flags t-surface)))
+                (when (and (not (logtest? (-> self control status) (cshape-moving-flags t-surface)))
                            (let ((v1-51 gp-0))
                              (< (sqrtf (+ (* (-> v1-51 x) (-> v1-51 x)) (* (-> v1-51 z) (-> v1-51 z))))
                                 (sqrtf (+ (* (-> s3-1 x) (-> s3-1 x)) (* (-> s3-1 z) (-> s3-1 z))))
@@ -1000,7 +1000,7 @@
                   )
                 )
               )
-            (if (and (zero? (logand (-> self control status) (cshape-moving-flags t-wall)))
+            (if (and (not (logtest? (-> self control status) (cshape-moving-flags t-wall)))
                      (logtest? (-> self control old-status) (cshape-moving-flags t-wall))
                      (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
                      (< 0.0 (-> gp-0 y))
@@ -1019,7 +1019,7 @@
             (if (< (- (-> self clock frame-counter) (-> self control unknown-time-frame09)) (seconds 0.2))
                 (set! f30-0 (+ 204800.0 f30-0))
                 )
-            (if (and (zero? (logand (-> self control status) (cshape-moving-flags t-wall)))
+            (if (and (not (logtest? (-> self control status) (cshape-moving-flags t-wall)))
                      (and (logtest? (-> self control old-status) (cshape-moving-flags t-wall))
                           (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
                           (< 0.0 (-> gp-0 y))
@@ -1055,7 +1055,7 @@
       gp-1
       (meters 0.2)
       "ltransv"
-      (the-as rgba (-> (new 'static 'array uint64 1 #x8000ff00) 0))
+      (new 'static 'rgba :g #xff :a #x80)
       )
     (set! (-> gp-1 quad) (-> self control unknwon-vector27 quad))
     (vector-float*! gp-1 gp-1 0.5)
@@ -1066,7 +1066,7 @@
       gp-1
       (meters 0.2)
       "btransv"
-      (the-as rgba (-> (new 'static 'array uint64 1 #x80ffffff) 0))
+      (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
       )
     )
   )
@@ -1158,10 +1158,10 @@
             ((logtest? (surface-flag turn-to-alt) (-> self control unknown-surface01 flags))
              (-> self control unknown-vector03)
              )
-            ((and (or (zero? (logand (logior (-> self control status) (-> self control old-status))
+            ((and (or (not (logtest? (logior (-> self control status) (-> self control old-status))
                                      (cshape-moving-flags on-surface t-surface)
                                      )
-                             )
+                           )
                       (< (- (-> self clock frame-counter) (-> self control unknown-time-frame07)) (seconds 0.5))
                       (not (and (-> self next-state) (let ((v1-15 (-> self next-state name)))
                                                        (or (= v1-15 'target-walk) (= v1-15 'target-gun-walk))
@@ -1216,7 +1216,7 @@
       (-> self control trans)
       gp-0
       (meters 2)
-      (the-as rgba (-> (new 'static 'array uint64 1 #x8000ffff) 0))
+      (new 'static 'rgba :r #xff :g #xff :a #x80)
       )
     (add-debug-vector
       *display-target-marks*
@@ -1224,7 +1224,7 @@
       (-> self control trans)
       s5-0
       (meters 2)
-      (the-as rgba (-> (new 'static 'array uint64 1 #x800080ff) 0))
+      (new 'static 'rgba :r #xff :g #x80 :a #x80)
       )
     )
   (add-debug-vector
@@ -1233,7 +1233,7 @@
     (-> self control trans)
     (-> self control unknown-matrix01 vector 2)
     (meters 2)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x80ff00ff) 0))
+    (new 'static 'rgba :r #xff :b #xff :a #x80)
     )
   (rotate-toward-orientation!
     (-> self control)
@@ -1611,7 +1611,7 @@
      (set! (-> self control unknown-time-frame06) (-> self clock frame-counter))
      (set! (-> self control unknown-vector21 quad) (-> self control trans quad))
      (if (and (>= (-> self control coverage) 1.0)
-              (zero? (logand (-> self control status) (cshape-moving-flags t-act on-water)))
+              (not (logtest? (-> self control status) (cshape-moving-flags t-act on-water)))
               (logtest? (-> self control status) (cshape-moving-flags on-ground))
               )
          (set! (-> self control unknown-vector23 quad) (-> self control trans quad))
@@ -1639,12 +1639,12 @@
     )
   (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) r3)
              (zero? (-> self control unknown-word07))
-             (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
+             (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie)))
              (not *pause-lock*)
              )
     (if (and (= (-> self cam-user-mode) 'normal)
              (logtest? (-> self control unknown-surface00 flags) (surface-flag look-around))
-             (zero? (logand (focus-status edge-grab pole flut tube board pilot dark) (-> self focus-status)))
+             (not (logtest? (focus-status edge-grab pole flut tube board pilot dark) (-> self focus-status)))
              (-> *setting-control* user-current allow-look-around)
              (>= (- (-> self clock frame-counter) (the-as int (-> self no-look-around-wait))) (seconds 0.05))
              (not (and (= (-> self control ground-pat material) (pat-material ice))
@@ -1705,7 +1705,7 @@
              (cpad-hold? (-> self control unknown-cpad-info00 number) r2)
              (cpad-hold? (-> self control unknown-cpad-info00 number) l2)
              (not *pause-lock*)
-             (zero? (logand (focus-status grabbed in-head pilot) (-> self focus-status)))
+             (not (logtest? (focus-status grabbed in-head pilot) (-> self focus-status)))
              (not (and (-> self next-state) (let ((v1-167 (-> self next-state name)))
                                               (or (= v1-167 'target-darkjak-get-on) (= v1-167 'target-float))
                                               )
@@ -1789,8 +1789,8 @@
                   (and (or (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
                            *pause-lock*
                            )
-                       (zero? (logand (focus-status flut pilot mech indax) (-> self focus-status)))
-                       (zero? (logand (-> self state-flags) (state-flags sf7)))
+                       (not (logtest? (focus-status flut pilot mech indax) (-> self focus-status)))
+                       (not (logtest? (-> self state-flags) (state-flags sf7)))
                        #t
                        )
                   )
@@ -2006,7 +2006,7 @@
     (-> self control trans)
     (-> self control local-normal)
     (meters 2)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x800000ff) 0))
+    (new 'static 'rgba :r #xff :a #x80)
     )
   (add-debug-vector
     *display-target-marks*
@@ -2014,7 +2014,7 @@
     (-> self control trans)
     (-> self control unknown-dynamics00 gravity-normal)
     (meters 2.5)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x800000ff) 0))
+    (new 'static 'rgba :r #xff :a #x80)
     )
   (add-debug-vector
     *display-target-marks*
@@ -2022,7 +2022,7 @@
     (-> self control trans)
     (-> self control dynam gravity-normal)
     (meters 3)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x80ff00ff) 0))
+    (new 'static 'rgba :r #xff :b #xff :a #x80)
     )
   (add-debug-vector
     *display-target-marks*
@@ -2030,7 +2030,7 @@
     (-> self control trans)
     (-> self control unknown-vector02)
     (meters 3)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x80ff00ff) 0))
+    (new 'static 'rgba :r #xff :b #xff :a #x80)
     )
   (add-debug-vector
     *display-target-marks*
@@ -2038,7 +2038,7 @@
     (-> self control trans)
     (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))
     (meters 3)
-    (the-as rgba (-> (new 'static 'array uint64 1 #x800000ff) 0))
+    (new 'static 'rgba :r #xff :a #x80)
     )
   )
 
@@ -2295,30 +2295,18 @@
             (bucket-id debug-no-zbuf1)
             (-> (the-as swingpole s2-0) root trans)
             (-> (the-as swingpole s2-0) dir)
-            (meters 3.0)
-            (the-as rgba (-> (new 'static 'array uint64 1 #x80ff00ff) 0))
+            (meters 3)
+            (new 'static 'rgba :r #xff :b #xff :a #x80)
             )
           (add-debug-sphere
             #t
             (bucket-id debug2)
             (-> self control unknown-vector30)
             (meters 0.2)
-            (the-as rgba (-> (new 'static 'array uint64 1 #x800000ff) 0))
+            (new 'static 'rgba :r #xff :a #x80)
             )
-          (add-debug-sphere
-            #t
-            (bucket-id debug-no-zbuf1)
-            s4-1
-            (meters 0.2)
-            (the-as rgba (-> (new 'static 'array uint64 1 #x8000ff00) 0))
-            )
-          (add-debug-sphere
-            #t
-            (bucket-id debug-no-zbuf1)
-            s3-1
-            (meters 0.2)
-            (the-as rgba (-> (new 'static 'array uint64 1 #x8040ff00) 0))
-            )
+          (add-debug-sphere #t (bucket-id debug-no-zbuf1) s4-1 (meters 0.2) (new 'static 'rgba :g #xff :a #x80))
+          (add-debug-sphere #t (bucket-id debug-no-zbuf1) s3-1 (meters 0.2) (new 'static 'rgba :g #xff :b #x40 :a #x80))
           (add-debug-sphere #t (bucket-id debug-no-zbuf1) s5-0 (meters 0.2) (new 'static 'rgba :b #xff :a #x80))
           )
         )
@@ -2363,7 +2351,7 @@
         )
     (cond
       ((and (and (-> self next-state) (= (-> self next-state name) 'target-clone-anim))
-            (and (zero? (logand (-> self draw status) (draw-control-status no-draw)))
+            (and (not (logtest? (-> self draw status) (draw-control-status no-draw)))
                  (begin
                    (vector<-cspace! s5-0 (-> self node-list data 3))
                    (set! (-> s5-0 y) (+ -5896.192 (-> s5-0 y)))
@@ -2558,11 +2546,7 @@
         (if (collide-shape-moving-method-55
               (-> self control)
               gp-0
-<<<<<<< HEAD
-              (the-as int (logclear (-> self control root-prim prim-core collide-with) (collide-spec water)))
-=======
               (logclear (-> self control root-prim prim-core collide-with) (collide-spec water))
->>>>>>> master
               8192.0
               81920.0
               1024.0
@@ -2591,14 +2575,13 @@
         (do-rotations1)
         (let ((s5-0 (new-stack-vector0)))
           (read-pad s5-0)
-          (let ((f28-0
-                  (debounce-speed
-                    (-> self control unknown-float12)
-                    (-> self control unknown-float13)
-                    (-> self control unknown-vector12)
-                    (-> self control unknown-vector13)
-                    )
-                  )
+          (let ((f28-0 (debounce-speed
+                         (-> self control unknown-float12)
+                         (-> self control unknown-float13)
+                         (-> self control unknown-vector12)
+                         (-> self control unknown-vector13)
+                         )
+                       )
                 )
             (when (!= (-> self control unknown-float15) 0.0)
               (let ((f0-12 (fmin 1.0 (-> self control unknown-float15))))
@@ -2612,13 +2595,12 @@
                               f28-0
                               )
                             )
-                      (a2-2
-                        (vector-float*!
-                          (new 'stack-no-clear 'vector)
-                          (-> self control unknown-vector16)
-                          (-> self control unknown-float14)
-                          )
-                        )
+                      (a2-2 (vector-float*!
+                              (new 'stack-no-clear 'vector)
+                              (-> self control unknown-vector16)
+                              (-> self control unknown-float14)
+                              )
+                            )
                       )
                   (vector-lerp! s5-0 a1-3 a2-2 f0-12)
                   )
@@ -2656,9 +2638,7 @@
             )
           0
           )
-        (set! (-> self control reaction)
-              (the-as (function control-info collide-query vector cshape-moving-flags) target-collision-reaction)
-              )
+        (set! (-> self control reaction) target-collision-reaction)
         (let ((a2-3 (new 'stack-no-clear 'collide-query)))
           (let ((v1-52 (-> self control)))
             (set! (-> a2-3 collide-with) (-> v1-52 root-prim prim-core collide-with))
@@ -2667,11 +2647,7 @@
             (set! (-> a2-3 ignore-pat) (-> v1-52 pat-ignore-mask))
             )
           (set! (-> a2-3 action-mask) (collide-action solid))
-<<<<<<< HEAD
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-3 #x45800000)
-=======
           (collide-shape-method-32 (-> self control) (-> self control transv) a2-3 (meters 1))
->>>>>>> master
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -2804,11 +2780,7 @@
             (set! (-> a2-0 ignore-pat) (-> v1-30 pat-ignore-mask))
             )
           (set! (-> a2-0 action-mask) (collide-action solid))
-<<<<<<< HEAD
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 #x45800000)
-=======
           (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 (meters 1))
->>>>>>> master
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -2935,11 +2907,7 @@
             (set! (-> a2-0 ignore-pat) (-> v1-29 pat-ignore-mask))
             )
           (set! (-> a2-0 action-mask) (collide-action solid))
-<<<<<<< HEAD
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 #x45800000)
-=======
           (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 (meters 1))
->>>>>>> master
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -3196,9 +3164,7 @@
     )
   (let ((s0-0 (new 'process 'control-info obj (collide-list-enum hit-by-others))))
     (set! (-> s0-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s0-0 reaction)
-          (the-as (function control-info collide-query vector cshape-moving-flags) target-collision-reaction)
-          )
+    (set! (-> s0-0 reaction) target-collision-reaction)
     (set! (-> s0-0 no-reaction) target-collision-no-reaction)
     (set! sv-16 (new 'process 'collide-shape-prim-group s0-0 (the-as uint 9) 1))
     (set! (-> s0-0 total-prims) (the-as uint 10))
@@ -3314,15 +3280,7 @@
   (set! (-> obj draw shadow-ctrl) *target-shadow-control*)
   (set! (-> obj shadow-backup) (-> obj draw shadow))
   (set! (-> obj carry)
-        (new
-          'process
-          'carry-info
-          obj
-          41
-          (the-as vector (new 'static 'array float 1 0.0))
-          (the-as vector (new 'static 'array float 1 0.0))
-          12743.111
-          )
+        (new 'process 'carry-info obj 41 (new 'static 'vector :w 1.0) (new 'static 'vector :z 1.0 :w 1.0) 12743.111)
         )
   (set! (-> obj control unknown-vector29 x) (the-as float (-> obj node-list data 45)))
   (set! (-> obj control unknown-vector29 y) (the-as float (-> obj node-list data 55)))

@@ -41,7 +41,7 @@
    (face-dir         int8                     :offset-assert  94)
    (local-point      vector           :inline :offset-assert  96)
    (local-normal     vector           :inline :offset-assert 112)
-   (grab-quat        vector           :inline :offset-assert 128)
+   (grab-quat        quaternion       :inline :offset-assert 128)
    (grab-trans       vector           :inline :offset-assert 144)
    (hold-trans       vector           :inline :offset-assert 160)
    )
@@ -104,7 +104,6 @@
     )
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod carry-info-method-9 carry-info ((obj carry-info))
   (let ((s5-0 (-> obj process 0 node-list data (-> obj joint) bone transform)))
     (vector-rotate*! (-> obj normal) (-> obj local-normal) s5-0)
@@ -168,7 +167,7 @@
              (-> arg0 max-angle)
              )
            )
-       (if (zero? (logand (-> obj mode) (-> arg0 mode)))
+       (if (not (logtest? (-> obj mode) (-> arg0 mode)))
            (format
              #t
              "  ~A ~A failed for mode ~X ~X~%"
@@ -187,7 +186,6 @@
     )
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod drag! carry-info ((obj carry-info) (arg0 carry-info))
   (let ((v1-0 (-> arg0 process)))
     (set! (-> obj other) (the-as handle (logior (if v1-0
@@ -222,21 +220,13 @@
         (set! (-> v1-17 root-prim local-sphere w) (-> arg0 carry-radius))
         )
     )
-  (quaternion-copy! (the-as quaternion (-> arg0 grab-quat)) (-> arg0 process 0 control quat))
-  (quaternion-rotate-y!
-    (the-as quaternion (-> arg0 grab-quat))
-    (the-as quaternion (-> arg0 grab-quat))
-    (- (vector-y-angle (-> obj normal)))
-    )
-  (let* ((f30-0 (quaternion-y-angle (the-as quaternion (-> arg0 grab-quat))))
+  (quaternion-copy! (-> arg0 grab-quat) (-> arg0 process 0 control quat))
+  (quaternion-rotate-y! (-> arg0 grab-quat) (-> arg0 grab-quat) (- (vector-y-angle (-> obj normal))))
+  (let* ((f30-0 (quaternion-y-angle (-> arg0 grab-quat)))
          (f0-8 (the float (the int (* 0.000061035156 (+ 73728.0 (the float (sar (shl (the int f30-0) 48) 48)))))))
          (f28-0 (the float (sar (shl (the int (* 16384.0 f0-8)) 48) 48)))
          )
-    (quaternion-rotate-y!
-      (the-as quaternion (-> arg0 grab-quat))
-      (the-as quaternion (-> arg0 grab-quat))
-      (deg-diff f30-0 f28-0)
-      )
+    (quaternion-rotate-y! (-> arg0 grab-quat) (-> arg0 grab-quat) (deg-diff f30-0 f28-0))
     (let ((s3-2
             (matrix-4x4-inverse!
               (new 'stack-no-clear 'matrix)
@@ -331,7 +321,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod drop-impl! carry-info ((obj carry-info) (arg0 carry-info))
   (let ((a1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 process 0 control quat))))
     (set! (-> a1-2 y) 0.0)
@@ -428,7 +417,7 @@
           (vector-normalize! (-> s5-1 vector 2) 1.0)
           (vector-reset! (-> s5-1 trans))
           (let* ((a1-8 (quaternion-normalize! (matrix->quaternion (new 'stack-no-clear 'quaternion) s5-1)))
-                 (s5-3 (quaternion-normalize! (quaternion*! a1-8 a1-8 (the-as quaternion (-> obj grab-quat)))))
+                 (s5-3 (quaternion-normalize! (quaternion*! a1-8 a1-8 (-> obj grab-quat))))
                  (v1-19 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 point) s3-2))
                  (f30-0 (* 0.033333335 (the float (- (-> self clock frame-counter) (-> obj pickup-time)))))
                  )
@@ -462,141 +451,118 @@
 
 ;; WARN: Return type mismatch vector vs none.
 (defmethod carry! carry-info ((obj carry-info) (arg0 carry-info) (arg1 vector) (arg2 vector))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 (-> arg0 process)))
-      (set! (-> obj other) (the-as handle (logior (if v1-0
-                                                      (new 'static 'handle :pid (-> v1-0 0 pid))
-                                                      (new 'static 'handle)
-                                                      )
-                                                  (new 'static 'handle :process v1-0)
-                                                  )
-                                   )
-            )
-      )
-    (let ((v1-3 (-> obj process)))
-      (set! (-> arg0 other) (the-as handle (logior (if v1-3
-                                                       (new 'static 'handle :pid (-> v1-3 0 pid))
-                                                       (new 'static 'handle)
-                                                       )
-                                                   (new 'static 'handle :process v1-3)
-                                                   )
-                                    )
-            )
-      )
-    (set! (-> obj pickup-time) (-> obj process 0 clock frame-counter))
-    (set! (-> arg0 pickup-time) (-> arg0 process 0 clock frame-counter))
-    (set! (-> arg0 grab-trans-blend) 1.0)
-    (let* ((s2-0 (the-as collide-shape (-> arg0 process 0 control)))
-           (v1-17 (if (type? (the-as control-info s2-0) collide-shape)
-                      s2-0
-                      )
-                  )
-           )
-      (if v1-17
-          (set! (-> v1-17 root-prim local-sphere w) (-> arg0 carry-radius))
-          )
-      )
-    (quaternion-copy! (the-as quaternion (-> arg0 grab-quat)) (-> arg0 process 0 control quat))
-    (set! (-> arg0 grab-trans quad) (-> arg0 process 0 control trans quad))
-    (set! (-> arg0 hold-trans quad) (-> obj process 0 control trans quad))
-    (let ((s2-2 (vector-! (new 'stack-no-clear 'vector) (-> obj point) (-> arg0 point))))
-      (vector-xz-normalize! s2-2 (-> arg0 max-pull))
-      (vector+! s2-2 s2-2 (-> arg0 point))
-      (let ((f30-0 (y-angle (-> arg0 process 0 control))))
-        (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-2 (-> obj process 0 control trans)))
-        (let* ((f0-5 (the float (-> obj face-dir)))
-               (f28-0 (the float (sar (shl (the int (* 16384.0 f0-5)) 48) 48)))
-               )
-          (set-vector! arg2 (sin (+ f30-0 f28-0)) 0.0 (cos (+ f30-0 f28-0)) 1.0)
-          )
-        )
-      )
-    (let ((v1-40 arg1))
-      (let ((a0-29 (-> arg0 point))
-            (f0-16 (- (-> arg0 carry-radius)))
-            )
-        (.lvf vf2 (&-> arg2 quad))
-        (.lvf vf1 (&-> a0-29 quad))
-        (let ((a0-30 f0-16))
-          (.mov vf3 a0-30)
-          )
-        )
-      (.add.x.vf vf4 vf0 vf0 :mask #b1000)
-      (.mul.x.vf acc vf2 vf3)
-      (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
-      (.svf (&-> v1-40 quad) vf4)
-      )
-    (change-parent (ppointer->process (-> arg0 process)) (ppointer->process (-> obj process)))
-    (let* ((v1-45 (-> arg0 process))
-           (v1-48
-             (-> (the-as collide-shape (-> (the-as process-drawable (if v1-45
-                                                                        (the-as process-drawable (-> v1-45 0 self))
-                                                                        )
-                                                   )
-                                           root
-                                           )
-                         )
-                 root-prim
-                 )
-             )
-           )
-      (let ((a0-33 (-> v1-48 prim-core collide-as))
-            (a1-7 (-> arg0 process))
-            )
-        (set! (-> (the-as collide-shape (-> (the-as process-drawable (if a1-7
-                                                                         (the-as process-drawable (-> a1-7 0 self))
-                                                                         )
+  (let ((v1-0 (-> arg0 process)))
+    (set! (-> obj other) (the-as handle (logior (if v1-0
+                                                    (new 'static 'handle :pid (-> v1-0 0 pid))
+                                                    (new 'static 'handle)
                                                     )
-                                            root
-                                            )
-                          )
-                  backup-collide-as
-                  )
-              a0-33
-              )
-        )
-      (let ((v1-49 (-> v1-48 prim-core collide-with))
-            (a0-34 (-> arg0 process))
-            )
-        (set! (-> (the-as collide-shape (-> (the-as process-drawable (if a0-34
-                                                                         (the-as process-drawable (-> a0-34 0 self))
-                                                                         )
-                                                    )
-                                            root
-                                            )
-                          )
-                  backup-collde-with
-                  )
-              v1-49
-              )
-        )
-      )
-    (let* ((v1-50 (-> arg0 process))
-           (v1-53
-             (-> (the-as collide-shape (-> (the-as process-drawable (if v1-50
-                                                                        (the-as process-drawable (-> v1-50 0 self))
-                                                                        )
-                                                   )
-                                           root
-                                           )
-                         )
-                 root-prim
-                 )
-             )
-           )
-      (set! (-> v1-53 prim-core collide-as) (collide-spec))
-      (set! (-> v1-53 prim-core collide-with) (collide-spec))
-      )
-    0
-    (none)
+                                                (new 'static 'handle :process v1-0)
+                                                )
+                                 )
+          )
     )
+  (let ((v1-3 (-> obj process)))
+    (set! (-> arg0 other) (the-as handle (logior (if v1-3
+                                                     (new 'static 'handle :pid (-> v1-3 0 pid))
+                                                     (new 'static 'handle)
+                                                     )
+                                                 (new 'static 'handle :process v1-3)
+                                                 )
+                                  )
+          )
+    )
+  (set! (-> obj pickup-time) (-> obj process 0 clock frame-counter))
+  (set! (-> arg0 pickup-time) (-> arg0 process 0 clock frame-counter))
+  (set! (-> arg0 grab-trans-blend) 1.0)
+  (let* ((s2-0 (the-as collide-shape (-> arg0 process 0 control)))
+         (v1-17 (if (type? (the-as control-info s2-0) collide-shape)
+                    s2-0
+                    )
+                )
+         )
+    (if v1-17
+        (set! (-> v1-17 root-prim local-sphere w) (-> arg0 carry-radius))
+        )
+    )
+  (quaternion-copy! (-> arg0 grab-quat) (-> arg0 process 0 control quat))
+  (set! (-> arg0 grab-trans quad) (-> arg0 process 0 control trans quad))
+  (set! (-> arg0 hold-trans quad) (-> obj process 0 control trans quad))
+  (let ((s2-2 (vector-! (new 'stack-no-clear 'vector) (-> obj point) (-> arg0 point))))
+    (vector-xz-normalize! s2-2 (-> arg0 max-pull))
+    (vector+! s2-2 s2-2 (-> arg0 point))
+    (let ((f30-0 (y-angle (-> arg0 process 0 control))))
+      (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-2 (-> obj process 0 control trans)))
+      (let* ((f0-5 (the float (-> obj face-dir)))
+             (f28-0 (the float (sar (shl (the int (* 16384.0 f0-5)) 48) 48)))
+             )
+        (set-vector! arg2 (sin (+ f30-0 f28-0)) 0.0 (cos (+ f30-0 f28-0)) 1.0)
+        )
+      )
+    )
+  (vector+float*! arg1 (-> arg0 point) arg2 (- (-> arg0 carry-radius)))
+  (change-parent (ppointer->process (-> arg0 process)) (ppointer->process (-> obj process)))
+  (let* ((v1-46 (-> arg0 process))
+         (v1-49
+           (-> (the-as collide-shape (-> (the-as process-drawable (if v1-46
+                                                                      (the-as process-drawable (-> v1-46 0 self))
+                                                                      )
+                                                 )
+                                         root
+                                         )
+                       )
+               root-prim
+               )
+           )
+         )
+    (let ((a0-32 (-> v1-49 prim-core collide-as))
+          (a1-7 (-> arg0 process))
+          )
+      (set! (-> (the-as collide-shape (-> (the-as process-drawable (if a1-7
+                                                                       (the-as process-drawable (-> a1-7 0 self))
+                                                                       )
+                                                  )
+                                          root
+                                          )
+                        )
+                backup-collide-as
+                )
+            a0-32
+            )
+      )
+    (let ((v1-50 (-> v1-49 prim-core collide-with))
+          (a0-33 (-> arg0 process))
+          )
+      (set! (-> (the-as collide-shape (-> (the-as process-drawable (if a0-33
+                                                                       (the-as process-drawable (-> a0-33 0 self))
+                                                                       )
+                                                  )
+                                          root
+                                          )
+                        )
+                backup-collde-with
+                )
+            v1-50
+            )
+      )
+    )
+  (let* ((v1-51 (-> arg0 process))
+         (v1-54
+           (-> (the-as collide-shape (-> (the-as process-drawable (if v1-51
+                                                                      (the-as process-drawable (-> v1-51 0 self))
+                                                                      )
+                                                 )
+                                         root
+                                         )
+                       )
+               root-prim
+               )
+           )
+         )
+    (set! (-> v1-54 prim-core collide-as) (collide-spec))
+    (set! (-> v1-54 prim-core collide-with) (collide-spec))
+    )
+  0
+  (none)
   )
 
 (defmethod translate! carry-info ((obj carry-info))
@@ -619,7 +585,3 @@
   (drop-impl! obj arg0)
   (none)
   )
-
-
-
-

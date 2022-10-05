@@ -287,7 +287,7 @@
        (sound-play "yellow-shot-fiz")
        )
       (else
-        (sound-play "yellow-shot-std" :id (-> obj sound-id) :position (the-as symbol (-> obj root-override trans)))
+        (sound-play "yellow-shot-std" :id (-> obj sound-id) :position (-> obj root-override trans))
         )
       )
     )
@@ -353,7 +353,9 @@
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) cshape-reaction-just-move)
+    (set! (-> s5-0 reaction)
+          (the-as (function control-info collide-query vector vector cshape-moving-flags) cshape-reaction-just-move)
+          )
     (set! (-> s5-0 no-reaction) nothing)
     (set! (-> s5-0 penetrate-using) (penetrate jak-yellow-shot))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
