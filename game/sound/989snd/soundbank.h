@@ -24,8 +24,9 @@ enum class BankType {
 
 class SoundBank {
  public:
+  SoundBank(u32 id, BankType type) : type(type), bank_id(id){};
   virtual ~SoundBank() = default;
-  BankType type;
+
   virtual std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
                                                       u32 sound_id,
                                                       s32 vol,
@@ -33,6 +34,7 @@ class SoundBank {
                                                       s32 pm,
                                                       s32 pb) = 0;
 
+  BankType type;
   u32 bank_id;
   u32 bank_name;
   std::unique_ptr<u8[]> sampleBuf;

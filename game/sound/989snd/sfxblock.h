@@ -141,7 +141,7 @@ struct SFX {
 
 class SFXBlock : public SoundBank {
  public:
-  SFXBlock(locator& loc) : m_locator(loc) {}
+  SFXBlock(locator& loc, u32 handle, SFXBlockData* data);
   std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
                                               u32 sound_id,
                                               s32 vol,
@@ -149,10 +149,10 @@ class SFXBlock : public SoundBank {
                                               s32 pm,
                                               s32 pb) override;
 
-  std::vector<SFX> sounds;
-
  private:
   locator& m_locator;
+
+  std::vector<SFX> m_sounds;
 };
 
 }  // namespace snd

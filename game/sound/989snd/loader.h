@@ -46,8 +46,6 @@ class loader : public locator {
 
  private:
   void load_samples(u32 bank, std::unique_ptr<u8[]> samples);
-  u32 read_music_bank(SoundBankData* data);
-  u32 read_sfx_bank(SFXBlockData* data);
 
   id_allocator m_id_allocator;
   std::unordered_map<u32, std::unique_ptr<SoundBank>> m_soundbanks;

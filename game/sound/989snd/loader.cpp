@@ -16,71 +16,6 @@ enum chunk : u32 { bank, samples, midi };
 
 #define FOURCC(a, b, c, d) ((u32)(((d) << 24) | ((c) << 16) | ((b) << 8) | (a)))
 
-u32 loader::read_music_bank(SoundBankData* data) {
-  u32 handle = m_id_allocator.get_id();
-
-  auto bank = std::make_unique<MusicBank>(*this);
-
-  auto sound = (MIDISound*)((uintptr_t)data + data->FirstSound);
-  for (int i = 0; i < data->NumSounds; i++) {
-    bank->sounds.emplace_back(sound[i]);
-  }
-
-  auto progdata = (ProgData*)((uintptr_t)data + data->FirstProg);
-  for (int i = 0; i < data->NumProgs; i++) {
-    Prog prog;
-    prog.d = progdata[i];
-    bank->programs.emplace_back(std::move(prog));
-  }
-
-  for (auto& prog : bank->programs) {
-    auto tonedata = (Tone*)((uintptr_t)data + prog.d.FirstTone);
-    for (int i = 0; i < prog.d.NumTones; i++) {
-      Tone tone = tonedata[i];
-      tone.BankID = handle;
-      prog.tones.emplace_back(tone);
-    }
-  }
-
-  bank->type = BankType::Music;
-
-  bank->bank_id = handle;
-  bank->bank_name = data->BankID;
-  m_soundbanks.emplace(handle, std::move(bank));
-
-  return handle;
-}
-
-u32 loader::read_sfx_bank(SFXBlockData* data) {
-  u32 handle = m_id_allocator.get_id();
-
-  auto bank = std::make_unique<SFXBlock>(*this);
-
-  auto sounddata = (SFXData*)((uintptr_t)data + data->FirstSound);
-  for (int i = 0; i < data->NumSounds; i++) {
-    SFX sound;
-    sound.d = sounddata[i];
-    bank->sounds.push_back(sound);
-  }
-
-  for (auto& sound : bank->sounds) {
-    auto graindata = (SFXGrain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
-    for (int i = 0; i < sound.d.NumGrains; i++) {
-      SFXGrain grain = graindata[i];
-      if (grain.Type == 1) {
-        grain.GrainParams.tone.BankID = handle;
-      }
-      sound.grains.push_back(grain);
-    }
-  }
-
-  bank->type = BankType::SFX;
-
-  bank->bank_id = handle;
-  m_soundbanks.emplace(handle, std::move(bank));
-  return handle;
-}
-
 u32 loader::read_bank(std::fstream& in) {
   size_t origin = in.tellg();
   FileAttributes<3> attr;
@@ -100,17 +35,21 @@ u32 loader::read_bank(std::fstream& in) {
   auto bank_buf = std::make_unique<u8[]>(attr.where[chunk::bank].size);
   in.seekg(origin + attr.where[chunk::bank].offset, std::fstream::beg);
   in.read((char*)bank_buf.get(), attr.where[chunk::bank].size);
-  auto bank = (BankTag*)bank_buf.get();
+  auto bank_tag = (BankTag*)bank_buf.get();
 
-  u32 bank_id = 0;
+  u32 bank_id = m_id_allocator.get_id();
+  std::unique_ptr<SoundBank> bank;
 
-  if (bank->DataID == FOURCC('S', 'B', 'v', '2')) {
-    bank_id = read_music_bank((SoundBankData*)bank_buf.get());
-  } else if (bank->DataID == FOURCC('S', 'B', 'l', 'k')) {
-    bank_id = read_sfx_bank((SFXBlockData*)bank_buf.get());
+  if (bank_tag->DataID == FOURCC('S', 'B', 'v', '2')) {
+    bank = std::make_unique<MusicBank>(*this, bank_id, (SoundBankData*)bank_buf.get());
+  } else if (bank_tag->DataID == FOURCC('S', 'B', 'l', 'k')) {
+    bank = std::make_unique<SFXBlock>(*this, bank_id, (SFXBlockData*)bank_buf.get());
   } else {
+    m_id_allocator.free_id(bank_id);
     throw std::runtime_error("Unknown bank ID, bad file?");
   }
+
+  m_soundbanks.emplace(bank_id, std::move(bank));
 
   if (attr.num_chunks >= 2) {
     in.seekg(origin + attr.where[chunk::samples].offset, std::fstream::beg);
