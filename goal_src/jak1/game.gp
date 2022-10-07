@@ -380,7 +380,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "game/assets/game_text.gp"
+(defstep :in "game/assets/jak1/game_text.gp"
   :tool 'text
   :out '("$OUT/iso/0COMMON.TXT"
          "$OUT/iso/1COMMON.TXT"
@@ -391,7 +391,7 @@
          "$OUT/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/game_subtitle.gp"
+(defstep :in "game/assets/jak1/game_subtitle.gp"
   :tool 'subtitle
   :out '("$OUT/iso/0SUBTIT.TXT"
          "$OUT/iso/3SUBTIT.TXT"

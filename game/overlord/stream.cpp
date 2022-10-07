@@ -21,7 +21,7 @@
 
 using namespace iop;
 
-static RPC_Str_Cmd sSTRBuf;
+static RPC_Str_Cmd_Jak2 sSTRBuf;
 static RPC_Play_Cmd sPLAYBuf[2];  // todo type
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
@@ -48,7 +48,7 @@ constexpr int STR_INDEX_CACHE_SIZE = 4;
 CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd));
+  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd_Jak2));
   memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
 }
 
@@ -84,10 +84,10 @@ u32 PLAYThread() {
 /*!
  * The STR RPC handler.
  */
-void* RPC_STR(unsigned int fno, void* _cmd, int y) {
+void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y) {
   (void)fno;
   (void)y;
-  auto* cmd = (RPC_Str_Cmd*)_cmd;
+  auto* cmd = (RPC_Str_Cmd_Jak1*)_cmd;
   if (cmd->chunk_id < 0) {
     // it's _not_ a stream file. So we just treat it like a normal load.
 
@@ -160,6 +160,50 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
   }
 
   return cmd;
+}
+
+/*!
+ * The STR RPC handler.
+ */
+void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
+  (void)fno;
+  (void)y;
+  auto* cmd = (RPC_Str_Cmd_Jak2*)_cmd;
+  if (cmd->section < 0) {
+    // it's _not_ a stream file. So we just treat it like a normal load.
+
+    // find the file with the given name
+    auto file_record = isofs->find(cmd->basename);
+    if (file_record == nullptr) {
+      // file not found!
+      printf("[OVERLORD STR] Failed to find file %s for loading.\n", cmd->basename);
+      cmd->result = STR_RPC_RESULT_ERROR;
+    } else {
+      // load directly to the EE
+      cmd->maxlen = LoadISOFileToEE(file_record, cmd->address, cmd->maxlen);
+      if (cmd->maxlen) {
+        // successful load!
+        cmd->result = STR_RPC_RESULT_DONE;
+      } else {
+        // there was an error loading.
+        cmd->result = STR_RPC_RESULT_ERROR;
+      }
+    }
+  } else {
+    // TODO - not ret implemented
+    cmd->result = STR_RPC_RESULT_ERROR;
+  }
+
+  return cmd;
+}
+
+void* RPC_STR(unsigned int fno, void* _cmd, int y) {
+  if (g_game_version == GameVersion::Jak1) {
+    return RPC_STR_jak1(fno, _cmd, y);
+  }
+  else if (g_game_version == GameVersion::Jak2) {
+    return RPC_STR_jak2(fno, _cmd, y);
+  }
 }
 
 void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
