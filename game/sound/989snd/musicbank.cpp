@@ -7,8 +7,10 @@
 
 namespace snd {
 
-MusicBank::MusicBank(locator& loc, u32 id, SoundBankData* data)
+MusicBank::MusicBank(locator& loc, u32 id, BankTag* tag)
     : SoundBank(id, BankType::Music), m_locator(loc) {
+
+  auto data = (SoundBankData*)tag;
 
   auto sound = (MIDISound*)((uintptr_t)data + data->FirstSound);
   for (int i = 0; i < data->NumSounds; i++) {

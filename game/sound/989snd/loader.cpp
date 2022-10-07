@@ -41,9 +41,9 @@ u32 loader::read_bank(std::fstream& in) {
   std::unique_ptr<SoundBank> bank;
 
   if (bank_tag->DataID == FOURCC('S', 'B', 'v', '2')) {
-    bank = std::make_unique<MusicBank>(*this, bank_id, (SoundBankData*)bank_buf.get());
+    bank = std::make_unique<MusicBank>(*this, bank_id, bank_tag);
   } else if (bank_tag->DataID == FOURCC('S', 'B', 'l', 'k')) {
-    bank = std::make_unique<SFXBlock>(*this, bank_id, (SFXBlockData*)bank_buf.get());
+    bank = std::make_unique<SFXBlock>(*this, bank_id, bank_tag);
   } else {
     m_id_allocator.free_id(bank_id);
     throw std::runtime_error("Unknown bank ID, bad file?");

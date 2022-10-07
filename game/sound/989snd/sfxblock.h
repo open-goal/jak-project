@@ -46,6 +46,46 @@ struct SFXBlockData : BankTag {
 
 static_assert(sizeof(SFXBlockData) == 0x38 + 4);
 
+struct SFXUserData {
+  /*   0 */ u32 data[4];
+};
+
+struct SFXName {
+  /*   0 */ u32 Name[4];
+  /*  10 */ s16 Index;
+  /*  12 */ s16 reserved;
+};
+
+struct VAGName {
+  /*   0 */ u32 Name[4];
+  /*  10 */ u32 Offset;
+  /*  14 */ u32 res1;
+  /*  18 */ u32 res2;
+};
+
+struct VAGImport {
+  /*   0 */ u32 BlockName[2];
+  /*   8 */ u32 VAGName[4];
+  /*  18 */ u32 VAGLocation;
+  /*  1c */ u32 VAGSR;
+};
+
+struct VAGExport {
+  /*   0 */ u32 VAGName[4];
+  /*  10 */ u32 VAGLocation;
+  /*  14 */ u32 VAGSR;
+};
+
+struct SFXBlockNames {
+  /*   0 */ u32 BlockName[2];
+  /*   8 */ u32 SFXNameTableOffset;
+  /*   c */ u32 VAGNameTableOffset;
+  /*  10 */ u32 VAGImportsTableOffset;
+  /*  14 */ u32 VAGExportsTableOffset;
+  /*  18 */ s16 SFXHashOffsets[32];
+  /*  58 */ s16 VAGHashOffsets[32];
+};
+
 struct XREFGrainParams {
   /*   0 */ u32 BankID;
   /*   4 */ u32 SoundIndex;
@@ -141,7 +181,7 @@ struct SFX {
 
 class SFXBlock : public SoundBank {
  public:
-  SFXBlock(locator& loc, u32 handle, SFXBlockData* data);
+  SFXBlock(locator& loc, u32 handle, BankTag* tag);
   std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
                                               u32 sound_id,
                                               s32 vol,
@@ -150,8 +190,12 @@ class SFXBlock : public SoundBank {
                                               s32 pb) override;
 
  private:
-  locator& m_locator;
+  void read_names(SFXBlockNames* names);
 
+  locator& m_locator;
+  u32 m_version;
+
+  std::unordered_map<std::string, u32> m_names;
   std::vector<SFX> m_sounds;
 };
 

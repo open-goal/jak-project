@@ -60,7 +60,7 @@ struct MIDISound {
 struct Prog;
 class MusicBank : public SoundBank {
  public:
-  MusicBank(locator& loc, u32 id, SoundBankData* data);
+  MusicBank(locator& loc, u32 id, BankTag* tag);
   std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
                                               u32 sound_id,
                                               s32 vol,
