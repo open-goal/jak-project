@@ -542,7 +542,7 @@ void Tie3::render_tree(int idx,
 
   Timer interp_timer;
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.itimes, tree.tod_cache, *tree.colors, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
     interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }

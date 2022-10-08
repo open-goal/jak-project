@@ -247,10 +247,8 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
-
 void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
                              const SwizzledTimeOfDay& swizzled_colors,
-                             const std::vector<tfrag3::TimeOfDayColor>& normal_colors,
                              math::Vector<u8, 4>* out) {
   math::Vector<u16, 4> weights[8];
   for (int component = 0; component < 8; component++) {

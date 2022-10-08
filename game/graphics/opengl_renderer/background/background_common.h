@@ -56,7 +56,6 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
 
 void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
                              const SwizzledTimeOfDay& swizzled_colors,
-                             const std::vector<tfrag3::TimeOfDayColor>& normal_colors,
                              math::Vector<u8, 4>* out);
 
 void cull_check_all_slow(const math::Vector4f* planes,

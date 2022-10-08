@@ -228,7 +228,7 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  interp_time_of_day_fast(settings.itimes, tree.tod_cache, *tree.colors, m_color_result.data());
+  interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;

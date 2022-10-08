@@ -1052,7 +1052,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
 
-    if (arg0_int && (*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
+    if (arg0_int && ((s64)*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
         allowable_base_type_for_symbol_to_string(arg1_type.typespec())) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
