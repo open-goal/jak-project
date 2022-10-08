@@ -142,13 +142,6 @@ void TFragment::render(DmaFollower& dma,
 }
 
 void TFragment::draw_debug_window() {
-  ImGui::Checkbox("Manual Time of Day", &m_override_time_of_day);
-  if (m_override_time_of_day) {
-    for (int i = 0; i < 8; i++) {
-      ImGui::SliderFloat(fmt::format("{}", i).c_str(), m_time_of_days + i, 0.f, 1.f);
-    }
-  }
-
   m_tfrag3.draw_debug_window();
 }
 
