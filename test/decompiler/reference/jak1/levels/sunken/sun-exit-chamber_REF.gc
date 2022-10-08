@@ -721,14 +721,14 @@
 
 ;; failed to figure out what this is:
 (defstate exit-chamber-charger-puzzle (exit-chamber)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
-    (case arg2
+    (case event-type
       (('notify)
-       (case (-> arg3 param 0)
+       (case (-> event param 0)
          ((1)
           (when (zero? (get-reminder (get-task-control (game-task sunken-room)) 0))
-            (let* ((a1-2 (-> arg3 param 1))
+            (let* ((a1-2 (-> event param 1))
                    (v1-5 (logior (-> self chargers-active) (ash 1 a1-2)))
                    )
               (set! (-> self chargers-active) v1-5)
@@ -743,7 +743,7 @@
           )
          ((2)
           (when (zero? (get-reminder (get-task-control (game-task sunken-room)) 0))
-            (let ((a1-6 (-> arg3 param 1)))
+            (let ((a1-6 (-> event param 1)))
               (set! v0-0 (logclear (-> self chargers-active) (ash 1 a1-6)))
               )
             (set! (-> self chargers-active) (the-as uint v0-0))
@@ -796,16 +796,16 @@
 
 ;; failed to figure out what this is:
 (defstate exit-chamber-idle-in-sunken (exit-chamber)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-1 object))
-    (case arg2
+    (case event-type
       (('trigger)
        (go exit-chamber-rise)
        (return #t)
        v0-1
        )
       (('notify)
-       (when (and (= (-> arg0 type) fuel-cell) (= (-> arg3 param 0) 'pickup))
+       (when (and (= (-> proc type) fuel-cell) (= (-> event param 0) 'pickup))
          (let ((a0-5 (handle->process (-> self fcell-handle))))
            (when a0-5
              (let ((v1-10 (new 'stack-no-clear 'vector)))
@@ -983,13 +983,13 @@
 
 ;; failed to figure out what this is:
 (defstate exit-chamber-idle-in-village (exit-chamber)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go exit-chamber-lower)
        )
       (('notify)
-       (when (and (= (-> arg0 type) fuel-cell) (= (-> arg3 param 0) 'pickup))
+       (when (and (= (-> proc type) fuel-cell) (= (-> event param 0) 'pickup))
          (let ((a0-5 (handle->process (-> self fcell-handle))))
            (when a0-5
              (let ((v1-8 (new 'stack-no-clear 'vector)))

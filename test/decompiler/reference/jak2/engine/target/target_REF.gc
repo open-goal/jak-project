@@ -436,13 +436,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-slide-down-to-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('slide)
        #f
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2109,23 +2109,23 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry touching-shapes-entry-method-12)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (let ((t9-1 target-send-attack)
                 (a1-2 (-> self control unknown-symbol04))
-                (a2-2 (-> arg3 param 0))
+                (a2-2 (-> event param 0))
                 (a3-1 (-> self control unknown-symbol05))
                 (t0-0 (-> self control unknown-dword05))
                 )
             (-> self control penetrate-using)
-            (when (t9-1 arg0 (the-as uint a1-2) a2-2 (the-as int a3-1) (the-as int t0-0))
+            (when (t9-1 proc (the-as uint a1-2) a2-2 (the-as int a3-1) (the-as int t0-0))
               (set! (-> self gun combo-window-start) (-> self clock frame-counter))
               (let ((v0-2 (the-as object (-> self state name))))
                 (set! (-> self gun combo-window-state) (the-as symbol v0-2))
@@ -2135,12 +2135,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -2155,7 +2155,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2397,19 +2397,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-running-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry touching-shapes-entry-method-12)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (let ((t9-1 target-send-attack)
-                (a0-3 arg0)
+                (a0-3 proc)
                 (a1-2 (-> self control unknown-symbol04))
-                (a2-2 (-> arg3 param 0))
+                (a2-2 (-> event param 0))
                 (a3-1 (-> self control unknown-symbol05))
                 (t0-0 (-> self control unknown-dword05))
                 )
@@ -2419,8 +2419,8 @@
                 (set! (-> self control unknown-time-frame17) (-> self clock frame-counter))
                 (set! (-> self gun combo-window-start) (-> self clock frame-counter))
                 (set! (-> self gun combo-window-state) (-> self state name))
-                (let ((v1-13 (if (type? arg0 process-focusable)
-                                 arg0
+                (let ((v1-13 (if (type? proc process-focusable)
+                                 proc
                                  )
                              )
                       )
@@ -2459,12 +2459,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (('gun-combo)
-       (if (-> arg3 param 0)
+       (if (-> event param 0)
            (go target-stance)
            )
        #t
@@ -2473,7 +2473,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2943,15 +2943,15 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack-air (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -3266,10 +3266,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack-uppercut-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3301,7 +3301,7 @@
        #t
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3459,15 +3459,15 @@
 
 ;; failed to figure out what this is:
 (defstate target-flop (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v1-0 symbol))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((begin (set! v1-0 arg2) (= v1-0 'slide))
+        ((begin (set! v1-0 event-type) (= v1-0 'slide))
          #f
          )
         ((= v1-0 'swim)
@@ -3483,7 +3483,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -3764,20 +3764,20 @@
 
 ;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
       ((and (-> self next-state) (= (-> self next-state name) 'target-flop-hit-ground))
-       (case arg2
+       (case event-type
          (('swim 'slide)
           #f
           )
          (else
-           (target-standard-event-handler arg0 arg1 arg2 arg3)
+           (target-standard-event-handler proc arg1 event-type event)
            )
          )
        )
       (else
-        (target-jump-event-handler arg0 arg1 arg2 arg3)
+        (target-jump-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3867,13 +3867,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-roll (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (= arg2 'touched)
-        (send-event arg0 'roll)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (= event-type 'touched)
+        (send-event proc 'roll)
         )
-    (case arg2
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3887,7 +3887,7 @@
        #t
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -4044,10 +4044,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-roll-flip (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -4059,7 +4059,7 @@
        #t
        )
       (else
-        (target-jump-event-handler arg0 arg1 arg2 arg3)
+        (target-jump-event-handler proc arg1 event-type event)
         )
       )
     )

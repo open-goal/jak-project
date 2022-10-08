@@ -26,7 +26,7 @@ bool convert_to_expressions(
       f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
       f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
       f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
-    f.ir2.env.set_remap_for_function(f.type);
+    f.ir2.env.set_remap_for_function(f);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     auto method_type =
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;

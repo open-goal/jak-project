@@ -622,26 +622,26 @@
 
 ;; failed to figure out what this is:
 (defstate darkecobarrel-mover-move (darkecobarrel-mover)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (cond
-         ((= arg0 *target*)
-          (let ((s5-0 (-> arg3 param 0)))
+         ((= proc *target*)
+          (let ((s5-0 (-> event param 0)))
             (if (and s5-0
                      ((method-of-type touching-shapes-entry prims-touching?)
                       (the-as touching-shapes-entry s5-0)
                       (-> self root-override)
                       (the-as uint 1)
                       )
-                     (send-event arg0 'attack-invinc s5-0 (static-attack-info ((mode 'death))))
+                     (send-event proc 'attack-invinc s5-0 (static-attack-info ((mode 'death))))
                      )
                 (go darkecobarrel-mover-die)
                 )
             )
           )
          ((>= arg1 2)
-          (case (-> arg3 param 1)
+          (case (-> event param 1)
             (('eco-yellow)
              (+! (-> self hits) 1)
              (cond
@@ -649,8 +649,8 @@
                 (go darkecobarrel-mover-die)
                 )
                (else
-                 (let ((v1-17 (if (and (nonzero? arg0) (type-type? (-> arg0 type) process-drawable))
-                                  arg0
+                 (let ((v1-17 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable))
+                                  proc
                                   )
                               )
                        (gp-1 (new 'stack-no-clear 'vector))
@@ -1194,10 +1194,10 @@
 ;; failed to figure out what this is:
 (defstate idle (chainmine)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack 'touch)
-       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
+       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'deadly))))
        (go-virtual die)
        )
       )
@@ -1380,10 +1380,10 @@
 ;; failed to figure out what this is:
 (defstate idle (lavaballoon)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (send-event arg0 'heat -10.0)
+       (send-event proc 'heat -10.0)
        (go-virtual die)
        )
       )

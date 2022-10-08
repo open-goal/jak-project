@@ -6693,7 +6693,7 @@
 
 (deftype connection (connectable)
   ((param0 basic     :offset-assert 16)
-   (param1 int32     :offset-assert 20) ;; guessed by decompiler
+   (param1 basic     :offset-assert 20) ;; guessed by decompiler
    (param2 int32     :offset-assert 24) ;; guessed by decompiler
    (param3 int32     :offset-assert 28) ;; guessed by decompiler
    (quad   uint128 2 :offset 0) ;; guessed by decompiler
@@ -13617,6 +13617,7 @@
 ;; lightning-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++lightning-h:lightning-spec-flags
 (defenum lightning-spec-flags
   :type uint16
   :bitfield #t
@@ -13626,6 +13627,7 @@
   (lsf3 3)
   (size-from-adjust-dist 4)
   )
+;; ---lightning-h:lightning-spec-flags
 
 (deftype lightning-spec (basic)
   ((name              string  :offset-assert 4)
@@ -13655,13 +13657,16 @@
   :flag-assert         #x900000050
   )
 
+;; +++lightning-h:lightning-mode
 (defenum lightning-mode
   :type uint8
+  (lm-1 -1)
   (lm0 0)
   (lm1 1)
   (lm2 2)
   (lm3 3)
   )
+;; ---lightning-h:lightning-mode
 
 (deftype lightning-state (structure)
   ((mode           lightning-mode      :offset-assert 0)
@@ -13692,7 +13697,7 @@
     (new (symbol type lightning-spec process float) _type_)
     (change-mode (_type_ lightning-mode) lightning-mode 9)
     (get-mode (_type_) lightning-mode 10)
-    (set-point (_type_ int vector) none 11)
+    (set-point! (_type_ int vector) none 11)
     (set-first-meet-point (_type_ vector) none 12)
     (set-last-meet-point (_type_ vector) none 13)
     )
@@ -15007,6 +15012,7 @@
    (pause-in  float  :offset-assert 36)
    (pause-out float  :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 16
   :size-assert         #x2c
   :flag-assert         #x100000002c
@@ -15919,7 +15925,7 @@
    (penetrate-using penetrate)
    (penetrated-by penetrate)
    (backup-collide-as collide-spec)
-   (backup-collde-with collide-spec)
+   (backup-collide-with collide-spec)
    (event-priority uint8)
    (rider-max-momentum float)
    )
@@ -15929,7 +15935,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_ 0)
-    (collide-shape-method-28 () none 28) ;; (move-by-vector! (_type_ vector) none 28)
+    (move-by-vector! (_type_ vector) none 28) ;; (move-by-vector! (_type_ vector) none 28)
     (collide-shape-method-29 (_type_ vector) none 29) ;; (alloc-riders (_type_ int) none 29)
     (collide-shape-method-30 () none 30) ;; (move-to-point! (_type_ vector) none 30)
     (collide-shape-method-31 () none 31) ;; (debug-draw (_type_) none 31)
@@ -16693,7 +16699,7 @@
     (get-next (_type_ touching-shapes-entry) touching-prims-entry 10) ;; (get-touched-shape (_type_ collide-shape) collide-shape 10)
     (touching-shapes-entry-method-11 () none 11) ;; (dummy-11 () none 11)
     (touching-shapes-entry-method-12 (_type_ collide-shape uint) touching-prims-entry 12) ;; (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12)
-    (touching-shapes-entry-method-13 () none 13) ;; (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry 13)
+    (touching-shapes-entry-method-13 (_type_ collide-shape uint uint) basic 13) ;; (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry 13)
     (touching-shapes-entry-method-14 () none 14) ;; (dummy-14 () none 14)
     )
   )
@@ -16951,7 +16957,9 @@
   :size-assert         #xcc
   :flag-assert         #x1b005000cc
   (:methods
-    (get-trans (_type_ int) vector 20)
+    (get-trans
+      "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
+      (_type_ int) vector 20)
     (get-quat (_type_) quaternion 21)
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_) none 23)
@@ -22172,7 +22180,7 @@
   (:methods
     (spatial-hash-method-34 () none 34)
     (spatial-hash-method-35 () none 35)
-    (spatial-hash-method-36 () none 36)
+    (spatial-hash-method-36 (_type_ sphere (pointer collide-shape) int) int 36)
     (spatial-hash-method-37 () none 37)
     (spatial-hash-method-38 () none 38)
     (spatial-hash-method-39 () none 39)
@@ -22185,7 +22193,7 @@
 ;; actor-hash-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *actor-list* pointer) ;; some array of something.
+(define-extern *actor-list* (pointer collide-shape)) ;; some array of something.
 (define-extern *actor-list-length* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27015,8 +27023,8 @@
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
 (define-extern transform-post (function int :behavior process-drawable)) ;;
-;; (define-extern rider-trans function) ;; (function int :behavior process-drawable)
-;; (define-extern rider-post function) ;; (function int :behavior process-drawable)
+(define-extern rider-trans (function none :behavior process-drawable)) ;; 
+(define-extern rider-post (function none :behavior process-drawable)) ;; 
 ;; (define-extern pusher-post function) ;; (function int :behavior process-drawable)
 ;; (define-extern process-drawable-delay-player function) ;; (function time-frame int :behavior process-drawable)
 ;; (define-extern process-drawable-fuel-cell-handler function) ;; (function process int symbol event-message-block none :behavior process-drawable)
@@ -29160,7 +29168,7 @@
 (define-extern entity-birth-no-kill (function entity process))
 (define-extern entity-task-complete-on (function entity none))
 (define-extern entity-task-complete-off (function entity none))
-(define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
+(define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status)) ;;
 (define-extern find-nearest-entity (function vector type entity))
 (define-extern entity-speed-test (function string entity))
 (define-extern dump-entity-remap (function object object none))
@@ -31239,12 +31247,23 @@
 ;; sampler                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sampler-mem* object)
-;; (define-extern *sampler-compare* object)
-;; (define-extern *sampler-count* object)
-;; (define-extern timer0-handler function)
-;; (define-extern sampler-start function)
-;; (define-extern sampler-stop function)
+(define-extern *sampler-mem* "A pointer to where the sampled data should be stored" pointer)
+(define-extern *sampler-compare*
+  "The value used to set the EE register's `Timer 0 Compare Value`.  Always `1`"
+  uint)
+(define-extern *sampler-count*
+  "Incremented everytime a metric is sampled
+   @see [[timer0-handler]]"
+  int)
+(define-extern timer0-handler (function none))
+(define-extern sampler-start
+  "Reset the [[timer-bank]] EE registers.
+   - If [[*sampler-mem*]] is undefined, allocate 16.7MB in the debug segment
+   - and when [[*sampler-mem*]] is defined, initialize the [[timer-bank]] fully.  Reset [[*sampler-count*]] to 0 as well"
+  (function none))
+(define-extern sampler-stop
+  "Sets the [[timer-bank]] mode EE register to 0"
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; default-menu                   ;;
@@ -31617,22 +31636,24 @@
 ;; blocking-plane                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype blocking-plane (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 999))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:methods
     (idle () _type_ :state 20)
-    (blocking-plane-method-21 () none 21)
+    (init!
+      "TODO - but sets up the plane given 2 vectors and a height"
+      (_type_ (inline-array vector) float) none 21)
     )
   )
-|#
 
-;; (define-extern blocking-plane-init-by-other function) ;; (function curve-control int none :behavior blocking-plane)
-;; (define-extern blocking-plane-spawn function) ;; (function curve-control none :behavior process)
-;; (define-extern blocking-plane-destroy function) ;; (function none)
+(define-extern blocking-plane-init-by-other
+  "Calls [[blocking-plane::21]] with the given args"
+  (function (inline-array vector) float none :behavior blocking-plane))
+(define-extern blocking-plane-spawn (function curve-control (inline-array vector) float none :behavior process))
+(define-extern blocking-plane-destroy (function none :behavior blocking-plane))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; idle-control                   ;;
@@ -32507,73 +32528,115 @@
 ;; base-plat                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype base-plat (process-focusable)
-  ((smush        smush-control :inline :offset-assert 204)
-   (basetrans    vector        :inline :offset-assert 236)
-   (bounce-time  time-frame                :offset-assert 252)
-   (bouncing     basic                 :offset-assert 260)
-   (bounce-scale meters                :offset-assert 264)
+  ((root-override collide-shape-moving :offset 128 :score 100)
+   (smush        smush-control :inline :offset-assert 208)
+   (basetrans    vector        :inline :offset-assert 240)
+   (bounce-time  time-frame            :offset-assert 256)
+   (bouncing     symbol                :offset-assert 264)
+   (bounce-scale meters                :offset-assert 268)
    )
   :method-count-assert 34
   :size-assert         #x110
   :flag-assert         #x2200900110
   (:methods
-    (base-plat-method-27 () none 27)
-    (base-plat-method-28 () none 28)
-    (base-plat-method-29 () none 29)
-    (base-plat-method-30 () none 30)
-    (base-plat-method-31 () none 31)
-    (base-plat-method-32 () none 32)
-    (base-plat-method-33 () none 33)
+    (execute-effects
+      "Executes various ancillary tasks with the platform, such as spawning particles or playing the associated sound"
+      (_type_) none 27)
+    (stop-bouncing!
+      "Sets `bouncing` to false and resets related settings to their defaults"
+      (_type_) none 28)
+    (start-bouncing!
+      "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
+       and translate the platform via the `smush`
+       @see [[smush-control]]"
+      (_type_) none :behavior base-plat 29)
+    (get-art-group
+      "@returns The associated [[art-group]]"
+      (_type_) art-group 30)
+    (base-plat-method-31 "TODO - collision stuff" (_type_) none 31)
+    (base-plat-method-32 (_type_) none 32)
+    (base-plat-method-33 (_type_) none 33)
     )
   )
-|#
 
-#|
+;; +++base-plat:eco-door-flags
+(defenum eco-door-flags
+  :bitfield #t
+  :type int32
+  (ecdf00)
+  (ecdf01)
+  (auto-close)
+  (one-way)
+  )
+;; ---base-plat:eco-door-flags
+
+
 (deftype eco-door (process-drawable)
-  ((speed          float                :offset-assert 196)
-   (open-distance  float                :offset-assert 200)
-   (close-distance float                :offset-assert 204)
-   (out-dir        vector       :inline :offset-assert 220)
-   (open-sound     uint128              :offset-assert 236) ;; sound-name
-   (close-sound    uint128              :offset-assert 252) ;; sound-name
-   (state-actor    entity-actor         :offset-assert 268) ;; guessed by decompiler
-   (flags          int32                :offset-assert 272) ;; eco-door-flags
-   (locked         symbol               :offset-assert 276) ;; guessed by decompiler
-   (auto-close     symbol               :offset-assert 280) ;; guessed by decompiler
-   (one-way        symbol               :offset-assert 284) ;; guessed by decompiler
+  "@unused - Likely a left-over from Jak 1"
+  ((root-override  collide-shape        :offset 128 :score 100)
+   (speed          float                :offset-assert 200)
+   (open-distance  float                :offset-assert 204)
+   (close-distance float                :offset-assert 208)
+   (out-dir        vector       :inline :offset-assert 224)
+   (open-sound     sound-name              :offset-assert 240) ;; sound-name
+   (close-sound    sound-name              :offset-assert 256) ;; sound-name
+   (state-actor    entity-actor         :offset-assert 272) ;; guessed by decompiler
+   (flags          eco-door-flags                :offset-assert 276) ;; eco-door-flags
+   (locked         symbol               :offset-assert 280) ;; guessed by decompiler
+   (auto-close     symbol               :offset-assert 284) ;; guessed by decompiler
+   (one-way        symbol               :offset-assert 288) ;; guessed by decompiler
    )
   :method-count-assert 27
   :size-assert         #x124
   :flag-assert         #x1b00b00124
   (:methods
-    (door-closed () _type_ :state 20) ;; (door-closed () _type_ :state 20)
-    (door-opening () _type_ :state 21) ;; (door-opening () _type_ :state 21)
-    (door-open () _type_ :state 22) ;; (door-open () _type_ :state 22)
-    (door-closing () _type_ :state 23) ;; (door-closing () _type_ :state 23)
-    (eco-door-method-24 () none 24) ;; (TODO-RENAME-24 (_type_) none 24)
-    (eco-door-method-25 () none 25) ;; (TODO-RENAME-25 (_type_) none 25)
-    (eco-door-method-26 () none 26) ;; (dummy-26 (_type_) none 26)
+    (door-closed () _type_ :state 20)
+    (door-opening () _type_ :state 21)
+    (door-open () _type_ :state 22)
+    (door-closing () _type_ :state 23)
+    (lock-according-to-task!
+      "If the associated subtask is completed, lock the door if [[eco-door-flags:0]] is set
+       otherwise, lock it if [[eco-door-flags:0]] is set"
+      (_type_) none 24)
+    (eco-door-method-25 (_type_) none 25) ;; (TODO-RENAME-25 (_type_) none 25)
+    (stub
+      "@unused - Stub with no overrides"
+      (_type_) none 26)
     )
   )
-|#
 
-;; (define-extern plat-code function) ;; (function none :behavior baseplat)
-;; (define-extern plat-trans function) ;; (function none :behavior baseplat)
-;; (define-extern plat-post function) ;; (function none :behavior baseplat)
-;; (define-extern plat-event function) ;; (function process int symbol event-message-block object :behavior baseplat)
-;; (define-extern eco-door-event-handler function) ;; (function process int symbol event-message-block object :behavior eco-door)
+(define-extern plat-code
+  "After calling [[transform-post]] for 2 consecutive frames, put the process to sleep if it's not bouncing
+   otherwise, continue bouncing...forever!
+   @see [[transform-post]]"
+   (function none :behavior base-plat))
+(define-extern plat-trans
+  "If the platform is `bouncing`, move the platform accordingly with the [[smush-control]]
+   - If the amplitude of the `smush` has hit `0.0` then stop bouncing
+
+   If we aren't bouncing however, TODO - CSHAPE"
+  (function none :behavior base-plat))
+(define-extern plat-post (function none :behavior base-plat))
+(define-extern plat-event
+  "Handles platform related events.  Presently all this does is:
+   - if `event-type` is [['bonk]], then call [[base-plat:29]]"
+  (function process int symbol event-message-block object :behavior base-plat))
+(define-extern eco-door-event-handler
+  "If the `event-type` is `'trigger`, flip the `locked` flag on the door
+   and play the respective sound
+
+   @unused - likely a leftover from Jak 1"
+  (function process int symbol event-message-block object :behavior eco-door))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; plat                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype plat (base-plat)
-  ((path-pos float              :offset-assert 268)
-   (sound-id sound-id           :offset-assert 272) ;; guessed by decompiler
-   (sync     sync-eased :inline :offset-assert 276) ;; sync-info-eased :inline
+  ((path-pos float              :offset-assert 272)
+   (sound-id sound-id           :offset-assert 276) ;; guessed by decompiler
+   (sync     sync-eased :inline :offset-assert 280) ;; sync-info-eased :inline
    )
   :method-count-assert 37
   :size-assert         #x144
@@ -32581,69 +32644,101 @@
   (:methods
     (plat-idle () _type_ :state 34)
     (plat-path-active () _type_ :state 35)
-    (plat-method-36 () none 36)
+    (plat-path-sync
+      "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
+       otherwise, [[plat::34]]
+
+       @see [[sync-eased]]"
+      (_type_) object 36)
     )
   )
-|#
 
-#|
 (deftype drop-plat (base-plat)
-  ((art-name        basic          :offset-assert 268)
-   (anim            basic          :offset-assert 272)
-   (break-anim-name basic          :offset-assert 276)
-   (safe-time       time-frame         :offset-assert 284)
-   (hit-point       vector :inline :offset-assert 300)
+  ((art-name        string          :offset-assert 272)
+   (anim            spool-anim          :offset-assert 276)
+   (break-anim-name string          :offset-assert 280)
+   (safe-time       time-frame         :offset-assert 288)
+   (hit-point       vector :inline :offset-assert 304)
    )
   :method-count-assert 36
   :size-assert         #x140
   :flag-assert         #x2400c00140
   (:methods
     (idle () _type_ :state 34)
-    (fall () _type_ :state 35)
+    (fall (symbol) _type_ :state 35)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; basebutton                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++basebutton:button-status
+(defenum button-status
+  :type uint16
+  :bitfield #t
+  (pressed)
+  (button-status-1)
+  (button-status-2)
+  (button-status-3)
+  (button-status-4))
+;; ---basebutton:button-status
+
 (deftype basebutton (process-focusable)
-  ()
+  (
+    (button-status button-status :offset-assert 204)
+    (notify-actor entity :offset-assert 208)
+    (actor-group (pointer actor-group) :offset-assert 212)
+    (actor-group-count int32 :offset-assert 216)
+    (timeout float :offset-assert 220)
+    (button-id int32 :offset-assert 224)
+    (event-going-down symbol :offset-assert 228)
+    (event-down symbol :offset-assert 232)
+    (event-going-up symbol :offset-assert 236)
+    (event-up symbol :offset-assert 240)
+    (anim-speed float :offset-assert 244)
+    (move-to-pos vector :inline :offset-assert 256)
+    (move-to-quat quaternion :inline :offset-assert 272)
+  )
   :method-count-assert 39
   :size-assert         #x120
   :flag-assert         #x2700a00120
-  ;; Failed to read fields.
   (:methods
     (down-idle () _type_ :state 27) ;; (TODO-RENAME-27 (_type_) collide-shape-moving 27)
     (going-down () _type_ :state 28) ;; (arm-trigger-event! (_type_) symbol 28)
     (going-up () _type_ :state 29) ;; (TODO-RENAME-29 (_type_ symbol entity) none 29)
     (up-idle () _type_ :state 30) ;; (move-to-vec-or-quat! (_type_ vector quaternion) quaternion 30)
-    (basebutton-method-31 () none 31) ;; (press! (_type_ symbol) int 31)
-    (basebutton-method-32 () none 32)
-    (basebutton-method-33 () none 33)
-    (basebutton-method-34 () none 34)
-    (basebutton-method-35 () none 35)
-    (basebutton-method-36 () none 36)
-    (basebutton-method-37 () none 37)
-    (basebutton-method-38 () none 38)
+    (reset! (_type_) none 31) ;; (press! (_type_ symbol) int 31)
+    (idle-state-transition
+      "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
+      (_type_) object 32)
+    (basebutton-method-33 "TODO - joint stuff" (_type_) none 33)
+    (basebutton-method-34 "TODO - collision stuff" (_type_) none 34)
+    (prepare-trigger-event!
+      "Sets `event-going-down` to `'trigger`"
+      (_type_) none 35)
+    (send-event!
+      "Prepares an [[event-message-block]] using the provided type to send an event to:
+       - the `notify-actor`
+       - every [[entity-actor]] in the `actor-group` array
+       @see [[entity-actor]]"
+      (_type_ symbol) none :behavior basebutton 36)
+    (move-to! (_type_ vector quaternion) none 37)
+    (press! (_type_ symbol) entity-perm-status 38)
     )
   )
-|#
 
-;; (define-extern basebutton-init-by-other function) ;; (function entity-actor vector quaternion entity-actor symbol float none :behavior basebutton)
+(define-extern basebutton-init-by-other (function entity-actor vector quaternion entity-actor symbol float none :behavior basebutton))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bouncer                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bouncer (process-drawable)
-  ((spring-height meters  :offset-assert 196)
-   (smush         float   :offset-assert 200)
-   (mods          basic   :offset-assert 204)
+  ((spring-height meters  :offset-assert 200)
+   (smush         float   :offset-assert 204)
+   (mods          basic   :offset-assert 208)
    )
   :method-count-assert 25
   :size-assert         #xd4
@@ -32652,18 +32747,15 @@
     (idle () _type_ :state 20)
     (fire () _type_ :state 21)
     (smush () _type_ :state 22)
-    (bouncer-method-23 () none 23)
-    (bouncer-method-24 () none 24)
+    (init-skeleton! (_type_) none 23)
+    (bouncer-method-24 "TODO - collision stuff" (_type_) none 24)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; conveyor                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype conveyor-section (structure)
   ((start      vector :inline :offset-assert 0)
    (trailing   plane  :inline :offset-assert 16)
@@ -32674,48 +32766,54 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype conveyor-section-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             conveyor-section :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype conveyor (process-drawable)
-  ((speed                float          :offset-assert 196)
-   (belt-radius          float          :offset-assert 200)
-   (pull-y-threshold     float          :offset-assert 204)
-   (speed-mult-array     uint32         :offset-assert 208)
-   (speed-mult-array-len int8           :offset-assert 212)
-   (sections             basic          :offset-assert 216)
-   (leading              plane  :inline :offset-assert 220)
-   (collide-bounds       sphere :inline :offset-assert 236)
+  ((speed                float          :offset-assert 200)
+   (belt-radius          float          :offset-assert 204)
+   (pull-y-threshold     float          :offset-assert 208)
+   (speed-mult-array     (array float)         :offset-assert 212)
+   (speed-mult-array-len int8           :offset-assert 216)
+   (sections             conveyor-section-array          :offset-assert 220)
+   (leading              plane  :inline :offset-assert 224)
+   (collide-bounds       sphere :inline :offset-assert 240)
    )
   :method-count-assert 28
   :size-assert         #x100
   :flag-assert         #x1c00800100
   (:methods
     (idle () _type_ :state 20)
-    (conveyor-method-21 () none 21)
-    (conveyor-method-22 () none 22)
-    (conveyor-method-23 () none 23)
-    (conveyor-method-24 () none 24)
-    (conveyor-method-25 () none 25)
-    (conveyor-method-26 () none 26)
-    (conveyor-method-27 () none 27)
+    (conveyor-method-21
+      "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
+      (_type_) float 21)
+    (get-art-group
+      "@returns The respective [[art-group]] for the [[conveyor]]"
+      (_type_) art-group 22)
+    (reset-root!
+      "Re-initializes the `root` [[trsqv]]"
+      (_type_) none 23)
+    (init!
+      "Initializes defaults for things like the `speed` and `belt-radius`"
+      (_type_) none 24)
+    (set-and-get-ambient-sound!
+      "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+       and return it as well.  Otherwise, set it to `0`"
+      (_type_) ambient-sound 25)
+    (conveyor-method-26
+      "TODO - conveyor section related, perhaps related to moving the process along the belt?"
+      (_type_ process-focusable) symbol :behavior conveyor 26)
+    (conveyor-method-27
+      "TODO - collision related, has some dead code as well (previous iteration?)"
+      (_type_) symbol 27)
     )
   )
-|#
 
-#|
 (deftype strip-conveyor (conveyor)
   ()
   :method-count-assert 28
@@ -32724,9 +32822,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype lgconveyor (conveyor)
   ()
   :method-count-assert 28
@@ -32735,28 +32831,39 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elevator                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++elevator-flags
+(defenum elevator-flags
+  :type uint64
+  :bitfield #t
+  (elevator-flags-0)
+  (elevator-flags-1)
+  (elevator-flags-2)
+  (elevator-flags-3)
+  (elevator-flags-4)
+  (prevent-jump)
+  (elevator-flags-6)
+  (elevator-flags-7)
+  )
+;; ---elevator-flags
+
 (deftype elevator-params (structure)
   ((xz-threshold float   :offset-assert 0)
    (y-threshold  float   :offset-assert 4)
    (start-pos    float   :offset-assert 8)
    (move-rate    float   :offset-assert 12)
-   (flags        uint64  :offset-assert 16)
+   (flags        elevator-flags  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype path-step (structure)
   ((next-pos float  :offset-assert 0)
    (dist     float  :offset-assert 4)
@@ -32765,63 +32872,99 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype path-step-inline-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             path-step :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++elevator:elevator-status
+(defenum elevator-status
+  :type uint64
+  :bitfield #t
+  (elevator-status-0)
+  (elevator-status-1)
+  (moving)
+  )
+;; ---elevator:elevator-status
+
 (deftype elevator (base-plat)
-  ((params                       elevator-params :inline :offset-assert 268)
-   (path-seq                     basic                   :offset-assert 292)
-   (path-dest                    float                   :offset-assert 296)
-   (bottom-top                   UNKNOWN         2       :offset-assert 300)
-   (move-pos                     UNKNOWN         2       :offset-assert 308)
-   (move-dist                    float                   :offset-assert 316)
-   (path-pos                     float                   :offset-assert 320)
-   (path-eased-pos               float                   :offset-assert 324)
-   (ride-timer                   uint64                  :offset-assert 332)
-   (sticky-player-last-ride-time time-frame                  :offset-assert 340)
-   (elevator-status              uint64                  :offset-assert 348)
-   (on-activate                  basic                   :offset-assert 356)
-   (on-deactivate                basic                   :offset-assert 360)
+  ((params                       elevator-params :inline :offset-assert 272)
+   (path-seq                     path-step-inline-array  :offset-assert 296)
+   (path-dest                    float                   :offset-assert 300)
+   (bottom-top                   float           2       :offset-assert 304)
+   (move-pos                     float           2       :offset-assert 312)
+   (move-dist                    float                   :offset-assert 320)
+   (path-pos                     float                   :offset-assert 324)
+   (path-eased-pos               float                   :offset-assert 328)
+   (ride-timer                   uint64                  :offset-assert 336)
+   (sticky-player-last-ride-time time-frame              :offset-assert 344)
+   (elevator-status              elevator-status                  :offset-assert 352)
+   (on-activate                  basic                   :offset-assert 360)
+   (on-deactivate                basic                   :offset-assert 364)
    )
   :method-count-assert 49
   :size-assert         #x170
   :flag-assert         #x3100f00170
-  ;; field on-activate uses ~A with a signed load field on-deactivate uses ~A with a signed load
   (:methods
     (dormant () _type_ :state 34)
     (waiting () _type_ :state 35)
     (running () _type_ :state 36)
     (arrived () _type_ :state 37)
-    (elevator-method-38 () none 38)
-    (elevator-method-39 () none 39)
-    (elevator-method-40 () none 40)
-    (elevator-method-41 () none 41)
-    (elevator-method-42 () none 42)
-    (elevator-method-43 () none 43)
-    (elevator-method-44 () none 44)
-    (elevator-method-45 () none 45)
-    (elevator-method-46 () none 46)
-    (elevator-method-47 () none 47)
-    (elevator-method-48 () none 48)
+    (elevator-method-38 (_type_) none 38)
+    (calc-dist-between-points!
+      "Calculates the distance between two points in the elevator's path.
+
+       @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
+       @param path-point-y The second point in the distance calculation"
+      (_type_ int int) none 39)
+    (elevator-method-40
+      "TODO - need to figure out some flags to be confident about this"
+      (_type_) object 40)
+    (init-defaults!
+      "Initializes default settings related to the [[elevator]]:
+       - `elevator-xz-threshold`
+       - `elevator-y-threshold`
+       - `elevator-start-pos`
+       - `elevator-move-rate`
+       - `elevator-flags`"
+      (_type_) none 41)
+    (clear-ambient-sound!
+      "Might be a virtual function, but clears the object's [[ambient-sound]]"
+      (_type_) none 42)
+    (elevator-method-43 (_type_ vector float float) symbol 43)
+    (elevator-method-44 (_type_) symbol 44)
+    (elevator-method-45
+      "@returns Stub, or always returns [[#t]]"
+      (_type_) symbol 45)
+    (move-to-next-point!
+      "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
+       do so.
+       @see [[elevator::47]]"
+      (_type_) none 46)
+    (find-closest-point-in-path!
+      "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
+       the provided [[vector]]
+
+       @param vec The point at which distance calculations are based off
+       @param! next-step If a point is found, `next-pos` will be set to the correct point
+       @param arg2 TODO
+       @param arg3 TODO
+       @returns [[#t]] if a point in the path was found"
+      (_type_ vector path-step symbol symbol) symbol 47)
+    (elevator-method-48 "TODO - collision related" (_type_) none 48)
     )
   )
-|#
 
-;; (define-extern ease-value-in-out function)
-;; (define-extern elevator-event function)
-;; (define-extern move-post function)
+(define-extern ease-value-in-out
+  "TODO - the math in this function is full of duplication and isn't totally clear
+   but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
+   which is obviously useful for an elevator."
+  (function float float float))
+(define-extern elevator-event (function process int symbol event-message-block object :behavior elevator))
+(define-extern move-post (function none :behavior elevator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body                     ;;
@@ -33063,9 +33206,8 @@
 ;; simple-focus                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype simple-focus (process-focusable)
-  ((first-time? basic  :offset-assert 200)
+  ((first-time? symbol  :offset-assert 204)
    )
   :method-count-assert 28
   :size-assert         #xd0
@@ -33074,18 +33216,19 @@
     (idle () _type_ :state 27)
     )
   )
-|#
 
-;; (define-extern simple-focus-init-by-other function)
+(define-extern simple-focus-init-by-other 
+  "Initializes the new [[simple-focus]]. `first-time?` will be set to [[#t]]"
+  (function none :behavior simple-focus))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; simple-nav-sphere              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype simple-nav-sphere (process-drawable)
-  ((first-time? basic  :offset-assert 196)
-   (track-joint int32  :offset-assert 200)
+  ((root-override collide-shape :offset 128 :score 999)
+   (first-time? symbol  :offset-assert 200)
+   (track-joint int32  :offset-assert 204)
    )
   :method-count-assert 22
   :size-assert         #xd0
@@ -33095,10 +33238,9 @@
     (active () _type_ :state 21)
     )
   )
-|#
 
-;; (define-extern simple-nav-sphere-event-handler function)
-;; (define-extern simple-nav-sphere-init-by-other function)
+(define-extern simple-nav-sphere-event-handler (function process int symbol event-message-block none :behavior simple-nav-sphere))
+(define-extern simple-nav-sphere-init-by-other (function float vector nav-mesh int none :behavior simple-nav-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-taskable               ;;
@@ -33702,10 +33844,9 @@
 ;; elec-gate                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype elec-gate-params (structure)
-  ((bolt-spec       basic  :offset-assert 0)
-   (ring-spec       basic  :offset-assert 4)
+  ((bolt-spec       lightning-spec  :offset-assert 0)
+   (ring-spec       lightning-spec  :offset-assert 4)
    (ring-radius-min float  :offset-assert 8)
    (ring-radius-max float  :offset-assert 12)
    (speed-mult      float  :offset-assert 16)
@@ -33714,12 +33855,10 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype elec-gate-bolt (structure)
-  ((ring        UNKNOWN 2 :offset-assert 0)
-   (bolt        basic     :offset-assert 8)
+  ((ring        lightning-control   2 :offset-assert 0) ;; guess
+   (bolt        lightning-control     :offset-assert 8)
    (ring-radius float     :offset-assert 12)
    (pos         float     :offset-assert 16)
    )
@@ -33727,9 +33866,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype elec-wall (structure)
   ((pos vector :inline :offset-assert 0)
    (dir vector :inline :offset-assert 16)
@@ -33738,49 +33875,61 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype elec-gate (process-drawable)
-  ((params             elec-gate-params         :offset-assert 196)
-   (path-l             basic                    :offset-assert 148)
-   (path-r             basic                    :offset-assert 200)
-   (l-bolt             UNKNOWN          5       :offset-assert 204)
-   (part-on            basic                    :offset-assert 164)
-   (part-off           basic                    :offset-assert 364)
-   (part-spawner-left  basic                    :offset-assert 368)
-   (part-spawner-right basic                    :offset-assert 372)
-   (on-start           basic                    :offset-assert 376)
-   (on-stop            basic                    :offset-assert 380)
-   (dividing-wall      elec-wall        :inline :offset-assert 396)
-   (plane              UNKNOWN          2       :offset-assert 428)
-   (wall-y             float                    :offset-assert 492)
-   (wall-xz            float                    :offset-assert 496)
-   (lightning-quality  float                    :offset-assert 500)
-   (quality-enabled?   basic                    :offset-assert 504)
+  ((params             elec-gate-params         :offset-assert 200)
+   (path-l             path-control             :offset 152)
+   (path-r             path-control             :offset-assert 204)
+   (l-bolt             elec-gate-bolt      5 :inline :offset-assert 208)
+   (part-on            sparticle-launch-control                    :offset 168)
+   (part-off           sparticle-launch-control                    :offset-assert 368)
+   (part-spawner-left  part-spawner                    :offset-assert 372)
+   (part-spawner-right part-spawner                    :offset-assert 376)
+   (on-start           basic                    :offset-assert 380)
+   (on-stop            basic                    :offset-assert 384)
+   (dividing-wall      elec-wall        :inline :offset-assert 400)
+   (plane              elec-wall      2 :inline :offset-assert 432)
+   (wall-y             float                    :offset-assert 496)
+   (wall-xz            float                    :offset-assert 500)
+   (lightning-quality  float                    :offset-assert 504)
+   (quality-enabled?   symbol                   :offset-assert 508)
    )
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  ;; field on-start uses ~A with a signed load field on-stop uses ~A with a signed load
   (:methods
     (idle () _type_ :state 20)
     (active () _type_ :state 21)
     (shutdown () _type_ :state 22)
-    (elec-gate-method-23 () none 23)
-    (elec-gate-method-24 () none 24)
-    (elec-gate-method-25 () none 25)
-    (elec-gate-method-26 () none 26)
-    (elec-gate-method-27 () none 27)
-    (elec-gate-method-28 () none 28)
-    (elec-gate-method-29 () none 29)
+    (get-params
+      "@returns [[*default-elec-gate-params*]] by default"
+      (_type_) elec-gate-params 23)
+    (elec-gate-method-24 "virtual" (_type_) none 24)
+    (set-palette!
+      "Sets the [[elec-gate]]'s `palette-id` appropriately"
+      (_type_) none 25)
+    (set-state!
+      "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
+       make the gate `idle`.
+
+       Otherwise, the gate will be `active`."
+      (_type_) none 26)
+    (spawn-particles
+      "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
+      (_type_ sparticle-launch-control) none 27)
+    (set-elec-scale-if-close!
+      "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
+       @see [[elec-gate::29]]" (_type_ float) none 28)
+    (set-elec-scale!
+      "Calls associated mood functions to set the scale with the value provided
+       @see mood-funcs
+       @see mood-funcs2"
+      (_type_ float) none 29)
     )
   )
-|#
 
-#|
 (deftype fort-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
@@ -33788,57 +33937,40 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
   :flag-assert         #x1e01900204
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype caspad-elec-gate (elec-gate)
   ()
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype castle-elec-gate (elec-gate)
   ()
   :method-count-assert 30
   :size-assert         #x200
   :flag-assert         #x1e01800200
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-#|
 (deftype palroof-elec-gate (elec-gate)
-  ((palette-id int32  :offset-assert 508)
+  ((palette-id int32  :offset-assert 512)
    )
   :method-count-assert 30
   :size-assert         #x204
   :flag-assert         #x1e01900204
-  (:methods
-    )
-  )
-|#
+  (:methods))
 
-;; (define-extern *default-elec-gate-params* object)
-;; (define-extern elec-gate-post function)
-;; (define-extern *caspad-elec-gate-params* object)
+(define-extern *default-elec-gate-params* elec-gate-params)
+(define-extern elec-gate-post (function none :behavior elec-gate))
+(define-extern *caspad-elec-gate-params* elec-gate-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-guard-turret-button        ;;
@@ -41010,9 +41142,8 @@
 ;; sewer-obs2                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-elevator (elevator)
-  ((sound-id uint32  :offset-assert 364)
+  ((sound-id sound-id  :offset-assert 368)
    )
   :method-count-assert 50
   :size-assert         #x174
@@ -41021,7 +41152,6 @@
     (sew-elevator-method-49 () none 49)
     )
   )
-|#
 
 #|
 (deftype sew-valve (process-drawable)

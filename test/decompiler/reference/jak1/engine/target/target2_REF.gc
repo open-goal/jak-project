@@ -3,14 +3,14 @@
 
 ;; failed to figure out what this is:
 (defstate target-load-wait (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('loading)
        (set! (-> self state-time) (-> *display* base-frame-counter))
        #f
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -55,13 +55,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-stance-ambient (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('movie)
        (go target-stance)
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -293,8 +293,8 @@
 
 ;; failed to figure out what this is:
 (defstate hud-waiting (first-person-hud)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('go-away)
        (go hud-going-out)
        )
@@ -479,21 +479,21 @@
 
 ;; failed to figure out what this is:
 (defstate target-look-around (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
-      ((let ((v1-4 arg2))
+      ((let ((v1-4 event-type))
          (= v1-4 'end-mode)
          )
        (go target-stance-look-around)
        )
       ((-> self control unknown-symbol30)
-       (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+       (target-dangerous-event-handler proc arg1 event-type event)
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -640,18 +640,18 @@
 
 ;; failed to figure out what this is:
 (defstate target-billy-game (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
-      ((let ((v1-4 arg2))
+      ((let ((v1-4 event-type))
          (= v1-4 'end-mode)
          )
        (go target-stance)
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -773,38 +773,38 @@
 
 ;; failed to figure out what this is:
 (defstate target-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go target-stance)
            )
           (('play-anim)
-           (let ((v0-0 (the-as object (-> arg3 param 0))))
+           (let ((v0-0 (the-as object (-> event param 0))))
              (set! (-> self control unknown-uint20) (the-as uint v0-0))
              v0-0
              )
            )
           (('clone-anim)
-           (go target-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (('change-mode)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('final-door)
               (go
                 target-final-door
-                (the-as basic (process->handle (the-as process (-> arg3 param 1))))
-                (process->handle (the-as process (-> arg3 param 2)))
+                (the-as basic (process->handle (the-as process (-> event param 1))))
+                (process->handle (the-as process (-> event param 2)))
                 )
               )
              )
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -943,10 +943,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-pole-cycle (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'query) (= (-> event param 0) 'mode))
         (-> self state name)
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
     )
   :enter (behavior ((arg0 handle))
@@ -1164,13 +1164,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-edge-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('end-mode)
        (go target-falling 'target-edge-grab)
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1284,13 +1284,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-edge-grab-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('end-mode)
        (go target-falling 'target-edge-grab)
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2239,10 +2239,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-swim-down (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack 'attack-invinc)
-       (let ((v1-2 (the-as attack-info (-> arg3 param 1))))
+       (let ((v1-2 (the-as attack-info (-> event param 1))))
          (when (or (not (logtest? (-> v1-2 mask) (attack-mask mode))) (= (-> v1-2 mode) 'generic) (= (-> v1-2 mode) 'drown))
            (set! (-> v1-2 mode) 'damage)
            (if (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact-info-target health)))
@@ -2254,7 +2254,7 @@
          )
        )
       )
-    (target-standard-event-handler arg0 arg1 arg2 arg3)
+    (target-standard-event-handler proc arg1 event-type event)
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -2636,10 +2636,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-launch (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'query) (= (-> event param 0) 'mode))
         'target-launch
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
     )
   :code (behavior ((arg0 float) (arg1 symbol) (arg2 vector) (arg3 int))
@@ -2733,8 +2733,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-periscope (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('change-mode)
        #f
        )
@@ -2745,7 +2745,7 @@
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2834,11 +2834,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-clone-anim (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
         (set! (-> self control unknown-uint20) (the-as uint #f))
         )
-    ((-> target-grab event) arg0 arg1 arg2 arg3)
+    ((-> target-grab event) proc arg1 event-type event)
     )
   :enter (behavior ((arg0 handle))
     (set! (-> self control unknown-handle10) arg0)

@@ -547,8 +547,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-stance (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('lip)
        (when (and (= (-> self control ground-pat mode) (pat-mode halfpipe))
                   (< (-> self control poly-angle) 0.5)
@@ -565,7 +565,7 @@
                   )
          (set! (-> self board halfpipe-lip-time) (-> self clock frame-counter))
          (set! (-> self board halfpipe-side-time) (-> self clock frame-counter))
-         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> arg3 param 0)))
+         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> event param 0)))
          (let ((v0-2 (the-as object (logior (-> self control root-prim prim-core action) (collide-action no-normal-reset))))
                )
            (set! (-> self control root-prim prim-core action) (the-as collide-action v0-2))
@@ -576,13 +576,13 @@
       (('jump)
        (go
          target-board-jump
-         (the-as meters (-> arg3 param 0))
-         (the-as meters (-> arg3 param 1))
-         (the-as symbol (-> arg3 param 2))
+         (the-as meters (-> event param 0))
+         (the-as meters (-> event param 1))
+         (the-as symbol (-> event param 2))
          )
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -914,11 +914,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
         (return #f)
         )
-    (target-board-handler arg0 arg1 arg2 arg3)
+    (target-board-handler proc arg1 event-type event)
     )
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
     (local-vars
@@ -1132,8 +1132,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-halfpipe (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('edge-grab)
        (format
          #t
@@ -1178,14 +1178,14 @@
          )
        )
       (('grenade)
-       (if (< (the-as float (-> arg3 param 0))
+       (if (< (the-as float (-> event param 0))
               (vector-dot (-> self control dynam gravity-normal) (-> self control transv))
               )
-           (go target-board-grenade (process->handle arg0))
+           (go target-board-grenade (process->handle proc))
            )
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -2232,13 +2232,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-ride-edge (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('edge-grab 'push-transv 'push-trans)
        #f
        )
       (('end-mode)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (let ((v1-6 (/ (- (-> self clock frame-counter) (-> self board ride-start-time)) 300)))
            (if (> v1-6 0)
                (add-to-trick-list (-> self board) (board-tricks board-rail) (* 100.0 (the float v1-6)))
@@ -2248,7 +2248,7 @@
        (go target-board-turn-to (-> self control transv) (seconds 0.2))
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -2506,13 +2506,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-grenade (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('target)
        (handle->process (-> self control unknown-handle02))
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -2617,19 +2617,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-get-on (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack 'attack-or-shove 'attack-invinc)
        (target-attacked
-         arg2
-         (the-as attack-info (-> arg3 param 1))
-         arg0
-         (the-as process (-> arg3 param 0))
+         event-type
+         (the-as attack-info (-> event param 1))
+         proc
+         (the-as process (-> event param 0))
          target-hit
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2775,13 +2775,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-pegasus (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('end-mode)
        (go target-jump 16384.0 16384.0 (the-as surface #f))
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3078,21 +3078,21 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go target-board-stance)
            )
           (('clone-anim)
-           (go target-board-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-board-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (('change-mode)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('normal)
               enter-state
               'stance
@@ -3101,7 +3101,7 @@
              )
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -3143,11 +3143,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-clone-anim (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
         (set! (-> self control unknown-word04) (the-as uint #f))
         )
-    ((-> target-board-grab event) arg0 arg1 arg2 arg3)
+    ((-> target-board-grab event) proc arg1 event-type event)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()

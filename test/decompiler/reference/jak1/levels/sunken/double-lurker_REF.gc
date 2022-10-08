@@ -259,18 +259,18 @@
 
 ;; failed to figure out what this is:
 (defstate double-lurker-top-on-shoulders (double-lurker-top)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (let ((v1-1 (-> self fall-dest))
-             (a0-4 (-> (the-as vector (-> arg3 param 0)) quad))
+             (a0-4 (-> (the-as vector (-> event param 0)) quad))
              )
          (set! (-> v1-1 quad) a0-4)
-         (go double-lurker-top-knocked-down a0-4 (the-as vector arg1) (the-as vector arg2))
+         (go double-lurker-top-knocked-down a0-4 (the-as vector arg1) (the-as vector event-type))
          )
        )
       (('instant-death)
-       (let ((v1-3 (the-as object (-> arg3 param 0))))
+       (let ((v1-3 (the-as object (-> event param 0))))
          (quaternion-axis-angle!
            (-> self collide-info quat)
            0.0
@@ -315,13 +315,13 @@
 
 ;; failed to figure out what this is:
 (defstate double-lurker-top-knocked-down (double-lurker-top)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (send-event
-         arg0
+         proc
          'shove
-         (-> arg3 param 0)
+         (-> event param 0)
          (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2))))
          )
        )
