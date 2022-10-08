@@ -604,6 +604,17 @@ goos::Object nav_mesh_nav_control_arr_decompile(
                                                file, TypeSpec("nav-control"), 288);
 }
 
+goos::Object xz_height_map_data_arr_decompile(const std::vector<LinkedWord>& words,
+                                              const std::vector<DecompilerLabel>& labels,
+                                              int my_seg,
+                                              int field_location,
+                                              const TypeSystem& ts,
+                                              const std::vector<std::vector<LinkedWord>>& all_words,
+                                              const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector4b"), 4);
+}
+
 goos::Object nav_mesh_route_arr_decompile(const std::vector<LinkedWord>& words,
                                           const std::vector<DecompilerLabel>& labels,
                                           int my_seg,
@@ -1028,6 +1039,11 @@ goos::Object decompile_structure(const TypeSpec& type,
         } else if (field.name() == "nav-control-array" && type.print() == "nav-mesh" &&
                    file->version == GameVersion::Jak2) {
           field_defs_out.emplace_back(field.name(), nav_mesh_nav_control_arr_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, words, file));
+        } else if (field.name() == "data" && type.print() == "xz-height-map" &&
+                   file->version == GameVersion::Jak2) {
+          field_defs_out.emplace_back(field.name(), xz_height_map_data_arr_decompile(
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
         } else if (field.name() == "route" && type.print() == "nav-mesh" &&

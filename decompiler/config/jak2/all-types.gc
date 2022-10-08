@@ -576,7 +576,7 @@
    (post-hook function :offset-assert 76)
    (event-hook (function process int symbol event-message-block object) :offset-assert 80)
    (allocated-length int32 :offset-assert 84)
-   (pad0 uint32 2)
+   (pad-unknown-0 uint32 2) ;; had to rename this unfortunately, there is a type that uses this same name "vehicle"
    (heap-base pointer :offset-assert 96)
    (heap-top pointer :offset-assert 100)
    (heap-cur pointer :offset-assert 104)
@@ -8111,15 +8111,14 @@
 ;; +++main-h:scene-controls
 (defenum scene-controls
   :type int64
-  (all-off 0)
-  (channel 1)
-  (anim-name 2)
-  (dma-size 4)
-  (bounds-spheres 8)
-  (actors 16)
-  (actor-marks 32)
-  (special-fma-spheres 64)
-  (all-on 95))
+  :bitfield #t
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres))
 ;; ---main-h:scene-controls
 
 (define-extern *display-scene-control* scene-controls)
@@ -8311,7 +8310,13 @@
     (collect-stats (_type_) none 13) ;; (collide-ray (_type_ int collide-list) none 13)
     (debug-draw (_type_ drawable display-frame) none 14)
     (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15) ;;
-    (collect-regions (_type_ sphere int region-prim-list) none 16)
+    (collect-regions
+      "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
+       @param area-of-interest The area defined by a sphere that we care about overlaps
+       @param _count The amount of [[drawable]]s in the object to enumerate through
+       @param! region-list Stores the overlapping regions and a count for how many were found
+       @returns none"
+      (_type_ sphere int region-prim-list) none 16)
     )
   )
 
@@ -8474,9 +8479,8 @@
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
-  ;; field on-enter uses ~A with a signed load field on-inside uses ~A with a signed load field on-exit uses ~A with a signed load
   (:methods
-    (region-method-9 () none 9)
+    (region-method-9 (_type_ vector) symbol 9)
     )
   )
 
@@ -8489,7 +8493,7 @@
   :flag-assert         #x900000010
   )
 
-
+(declare-type region-prim-area structure)
 (deftype drawable-region-prim (drawable)
   ((region region  :offset 8)
    )
@@ -8498,8 +8502,10 @@
   :flag-assert         #x1400000020
   (:methods
     (debug-draw-region (_type_ int) none 17)
-    (drawable-region-prim-method-18 () none 18)
-    (drawable-region-prim-method-19 () none 19)
+    (track-region "TODO" (_type_ region-prim-area) symbol 18)
+    (within-area?
+      "@returns Whether or not the object overlaps with the provided [[region-prim-area]]'s extent"
+      (_type_ region-prim-area) symbol 19)
     )
   )
 
@@ -8511,16 +8517,15 @@
   :method-count-assert 19
   :size-assert         #x20
   :flag-assert         #x1300000020
-  ;; Failed to read fields.
   (:methods
-    (drawable-tree-region-prim-method-17 () none 17)
+    (drawable-tree-region-prim-method-17 (_type_ vector) symbol 17)
     (debug-print (_type_ vector object) none 18)
     )
   )
 
 
 (deftype drawable-inline-array-region-prim (drawable-inline-array)
-  ((data drawable-region-prim 1 :inline)
+  ((data drawable-region-prim 1 :inline :offset-assert 32)
    (pad uint8 4))
   :flag-assert #x1100000044
   )
@@ -12456,6 +12461,7 @@
 (declare-type continue-point basic)
 (declare-type game-save basic)
 
+;; +++game-info-h:game-secrets
 (defenum game-secrets
   :type uint32
   :bitfield #t
@@ -12476,7 +12482,9 @@
   (reverse-races)
   (hero-mode)
   (big-head)
-  (little-head))
+  (little-head)
+  (game-secret-unknown))
+;; ---game-info-h:game-secrets
 
 (defenum game-score
   (none)
@@ -14834,13 +14842,14 @@
 ;; scene-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type scene-player basic)
 (deftype scene-actor (basic)
-  ((name                basic   :offset-assert 4)
+  ((name                string   :offset-assert 4)
    (level               basic   :offset-assert 8)
-   (art-group           basic   :offset-assert 12)
-   (prefix              basic   :offset-assert 16)
-   (draw-frames         basic   :offset-assert 20)
-   (scissor-frames      basic   :offset-assert 24)
+   (art-group           string   :offset-assert 12)
+   (prefix              string   :offset-assert 16)
+   (draw-frames         pair   :offset-assert 20) ;; some form of pair?
+   (scissor-frames      pair   :offset-assert 24)
    (camera              int16   :offset-assert 28)
    (light-index         uint8   :offset-assert 30)
    (shadow-mask         uint8   :offset-assert 31)
@@ -14851,36 +14860,36 @@
    (shadow-volume-joint basic   :offset-assert 48)
    (draw-seg            uint64  :offset-assert 56)
    (no-draw-seg         uint64  :offset-assert 64)
-   (process             uint64  :offset-assert 72)
+   (process             handle  :offset-assert 72)
    )
   :method-count-assert 10
   :size-assert         #x50
   :flag-assert         #xa00000050
   (:methods
-    (scene-actor-method-9 () none 9)
+    (scene-actor-method-9 (_type_ scene-player) (pointer process) 9)
     )
   )
 
 (deftype scene (art-group)
   ((mask-to-clear    uint32           :offset-assert 32)
-   (entity           basic            :offset-assert 36)
-   (art-group        basic            :offset-assert 40)
-   (anim             basic            :offset-assert 44)
+   (entity           string            :offset-assert 36)
+   (art-group        string            :offset-assert 40)
+   (anim             string            :offset-assert 44)
    (parts            int32            :offset-assert 48)
    (command-list     basic            :offset-assert 52)
-   (cut-list         basic            :offset-assert 56)
+   (cut-list         pair            :offset-assert 56)
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
-   (draw-target      basic            :offset-assert 88)
+   (draw-target      level-load-info            :offset-assert 88)
    (abort            basic            :offset-assert 92)
-   (actor            basic            :offset-assert 96)
-   (load-point       basic            :offset-assert 100)
-   (end-point        basic            :offset-assert 104)
+   (actor            (array scene-actor)            :offset-assert 96)
+   (load-point       string            :offset-assert 100)
+   (end-point        string            :offset-assert 104)
    (borrow           basic            :offset-assert 108)
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
-   (music-volume     float            :offset-assert 120)
+  (music-volume     float            :offset-assert 120)
    (blackout-end     basic            :offset-assert 124)
    (peaceful         basic            :offset-assert 128)
    (music-delay      float            :offset-assert 132)
@@ -14891,26 +14900,26 @@
   :size-assert         #x8e
   :flag-assert         #x110000008e
   (:methods
-    (scene-method-15 () none 15)
-    (scene-method-16 () none 16)
+    (scene-method-15 (_type_ spool-anim) none 15)
+    (scene-method-16 (_type_) _type_ 16)
     )
   )
 
 (deftype scene-player (process-drawable)
-  ((scene-list           basic              :offset-assert 200)
-   (scene                basic              :offset-assert 204)
+  ((scene-list           (pointer symbol)              :offset-assert 200)
+   (scene                scene              :offset-assert 204)
    (scene-index          int32              :offset-assert 208)
-   (anim                 basic              :offset-assert 212)
-   (next-anim            basic              :offset-assert 216)
-   (camera               uint64             :offset-assert 224)
-   (main-entity          basic              :offset-assert 232)
+   (anim                 spool-anim              :offset-assert 212)
+   (next-anim            spool-anim              :offset-assert 216)
+   (camera               handle             :offset-assert 224)
+   (main-entity          entity-actor              :offset-assert 232)
    (wait                 basic              :offset-assert 236)
    (old-target-pos       transformq :inline :offset-assert 240)
    (pre-cut-frame        basic              :offset-assert 288)
-   (preload-continue     basic              :offset-assert 292)
+   (preload-continue     string              :offset-assert 292)
    (dma-max              uint32             :offset-assert 296)
    (gui-id               uint32             :offset-assert 300)
-   (aborted?             basic              :offset-assert 304)
+   (aborted?             symbol              :offset-assert 304)
    (scene-start-time     time-frame             :offset-assert 312)
    (targ-speed           float              :offset-assert 320)
    (cur-speed            float              :offset-assert 324)
@@ -14924,12 +14933,12 @@
   :size-assert         #x178
   :flag-assert         #x1a01000178
   (:methods
-    (scene-player-method-20 () none 20)
-    (scene-player-method-21 () none 21)
-    (scene-player-method-22 () none 22)
-    (scene-player-method-23 () none 23)
-    (scene-player-method-24 () none 24)
-    (scene-player-method-25 () none 25)
+    (wait (symbol) _type_ :state 20)
+    (release () _type_ :state 21)
+    (play-anim () _type_ :state 22)
+    (scene-player-method-23 (_type_ string symbol) none 23)
+    (scene-player-method-24 (_type_ basic symbol) scene 24)
+    (scene-player-method-25 (_type_ float) none 25)
     )
   )
 
@@ -18943,28 +18952,54 @@
 (deftype region-prim-area (structure)
   ((region-prim-list        region-prim-list :inline :offset-assert 0)
    (pos                     vector           :inline :offset-assert 1296)
+   (unknown-vector-uiyb1    vector           :inline :offset-assert 1312)
    (ray                     vector           :inline :offset 1328)
+   (unknown-vector-t3edh    vector           :inline :offset-assert 1344)
    (region-enter-count      int32                    :offset 1360)
-   (region-enter-list       uint32          320     :offset-assert 1364)
-   (region-enter-prim-list  uint32          320     :offset-assert 2644)
+   (region-enter-list       region-prim-area          320     :offset-assert 1364)
+   (region-enter-prim-list  drawable-region-sphere          320     :offset-assert 2644)
    (region-exit-count       int32                    :offset-assert 3924)
-   (region-exit-list        uint32          320     :offset-assert 3928)
-   (region-exit-prim-list   uint32          320     :offset-assert 5208)
+   (region-exit-list        region-prim-area          320     :offset-assert 3928)
+   (region-exit-prim-list   drawable-region-sphere          320     :offset-assert 5208)
    (region-inside-count     int32                    :offset-assert 6488)
-   (region-inside-list      uint32          320     :offset-assert 6492)
-   (region-inside-prim-list uint32          320     :offset-assert 7772)
+   (region-inside-list      region-prim-area          320     :offset-assert 6492)
+   (region-inside-prim-list drawable-region-sphere          320     :offset-assert 7772)
    (region-start-count      int32                    :offset-assert 9052)
-   (region-start-list       uint32          320     :offset-assert 9056)
-   (region-start-prim-list  uint32          320     :offset-assert 10336)
+   (region-start-list       region-prim-area          320     :offset-assert 9056)
+   (region-start-prim-list  drawable-region-sphere          320     :offset-assert 10336)
    )
   :method-count-assert 13
   :size-assert         #x2d60
   :flag-assert         #xd00002d60
   (:methods
-    (region-prim-area-method-9 () none 9)
-    (region-prim-area-method-10 () none 10)
-    (region-prim-area-method-11 () none 11)
-    (region-prim-area-method-12 () none 12)
+    (track-entered-region!
+      "Enumerates through the objects `region-enter-list`, if we find the provided `region`, do nothing and exit
+       otherwise, add the [[drawable-region-sphere]] to `region-enter-prim-list` and increment `region-enter-count`
+
+       @param region-sphere Defines the region in question
+       @returns nothing"
+      (_type_ drawable-region-sphere) none 9)
+    (track-exited-region!
+      "Enumerates through the objects `region-exit-list`, if we find the provided `region`, do nothing and exit
+       otherwise, add the [[drawable-region-sphere]] to `region-exit-prim-list` and increment `region-exit-count`
+
+       @param region-sphere Defines the region in question
+       @returns nothing"
+      (_type_ drawable-region-sphere) none 10)
+    (track-inside-region!
+      "Enumerates through the objects `region-inside-list`, if we find the provided `region`, do nothing and exit
+       otherwise, add the [[drawable-region-sphere]] to `region-inside-prim-list` and increment `region-inside-count`
+
+       @param region-sphere Defines the region in question
+       @returns nothing"
+      (_type_ drawable-region-sphere) none 11)
+    (track-start-region!
+      "Enumerates through the objects `region-start-list`, if we find the provided `region`, do nothing and exit
+       otherwise, add the [[drawable-region-sphere]] to `region-start-prim-list` and increment `region-start-count`
+
+       @param region-sphere Defines the region in question
+       @returns nothing"
+      (_type_ drawable-region-sphere) none 12)
     )
   )
 
@@ -21722,7 +21757,7 @@
    (user-list             engine                 :offset-assert  36)
    (next-nav-mesh         surface                 :offset-assert  40)
    (prev-nav-mesh         surface                 :offset-assert  44)
-   (bounds                sphere        :inline :offset-assert  48)
+   (bounds                vector        :inline :offset-assert  48) ;; actually a sphere
    (origin                vector        :inline :offset         48)
    (entity                entity                :offset-assert  64)
    (link-array            (array nav-mesh-link)                :offset-assert  68)
@@ -22432,7 +22467,7 @@
 (define-extern ray-sphere-intersect (function vector vector vector float float))
 (define-extern ray-circle-intersect (function vector vector vector float float)) ;;
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
-;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float)) ;; 
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
 ;; (define-extern collide-do-primitives function) ;; (function float)
 (define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float)) ;;
@@ -24533,7 +24568,7 @@
 ;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
 (define-extern auto-save-command (function symbol int int process-tree symbol none))
 (define-extern auto-save-check (function none))
-;; (define-extern auto-save-user function)
+(define-extern auto-save-user (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
@@ -26997,7 +27032,7 @@
 (define-extern can-display-query? (function symbol))
 (define-extern talker-surpress! (function none))
 (define-extern talker-displayed? (function symbol))
-(define-extern kill-current-talker (function none))
+(define-extern kill-current-talker (function symbol pair symbol none)) ;; see (exit play-anim scene-player)
 (define-extern string->talker-speech (function string talker-speech-class))
 (define-extern talker-spawn-func (function talker-speech-class process-tree vector region int))
 (define-extern talker-init (function talker-speech-class vector region none :behavior talker))
@@ -27012,9 +27047,9 @@
 ;; region                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern region-tree-execute function)
+(define-extern region-tree-execute (function symbol vector vector none))
 (define-extern region-execute (function none))
-(define-extern region-prim-lookup-by-id (function int drawable-region-prim))
+(define-extern region-prim-lookup-by-id (function int symbol symbol drawable-region-prim))
 (define-extern region-lookup-by-id (function int region))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29127,7 +29162,7 @@
 (define-extern entity-task-complete-off (function entity none))
 (define-extern process-entity-status! (function process entity-perm-status symbol int)) ;;
 (define-extern find-nearest-entity (function vector type entity))
-(define-extern entity-speed-test (function string none))
+(define-extern entity-speed-test (function string entity))
 (define-extern dump-entity-remap (function object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29623,19 +29658,12 @@
 ;; scene                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype scene-stage (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
-  :flag-assert         #xf00000080
-  ;; Failed to read fields.
-  (:methods
-    )
-  )
-|#
+  :flag-assert         #xf00000080)
 
-#|
 (deftype subtitle-work (structure)
   ((draw-tmpl dma-gif-packet :inline :offset-assert 0)
    (color0    vector4w       :inline :offset-assert 32)
@@ -29645,13 +29673,12 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-;; (define-extern scene-decode-continue function)
-;; (define-extern scene-lookup function)
-;; (define-extern *subtitle-work* object)
-;; (define-extern draw-subtitle-image function)
-;; (define-extern process-drawable-draw-subtitles function)
+(define-extern scene-decode-continue (function basic continue-point))
+(define-extern scene-lookup "TODO - basic can be a string or a scene" (function basic scene))
+(define-extern *subtitle-work* subtitle-work)
+(define-extern draw-subtitle-image (function subtitle-image font-context pointer))
+(define-extern process-drawable-draw-subtitles (function none :behavior process-drawable))
 (define-extern scene-player-init (function string symbol object none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32218,6 +32245,7 @@
   :flag-assert         #x900000040
   )
 
+;; +++rigid-body-h:rigid-body-flag
 (defenum rigid-body-flag
   :bitfield #t
   :type uint32
@@ -32228,6 +32256,7 @@
   (debug 4)
   (blocker 5)
   )
+;; ---rigid-body-h:rigid-body-flag
 
 (deftype rigid-body (structure)
   ((work           basic              :offset-assert 0)
@@ -32253,9 +32282,9 @@
   :size-assert         #x120
   :flag-assert         #x2000000120
   (:methods
-    (rigid-body-method-9 () none 9)
-    (rigid-body-method-10 () none 10)
-    (rigid-body-method-11 () none 11)
+    (rigid-body-method-9 (_type_) none 9)
+    (rigid-body-method-10 (_type_) none 10)
+    (rigid-body-method-11 (_type_) none 11)
     (rigid-body-method-12 (_type_ float) none 12)
     (rigid-body-method-13 (_type_) none 13)
     (rigid-body-method-14 (_type_ float) none 14)
@@ -32305,12 +32334,12 @@
   :size-assert         #x130
   :flag-assert         #x1a00000130
   (:methods
-    (rigid-body-control-method-9 () none 9)
-    (rigid-body-control-method-10 () none 10)
-    (rigid-body-control-method-11 () none 11)
+    (rigid-body-control-method-9 (_type_) none 9)
+    (rigid-body-control-method-10 (_type_) none 10)
+    (rigid-body-control-method-11 (_type_) none 11)
     (rigid-body-control-method-12 (_type_ float) none 12)
     (rigid-body-control-method-13 (_type_) none 13)
-    (rigid-body-control-method-14 () none 14)
+    (rigid-body-control-method-14 (_type_ float) none 14)
     (clear-force-torque! (_type_) none 15)
     (clear-momentum! (_type_) none 16)
     (rigid-body-control-method-17 (_type_ vector vector) none 17)
@@ -32325,6 +32354,7 @@
     )
   )
 
+;; +++rigid-body-h:rigid-body-object-flag
 (defenum rigid-body-object-flag
   :bitfield #t
   :type uint64
@@ -32337,7 +32367,43 @@
   (player-standing-on 6)
   (player-impulse-force 7)
   (player-contact-force 8)
+  (persistent 9)
+  (in-air 10)
+  (on-ground 11)
+  (on-flight-level 12)
+  (riding 13)
+  (player-driving 14)
+  (waiting-for-player 15)
+  (ignition 16)
+  (turbo-boost 17)
+  (reverse-gear 18)
+  (slide 19)
+  (hard-turn 20)
+  (jump 21)
+  (jump-sound 22)
+  (ai-driving 23)
+  (traffic-managed 24)
+  (flight-level-transition 25)
+  (flight-level-transition-ending 26)
+  (camera-bike-mode 27)
+  (camera-rapid-track-mode 28)
+  (camera 29)
+  (alert 30)
+  (in-pursuit 31)
+  (target-in-sight 32)
+  (rammed-target 33)
+  (draw-marks 34)
+  (hack-edit-graph-mode 35)
+  (measure-control-parameters 36)
+  (lights-on 37)
+  (lights-update 38)
+  (lights-dead 39)
+  (no-hijack 40)
+  (player-grabbed 41)
+  (nav-spheres 42)
+  (idle-sound 43)
   )
+;; ---rigid-body-h:rigid-body-object-flag
 
 (deftype rigid-body-object (process-focusable)
   ((info                  rigid-body-object-constants :offset-assert 204)
@@ -32899,7 +32965,6 @@
   )
 |#
 
-#|
 (deftype joint-exploder-static-joint-params (structure)
   ((joint-index        int16  :offset-assert 0)
    (parent-joint-index int16  :offset-assert 2)
@@ -32908,9 +32973,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype joint-exploder-static-params (basic)
   ((joints       (array joint-exploder-static-joint-params)  :offset-assert 4) ;; guessed by decompiler
    (collide-spec uint32                                      :offset-assert 8)
@@ -32920,7 +32983,6 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 #|
 (deftype joint-exploder-joint (structure)
@@ -48375,25 +48437,25 @@
 
 (declare-type nav-node structure)
 (deftype nav-branch (structure)
-  ((node              nav-node 2 :offset-assert 0)
-   (src-node          nav-node     :offset 0)
-   (dest-node         nav-node     :offset 4)
-   (temp-dest-node-id int32     :offset 4)
-   (speed-limit       uint8     :offset-assert 8)
-   (density           uint8     :offset-assert 9)
-   (clock-type        uint8     :offset-assert 10)
-   (clock-mask        uint8     :offset-assert 11)
-   (max-user-count    uint8     :offset-assert 12)
-   (user-count        uint8     :offset-assert 13)
-   (width             uint8     :offset-assert 14)
-   (flags             uint8     :offset-assert 15)
+  ((node              int32    2 :offset-assert   0)
+   (src-node          nav-node      :offset          0)
+   (dest-node         nav-node      :offset          4)
+   (temp-dest-node-id int32      :offset          4)
+   (speed-limit       uint8      :offset-assert   8)
+   (density           uint8      :offset-assert   9)
+   (clock-type        uint8      :offset-assert  10)
+   (clock-mask        uint8      :offset-assert  11)
+   (max-user-count    uint8      :offset-assert  12)
+   (user-count        uint8      :offset-assert  13)
+   (width             uint8      :offset-assert  14)
+   (flags             uint8      :offset-assert  15)
    )
   :method-count-assert 21
   :size-assert         #x10
   :flag-assert         #x1500000010
   (:methods
-    (nav-branch-method-9 () none 9)
-    (nav-branch-method-10 () none 10)
+    (nav-branch-method-9 (_type_) none 9)
+    (nav-branch-method-10 (_type_ object int) none 10)
     (nav-branch-method-11
       "TODO
       @returns `density * 0.0078125` - is this some kind of trick?"
@@ -48408,11 +48470,11 @@
       (_type_) float 13)
     (user-limit-reached? (_type_) symbol 14)
     (nav-branch-method-15 "TODO - checks that `dest-node`'s `id` isn't #FFFF" (_type_) symbol 15)
-    (nav-branch-method-16 () none 16)
-    (nav-branch-method-17 () none 17)
-    (nav-branch-method-18 () none 18)
-    (nav-branch-method-19 () none 19)
-    (nav-branch-method-20 () none 20)
+    (nav-branch-method-16 (_type_ float) none 16)
+    (nav-branch-method-17 (_type_ float) none 17)
+    (nav-branch-method-18 (_type_ float) none 18)
+    (nav-branch-method-19 (_type_ nav-node) none 19)
+    (nav-branch-method-20 (_type_ nav-node) none 20)
     )
   )
 
@@ -48429,35 +48491,34 @@
 ;; ---nav-graph-h:nav-node-flag-byte
 
 (deftype nav-node (structure)
-  (
-    (data uint32 8 :offset-assert 0 :score -999)
-    (position vector :inline :offset 0)
-    (pos-x float :offset 0)
-    (pos-y float :offset 4)
-    (pos-z float :offset 8)
-    (angle uint16 :offset 12)
-    (id uint16 :offset 14)
-    (radius uint8 :offset 16)
-    (branch-count int8 :offset 17)
-    (flags nav-node-flag-byte :offset 18)
-    (pad0 int8 1 :offset 19)
-    (branch-array uint32 :offset 20)
-    (nav-mesh-id uint32 :offset 24)
-    (level level :offset 28)
-  )
+  ((data         uint32             8       :offset-assert   0 :score -999)
+   (position     vector             :inline :offset          0)
+   (pos-x        float                      :offset          0)
+   (pos-y        float                      :offset          4)
+   (pos-z        float                      :offset          8)
+   (angle        uint16                     :offset         12)
+   (id           uint16                     :offset         14)
+   (radius       uint8                      :offset         16)
+   (branch-count int8                       :offset         17)
+   (flags        nav-node-flag-byte         :offset         18)
+   (pad0         int8               1       :offset         19)
+   (branch-array (inline-array nav-branch)  :offset         20)
+   (nav-mesh-id  uint32                     :offset         24)
+   (level        symbol                      :offset         28)
+   )
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
   (:methods
-    (nav-node-method-9 () none 9)
-    (nav-node-method-10 () none 10)
-    (nav-node-method-11 () none 11)
-    (nav-node-method-12 () none 12)
-    (nav-node-method-13 () none 13)
-    (nav-node-method-14 () none 14)
-    (nav-node-method-15 () none 15)
-    (nav-node-method-16 () none 16)
-    (nav-node-method-17 () none 17)
+    (nav-node-method-9 (_type_) none 9)
+    (nav-node-method-10 (_type_ symbol string) none 10)
+    (nav-node-method-11 (_type_ int) none 11)
+    (nav-node-method-12 (_type_ vector nav-node) none 12)
+    (nav-node-method-13 (_type_ vector) none 13)
+    (nav-node-method-14 (_type_ nav-node) none 14)
+    (nav-node-method-15 (_type_ uint) none 15)
+    (nav-node-method-16 (_type_ float) none 16)
+    (nav-node-method-17 (_type_ float) none 17)
     (get-position
       "@param! ret The [[vector]] that is modified to hold the result
        @returns the `position` [[vector]] with a `w` component of `1.0`"
@@ -48489,63 +48550,64 @@
   )
 
 (deftype nav-graph (basic)
-  ((node-count   int16     :offset-assert 4)
-   (branch-count int16     :offset-assert 6)
-   (node-array   (inline-array nav-node)    :offset-assert 8)
-   (branch-array uint32    :offset-assert 12)
-   (link-count   int16     :offset-assert 16)
-   (pad2         uint16    :offset-assert 18)
-   (link-array   uint32    :offset-assert 20)
-   (first-node   int16     :offset-assert 24)
-   (pad0         uint16    :offset-assert 26)
-   (patched      basic     :offset-assert 28)
-   (id           uint32    :offset-assert 32)
-   (pad1         uint32 6 :offset-assert 36)
+  ((node-count   int16                     :offset-assert   4)
+   (branch-count int16                     :offset-assert   6)
+   (node-array   (inline-array nav-node)   :offset-assert   8)
+   (branch-array (inline-array nav-branch)                    :offset-assert  12)
+   (link-count   int16                     :offset-assert  16)
+   (pad2         uint16                    :offset-assert  18)
+   (link-array   (inline-array nav-graph-link)                    :offset-assert  20)
+   (first-node   int16                     :offset-assert  24)
+   (pad0         uint16                    :offset-assert  26)
+   (patched      symbol                    :offset-assert  28)
+   (id           uint32                    :offset-assert  32)
+   (pad1         uint32                  6 :offset-assert  36)
    )
   :method-count-assert 45
   :size-assert         #x3c
   :flag-assert         #x2d0000003c
   (:methods
-    (nav-graph-method-9 () none 9)
-    (nav-graph-method-10 () none 10)
-    (nav-graph-method-11 () none 11)
-    (nav-graph-method-12 () none 12)
-    (nav-graph-method-13 () none 13)
-    (nav-graph-method-14 () none 14)
-    (nav-graph-method-15 () none 15)
-    (nav-graph-method-16 () none 16)
-    (nav-graph-method-17 () none 17)
-    (nav-graph-method-18 () none 18)
-    (nav-graph-method-19 () none 19)
-    (nav-graph-method-20 () none 20)
-    (nav-graph-method-21 () none 21)
-    (nav-graph-method-22 () none 22)
-    (nav-graph-method-23 () none 23)
-    (nav-graph-method-24 () none 24)
-    (nav-graph-method-25 () none 25)
-    (nav-graph-method-26 () none 26)
-    (nav-graph-method-27 () none 27)
-    (nav-graph-method-28 () none 28)
-    (nav-graph-method-29 () none 29)
-    (nav-graph-method-30 () none 30)
-    (nav-graph-method-31 () none 31)
-    (nav-graph-method-32 () none 32)
-    (nav-graph-method-33 () none 33)
-    (nav-graph-method-34 () none 34)
-    (nav-graph-method-35 () none 35)
-    (nav-graph-method-36 () none 36)
-    (nav-graph-method-37 () none 37)
+    (new (symbol type int int int uint) _type_ 0)
+    (nav-graph-method-9 (_type_) none 9)
+    (nav-graph-method-10 (_type_ vector int) none 10)
+    (nav-graph-method-11 (_type_) none 11)
+    (nav-graph-method-12 (_type_) none 12)
+    (nav-graph-method-13 (_type_ int int) none 13)
+    (nav-graph-method-14 (_type_ int int) none 14)
+    (nav-graph-method-15 (_type_) none 15)
+    (nav-graph-method-16 (_type_ int) nav-node 16)
+    (nav-graph-method-17 (_type_ nav-node) none 17)
+    (nav-graph-method-18 (_type_ nav-node int) none 18)
+    (nav-graph-method-19 (_type_ int int int int int int) none 19)
+    (nav-graph-method-20 (_type_ int int) none 20)
+    (nav-graph-method-21 (_type_) none 21)
+    (nav-graph-method-22 (_type_ int int) none 22)
+    (nav-graph-method-23 (_type_ int int) none 23)
+    (nav-graph-method-24 (_type_ int int) none 24)
+    (nav-graph-method-25 (_type_ symbol symbol) none 25)
+    (nav-graph-method-26 (_type_ symbol symbol) none 26)
+    (nav-graph-method-27 (_type_) none 27)
+    (nav-graph-method-28 (_type_) none 28)
+    (nav-graph-method-29 (_type_ symbol) none 29)
+    (nav-graph-method-30 (_type_ uint) none 30)
+    (nav-graph-method-31 (_type_ float) none 31)
+    (nav-graph-method-32 (_type_ float) none 32)
+    (nav-graph-method-33 (_type_ float) none 33)
+    (nav-graph-method-34 (_type_ float) none 34)
+    (nav-graph-method-35 (_type_ int) none 35)
+    (nav-graph-method-36 (_type_ int) none 36)
+    (nav-graph-method-37 (_type_ vector) none 37)
     (nav-graph-method-38 () none 38)
-    (nav-graph-method-39 () none 39)
-    (nav-graph-method-40 () none 40)
+    (nav-graph-method-39 (_type_) none 39)
+    (nav-graph-method-40 (_type_ int) int 40)
     (node-at-idx
       "Get the `nav-node` at a given position.
        @param idx The position in the `node-array` to return
        @returns the [[nav-node]] if it can be found, otherwise return [[#f]]"
       (_type_ int) nav-node 41)
-    (nav-graph-method-42 () none 42)
-    (nav-graph-method-43 () none 43)
-    (nav-graph-method-44 () none 44)
+    (nav-graph-method-42 (_type_) none 42)
+    (nav-graph-method-43 (_type_ nav-graph-link string) none 43)
+    (from-editor () none 44)
     )
   )
 
@@ -48554,11 +48616,10 @@
 ;; traffic-engine-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-segment (structure)
-  ((vertex        UNKNOWN    2 :offset-assert 0)
-   (length        float        :offset-assert 12)
-   (spawn-spacing float        :offset-assert 28)
+  ((vertex        vector     2 :inline :offset-assert 0)
+   (length        float        :offset 12)
+   (spawn-spacing float        :offset 28)
    (branch        nav-branch   :offset-assert 32)
    (nav-mesh-id   uint32       :offset-assert 36)
    (id            uint16       :offset-assert 40)
@@ -48571,36 +48632,49 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+(defenum vis-cell-flag
+  :type uint8
+  :bitfield #t
+  (active-vehicle)
+  (active-pedestrian)
+  (suppress)
+  )
+
 (deftype vis-cell (structure)
-  ()
+  (
+    (sphere sphere :inline :offset-assert 0)
+    (segment-array uint32 :offset-assert 16)
+    (vis-id uint16 :offset-assert 20)
+    (id uint16 :offset-assert 22)
+    (incoming-segment-count int8 :offset-assert 24)
+    (segment-count int8 :offset-assert 25)
+    (flags vis-cell-flag :offset-assert 26)
+    (alloc-segment-count int8 :offset 26)
+    (prev-flags vis-cell-flag :offset-assert 27)
+    (pad0 uint32 :offset 28)
+  )
   :method-count-assert 11
   :size-assert         #x20
   :flag-assert         #xb00000020
-  ;; Failed to read fields.
   (:methods
     (vis-cell-method-9 () none 9)
     (vis-cell-method-10 () none 10)
     )
   )
-|#
 
-#|
 (deftype vis-grid-pos (structure)
-  ((data UNKNOWN 3 :offset-assert 0)
-   (x    int8      :offset-assert 0)
-   (y    int8      :offset-assert 1)
-   (z    int8      :offset-assert 2)
+  ((data int8    3 :offset-assert 0 :score -999)
+   (x    int8      :offset 0)
+   (y    int8      :offset 1)
+   (z    int8      :offset 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x3
   :flag-assert         #x900000003
   )
-|#
 
-#|
 (deftype vis-grid-box (structure)
   ((min vis-grid-pos :inline :offset-assert 0)
    (max vis-grid-pos :inline :offset-assert 3)
@@ -48609,9 +48683,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype vis-ray (structure)
   ((pos      vector       :inline :offset-assert 0)
    (dir      vector       :inline :offset-assert 16)
@@ -48625,13 +48697,11 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype grid-info (structure)
-  ((axis-scale      UNKNOWN      3       :offset-assert 0)
-   (dimension-array UNKNOWN      3       :offset-assert 12)
-   (pad0            UNKNOWN      1       :offset-assert 15)
+  ((axis-scale      float      3       :offset-assert 0)
+   (dimension-array uint8      3       :offset-assert 12)
+   (pad0            uint8      1       :offset-assert 15)
    (box             bounding-box :inline :offset-assert 16)
    (cell-size       vector       :inline :offset-assert 48)
    )
@@ -48646,9 +48716,7 @@
     (grid-info-method-13 () none 13)
     )
   )
-|#
 
-#|
 (deftype city-level-info (structure)
   ((grid-info      grid-info :inline :offset-assert 0)
    (cell-array     uint32            :offset-assert 64)
@@ -48657,7 +48725,7 @@
    (segment-array  uint32            :offset-assert 72)
    (nav-graph      basic             :offset-assert 76)
    (camera-ceiling meters            :offset-assert 80)
-   (pad-array      UNKNOWN   56      :offset-assert 84)
+   (pad-array      int8   56      :offset-assert 84)
    )
   :method-count-assert 19
   :size-assert         #x8c
@@ -48675,15 +48743,13 @@
     (city-level-info-method-18 () none 18)
     )
   )
-|#
 
-#|
 (deftype traffic-level-data (structure)
   ((city-info               city-level-info         :offset-assert 0)
    (active-cell-count       uint8                   :offset-assert 4)
    (newly-active-cell-count uint8                   :offset-assert 5)
-   (active-cell-list        UNKNOWN         255     :offset-assert 8)
-   (newly-active-cell-list  UNKNOWN         255     :offset-assert 1028)
+   (active-cell-list        vis-cell         255     :offset-assert 8)
+   (newly-active-cell-list  vis-cell         255     :offset-assert 1028)
    (active-cell-box         bounding-box    :inline :offset-assert 2048)
    )
   :method-count-assert 15
@@ -48698,22 +48764,18 @@
     (traffic-level-data-method-14 () none 14)
     )
   )
-|#
 
-#|
 (deftype traffic-suppression-box (structure)
-  ((data     UNKNOWN      32      :offset-assert 0)
-   (bbox     bounding-box :inline :offset-assert 0)
-   (flags    uint8                :offset-assert 12)
-   (duration uint32               :offset-assert 28)
+  ((data     uint8      32      :offset-assert 0 :score -999)
+   (bbox     bounding-box :inline :offset 0)
+   (flags    uint8                :offset 12)
+   (duration uint32               :offset 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype traffic-guard-type-info (structure)
   ((object-type      uint8  :offset-assert 0)
    (max-target-count int8   :offset-assert 1)
@@ -48726,9 +48788,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype traffic-guard-type-settings (structure)
   ((target-count    int8    :offset-assert 0)
    (inaccuracy      float   :offset-assert 4)
@@ -48742,48 +48802,82 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype traffic-alert-state-settings (structure)
-  ((guard-settings-array UNKNOWN                     6       :offset-assert 0)
-   (ped-tazer            traffic-guard-type-settings :inline :offset-assert 0)
-   (ped-rifle            traffic-guard-type-settings :inline :offset-assert 16)
-   (ped-grenade          traffic-guard-type-settings :inline :offset-assert 32)
-   (ped-roboguard        traffic-guard-type-settings :inline :offset-assert 48)
-   (bike-turret          traffic-guard-type-settings :inline :offset-assert 64)
-   (hellcat-turret       traffic-guard-type-settings :inline :offset-assert 80)
+  ((guard-settings-array traffic-guard-type-settings                     6       :offset-assert 0 :score -999)
+   (ped-tazer            traffic-guard-type-settings :inline :offset 0)
+   (ped-rifle            traffic-guard-type-settings :inline :offset 16)
+   (ped-grenade          traffic-guard-type-settings :inline :offset 32)
+   (ped-roboguard        traffic-guard-type-settings :inline :offset 48)
+   (bike-turret          traffic-guard-type-settings :inline :offset 64)
+   (hellcat-turret       traffic-guard-type-settings :inline :offset 80)
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
+(defenum traffic-target-flag
+  :type uint8
+  :bitfield #t
+  (visible-now)
+  (visible-recently)
+  (visible-ever)
+  (updated)
+  (force-visible)
+  )
+
 (deftype traffic-target-status (structure)
-  ()
+  (
+    (flags traffic-target-flag :offset-assert 0)
+    (handle handle :offset-assert 8)
+    (last-seen-time time-frame :offset-assert 16)
+    (position vector :inline :offset-assert 32)
+    (velocity vector :inline :offset-assert 48)
+    (move-position vector :inline :offset-assert 64)
+  )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; Failed to read fields.
   )
-|#
 
-#|
+(defenum traffic-alert-flag
+  :type uint8
+  :bitfield #t
+  (alert-ending)
+  (alarm-on)
+  (guard-multi-focus)
+  (sticky-guard-settings)
+  (disable-pursuit-control)
+  (target-jak)
+  )
+
 (deftype traffic-alert-state (structure)
-  ()
+  (
+    (flags traffic-alert-flag :offset-assert 0)
+    (level uint8 :offset-assert 1)
+    (max-level uint8 :offset-assert 2)
+    (guards-in-sight-of-target int8 :offset-assert 3)
+    (guard-aim-count int8 :offset-assert 4)
+    (guard-inaccuracy-factor float :offset-assert 8)
+    (guard-target-level float :offset-assert 12)
+    (duration uint32 :offset-assert 16)
+    (start-time time-frame :offset-assert 24)
+    (notify-time time-frame :offset-assert 32)
+    (alarm-sound-id uint32 :offset-assert 40)
+    (target-status-array traffic-target-status 3 :inline :offset-assert 48)
+    (settings traffic-alert-state-settings :inline :offset-assert 288)
+    (guard-type-info-array traffic-guard-type-info 6 :inline :offset-assert 384)
+    (guard-type-mask-from-object-type int32 126 :offset-assert 480)
+  )
   :method-count-assert 10
   :size-assert         #x3d8
   :flag-assert         #xa000003d8
-  ;; Failed to read fields.
   (:methods
     (traffic-alert-state-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype traffic-object-type-info (structure)
   ((flags             uint8   :offset-assert 0)
    (target-count      int8    :offset-assert 1)
@@ -48802,13 +48896,11 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype traffic-suppressor (structure)
   ((flags uint8                :offset-assert 0)
    (bbox  bounding-box :inline :offset-assert 16)
-   (array UNKNOWN      16      :offset-assert 48)
+   (array traffic-suppression-box      16  :inline    :offset-assert 48)
    )
   :method-count-assert 14
   :size-assert         #x230
@@ -48821,9 +48913,7 @@
     (traffic-suppressor-method-13 () none 13)
     )
   )
-|#
 
-#|
 (deftype traffic-tracker (structure)
   ((traffic                 basic       :offset-assert 0)
    (object-hash             basic       :offset-assert 4)
@@ -48831,8 +48921,8 @@
    (id                      uint8       :offset-assert 12)
    (active-object-count     uint8       :offset-assert 13)
    (inactive-object-count   int8        :offset-assert 14)
-   (active-object-list      UNKNOWN 126 :offset-assert 16)
-   (active-object-type-list UNKNOWN 126 :offset-assert 1024)
+   (active-object-list      int64 126 :offset-assert 16)
+   (active-object-type-list int8 126 :offset-assert 1024)
    )
   :method-count-assert 27
   :size-assert         #x47e
@@ -48858,9 +48948,7 @@
     (traffic-tracker-method-26 () none 26)
     )
   )
-|#
 
-#|
 (deftype traffic-engine (basic)
   ((object-hash            basic                       :offset-assert 4)
    (manager                uint64                      :offset-assert 8)
@@ -48869,16 +48957,17 @@
    (sync-mask-8            uint8                       :offset-assert 21)
    (sync-mask-16           uint16                      :offset-assert 22)
    (sync-mask-32           uint32                      :offset-assert 24)
-   (sync-array             UNKNOWN             4       :offset-assert 28)
+   (sync-array             uint8             4       :offset-assert 28)
    (flags                  uint8                       :offset-assert 32)
    (alert-state            traffic-alert-state :inline :offset-assert 48)
-   (level-data-array       UNKNOWN             2       :offset-assert 1040)
-   (object-type-info-array UNKNOWN             21      :offset-assert 5200)
-   (tracker-array          UNKNOWN             2       :offset-assert 5872)
-   (inactive-object-array  UNKNOWN             420     :offset-assert 8176)
+   (level-data-array       traffic-level-data             2   :inline    :offset-assert 1040)
+   (object-type-info-array traffic-object-type-info             21 :inline     :offset-assert 5200)
+   (tracker-array          traffic-tracker             2      :inline :offset-assert 5872)
+   (inactive-object-array  uint64             420     :offset-assert 8176)
    (suppressor             traffic-suppressor  :inline :offset-assert 11536)
    (danger-sphere-count    int8                        :offset-assert 12096)
-   (danger-sphere-array    UNKNOWN             4       :offset-assert 12112)
+   (pad                    int8 15 :offset-assert 12097)
+   (danger-sphere-array    matrix              4      :inline :offset-assert 12112)
    )
   :method-count-assert 74
   :size-assert         #x3050
@@ -48951,14 +49040,12 @@
     (traffic-engine-method-73 () none 73)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-lookup-info (structure)
   ((turn-radius       meters  :offset-assert 0)
    (throttle-turning  float   :offset-assert 4)
@@ -48968,9 +49055,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vehicle-control-point (structure)
   ((local-pos vector :inline :offset-assert 0)
    (normal    vector :inline :offset-assert 16)
@@ -48979,36 +49064,30 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype vehicle-section-info (structure)
-  ((damage-seg-array UNKNOWN 3 :offset-assert 0)
+  ((damage-seg-array uint64  3 :offset-assert 0)
    (damage-seg-count int8      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x19
   :flag-assert         #x900000019
   )
-|#
 
-#|
 (deftype vehicle-seat-info (structure)
-  ((data     UNKNOWN 16      :offset-assert 0)
-   (position vector  :inline :offset-assert 0)
-   (pos-x    float           :offset-assert 0)
-   (pos-y    float           :offset-assert 4)
-   (pos-z    float           :offset-assert 8)
-   (angle    int16           :offset-assert 12)
-   (flags    uint8           :offset-assert 14)
+  ((data     uint8   16      :offset-assert 0 :score -999)
+   (position vector  :inline :offset 0)
+   (pos-x    float           :offset 0)
+   (pos-y    float           :offset 4)
+   (pos-z    float           :offset 8)
+   (angle    int16           :offset 12)
+   (flags    uint8           :offset 14)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vehicle-explosion-info (joint-exploder-static-params)
   ((skel      basic  :offset-assert 16)
    (skel-name basic  :offset-assert 20)
@@ -49018,20 +49097,16 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype vehicle-grab-rail-info (structure)
-  ((local-pos UNKNOWN 2       :offset-assert 0)
+  ((local-pos vector 2       :inline :offset-assert 0)
    (normal    vector  :inline :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags                             uint32                       :offset-assert 208)
    (object-type                       uint8                        :offset-assert 212)
@@ -49092,15 +49167,15 @@
    (rider-stance                      uint8                        :offset-assert 422)
    (grab-rail-count                   int8                         :offset-assert 423)
    (grab-rail-array                   uint32                       :offset-assert 424)
-   (seat-array                        UNKNOWN              4       :offset-assert 432)
-   (rider-hand-offset                 UNKNOWN              2       :offset-assert 496)
-   (section-array                     UNKNOWN              4       :offset-assert 528)
-   (section-bike-front                vehicle-section-info :inline :offset-assert 528)
-   (section-bike-rear                 vehicle-section-info :inline :offset-assert 560)
-   (section-car-front-left            vehicle-section-info :inline :offset-assert 528)
-   (section-car-rear-left             vehicle-section-info :inline :offset-assert 560)
-   (section-car-front-right           vehicle-section-info :inline :offset-assert 592)
-   (section-car-rear-right            vehicle-section-info :inline :offset-assert 624)
+   (seat-array                        vehicle-seat-info              4      :inline :offset-assert 432)
+   (rider-hand-offset                 vector              2      :inline :offset-assert 496)
+   (section-array                     vehicle-section-info              4 :inline       :offset-assert 528 :score -999)
+   (section-bike-front                vehicle-section-info :inline :offset 528)
+   (section-bike-rear                 vehicle-section-info :inline :offset 560)
+   (section-car-front-left            vehicle-section-info :inline :offset 528)
+   (section-car-rear-left             vehicle-section-info :inline :offset 560)
+   (section-car-front-right           vehicle-section-info :inline :offset 592)
+   (section-car-rear-right            vehicle-section-info :inline :offset 624)
    (explosion                         basic                        :offset-assert 656)
    (engine-pitch-scale                float                        :offset-assert 660)
    (engine-pitch-offset               float                        :offset-assert 664)
@@ -49117,22 +49192,23 @@
    (taillight-count                   int8                         :offset-assert 789)
    (thruster-flame-width              meters                       :offset-assert 792)
    (thruster-flame-length             meters                       :offset-assert 796)
-   (thruster-local-pos                UNKNOWN              2       :offset-assert 800)
-   (exhaust-local-pos                 UNKNOWN              2       :offset-assert 832)
-   (exhaust-local-dir                 UNKNOWN              2       :offset-assert 864)
-   (smoke-local-pos                   UNKNOWN              2       :offset-assert 896)
-   (smoke-local-vel                   UNKNOWN              2       :offset-assert 928)
-   (headlight-local-pos               UNKNOWN              3       :offset-assert 960)
-   (taillight-local-pos               UNKNOWN              2       :offset-assert 1008)
+   (thruster-local-pos                vector              2       :inline :offset-assert 800)
+   (exhaust-local-pos                 vector              2       :inline :offset-assert 832)
+   (exhaust-local-dir                 vector              2       :inline :offset-assert 864)
+   (smoke-local-pos                   vector              2       :inline :offset-assert 896)
+   (smoke-local-vel                   vector              2       :inline :offset-assert 928)
+   (headlight-local-pos               vector              3       :inline :offset-assert 960)
+   (taillight-local-pos               vector              2       :inline :offset-assert 1008)
    (lift-thruster-count               int8                         :offset-assert 1040)
    (roll-thruster-count               int8                         :offset-assert 1041)
    (steering-thruster-count           int8                         :offset-assert 1042)
    (stabilizer-count                  int8                         :offset-assert 1043)
    (inv-lift-thruster-count           float                        :offset-assert 1044)
-   (lift-thruster-array               UNKNOWN              2       :offset-assert 1056)
-   (roll-thruster-array               UNKNOWN              2       :offset-assert 1120)
-   (steering-thruster-array           UNKNOWN              2       :offset-assert 1184)
-   (stabilizer-array                  UNKNOWN              6       :offset-assert 1248)
+   (pad int8 8 :offset-assert 1048)
+   (lift-thruster-array               vector4w-2              2   :inline   :offset-assert 1056)
+   (roll-thruster-array               vector4w-2              2   :inline   :offset-assert 1120)
+   (steering-thruster-array           vector4w-2              2   :inline   :offset-assert 1184)
+   (stabilizer-array                  vector4w-2              6   :inline   :offset-assert 1248)
    (engine-thrust-local-pos           vector               :inline :offset-assert 1440)
    (brake-local-pos                   vector               :inline :offset-assert 1456)
    (particle-system-2d                basic                        :offset-assert 1472)
@@ -49157,11 +49233,44 @@
     (rigid-body-vehicle-constants-method-10 () none 10)
     )
   )
-|#
 
-#|
+;; +++vehicle-h:vehicle-controller-flag
+(defenum vehicle-controller-flag
+  :type uint32
+  :bitfield #t
+  (debug)
+  (draw-marks)
+  (left-turn)
+  (on-straightaway)
+  (do-turn)
+  (blocking-dest-node)
+  (attached)
+  (off-path)
+  (ignore-others)
+  (direct-mode)
+  (recovery-mode)
+  (no-slowing-for-turns))
+;; ---vehicle-h:vehicle-controller-flag
+
 (deftype vehicle-controller (structure)
-  ()
+  (
+    (flags vehicle-controller-flag :offset-assert 0)
+    (traffic symbol :offset-assert 4)
+    (branch nav-branch :offset-assert 8)
+    (target-speed-offset meters :offset-assert 12)
+    (target-speed meters :offset-assert 16)
+    (choose-branch-callback symbol :offset-assert 20)
+    (turn-accel meters :offset-assert 24)
+    (max-turn-speed meters :offset-assert 28)
+    (path-prev-point vector :inline :offset-assert 32)
+    (turn-enter-point vector :inline :offset-assert 48)
+    (turn-exit-point vector :inline :offset-assert 64)
+    (path-dest-point vector :inline :offset 64)
+    (turn-enter-dir vector :inline :offset-assert 80)
+    (turn-exit-dir vector :inline :offset-assert 96)
+    (dest-circle vector :inline :offset-assert 112)
+    (target-point vector :inline :offset-assert 128)
+  )
   :method-count-assert 22
   :size-assert         #x90
   :flag-assert         #x1600000090
@@ -49182,9 +49291,7 @@
     (vehicle-controller-method-21 () none 21)
     )
   )
-|#
 
-#|
 (deftype vehicle-section (structure)
   ((damage float  :offset-assert 0)
    )
@@ -49192,15 +49299,80 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype vehicle (rigid-body-object)
-  ()
+  (
+    (pad uint32 4 :offset-assert 272)
+    (controls vehicle-controls :inline :offset-assert 288)
+    (prev-controls vehicle-controls :inline :offset-assert 304)
+    (up-dir vector :inline :offset-assert 320)
+    (jump-time float :offset-assert 336)
+    (jump-thrust float :offset-assert 340)
+    (engine-thrust float :offset-assert 344)
+    (engine-power-factor float :offset-assert 348)
+    (force-scale float :offset-assert 352)
+    (target-distance2 meters :offset-assert 356)
+    (pad0 uint32 :offset-assert 360)
+    (target-acceleration vector :inline :offset-assert 368)
+    (impact-pos vector :inline :offset-assert 384)
+    (lin-acceleration vector :inline :offset-assert 400)
+    (hit-points float :offset-assert 416)
+    (damage-factor float :offset-assert 420)
+    (crash-level int8 :offset-assert 424)
+    (force-level int8 :offset-assert 425)
+    (traffic-hash-id int8 :offset-assert 426)
+    (traffic-priority-id int8 :offset-assert 427)
+    (power-fluctuation-factor float :offset-assert 428)
+    (power-level float :offset-assert 432)
+    (flight-level-index int8 :offset-assert 436)
+    (flight-level-index-prev int8 :offset-assert 437)
+    (overlap-player-counter uint8 :offset-assert 438)
+    (physics-counter uint8 :offset-assert 439)
+    (flight-level float :offset-assert 440)
+    (brake-factor float :offset-assert 444)
+    (cam-speed-interp float :offset-assert 448)
+    (camera-dist2 float :offset-assert 452)
+    (player-dist2 float :offset-assert 456)
+    (bound-radius float :offset-assert 460)
+    (rider-array int64 4 :offset-assert 464)
+    (lift-thrust float 2 :offset-assert 496)
+    (roll-thrust float 2 :offset-assert 504)
+    (sent-attack-time time-frame :offset-assert 512)
+    (air-time time-frame :offset-assert 520)
+    (turn-time time-frame :offset-assert 528)
+    (crash-time time-frame :offset-assert 536)
+    (transition-time time-frame :offset-assert 544)
+    (transition-end-time time-frame :offset-assert 552)
+    (turbo-boost-time time-frame :offset-assert 560)
+    (crash-duration uint16 :offset-assert 568)
+    (turbo-boost-duration uint16 :offset-assert 570)
+    (turbo-boost-factor float :offset-assert 572)
+    (crash-impulse float :offset-assert 576)
+    (water-height float :offset-assert 580)
+    (lights-factor float :offset-assert 584)
+    (outgoing-attack-id uint32 :offset-assert 588)
+    (scrape-sound-id sound-id :offset-assert 592)
+    (engine-sound-id sound-id :offset-assert 596)
+    (thrust-sound-id sound-id :offset-assert 600)
+    (roll-sound-id sound-id :offset-assert 604)
+    (damage-pop-sound-id sound-id :offset-assert 608)
+    (damage-zap-sound-id sound-id :offset-assert 612)
+    (extra-sound-id sound-id :offset-assert 616)
+    (fog-fade float :offset-assert 620)
+    (scrape-sound-envelope float :offset-assert 624)
+    (engine-sound-envelope float :offset-assert 628)
+    (engine-sound-factor float :offset-assert 632)
+    (sputter-sound-envelope float :offset-assert 636)
+    (rudder-sound-envelope float :offset-assert 640)
+    (fins-sound-envelope float :offset-assert 644)
+    (exhaust-part-accum basic 2 :offset-assert 648)
+    (smoke-part-accum basic 2 :offset-assert 656)
+    (controller vehicle-controller :inline :offset-assert 672)
+    (section-array vehicle-section 4 :inline :offset-assert 816)
+  )
   :method-count-assert 144
   :size-assert         #x370
   :flag-assert         #x9002f00370
-  ;; Failed to read fields.
   (:methods
     (vehicle-method-53 () none 53)
     (vehicle-method-54 () none 54)
@@ -49295,7 +49467,6 @@
     (vehicle-method-143 () none 143)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49341,44 +49512,45 @@
 ;; height-map-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype xz-height-map (structure)
-  ((offset        UNKNOWN 3 :offset-assert 0)
-   (x-offset      float     :offset-assert 0)
-   (y-offset      float     :offset-assert 4)
-   (z-offset      float     :offset-assert 8)
+  ((offset        float   3 :offset-assert 0)
+   (x-offset      float     :offset 0)
+   (y-offset      float     :offset 4)
+   (z-offset      float     :offset 8)
    (x-inv-spacing float     :offset-assert 12)
    (z-inv-spacing float     :offset-assert 16)
    (y-scale       float     :offset-assert 20)
-   (dim           UNKNOWN 2 :offset-assert 24)
-   (x-dim         int16     :offset-assert 24)
-   (z-dim         int16     :offset-assert 26)
-   (data          uint32    :offset-assert 28)
+   (dim           int16   2 :offset-assert 24)
+   (x-dim         int16     :offset 24)
+   (z-dim         int16     :offset 26)
+   (data          (pointer int8)    :offset-assert 28) ;; 2240 words for the traffic-height-map - this could be so many things, but its something with an `int8` at offset 0
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (xz-height-map-method-9 () none 9)
-    (xz-height-map-method-10 () none 10)
-    (xz-height-map-method-11 () none 11)
-    (xz-height-map-method-12 () none 12)
-    (xz-height-map-method-13 () none 13)
-    (xz-height-map-method-14 () none 14)
+    (xz-height-map-method-9 (_type_ vector) float 9)
+    (xz-height-map-method-10 (_type_ vector) none 10)
+    (xz-height-map-method-11 (_type_) none 11)
+    (xz-height-map-method-12 (_type_ vector) none 12)
+    (xz-height-map-method-13 (_type_ vector) none 13)
+    (xz-height-map-method-14 (_type_ vector int) none 14)
     )
   )
-|#
 
-;; (define-extern get-traffic-height function)
+(define-extern get-traffic-height
+  "@returns The value of [[xz-height-map::9]] using [[*traffic-height-map*]] and the [[vector]] provided
+   @see [[xz-height-map::9]]"
+  (function vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-obs-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype city-race-ring-info (structure)
   ((pos   vector :inline :offset-assert 0)
-   (angle float          :offset-assert 12)
+   (angle float          :offset 12)
    (boost float          :offset-assert 16)
    (dist  float          :offset-assert 20)
    )
@@ -49389,9 +49561,7 @@
     (city-race-ring-info-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype city-ambush-spot (structure)
   ((pos      vector :inline :offset-assert 0)
    (obj-type uint8          :offset-assert 16)
@@ -49400,9 +49570,7 @@
   :size-assert         #x11
   :flag-assert         #x900000011
   )
-|#
 
-#|
 (deftype city-ambush-info (structure)
   ((count int16   :offset-assert 0)
    (array uint32  :offset-assert 4)
@@ -49414,26 +49582,25 @@
     (city-ambush-info-method-9 () none 9)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; height-map                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern point-in-bbox? function)
+(define-extern point-in-bbox? (function bounding-box vector symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; traffic-height-map             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *traffic-height-map* object)
+(define-extern *traffic-height-map* xz-height-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-graph                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern make-nav-graph function)
+(define-extern make-nav-graph (function nav-graph object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-rider                  ;;
