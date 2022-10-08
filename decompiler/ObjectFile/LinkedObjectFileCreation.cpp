@@ -126,7 +126,11 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
           word_kind = LinkedWord::EMPTY_PTR;
           break;
         case SymbolLinkKind::TYPE:
-          dts.add_symbol(name, "type", {});
+          // hack for jak 2: this symbol is used as a type in village 1 and also the oracle level
+          // level info. We'll just leave it out, as we don't really need these definitions.
+          if (std::string(name) != "oracle") {
+            dts.add_symbol(name, "type", {});
+          }
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:

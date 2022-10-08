@@ -1875,6 +1875,16 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
       mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal)
       mode.enable_ab();
       break;
+    case tfrag3::TFragmentTreeKind::WATER:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_at();
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_aref(0);
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_ab();
+      break;
     default:
       ASSERT(false);
   }
@@ -1889,7 +1899,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           update_mode_from_test1(val, mode);
           break;
         case GsRegisterAddress::TEX0_1:
-          ASSERT(val == 0);
+          // ASSERT(val == 0); HACK jak 2 sets this.
           break;
         case GsRegisterAddress::TEX1_1:
           ASSERT(val == 0x120);  // some flag
@@ -1914,8 +1924,6 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
             ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
           }
 
-          // this isn't quite right, but I'm hoping it's enough!
-          // mode.set_clamp_enable(val == 0b101);
           mode.set_clamp_s_enable(val & 0b1);
           mode.set_clamp_t_enable(val & 0b100);
           break;
@@ -2161,6 +2169,10 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       this_tree.kind = tfrag3::TFragmentTreeKind::LOWRES;
     } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
       this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+    } else if (tree->my_type() == "drawable-tree-tfrag-trans") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+    } else if (tree->my_type() == "drawable-tree-tfrag-water") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::WATER;
     } else {
       ASSERT_MSG(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
     }

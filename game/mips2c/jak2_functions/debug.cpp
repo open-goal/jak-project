@@ -26,7 +26,6 @@ void qfsrv_same_mtsab_4(ExecutionContext* c, int reg) {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
   c->lqc2(vf9, 0, a2);                              // lqc2 vf9, 0(a2)

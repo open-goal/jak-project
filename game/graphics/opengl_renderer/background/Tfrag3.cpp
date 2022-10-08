@@ -183,9 +183,9 @@ void Tfrag3::render_tree(int geom,
     m_color_result.resize(tree.colors->size());
   }
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);

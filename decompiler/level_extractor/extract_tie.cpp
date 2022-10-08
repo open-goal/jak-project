@@ -2295,7 +2295,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  const std::vector<level_tools::TextureRemap>& tex_map,
                  const TextureDB& tex_db,
                  tfrag3::Level& out,
-                 bool dump_level) {
+                 bool dump_level,
+                 GameVersion version) {
   for (int geo = 0; geo < GEOM_MAX; ++geo) {
     tfrag3::TieTree this_tree;
 
@@ -2336,7 +2337,9 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     auto info =
         collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data, geo);
     update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data, geo);
-    check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
+    if (version != GameVersion::Jak2) {
+      check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
+    }
     // determine draws from VU program
     emulate_tie_prototype_program(info);
     emulate_tie_instance_program(info);

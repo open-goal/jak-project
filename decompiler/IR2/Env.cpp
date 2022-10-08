@@ -35,7 +35,7 @@ void Env::set_remap_for_function(const Function& func) {
   }
   int nargs = func.type.arg_count() - 1;
   for (int i = 0; i < nargs; i++) {
-    if (default_arg_names.size() > i) {
+    if ((int)default_arg_names.size() > i) {
       m_var_remap[get_reg_name(i)] = default_arg_names.at(i);
     } else {
       m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i));

@@ -8,7 +8,6 @@ namespace adgif_shader_texture_with_update {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->ld(a2, 16, a0);                                // ld a2, 16(a0)
   c->addiu(v1, r0, 256);                            // addiu v1, r0, 256
   c->andi(a2, a2, 513);                             // andi a2, a2, 513

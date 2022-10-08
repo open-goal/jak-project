@@ -1427,7 +1427,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     if (type_ptr.kind() != LinkedWord::TYPE_PTR) {
       throw std::runtime_error("Invalid basic in decompile_boxed_array");
     }
-    if (type_ptr.symbol_name() == "array") {
+    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array") {
       auto content_type_ptr_word_idx = type_ptr_word_idx + 3;
       auto& content_type_ptr = words.at(label.target_segment).at(content_type_ptr_word_idx);
       if (content_type_ptr.kind() != LinkedWord::TYPE_PTR) {
@@ -1435,7 +1435,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       }
       content_type = TypeSpec(content_type_ptr.symbol_name());
     } else {
-      throw std::runtime_error("Wrong basic type in decompile_boxed_array");
+      throw std::runtime_error(
+          fmt::format("Wrong basic type in decompile_boxed_array: got {}", type_ptr.symbol_name()));
     }
   } else {
     throw std::runtime_error("Invalid alignment in decompile_boxed_array");

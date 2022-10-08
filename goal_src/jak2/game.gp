@@ -668,6 +668,13 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; COMMON
+;;;;;;;;;;;;;;;;;;;;;
+
+(copy-gos
+  "daxter-highres-ag")
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; PRISON
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -684,7 +691,6 @@
 (copy-textures 1578 1950 1579 2647)
 
 (copy-gos
-  "daxter-highres-ag"
   "prsn-torture-ag"
   "prsn-chair-shackle-ag"
   "prsn-hang-cell-ag"
@@ -813,6 +819,27 @@
 "cty-fruit-stand-ag"
 "hide-door-a-ag"
 "ctysluma-vis"
+)
+
+;;;;;;;;;;;;;;;;;;;;;
+;; VILLAGE 1
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "VI1.DGO" "vi1.gd")
+(copy-textures 3034 3037 3035 3038 3036 2761 3516)
+
+(copy-gos
+"darkjak-highres-ag"
+"metalkor-torso-ag"
+"rift-ring-ag"
+"vil-break-support-ag"
+"intro-flamer-ag"
+"rift-rider-donut-ag"
+"vil-windmill-sail-ag"
+"vil-windspinner-ag"
+"vil-sagesail-ag"
+"particleman-ag"
+"village1-vis"
 )
 
 ;;;;;;;;;;;;;;;;;;;;;

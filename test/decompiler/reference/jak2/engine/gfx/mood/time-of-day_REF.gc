@@ -1,14 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: time-of-day.gc
-;; name in dgo: time-of-day
-;; dgos: ENGINE, GAME
-
-(define-extern time-of-day-effect (function none))
-
-;; DECOMP BEGINS
-
 ;; definition for method 5 of type time-of-day-palette
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of time-of-day-palette ((obj time-of-day-palette))
@@ -151,16 +143,16 @@
 
 ;; failed to figure out what this is:
 (defstate time-of-day-tick (time-of-day-proc)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as
         object
         (cond
           ((= v1-0 'change)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('ratio)
               (let ((a0-5 (-> *display* bg-clock))
-                    (f0-0 (the-as float (-> arg3 param 1)))
+                    (f0-0 (the-as float (-> event param 1)))
                     )
                 (set! (-> self time-ratio) f0-0)
                 (set! (-> self dest-time-ratio) f0-0)
@@ -171,7 +163,7 @@
               (update-counters)
               (let ((v1-7 (-> *display* bg-clock frame-counter))
                     (a0-7 #x69780)
-                    (a1-5 (/ (the int (* 1080000.0 (the float (-> arg3 param 1)))) 60))
+                    (a1-5 (/ (the int (* 1080000.0 (the float (-> event param 1)))) 60))
                     )
                 (set! (-> *display* bg-clock frame-counter) (+ (- v1-7 (the-as time-frame (mod v1-7 a0-7))) a0-7 a1-5))
                 )
@@ -220,10 +212,10 @@
            (-> self seconds)
            )
           ((= v1-0 'dest-clock-ratio-set)
-           (set! (-> self dest-time-ratio) (the-as float (-> arg3 param 0)))
+           (set! (-> self dest-time-ratio) (the-as float (-> event param 0)))
            (let ((f0-12 (-> self time-ratio))
                  (f1-5 (-> self dest-time-ratio))
-                 (f2-1 (/ 300.0 (the float (-> arg3 param 1))))
+                 (f2-1 (/ 300.0 (the float (-> event param 1))))
                  )
              (set! (-> self dest-time-delta) (* (fabs (- f0-12 f1-5)) f2-1 (-> *display* real-clock seconds-per-frame)))
              )
@@ -510,7 +502,7 @@
                (clear-mood-times (-> s3-0 mood-context))
                ((-> s3-0 mood-func) (-> s3-0 mood-context) (-> arg0 time) s4-1)
                (when (-> arg0 overide-enable)
-                 (let ((s1-0 (new 'stack-no-clear 'vector)))
+                 (let ((s1-0 (new 'stack-no-clear 'structure)))
                    (dotimes (s0-0 8)
                      (let ((a1-48 (-> s3-0 mood-context times s0-0)))
                        (vector-float*! (the-as vector s1-0) (-> arg0 times s0-0) (-> arg0 times s0-0 w))
@@ -543,7 +535,7 @@
           )
         (let ((v1-86 (-> arg0 current-fog)))
           (dotimes (a0-76 103)
-            (set! (-> (the-as (pointer int128) (+ (* a0-76 16) (the-as int v1-86)))) (the int128 0))
+            (set! (-> (the-as (pointer int128) (+ (* a0-76 16) (the-as int v1-86)))) 0)
             )
           )
         (let ((s5-3 (-> arg0 current-fog))
@@ -699,3 +691,7 @@
 
 ;; failed to figure out what this is:
 (start-time-of-day)
+
+
+
+

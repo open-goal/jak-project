@@ -22,7 +22,7 @@ struct TfragRenderSettings {
   math::Vector4f hvdf_offset;
   math::Vector4f fog;
   int tree_idx;
-  float time_of_day_weights[8] = {0};
+  math::Vector<s32, 4> itimes[4];
   math::Vector4f planes[4];
   bool debug_culling = false;
   const u8* occlusion_culling = nullptr;
@@ -42,7 +42,8 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 void first_tfrag_draw_setup(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ShaderId shader);
-void interp_time_of_day_slow(const float weights[8],
+
+void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
                              const std::vector<tfrag3::TimeOfDayColor>& in,
                              math::Vector<u8, 4>* out);
 
@@ -53,8 +54,8 @@ struct SwizzledTimeOfDay {
 
 SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in);
 
-void interp_time_of_day_fast(const float weights[8],
-                             const SwizzledTimeOfDay& in,
+void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
+                             const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out);
 
 void cull_check_all_slow(const math::Vector4f* planes,
