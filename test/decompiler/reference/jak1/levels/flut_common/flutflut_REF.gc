@@ -92,13 +92,13 @@
 ;; failed to figure out what this is:
 (defstate wait-for-start (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as
         object
         (cond
           ((= v1-0 'trans)
-           (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+           (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
            )
           ((= v1-0 'notify)
            (let ((v0-1 (the-as structure #t)))
@@ -261,8 +261,8 @@
 ;; failed to figure out what this is:
 (defstate pickup (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('draw)
        (ja-channel-set! 1)
        (ja :group! (-> self draw art-group data 3))
@@ -271,7 +271,7 @@
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
@@ -312,14 +312,14 @@
 ;; failed to figure out what this is:
 (defstate wait-for-return (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (or (= arg2 'touch) (= arg2 'attack)) (send-event *target* 'end-mode))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (or (= event-type 'touch) (= event-type 'attack)) (send-event *target* 'end-mode))
         (go-virtual pickup (method-of-object self idle))
         )
     (the-as
       object
-      (if (= arg2 'trans)
-          (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+      (if (= event-type 'trans)
+          (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
           )
       )
     )

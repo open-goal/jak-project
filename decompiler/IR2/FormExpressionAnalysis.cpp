@@ -3226,14 +3226,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump";
+        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump" ||
+                           tp_type.method_from_type().base_type() == "entity-actor";
         bool should_use_virtual =
             env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(), tp_type.method_id());
 
         if (!should_use_virtual && !is_res_lump) {
           throw std::runtime_error(
-              fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
-                          tp_type.method_from_type().print(), tp_type.method_id()));
+              fmt::format("Method call on {} id {} at {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print(), tp_type.method_id(), "ya"));
         }
 
         if (should_use_virtual) {

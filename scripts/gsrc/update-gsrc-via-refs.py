@@ -1,6 +1,5 @@
 # Updates files in gsrc if they are modified in the reference test folder
 # Uses git
-# TODO - get new untracked files as well
 import subprocess
 from git import Repo
 

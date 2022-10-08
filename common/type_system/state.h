@@ -17,6 +17,7 @@ StateHandler handler_name_to_kind(const std::string& name);
 std::string handler_kind_to_name(StateHandler kind);
 TypeSpec get_state_handler_type(const std::string& handler_name, const TypeSpec& state_type);
 TypeSpec get_state_handler_type(StateHandler kind, const TypeSpec& state_type);
+std::vector<std::string> get_state_handler_arg_names(StateHandler kind);
 
 std::optional<TypeSpec> get_state_type_from_enter_and_code(const TypeSpec& enter_func_type,
                                                            const TypeSpec& code_func_type,
