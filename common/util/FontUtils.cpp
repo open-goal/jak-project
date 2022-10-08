@@ -120,6 +120,10 @@ std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
 }
 std::string GameTextFontBank::replace_to_game(std::string& str) const {
   for (auto& info : *m_replace_info) {
+    // TODO - THIS IS A TEMPORARY HACK!, can't replace with nothing as it's not unique!
+    if (info.to.empty()) {
+      continue;
+    }
     auto pos = str.find(info.to);
     while (pos != std::string::npos) {
       str.replace(pos, info.to.size(), info.from);

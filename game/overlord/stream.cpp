@@ -21,9 +21,11 @@
 
 using namespace iop;
 
-static RPC_Str_Cmd_Jak2 sSTRBuf;
+static RPC_Str_Cmd_Jak1 sSTRBufJak1;
+static RPC_Str_Cmd_Jak2 sSTRBufJak2;
 static RPC_Play_Cmd sPLAYBuf[2];  // todo type
-void* RPC_STR(unsigned int fno, void* _cmd, int y);
+void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y);
+void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
 
 static constexpr int PLAY_MSG_SIZE = 0x40;
@@ -48,7 +50,8 @@ constexpr int STR_INDEX_CACHE_SIZE = 4;
 CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd_Jak2));
+  memset(&sSTRBufJak1, 0, sizeof(RPC_Str_Cmd_Jak1));
+  memset(&sSTRBufJak2, 0, sizeof(RPC_Str_Cmd_Jak2));
   memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
 }
 
@@ -62,7 +65,13 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
+  if (g_game_version == GameVersion::Jak1) {
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak1, &sSTRBufJak1, nullptr, nullptr, &dq);
+  }
+  else if (g_game_version == GameVersion::Jak2) {
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr, nullptr, &dq);
+  }
+  
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -195,15 +204,6 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
   }
 
   return cmd;
-}
-
-void* RPC_STR(unsigned int fno, void* _cmd, int y) {
-  if (g_game_version == GameVersion::Jak1) {
-    return RPC_STR_jak1(fno, _cmd, y);
-  }
-  else if (g_game_version == GameVersion::Jak2) {
-    return RPC_STR_jak2(fno, _cmd, y);
-  }
 }
 
 void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
