@@ -297,7 +297,7 @@
     (new (symbol type string) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
+    (init-from-entity! (_type_ entity-actor object) none 11) ;; todo check
     (run-logic? (_type_) symbol 12)
     (process-tree-method-13 () none 13)
     )
@@ -16979,7 +16979,7 @@
     (get-trans
       "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
       (_type_ int) vector 20)
-    (get-quat (_type_) quaternion 21)
+    (get-quat (_type_ int) quaternion 21)
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_ int) int 23)
     (get-water-height (_type_) meters 24)
@@ -26165,7 +26165,6 @@
 ;; water-flow                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flow-section (structure)
   ((start      vector :inline :offset-assert 0)
    (trailing   plane  :inline :offset-assert 16)
@@ -26176,42 +26175,36 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype flow-section-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             flow-section :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype flow-control (basic)
-  ((path           basic          :offset-assert 4)
-   (speed          float          :offset-assert 8)
-   (belt-radius    float          :offset-assert 12)
-   (sections       basic          :offset-assert 16)
-   (leading        plane  :inline :offset-assert 32)
-   (collide-bounds sphere :inline :offset-assert 48)
+  ((path           path-control         :offset-assert 4)
+   (speed          float                :offset-assert 8)
+   (belt-radius    float                :offset-assert 12)
+   (sections       flow-section-array   :offset-assert 16)
+   (leading        plane        :inline :offset-assert 32)
+   (collide-bounds sphere       :inline :offset-assert 48)
    )
   :method-count-assert 13
   :size-assert         #x40
   :flag-assert         #xd00000040
   (:methods
-    (flow-control-method-9 () none 9)
+    (new (symbol type process-drawable res-lump) _type_ 0)
+    (draw-path (_type_) none 9)
     (flow-control-method-10 () none 10)
     (flow-control-method-11 () none 11)
     (flow-control-method-12 () none 12)
     )
   )
-|#
 
-;; (define-extern ray-plane-equation-intersect function)
+(define-extern ray-plane-equation-intersect (function vector vector vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-h                        ;;
@@ -31600,20 +31593,19 @@
 ;; water-anim                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype water-anim (process-drawable)
-  ((water-height        meters       :offset-assert 196)
-   (wade-height         meters       :offset-assert 200)
-   (swim-height         meters       :offset-assert 204)
-   (bottom-height       meters       :offset-assert 208)
-   (attack-event        symbol       :offset-assert 212) ;; guessed by decompiler
-   (attack-id           uint32       :offset-assert 216)
-   (flow                basic        :offset-assert 220)
-   (target              uint64       :offset-assert 228) ;; handle
-   (flags               water-flags  :offset-assert 236) ;; guessed by decompiler
-   (look                int32        :offset-assert 240)
-   (play-ambient-sound? symbol       :offset-assert 244) ;; guessed by decompiler
-   (visible             basic        :offset-assert 248)
+  ((water-height        meters       :offset-assert 200)
+   (wade-height         meters       :offset-assert 204)
+   (swim-height         meters       :offset-assert 208)
+   (bottom-height       meters       :offset-assert 212)
+   (attack-event        symbol       :offset-assert 216) ;; guessed by decompiler
+   (attack-id           uint32       :offset-assert 220)
+   (flow                flow-control :offset-assert 224)
+   (target              handle       :offset-assert 232) ;; handle
+   (flags               water-flags  :offset-assert 240) ;; guessed by decompiler
+   (look                int32        :offset-assert 244)
+   (play-ambient-sound? symbol       :offset-assert 248) ;; guessed by decompiler
+   (visible             symbol       :offset-assert 252)
    )
   :method-count-assert 29
   :size-assert         #x100
@@ -31621,20 +31613,18 @@
   (:methods
     (water-anim-method-20 () none 20)
     (idle () _type_ :state 21)
-    (water-anim-method-22 () none 22)
-    (water-anim-method-23 () none 23)
-    (water-anim-method-24 () none 24)
-    (water-anim-method-25 () none 25)
-    (water-anim-method-26 () none 26)
-    (water-anim-method-27 () none 27)
-    (water-anim-method-28 () none 28)
+    (water-anim-method-22 (_type_ vector) int 22)
+    (get-ripple-height (_type_ vector) float 23)
+    (skel-group-init! (_type_ entity-actor object) none 24)
+    (reset-root! (_type_) none 25)
+    (water-anim-method-26 (_type_) none 26)
+    (water-anim-method-27 (_type_) none 27)
+    (water-anim-method-28 (_type_) ambient-sound 28)
     )
   )
-|#
 
-#|
 (deftype water-anim-look (structure)
-  ((skel-group         symbol      :offset-assert 0) ;; guessed by decompiler
+  ((skel-group         string      :offset-assert 0) ;; guessed by decompiler
    (anim               int32       :offset-assert 4)
    (ambient-sound-spec sound-spec  :offset-assert 8) ;; guessed by decompiler
    )
@@ -31642,11 +31632,10 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern *water-anim-look* array) ;; (array water-anim-look)
-;; (define-extern water-anim-event-handler function)
-;; (define-extern water-anim-init-by-other function)
+(define-extern *water-anim-look* (array water-anim-look))
+(define-extern water-anim-event-handler (function process int symbol event-message-block object :behavior water-anim))
+(define-extern water-anim-init-by-other (function entity-actor object object none :behavior water-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blocking-plane                 ;;
@@ -31706,7 +31695,6 @@
 ;; dark-eco-pool                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dark-eco-pool (water-anim)
   ()
   :method-count-assert 29
@@ -31715,10 +31703,9 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *ripple-for-dark-eco-pool* ripple-wave-set)
-;; (define-extern *ripple-strip-dark-eco-near-lift* ripple-wave-set)
+(define-extern *ripple-for-dark-eco-pool* ripple-wave-set)
+(define-extern *ripple-strip-dark-eco-near-lift* ripple-wave-set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; enemy-h                        ;;
