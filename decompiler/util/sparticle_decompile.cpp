@@ -341,8 +341,7 @@ const SparticleFieldDecomp field_kind_jak2[73] = {
 
 const std::unordered_map<GameVersion, const SparticleFieldDecomp*> field_kinds = {
     {GameVersion::Jak1, field_kind_jak1},
-    {GameVersion::Jak2, field_kind_jak2}
-};
+    {GameVersion::Jak2, field_kind_jak2}};
 
 std::string make_flags_str(const std::vector<std::string>& flags) {
   if (flags.empty()) {

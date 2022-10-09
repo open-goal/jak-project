@@ -148,7 +148,8 @@ TEST_F(DataDecompTest, SimpleStructure) {
       "    .word 0x79637473\n"
       "    .word 0x6c63\n";
   auto parsed = parse_data(input);
-  auto decomp = decompile_at_label(TypeSpec("vif-disasm-element"), parsed.label("L217"), parsed.labels,
+  auto decomp =
+      decompile_at_label(TypeSpec("vif-disasm-element"), parsed.label("L217"), parsed.labels,
                          {parsed.words}, dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print "
