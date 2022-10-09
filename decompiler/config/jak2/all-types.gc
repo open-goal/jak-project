@@ -3073,7 +3073,7 @@
   (bucket-311          311)  ;; depth-cue
 
   (tex-all-sprite      312)
-  (bucket-313          313)  ;; particles
+  (particles           313)  ;; particles
   (bucket-314          314)  ;; shadow
   (bucket-315          315)  ;; effects
   (tex-all-warp        316)  ;; tex
@@ -24302,16 +24302,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern sp-particle-copy! (function sparticle-cpuinfo sparticle-cpuinfo none)) ;;
-(define-extern *sp-particle-system-2d* sparticle-system) ;;
-(define-extern *sp-particle-system-3d* sparticle-system) ;; sparticle-system
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
 (define-extern sp-get-block-size (function sparticle-system int int)) ;;
 (define-extern sp-get-approx-alloc-size (function sparticle-system int int)) ;;
 (define-extern sp-free-particle (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)) ;;
-(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo)) ;; TODO - manually fixed in jak 1? gross
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
 (define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol)) ;;
 (define-extern sp-orbiter (function sparticle-system sparticle-cpuinfo vector none)) ;;
-(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
-(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
+(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none))
+(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
 (define-extern sp-copy-to-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
 (define-extern sp-copy-from-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
 (define-extern memcpy function) ;; TODO - was done manually as well?
@@ -30509,21 +30509,22 @@
 ;; part-tester                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype part-tester (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype part-tester (process)
+  ((root        trsqv)
+   (part        sparticle-launch-control)
+   (old-group   sparticle-launch-group))
+  :heap-base 16
+  :size-assert         #x8c
+  :flag-assert         #xe0010008c
   ;; Failed to read fields.
   )
-|#
 
-;; (define-extern *part-tester-name* object) ;; string
-;; (define-extern part-tester-idle state) ;; (state part-tester)
-;; (define-extern part-tester-init-by-other function) ;; (function vector none :behavior process-drawable)
-;; (define-extern *debug-part-dead-pool* object) ;; dead-pool
-;; (define-extern start-part function) ;; (function none)
+(define-extern *part-tester-name* string)
+(define-extern part-tester-idle (state part-tester))
+(define-extern part-tester-init-by-other (function vector none :behavior process-drawable))
+(define-extern *debug-part-dead-pool* dead-pool)
+(define-extern start-part (function none))
+(define-extern *part-tester* part-tester)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable-h                     ;;
