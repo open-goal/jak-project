@@ -30,6 +30,14 @@ std::string meters_to_string(float value, bool append_trailing_decimal) {
 }
 
 /*!
+ * Wrapper around float_to_string, for printing degrees. Unlike float_to_string, it does not append
+ * decimals by default.
+ */
+std::string degrees_to_string(float value, bool append_trailing_decimal) {
+  return float_to_string(value / DEGREES_LENGTH, append_trailing_decimal);
+}
+
+/*!
  * Convert a fixed point value to a float. Fixed point values usually end up with strange numbers
  * that were definitely not what was written when we do a naive conversion. This function
  * is a bit more clever.

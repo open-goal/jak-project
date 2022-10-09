@@ -1,5 +1,6 @@
 #include "find_defpartgroup.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/BitUtils.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -39,24 +40,24 @@ L81:
 L82:
    */
 
-  int start_word_idx = (lab.offset / 4) - 1;
+  int word_idx = (lab.offset / 4) - 1;
   auto& words = env.file->words_by_seg.at(lab.target_segment);
 
-  auto& first_word = words.at(start_word_idx);
+  auto& first_word = words.at(word_idx++);
   if (first_word.kind() != LinkedWord::TYPE_PTR ||
       first_word.symbol_name() != "sparticle-launch-group") {
     env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid type pointer");
   }
 
-  auto& word_1 = words.at(start_word_idx + 1);
+  auto& word_1 = words.at(word_idx++);
   s16 len = word_1.data & 0xffff;
   group.duration = (word_1.data >> 16) & 0xffff;
-  auto& word_2 = words.at(start_word_idx + 2);
+  auto& word_2 = words.at(word_idx++);
   group.linger = word_2.data & 0xffff;
   group.flags = (word_2.data >> 16) & 0xffff;
 
-  auto& string_word = words.at(start_word_idx + 3);
+  auto& string_word = words.at(word_idx++);
   if (string_word.kind() != LinkedWord::PTR) {
     env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid name label");
@@ -64,7 +65,7 @@ L82:
   group.name = env.file->get_goal_string_by_label(
       env.file->get_label_by_name(env.file->get_label_name(string_word.label_id())));
 
-  auto& array_word = words.at(start_word_idx + 4);
+  auto& array_word = words.at(word_idx++);
   if (array_word.kind() != LinkedWord::PTR) {
     env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid array label");
@@ -87,13 +88,34 @@ L82:
     item.binding = array_words.at(item_idx + 6).data;
   }
 
+  if (env.version != GameVersion::Jak1) {
+    // added fields in jak 2
+    for (int i = 0; i < 3; i++) {
+      auto& word = words.at(word_idx++);
+      if (word.kind() != LinkedWord::PLAIN_DATA) {
+        env.func->warnings.error_and_throw("Reference to sparticle-launch-group bad: invalid rot");
+      }
+      group.rot[i] = *reinterpret_cast<float*>(&word.data);
+    }
+    for (int i = 0; i < 3; i++) {
+      auto& word = words.at(word_idx++);
+      if (word.kind() != LinkedWord::PLAIN_DATA) {
+        env.func->warnings.error_and_throw(
+            "Reference to sparticle-launch-group bad: invalid scale");
+      }
+      group.scale[i] = *reinterpret_cast<float*>(&word.data);
+    }
+  }
+
+  word_idx = align4(word_idx);
   for (int i = 0; i < 4; i++) {
-    auto& word = words.at(start_word_idx + 8 + i);
+    auto& word = words.at(word_idx + i);
     if (word.kind() != LinkedWord::PLAIN_DATA) {
       env.func->warnings.error_and_throw("Reference to sparticle-launch-group bad: invalid bounds");
     }
     group.bounds[i] = *reinterpret_cast<float*>(&word.data);
   }
+  word_idx += 4;
 }
 
 void read_static_part_data(DecompiledDataElement* src,
@@ -159,7 +181,7 @@ L80:
       auto& fld = car(cur_field);
       item.sound_spec = cdr(cdr(cdr(cdr(&fld))))->as_pair()->car;
     }
-    if (item.field_id == 67) {
+    if (item.is_sp_end(env.version)) {
       // sp-end
       break;
     }
