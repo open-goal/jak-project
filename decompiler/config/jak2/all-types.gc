@@ -3073,7 +3073,7 @@
   (bucket-311          311)  ;; depth-cue
 
   (tex-all-sprite      312)
-  (bucket-313          313)  ;; particles
+  (particles           313)  ;; particles
   (bucket-314          314)  ;; shadow
   (bucket-315          315)  ;; effects
   (tex-all-warp        316)  ;; tex
@@ -5008,6 +5008,7 @@
   :bitfield #t
   (needs-log-in 8)
   (bit-9 9)
+  (backup-sprite-tex 10) ;; set when particle-setup-adgif fails texture lookup.
   )
 
 
@@ -19622,7 +19623,7 @@
     (get-field-spec-by-id
       "Returns the [[sp-field-init-spec]] that has the matching [[sp-field-id]]"
       (_type_ sp-field-id) sp-field-init-spec 9)
-    (sparticle-launcher-method-10 (_type_ string) none 10)
+    (setup-user-array (_type_ string) none 10)
     )
   )
 
@@ -19707,11 +19708,11 @@
   :size-assert         #x70
   :flag-assert         #x1000000070
   (:methods
-    (initialize (_type_ sparticle-launch-group process) none 9) ;;
-    (sparticle-launch-control-method-10 (_type_ vector) symbol 10) ;; (is-visible? (_type_ vector) symbol 10)
+    (initialize (_type_ sparticle-launch-group process) none 9)
+    (is-visible? (_type_ vector) symbol 10)
     (spawn (_type_ vector) none 11) ;; TODO - CFG ;; (spawn (_type_ vector) object 11)
-    (sparticle-launch-control-method-12 (_type_ matrix) none 12)
-    (sparticle-launch-control-method-13 (_type_ cspace) none 13)
+    (spawn-with-matrix (_type_ matrix) none 12)
+    (spawn-with-cspace (_type_ cspace) none 13)
     (kill-and-free-particles (_type_) none 14)
     (kill-particles (_type_) none 15)
     )
@@ -19752,6 +19753,12 @@
   )
 ;; ---sparticle-h:sp-cpuinfo-flag
 
+(defenum sp-cpuinfo-flag-s32
+  :bitfield #t
+  :type int32
+  :copy-entries sp-cpuinfo-flag
+  )
+
 (declare-type sparticle-system basic)
 (deftype sparticle-cpuinfo (structure)
   ((sprite        sprite-vec-data-2d               :offset-assert 0)
@@ -19770,6 +19777,7 @@
    (friction      float                            :offset-assert 96)
    (timer         int32                            :offset-assert 100)
    (flags         sp-cpuinfo-flag                  :offset-assert 104) ;; NOTE - loaded with lw and lwu?
+   (flags-s32     sp-cpuinfo-flag-s32              :offset        104)
    (user-int32    int32                            :offset-assert 108)
    (user-uint32   uint32                           :offset 108)
    (user-float    float                            :offset 108 :score 1)
@@ -19787,7 +19795,7 @@
    (key-alt       sparticle-launch-state           :offset 132)
    (binding       sparticle-launch-state           :offset-assert 136)
    (data          uint32                   1       :offset 12) ;; guessed by decompiler
-   (datab         uint8                    4       :offset 12)
+   (datab         int8                     4       :offset 12)
    (dataf         float                    1       :offset 12) ;; guessed by decompiler
    (datac         uint8                    1       :offset 12) ;; guessed by decompiler
    )
@@ -24225,15 +24233,15 @@
   "Verifies if the given pointer, points to a [[sparticle-launch-group]]"
   (function pointer symbol))
 (define-extern unlink-part-group-by-heap (function kheap int)) ;;
-(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object)) ;; TODO - mips2c
+(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
 (define-extern *sp-launcher-lock* symbol) ;;
 (define-extern *sp-launch-queue* sp-launch-queue) ;;
 (define-extern *sp-launcher-enable* symbol) ;;
-;; (define-extern particle-setup-adgif (function adgif-shader texture-id none)) ;; TODO - assertion failure
+(define-extern particle-setup-adgif (function adgif-shader int none)) ;; TODO - assertion failure
 (define-extern *particle-adgif-cache* particle-adgif-cache) ;;
 (define-extern particle-adgif-cache-flush "Clear [[*particle-adgif-cache*]]" (function none))
-(define-extern particle-adgif (function adgif-shader texture-id none)) ;; TODO - particle-adgif atomic ops, MIPS2C
-(define-extern particle-adgif-callback (function adgif-shader none)) ;; TODO bad VF dependencies
+(define-extern particle-adgif (function adgif-shader texture-id none))
+(define-extern particle-adgif-callback (function adgif-shader texture-id none))
 (define-extern sp-queue-launch (function sparticle-system sparticle-launcher matrix int))
 (define-extern sp-adjust-launch (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) matrix symbol none)) ;;
 (define-extern sp-euler-convert (function sparticle-launchinfo sparticle-cpuinfo none)) ;;
@@ -24258,8 +24266,8 @@
 (define-extern sparticle-respawn-heights (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern sparticle-respawn-timer (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern sparticle-texture-animate (function sparticle-system sparticle-cpuinfo vector none))
-(define-extern sparticle-texture-day-night (function sparticle-system sparticle-cpuinfo vector none))
-(define-extern sparticle-mode-animate (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-texture-day-night (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern sparticle-mode-animate (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
 (define-extern sparticle-motion-blur (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern sparticle-motion-blur-old "Unused" (function object sparticle-cpuinfo sprite-vec-data-3d object))
 (define-extern sparticle-set-conerot (function sparticle-launcher vector none))
@@ -24280,16 +24288,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern sp-particle-copy! (function sparticle-cpuinfo sparticle-cpuinfo none)) ;;
-(define-extern *sp-particle-system-2d* sparticle-system) ;;
-(define-extern *sp-particle-system-3d* sparticle-system) ;; sparticle-system
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
 (define-extern sp-get-block-size (function sparticle-system int int)) ;;
 (define-extern sp-get-approx-alloc-size (function sparticle-system int int)) ;;
 (define-extern sp-free-particle (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)) ;;
-(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo)) ;; TODO - manually fixed in jak 1? gross
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
 (define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol)) ;;
 (define-extern sp-orbiter (function sparticle-system sparticle-cpuinfo vector none)) ;;
-(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
-(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none)) ;; TODO - mips2c
+(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none))
+(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
 (define-extern sp-copy-to-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
 (define-extern sp-copy-from-spr (function int pointer int none)) ;; TODO - these are all actually uints, but this is needed to get the casts right...
 (define-extern memcpy function) ;; TODO - was done manually as well?
@@ -25548,15 +25556,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern group-rain-screend-drop sparticle-launch-group) ;;
-(define-extern update-snow (function target none))
-;; (define-extern birth-func-omega-normal-orient function)
-;; (define-extern birth-func-rain function)
-;; (define-extern check-drop-level-rain function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern check-drop-level-rain2 function)
-;; (define-extern check-drop-level-splash function)
-(define-extern update-rain (function target none))
+(define-extern update-snow (function float vector vector none))
+(define-extern birth-func-omega-normal-orient (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rain (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern check-drop-level-rain (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-rain2 (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-splash (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern update-rain (function float vector vector none))
 (define-extern cam-master-effect (function none :behavior camera-master)) ;;
-;; (define-extern sparticle-track-sun function) ;; (function int sparticle-cpuinfo matrix none)
+(define-extern sparticle-track-sun (function int sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time-of-day                    ;;
@@ -30487,21 +30495,22 @@
 ;; part-tester                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype part-tester (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype part-tester (process)
+  ((root        trsqv)
+   (part        sparticle-launch-control)
+   (old-group   sparticle-launch-group))
+  :heap-base 16
+  :size-assert         #x8c
+  :flag-assert         #xe0010008c
   ;; Failed to read fields.
   )
-|#
 
-;; (define-extern *part-tester-name* object) ;; string
-;; (define-extern part-tester-idle state) ;; (state part-tester)
-;; (define-extern part-tester-init-by-other function) ;; (function vector none :behavior process-drawable)
-;; (define-extern *debug-part-dead-pool* object) ;; dead-pool
-;; (define-extern start-part function) ;; (function none)
+(define-extern *part-tester-name* string)
+(define-extern part-tester-idle (state part-tester))
+(define-extern part-tester-init-by-other (function vector none :behavior process-drawable))
+(define-extern *debug-part-dead-pool* dead-pool)
+(define-extern start-part (function none))
+(define-extern *part-tester* (pointer process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable-h                     ;;

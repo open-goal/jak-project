@@ -616,11 +616,14 @@ Mips2C_Line handle_daddiu(Mips2C_Output& out,
   }
 }
 
-Mips2C_Line handle_sw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
+Mips2C_Line handle_sw(Mips2C_Output& out,
+                      const Instruction& i0,
+                      const std::string& instr_str,
+                      GameVersion version) {
   if (i0.get_src(1).is_sym() && i0.get_src(2).is_reg(rs7())) {
     out.require_symbol(i0.get_src(1).get_sym());
-    return {fmt::format("c->store_symbol({}, cache.{});", reg_to_name(i0.get_src(0)),
-                        goal_to_c_name(i0.get_src(1).get_sym())),
+    return {fmt::format("c->store_symbol{}({}, cache.{});", version == GameVersion::Jak1 ? "" : "2",
+                        reg_to_name(i0.get_src(0)), goal_to_c_name(i0.get_src(1).get_sym())),
             instr_str};
     return handle_unknown(instr_str);
     //    auto name = i0.get_src(1).get_sym();
@@ -998,7 +1001,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::OR:
       return handle_or(i0, instr_str);
     case InstructionKind::SW:
-      return handle_sw(output, i0, instr_str);
+      return handle_sw(output, i0, instr_str, version);
     case InstructionKind::VMOVE:
       return handle_generic_op2_mask(i0, instr_str, "vmove");
     case InstructionKind::VITOF0:
@@ -1071,6 +1074,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PAND:
     case InstructionKind::PCEQB:
     case InstructionKind::PPACW:
+    case InstructionKind::PCEQW:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
