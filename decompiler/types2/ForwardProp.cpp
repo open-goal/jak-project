@@ -287,7 +287,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
           actual_type.tag.unknown_label->selected_type == expected_type.typespec()) {
         return false;  // no need to update
       } else {
-        auto& tag = actual_type.tag.unknown_label;
         actual_type.tag.unknown_label->selected_type = expected_type.typespec();
         return true;
       }
@@ -297,7 +296,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
           actual_type.tag.unknown_stack_structure->selected_type == expected_type.typespec()) {
         return false;  // no need to update
       } else {
-        auto& tag = actual_type.tag.unknown_stack_structure;
         actual_type.tag.unknown_stack_structure->selected_type = expected_type.typespec();
         return true;
       }

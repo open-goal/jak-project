@@ -124,6 +124,11 @@ namespace draw_string { extern void link(); }
 namespace get_string_length { extern void link(); }
 namespace adgif_shader_texture_with_update { extern void link(); }
 namespace debug_line_clip { extern void link(); }
+namespace init_boundary_regs { extern void link(); }
+namespace render_boundary_tri { extern void link(); }
+namespace render_boundary_quad { extern void link(); }
+namespace set_sky_vf27 { extern void link(); }
+namespace draw_boundary_polygon { extern void link(); }
 }
 // clang-format on
 
@@ -205,7 +210,10 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"font",
       {jak2::draw_string::link, jak2::get_string_length::link, jak2::draw_string_asm::link}},
      {"texture", {jak2::adgif_shader_texture_with_update::link}},
-     {"debug", {jak2::debug_line_clip::link}}},
+     {"debug",
+      {jak2::debug_line_clip::link, jak2::init_boundary_regs::link,
+       jak2::render_boundary_quad::link, jak2::render_boundary_tri::link, jak2::set_sky_vf27::link,
+       jak2::draw_boundary_polygon::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
@@ -285,7 +293,7 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
 u32 LinkedFunctionTable::get(const std::string& name) {
   auto it = m_executes.find(name);
   if (it == m_executes.end()) {
-    ASSERT(false);
+    ASSERT_NOT_REACHED_MSG(fmt::format("mips2c function {} is unknown", name));
   }
   return it->second.goal_trampoline.offset;
 }

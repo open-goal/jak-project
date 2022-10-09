@@ -225,6 +225,15 @@ class Vector {
     return result + "]";
   }
 
+  std::string to_string_hex_word() const {
+    std::string result = "[";
+    for (auto x : m_data) {
+      result.append(fmt::format("0x{:08x} ", x));
+    }
+    result.pop_back();
+    return result + "]";
+  }
+
   T* data() { return m_data; }
   const T* data() const { return m_data; }
 

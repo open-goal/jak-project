@@ -165,14 +165,32 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
               render_state->fog_intensity / 255);
 }
 
-void interp_time_of_day_slow(const float weights[8],
+void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
                              const std::vector<tfrag3::TimeOfDayColor>& in,
                              math::Vector<u8, 4>* out) {
   // Timer interp_timer;
+  math::Vector4f weights[8];
+  for (int component = 0; component < 8; component++) {
+    int quad_idx = component / 2;
+    int word_off = (component % 2 * 2);
+    for (int channel = 0; channel < 4; channel++) {
+      int word = word_off + (channel / 2);
+      int hw_off = channel % 2;
+
+      u32 word_val = itimes[quad_idx][word];
+      u32 hw_val = hw_off ? (word_val >> 16) : word_val;
+      hw_val = hw_val & 0xff;
+      weights[component][channel] = hw_val / 64.f;
+    }
+  }
+
   for (size_t color = 0; color < in.size(); color++) {
     math::Vector4f result = math::Vector4f::zero();
     for (int component = 0; component < 8; component++) {
-      result += in[color].rgba[component].cast<float>() * weights[component];
+      for (int channel = 0; channel < 4; channel++) {
+        result[channel] += in[color].rgba[component][channel] * weights[component][channel];
+      }
+      // result += in[color].rgba[component].cast<float>() * weights[component];
     }
     result[0] = std::min(result[0], 255.f);
     result[1] = std::min(result[1], 255.f);
@@ -229,127 +247,52 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
-// This does the same thing as interp_time_of_day_slow, but is faster.
-// Due to using integers instead of floats, it may be a tiny bit different.
-// TODO: it might be possible to reorder the loop into two blocks of loads and avoid spilling xmms.
-// It's ~8x faster than the slow version.
-
-void interp_time_of_day_fast_avx2(const float weights[8],
-                                  const SwizzledTimeOfDay& in,
-                                  math::Vector<u8, 4>* out) {
-  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-#ifdef __AVX2__
-  // weight multipliers
-  __m256i weights0 = _mm256_set1_epi16(weights[0] * 64.f);
-  __m256i weights1 = _mm256_set1_epi16(weights[1] * 64.f);
-  __m256i weights2 = _mm256_set1_epi16(weights[2] * 64.f);
-  __m256i weights3 = _mm256_set1_epi16(weights[3] * 64.f);
-  __m256i weights4 = _mm256_set1_epi16(weights[4] * 64.f);
-  __m256i weights5 = _mm256_set1_epi16(weights[5] * 64.f);
-  __m256i weights6 = _mm256_set1_epi16(weights[6] * 64.f);
-  __m256i weights7 = _mm256_set1_epi16(weights[7] * 64.f);
-
-  // saturation: note that alpha is saturated to 128 but the rest are 255.
-  // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
-  // change the shader to deal with this.
-  __m256i sat = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
-                                 255, 255, 255);
-
-  for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
-    // first, load colors. We put 16 bytes / register and don't touch the upper half because we
-    // convert u8s to u16s.
-    const u8* base = in.data.data() + color_quad * 128;
-    __m128i color0_p = _mm_loadu_si128((const __m128i*)(base + 0));
-    __m128i color1_p = _mm_loadu_si128((const __m128i*)(base + 16));
-    __m128i color2_p = _mm_loadu_si128((const __m128i*)(base + 32));
-    __m128i color3_p = _mm_loadu_si128((const __m128i*)(base + 48));
-    __m128i color4_p = _mm_loadu_si128((const __m128i*)(base + 64));
-    __m128i color5_p = _mm_loadu_si128((const __m128i*)(base + 80));
-    __m128i color6_p = _mm_loadu_si128((const __m128i*)(base + 96));
-    __m128i color7_p = _mm_loadu_si128((const __m128i*)(base + 112));
-
-    // unpack to 16-bits. each has 16x 16 bit colors.
-    __m256i color0 = _mm256_cvtepu8_epi16(color0_p);
-    __m256i color1 = _mm256_cvtepu8_epi16(color1_p);
-    __m256i color2 = _mm256_cvtepu8_epi16(color2_p);
-    __m256i color3 = _mm256_cvtepu8_epi16(color3_p);
-    __m256i color4 = _mm256_cvtepu8_epi16(color4_p);
-    __m256i color5 = _mm256_cvtepu8_epi16(color5_p);
-    __m256i color6 = _mm256_cvtepu8_epi16(color6_p);
-    __m256i color7 = _mm256_cvtepu8_epi16(color7_p);
-
-    // multiply by weights
-    color0 = _mm256_mullo_epi16(color0, weights0);
-    color1 = _mm256_mullo_epi16(color1, weights1);
-    color2 = _mm256_mullo_epi16(color2, weights2);
-    color3 = _mm256_mullo_epi16(color3, weights3);
-    color4 = _mm256_mullo_epi16(color4, weights4);
-    color5 = _mm256_mullo_epi16(color5, weights5);
-    color6 = _mm256_mullo_epi16(color6, weights6);
-    color7 = _mm256_mullo_epi16(color7, weights7);
-
-    // add. This order minimizes dependencies.
-    color0 = _mm256_add_epi16(color0, color1);
-    color2 = _mm256_add_epi16(color2, color3);
-    color4 = _mm256_add_epi16(color4, color5);
-    color6 = _mm256_add_epi16(color6, color7);
-
-    color0 = _mm256_add_epi16(color0, color2);
-    color4 = _mm256_add_epi16(color4, color6);
-
-    color0 = _mm256_add_epi16(color0, color4);
-
-    // divide, because we multiplied our weights by 2^7.
-    color0 = _mm256_srli_epi16(color0, 6);
-
-    // saturate
-    color0 = _mm256_min_epu16(sat, color0);
-
-    // back to u8s.
-    auto hi = _mm256_extracti128_si256(color0, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(color0), hi);
-
-    // store result
-    _mm_storeu_si128((__m128i*)(&out[color_quad * 4]), result);
-  }
-#else
-  // unreachable.
-  (void)weights;
-  (void)in;
-  (void)out;
-  ASSERT(false);
-#endif
-}
-
-void interp_time_of_day_fast(const float weights[8],
-                             const SwizzledTimeOfDay& in,
+void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
+                             const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out) {
-  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-  if (get_cpu_info().has_avx2) {
-    interp_time_of_day_fast_avx2(weights, in, out);
-    return;
+  math::Vector<u16, 4> weights[8];
+  for (int component = 0; component < 8; component++) {
+    int quad_idx = component / 2;
+    int word_off = (component % 2 * 2);
+    for (int channel = 0; channel < 4; channel++) {
+      int word = word_off + (channel / 2);
+      int hw_off = channel % 2;
+
+      u32 word_val = itimes[quad_idx][word];
+      u32 hw_val = hw_off ? (word_val >> 16) : word_val;
+      hw_val = hw_val & 0xff;
+      weights[component][channel] = hw_val;
+    }
   }
 
   // weight multipliers
-  __m128i weights0 = _mm_set1_epi16(weights[0] * 64.f);
-  __m128i weights1 = _mm_set1_epi16(weights[1] * 64.f);
-  __m128i weights2 = _mm_set1_epi16(weights[2] * 64.f);
-  __m128i weights3 = _mm_set1_epi16(weights[3] * 64.f);
-  __m128i weights4 = _mm_set1_epi16(weights[4] * 64.f);
-  __m128i weights5 = _mm_set1_epi16(weights[5] * 64.f);
-  __m128i weights6 = _mm_set1_epi16(weights[6] * 64.f);
-  __m128i weights7 = _mm_set1_epi16(weights[7] * 64.f);
+  __m128i weights0 = _mm_setr_epi16(weights[0][0], weights[0][1], weights[0][2], weights[0][3],
+                                    weights[0][0], weights[0][1], weights[0][2], weights[0][3]);
+  __m128i weights1 = _mm_setr_epi16(weights[1][0], weights[1][1], weights[1][2], weights[1][3],
+                                    weights[1][0], weights[1][1], weights[1][2], weights[1][3]);
+  __m128i weights2 = _mm_setr_epi16(weights[2][0], weights[2][1], weights[2][2], weights[2][3],
+                                    weights[2][0], weights[2][1], weights[2][2], weights[2][3]);
+  __m128i weights3 = _mm_setr_epi16(weights[3][0], weights[3][1], weights[3][2], weights[3][3],
+                                    weights[3][0], weights[3][1], weights[3][2], weights[3][3]);
+  __m128i weights4 = _mm_setr_epi16(weights[4][0], weights[4][1], weights[4][2], weights[4][3],
+                                    weights[4][0], weights[4][1], weights[4][2], weights[4][3]);
+  __m128i weights5 = _mm_setr_epi16(weights[5][0], weights[5][1], weights[5][2], weights[5][3],
+                                    weights[5][0], weights[5][1], weights[5][2], weights[5][3]);
+  __m128i weights6 = _mm_setr_epi16(weights[6][0], weights[6][1], weights[6][2], weights[6][3],
+                                    weights[6][0], weights[6][1], weights[6][2], weights[6][3]);
+  __m128i weights7 = _mm_setr_epi16(weights[7][0], weights[7][1], weights[7][2], weights[7][3],
+                                    weights[7][0], weights[7][1], weights[7][2], weights[7][3]);
 
   // saturation: note that alpha is saturated to 128 but the rest are 255.
   // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
   // change the shader to deal with this.
   __m128i sat = _mm_set_epi16(128, 255, 255, 255, 128, 255, 255, 255);
 
-  for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
+  for (u32 color_quad = 0; color_quad < swizzled_colors.color_count / 4; color_quad++) {
     // first, load colors. We put 16 bytes / register and don't touch the upper half because we
     // convert u8s to u16s.
     {
-      const u8* base = in.data.data() + color_quad * 128;
+      const u8* base = swizzled_colors.data.data() + color_quad * 128;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
@@ -404,7 +347,7 @@ void interp_time_of_day_fast(const float weights[8],
     }
 
     {
-      const u8* base = in.data.data() + color_quad * 128 + 8;
+      const u8* base = swizzled_colors.data.data() + color_quad * 128 + 8;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));

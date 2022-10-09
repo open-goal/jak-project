@@ -1052,7 +1052,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
 
-    if (arg0_int && (*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
+    if (arg0_int && ((s64)*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
         allowable_base_type_for_symbol_to_string(arg1_type.typespec())) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
@@ -3226,14 +3226,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump";
+        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump" ||
+                           tp_type.method_from_type().base_type() == "entity-actor";
         bool should_use_virtual =
             env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(), tp_type.method_id());
 
         if (!should_use_virtual && !is_res_lump) {
           throw std::runtime_error(
-              fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
-                          tp_type.method_from_type().print(), tp_type.method_id()));
+              fmt::format("Method call on {} id {} at {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print(), tp_type.method_id(), "ya"));
         }
 
         if (should_use_virtual) {

@@ -482,10 +482,10 @@
 
 ;; failed to figure out what this is:
 (defstate citb-disc-idle (citb-disc)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 0.25))
+                       (send-event proc 'no-look-around (seconds 0.25))
                        #f
                        )
               )
@@ -957,12 +957,12 @@
 
 ;; failed to figure out what this is:
 (defstate citb-robotboss-idle (citb-robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (sv-96 int) (sv-112 int))
     (the-as
       object
       (cond
-        ((= arg2 'shield-off)
+        ((= event-type 'shield-off)
          (stop! (-> self sound))
          (if (-> self shield-on)
              (sound-play "robotcage-off")
@@ -970,17 +970,17 @@
          (set! (-> self shield-on) #f)
          #f
          )
-        ((= arg2 'shield-on)
+        ((= event-type 'shield-on)
          (let ((v0-3 #t))
            (set! (-> self shield-on) v0-3)
            v0-3
            )
          )
-        ((= arg2 'die)
+        ((= event-type 'die)
          (cleanup-for-death self)
          (the-as symbol (deactivate self))
          )
-        ((or (= arg2 'touch) (= arg2 'attack))
+        ((or (= event-type 'touch) (= event-type 'attack))
          (let ((s4-0 sound-play-by-name)
                (s3-0 (make-u128 #x7061 (the-as uint #x7a2d646c65696873)))
                (s2-0 (new-sound-id))
@@ -994,9 +994,9 @@
              )
            )
          (the-as symbol (send-event
-                          arg0
+                          proc
                           'shove
-                          (-> arg3 param 0)
+                          (-> event param 0)
                           (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
                           )
                  )
@@ -1157,8 +1157,8 @@
 
 ;; failed to figure out what this is:
 (defstate citb-coil-idle (citb-coil)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go citb-coil-break)
        )
@@ -1539,8 +1539,8 @@
 
 ;; failed to figure out what this is:
 (defstate citb-generator-idle (citb-generator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (if (-> self mushroom)
            (increment-success-for-hint (game-text-id citadel-generator))
@@ -1791,8 +1791,8 @@
 
 ;; failed to figure out what this is:
 (defstate citadelcam-idle (citadelcam)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (when (and (task-complete? *game-info* (game-task citadel-sage-blue))
                   (task-complete? *game-info* (game-task citadel-sage-red))

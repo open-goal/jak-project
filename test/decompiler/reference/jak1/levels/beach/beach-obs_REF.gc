@@ -242,19 +242,19 @@
 
 ;; failed to figure out what this is:
 (defstate grottopole-idle (grottopole)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (= (-> arg0 type) target)
-      (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (= (-> proc type) target)
+      (case event-type
         (('attack)
-         (let ((v1-2 (-> arg3 param 2)))
+         (let ((v1-2 (-> event param 2)))
            (when (!= v1-2 (-> self incomming-attack-id))
              (set! (-> self incomming-attack-id) v1-2)
-             (case (-> arg3 param 1)
+             (case (-> event param 1)
                (('uppercut)
                 (when (and (< (-> *target* control trans y) (+ -40960.0 (-> self root-override trans y)))
                            (< (-> self position) (-> self max-position))
                            ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            (the-as touching-shapes-entry (-> event param 0))
                             (the-as collide-shape-moving (-> self root-override))
                             (the-as uint 2)
                             )
@@ -269,7 +269,7 @@
                 (when (and (< (+ -40960.0 (-> self root-override trans y)) (-> *target* control trans y))
                            (> (-> self position) 0)
                            ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            (the-as touching-shapes-entry (-> event param 0))
                             (the-as collide-shape-moving (-> self root-override))
                             (the-as uint 1)
                             )
@@ -598,8 +598,8 @@
 
 ;; failed to figure out what this is:
 (defstate ecoventrock-idle (ecoventrock)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (sound-play "cannon-shot")
        (increment-success-for-hint (game-text-id sidekick-hint-ecorocks))
@@ -1145,15 +1145,15 @@
 
 ;; failed to figure out what this is:
 (defstate flutflutegg-idle (flutflutegg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (and (= arg2 'attack)
-               (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
-               (!= (-> self incomming-attack-id) (-> arg3 param 2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (and (= event-type 'attack)
+               (or (= (-> event param 1) 'punch) (= (-> event param 1) 'spin) (= (-> event param 1) 'spin-air))
+               (!= (-> self incomming-attack-id) (-> event param 2))
                )
-      (set! (-> self incomming-attack-id) (-> arg3 param 2))
+      (set! (-> self incomming-attack-id) (-> event param 2))
       (flutflutegg-hit-sounds)
       (let ((s5-1
-              (vector-! (new-stack-vector0) (-> (the-as process-drawable arg0) root trans) (-> self root-override trans))
+              (vector-! (new-stack-vector0) (-> (the-as process-drawable proc) root trans) (-> self root-override trans))
               )
             )
         (set! (-> s5-1 y) 0.0)
@@ -1239,18 +1239,18 @@
 
 ;; failed to figure out what this is:
 (defstate flutflutegg-physics (flutflutegg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as
       object
       (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
-                 (= arg2 'attack)
-                 (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
-                 (!= (-> self incomming-attack-id) (-> arg3 param 2))
+                 (= event-type 'attack)
+                 (or (= (-> event param 1) 'punch) (= (-> event param 1) 'spin) (= (-> event param 1) 'spin-air))
+                 (!= (-> self incomming-attack-id) (-> event param 2))
                  )
-        (set! (-> self incomming-attack-id) (-> arg3 param 2))
+        (set! (-> self incomming-attack-id) (-> event param 2))
         (flutflutegg-hit-sounds)
         (let ((s5-1
-                (vector-! (new-stack-vector0) (-> (the-as process-drawable arg0) root trans) (-> self root-override trans))
+                (vector-! (new-stack-vector0) (-> (the-as process-drawable proc) root trans) (-> self root-override trans))
                 )
               )
           (set! (-> s5-1 y) 0.0)
@@ -1508,8 +1508,8 @@
 
 ;; failed to figure out what this is:
 (defstate harvester-idle (harvester)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('update)
        (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
            (go harvester-inflate #f)

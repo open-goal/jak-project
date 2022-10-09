@@ -49,10 +49,10 @@
 
 ;; failed to figure out what this is:
 (defstate teetertotter-idle (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (case (-> arg3 param 1)
+       (case (-> event param 1)
          (('flop)
           (when (target-on-end-of-teetertotter? self)
             (set! (-> self in-launch-window) #f)
@@ -88,21 +88,21 @@
 
 ;; failed to figure out what this is:
 (defstate teetertotter-launch (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as
       object
-      (when (= arg2 'touch)
+      (when (= event-type 'touch)
         (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
+                  (the-as touching-shapes-entry (-> event param 0))
                   (the-as collide-shape-moving (-> self root))
                   (the-as uint 1)
                   )
                  (-> self rock-is-dangerous)
                  )
-            (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
+            (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'deadly))))
             )
         (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                    (the-as touching-shapes-entry (-> arg3 param 0))
+                    (the-as touching-shapes-entry (-> event param 0))
                     (the-as collide-shape-moving (-> self root))
                     (the-as uint 2)
                     )
@@ -111,7 +111,7 @@
                    (-> self in-launch-window)
                    )
           (when (send-event
-                  arg0
+                  proc
                   'shove
                   #f
                   (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
