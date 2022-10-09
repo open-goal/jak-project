@@ -1259,7 +1259,7 @@ void Sprite3::handle_zbuf(u64 val,
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   ASSERT(x.psm() == TextureFormat::PSMZ24);
-  ASSERT(x.zbp() == 448 || x.zbp() == 304); // 304 for jak 2.
+  ASSERT(x.zbp() == 448 || x.zbp() == 304);  // 304 for jak 2.
 
   m_current_mode.set_depth_write_enable(!x.zmsk());
 }
