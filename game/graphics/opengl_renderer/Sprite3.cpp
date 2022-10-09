@@ -987,6 +987,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
 void Sprite3::render_jak2(DmaFollower& dma,
                           SharedRenderState* render_state,
                           ScopedProfilerNode& prof) {
+  m_debug_stats = {};
   auto data0 = dma.read_and_advance();
   ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
   ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
@@ -1258,7 +1259,7 @@ void Sprite3::handle_zbuf(u64 val,
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   ASSERT(x.psm() == TextureFormat::PSMZ24);
-  ASSERT(x.zbp() == 448);
+  ASSERT(x.zbp() == 448 || x.zbp() == 304); // 304 for jak 2.
 
   m_current_mode.set_depth_write_enable(!x.zmsk());
 }

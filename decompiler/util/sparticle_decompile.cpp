@@ -781,12 +781,34 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
   return result;
 }
 
+std::string debug_print(const LinkedWord& word) {
+  switch (word.kind()) {
+    case LinkedWord::PLAIN_DATA:
+      return fmt::format("0x{:08x}", word.data);
+    case LinkedWord::TYPE_PTR:
+      return fmt::format("type: {}\n", word.symbol_name());
+    case LinkedWord::EMPTY_PTR:
+      return fmt::format("'()");
+    case LinkedWord::HI_PTR:
+      return fmt::format("hi ptr");
+    case LinkedWord::LO_PTR:
+      return fmt::format("lo ptr");
+    case LinkedWord::PTR:
+      return fmt::format("ptr");
+    case LinkedWord::SYM_OFFSET:
+      return fmt::format("offset '{}", word.symbol_name());
+    case LinkedWord::SYM_PTR:
+      return fmt::format("ptr '{}", word.symbol_name());
+  }
+}
+
 goos::Object decompile_sparticle_userdata_ASSERT(const std::vector<LinkedWord>& words,
                                                  const std::string& field_name,
                                                  const std::string& flag_name) {
   if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
     return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
   } else {
+    fmt::print("flag name is {}\n", flag_name);
     ASSERT(false);
   }
 }
@@ -849,7 +871,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_func(field.data, field_name, flag_name);
         break;
       case FieldKind::USERDATA:
-        result = decompile_sparticle_userdata_ASSERT(field.data, field_name, flag_name);
+        result = decompile_sparticle_userdata(field.data, field_name, flag_name, field.userdata);
         break;
       case FieldKind::ROT_X:
         result = decompile_sparticle_rot_x(field.data, field_name, flag_name);

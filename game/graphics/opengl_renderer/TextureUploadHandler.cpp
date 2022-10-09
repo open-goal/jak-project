@@ -15,6 +15,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                                   SharedRenderState* render_state,
                                   ScopedProfilerNode& prof) {
   // this is the data we get from the PC Port modification.
+  m_upload_count = 0;
   std::vector<TextureUpload> uploads;
 
   // loop through all data, grabbing buckets
@@ -60,6 +61,7 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
   if (m_fake_uploads) {
     uploads.clear();
   } else {
+    m_upload_count += uploads.size();
     // NOTE: we don't actually copy the textures in the dma chain copying because they aren't
     // reference by DMA tag.  So there's the potential for race conditions if the game gets messed
     // up and corrupts the texture memory.
@@ -94,4 +96,5 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
 }
 void TextureUploadHandler::draw_debug_window() {
   ImGui::Checkbox("Fake Uploads", &m_fake_uploads);
+  ImGui::Text("Uploads: %d", m_upload_count);
 }
