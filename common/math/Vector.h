@@ -77,7 +77,17 @@ class Vector {
     return true;
   }
 
+  bool operator==(const T other) const {
+    for (int i = 0; i < Size; i++) {
+      if (m_data[i] != other) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool operator!=(const Vector<T, Size>& other) const { return !((*this) == other); }
+  bool operator!=(const T other) const { return !((*this) == other); }
 
   const T length() const { return std::sqrt(squared_length()); }
 
