@@ -843,6 +843,12 @@
 )
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; STADIUM D
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "STD.DGO" "std.gd")
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
 ;;;;;;;;;;;;;;;;;;;;;
 ;; the iso group is a group of files built by the "(mi)" command.
