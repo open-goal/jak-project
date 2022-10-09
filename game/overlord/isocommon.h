@@ -158,7 +158,8 @@ enum class DgoState {
   Read_Last_Obj = 3,
   Read_Obj_Header = 4,
   Read_Obj_data = 5,
-  Finish_Dgo = 6
+  Finish_Dgo = 6,
+  Finish_Obj_NoDoubleBuffer = 7,  // jak 2 only
 };
 
 /*!

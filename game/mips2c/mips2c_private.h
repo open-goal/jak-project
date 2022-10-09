@@ -1289,10 +1289,15 @@ struct ExecutionContext {
       fprs[dst] = fprs[src0] / fprs[src1];
     }
   }
+
   void divs(int dst, int src0, int src1) {
     // ASSERT(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
+
+  void mins(int dst, int src0, int src1) { fprs[dst] = std::min(fprs[src0], fprs[src1]); }
+  void maxs(int dst, int src0, int src1) { fprs[dst] = std::max(fprs[src0], fprs[src1]); }
+
   void negs(int dst, int src) {
     u32 v;
     memcpy(&v, &fprs[src], 4);
@@ -1436,6 +1441,12 @@ static_assert(sizeof(ExecutionContext) <= 1280);
 inline void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
   u32 val;
   memcpy(&val, sym_addr, 4);
+  c->gprs[dst].du64[0] = val + offset;
+}
+
+inline void get_fake_spad_addr2(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
+  u32 val;
+  memcpy(&val, (u8*)sym_addr - 1, 4);
   c->gprs[dst].du64[0] = val + offset;
 }
 

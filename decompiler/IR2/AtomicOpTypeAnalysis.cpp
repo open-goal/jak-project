@@ -314,7 +314,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
     auto rd = dts.ts.reverse_field_lookup(rd_in);
     if (rd.success) {
       auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
-      fmt::print("Matched a stack variable! {}\n", result.print());
+      lg::print("Matched a stack variable! {}\n", result.print());
       return result;
     }
      */
@@ -1428,7 +1428,6 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       in_type.last_arg() == TypeSpec("array")) {
     // array new:
     auto& a2 = input.get(Register(Reg::GPR, arg_regs[2]));  // elt type
-    auto& a1 = input.get(Register(Reg::GPR, arg_regs[1]));  // array
     auto& a0 = input.get(Register(Reg::GPR, arg_regs[0]));  // allocation
 
     if (a2.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&

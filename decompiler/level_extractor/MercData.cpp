@@ -152,7 +152,7 @@ void MercByteHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
     } else {
       // ASSERT(!got_end);
       if (got_end) {
-        // fmt::print("got something after the end\n");  // todo, should investigate more
+        // lg::print("got something after the end\n");  // todo, should investigate more
       }
     }
   }
@@ -203,10 +203,10 @@ TypedRef MercFragment::from_ref(TypedRef tr,
                                 const DecompilerTypeSystem& dts,
                                 const MercFragmentControl& control,
                                 const MercCtrlHeader& main_control) {
-  // fmt::print("frag::from_ref:\n{}\n", control.print());
+  // lg::print("frag::from_ref:\n{}\n", control.print());
   TypedRef byte_hdr(get_field_ref(tr, "header", dts), dts.ts.lookup_type("merc-byte-header"));
   header.from_ref(byte_hdr, dts);
-  // fmt::print("{}\n", header.print());
+  // lg::print("{}\n", header.print());
 
   // all these offsets are super confusing.
   // the DMA transfers require source and dest addresses/sized to have alignment of 16 bytes.
@@ -225,7 +225,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // dsll32 s0, v0, 4
   // daddu t3, t2, s0
   u32 my_u4_count = ((control.unsigned_four_count + 3) / 4) * 16;
-  // fmt::print("my u4: {} ({} qwc)\n", my_u4_count, my_u4_count / 16);
+  // lg::print("my u4: {} ({} qwc)\n", my_u4_count, my_u4_count / 16);
   for (u32 w = 0; w < my_u4_count / 4; w++) {
     u32 val = deref_u32(tr.ref, w);
     memcpy(unsigned_four_including_header.emplace_back().data(), &val, 4);
@@ -237,7 +237,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // srl s0, s0, 2
   // dsll32 s2, s0, 4
   u32 my_l4_count = my_u4_count + ((control.lump_four_count + 3) / 4) * 16;
-  // fmt::print("my l4: {} ({} qwc)\n", my_l4_count, my_l4_count / 16);
+  // lg::print("my l4: {} ({} qwc)\n", my_l4_count, my_l4_count / 16);
   // end of lump should align with mm (main memory?) fp off. which
   // is used for accessing the fp data in main memory.
   ASSERT(my_l4_count / 16 == header.mm_quadword_fp_off);

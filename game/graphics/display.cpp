@@ -85,6 +85,7 @@ void GfxDisplay::restore_display_settings() {
     if (!file_util::file_exists(file_path)) {
       return;
     }
+    lg::info("reading {}", file_path);
     auto raw = file_util::read_text_file(file_path);
     auto json = parse_commented_json(raw, "display-settings.json");
     if (json.contains("window_xpos")) {

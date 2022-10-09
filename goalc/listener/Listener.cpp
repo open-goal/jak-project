@@ -29,6 +29,7 @@
 #include "common/cross_sockets/XSocket.h"
 #include "common/util/Assert.h"
 #include "common/versions.h"
+#include "common/log/log.h"
 
 #include "Listener.h"
 
@@ -225,7 +226,7 @@ void Listener::receive_func() {
           if (hdr->msg_id == last_sent_id) {
             printf("[Listener] Received ACK for most recent message late.\n");
             if (last_recvd_id != hdr->msg_id - 1) {
-              fmt::print(
+              lg::print(
                   "[Listener] WARNING: message ID jumped from {} to {}. Some messages may have "
                   "been lost. You must wait for an ACK before sending the next message.\n",
                   last_recvd_id, hdr->msg_id);
@@ -252,7 +253,7 @@ void Listener::receive_func() {
           got_ack = true;
           last_recvd_id = hdr->msg_id;
           if (last_recvd_id > last_sent_id) {
-            fmt::print(
+            lg::print(
                 "[Listener] ERROR: Got an ack message with id of {}, but the last message sent "
                 "had an ID of {}.\n",
                 last_recvd_id, last_sent_id);
@@ -550,7 +551,7 @@ void Listener::handle_output_message(const char* msg) {
       }
 
       add_load(name_str.substr(2, name_str.length() - 3), entry);
-      // fmt::print("LOAD:\n{}", entry.print());
+      // lg::print("LOAD:\n{}", entry.print());
     } else {
       // todo unload
       printf("[Listener Warning] unknown output message \"%s\"\n", msg);

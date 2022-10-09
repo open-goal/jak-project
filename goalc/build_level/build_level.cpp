@@ -21,10 +21,10 @@ void save_pc_data(const std::string& nickname,
   data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  fmt::print("stats for {}\n", data.level_name);
+  lg::print("stats for {}\n", data.level_name);
   print_memory_usage(data, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
+            100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
                                compressed.size());
 }
@@ -104,10 +104,10 @@ bool run_build_level(const std::string& input_file,
 
   // Save the GOAL level
   auto result = file.save_object_file();
-  fmt::print("Level bsp file size {} bytes\n", result.size());
+  lg::print("Level bsp file size {} bytes\n", result.size());
   auto save_path = file_util::get_jak_project_dir() / bsp_output_file;
   file_util::create_dir_if_needed_for_file(save_path);
-  fmt::print("Saving to {}\n", save_path.string());
+  lg::print("Saving to {}\n", save_path.string());
   file_util::write_binary_file(save_path, result.data(), result.size());
 
   // Save the PC level

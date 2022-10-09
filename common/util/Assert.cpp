@@ -6,20 +6,23 @@
 #include <cstdlib>
 #include <string_view>
 
+#include "common/log/log.h"
+
 void private_assert_failed(const char* expr,
                            const char* file,
                            int line,
                            const char* function,
                            const char* msg) {
   if (!msg || msg[0] == '\0') {
-    fprintf(stderr, "Assertion failed: '%s'\n\tSource: %s:%d\n\tFunction: %s\n", expr, file, line,
-            function);
+    std::string log = fmt::format("Assertion failed: '{}'\n\tSource: {}:{}\n\tFunction: {}\n", expr,
+                                  file, line, function);
+    lg::die(log);
   } else {
-    fprintf(stderr, "Assertion failed: '%s'\n\tMessage: %s\n\tSource: %s:%d\n\tFunction: %s\n",
-            expr, msg, file, line, function);
+    std::string log =
+        fmt::format("Assertion failed: '{}'\n\tMessage: {}\n\tSource: {}:{}\n\tFunction: {}\n",
+                    expr, msg, file, line, function);
+    lg::die(log);
   }
-  fflush(stdout);  // ensure any stdout logs are flushed before we terminate
-  fflush(stderr);
   abort();
 }
 

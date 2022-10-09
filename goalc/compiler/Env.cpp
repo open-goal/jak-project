@@ -5,6 +5,7 @@
 #include "IR.h"
 
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 
 #include "third-party/fmt/core.h"
 
@@ -157,7 +158,7 @@ void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
 void FileEnv::debug_print_tl() {
   if (m_top_level_func) {
     for (auto& code : m_top_level_func->code()) {
-      fmt::print("{}\n", code->print());
+      lg::print("{}\n", code->print());
     }
   } else {
     printf("no top level function.\n");
@@ -294,7 +295,7 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
                                                               int size_bytes,
                                                               int align_bytes) {
   if (align_bytes > 16) {
-    fmt::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
+    lg::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
   }
   auto space = allocate_aligned_stack_space(size_bytes, align_bytes);
   return alloc_val<StackVarAddrVal>(ts, space.start_slot, space.slot_count);

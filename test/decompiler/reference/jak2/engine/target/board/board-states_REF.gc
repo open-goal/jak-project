@@ -375,7 +375,7 @@
                   (t9-8 (the-as vector a0-4) (the-as float a1-0))
                   )
                 )
-              (when (zero? (logand (-> self control old-status) (cshape-moving-flags on-surface)))
+              (when (not (logtest? (-> self control old-status) (cshape-moving-flags on-surface)))
                 (let ((gp-0 (new 'stack-no-clear 'vector)))
                   (set! (-> gp-0 quad) (-> self control trans quad))
                   (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
@@ -521,8 +521,8 @@
   (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
            (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
            (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-           (and (zero? (logand (water-flags touch-water) (-> self water flags)))
-                (zero? (logand (-> self state-flags) (state-flags sf7)))
+           (and (not (logtest? (water-flags touch-water) (-> self water flags)))
+                (not (logtest? (-> self state-flags) (state-flags sf7)))
                 (not (and (-> self next-state) (= (-> self next-state name) 'target-board-wall-kick)))
                 )
            )
@@ -547,8 +547,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-stance (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('lip)
        (when (and (= (-> self control ground-pat mode) (pat-mode halfpipe))
                   (< (-> self control poly-angle) 0.5)
@@ -565,7 +565,7 @@
                   )
          (set! (-> self board halfpipe-lip-time) (-> self clock frame-counter))
          (set! (-> self board halfpipe-side-time) (-> self clock frame-counter))
-         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> arg3 param 0)))
+         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> event param 0)))
          (let ((v0-2 (the-as object (logior (-> self control root-prim prim-core action) (collide-action no-normal-reset))))
                )
            (set! (-> self control root-prim prim-core action) (the-as collide-action v0-2))
@@ -576,13 +576,13 @@
       (('jump)
        (go
          target-board-jump
-         (the-as meters (-> arg3 param 0))
-         (the-as meters (-> arg3 param 1))
-         (the-as symbol (-> arg3 param 2))
+         (the-as meters (-> event param 0))
+         (the-as meters (-> event param 1))
+         (the-as symbol (-> event param 2))
          )
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -618,7 +618,7 @@
     )
   :trans (behavior ()
     (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1)
-             (zero? (logand (-> self state-flags) (state-flags sf9)))
+             (not (logtest? (-> self state-flags) (state-flags sf9)))
              (< (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                 (the-as time-frame (-> *TARGET-bank* ground-timeout))
                 )
@@ -817,8 +817,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1))
-                        )
+    (if (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1))
                  (logtest? (-> self state-flags) (state-flags sf9))
                  (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                      (the-as time-frame (-> *TARGET-bank* ground-timeout))
@@ -915,11 +914,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
         (return #f)
         )
-    (target-board-handler arg0 arg1 arg2 arg3)
+    (target-board-handler proc arg1 event-type event)
     )
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
     (local-vars
@@ -1133,8 +1132,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-halfpipe (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('edge-grab)
        (format
          #t
@@ -1179,14 +1178,14 @@
          )
        )
       (('grenade)
-       (if (< (the-as float (-> arg3 param 0))
+       (if (< (the-as float (-> event param 0))
               (vector-dot (-> self control dynam gravity-normal) (-> self control transv))
               )
-           (go target-board-grenade (process->handle arg0))
+           (go target-board-grenade (process->handle proc))
            )
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -1675,8 +1674,7 @@
         (let ((f0-9 (analog-input (the int (* 128.0 (-> s5-0 z))) 0.0 96.0 110.0 1.0))
               (s4-0 0)
               )
-          (while (not (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r1))
-                                      )
+          (while (not (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) r1))
                                (or (= f0-9 0.0) (jump-hit-ground-stuck?) (< (target-time-to-ground) (seconds 0.5)))
                                )
                            (nonzero? s4-0)
@@ -1842,8 +1840,7 @@
       (set! (-> v1-0 z) (* -0.0078125 (+ -128.0 (the float (-> self control unknown-cpad-info00 lefty)))))
       (set! (-> v1-0 w) 1.0)
       (let ((f30-0 (analog-input (the int (* 128.0 (-> v1-0 z))) 0.0 96.0 110.0 1.0)))
-        (while (not (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1))
-                               )
+        (while (not (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1))
                         (jump-hit-ground-stuck?)
                         (< (target-time-to-ground) (seconds 0.3))
                         )
@@ -2009,8 +2006,7 @@
       (let ((f0-9 (analog-input (the int (* 128.0 (-> s5-0 z))) 0.0 96.0 110.0 1.0))
             (s4-0 0)
             )
-        (while (not (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons r1))
-                                    )
+        (while (not (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) r1))
                              (or (= f0-9 0.0) (jump-hit-ground-stuck?) (< (target-time-to-ground) (seconds 0.5)))
                              )
                          (nonzero? s4-0)
@@ -2236,13 +2232,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-ride-edge (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('edge-grab 'push-transv 'push-trans)
        #f
        )
       (('end-mode)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (let ((v1-6 (/ (- (-> self clock frame-counter) (-> self board ride-start-time)) 300)))
            (if (> v1-6 0)
                (add-to-trick-list (-> self board) (board-tricks board-rail) (* 100.0 (the float v1-6)))
@@ -2252,7 +2248,7 @@
        (go target-board-turn-to (-> self control transv) (seconds 0.2))
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -2510,13 +2506,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-grenade (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('target)
        (handle->process (-> self control unknown-handle02))
        )
       (else
-        (target-board-handler arg0 arg1 arg2 arg3)
+        (target-board-handler proc arg1 event-type event)
         )
       )
     )
@@ -2621,19 +2617,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-get-on (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack 'attack-or-shove 'attack-invinc)
        (target-attacked
-         arg2
-         (the-as attack-info (-> arg3 param 1))
-         arg0
-         (the-as process (-> arg3 param 0))
+         event-type
+         (the-as attack-info (-> event param 1))
+         proc
+         (the-as process (-> event param 0))
          target-hit
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2779,13 +2775,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-pegasus (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('end-mode)
        (go target-jump 16384.0 16384.0 (the-as surface #f))
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3082,21 +3078,21 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go target-board-stance)
            )
           (('clone-anim)
-           (go target-board-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-board-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (('change-mode)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('normal)
               enter-state
               'stance
@@ -3105,7 +3101,7 @@
              )
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -3147,11 +3143,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-board-clone-anim (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
         (set! (-> self control unknown-word04) (the-as uint #f))
         )
-    ((-> target-board-grab event) arg0 arg1 arg2 arg3)
+    ((-> target-board-grab event) proc arg1 event-type event)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()
@@ -3236,7 +3232,7 @@
           )
         self
         ((method-of-type attack-info attack-info-method-11))
-        (when (zero? (logand (-> gp-0 mask) (attack-info-mask vector)))
+        (when (not (logtest? (-> gp-0 mask) (attack-info-mask vector)))
           (vector-z-quaternion! (-> gp-0 vector) (-> self control unknown-quaternion00))
           (vector-xz-normalize! (-> gp-0 vector) (- (fabs (-> gp-0 shove-back))))
           (set! (-> gp-0 vector y) (-> gp-0 shove-up))

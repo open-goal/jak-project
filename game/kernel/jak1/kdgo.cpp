@@ -3,6 +3,7 @@
 #include "common/common_types.h"
 #include "common/log/log.h"
 
+#include "game/common/dgo_rpc_types.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
@@ -10,6 +11,31 @@
 #include "game/kernel/jak1/klink.h"
 
 namespace jak1 {
+
+/*!
+ * Instruct the IOP to continue loading the next object.
+ * Only should be called once it is safe to overwrite the previous.
+ * @param heapPtr : pointer to heap so the IOP could try to load directly into a heap if it wants.
+ * This should be updated after each object file load to make sure the IOP knows the exact location
+ * of the end of the GOAL heap data.
+ * DONE,
+ * EXACT
+ */
+void ContinueLoadingDGO(Ptr<u8> heapPtr) {
+  u32 msgID = sMsgNum;
+  RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
+  sMsgNum = sMsgNum ^ 1;
+  sendBuff->result = DGO_RPC_RESULT_INIT;
+  sMsg[msgID].buffer1 = 0;
+  sMsg[msgID].buffer2 = 0;
+  sMsg[msgID].buffer_heap_top = heapPtr.offset;
+  // the IOP will wait for this RpcCall to continue the DGO state machine.
+  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_NEXT_FNO, true, sendBuff, sizeof(RPC_Dgo_Cmd), sendBuff,
+          sizeof(RPC_Dgo_Cmd));
+  // this async RPC call will complete when the next object is fully loaded.
+  sLastMsg = sendBuff;
+}
+
 /*!
  * Load and link a DGO file.
  * This does not use the mutli-threaded linker and will block until the entire file is done.

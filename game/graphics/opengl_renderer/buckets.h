@@ -81,6 +81,7 @@ enum class BucketId {
 namespace jak2 {
 
 enum class BucketId {
+  SPECIAL_BUCKET_2 = 2,
   TFRAG_L0_TFRAG = 8,
   TIE_L0_TFRAG = 9,
   TFRAG_L1_TFRAG = 19,
@@ -88,7 +89,9 @@ enum class BucketId {
   SHRUB_L0_SHRUB = 74,
   SHRUB_L1_SHRUB = 83,
   TFRAG_T_L0_ALPHA = 128,
+  TFRAG_W_L0_WATER = 255,
   DEBUG_NO_ZBUF1 = 318,
+  DEBUG2 = 324,
   DEBUG_NO_ZBUF2 = 325,
   DEBUG3 = 326,
   MAX_BUCKETS = 327

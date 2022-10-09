@@ -1,6 +1,7 @@
 #include "ExpressionHelpers.h"
 
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 
 #include "decompiler/IR2/Env.h"
 #include "decompiler/IR2/Form.h"
@@ -44,14 +45,14 @@ FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
   // get the time. It must be DEFAULT_RES_TIME
   auto lookup_time = try_get_const_float(forms.at(3));
   if (!lookup_time || *lookup_time != DEFAULT_RES_TIME) {
-    fmt::print("fail: bad time {}\n", forms.at(3)->to_string(env));
+    lg::error("fail: bad time {}\n", forms.at(3)->to_string(env));
     return nullptr;
   }
 
@@ -119,7 +120,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail data: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
@@ -134,7 +135,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   Form* default_value = forms.at(4);
   // but let's see if it's 0, because that's the default in the macro
   if (default_value->to_string(env) != expcted_default) {
-    fmt::print("fail data: bad default {}\n", default_value->to_string(env));
+    lg::error("fail data: bad default {}", default_value->to_string(env));
     return nullptr;
   }
 
@@ -184,7 +185,7 @@ FormElement* handle_get_property_value(const std::vector<Form*>& forms,
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail data: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
@@ -318,7 +319,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
   }
 
   // auto first_use_of_in = *first_result.maps.regs.at(reg_input_1);
-  // fmt::print("reg1: {}\n", first_use_of_in.to_string(env));
+  // lg::print("reg1: {}\n", first_use_of_in.to_string(env));
 
   auto setup_matcher = Matcher::set_var(
       Matcher::deref(Matcher::any_reg(reg_input_2), false,
@@ -368,22 +369,22 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
 
   const auto& temp_use_def = env.get_use_def_info(*second_result.maps.regs.at(reg_temp_1));
   if (temp_use_def.use_count() != 2 || temp_use_def.def_count() != 1) {
-    fmt::print("failed usedef: {} {}\n", temp_use_def.use_count(), temp_use_def.def_count());
+    lg::error("failed usedef: {} {}", temp_use_def.use_count(), temp_use_def.def_count());
     return nullptr;
   }
 
   if (part_of_longer_sc) {
     // check that our temporary name matches (it's the var used inside the macro)
     if (in_name != longer_sc_var.to_string(env)) {
-      fmt::print("failed var name: {} vs {}\n", temp_name, longer_sc_var.to_string(env));
+      lg::error("failed var name: {} vs {}", temp_name, longer_sc_var.to_string(env));
       return nullptr;
     }
 
     // check that our temporary has the right usage pattern.
     const auto& outer_temp_usedef = env.get_use_def_info(longer_sc_var);
     if (outer_temp_usedef.use_count() != 3 || outer_temp_usedef.def_count() != 1) {
-      fmt::print("failed usedef2: {} {}\n", outer_temp_usedef.use_count(),
-                 outer_temp_usedef.def_count());
+      lg::error("failed usedef2: {} {}", outer_temp_usedef.use_count(),
+                outer_temp_usedef.def_count());
       return nullptr;
     }
 
@@ -400,7 +401,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     menv->disable_use(in3);
 
     auto repopped = stack.pop_reg(in1, {}, env, true);
-    // fmt::print("repopped: {}\n", repopped->to_string(env));
+    // lg::print("repopped: {}\n", repopped->to_string(env));
 
     if (!repopped) {
       repopped = var_to_form(in1, pool);

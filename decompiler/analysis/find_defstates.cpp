@@ -2,6 +2,7 @@
 
 #include "find_defstates.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
@@ -116,7 +117,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     }
 
     if (debug_defstates) {
-      fmt::print("SET: {} to {}\n", name, val->to_string(env));
+      lg::debug("SET: {} to {}", name, val->to_string(env));
     }
 
     // now we try to find a function
@@ -130,7 +131,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
       this_entry.is_behavior = true;
       if (print_renames) {
-        fmt::print("RENAME: {} to ", handler_func->name());
+        lg::info("RENAME: {} to ", handler_func->name());
       }
 
       if (virtual_child) {
@@ -139,7 +140,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
         handler_func->guessed_name.set_as_nv_state(state_name, handler_kind);
       }
       if (print_renames) {
-        fmt::print("{}\n", handler_func->name());
+        lg::info("{}", handler_func->name());
       }
 
       // scary part - modify the function type!
@@ -191,7 +192,7 @@ FormElement* rewrite_nonvirtual_defstate(
         expected_state_name);
   }
   if (debug_defstates) {
-    fmt::print("State: {} Type: {}\n", info.first, info.second.print());
+    lg::debug("State: {} Type: {}", info.first, info.second.print());
   }
   body_index++;
 
@@ -270,7 +271,6 @@ FormElement* rewrite_virtual_defstate(
 
   // see if the first thing is an inherit-state.
   auto maybe_inherit_form = elt->body()->at(body_idx);
-  //  fmt::print("first is {}\n", maybe_inherit_form->to_string(env));
   Form temp;
   temp.elts().push_back(maybe_inherit_form);
   // (inherit-state gp-1 (method-of-type plat-button dummy-24))
@@ -418,8 +418,6 @@ FormElement* rewrite_virtual_defstate(
         expected_state_name, method_info.name, method_info.defined_in_type);
   }
 
-  // fmt::print("is a {}\n", typeid(*parent_state->try_as_single_element()).name());
-
   auto entries = get_defstate_entries(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
       method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
@@ -461,7 +459,7 @@ void run_defstate(
             env.get_variable_type(as_let->entries().at(0).dest, false) == TypeSpec("state")) {
           std::string expected_state_name = verify_empty_state_and_get_name(src_as_label, env);
           if (debug_defstates) {
-            fmt::print("got state let:\n{}\n", pretty_print::to_string(as_let->to_form(env)));
+            lg::debug("got state let:\n{}", pretty_print::to_string(as_let->to_form(env)));
           }
 
           if (is_nonvirtual_state(as_let)) {
