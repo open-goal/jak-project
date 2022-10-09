@@ -363,6 +363,21 @@ struct DrawableInlineArrayTransTFrag : public DrawableInlineArrayTFrag {
   std::string my_type() const override { return "drawable-inline-array-trans-tfrag"; }
 };
 
+struct DrawableInlineArrayTFragTrans : public DrawableInlineArrayTFrag {
+  std::string my_type() const override { return "drawable-inline-array-tfrag-trans"; }
+};
+
+struct DrawableInlineArrayTFragWater : public DrawableInlineArrayTFrag {
+  std::string my_type() const override { return "drawable-inline-array-tfrag-water"; }
+};
+
+struct DrawableTreeTfragTrans : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-tfrag-trans"; }
+};
+
+struct DrawableTreeTfragWater : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-tfrag-water"; }
+};
 /////////////////////
 // TIE
 /////////////////////

@@ -48,5 +48,5 @@ def get_ref_path_from_filename(game_name, file_name, ref_folder):
   if src_path == "":
     print("couldn't determine ref path for {}:{}!".format(game_name, file_name))
     exit(1)
-  path = "{}/{}/{}/{}_REF.gc".format(ref_folder, game_name, src_path, file_name)
+  path = os.path.join(ref_folder, game_name, src_path, "{}_REF.gc".format(file_name))
   return path

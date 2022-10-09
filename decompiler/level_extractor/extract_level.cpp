@@ -145,8 +145,9 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
    */
 
   const std::set<std::string> tfrag_trees = {
-      "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
-      "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
+      "drawable-tree-tfrag",        "drawable-tree-trans-tfrag",       "drawable-tree-tfrag-trans",
+      "drawable-tree-dirt-tfrag",   "drawable-tree-tfrag-water",       "drawable-tree-ice-tfrag",
+      "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
   int i = 0;
 
   std::vector<const level_tools::DrawableTreeInstanceTie*> all_ties;
@@ -174,7 +175,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
-                  bsp_header.texture_remap_table, tex_db, level_data, false);
+                  bsp_header.texture_remap_table, tex_db, level_data, false, db.version());
     } else if (draw_tree->my_type() == "drawable-tree-instance-shrub") {
       auto as_shrub_tree =
           dynamic_cast<level_tools::shrub_types::DrawableTreeInstanceShrub*>(draw_tree.get());
@@ -190,7 +191,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       extract_collide_frags(as_collide_frags, all_ties, fmt::format("{}-{}-collide", dgo_name, i++),
                             level_data, false);
     } else {
-      // lg::print("  unsupported tree {}\n", draw_tree->my_type());
+      lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
   level_data.level_name = level_name;

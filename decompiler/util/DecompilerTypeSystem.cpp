@@ -434,7 +434,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
 
       bool code_takes_no_arg = false;
       for (auto& ignored_code : code_ignore_list) {
-        int j = i;
+        size_t j = i;
         bool match = true;
         for (const char c : ignored_code) {
           if (j > str.length()) {

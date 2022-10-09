@@ -1625,18 +1625,18 @@
 
 ;; failed to figure out what this is:
 (defstate fisher-playing (fisher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-2 object))
-    (case arg2
+    (case event-type
       (('fisher-fish-die)
        (sound-play "fish-miss")
-       (set! v0-2 (+ (-> self missed) (-> arg3 param 0)))
+       (set! v0-2 (+ (-> self missed) (-> event param 0)))
        (set! (-> self missed) (the-as int v0-2))
        v0-2
        )
       (('fisher-fish-caught)
        (send-event *target* 'bounce)
-       (set! v0-2 (+ (-> self caught) (-> arg3 param 0)))
+       (set! v0-2 (+ (-> self caught) (-> event param 0)))
        (set! (-> self caught) (the-as int v0-2))
        v0-2
        )
@@ -1822,9 +1822,9 @@
 ;; failed to figure out what this is:
 (defstate play-accept (fisher)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 rgbaf))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'emissive-on)
                         (set-vector! (-> self draw color-mult) 0.6 0.6 0.6 1.0)
@@ -2124,18 +2124,18 @@
 
 ;; failed to figure out what this is:
 (defstate target-fishing (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((= arg2 'bounce)
+      ((= event-type 'bounce)
        (set-zero! (-> self control unknown-smush00))
        (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0)
        )
-      ((= arg2 'lose)
-       (set! (-> self control unknown-uint20) (the-as uint arg2))
-       arg2
+      ((= event-type 'lose)
+       (set! (-> self control unknown-uint20) (the-as uint event-type))
+       event-type
        )
       (else
-        ((-> target-grab event) arg0 arg1 arg2 arg3)
+        ((-> target-grab event) proc arg1 event-type event)
         )
       )
     )

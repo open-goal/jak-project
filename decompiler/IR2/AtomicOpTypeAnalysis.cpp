@@ -1428,7 +1428,6 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       in_type.last_arg() == TypeSpec("array")) {
     // array new:
     auto& a2 = input.get(Register(Reg::GPR, arg_regs[2]));  // elt type
-    auto& a1 = input.get(Register(Reg::GPR, arg_regs[1]));  // array
     auto& a0 = input.get(Register(Reg::GPR, arg_regs[0]));  // allocation
 
     if (a2.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&

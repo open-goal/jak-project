@@ -99,14 +99,14 @@
 ;; failed to figure out what this is:
 (defstate wait-for-start (racer)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-1 structure))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as
         object
         (cond
           ((= v1-0 'trans)
-           (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+           (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
            )
           ((= v1-0 'notify)
            (set! v0-1 #t)
@@ -115,7 +115,7 @@
            )
           ((= v1-0 'shadow)
            (cond
-             ((-> arg3 param 0)
+             ((-> event param 0)
               (set! v0-1 (-> self shadow-backup))
               (set! (-> self draw shadow) (the-as shadow-geo v0-1))
               v0-1
@@ -287,8 +287,8 @@
 ;; failed to figure out what this is:
 (defstate pickup (racer)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('draw)
        (ja-channel-set! 1)
        (ja :group! (-> self draw art-group data 3))
@@ -297,14 +297,14 @@
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
        )
       (('shadow)
        (cond
-         ((-> arg3 param 0)
+         ((-> event param 0)
           (let ((v0-1 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-1))
             v0-1
@@ -360,19 +360,21 @@
 ;; failed to figure out what this is:
 (defstate wait-for-return (racer)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (or (= arg2 'touch) (= arg2 'attack)) (and (!= (-> self condition) 4) (send-event *target* 'end-mode)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (or (= event-type 'touch) (= event-type 'attack))
+             (and (!= (-> self condition) 4) (send-event *target* 'end-mode))
+             )
         (go-virtual pickup (the-as (state collectable) (method-of-object self idle)))
         )
     (the-as
       object
       (cond
-        ((= arg2 'trans)
-         (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+        ((= event-type 'trans)
+         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
          )
-        ((= arg2 'shadow)
+        ((= event-type 'shadow)
          (cond
-           ((-> arg3 param 0)
+           ((-> event param 0)
             (let ((v0-3 (the-as structure (-> self shadow-backup))))
               (set! (-> self draw shadow) (the-as shadow-geo v0-3))
               v0-3

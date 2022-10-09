@@ -88,11 +88,11 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (plat-eco-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('target)
        (process-entity-status! self (entity-perm-status complete) #t)
-       (set! (-> self force-dest) (the-as float (-> arg3 param 0)))
+       (set! (-> self force-dest) (the-as float (-> event param 0)))
        )
       (('ridden 'edge-grabbed)
        (if (>= (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 2))
@@ -114,7 +114,7 @@
        #f
        )
       (else
-        (plat-event arg0 arg1 arg2 arg3)
+        (plat-event proc arg1 event-type event)
         )
       )
     )
@@ -629,8 +629,8 @@
 ;; failed to figure out what this is:
 (defstate play-anim (sage-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('fade)
        (set! (-> self credit-fade) 1.0)
        )
@@ -639,12 +639,12 @@
        )
       (('activate-particle)
        (let ((v0-0 (the-as object #t)))
-         (set! (-> self particle (-> arg3 param 0) active) (the-as symbol v0-0))
+         (set! (-> self particle (-> event param 0) active) (the-as symbol v0-0))
          v0-0
          )
        )
       (('deactivate-particle)
-       (set! (-> self particle (-> arg3 param 0) active) #f)
+       (set! (-> self particle (-> event param 0) active) #f)
        #f
        )
       )

@@ -1444,6 +1444,12 @@ inline void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionCon
   c->gprs[dst].du64[0] = val + offset;
 }
 
+inline void get_fake_spad_addr2(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
+  u32 val;
+  memcpy(&val, (u8*)sym_addr - 1, 4);
+  c->gprs[dst].du64[0] = val + offset;
+}
+
 inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
   memcpy(&spad_addr_goal, spad_sym_addr, 4);
