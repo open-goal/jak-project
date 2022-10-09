@@ -8,6 +8,7 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/common/play_rpc_types.h"
@@ -66,12 +67,13 @@ u32 STRThread() {
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
   if (g_game_version == GameVersion::Jak1) {
-    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak1, &sSTRBufJak1, nullptr, nullptr, &dq);
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak1, &sSTRBufJak1, nullptr,
+                      nullptr, &dq);
+  } else if (g_game_version == GameVersion::Jak2) {
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr,
+                      nullptr, &dq);
   }
-  else if (g_game_version == GameVersion::Jak2) {
-    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr, nullptr, &dq);
-  }
-  
+
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -199,7 +201,8 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
       }
     }
   } else {
-    // TODO - not ret implemented
+    // TODO - not yet implemented
+    lg::warn("this branch of RPC_STR has not yet been implemented!");
     cmd->result = STR_RPC_RESULT_ERROR;
   }
 

@@ -120,8 +120,8 @@ std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
 }
 std::string GameTextFontBank::replace_to_game(std::string& str) const {
   for (auto& info : *m_replace_info) {
-    // TODO - THIS IS A TEMPORARY HACK!, can't replace with nothing as it's not unique!
     if (info.to.empty()) {
+      // Skip empty replacements, else it's an infinite loop
       continue;
     }
     auto pos = str.find(info.to);
@@ -854,11 +854,12 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
     {"n~Y~-24H~-4V<TIL>~Z", "ñ"},
-    {"A~Y~-21H~-5V<TIL>~Z", "Ã"},  // custom
-    {"O~Y~-22H~-4V<TIL>~Z", "Õ"},  // custom
+    {"A~Y~-21H~-5V<TIL>~Z", "Ã"},
+    {"O~Y~-22H~-4V<TIL>~Z", "Õ"},
 
     // acute accents
     {"A~Y~-21H~-5V'~Z", "Á"},
+    {"A~Y~-26H~-8V'~Z", "<Á_V2>"},  // unfortunate...
     {"a~Y~-25H~-5V'~Z", "á"},
     {"E~Y~-23H~-9V'~Z", "É"},
     {"e~Y~-26H~-5V'~Z", "é"},
@@ -870,13 +871,13 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-24H~-3V'~Z", "ú"},
 
     // circumflex
-    {"A~Y~-20H~-4V^~Z", "Â"},  // custom
+    {"A~Y~-20H~-4V^~Z", "Â"},
     {"a~Y~-24H~-5V^~Z", "â"},
     {"E~Y~-20H~-5V^~Z", "Ê"},
     {"e~Y~-25H~-4V^~Zt", "ê"},
     {"I~Y~-19H~-5V^~Z", "Î"},
     {"i~Y~-19H~-8V^~Z", "î"},
-    {"O~Y~-20H~-4V^~Z", "Ô"},  // custom
+    {"O~Y~-20H~-4V^~Z", "Ô"},
     {"o~Y~-25H~-4V^~Z", "ô"},
     {"U~Y~-24H~-3V^~Z", "Û"},
     {"u~Y~-23H~-3V^~Z", "û"},
@@ -888,7 +889,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"e~Y~-26H~-5V`~Z", "è"},
     {"I~Y~-19H~-5V`~Z", "Ì"},
     {"i~Y~-19H~-8V`~Z", "ì"},
-    {"O~Y~-22H~-4V`~Z", "Ò"},  // custom
+    {"O~Y~-22H~-4V`~Z", "Ò"},
+    {"o~Y~-26H~-4V`~Z", "ò"},
     {"U~Y~-24H~-3V`~Z", "Ù"},
     {"u~Y~-24H~-3V`~Z", "ù"},
 
@@ -896,7 +898,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"A~Y~-26H~-8V¨~Z", "Ä"},
     {"a~Y~-25H~-5V¨~Z", "ä"},
     {"E~Y~-20H~-5V¨~Z", "Ë"},
-    {"I~Y~-19H~-5V¨~Z", "Ï"},  // custom
+    {"I~Y~-19H~-5V¨~Z", "Ï"},
     {"O~Y~-26H~-8V¨~Z", "Ö"},
     {"o~Y~-26H~-4V¨~Z", "ö"},
     {"U~Y~-25H~-8V¨~Z", "Ü"},
@@ -965,58 +967,69 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"~~", "世"},
 
     // playstation buttons
+    // - face
     {"~Y~22L<~Z~Y~27L*~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_X>"},
     {"~Y~22L<~Z~Y~26L;~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_TRIANGLE>"},
     {"~Y~22L<~Z~Y~25L@~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_CIRCLE>"},
-    {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},  // custom
-    {"~Y~22L~-2H~-12V\\ca6\\ca7~Z~22L~-2H~+17V\\cb0\\cb1~Z~1L~+4H~+3V\\c95~Z~+38H", "<PAD_L1>"},
-    {"~Y~22L~-2H~-12V\\ca6\\ca7~Z~22L~-2H~+17V\\cb0\\cb1~Z~1L~+6H~+3V\\c94~Z~+38H", "<PAD_R1>"},
-    {"~Y~22L\\ca1~Z~3L~+17H~-13V\\ca2~Z~22L~+17H~+14V\\ca0~Z~22L~+32H\\ca3~Z~+56H",
+    {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},
+    // - dpad
+    {"~Y~22L<SYM7>~Z~3L~+17H~-13V<SYM8>~Z~22L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
      "<PAD_DPAD_UP>"},
-    {"~Y~22L\\ca1~Z~3L~+17H~-13V\\ca2~Z~3L~+17H~+14V\\ca0~Z~22L~+32H\\ca3~Z~+56H",
+    {"~Y~22L<SYM7>~Z~3L~+17H~-13V<SYM8>~Z~3L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
      "<PAD_DPAD_DOWN>"},
-    {"~Y~22L~-2H~-6V\\ca8\\ca9~Z~22L~-2H~+16V\\cb2\\cb3~Z~1L~+5H~-2V\\c96~Z~+38H", "<PAD_R2>"},
-    {"~Y~22L~-2H~-6V\\ca8\\ca9~Z~22L~-2H~+16V\\cb2\\cb3~Z~1L~+5H~-2V\\c97~Z~+38H", "<PAD_L2>"},
-    {"~1L~+8H~Y\\c91~Z~6L~-16H\\c9e~Z~+16h~6L\\ca4~Z~6L~-15V\\c9c~Z~+13V~6L\\c98~Z~-10H~+9V~"
-     "6L\\c9f~Z~+10H~+9V~6L\\c99~Z~-10H~-11V~6L\\c9d~Z~+10H~-11V~6L\\ca5~Z~+32H",
+    {"~Y~22L<SYM7>~Z~22L~+17H~-13V<SYM8>~Z~22L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
+     "<PAD_DPAD_ANY>"},
+    // - shoulder
+    {"~Y~22L~-2H~-12V<SYM1><SYM2>~Z~22L~-2H~+17V<SYM3><SYM4>~Z~1L~+4H~+3V<SYM5>~Z~+38H",
+     "<PAD_L1>"},
+    {"~Y~22L~-2H~-12V<SYM1><SYM2>~Z~22L~-2H~+17V<SYM3><SYM4>~Z~1L~+6H~+3V<SYM6>~Z~+38H",
+     "<PAD_R1>"},
+    {"~Y~22L~-2H~-6V<SYM11><SYM12>~Z~22L~-2H~+16V<SYM15><SYM14>~Z~1L~+5H~-2V<SYM13>~Z~+38H",
+     "<PAD_R2>"},
+    {"~Y~22L~-2H~-6V<SYM11><SYM12>~Z~22L~-2H~+16V<SYM15><SYM14>~Z~1L~+5H~-2V<SYM22>~Z~+38H",
+     "<PAD_L2>"},
+    // - analog
+    {"~1L~+8H~Y<SYM16>~Z~6L~-16H<SYM21>~Z~+16h~6L<SYM20>~Z~6L~-15V<SYM24>~Z~+13V~6L<SYM28>~Z~-10H~+"
+     "9V~"
+     "6L<SYM17>~Z~+10H~+9V~6L<SYM31>~Z~-10H~-11V~6L<SYM23>~Z~+10H~-11V~6L<SYM29>~Z~+32H",
      "<PAD_ANALOG_ANY>"},
-    {"~Y~1L~+8H\\c91~Z~6L~-8H\\c9e~Z~+24H~6L\\ca4~Z~+40H", "<PAD_ANALOG_LEFT_RIGHT>"},
-    {"~Y~1L\\c91~Z~6L~-15V\\c9c~Z~+13V~6L\\c98~Z~+26H", "<PAD_ANALOG_UP_DOWN>"},
+    {"~Y~1L~+8H<SYM16>~Z~6L~-8H<SYM21>~Z~+24H~6L<SYM20>~Z~+40H", "<PAD_ANALOG_LEFT_RIGHT>"},
+    {"~Y~1L<SYM16>~Z~6L~-15V<SYM24>~Z~+13V~6L<SYM28>~Z~+26H", "<PAD_ANALOG_UP_DOWN>"},
 
     // icons
     {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"},
     {"~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_TODO>"},
-    // TODO
-    // - ~Y~22L\ca1~Z~22L~+17H~-13V\ca2~Z~22L~+17H~+14V\ca0~Z~22L~+32H\ca3~Z~+56H
-    // - ~Y~1L\c85~Z~3L\c8c~Z~7L\c8e~\c5d~-1H~Y~1L\c85~Z~3L\c8d~Z~7L\c8f~Z~+26H
-    // - ~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H
-    // - ~Y~1L\c85~\c5d~-1H~Y~1L\c85~Z~-11H~3L\c86~Z~+26H
 
     // flags
-    {"~Y~6L\\c81~Z~+15H~1L\\c81~Z~+30H~3L\\c81~Z~+45H", "<FLAG_ITALIAN>"},
-    {"~Y~5L\\c85~Z~3L\\c8b~\\c5d~-1H~Y~5L\\c85~Z~3L\\c8b~Z~+26H", "<FLAG_SPAIN>"},
-    {"~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~\\c5d~-1H~Y~39L~~~Z~3L\\c7f~Z~5L\\c80~Z~+26H", "<FLAG_GERMAN>"},
-    {"~Y~7L\\c81~Z~+15H~1L\\c81~Z~+30H~3L\\c81~Z~+47H", "<FLAG_FRANCE>"},
-    {"~Y~1L\\c85~Z~3L\\c9a~Z~7L\\c9b~\\c5d~-1H~Y~1L\\c85~Z~3L\\c90~Z~+26H", "<FLAG_UK>"},
-    {"~Y~1L\\c85~Z~39L\\c87~\\c5d~-1H~Y~1L\\c85~Z~39L\\c88~Z~-11H~7L\\c8a~Z~-11H~3L\\c89~Z~+26H",
+    {"~Y~6L<SYM18>~Z~+15H~1L<SYM18>~Z~+30H~3L<SYM18>~Z~+45H", "<FLAG_ITALIAN>"},
+    {"~Y~5L<SYM19>~Z~3L<SYM32>~<SYM26>~-1H~Y~5L<SYM19>~Z~3L<SYM32>~Z~+26H", "<FLAG_SPAIN>"},
+    {"~Y~39L~~~Z~3L<SYM33>~Z~5L<SYM25>~<SYM26>~-1H~Y~39L~~~Z~3L<SYM33>~Z~5L<SYM25>~Z~+26H",
+     "<FLAG_GERMAN>"},
+    {"~Y~7L<SYM18>~Z~+15H~1L<SYM18>~Z~+30H~3L<SYM18>~Z~+47H", "<FLAG_FRANCE>"},
+    {"~Y~1L<SYM19>~Z~3L<SYM34>~Z~7L<SYM37>~<SYM26>~-1H~Y~1L<SYM19>~Z~3L<SYM30>~Z~7L<SYM42>~Z~+26H",
+     "<FLAG_USA>"},
+    {"~Y~1L<SYM19>~Z~3L<SYM35>~Z~7L<SYM38>~<SYM26>~-1H~Y~1L<SYM19>~Z~3L<SYM40>~Z~+26H",
+     "<FLAG_UK>"},
+    {"~Y~1L<SYM19>~Z~39L<SYM36>~<SYM26>~-1H~Y~1L<SYM19>~Z~39L<SYM39>~Z~-11H~7L<SYM41>~Z~-11H~3L<"
+     "SYM43>~Z~+26H",
      "<FLAG_JAPAN>"},
-    {"~Y~1L\\c85~\\c5d~-1H~Y~1L\\c85~Z~-11H~3L\\c86~Z~+26H", "<FLAG_SOUTH_KOREA>"},
+    {"~Y~1L<SYM19>~<SYM26>~-1H~Y~1L<SYM19>~Z~-11H~3L<SYM27>~Z~+26H", "<FLAG_SOUTH_KOREA>"},
 
     // weird stuff
-    // - some sort of control character to adjust kerning, ie after `i` and `o`?
-    {"~+7V", ""},
-    // - preceeding character has a descender?
-    {"~-7V", ""},
-    // - i wonder if this is just a generic code to say "push the next character up or down
-    // vertically"?
-    {"~+1V", ""},
-    {"~-1V", ""},
+    // - descenders
+    {"~+7Vp~-7V", "p"},
+    {"~+7Vy~-7V", "y"},
+    {"~+7Vg~-7V", "g"},
+    {"~+7Vq~-7V", "q"},
+    {"~+1Vj~-1V", "j"},
 
+    {"\\\\\\\\", "\\n"},
+
+    // - symbols and ligatures
     {"~-4H~-3V\\c19~+3V~-4H",
      "<SUPERSCRIPT_QUOTE>"},  // used for the 4<__> place in spanish.  the 5th uses the same
                               // character but looks different...?
     {"~Y~-6Hº~Z~+10H", "°"},
-    {"\\c5e", "œ"},  // ligature o+e
 
     // Color / Emphasis
     {"~[~1L", "<COLOR_WHITE>"},
@@ -1037,10 +1050,60 @@ static std::vector<EncodeInfo> s_encode_info_jak2 = {
 
     {"ß", {0x1f}},  // eszett
 
+    {"œ", {0x5e}},  // ligature o+e
+    // Re-purposed japanese/korean symbols that are used as part of drawing icons/flags/pad buttons
+    // TODO - japanese and korean encodings
+    {"<SYM26>", {0x5d}},
+
+    {"<SYM33>", {0x7f}},
+    {"<SYM25>", {0x80}},
+    {"<SYM18>", {0x81}},
+
+    {"<SYM19>", {0x85}},
+    {"<SYM27>", {0x86}},
+    {"<SYM36>", {0x87}},
+    {"<SYM39>", {0x88}},
+    {"<SYM43>", {0x89}},
+    {"<SYM41>", {0x8a}},
+    {"<SYM32>", {0x8b}},
+    {"<SYM34>", {0x8c}},
+    {"<SYM30>", {0x8d}},
+    {"<SYM37>", {0x8e}},
+    {"<SYM42>", {0x8f}},
+    {"<SYM40>", {0x90}},
+    {"<SYM16>", {0x91}},
+
+    {"<SYM6>", {0x94}},
+    {"<SYM5>", {0x95}},
+    {"<SYM13>", {0x96}},
+    {"<SYM22>", {0x97}},
+    {"<SYM28>", {0x98}},
+    {"<SYM31>", {0x99}},
+    {"<SYM35>", {0x9a}},
+    {"<SYM38>", {0x9b}},
+    {"<SYM24>", {0x9c}},
+    {"<SYM23>", {0x9d}},
+    {"<SYM21>", {0x9e}},
+    {"<SYM17>", {0x9f}},
+    {"<SYM9>", {0xa0}},
+    {"<SYM7>", {0xa1}},
+    {"<SYM8>", {0xa2}},
+    {"<SYM10>", {0xa3}},
+    {"<SYM20>", {0xa4}},
+    {"<SYM29>", {0xa5}},
+    {"<SYM1>", {0xa6}},
+    {"<SYM2>", {0xa7}},
+    {"<SYM11>", {0xa8}},
+    {"<SYM12>", {0xa9}},
+    {"<SYM3>", {0xb0}},
+    {"<SYM4>", {0xb1}},
+    {"<SYM14>", {0xb3}},
+    {"<SYM15>", {0xb2}},
 };
 
 GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
                                   &s_encode_info_jak2,
+                                  //&s_replace_info_null,
                                   &s_replace_info_jak2,
                                   &s_passthrus_jak2);
 
