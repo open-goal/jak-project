@@ -98,7 +98,10 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
     lg::error("DB file error: {} {} {}", db_files.size(), files.size(), art_files.size());
     for (auto& f : files) {
       if (!db_files.count(f.unique_name)) {
-        lg::error("didn't find {}\n", f.unique_name);
+        lg::error(
+            "didn't find {}, make sure it's part of the DGO inputs and not in the banned objects "
+            "list\n",
+            f.unique_name);
       }
     }
     for (auto& f : art_files) {

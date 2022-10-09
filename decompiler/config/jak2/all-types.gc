@@ -10377,7 +10377,7 @@
   :flag-assert         #xb00000038
   (:methods
     (set-height! (_type_ float) none 9)
-    (ocean-map-method-10 () none 10)
+    (ocean-map-method-10 (_type_) float 10)
     )
   )
 
@@ -15899,6 +15899,7 @@
 ;; ---collide-shape-h:nav-flags
 
 (declare-type collide-query structure)
+(declare-type water-info structure)
 
 (deftype collide-shape (trsqv)
   ((actor-hash-index int16 :offset 12)
@@ -15949,7 +15950,7 @@
     (collide-shape-method-49 (_type_ int int int) none 49) ;; (restore-collide-with-as (_type_) none 49)
     (collide-shape-method-50 () none 50) ;; (backup-collide-with-as (_type_) none 50)
     (collide-shape-method-51 () none 51) ;; (set-root-prim-collide-with! (_type_ collide-kind) none 51)
-    (collide-shape-method-52 (_type_ collide-query collide-action) none 52) ;; (set-root-prim-collide-as! (_type_ collide-kind) none 52)
+    (water-info-init! "Initialize a [[water-info]] with the currently loaded regions." (_type_ water-info collide-action) water-info 52) ;; (set-root-prim-collide-as! (_type_ collide-kind) none 52)
     (collide-shape-method-53 (_type_) none 53) ;; (set-collide-kinds (_type_ int collide-kind collide-kind) none 53)
     (collide-shape-method-54 () none 54) ;; (set-collide-offense (_type_ int collide-offense) none 54)
     )
@@ -16528,7 +16529,9 @@
    (unknown-word02              int32                                :offset 5064) ;; (enter target-roll)
    (unknown-time-frame10        time-frame                           :offset 5072) ;; (exit target-roll)
    (unknown-time-frame11        time-frame                           :offset 5080) ;; (trans target-slide-down-to-ground)
+   (unknown-time-frame001       time-frame                           :offset 5088) ;; target-util::target-danger-set!
    (unknown-time-frame12        time-frame                           :offset 5096) ;; (exit target-attack)
+   (unknown-time-frame002       time-frame                           :offset 5104) ;; target-util::can-feet?
    (unknown-time-frame13        time-frame                           :offset 5112) ;; (exit target-slide-down)
    (unknown-time-frame14        time-frame                           :offset 5120) ;; (trans target-stance)
    (unknown-float28             float                                :offset 5132) ;; logic-target::target-print-stats
@@ -16587,7 +16590,7 @@
    (unknown-attack-id00         int32                                :offset 5992) ;; target-handler::target-attacked
    (unknown-float40             float                                :offset 5996) ;; target-util::target-danger-set!
    (unknown-dword05             uint64                               :offset 6000) ;; target-board::target-board-handler
-   (unknown-dword06             uint64                               :offset 6008) ;; (method 28 target)
+   (unknown-dword06             handle                               :offset 6008) ;; (method 28 target)
    (unknown-time-frame000       time-frame                           :offset 6016) ;; target-handler::target-send-attack
    (unknown-combo-tracker00     combo-tracker                :inline :offset 6032) ;; (enter target-running-attack)
    (unknown-time-frame21        time-frame                           :offset 6072) ;; (code target-running-attack)
@@ -16963,7 +16966,7 @@
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_ int) int 23)
     (get-water-height (_type_) meters 24)
-    (process-focusable-method-25 (_type_) int 25)
+    (process-focusable-method-25 (_type_) time-frame 25)
     (process-focusable-method-26 (_type_) float 26)
     )
   )
@@ -26269,14 +26272,14 @@
   :flag-assert         #x1100000128
   (:methods
     (new (symbol type process int float float float) _type_ 0)
-    (water-control-method-9 () none 9) ;; (dummy-9 (_type_) none 9)
-    (water-control-method-10 (_type_) none 10) ;; (dummy-10 (_type_) none 10)
-    (start-bobbing! (_type_ float int int) none 11) ;; (start-bobbing! (_type_ float int int) none 11)
+    (water-control-method-9 (_type_) none 9)
+    (water-control-method-10 (_type_) none 10)
+    (start-bobbing! (_type_ float int int) none 11)
     (distance-from-surface (_type_) float 12)
-    (water-control-method-13 (_type_ float vector int vector symbol) none 13) ;; (dummy-13 (_type_ float vector int vector) none 13)
+    (spawn-ripples (_type_ float vector int vector symbol) none 13)
     (display-water-marks? (_type_) symbol 14)
-    (water-control-method-15 (_type_) none 15) ;; (TODO-RENAME-15 (_type_) none 15)
-    (water-control-method-16 (_type_) none 16) ;; (TODO-RENAME-16 (_type_) none 16)
+    (enter-water (_type_) none 15)
+    (water-control-method-16 (_type_) none 16)
     )
   )
 
@@ -27807,7 +27810,7 @@
 (define-extern *target-shadow-control* shadow-control)
 (define-extern *TARGET-bank* target-bank)
 (define-extern target-start-attack (function none :behavior target))
-(define-extern target-danger-set! (function symbol symbol penetrate :behavior target))
+(define-extern target-danger-set! (function symbol symbol none :behavior target))
 (define-extern target-collide-set! (function symbol float int :behavior target))
 (define-extern debounce-speed (function float float vector vector float :behavior target))
 (define-extern target-align-vel-z-adjust (function float float :behavior target))
@@ -28156,7 +28159,7 @@
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern attack-mode-is-invinc (function symbol symbol))
 (define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
-(define-extern target-send-attack (function process-focusable uint uint int int uint symbol :behavior target))
+(define-extern target-send-attack (function process-focusable uint uint int int uint object :behavior target))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target)) ;; (function process int symbol event-message-block object :behavior target)
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
@@ -28304,7 +28307,7 @@
 (define-extern target-darkjak-bomb-collide (function float float none :behavior target))
 (define-extern target-darkjak-bomb0 (state target))
 (define-extern target-bomb1-fire-shot (function (pointer handle) int int int none :behavior target))
-(define-extern target-darkjak-bomb1 (state target))
+(define-extern target-darkjak-bomb1 (state float float target))
 (define-extern target-darkjak-giant (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28352,12 +28355,12 @@
 (define-extern *gun-walk-mods* surface)
 ;; (define-extern target-gun-event-handler function)
 (define-extern target-gun-setup (function symbol none :behavior target))
-(define-extern target-gun-init (function none :behavior target))
+(define-extern target-gun-init (function int none :behavior target))
 (define-extern target-gun-exit (function none :behavior target))
 (define-extern target-gun-end-mode (function symbol symbol :behavior target))
 ;; (define-extern quat<-gun! function)
 ;; (define-extern target-gun-ammo-out-pick function)
-(define-extern target-gun-type-set! (function none :behavior target))
+(define-extern target-gun-type-set! (function int none :behavior target))
 ;; (define-extern target-gun-marking-menu function)
 ;; (define-extern target-gun-build-track-list function)
 ;; (define-extern target-gun-find-track function)
@@ -29327,7 +29330,7 @@
 (define-extern check-water-level-above-and-die (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-water-level-drop-motion (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern part-water-splash-callback (function part-tracker none))
-(define-extern splash-spawn (function basic vector int none))
+(define-extern splash-spawn (function float vector int none))
 (define-extern rings-water-spawn (function float vector vector float float none))
 (define-extern water-info<-region (function water-info drawable-region-prim collide-shape collide-action water-info))
 
@@ -43174,7 +43177,7 @@
 ;; (define-extern demo-wait-for-press function)
 ;; (define-extern demo-menu function)
 ;; (define-extern demo-control-init function)
-(define-extern target-demo (state target))
+(define-extern target-demo (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; errol-chal-part                ;;
@@ -44451,7 +44454,7 @@
 ;; (define-extern title-fade-out function)
 ;; (define-extern title-progress function)
 ;; (define-extern title-control-init function)
-(define-extern target-title (state target))
+(define-extern target-title (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-part                      ;;
