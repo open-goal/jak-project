@@ -538,23 +538,6 @@
   :flag-assert         #x90000003c
   )
 
-(defmethod inspect debug-line ((obj debug-line))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'debug-line)
-  (format #t "~1Tflags: ~D~%" (-> obj flags))
-  (format #t "~1Tbucket: ~D~%" (-> obj bucket))
-  (format #t "~1Tv1: #<vector @ #x~X>~%" (-> obj v1))
-  (format #t "~1Tv2: #<vector @ #x~X>~%" (-> obj v2))
-  (format #t "~1Tcolor: ~D~%" (-> obj color))
-  (format #t "~1Tmode: ~A~%" (-> obj mode))
-  (format #t "~1Tcolor2: ~D~%" (-> obj color2))
-  (label cfg-4)
-  obj
-  )
-
 (deftype debug-text-3d (structure)
   ((flags  int32              :offset-assert   0)
    (bucket bucket-id          :offset-assert   4)
@@ -568,22 +551,6 @@
   :flag-assert         #x90000002c
   )
 
-(defmethod inspect debug-text-3d ((obj debug-text-3d))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'debug-text-3d)
-  (format #t "~1Tflags: ~D~%" (-> obj flags))
-  (format #t "~1Tbucket: ~D~%" (-> obj bucket))
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~1Tcolor: ~D~%" (-> obj color))
-  (format #t "~1Toffset: #<vector2h @ #x~X>~%" (-> obj offset))
-  (format #t "~1Tstr: ~A~%" (-> obj str))
-  (label cfg-4)
-  obj
-  )
-
 (deftype debug-tracking-thang (basic)
   ((length           int32  :offset-assert   4)
    (allocated-length int32  :offset-assert   8)
@@ -593,17 +560,6 @@
   :flag-assert         #x90000000c
   )
 
-(defmethod inspect debug-tracking-thang ((obj debug-tracking-thang))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tlength: ~D~%" (-> obj length))
-  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
-  (label cfg-4)
-  obj
-  )
 
 (define *debug-lines* (the-as (inline-array debug-line) (malloc 'debug #x100000)))
 (define *debug-lines-trk* (new 'debug 'debug-tracking-thang))
@@ -1789,11 +1745,20 @@
 ;; Boundary Debug
 ;;;;;;;;;;;;;;;;;;
 
-;; TODO: missing a bunch of functions here
+;; the debug drawing for boundaries reuses the sky polygon drawing code.
+;; this does a bunch of crazy that violate calling conventions, so it's all in C++ and patched.
 
-(define-extern init-boundary-regs (function none))
+(when *debug-segment*
+  (define *boundary-polygon* (the-as (inline-array sky-vertex) (malloc 'debug 768)))
+  )
 
-(defun-debug add-boundary-shader ((tex-id texture-id) (buf dma-buffer))
+;; init-boundary-regs loads vf registers with math camera values and stuff from sky-work
+(def-mips2c init-boundary-regs (function none))
+
+;; add-boundary-shader
+(defun add-boundary-shader ((tex-id texture-id) (buf dma-buffer))
+  "Generate adgif shader data (including GIF tag, but not VIF/DMA) for the given
+   texture, and write to the given dma-buffer."
   (let ((tex (lookup-texture-by-id tex-id)))
     (when tex
       (let* ((v1-0 buf)
@@ -1824,14 +1789,158 @@
   (none)
   )
 
+;; draw-boundary-polygon : this is handled entirely in mips2c
+;; render-boundary-quad
+;; render-boundary-tri
+(def-mips2c render-boundary-tri (function sky-vertex dma-buffer none))
 
-;;;;;;;;;;;;;;;;;;
-;; More Misc
-;;;;;;;;;;;;;;;;;;
+;; add-debug-bound-internal sneaks an extra value in vf27 - so this set-sky-vf27 function
+;; was added so we can pass this value down to c++.
+(def-mips2c set-sky-vf27 (function object none))
 
-(define-extern cpu-delay (function int none))
+(defun add-debug-bound-internal ((buf dma-buffer) (pts (inline-array vector)) (num-pts int) (color0 rgba) (color1 rgba) (flip-tex int))
+  "Draw a boundary polygon using the boundary renderer. This renderer reuses components of the sky render
+   to properly clip (and subdivide) very large polgons.
+   This is intended to be called by add-debug-bound, after it has set up dma buffers for the boundary rendering."
+  (rlet ((vf27 :class vf))
+    (set-vector!
+      (-> *boundary-polygon* 0 col)
+      (the float (-> color0 r))
+      (the float (-> color0 g))
+      (the float (-> color0 b))
+      (the float (-> color0 a))
+      )
+    (set-vector!
+      (-> *boundary-polygon* 1 col)
+      (the float (-> color1 r))
+      (the float (-> color1 g))
+      (the float (-> color1 b))
+      (the float (-> color1 a))
+      )
+    (init-boundary-regs)
+    ;;(.lvf vf27 (&-> *sky-work* giftag-roof quad))
+    (set-sky-vf27 (&-> *sky-work* giftag-roof quad))
+    (let ((s3-0 0)
+          (s2-1 (if (nonzero? flip-tex)
+                    (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                                   (new 'static 'vector :x 1.0 :y 8.0 :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :y 8.0 :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :x 1.0 :z 1.0 :w 1.0)
+                                                   )
+                                         )
+                    (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                                   (new 'static 'vector :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :y 8.0 :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :x 1.0 :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :x 1.0 :y 8.0 :z 1.0 :w 1.0)
+                                                   )
+                                         )
+                    )
+                )
+          )
+      (while (< s3-0 (+ num-pts -2))
+        (cond
+          ((not (logtest? s3-0 1))
+           (dotimes (v1-6 3)
+             (set! (-> *boundary-polygon* v1-6 pos quad) (-> pts (+ s3-0 v1-6) quad))
+             (set! (-> *boundary-polygon* v1-6 stq quad) (-> s2-1 vector (+ s3-0 v1-6) quad))
+             )
+           )
+          (else
+            (set! (-> *boundary-polygon* 0 pos quad) (-> pts (+ s3-0 1) quad))
+            (set! (-> *boundary-polygon* 1 pos quad) (-> pts s3-0 quad))
+            (set! (-> *boundary-polygon* 2 pos quad) (-> pts (+ s3-0 2) quad))
+            (set! (-> *boundary-polygon* 0 stq quad) (-> s2-1 vector (+ s3-0 1) quad))
+            (set! (-> *boundary-polygon* 1 stq quad) (-> s2-1 vector s3-0 quad))
+            (set! (-> *boundary-polygon* 2 stq quad) (-> s2-1 vector (+ s3-0 2) quad))
+            )
+          )
+        (render-boundary-tri (-> *boundary-polygon* 0) buf)
+        (+! s3-0 1)
+        )
+      )
+    (none)
+    )
+  )
 
-(define-extern qword-read-time (function (array uint128) int int))
-
-;; Returns whether some workaround for an EE memory controller bug is enabled.
-(define-extern bugfix? (function symbol))
+(defun add-debug-bound ((buf bucket-id) (pts (inline-array vector)) (c0 int) (c1 rgba) (flash rgba) (arg5 int))
+  "Draw a debug boundary polygon."
+  (local-vars (sv-16 pointer) (sv-32 int))
+  (set! sv-32 arg5)
+  (if (< c0 3)
+      (return 0)
+      )
+  (case sv-32
+    ((1)
+     (if (logtest? (-> *display* real-frame-clock integral-frame-counter) 4)
+         (set! sv-32 1)
+         (set! sv-32 0)
+         )
+     sv-32
+     )
+    )
+  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+         (s5-0 (-> s4-0 base))
+         )
+    (let* ((v1-16 s4-0)
+           (a0-3 (the-as dma-packet (-> v1-16 base)))
+           )
+      (set! (-> a0-3 dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+      (set! (-> a0-3 vif0) (new 'static 'vif-tag))
+      (set! (-> a0-3 vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-16 base) (the-as pointer (the-as dma-packet (&+ a0-3 16))))
+      )
+    (let* ((v1-17 s4-0)
+           (a0-5 (the-as gs-gif-tag (-> v1-17 base)))
+           )
+      (set! (-> a0-5 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+      (set! (-> a0-5 regs) GIF_REGS_ALL_AD)
+      (set! (-> v1-17 base) (the-as pointer (the-as gs-gif-tag (&+ a0-5 16))))
+      )
+    (let* ((v1-18 s4-0)
+           (a0-7 (-> v1-18 base))
+           )
+      (set! (-> (the-as (pointer gs-zbuf) a0-7) 0) (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+      (set! (-> (the-as (pointer gs-reg64) a0-7) 1) (gs-reg64 zbuf-1))
+      (set! (-> (the-as (pointer gs-test) a0-7) 2) (new 'static 'gs-test
+                                                     :ate #x1
+                                                     :atst (gs-atest greater-equal)
+                                                     :aref #x26
+                                                     :zte #x1
+                                                     :ztst (gs-ztest greater-equal)
+                                                     )
+            )
+      (set! (-> (the-as (pointer gs-reg64) a0-7) 3) (gs-reg64 test-1))
+      (set! (-> (the-as (pointer gs-alpha) a0-7) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
+      (set! (-> (the-as (pointer gs-reg64) a0-7) 5) (gs-reg64 alpha-1))
+      (set! (-> v1-18 base) (&+ a0-7 48))
+      )
+    (set! sv-16 (-> s4-0 base))
+    (&+! (-> s4-0 base) 16)
+    (add-boundary-shader (new 'static 'texture-id :index #x3 :page #x70c) s4-0)
+    (add-debug-bound-internal s4-0 pts c0 c1 flash sv-32)
+    (close-sky-buffer s4-0)
+    (let ((v1-25 (/ (the-as int (+ (- -16 (the-as int sv-16)) (the-as int (-> s4-0 base)))) 16)))
+      (set! (-> (the-as dma-packet sv-16) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-25))
+      (set! (-> (the-as dma-packet sv-16) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet sv-16) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-25))
+      )
+    (let ((a3-2 (-> s4-0 base)))
+      (let ((v1-29 (the-as dma-packet (-> s4-0 base))))
+        (set! (-> v1-29 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> v1-29 vif0) (new 'static 'vif-tag))
+        (set! (-> v1-29 vif1) (new 'static 'vif-tag))
+        (set! (-> s4-0 base) (the-as pointer (the-as dma-packet (&+ v1-29 16))))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        buf
+        s5-0
+        (the-as (pointer dma-tag) a3-2)
+        )
+      )
+    )
+  0
+  (none)
+  )

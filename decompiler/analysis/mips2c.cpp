@@ -556,12 +556,13 @@ Mips2C_Line handle_lwc1(const Instruction& i0,
 Mips2C_Line handle_lw(Mips2C_Output& out,
                       const Instruction& i0,
                       const std::string& instr_str,
-                      const LinkedObjectFile* file) {
+                      const LinkedObjectFile* file,
+                      GameVersion version) {
   if (i0.get_src(1).is_reg(rs7()) && i0.get_src(0).is_sym()) {
     // symbol load.
     out.require_symbol(i0.get_src(0).get_sym());
-    return {fmt::format("c->load_symbol({}, cache.{});", reg_to_name(i0.get_dst(0)),
-                        goal_to_c_name(i0.get_src(0).get_sym())),
+    return {fmt::format("c->load_symbol{}({}, cache.{});", version == GameVersion::Jak1 ? "" : "2",
+                        reg_to_name(i0.get_dst(0)), goal_to_c_name(i0.get_src(0).get_sym())),
             instr_str};
   }
   if (i0.get_src(1).is_reg(rfp()) && i0.get_src(0).is_label()) {
@@ -888,11 +889,14 @@ Mips2C_Line handle_vopmsub(const Instruction& i0, const std::string& instr_strin
           instr_string};
 }
 
-Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string, Mips2C_Output& op) {
+Mips2C_Line handle_lui(const Instruction& i0,
+                       const std::string& instr_string,
+                       Mips2C_Output& op,
+                       GameVersion version) {
   if (i0.get_src(0).get_imm() == 0x7000) {
     op.require_symbol("*fake-scratchpad-data*");
-    return {fmt::format("get_fake_spad_addr({}, cache.fake_scratchpad_data, 0, c);",
-                        reg_to_name(i0.get_dst(0))),
+    return {fmt::format("get_fake_spad_addr{}({}, cache.fake_scratchpad_data, 0, c);",
+                        version == GameVersion::Jak1 ? "" : "2", reg_to_name(i0.get_dst(0))),
             instr_string};
   } else {
     return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
@@ -946,7 +950,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::CFC2:
       return handle_cfc2(i0, instr_str);
     case InstructionKind::LW:
-      return handle_lw(output, i0, instr_str, file);
+      return handle_lw(output, i0, instr_str, file, version);
     case InstructionKind::LB:
     case InstructionKind::LWL:
     case InstructionKind::LWR:
@@ -1148,7 +1152,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PROT3W:
       return handle_generic_op2(i0, instr_str, "prot3w");
     case InstructionKind::LUI:
-      return handle_lui(i0, instr_str, output);
+      return handle_lui(i0, instr_str, output, version);
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);

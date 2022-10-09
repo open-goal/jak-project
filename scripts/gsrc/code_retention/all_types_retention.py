@@ -71,8 +71,10 @@ def update_all_blocks(game_name, block_dict):
                 final_lines.append(line)
                 block_id = line.split(";; +++")[1]
                 # Look to see if we actually have that block
+                found_block = False
                 for block in blocks:
                     if block.block_id == block_id:
+                        found_block = True
                         # if we found the block, write the data, then proceed ahead until the end
                         for block_line in block.data:
                             final_lines.append(block_line)
@@ -84,6 +86,8 @@ def update_all_blocks(game_name, block_dict):
                                 i = i + 1
                                 break
                         break
+                if not found_block:
+                    i = i + 1
             else:
                 final_lines.append(line)
                 i = i + 1
