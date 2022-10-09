@@ -383,17 +383,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-  }
-
-  if (false) {
-    //    for (int i = 0; i < 8; i++) {
-    //      settings.time_of_day_weights[i] = m_time_of_days[i];
-    //    }
-  } else {
-    for (int i = 0; i < 8; i++) {
-      settings.time_of_day_weights[i] =
-          2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
-    }
+    settings.itimes[i] = m_pc_port_data.itimes[i];
   }
 
   if (!m_override_level) {
@@ -552,9 +542,9 @@ void Tie3::render_tree(int idx,
 
   Timer interp_timer;
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
   tree.perf.tod_time.add(interp_timer.getSeconds());
 

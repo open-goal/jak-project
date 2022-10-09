@@ -141,8 +141,8 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('die)
        (go qbert-plat-on-die)
        )
@@ -432,13 +432,13 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (start-hint-timer (game-text-id sunken-qbert-plat-hint))
        (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
        (when (not (-> self puzzle-beaten?))
-         (let ((v1-2 (-> arg3 param 0)))
+         (let ((v1-2 (-> event param 0)))
            (when (!= v1-2 (-> self last-plat-triggered))
              (set! (-> self last-plat-triggered) (the-as int v1-2))
              (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
@@ -454,7 +454,7 @@
                        )
                      )
                  )
-               (send-event arg0 'notify)
+               (send-event proc 'notify)
                (let ((a0-13 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
                  (if (!= s5-1 a0-13)
                      (go qbert-plat-master-do-door a0-13)

@@ -604,6 +604,17 @@ goos::Object nav_mesh_nav_control_arr_decompile(
                                                file, TypeSpec("nav-control"), 288);
 }
 
+goos::Object xz_height_map_data_arr_decompile(const std::vector<LinkedWord>& words,
+                                              const std::vector<DecompilerLabel>& labels,
+                                              int my_seg,
+                                              int field_location,
+                                              const TypeSystem& ts,
+                                              const std::vector<std::vector<LinkedWord>>& all_words,
+                                              const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector4b"), 4);
+}
+
 goos::Object nav_mesh_route_arr_decompile(const std::vector<LinkedWord>& words,
                                           const std::vector<DecompilerLabel>& labels,
                                           int my_seg,
@@ -1030,6 +1041,11 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(field.name(), nav_mesh_nav_control_arr_decompile(
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
+        } else if (field.name() == "data" && type.print() == "xz-height-map" &&
+                   file->version == GameVersion::Jak2) {
+          field_defs_out.emplace_back(field.name(), xz_height_map_data_arr_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, words, file));
         } else if (field.name() == "route" && type.print() == "nav-mesh" &&
                    file->version == GameVersion::Jak1) {
           field_defs_out.emplace_back(
@@ -1411,7 +1427,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     if (type_ptr.kind() != LinkedWord::TYPE_PTR) {
       throw std::runtime_error("Invalid basic in decompile_boxed_array");
     }
-    if (type_ptr.symbol_name() == "array") {
+    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array") {
       auto content_type_ptr_word_idx = type_ptr_word_idx + 3;
       auto& content_type_ptr = words.at(label.target_segment).at(content_type_ptr_word_idx);
       if (content_type_ptr.kind() != LinkedWord::TYPE_PTR) {
@@ -1419,7 +1435,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       }
       content_type = TypeSpec(content_type_ptr.symbol_name());
     } else {
-      throw std::runtime_error("Wrong basic type in decompile_boxed_array");
+      throw std::runtime_error(
+          fmt::format("Wrong basic type in decompile_boxed_array: got {}", type_ptr.symbol_name()));
     }
   } else {
     throw std::runtime_error("Invalid alignment in decompile_boxed_array");

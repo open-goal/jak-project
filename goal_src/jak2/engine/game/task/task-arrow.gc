@@ -178,7 +178,7 @@
      (set! (-> *part-id-table* 267 init-specs 4 initial-valuef) (* 24576.0 (-> obj rod-of-god-scale)))
      (set! (-> *part-id-table* 270 init-specs 3 initial-valuef) (* 65536.0 (-> obj rod-of-god-scale)))
      (set! (-> *part-id-table* 268 init-specs 9 initial-valuef) (* 20.0 (-> obj rod-of-god-scale)))
-     (sparticle-launch-control-method-11 (-> obj part) (-> obj root trans))
+     (spawn (-> obj part) (-> obj root trans))
      )
     (else
       (+! (-> obj theta) (* 32768.0 (-> self clock seconds-per-frame)))
@@ -198,11 +198,11 @@
 
 (defstate idle (task-arrow)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-2 object))
-    (case arg2
+    (case event-type
       (('set-position)
-       (let ((a0-3 (the-as object (-> arg3 param 0))))
+       (let ((a0-3 (the-as object (-> event param 0))))
          (set! (-> self pos quad) (-> (the-as vector a0-3) quad))
          )
        (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-03))
@@ -223,8 +223,8 @@
            )
        )
       (('modify-flags)
-       (let ((v1-16 (-> arg3 param 0))
-             (a1-3 (-> arg3 param 1))
+       (let ((v1-16 (-> event param 0))
+             (a1-3 (-> event param 1))
              )
          (set! v0-2 (logior (logclear (-> self flags) a1-3) v1-16))
          )
@@ -233,7 +233,7 @@
        )
       (('map-icon)
        (kill-callback (-> *minimap* engine) (-> self minimap))
-       (let ((a2-1 (-> arg3 param 0)))
+       (let ((a2-1 (-> event param 0)))
          (set! (-> self map-icon) a2-1)
          (set! v0-2 (minimap-method-12 *minimap* self a2-1 (the-as int #f) (the-as vector #t) 0))
          )

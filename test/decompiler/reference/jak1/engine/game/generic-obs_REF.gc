@@ -243,15 +243,15 @@
 
 ;; failed to figure out what this is:
 (defstate manipy-idle (manipy)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 none))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as
         object
         (cond
           ((= v1-0 'attackable)
            (cond
-             ((-> arg3 param 0)
+             ((-> event param 0)
               (set! v0-0 (the-as none (logior (process-mask attackable) (-> self mask))))
               (set! (-> self mask) (the-as process-mask v0-0))
               )
@@ -264,7 +264,7 @@
            )
           ((= v1-0 'blend-shape)
            (cond
-             ((-> arg3 param 0)
+             ((-> event param 0)
               (set! v0-0 (the-as none (logior (-> self skel status) (janim-status blerc eye))))
               (set! (-> self skel status) (the-as janim-status v0-0))
               )
@@ -277,7 +277,7 @@
            )
           ((= v1-0 'shadow)
            (cond
-             ((-> arg3 param 0)
+             ((-> event param 0)
               (set! v0-0 (the-as none (-> self shadow-backup)))
               (set! (-> self draw shadow) (the-as shadow-geo v0-0))
               v0-0
@@ -289,37 +289,40 @@
              )
            )
           ((= v1-0 'trans-hook)
-           (set! v0-0 (the-as none (-> arg3 param 0)))
+           (set! v0-0 (the-as none (-> event param 0)))
            (set! (-> self new-trans-hook) (the-as (function none) v0-0))
            v0-0
            )
           ((= v1-0 'post-hook)
-           (set! v0-0 (the-as none (-> arg3 param 0)))
+           (set! v0-0 (the-as none (-> event param 0)))
            (set! (-> self new-post-hook) (the-as (function none) v0-0))
            v0-0
            )
           ((= v1-0 'eval)
-           ((the-as (function manipy none) (-> arg3 param 0)) self)
+           ((the-as (function manipy none) (-> event param 0)) self)
            )
           ((= v1-0 'become-hud-object)
-           (convert-to-hud-object self (the-as hud (-> arg3 param 0)))
+           (convert-to-hud-object self (the-as hud (-> event param 0)))
            )
           ((= v1-0 'event-hook)
-           (set! v0-0 (the-as none (-> arg3 param 0)))
+           (set! v0-0 (the-as none (-> event param 0)))
            (set! (-> self cur-event-hook) (the-as (function none) v0-0))
            v0-0
            )
           ((= v1-0 'art-joint-anim)
            (set! (-> self new-joint-anim)
-                 (the-as art-joint-anim (lookup-art (-> self draw art-group) (the-as string (-> arg3 param 0)) art-joint-anim))
+                 (the-as
+                   art-joint-anim
+                   (lookup-art (-> self draw art-group) (the-as string (-> event param 0)) art-joint-anim)
+                   )
                  )
-           (set! v0-0 (the-as none (-> arg3 param 1)))
+           (set! v0-0 (the-as none (-> event param 1)))
            (set! (-> self new-joint-anim-blend) (the-as uint v0-0))
            v0-0
            )
           ((= v1-0 'anim-mode)
            (when (nonzero? (-> self skel))
-             (set! (-> self anim-mode) (the-as symbol (-> arg3 param 0)))
+             (set! (-> self anim-mode) (the-as symbol (-> event param 0)))
              (if (= (-> self anim-mode) 'clone-anim)
                  (ja-post)
                  )
@@ -327,16 +330,16 @@
              )
            )
           ((or (= v1-0 'origin-joint-index) (= v1-0 'center-joint))
-           (set! (-> self draw origin-joint-index) (-> arg3 param 0))
-           (set! v0-0 (the-as none (-> arg3 param 0)))
+           (set! (-> self draw origin-joint-index) (-> event param 0))
+           (set! v0-0 (the-as none (-> event param 0)))
            (set! (-> self draw shadow-joint-index) (the-as uint v0-0))
            v0-0
            )
           ((= v1-0 'max-vis-dist)
-           (set! (-> self draw lod-set lod (-> self draw lod-set max-lod) dist) (the-as float (-> arg3 param 0)))
+           (set! (-> self draw lod-set lod (-> self draw lod-set max-lod) dist) (the-as float (-> event param 0)))
            )
           ((= v1-0 'grab)
-           (set! (-> self cur-grab-handle) (process->handle (the-as process (-> arg3 param 0))))
+           (set! (-> self cur-grab-handle) (process->handle (the-as process (-> event param 0))))
            (let ((v1-30 (handle->process (-> self cur-grab-handle))))
              (when v1-30
                (set! v0-0 (the-as none (-> self old-grab-pos)))
@@ -346,33 +349,33 @@
              )
            )
           ((= v1-0 'target)
-           (set! v0-0 (the-as none (process->handle (the-as process (-> arg3 param 0)))))
+           (set! v0-0 (the-as none (process->handle (the-as process (-> event param 0)))))
            (set! (-> self cur-target-handle) (the-as handle v0-0))
            v0-0
            )
           ((= v1-0 'trans)
            (cond
              ((type-type? (-> self root type) collide-shape)
-              (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> arg3 param 0)))
+              (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> event param 0)))
               )
              (else
                (set! v0-0 (the-as none (-> self root trans)))
-               (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> arg3 param 0)) quad))
+               (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> event param 0)) quad))
                v0-0
                )
              )
            )
           ((= v1-0 'rot)
            (let ((s5-0 (new 'stack-no-clear 'matrix)))
-             (matrix-rotate-y! s5-0 (the-as float (-> arg3 param 0)))
+             (matrix-rotate-y! s5-0 (the-as float (-> event param 0)))
              (matrix->quaternion (-> self root quat) s5-0)
              )
            )
           ((= v1-0 'rot-quat)
-           (quaternion-copy! (-> self root quat) (the-as quaternion (-> arg3 param 0)))
+           (quaternion-copy! (-> self root quat) (the-as quaternion (-> event param 0)))
            )
           ((= v1-0 'clone-copy-trans)
-           (set! v0-0 (the-as none (-> arg3 param 0)))
+           (set! v0-0 (the-as none (-> event param 0)))
            (set! (-> self clone-copy-trans) (the-as symbol v0-0))
            v0-0
            )
@@ -381,9 +384,9 @@
            #f
            )
           ((= v1-0 'draw)
-           (set! (-> self draw?) (the-as symbol (-> arg3 param 0)))
+           (set! (-> self draw?) (the-as symbol (-> event param 0)))
            (cond
-             ((-> arg3 param 0)
+             ((-> event param 0)
               (let ((v1-47 (logtest? (-> self draw status) (draw-status hidden))))
                 (logclear! (-> self draw status) (draw-status hidden))
                 (when v1-47
@@ -411,7 +414,7 @@
              )
            )
           ((= v1-0 'query)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('grab)
               (handle->process (-> self cur-grab-handle))
               )
@@ -427,7 +430,7 @@
           ((= v1-0 'set-frame-num)
            (let ((v1-73 (-> self skel root-channel 0)))
              (set! (-> v1-73 num-func) num-func-identity)
-             (set! (-> v1-73 frame-num) (the-as float (-> arg3 param 0)))
+             (set! (-> v1-73 frame-num) (the-as float (-> event param 0)))
              )
            )
           (else
@@ -1152,22 +1155,22 @@
 
 ;; failed to figure out what this is:
 (defstate camera-tracker-process (camera-tracker)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 uint))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'message)
-                        (set! v0-0 (-> arg3 param 0))
+                        (set! v0-0 (-> event param 0))
                         (set! (-> self message) (the-as basic v0-0))
                         v0-0
                         )
                        ((= v1-0 'mask)
-                        (set! v0-0 (-> arg3 param 0))
+                        (set! v0-0 (-> event param 0))
                         (set! (-> self mask-to-clear) (the-as process-mask v0-0))
                         v0-0
                         )
                        ((= v1-0 'border)
-                        (set! v0-0 (-> arg3 param 0))
+                        (set! v0-0 (-> event param 0))
                         (set! (-> self border-value) (the-as basic v0-0))
                         v0-0
                         )
@@ -1421,8 +1424,8 @@
 
 ;; failed to figure out what this is:
 (defstate part-spawner-active (part-spawner)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('stop)
        (process-entity-status! self (entity-perm-status complete) #t)
        (set! (-> self enable) #f)
@@ -1434,7 +1437,7 @@
        #t
        )
       (('trans)
-       (let ((v0-1 (the-as object (-> (the-as vector (-> arg3 param 0)) quad))))
+       (let ((v0-1 (the-as object (-> (the-as vector (-> event param 0)) quad))))
          (set! (-> self root trans quad) (the-as uint128 v0-1))
          v0-1
          )
@@ -1827,13 +1830,13 @@
 
 ;; failed to figure out what this is:
 (defstate cam-launcher-shortfall (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler arg0 arg1 arg2 arg3)
+        (cam-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1900,13 +1903,13 @@
 
 ;; failed to figure out what this is:
 (defstate cam-launcher-longfall (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler arg0 arg1 arg2 arg3)
+        (cam-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1996,13 +1999,13 @@
 
 ;; failed to figure out what this is:
 (defstate launcher-idle (launcher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('instant-death)
        (go launcher-deactivated)
        )
       (('trans)
-       (move-to-point! (-> self root-override) (the-as vector (-> arg3 param 0)))
+       (move-to-point! (-> self root-override) (the-as vector (-> event param 0)))
        (update-transforms! (-> self root-override))
        )
       )
@@ -2043,17 +2046,17 @@
 
 ;; failed to figure out what this is:
 (defstate launcher-active (launcher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (or (= arg2 'touch) (= arg2 'attack))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (or (= event-type 'touch) (= event-type 'attack))
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (send-event arg0 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
+      (send-event proc 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
       )
     (cond
-      ((= arg2 'instant-death)
+      ((= event-type 'instant-death)
        (go launcher-deactivated)
        )
-      ((= arg2 'trans)
-       (move-to-point! (-> self root-override) (the-as vector (-> arg3 param 0)))
+      ((= event-type 'trans)
+       (move-to-point! (-> self root-override) (the-as vector (-> event param 0)))
        (update-transforms! (-> self root-override))
        )
       )
@@ -2229,19 +2232,19 @@
 
 ;; failed to figure out what this is:
 (defstate touch-tracker-idle (touch-tracker)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 none))
-    (let ((v1-0 arg2))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'touched)
                         (let ((v1-1 (ppointer->process (-> self parent))))
-                          (when (!= v1-1 arg0)
+                          (when (!= v1-1 proc)
                             (cond
                               ((= (-> self event) 'attack)
                                (cond
-                                 ((= (-> arg0 type) target)
+                                 ((= (-> proc type) target)
                                   (send-event
-                                    arg0
+                                    proc
                                     (-> self event)
                                     :from (the-as process v1-1)
                                     #f
@@ -2250,7 +2253,7 @@
                                   )
                                  ((= (-> v1-1 type) target)
                                   (send-event
-                                    arg0
+                                    proc
                                     (-> self event)
                                     :from (the-as process v1-1)
                                     #f
@@ -2271,26 +2274,26 @@
                                        (set! (-> a1-5 param 2) (the-as uint v1-19))
                                        )
                                      (set! (-> a1-5 param 3) (the-as uint 0))
-                                     (send-event-function arg0 a1-5)
+                                     (send-event-function proc a1-5)
                                      )
                                    )
                                  )
                                )
                               ((-> self event)
-                               (send-event arg0 (-> self event) :from (the-as process v1-1))
+                               (send-event proc (-> self event) :from (the-as process v1-1))
                                )
                               (else
                                 (let ((t0-5 (new 'stack-no-clear 'event-message-block)))
-                                  (set! (-> t0-5 from) arg0)
+                                  (set! (-> t0-5 from) proc)
                                   (set! (-> t0-5 num-params) arg1)
-                                  (set! (-> t0-5 message) arg2)
-                                  (set! (-> t0-5 param 0) (-> arg3 param 0))
-                                  (set! (-> t0-5 param 1) (-> arg3 param 1))
-                                  (set! (-> t0-5 param 2) (-> arg3 param 2))
-                                  (set! (-> t0-5 param 3) (-> arg3 param 3))
-                                  (set! (-> t0-5 param 4) (-> arg3 param 4))
-                                  (set! (-> t0-5 param 5) (-> arg3 param 5))
-                                  (set! (-> t0-5 param 6) (-> arg3 param 6))
+                                  (set! (-> t0-5 message) event-type)
+                                  (set! (-> t0-5 param 0) (-> event param 0))
+                                  (set! (-> t0-5 param 1) (-> event param 1))
+                                  (set! (-> t0-5 param 2) (-> event param 2))
+                                  (set! (-> t0-5 param 3) (-> event param 3))
+                                  (set! (-> t0-5 param 4) (-> event param 4))
+                                  (set! (-> t0-5 param 5) (-> event param 5))
+                                  (set! (-> t0-5 param 6) (-> event param 6))
                                   (send-event-function v1-1 t0-5)
                                   )
                                 )
@@ -2299,26 +2302,26 @@
                           )
                         )
                        ((= v1-0 'target)
-                        (set! v0-0 (the-as none (process->handle (the-as process (-> arg3 param 0)))))
+                        (set! v0-0 (the-as none (process->handle (the-as process (-> event param 0)))))
                         (set! (-> self target) (the-as handle v0-0))
                         v0-0
                         )
                        ((= v1-0 'event)
-                        (set! (-> self event) (the-as symbol (-> arg3 param 0)))
-                        (set! v0-0 (the-as none (-> arg3 param 1)))
+                        (set! (-> self event) (the-as symbol (-> event param 0)))
+                        (set! v0-0 (the-as none (-> event param 1)))
                         (set! (-> self event-mode) (the-as basic v0-0))
                         v0-0
                         )
                        ((= v1-0 'exit)
-                        (set! v0-0 (the-as none (-> arg3 param 0)))
+                        (set! v0-0 (the-as none (-> event param 0)))
                         (set! (-> self run-function) (the-as (function object) v0-0))
                         v0-0
                         )
                        ((= v1-0 'eval)
-                        ((the-as (function touch-tracker none) (-> arg3 param 0)) self)
+                        ((the-as (function touch-tracker none) (-> event param 0)) self)
                         )
                        ((= v1-0 'function)
-                        (set! v0-0 (the-as none (-> arg3 param 0)))
+                        (set! v0-0 (the-as none (-> event param 0)))
                         (set! (-> self callback) (the-as (function touch-tracker none) v0-0))
                         v0-0
                         )

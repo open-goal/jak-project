@@ -87,6 +87,22 @@ TypeSpec get_state_handler_type(StateHandler kind, const TypeSpec& state_type) {
   return result;
 }
 
+std::vector<std::string> get_state_handler_arg_names(StateHandler kind) {
+  switch (kind) {
+    case StateHandler::CODE:
+      // can have args, but are arbitrary
+    case StateHandler::ENTER:
+    case StateHandler::TRANS:
+    case StateHandler::POST:
+    case StateHandler::EXIT:
+      return {};
+    case StateHandler::EVENT:
+      return {"proc", "arg1", "event-type", "event"};
+    default:
+      ASSERT(false);
+  }
+}
+
 namespace {
 TypeSpec func_to_state_type(const TypeSpec& func_type, const TypeSpec& proc_type) {
   TypeSpec result("state");

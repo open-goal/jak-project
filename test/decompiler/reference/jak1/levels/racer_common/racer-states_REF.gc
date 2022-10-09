@@ -3,38 +3,38 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-start (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        'racer
        )
-      ((and (= arg2 'get-pickup) (= (-> arg3 param 0) 3))
+      ((and (= event-type 'get-pickup) (= (-> event param 0) 3))
        (if (>= (- (-> *display* base-frame-counter) (-> self racer boost-time)) (seconds 1))
-           (send-event self 'boost (fmax 1.0 (fmin 2.0 (the-as float (-> arg3 param 1)))))
+           (send-event self 'boost (fmax 1.0 (fmin 2.0 (the-as float (-> event param 1)))))
            )
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
-           (go target-racing-get-off (process->handle arg0))
+           (go target-racing-get-off (process->handle proc))
            )
           (('touched)
-           (send-event arg0 'attack (-> arg3 param 0) 'racer 0 0)
-           (when (and (type-type? (-> arg0 type) babak) (< 40960.0 (-> self control unknown-float01)))
+           (send-event proc 'attack (-> event param 0) 'racer 0 0)
+           (when (and (type-type? (-> proc type) babak) (< 40960.0 (-> self control unknown-float01)))
              (let ((f0-5 (lerp-scale 16384.0 32768.0 (-> self control unknown-float01) 40960.0 (-> self racer transv-max))))
                (go target-racing-jump f0-5 f0-5 #f)
                )
              )
            )
           (('attack 'attack-or-shove 'attack-invinc)
-           (let ((v1-27 (the-as attack-info (-> arg3 param 1))))
+           (let ((v1-27 (the-as attack-info (-> event param 1))))
              (if (not (and (logtest? (-> v1-27 mask) (attack-mask mode)) (or (= (-> v1-27 mode) 'burn) (= (-> v1-27 mode) 'burnup)))
                       )
                  (target-attacked
-                   arg2
-                   (the-as attack-info (-> arg3 param 1))
-                   arg0
-                   (the-as touching-shapes-entry (-> arg3 param 0))
+                   event-type
+                   (the-as attack-info (-> event param 1))
+                   proc
+                   (the-as touching-shapes-entry (-> event param 0))
                    (the-as (state symbol attack-info target) target-racing-hit)
                    )
                  )
@@ -42,7 +42,7 @@
            )
           (('heat)
            (set! (-> self racer heat)
-                 (fmax 0.0 (fmin (+ (-> self racer heat) (the-as float (-> arg3 param 0))) (-> *RACER-bank* heat-max)))
+                 (fmax 0.0 (fmin (+ (-> self racer heat) (the-as float (-> event param 0))) (-> *RACER-bank* heat-max)))
                  )
            )
           (('boost)
@@ -52,7 +52,7 @@
            (set! (-> self racer boost-level) (seek
                                                (-> self racer boost-level)
                                                (-> *RACER-bank* boost-level-max)
-                                               (* (-> *RACER-bank* boost-level-inc) (the-as float (-> arg3 param 0)))
+                                               (* (-> *RACER-bank* boost-level-inc) (the-as float (-> event param 0)))
                                                )
                  )
            )
@@ -60,20 +60,20 @@
            (go target-racing-smack (-> self control unknown-float01) #t)
            )
           (('jump)
-           (go target-racing-jump (the-as float (-> arg3 param 0)) (the-as float (-> arg3 param 1)) #f)
+           (go target-racing-jump (the-as float (-> event param 0)) (the-as float (-> event param 1)) #f)
            )
           (('change-mode)
-           (case (-> arg3 param 0)
+           (case (-> event param 0)
              (('grab)
               (go target-racing-grab)
               )
              )
            )
           (('clone-anim)
-           (go target-racing-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-racing-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -1428,21 +1428,21 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-grab (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+      ((and (= event-type 'query) (= (-> event param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case arg2
+        (case event-type
           (('end-mode)
            (go target-racing)
            )
           (('clone-anim)
-           (go target-racing-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+           (go target-racing-clone-anim (process->handle (the-as process (-> event param 0))))
            )
           (else
-            (target-generic-event-handler arg0 arg1 arg2 arg3)
+            (target-generic-event-handler proc arg1 event-type event)
             )
           )
         )
@@ -1482,11 +1482,11 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-clone-anim (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
         (set! (-> self control unknown-uint20) (the-as uint #f))
         )
-    ((-> target-racing-grab event) arg0 arg1 arg2 arg3)
+    ((-> target-racing-grab event) proc arg1 event-type event)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()

@@ -131,8 +131,8 @@
 ;; failed to figure out what this is:
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (let ((a0-1 (-> self sound)))
          (set! (-> a0-1 spec pitch-mod) 2057)
@@ -140,7 +140,7 @@
          )
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) arg0 arg1 arg2 arg3)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
         )
       )
     )
@@ -178,8 +178,8 @@
 
 ;; failed to figure out what this is:
 (defstate helix-slide-door-idle-open (helix-slide-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go helix-slide-door-close)
        )
@@ -286,8 +286,8 @@
 
 ;; failed to figure out what this is:
 (defstate helix-button-idle-up (helix-button)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (when *target*
          (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
@@ -659,8 +659,8 @@
 
 ;; failed to figure out what this is:
 (defstate helix-water-idle (helix-water)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'trigger)
                         (go helix-water-activated)
@@ -689,10 +689,10 @@
 
 ;; failed to figure out what this is:
 (defstate helix-water-activated (helix-water)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (when (= (-> arg0 type) launcherdoor)
+       (when (= (-> proc type) launcherdoor)
          (remove-setting! 'music)
          (go helix-water-idle)
          )

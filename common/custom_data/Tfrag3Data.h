@@ -259,10 +259,10 @@ struct Texture {
 };
 
 // Tfrag trees have several kinds:
-enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVALID };
+enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, WATER, INVALID };
 
-constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   "ice",
-                                            "lowres", "lowres-trans", "invalid"};
+constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",  "ice",
+                                            "lowres", "lowres-trans", "water", "invalid"};
 
 // A tfrag model
 struct TfragTree {
