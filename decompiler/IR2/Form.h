@@ -1721,6 +1721,9 @@ class DefpartgroupElement : public FormElement {
     u16 flags;
     std::string name;
     math::Vector4f bounds;
+    // added in jak 2
+    math::Vector3f rot;
+    math::Vector3f scale;
 
     struct PartGroupItem {
       u32 part_id;
@@ -1763,6 +1766,18 @@ class DefpartElement : public FormElement {
       u16 flags;
       std::vector<LinkedWord> data;
       goos::Object sound_spec;
+
+      bool is_sp_end(GameVersion version) const {
+        switch (version) {
+          case GameVersion::Jak1:
+            return field_id == 67;
+          case GameVersion::Jak2:
+            return field_id == 72;
+          default:
+            ASSERT_MSG(false, fmt::format("unknown version {} for is_sp_end"));
+            return false;
+        }
+      }
     };
     std::vector<PartField> fields;
   };

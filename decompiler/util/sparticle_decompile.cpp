@@ -80,6 +80,83 @@ enum class FieldId {
   SPT_END = 67,
 };
 
+// jak2 version
+enum class FieldId2 {
+  MISC_FIELDS_START = 0,
+  SPT_TEXTURE = 1,
+  SPT_ANIM = 2,
+  SPT_ANIM_SPEED = 3,
+  SPT_BIRTH_FUNC = 4,
+  SPT_JOINT_REFPOINT = 5,
+  SPT_NUM = 6,
+  SPT_SOUND = 7,
+  MISC_FIELDS_END = 8,
+  SPRITE_FIELDS_START = 9,
+  SPT_X = 10,
+  SPT_Y = 11,
+  SPT_Z = 12,
+  SPT_SCALE_X = 13,
+  SPT_ROT_X = 14,
+  SPT_ROT_Y = 15,
+  SPT_ROT_Z = 16,
+  SPT_SCALE_Y = 17,
+  SPT_R = 18,
+  SPT_G = 19,
+  SPT_B = 20,
+  SPT_A = 21,
+  SPRITE_FIELDS_END = 22,
+  CPU_FIELDS_START = 23,
+  SPT_OMEGA = 24,
+  SPT_VEL_X = 25,
+  SPT_VEL_Y = 26,
+  SPT_VEL_Z = 27,
+  SPT_SCALEVEL_X = 28,
+  SPT_ROTVEL_X = 29,
+  SPT_ROTVEL_Y = 30,
+  SPT_ROTVEL_Z = 31,
+  SPT_SCALEVEL_Y = 32,
+  SPT_FADE_R = 33,
+  SPT_FADE_G = 34,
+  SPT_FADE_B = 35,
+  SPT_FADE_A = 36,
+  SPT_ACCEL_X = 37,
+  SPT_ACCEL_Y = 38,
+  SPT_ACCEL_Z = 39,
+  SPT_DUMMY = 40,
+  SPT_QUAT_X = 41,
+  SPT_QUAT_Y = 42,
+  SPT_QUAT_Z = 43,
+  SPT_QUAD_W = 44,
+  SPT_FRICTION = 45,
+  SPT_TIMER = 46,
+  SPT_FLAGS = 47,
+  SPT_USERDATA = 48,
+  SPT_FUNC = 49,
+  SPT_NEXT_TIME = 50,
+  SPT_NEXT_LAUNCHER = 51,
+  CPU_FIELDS_END = 52,
+  LAUNCH_FIELDS_START = 53,
+  SPT_LAUNCHROT_X = 54,
+  SPT_LAUNCHROT_Y = 55,
+  SPT_LAUNCHROT_Z = 56,
+  SPT_LAUNCHROT_W = 57,
+  SPT_CONEROT_X = 58,
+  SPT_CONEROT_Y = 59,
+  SPT_CONEROT_Z = 60,
+  SPT_CONEROT_W = 61,
+  SPT_ROTATE_X = 62,
+  SPT_ROTATE_Y = 63,
+  SPT_ROTATE_Z = 64,
+  SPT_CONEROT_RADIUS = 65,
+  SPT_MAT_SCALE_X = 66,
+  SPT_MAT_SCALE_Y = 67,
+  SPT_MAT_SCALE_Z = 68,
+  LAUNCH_FIELDS_END = 69,
+  SPT_SCALE = 70,
+  SPT_SCALEVEL = 71,
+  SPT_END = 72,
+};
+
 // flag vals:
 // 0: timer, flags, end
 // 1: texture, float, random-rangef
@@ -115,7 +192,7 @@ struct SparticleFieldDecomp {
   FieldKind kind = FieldKind::INVALID;
 };
 
-const SparticleFieldDecomp field_kinds[68] = {
+const SparticleFieldDecomp field_kind_jak1[68] = {
     {false},                                  // MISC_FIELDS_START = 0
     {true, FieldKind::TEXTURE_ID},            // SPT_TEXTURE = 1
     {false},                                  // SPT_ANIM = 2
@@ -183,9 +260,88 @@ const SparticleFieldDecomp field_kinds[68] = {
     {false},                                  // LAUNCH_FIELDS_END = 64
     {false},                                  // SPT_SCALE = 65
     {false},                                  // SPT_SCALEVEL = 66
-    {true, FieldKind::END_FLAG},              // SPT_END = 67
-
+    {true, FieldKind::END_FLAG}               // SPT_END = 67
 };
+
+const SparticleFieldDecomp field_kind_jak2[73] = {
+    {false},                                  // MISC_FIELDS_START = 0
+    {true, FieldKind::TEXTURE_ID},            // SPT_TEXTURE = 1
+    {false},                                  // SPT_ANIM = 2
+    {false},                                  // SPT_ANIM_SPEED = 3
+    {true, FieldKind::FUNCTION},              // SPT_BIRTH_FUNC = 4
+    {false},                                  // SPT_JOINT/REFPOINT = 5
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_NUM = 6
+    {true, FieldKind::SOUND_SPEC},            // SPT_SOUND = 7
+    {false},                                  // MISC_FIELDS_END = 8
+    {false},                                  // SPRITE_FIELDS_START = 9
+    {true, FieldKind::METER_WITH_RAND},       // SPT_X = 10
+    {true, FieldKind::METER_WITH_RAND},       // SPT_Y = 11
+    {true, FieldKind::METER_WITH_RAND},       // SPT_Z = 12
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_X = 13
+    {true, FieldKind::ROT_X},                 // SPT_ROT_X = 14
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Y = 15
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Z = 16
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_Y = 17
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_R = 18
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_G = 19
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_B = 20
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_A = 21
+    {false},                                  // SPRITE_FIELDS_END = 22
+    {false},                                  // CPU_FIELDS_START = 23
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_OMEGA = 24
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_X = 25  (likely m/s)
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_Y = 26
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_Z = 27
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALEVEL_X = 28
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_X = 29
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_Y = 30
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_Z = 31
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALEVEL_Y = 32
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_R = 33
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_G = 34
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_B = 35
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_A = 36
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_X = 37
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_Y = 38
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_Z = 39
+    {false},                                  // SPT_DUMMY = 40
+    {false},                                  // SPT_QUAT_X = 41
+    {false},                                  // SPT_QUAT_Y = 42
+    {false},                                  // SPT_QUAT_Z = 43
+    {false},                                  // SPT_QUAD_W = 44
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FRICTION = 45
+    {true, FieldKind::PLAIN_INT_WITH_RANDS},  // SPT_TIMER = 46
+    {true, FieldKind::CPUINFO_FLAGS},         // SPT_FLAGS = 47
+    {true, FieldKind::USERDATA},              // SPT_USERDATA = 48
+    {true, FieldKind::FUNCTION},              // SPT_FUNC = 49
+    {true, FieldKind::PLAIN_INT_WITH_RANDS},  // SPT_NEXT_TIME = 50
+    {true, FieldKind::LAUNCHER_BY_ID},        // SPT_NEXT_LAUNCHER = 51
+    {false},                                  // CPU_FIELDS_END = 52
+    {false},                                  // LAUNCH_FIELDS_START = 53
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_X = 54
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Y = 55
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Z = 56
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_W = 57
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_X = 58
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Y = 59
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Z = 60
+    {false},                                  // SPT_CONEROT_W = 61
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_X = 62
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_Y = 63
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_Z = 64
+    {true, FieldKind::METER_WITH_RAND},       // SPT_CONEROT_RADIUS = 65
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 66
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 67
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 68
+    {false},                                  // LAUNCH_FIELDS_END = 69
+    {false},                                  // SPT_SCALE = 70
+    {false},                                  // SPT_SCALEVEL = 71
+    {true, FieldKind::END_FLAG}               // SPT_END = 72
+};
+
+const std::unordered_map<GameVersion, const SparticleFieldDecomp*> field_kinds = {
+    {GameVersion::Jak1, field_kind_jak1},
+    {GameVersion::Jak2, field_kind_jak2}};
 
 std::string make_flags_str(const std::vector<std::string>& flags) {
   if (flags.empty()) {
@@ -536,8 +692,9 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                                             const std::vector<DecompilerLabel>& labels,
                                             const std::vector<std::vector<LinkedWord>>& words,
                                             const TypeSystem& ts,
-                                            const LinkedObjectFile* file) {
-  auto normal = decompile_structure(type, label, labels, words, ts, file, false);
+                                            const LinkedObjectFile* file,
+                                            GameVersion version) {
+  auto normal = decompile_structure(type, label, labels, words, ts, file, false, version);
   // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
@@ -560,7 +717,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
 
   ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
-  const auto& field_info = field_kinds[field_id];
+  const auto& field_info = field_kinds.at(version)[field_id];
   if (!field_info.known) {
     throw std::runtime_error("Unknown sparticle field: " + field_name);
   }
@@ -635,13 +792,14 @@ goos::Object decompile_sparticle_userdata_ASSERT(const std::vector<LinkedWord>& 
 }
 
 goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::PartField& field,
-                                            const TypeSystem& ts) {
+                                            const TypeSystem& ts,
+                                            GameVersion version) {
   auto field_id = field.field_id;
   auto flags = field.flags;
 
   ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
-  const auto& field_info = field_kinds[field_id];
+  const auto& field_info = field_kinds.at(version)[field_id];
   if (!field_info.known) {
     throw std::runtime_error("Unknown sparticle field: " + field_name);
   }
