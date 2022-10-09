@@ -8,7 +8,6 @@
 
 #include <cstring>
 
-#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/common/play_rpc_types.h"
@@ -202,7 +201,7 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
     }
   } else {
     // TODO - not yet implemented
-    lg::warn("this branch of RPC_STR has not yet been implemented!");
+    ASSERT_MSG(false, "this branch of RPC_STR has not yet been implemented!");
     cmd->result = STR_RPC_RESULT_ERROR;
   }
 

@@ -50,12 +50,12 @@ struct RPC_Str_Cmd_Jak1 {
 */
 struct RPC_Str_Cmd_Jak2 {
   u16 rsvd;
-  u16 result; // 2
+  u16 result;  // 2
   u32 address;
-  s32 section; // 8
+  s32 section;  // 8
   u32 maxlen;
   u32 dummy[4];
-  char basename[48]; // 32
+  char basename[48];  // 32
 };
 
 struct RPC_Play_Cmd {
