@@ -147,6 +147,10 @@ include_directories(SYSTEM third-party/inja)
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
+# SQLite - Jak 2/3's built in editor
+include_directories(third-party/SQLiteCpp/include)
+add_subdirectory(third-party/SQLiteCpp EXCLUDE_FROM_ALL)
+
 # build common library
 add_subdirectory(common)
 

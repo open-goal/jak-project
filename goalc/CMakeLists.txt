@@ -55,7 +55,7 @@ add_library(compiler
         regalloc/Allocator_v2.cpp
         )
 
-target_link_libraries(compiler common Zydis tiny_gltf)
+target_link_libraries(compiler common Zydis tiny_gltf SQLiteCpp)
 
 if (WIN32)
     target_link_libraries(compiler mman)
