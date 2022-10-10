@@ -12,7 +12,7 @@ using math::Vector4f;
 /*!
  * GOAL sprite-frame-data, all the data that's uploaded once per frame for the sprite system.
  */
-struct SpriteFrameData {
+struct SpriteFrameDataJak1 {
   Vector4f xy_array[8];
   Vector4f st_array[4];
   Vector4f xyz_array[4];
@@ -39,6 +39,71 @@ struct SpriteFrameData {
   float fog_max;
   float max_scale;
   float bonus;
+};
+
+struct SpriteFrameData {
+  Vector4f xy_array[8];
+  Vector4f st_array[4];
+  Vector4f xyz_array[4];
+  Vector4f hmge_scale;
+  float pfog0;
+  float deg_to_rad;
+  float min_scale;
+  float inv_area;
+  GifTag adgif_giftag;
+  GifTag sprite_2d_giftag;
+  GifTag sprite_2d_giftag2;
+  Vector4f sincos[5];
+  Vector4f basis_x;
+  Vector4f basis_y;
+  GifTag sprite_3d_giftag;
+  GifTag sprite_3d_giftag_2;
+  AdGifData screen_shader;
+  GifTag clipped_giftag;
+  Vector4f inv_hmge_scale;
+  Vector4f stq_offset;
+  Vector4f stq_scale;
+  Vector4f rgba_plain;
+  GifTag warp_giftag;
+  float fog_min;
+  float fog_max;
+  float max_scale;
+  float bonus;
+
+  void from_jak1(const SpriteFrameDataJak1& data) {
+    for (int i = 0; i < 8; i++) {
+      xy_array[i] = data.xy_array[i];
+    }
+    for (int i = 0; i < 4; i++) {
+      st_array[i] = data.st_array[i];
+      xyz_array[i] = data.xyz_array[i];
+    }
+    hmge_scale = data.hmge_scale;
+    pfog0 = data.pfog0;
+    deg_to_rad = data.deg_to_rad;
+    min_scale = data.min_scale;
+    inv_area = data.inv_area;
+    adgif_giftag = data.adgif_giftag;
+    sprite_2d_giftag = data.sprite_2d_giftag;
+    sprite_2d_giftag2 = data.sprite_2d_giftag2;
+    for (int i = 0; i < 5; i++) {
+      sincos[i] = data.sincos[i];
+    }
+    basis_x = data.basis_x;
+    basis_y = data.basis_y;
+    sprite_3d_giftag = data.sprite_3d_giftag;
+    screen_shader = data.screen_shader;
+    clipped_giftag = data.clipped_giftag;
+    inv_hmge_scale = data.inv_hmge_scale;
+    stq_offset = data.stq_offset;
+    stq_scale = data.stq_scale;
+    rgba_plain = data.rgba_plain;
+    warp_giftag = data.warp_giftag;
+    fog_min = data.fog_min;
+    fog_max = data.fog_max;
+    max_scale = data.max_scale;
+    bonus = data.bonus;
+  }
 };
 
 /*!
@@ -143,4 +208,5 @@ enum SpriteProgMem {
 };
 
 static_assert(offsetof(SpriteFrameData, hmge_scale) == 256);
-static_assert(sizeof(SpriteFrameData) == 0x290, "SpriteFrameData size");
+static_assert(sizeof(SpriteFrameDataJak1) == 0x290, "SpriteFrameData size");
+static_assert(sizeof(SpriteFrameData) == 0x2a0, "SpriteFrameData size");

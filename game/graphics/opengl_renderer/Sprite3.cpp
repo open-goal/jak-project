@@ -762,7 +762,7 @@ void Sprite3::distort_setup_framebuffer_dims(SharedRenderState* render_state) {
  * This should get the dma chain immediately after the call to sprite-draw-distorters.
  * It ends right before the sprite-add-matrix-data for the 3d's
  */
-void Sprite3::handle_sprite_frame_setup(DmaFollower& dma) {
+void Sprite3::handle_sprite_frame_setup(DmaFollower& dma, GameVersion version) {
   // first is some direct data
   auto direct_data = dma.read_and_advance();
   ASSERT(direct_data.size_bytes == 3 * 16);
@@ -771,17 +771,38 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma) {
   // next would be the program, but it's 0 size on the PC and isn't sent.
 
   // next is the "frame data"
-  auto frame_data = dma.read_and_advance();
-  ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
-  ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
-  VifCodeStcycl frame_data_stcycl(frame_data.vifcode0());
-  ASSERT(frame_data_stcycl.cl == 4);
-  ASSERT(frame_data_stcycl.wl == 4);
-  ASSERT(frame_data.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
-  VifCodeUnpack frame_data_unpack(frame_data.vifcode1());
-  ASSERT(frame_data_unpack.addr_qw == SpriteDataMem::FrameData);
-  ASSERT(frame_data_unpack.use_tops_flag == false);
-  memcpy(&m_frame_data, frame_data.data, sizeof(SpriteFrameData));
+  switch (version) {
+    case GameVersion::Jak1: {
+      auto frame_data = dma.read_and_advance();
+      ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameDataJak1));  // very cool
+      ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
+      VifCodeStcycl frame_data_stcycl(frame_data.vifcode0());
+      ASSERT(frame_data_stcycl.cl == 4);
+      ASSERT(frame_data_stcycl.wl == 4);
+      ASSERT(frame_data.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
+      VifCodeUnpack frame_data_unpack(frame_data.vifcode1());
+      ASSERT(frame_data_unpack.addr_qw == SpriteDataMem::FrameData);
+      ASSERT(frame_data_unpack.use_tops_flag == false);
+      SpriteFrameDataJak1 jak1_data;
+      memcpy(&jak1_data, frame_data.data, sizeof(SpriteFrameDataJak1));
+      m_frame_data.from_jak1(jak1_data);
+    } break;
+    case GameVersion::Jak2: {
+      auto frame_data = dma.read_and_advance();
+      ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
+      ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
+      VifCodeStcycl frame_data_stcycl(frame_data.vifcode0());
+      ASSERT(frame_data_stcycl.cl == 4);
+      ASSERT(frame_data_stcycl.wl == 4);
+      ASSERT(frame_data.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
+      VifCodeUnpack frame_data_unpack(frame_data.vifcode1());
+      ASSERT(frame_data_unpack.addr_qw == SpriteDataMem::FrameData);
+      ASSERT(frame_data_unpack.use_tops_flag == false);
+      memcpy(&m_frame_data, frame_data.data, sizeof(SpriteFrameData));
+    } break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
 
   // next, a MSCALF.
   auto mscalf = dma.read_and_advance();
@@ -951,6 +972,84 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
 }
 
 void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  switch (render_state->version) {
+    case GameVersion::Jak1:
+      render_jak1(dma, render_state, prof);
+      break;
+    case GameVersion::Jak2:
+      render_jak2(dma, render_state, prof);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+}
+
+void Sprite3::render_jak2(DmaFollower& dma,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof) {
+  m_debug_stats = {};
+  auto data0 = dma.read_and_advance();
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
+  ASSERT(data0.size_bytes == 0);
+
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    fmt::print("early exit!");
+    return;
+  }
+
+  // First is the distorter (temporarily disabled for jak 2)
+  {
+    // auto child = prof.make_scoped_child("distorter");
+    // render_distorter(dma, render_state, child);
+  }
+
+  // next, the normal sprite stuff
+  render_state->shaders[ShaderId::SPRITE3].activate();
+  handle_sprite_frame_setup(dma, render_state->version);
+
+  // 3d sprites
+  render_3d(dma);
+
+  // 2d draw
+  // m_sprite_renderer.reset_state();
+  {
+    auto child = prof.make_scoped_child("2d-group0");
+    render_2d_group0(dma, render_state, child);
+    flush_sprites(render_state, prof, false);
+  }
+
+  // shadow draw
+  render_fake_shadow(dma);
+
+  // 2d draw (HUD)
+  {
+    auto child = prof.make_scoped_child("2d-group1");
+    render_2d_group1(dma, render_state, child);
+    flush_sprites(render_state, prof, true);
+  }
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquation(GL_FUNC_ADD);
+
+  // TODO finish this up.
+  // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
+  while (dma.current_tag_offset() != render_state->next_bucket) {
+    //    auto tag = dma.current_tag();
+    // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
+    auto data = dma.read_and_advance();
+    VifCode code(data.vif0());
+    // fmt::print(" vif0: {}\n", code.print());
+    if (code.kind == VifCode::Kind::NOP) {
+      // fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
+    }
+  }
+}
+
+void Sprite3::render_jak1(DmaFollower& dma,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof) {
   m_debug_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
@@ -976,7 +1075,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   render_state->shaders[ShaderId::SPRITE3].activate();
 
   // next, sprite frame setup.
-  handle_sprite_frame_setup(dma);
+  handle_sprite_frame_setup(dma, render_state->version);
 
   // 3d sprites
   render_3d(dma);
@@ -1160,7 +1259,7 @@ void Sprite3::handle_zbuf(u64 val,
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   ASSERT(x.psm() == TextureFormat::PSMZ24);
-  ASSERT(x.zbp() == 448);
+  ASSERT(x.zbp() == 448 || x.zbp() == 304);  // 304 for jak 2.
 
   m_current_mode.set_depth_write_enable(!x.zmsk());
 }

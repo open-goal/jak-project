@@ -1111,6 +1111,13 @@
         (set! (-> (the-as (pointer gs-reg64) a0-28) 1) (gs-reg64 texflush))
         (set! (-> v1-53 base) (&+ a0-28 16))
         )
+
+      (#when PC_PORT
+        (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+        (dma-buffer-add-uint64 dma-buf tpage)
+        (dma-buffer-add-uint64 dma-buf mode)
+        )
+
       (let ((a3-3 (-> dma-buf base)))
         (let ((v1-54 (the-as dma-packet (-> dma-buf base))))
           (set! (-> v1-54 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -1628,10 +1635,10 @@
            )
           (((tpage-category sprite))
            ;; sprite skips uploads if the level isn't drawing, but otherwise uploads the whole thing.
-           (if (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) 6))
-               (set! (-> lev upload-size 7)
-                     (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
-                     )
+           (when (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) 6))
+                 (set! (-> lev upload-size 7)
+                       (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
+                       )
                )
            )
           (((tpage-category map))
