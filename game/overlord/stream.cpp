@@ -71,6 +71,8 @@ u32 STRThread() {
   } else if (g_game_version == GameVersion::Jak2) {
     sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr,
                       nullptr, &dq);
+  } else {
+    ASSERT_MSG(false, "unsupported game version in STRThread initialization!");
   }
 
   CpuEnableIntr();

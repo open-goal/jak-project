@@ -1127,7 +1127,7 @@
 (deftype vector4w-4 (structure)
   ((data   int32    16 :offset-assert  0)
    (quad   uint128  4  :offset         0)
-   (vector vector4w 4  :inline :offset 0)
+   (vector vector4w 4  :inline :offset 0 :score 999)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -5057,7 +5057,7 @@
 
 (deftype texture-page-translate-item (structure)
   ((bucket             bucket-id  :offset-assert 0)
-   (level-index        uint32     :offset-assert 4) ;; TODO - this is an enum
+   (level-index        uint32     :offset-assert 4)
    (level-texture-page tpage-category-u32     :offset-assert 8)
    (texture-user       texture-enable-mask-u32     :offset-assert 12)
    )
@@ -12594,7 +12594,7 @@
    (debug-features         game-feature         :offset-assert 136)
    (secrets                game-secrets         :offset-assert 144)
    (unknown-pad1           uint32)
-   (purchase-secrets       uint32               :offset-assert 152)
+   (purchase-secrets       game-secrets         :offset-assert 152)
    (unknown-pad2           uint32               :offset-assert 156)
    (gun-type               int32                :offset-assert 160)
    (gun-ammo               float            4   :offset-assert 164)
@@ -17023,7 +17023,7 @@
     (get-trans
       "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
       (_type_ int) vector 20)
-    (get-quat (_type_) quaternion 21)
+    (get-quat (_type_ int) quaternion 21)
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_) none 23)
     (process-focusable-method-24 (_type_) float 24)
@@ -20337,7 +20337,7 @@
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (hud-sprite-method-9 () none 9)
+    (hud-sprite-method-9 (_type_ dma-buffer level) none 9)
     (hud-sprite-method-10 () none 10)
     )
   )
@@ -20351,7 +20351,7 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (hud-box-method-9 () none 9)
+    (hud-box-method-9 (_type_ dma-buffer) none 9)
     (hud-box-method-10 () none 10)
     (hud-box-method-11 () none 11)
     (hud-box-method-12 () none 12)
@@ -21040,8 +21040,7 @@
   )
 
 (deftype menu-memcard-slot-option (menu-option)
-  ((sprites hud-sprite 5 :inline :offset-assert 48) ;; total guess
-   (something-hud-related basic :offset 112)
+  ((sprites hud-sprite 5 :inline :offset-assert 48 :score 999) ;; total guess
    (pad uint8 32)
    )
   :method-count-assert 12
@@ -23042,7 +23041,7 @@
 (define-extern debug-reset-buffers (function symbol))
 (define-extern debug-draw-buffers (function symbol))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-(define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
+(define-extern add-debug-line2d (function symbol bucket-id vector4w vector4w vector4w symbol))
 (define-extern add-debug-box (function symbol bucket-id vector vector rgba symbol))
 (define-extern add-debug-box-with-transform (function symbol bucket-id bounding-box matrix rgba symbol)) ;; unsure if arg2 is bounding-box
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
@@ -25896,8 +25895,8 @@
 (define-extern *expanded-text-line1* string)
 (define-extern *level-text-file-load-flag* symbol)
 (define-extern convert-korean-text
-  "Converts the provided [[game-text]] into korean. Returns a [[string]]"
-  (function game-text string))
+  "Converts the provided [[string]] of [[game-text]] into korean. Returns a [[string]]"
+  (function string string))
 (define-extern text-is-loading symbol)
 (define-extern load-game-text-info
   "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
@@ -29884,7 +29883,7 @@
 (define-extern hide-hud-quick (function symbol none))
 (define-extern show-hud (function object none))
 (define-extern hud-hidden? (function symbol))
-(define-extern set-hud-piece-position! (function basic int int none))
+(define-extern set-hud-piece-position! (function hud-sprite int int none))
 ;; (define-extern set-as-offset-from! function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29958,9 +29957,9 @@
 (define-extern *hud-ring-graphic-remap* (array uint64)) ;; these are probably bitfields of some kind
 (define-extern *hud-ring-kiosk-graphic-remap* (array uint64))
 (define-extern *hud-ring-demo-graphic-remap* (array uint64))
-(define-extern *hud-select-scene-act1* menu-option-list)
-(define-extern *hud-select-scene-act2* menu-option-list)
-(define-extern *hud-select-scene-act3* menu-option-list)
+(define-extern *hud-select-scene-act1* (array hud-scene-info))
+(define-extern *hud-select-scene-act2* (array hud-scene-info))
+(define-extern *hud-select-scene-act3* (array hud-scene-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; progress                       ;;
@@ -30085,21 +30084,20 @@
 (define-extern draw-scene-up-down (function font-context none))
 (define-extern begin-scissor (function hud-box progress none))
 (define-extern end-scissor (function hud-box float none))
-(define-extern begin-scissor-secret (function hud-box none))
+(define-extern begin-scissor-secret (function hud-box progress none))
 (define-extern end-scissor-secret (function hud-box float none))
 (define-extern begin-scissor-missions (function hud-box float none))
-(define-extern end-scissor-missions (function hud-box none))
+(define-extern end-scissor-missions (function hud-box float none))
 (define-extern begin-scissor-scene (function hud-box none))
 (define-extern end-scissor-scene (function hud-box float none))
 (define-extern begin-scissor-level (function hud-box none))
-(define-extern end-scissor-level (function hud-box none))
+(define-extern end-scissor-level (function hud-box float none))
 (define-extern print-language-name (function game-text-id font-context int symbol none))
-(define-extern unlocked-secret-menu? (function int symbol))
-(define-extern memcard-unlocked-secrets? "TODO - returns a bitfield" (function symbol int))
+(define-extern unlocked-secret-menu? (function game-secrets symbol))
+(define-extern memcard-unlocked-secrets? (function symbol game-secrets))
 (define-extern num-unlocked-secret?
-  "TODO - bitfield
-  @returns The number of secrets currently unlocked"
-  (function int int))
+  "@returns The number of secrets currently unlocked"
+  (function game-secrets int))
 (define-extern print-menu-text (function string float font-context progress none))
 (define-extern draw-yes-no (function progress font-context pointer))
 (define-extern draw-continue-retry (function progress font-context pointer))
@@ -30131,7 +30129,7 @@
 (define-extern get-next-highscore (function int int))
 (define-extern get-prev-highscore (function int int))
 (define-extern get-highscore-icon-scale "TODO - takes an enum?" (function int float))
-(define-extern get-highscore-icon-xoffset (function int))
+(define-extern get-highscore-icon-xoffset (function int int))
 (define-extern get-highscore-icon-yoffset "TODO - takes an enum?" (function int int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32917,7 +32915,7 @@
 ;; elevator                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++elevator-flags
+;; +++elevator:elevator-flags
 (defenum elevator-flags
   :type uint64
   :bitfield #t
@@ -32930,7 +32928,7 @@
   (elevator-flags-6)
   (elevator-flags-7)
   )
-;; ---elevator-flags
+;; ---elevator:elevator-flags
 
 (deftype elevator-params (structure)
   ((xz-threshold float   :offset-assert 0)

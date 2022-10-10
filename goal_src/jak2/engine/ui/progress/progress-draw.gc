@@ -336,7 +336,7 @@
   (none)
   )
 
-(defun begin-scissor-secret ((arg0 hud-box))
+(defun begin-scissor-secret ((arg0 hud-box) (arg1 progress))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
      (set! (-> arg0 min x) 79.0)
@@ -436,7 +436,7 @@
   (none)
   )
 
-(defun end-scissor-missions ((arg0 hud-box))
+(defun end-scissor-missions ((arg0 hud-box) (arg1 float))
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
          (gp-0 (-> s5-0 base))
          )
@@ -560,7 +560,7 @@
   (none)
   )
 
-(defun end-scissor-level ((arg0 hud-box))
+(defun end-scissor-level ((arg0 hud-box) (arg1 float))
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
          (gp-0 (-> s5-0 base))
          )
@@ -603,31 +603,31 @@
   (none)
   )
 
-(defun unlocked-secret-menu? ((arg0 int))
-  (or (logtest? arg0 32)
-      (logtest? arg0 64)
-      (logtest? arg0 128)
-      (logtest? arg0 256)
-      (logtest? arg0 512)
-      (logtest? arg0 1024)
-      (logtest? arg0 2048)
-      (logtest? arg0 #x8000)
+(defun unlocked-secret-menu? ((arg0 game-secrets))
+  (or (logtest? arg0 (game-secrets scene-player-1))
+      (logtest? arg0 (game-secrets scene-player-2))
+      (logtest? arg0 (game-secrets scene-player-3))
+      (logtest? arg0 (game-secrets level-select))
+      (logtest? arg0 (game-secrets scrap-book-1))
+      (logtest? arg0 (game-secrets scrap-book-2))
+      (logtest? arg0 (game-secrets scrap-book-3))
+      (logtest? arg0 (game-secrets hero-mode))
       )
   )
 
+;; WARN: Return type mismatch int vs game-secrets.
 (defun memcard-unlocked-secrets? ((arg0 symbol))
-  "TODO - returns a bitfield"
   (let ((v1-0 *progress-save-info*)
         (s5-0 0)
         )
     (let ((a0-1 4))
       (when (and v1-0 (= (-> v1-0 formatted) 1) (= (-> v1-0 inited) 1))
         (dotimes (a1-5 a0-1)
-          (set! s5-0 (logior s5-0 (-> v1-0 file a1-5 secrets)))
+          (set! s5-0 (logior (the-as game-secrets s5-0) (-> v1-0 file a1-5 secrets)))
           )
         )
       )
-    (if (unlocked-secret-menu? s5-0)
+    (if (unlocked-secret-menu? (the-as game-secrets s5-0))
         (set! (-> *progress-state* secrets-unlocked) #t)
         (set! (-> *progress-state* secrets-unlocked) #f)
         )
@@ -635,44 +635,44 @@
       (set! (-> *progress-state* secrets-unlocked) #t)
       (set! s5-0 (logior s5-0 #x8fe0))
       )
-    (cond
-      (arg0
-        (empty)
-        s5-0
-        )
-      (else
-        (the-as int (unlocked-secret-menu? s5-0))
-        )
-      )
+    (the-as game-secrets (cond
+                           (arg0
+                             (empty)
+                             s5-0
+                             )
+                           (else
+                             (the-as int (unlocked-secret-menu? (the-as game-secrets s5-0)))
+                             )
+                           )
+            )
     )
   )
 
-(defun num-unlocked-secret? ((arg0 int))
-  "TODO - bitfield
-  @returns The number of secrets currently unlocked"
+(defun num-unlocked-secret? ((arg0 game-secrets))
+  "@returns The number of secrets currently unlocked"
   (let ((v0-0 0))
-    (if (logtest? arg0 32)
+    (if (logtest? arg0 (game-secrets scene-player-1))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 64)
+    (if (logtest? arg0 (game-secrets scene-player-2))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 128)
+    (if (logtest? arg0 (game-secrets scene-player-3))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 256)
+    (if (logtest? arg0 (game-secrets level-select))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 512)
+    (if (logtest? arg0 (game-secrets scrap-book-1))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 1024)
+    (if (logtest? arg0 (game-secrets scrap-book-2))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 2048)
+    (if (logtest? arg0 (game-secrets scrap-book-3))
         (+! v0-0 1)
         )
-    (if (logtest? arg0 #x8000)
+    (if (logtest? arg0 (game-secrets hero-mode))
         (+! v0-0 1)
         )
     v0-0
@@ -994,7 +994,7 @@
       (cond
         ((= (-> obj name) (game-text-id progress-main-secrets-scrapbook))
          (cond
-           ((logtest? s5-0 512)
+           ((logtest? s5-0 (game-secrets scrap-book-1))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-scrapbook) #f)
               arg1
@@ -1013,7 +1013,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-mega-scrapbook))
          (cond
-           ((logtest? s5-0 1024)
+           ((logtest? s5-0 (game-secrets scrap-book-2))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-mega-scrapbook) #f)
               arg1
@@ -1032,7 +1032,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-scrapbook-3))
          (cond
-           ((logtest? s5-0 2048)
+           ((logtest? s5-0 (game-secrets scrap-book-3))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-scrapbook-3) #f)
               arg1
@@ -1051,7 +1051,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-1))
          (cond
-           ((logtest? s5-0 32)
+           ((logtest? s5-0 (game-secrets scene-player-1))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-1) #f)
               arg1
@@ -1070,7 +1070,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-2))
          (cond
-           ((logtest? s5-0 64)
+           ((logtest? s5-0 (game-secrets scene-player-2))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-2) #f)
               arg1
@@ -1089,7 +1089,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-3))
          (cond
-           ((logtest? s5-0 128)
+           ((logtest? s5-0 (game-secrets scene-player-3))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-3) #f)
               arg1
@@ -1108,7 +1108,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-hero-mode))
          (cond
-           ((logtest? s5-0 #x8000)
+           ((logtest? s5-0 (game-secrets hero-mode))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-hero-mode) #f)
               arg1
@@ -1127,7 +1127,7 @@
          )
         ((= (-> obj name) (game-text-id progress-main-secrets-levelselect))
          (cond
-           ((logtest? s5-0 256)
+           ((logtest? s5-0 (game-secrets level-select))
             (print-game-text
               (lookup-text! *common-text* (game-text-id progress-main-secrets-levelselect) #f)
               arg1
@@ -1321,8 +1321,7 @@
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
          (gp-0 (-> s5-0 base))
          )
-    (-> arg0 box)
-    ((method-of-type hud-box hud-box-method-9))
+    ((method-of-type hud-box hud-box-method-9) (the-as hud-box (-> arg0 box)) s5-0)
     (let ((a3-1 (-> s5-0 base)))
       (let ((v1-7 (the-as object (-> s5-0 base))))
         (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -2101,96 +2100,6 @@
     )
   )
 
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 24 signed mismatch
-;; WARN: Stack slot offset 28 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
 (defmethod menu-option-method-10 menu-memcard-slot-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (v0-74 pointer)
@@ -2478,51 +2387,35 @@
                    (set! (-> obj sprites 1 tex) (lookup-texture-by-id (get-level-icon-id-01 (the-as int s2-8))))
                    (set! (-> obj sprites 1 scale-x) 1.0)
                    (set! (-> obj sprites 1 scale-y) 1.0)
-                   (set-hud-piece-position! (the-as basic (&-> obj something-hud-related)) sv-40 sv-48)
+                   (set-hud-piece-position! (-> obj sprites 1) sv-40 sv-48)
                    (set-vector! (-> obj sprites 2 color) 128 128 128 (the int (* 128.0 sv-16)))
                    (set! (-> obj sprites 2 pos z) #xffffff)
                    (set! (-> obj sprites 2 pos w) 1)
                    (set! (-> obj sprites 2 tex) (lookup-texture-by-id (get-level-icon-id-02 (the-as int s2-8))))
                    (set! (-> obj sprites 2 scale-x) 1.0)
                    (set! (-> obj sprites 2 scale-y) 1.0)
-                   (set-hud-piece-position! (the-as basic (-> obj sprites 2)) (+ sv-40 sv-56) sv-48)
+                   (set-hud-piece-position! (-> obj sprites 2) (+ sv-40 sv-56) sv-48)
                    (set-vector! (-> obj sprites 3 color) 128 128 128 (the int (* 128.0 sv-16)))
                    (set! (-> obj sprites 3 pos z) #xffffff)
                    (set! (-> obj sprites 3 pos w) 1)
                    (set! (-> obj sprites 3 tex) (lookup-texture-by-id (get-level-icon-id-03 (the-as int s2-8))))
                    (set! (-> obj sprites 3 scale-x) 1.0)
                    (set! (-> obj sprites 3 scale-y) 1.0)
-                   (set-hud-piece-position! (the-as basic (-> obj sprites 3)) sv-40 (+ sv-48 64))
+                   (set-hud-piece-position! (-> obj sprites 3) sv-40 (+ sv-48 64))
                    (set-vector! (-> obj sprites 4 color) 128 128 128 (the int (* 128.0 sv-16)))
                    (set! (-> obj sprites 4 pos z) #xffffff)
                    (set! (-> obj sprites 4 pos w) 1)
                    (set! (-> obj sprites 4 tex) (lookup-texture-by-id (get-level-icon-id-04 (the-as int s2-8))))
                    (set! (-> obj sprites 4 scale-x) 1.0)
                    (set! (-> obj sprites 4 scale-y) 1.0)
-                   (set-hud-piece-position! (the-as basic (-> obj sprites 4)) (+ sv-40 sv-56) (+ sv-48 64))
+                   (set-hud-piece-position! (-> obj sprites 4) (+ sv-40 sv-56) (+ sv-48 64))
                    (let* ((s1-7 (-> *display* frames (-> *display* on-screen) global-buf))
                           (s2-9 (-> s1-7 base))
                           )
-                     (&-> obj something-hud-related)
-                     (let ((t9-38 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-38)
-                       )
-                     (-> obj sprites 2)
-                     (let ((t9-39 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-39)
-                       )
-                     (-> obj sprites 3)
-                     (let ((t9-40 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-40)
-                       )
-                     (-> obj sprites 4)
-                     (let ((t9-41 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-41)
-                       )
+                     (hud-sprite-method-9 (-> obj sprites 1) s1-7 (-> *level* default-level))
+                     (hud-sprite-method-9 (-> obj sprites 2) s1-7 (-> *level* default-level))
+                     (hud-sprite-method-9 (-> obj sprites 3) s1-7 (-> *level* default-level))
+                     (hud-sprite-method-9 (-> obj sprites 4) s1-7 (-> *level* default-level))
                      (let ((a3-35 (-> s1-7 base)))
                        (let ((v1-237 (the-as object (-> s1-7 base))))
                          (set! (-> (the-as dma-packet v1-237) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -2548,15 +2441,15 @@
                    (set! (-> obj sprites 0 scale-x) 0.7)
                    (set! (-> obj sprites 0 scale-y) 0.7)
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x4 :page #xc93)))
-                   (set-hud-piece-position! (the-as basic (-> obj sprites)) 265 263)
+                   (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 265 263)
                    (let* ((s1-8 (-> *display* frames (-> *display* on-screen) global-buf))
                           (s2-10 (-> s1-8 base))
                           )
-                     (-> obj sprites)
-                     (let ((t9-45 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-45)
-                       )
+                     ((method-of-type hud-sprite hud-sprite-method-9)
+                      (the-as hud-sprite (-> obj sprites))
+                      s1-8
+                      (-> *level* default-level)
+                      )
                      (let ((a3-36 (-> s1-8 base)))
                        (let ((v1-260 (the-as object (-> s1-8 base))))
                          (set! (-> (the-as dma-packet v1-260) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -2585,15 +2478,15 @@
                        )
                      )
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x6 :page #xc93)))
-                   (set-hud-piece-position! (the-as basic (-> obj sprites)) 368 263)
+                   (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 368 263)
                    (let* ((s1-10 (-> *display* frames (-> *display* on-screen) global-buf))
                           (s2-12 (-> s1-10 base))
                           )
-                     (-> obj sprites)
-                     (let ((t9-52 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-52)
-                       )
+                     ((method-of-type hud-sprite hud-sprite-method-9)
+                      (the-as hud-sprite (-> obj sprites))
+                      s1-10
+                      (-> *level* default-level)
+                      )
                      (let ((a3-39 (-> s1-10 base)))
                        (let ((v1-285 (the-as object (-> s1-10 base))))
                          (set! (-> (the-as dma-packet v1-285) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -2615,15 +2508,15 @@
                      (s2-13 *temp-string* arg1 #f 44 320)
                      )
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x5 :page #xc93)))
-                   (set-hud-piece-position! (the-as basic (-> obj sprites)) 368 289)
+                   (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 368 289)
                    (let* ((s1-12 (-> *display* frames (-> *display* on-screen) global-buf))
                           (s2-14 (-> s1-12 base))
                           )
-                     (-> obj sprites)
-                     (let ((t9-59 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-59)
-                       )
+                     ((method-of-type hud-sprite hud-sprite-method-9)
+                      (the-as hud-sprite (-> obj sprites))
+                      s1-12
+                      (-> *level* default-level)
+                      )
                      (let ((a3-41 (-> s1-12 base)))
                        (let ((v1-304 (the-as object (-> s1-12 base))))
                          (set! (-> (the-as dma-packet v1-304) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -2647,15 +2540,15 @@
                    (set! (-> obj sprites 0 scale-x) 0.6)
                    (set! (-> obj sprites 0 scale-y) 0.6)
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x82 :page #xc93)))
-                   (set-hud-piece-position! (the-as basic (-> obj sprites)) 253 290)
+                   (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 253 290)
                    (let* ((s1-14 (-> *display* frames (-> *display* on-screen) global-buf))
                           (s2-16 (-> s1-14 base))
                           )
-                     (-> obj sprites)
-                     (let ((t9-66 (method-of-type hud-sprite hud-sprite-method-9)))
-                       (-> *level* default-level)
-                       (t9-66)
-                       )
+                     ((method-of-type hud-sprite hud-sprite-method-9)
+                      (the-as hud-sprite (-> obj sprites))
+                      s1-14
+                      (-> *level* default-level)
+                      )
                      (let ((a3-43 (-> s1-14 base)))
                        (let ((v1-325 (the-as object (-> s1-14 base))))
                          (set! (-> (the-as dma-packet v1-325) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -3219,15 +3112,15 @@
   (set-vector! (-> obj sprites 0 color) 128 128 128 (the int (* 128.0 (- 1.0 (-> arg0 menu-transition)))))
   (set! (-> obj sprites 0 pos z) #xffffff)
   (set! (-> obj sprites 0 pos w) 0)
-  (set-hud-piece-position! (the-as basic (-> obj sprites)) 240 160)
+  (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 240 160)
   (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
          (s4-1 (-> s3-0 base))
          )
-    (-> obj sprites)
-    (let ((t9-2 (method-of-type hud-sprite hud-sprite-method-9)))
-      (-> *level* default-level)
-      (t9-2)
-      )
+    ((method-of-type hud-sprite hud-sprite-method-9)
+     (the-as hud-sprite (-> obj sprites))
+     s3-0
+     (-> *level* default-level)
+     )
     (let ((a3-1 (-> s3-0 base)))
       (let ((v1-16 (the-as object (-> s3-0 base))))
         (set! (-> (the-as dma-packet v1-16) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -3784,9 +3677,10 @@
       (+! s2-0 1)
       )
     )
-  (let ((t9-10 end-scissor-level))
-    #x3f800000
-    (t9-10 sv-128)
+  (let ((t9-10 end-scissor-level)
+        (a1-13 1.0)
+        )
+    (t9-10 sv-128 a1-13)
     )
   (draw-scene-up-down arg1)
   0
@@ -4110,81 +4004,6 @@
     )
   )
 
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 260 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
 (defmethod menu-option-method-10 menu-missions-option ((obj menu-missions-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (f0-50 float)
@@ -4421,12 +4240,7 @@
         (print-game-text (lookup-text! *common-text* (game-text-id progress-missions-none) #f) arg1 #f 44 320)
         )
     )
-  (let ((t9-39 end-scissor-missions)
-        (a0-93 sv-276)
-        )
-    #x3f800000
-    (t9-39 a0-93)
-    )
+  (end-scissor-missions sv-276 1.0)
   (draw-missions-up-down arg1)
   0
   (none)
@@ -4582,306 +4396,6 @@
     )
   )
 
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 116 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 116 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 116 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 36 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 116 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 112 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
 (defmethod menu-option-method-10 menu-secret-option ((obj menu-secret-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-16 float)
@@ -4938,15 +4452,15 @@
       (set-vector! (-> obj sprites 0 color) 128 128 128 (the int (* 128.0 sv-16)))
       (set! (-> obj sprites 0 pos z) #xffffff)
       (set! (-> obj sprites 0 pos w) 0)
-      (set-hud-piece-position! (the-as basic (-> obj sprites)) 100 128)
+      (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 100 128)
       (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
              (s4-0 (-> s3-0 base))
              )
-        (-> obj sprites)
-        (let ((t9-3 (method-of-type hud-sprite hud-sprite-method-9)))
-          (-> *level* default-level)
-          (t9-3)
-          )
+        ((method-of-type hud-sprite hud-sprite-method-9)
+         (the-as hud-sprite (-> obj sprites))
+         s3-0
+         (-> *level* default-level)
+         )
         (let ((a3-1 (-> s3-0 base)))
           (let ((v1-42 (the-as object (-> s3-0 base))))
             (set! (-> (the-as dma-packet v1-42) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -5026,12 +4540,7 @@
         (s4-1 *temp-string* arg1 #f 44 320)
         )
       (set! (-> arg1 origin x) 100.0)
-      (let ((t9-11 begin-scissor-secret)
-            (a0-39 sv-120)
-            )
-        sv-48
-        (t9-11 a0-39)
-        )
+      (begin-scissor-secret sv-120 sv-48)
       (case (get-aspect-ratio)
         (('aspect16x9)
          (set! sv-128 195)
@@ -5131,15 +4640,15 @@
   (set! (-> arg0 sprites 0 tex) (lookup-texture-by-id (the-as texture-id arg1)))
   (set! (-> arg0 sprites 0 scale-x) arg4)
   (set! (-> arg0 sprites 0 scale-y) arg4)
-  (set-hud-piece-position! (the-as basic (-> arg0 sprites)) arg2 arg3)
+  (set-hud-piece-position! (the-as hud-sprite (-> arg0 sprites)) arg2 arg3)
   (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
          (gp-1 (-> s4-1 base))
          )
-    (-> arg0 sprites)
-    (let ((t9-2 (method-of-type hud-sprite hud-sprite-method-9)))
-      (-> *level* default-level)
-      (t9-2)
-      )
+    ((method-of-type hud-sprite hud-sprite-method-9)
+     (the-as hud-sprite (-> arg0 sprites))
+     s4-1
+     (-> *level* default-level)
+     )
     (let ((a3-1 (-> s4-1 base)))
       (let ((v1-8 (the-as object (-> s4-1 base))))
         (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -5184,15 +4693,15 @@
       (set! (-> arg0 data 0) (lookup-texture-by-id (the-as texture-id a0-1)))
       (set! (-> arg0 pad 12) (the-as uint arg4))
       (set! (-> arg0 pad 13) (the-as uint arg4))
-      (set-hud-piece-position! (the-as basic (&-> arg0 pad 3)) arg2 arg3)
+      (set-hud-piece-position! (the-as hud-sprite (&-> arg0 pad 3)) arg2 arg3)
       (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
              (s5-1 (-> s4-1 base))
              )
-        (&-> arg0 pad 3)
-        (let ((t9-2 (method-of-type hud-sprite hud-sprite-method-9)))
-          (-> *level* default-level)
-          (t9-2)
-          )
+        ((method-of-type hud-sprite hud-sprite-method-9)
+         (the-as hud-sprite (&-> arg0 pad 3))
+         s4-1
+         (-> *level* default-level)
+         )
         (let ((a3-1 (-> s4-1 base)))
           (let ((v1-20 (the-as object (-> s4-1 base))))
             (set! (-> (the-as dma-packet v1-20) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -5287,38 +4796,6 @@
   *temp-string*
   )
 
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
 (defun print-highscore ((arg0 print-highscore-obj))
   (local-vars (sv-16 font-context) (sv-20 float) (sv-24 int) (sv-32 int) (sv-40 print-highscore-obj))
   (set! sv-16 (-> arg0 context))
@@ -5898,7 +5375,7 @@
     )
   )
 
-(defun get-highscore-icon-xoffset ()
+(defun get-highscore-icon-xoffset ((arg0 int))
   (if (= (get-aspect-ratio) 'aspect4x3)
       435
       410
@@ -5965,86 +5442,6 @@
     )
   )
 
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 104 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 100 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 124 signed mismatch
-;; WARN: Stack slot offset 96 signed mismatch
-;; WARN: Stack slot offset 120 signed mismatch
-;; WARN: Stack slot offset 108 signed mismatch
 (defmethod menu-option-method-10 menu-highscores-option ((obj menu-highscores-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-96 float)
@@ -6177,19 +5574,12 @@
         )
       (set! (-> sv-140 origin x) (- (-> sv-140 origin x) (+ 20.0 sv-120)))
       (set! (-> sv-140 origin y) (+ 25.0 (-> sv-140 origin y)))
-      (let ((gp-3 draw-highscore-icon)
-            (s5-3 sv-144)
-            (s4-3 (get-highscore-icon (-> sv-144 page-index)))
-            (t9-17 get-highscore-icon-xoffset)
-            )
-        (-> sv-144 page-index)
-        (gp-3
-          s5-3
-          s4-3
-          (the int (+ (the float (t9-17)) sv-120))
-          (get-highscore-icon-yoffset (-> sv-144 page-index))
-          (get-highscore-icon-scale (-> sv-144 page-index))
-          )
+      (draw-highscore-icon
+        sv-144
+        (get-highscore-icon (-> sv-144 page-index))
+        (the int (+ (the float (get-highscore-icon-xoffset (-> sv-144 page-index))) sv-120))
+        (get-highscore-icon-yoffset (-> sv-144 page-index))
+        (get-highscore-icon-scale (-> sv-144 page-index))
         )
       (set! sv-108 (-> sv-140 origin x))
       (let ((a0-54 sv-140))
@@ -6298,19 +5688,12 @@
         )
       (set! (-> sv-140 origin x) (- (-> sv-140 origin x) (+ 20.0 sv-124)))
       (set! (-> sv-140 origin y) (+ 25.0 (-> sv-140 origin y)))
-      (let ((gp-8 draw-highscore-icon)
-            (s5-8 sv-144)
-            (s4-6 (get-highscore-icon (-> sv-144 prev-page-index)))
-            (t9-36 get-highscore-icon-xoffset)
-            )
-        (-> sv-144 page-index)
-        (gp-8
-          s5-8
-          s4-6
-          (the int (+ (the float (t9-36)) sv-124))
-          (get-highscore-icon-yoffset (-> sv-144 page-index))
-          (get-highscore-icon-scale (-> sv-144 page-index))
-          )
+      (draw-highscore-icon
+        sv-144
+        (get-highscore-icon (-> sv-144 prev-page-index))
+        (the int (+ (the float (get-highscore-icon-xoffset (-> sv-144 page-index))) sv-124))
+        (get-highscore-icon-yoffset (-> sv-144 page-index))
+        (get-highscore-icon-scale (-> sv-144 page-index))
         )
       (set! sv-108 (-> sv-140 origin x))
       (let ((a0-105 sv-140))
@@ -7415,22 +6798,21 @@
                       (set-vector! (-> obj sprites 3 color) sv-80 sv-96 sv-112 (the int (* 128.0 f30-0)))
                       (set! (-> obj sprites 3 pos z) #xffffff)
                       (set! (-> obj sprites 3 pos w) 0)
-                      (set-hud-piece-position! (the-as basic (-> obj sprites)) s1-0 s2-0)
+                      (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) s1-0 s2-0)
                       (set-hud-piece-position!
-                        (the-as basic (-> obj sprites 1))
+                        (-> obj sprites 1)
                         (+ s1-0 (the int (* 230.0 (-> (the-as (pointer float) sv-128)))))
                         (+ s2-0 -4)
                         )
-                      (set-hud-piece-position! (the-as basic (-> obj sprites 2)) (- s1-0 sv-64) (+ s2-0 -4))
-                      (set-hud-piece-position! (the-as basic (-> obj sprites 3)) (+ sv-64 242 s1-0) (+ s2-0 -4))
+                      (set-hud-piece-position! (-> obj sprites 2) (- s1-0 sv-64) (+ s2-0 -4))
+                      (set-hud-piece-position! (-> obj sprites 3) (+ sv-64 242 s1-0) (+ s2-0 -4))
                       (set! sv-176 (-> *display* frames (-> *display* on-screen) global-buf))
                       (set! sv-192 (-> sv-176 base))
-                      (-> obj sprites)
-                      (let ((t9-13 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-176
-                        (-> *level* default-level)
-                        (t9-13)
-                        )
+                      ((method-of-type hud-sprite hud-sprite-method-9)
+                       (the-as hud-sprite (-> obj sprites))
+                       sv-176
+                       (-> *level* default-level)
+                       )
                       (draw-sprite2d-xy
                         sv-176
                         (+ s1-0 s0-0 (the int (* 230.0 (-> (the-as (pointer float) sv-128)))))
@@ -7439,24 +6821,9 @@
                         9
                         (the-as rgba sv-160)
                         )
-                      (-> obj sprites 1)
-                      (let ((t9-15 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-176
-                        (-> *level* default-level)
-                        (t9-15)
-                        )
-                      (-> obj sprites 2)
-                      (let ((t9-16 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-176
-                        (-> *level* default-level)
-                        (t9-16)
-                        )
-                      (-> obj sprites 3)
-                      (let ((t9-17 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-176
-                        (-> *level* default-level)
-                        (t9-17)
-                        )
+                      (hud-sprite-method-9 (-> obj sprites 1) sv-176 (-> *level* default-level))
+                      (hud-sprite-method-9 (-> obj sprites 2) sv-176 (-> *level* default-level))
+                      (hud-sprite-method-9 (-> obj sprites 3) sv-176 (-> *level* default-level))
                       (let ((a3-6 (-> sv-176 base)))
                         (let ((v1-100 (the-as object (-> sv-176 base))))
                           (set! (-> (the-as dma-packet v1-100) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -7546,22 +6913,21 @@
                       (set-vector! (-> obj sprites 3 color) sv-80 sv-96 sv-112 (the int (* 128.0 f30-0)))
                       (set! (-> obj sprites 3 pos z) #xffffff)
                       (set! (-> obj sprites 3 pos w) 0)
-                      (set-hud-piece-position! (the-as basic (-> obj sprites)) s1-0 s2-0)
+                      (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) s1-0 s2-0)
                       (set-hud-piece-position!
-                        (the-as basic (-> obj sprites 1))
+                        (-> obj sprites 1)
                         (+ s1-0 (the int (* 230.0 (-> (the-as (pointer float) sv-208)))))
                         (+ s2-0 -4)
                         )
-                      (set-hud-piece-position! (the-as basic (-> obj sprites 2)) (- s1-0 sv-64) (+ s2-0 -4))
-                      (set-hud-piece-position! (the-as basic (-> obj sprites 3)) (+ sv-64 242 s1-0) (+ s2-0 -4))
+                      (set-hud-piece-position! (-> obj sprites 2) (- s1-0 sv-64) (+ s2-0 -4))
+                      (set-hud-piece-position! (-> obj sprites 3) (+ sv-64 242 s1-0) (+ s2-0 -4))
                       (set! sv-256 (-> *display* frames (-> *display* on-screen) global-buf))
                       (set! sv-272 (-> sv-256 base))
-                      (-> obj sprites)
-                      (let ((t9-33 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-256
-                        (-> *level* default-level)
-                        (t9-33)
-                        )
+                      ((method-of-type hud-sprite hud-sprite-method-9)
+                       (the-as hud-sprite (-> obj sprites))
+                       sv-256
+                       (-> *level* default-level)
+                       )
                       (draw-sprite2d-xy
                         sv-256
                         (+ s1-0 s0-0 (the int (* 230.0 (-> (the-as (pointer float) sv-208)))))
@@ -7570,24 +6936,9 @@
                         9
                         (the-as rgba sv-240)
                         )
-                      (-> obj sprites 1)
-                      (let ((t9-35 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-256
-                        (-> *level* default-level)
-                        (t9-35)
-                        )
-                      (-> obj sprites 2)
-                      (let ((t9-36 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-256
-                        (-> *level* default-level)
-                        (t9-36)
-                        )
-                      (-> obj sprites 3)
-                      (let ((t9-37 (method-of-type hud-sprite hud-sprite-method-9)))
-                        sv-256
-                        (-> *level* default-level)
-                        (t9-37)
-                        )
+                      (hud-sprite-method-9 (-> obj sprites 1) sv-256 (-> *level* default-level))
+                      (hud-sprite-method-9 (-> obj sprites 2) sv-256 (-> *level* default-level))
+                      (hud-sprite-method-9 (-> obj sprites 3) sv-256 (-> *level* default-level))
                       (let ((a3-13 (-> sv-256 base)))
                         (let ((v1-183 (the-as object (-> sv-256 base))))
                           (set! (-> (the-as dma-packet v1-183) dma) (new 'static 'dma-tag :id (dma-tag-id next)))

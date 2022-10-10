@@ -978,7 +978,12 @@ goos::Object decompile_structure(const TypeSpec& type,
     }
 
     if (all_zero) {
-      // field has nothing in it, just skip it.
+      // special case for dynamic arrays at the end of a type
+      // TODO - this causes an assert in Type.hL240
+      // if (!(field_start == field_end && field.is_dynamic())) {
+      //  // field has nothing in it, just skip it.
+      //  continue;
+      //}
       continue;
     }
 

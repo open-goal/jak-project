@@ -46,22 +46,8 @@
         (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
         (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
         (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
-        (let* ((s5-1 quaternion->matrix)
-               (s4-0 (-> self tgt-rot-mat))
-               (a0-12 (the-as process-focusable gp-0))
-               (t9-1 (method-of-object a0-12 get-quat))
-               )
-          2
-          (s5-1 s4-0 (t9-1 a0-12))
-          )
-        (let* ((s5-2 quaternion->matrix)
-               (s4-1 (-> self tgt-face-mat))
-               (a0-14 (the-as process-focusable gp-0))
-               (t9-3 (method-of-object a0-14 get-quat))
-               )
-          1
-          (s5-2 s4-1 (t9-3 a0-14))
-          )
+        (quaternion->matrix (-> self tgt-rot-mat) (get-quat (the-as process-focusable gp-0) 2))
+        (quaternion->matrix (-> self tgt-face-mat) (get-quat (the-as process-focusable gp-0) 1))
         (vector-reset! (-> self pitch-off))
         (set! (-> self upspeed) 0.0)
         (set! (-> self on-ground)
@@ -97,14 +83,9 @@
             0
             )
           )
-        (let ((gp-1 (the-as process-focusable (new 'stack-no-clear 'vector))))
-          (vector--float*!
-            (the-as vector gp-1)
-            (-> self tpos-curr-adj)
-            (-> self local-down)
-            (-> self settings target-height)
-            )
-          (tracking-spline-method-10 (-> self target-spline) (the-as vector gp-1))
+        (let ((gp-1 (new 'stack-no-clear 'vector)))
+          (vector--float*! gp-1 (-> self tpos-curr-adj) (-> self local-down) (-> self settings target-height))
+          (tracking-spline-method-10 (-> self target-spline) gp-1)
           )
         )
       )
@@ -163,22 +144,8 @@
             )
           (set! (-> self tpos-old quad) (-> self tpos-curr quad))
           (set! (-> self tpos-old-adj quad) (-> self tpos-curr-adj quad))
-          (let* ((s5-1 quaternion->matrix)
-                 (s4-0 (-> self tgt-rot-mat))
-                 (a0-12 (the-as target gp-0))
-                 (t9-4 (method-of-object a0-12 get-quat))
-                 )
-            2
-            (s5-1 s4-0 (t9-4 a0-12))
-            )
-          (let* ((s5-2 quaternion->matrix)
-                 (s4-1 (-> self tgt-face-mat))
-                 (a0-14 (the-as target gp-0))
-                 (t9-6 (method-of-object a0-14 get-quat))
-                 )
-            1
-            (s5-2 s4-1 (t9-6 a0-14))
-            )
+          (quaternion->matrix (-> self tgt-rot-mat) (get-quat (the-as target gp-0) 2))
+          (quaternion->matrix (-> self tgt-face-mat) (get-quat (the-as target gp-0) 1))
           (cond
             ((< (-> self ease-t) 1.0)
              (new 'stack-no-clear 'vector)
@@ -385,10 +352,8 @@
 ;; INFO: Used lq/sq
 (defbehavior master-choose-entity camera-master ((arg0 cam-setting-data))
   (local-vars
-    (r0-0 uint128)
     (v1-22 symbol)
-    (v1-52 uint128)
-    (sv-96 int)
+    (sv-96 res-tag)
     (sv-112 process)
     (sv-128 (pointer process))
     (sv-144 int)
@@ -412,8 +377,8 @@
             (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (res-lump-struct s5-0 'name structure))
             )
           )
-        (set! sv-96 0)
-        (let ((s4-1 (res-lump-data s5-0 'alternates pointer :tag-ptr (the-as (pointer res-tag) (& sv-96)))))
+        (set! sv-96 (new 'static 'res-tag))
+        (let ((s4-1 (res-lump-data s5-0 'alternates pointer :tag-ptr (& sv-96))))
           (when s4-1
             (let* ((s1-1 (get-process *camera-dead-pool* camera-slave #x4000))
                    (s3-1 (when s1-1
@@ -434,86 +399,78 @@
                   (setup-slave-for-hopefull (the-as camera-slave (ppointer->process s3-1)))
                   (format 0 "ERROR <GMJ>: primary region activate failed~%")
                   )
-              (let ((s2-1 0))
-                (while (begin
-                         (let ((v1-51 (the-as uint128 sv-96)))
-                           (.pcpyud v1-52 v1-51 r0-0)
-                           )
-                         (< s2-1 (shr (* (the-as int v1-52) 2) 49))
-                         )
-                  (let ((s0-0 (entity-by-name (the-as string (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))))))
-                    (cond
-                      (s0-0
-                        (let ((s1-2 (cam-state-from-entity s0-0)))
-                          (cond
-                            (s1-2
-                              (set! sv-112 (get-process *camera-dead-pool* camera-slave #x4000))
-                              (set! v1-22 (when sv-112
-                                            (set! sv-128 (the-as (pointer process) v1-22))
-                                            (let ((t9-14 (method-of-type camera-slave activate)))
-                                              (t9-14
-                                                (the-as camera-slave sv-112)
-                                                *camera*
-                                                (symbol->string (-> camera-slave symbol))
-                                                (the-as pointer #x70004000)
-                                                )
+              (dotimes (s2-1 (the-as int (-> sv-96 elt-count)))
+                (let ((s0-0 (entity-by-name (the-as string (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))))))
+                  (cond
+                    (s0-0
+                      (let ((s1-2 (cam-state-from-entity s0-0)))
+                        (cond
+                          (s1-2
+                            (set! sv-112 (get-process *camera-dead-pool* camera-slave #x4000))
+                            (set! v1-22 (when sv-112
+                                          (set! sv-128 (the-as (pointer process) v1-22))
+                                          (let ((t9-14 (method-of-type camera-slave activate)))
+                                            (t9-14
+                                              (the-as camera-slave sv-112)
+                                              *camera*
+                                              (symbol->string (-> camera-slave symbol))
+                                              (the-as pointer #x70004000)
                                               )
-                                            (run-now-in-process sv-112 cam-slave-init s1-2 s0-0)
-                                            (set! sv-128 (-> sv-112 ppointer))
-                                            v1-22
                                             )
-                                    )
-                              (cond
-                                (sv-128
-                                  (setup-slave-for-hopefull (the-as camera-slave (ppointer->process sv-128)))
-                                  (cond
-                                    ((master-is-hopeful-better?
-                                       (the-as camera-slave (ppointer->process s3-1))
-                                       (the-as camera-slave (ppointer->process sv-128))
-                                       )
-                                     (if s3-1
-                                         (deactivate (-> s3-1 0))
-                                         )
-                                     (set! s3-1 (the-as (pointer camera-slave) sv-128))
-                                     (set! (-> arg0 real-entity-name) (the-as string (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))))
-                                     (set! (-> arg0 cam-mode) (the-as symbol s1-2))
-                                     )
-                                    (else
-                                      (deactivate (-> sv-128 0))
-                                      )
-                                    )
+                                          (run-now-in-process sv-112 cam-slave-init s1-2 s0-0)
+                                          (set! sv-128 (-> sv-112 ppointer))
+                                          v1-22
+                                          )
                                   )
-                                (else
-                                  (format 0 "ERROR <GMJ>: alternate region activate failed~%")
+                            (cond
+                              (sv-128
+                                (setup-slave-for-hopefull (the-as camera-slave (ppointer->process sv-128)))
+                                (cond
+                                  ((master-is-hopeful-better?
+                                     (the-as camera-slave (ppointer->process s3-1))
+                                     (the-as camera-slave (ppointer->process sv-128))
+                                     )
+                                   (if s3-1
+                                       (deactivate (-> s3-1 0))
+                                       )
+                                   (set! s3-1 (the-as (pointer camera-slave) sv-128))
+                                   (set! (-> arg0 real-entity-name) (the-as string (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))))
+                                   (set! (-> arg0 cam-mode) (the-as symbol s1-2))
+                                   )
+                                  (else
+                                    (deactivate (-> sv-128 0))
+                                    )
                                   )
                                 )
-                              )
-                            (else
-                              (let ((s1-5 format))
-                                (set! sv-144 0)
-                                (set! sv-160 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%")
-                                (let ((a2-14 (res-lump-struct s0-0 'name structure)))
-                                  (s1-5 sv-144 sv-160 a2-14)
-                                  )
+                              (else
+                                (format 0 "ERROR <GMJ>: alternate region activate failed~%")
                                 )
                               )
                             )
-                          )
-                        )
-                      (else
-                        (let ((s1-7 format)
-                              (s0-1 0)
+                          (else
+                            (let ((s1-5 format))
+                              (set! sv-144 0)
+                              (set! sv-160 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%")
+                              (let ((a2-14 (res-lump-struct s0-0 'name structure)))
+                                (s1-5 sv-144 sv-160 a2-14)
+                                )
                               )
-                          (set! sv-176 "ERROR <GMJ>: alternate '~S' not found for '~S'~%")
-                          (set! sv-192 (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4)))))
-                          (let ((a3-8 (res-lump-struct s5-0 'name structure)))
-                            (s1-7 s0-1 sv-176 sv-192 a3-8)
                             )
                           )
                         )
                       )
+                    (else
+                      (let ((s1-7 format)
+                            (s0-1 0)
+                            )
+                        (set! sv-176 "ERROR <GMJ>: alternate '~S' not found for '~S'~%")
+                        (set! sv-192 (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4)))))
+                        (let ((a3-8 (res-lump-struct s5-0 'name structure)))
+                          (s1-7 s0-1 sv-176 sv-192 a3-8)
+                          )
+                        )
+                      )
                     )
-                  (+! s2-1 1)
                   )
                 )
               (if s3-1
