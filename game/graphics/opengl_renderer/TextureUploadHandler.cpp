@@ -15,6 +15,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
                                   SharedRenderState* render_state,
                                   ScopedProfilerNode& prof) {
   // this is the data we get from the PC Port modification.
+  m_upload_count = 0;
   std::vector<TextureUpload> uploads;
 
   // loop through all data, grabbing buckets
@@ -60,38 +61,18 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
   if (m_fake_uploads) {
     uploads.clear();
   } else {
+    m_upload_count += uploads.size();
     // NOTE: we don't actually copy the textures in the dma chain copying because they aren't
     // reference by DMA tag.  So there's the potential for race conditions if the game gets messed
     // up and corrupts the texture memory.
     const u8* ee_mem = (const u8*)render_state->ee_main_memory;
-    if (uploads.size() == 2 && uploads[0].mode == 2 && uploads[1].mode == -2 &&
-        uploads[0].page == uploads[1].page) {
-      render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, -2, ee_mem,
+    for (auto& upload : uploads) {
+      render_state->texture_pool->handle_upload_now(ee_mem + upload.page, upload.mode, ee_mem,
                                                     render_state->offset_of_s7);
-      render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, 2, ee_mem,
-                                                    render_state->offset_of_s7);
-    } else if (uploads.size() == 1 && uploads[0].mode == -1) {
-      render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, -1, ee_mem,
-                                                    render_state->offset_of_s7);
-    } else if (uploads.size() == 1 && uploads[0].mode == -2) {
-      render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, -2, ee_mem,
-                                                    render_state->offset_of_s7);
-    } else if (uploads.size() == 1 && uploads[0].mode == 0) {
-      render_state->texture_pool->handle_upload_now(ee_mem + uploads[0].page, 0, ee_mem,
-                                                    render_state->offset_of_s7);
-    }
-
-    else if (uploads.empty()) {
-      // do nothing.
-    } else {
-      lg::error("unhandled upload sequence in {}:", m_name);
-      for (auto& upload : uploads) {
-        lg::error(" page: 0x{:x} mode: {}", upload.page, upload.mode);
-      }
-      ASSERT(false);
     }
   }
 }
 void TextureUploadHandler::draw_debug_window() {
   ImGui::Checkbox("Fake Uploads", &m_fake_uploads);
+  ImGui::Text("Uploads: %d", m_upload_count);
 }

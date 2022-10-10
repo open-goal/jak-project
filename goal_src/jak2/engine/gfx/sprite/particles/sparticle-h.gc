@@ -36,16 +36,20 @@
   )
 ;; ---sp-cpuinfo-flag
 
-;; NOTE - for relocate
+(defenum sp-cpuinfo-flag-s32
+  :bitfield #t
+  :type int32
+  :copy-entries sp-cpuinfo-flag
+  )
+
+
 (declare-type sparticle-system basic)
 (declare-type sparticle-cpuinfo structure)
 (declare-type sparticle-launch-control inline-array-class)
 (define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
 
-;; NOTE - for many things
 (define-extern *part-id-table* (array sparticle-launcher))
 
-;; NOTE - for sparticle-launcher
 (define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 (define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol))
@@ -70,7 +74,8 @@
    (scalevely     float                                                                              :offset         44)
    (friction      float                                                                              :offset-assert  96)
    (timer         int32                                                                              :offset-assert 100)
-   (flags         sp-cpuinfo-flag                                                                    :offset-assert 104)
+   (flags         sp-cpuinfo-flag                  :offset-assert 104) ;; NOTE - loaded with lw and lwu?
+   (flags-s32     sp-cpuinfo-flag-s32              :offset        104)
    (user-int32    int32                                                                              :offset-assert 108)
    (user-uint32   uint32                                                                             :offset        108)
    (user-float    float                                                                              :offset        108)
@@ -88,7 +93,7 @@
    (key-alt       sparticle-launch-state                                                             :offset        132)
    (binding       sparticle-launch-state                                                             :offset-assert 136)
    (data          uint32                                                                     1       :offset         12)
-   (datab         uint8                                                                      4       :offset         12)
+   (datab         int8                                                                       4       :offset         12)
    (dataf         float                                                                      1       :offset         12)
    (datac         uint8                                                                      1       :offset         12)
    )
@@ -144,3 +149,5 @@
 
 
 
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
