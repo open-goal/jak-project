@@ -461,8 +461,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   if (pointer_to_data.kind() == LinkedWord::SYM_PTR) {
     ASSERT_MSG(pointer_to_data.symbol_name() == "#f",
                "inline-array data decompilation found a non-#f symbol");
-    return pretty_print::to_symbol(
-        fmt::format("(the-as (inline-array {}) #f)", array_elt_type.print()));
+    return pretty_print::to_symbol("#f");
   }
 
   ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
