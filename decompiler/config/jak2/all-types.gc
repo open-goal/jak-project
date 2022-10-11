@@ -297,7 +297,7 @@
     (new (symbol type string) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (init-from-entity! (_type_ entity-actor object) none 11) ;; todo check
+    (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
     (run-logic? (_type_) symbol 12)
     (process-tree-method-13 () none 13)
     )
@@ -14541,7 +14541,7 @@
   :flag-assert         #x14005000c8
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
-    (initialize-skeleton-by-name (_type_ string object) draw-control 15)
+    (initialize-skeleton-by-name (_type_ string) draw-control 15)
     (apply-alignment (_type_ align-opts transformq vector) object 16)
     (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
@@ -16460,6 +16460,7 @@
    (unknown-quaternion01        quaternion                   :inline :offset 544)  ;; logic-target::reset-target-state
    (unknown-float04             float                                :offset 560)  ;; logic-target::reset-target-state
    (unknown-float05             float                                :offset 564)  ;; logic-target::target-print-stats
+   (unknown-float003            float                                :offset 568)  ;; (anon-function 22 target-gun)
    (unknown-float06             float                                :offset 572)  ;; logic-target::do-rotations2
    (unknown-float07             float                                :offset 576)  ;; logic-target::add-thrust
    (unknown-time-frame00        time-frame                           :offset 584)  ;; logic-target::do-rotations2
@@ -16536,6 +16537,7 @@
    (unknown-float25             float                                :offset 4792) ;; logic-target::target-compute-slopes
    (unknown-float26             float                                :offset 4796) ;; logic-target::target-compute-slopes
    (unknown-word000             int32                                :offset 4800) ;; (anon-function 16 target-darkjak)
+   (unknown-float002            float                                :offset 4804) ;; target-gun::target-gun-joint-pre
    (unknown-time-frame08        time-frame                           :offset 4816) ;; logic-target::turn-around?
    (unknown-vector26            vector                       :inline :offset 4928) ;; logic-target::target-add-slide-factor
    (unknwon-vector27            vector                       :inline :offset 4976) ;; logic-target::add-thrust
@@ -23840,7 +23842,7 @@
 (define-extern shrub-init-frame (function dma-buffer gs-test symbol))
 (define-extern shrub-upload-model (function shrubbery dma-buffer int symbol))
 (define-extern draw-inline-array-instance-shrub (function dma-buffer drawable int (inline-array prototype-bucket-shrub) none))
-(define-extern draw-prototype-inline-array-shrub (function int (inline-array prototype-bucket-shrub) object pointer))
+(define-extern draw-prototype-inline-array-shrub (function int (inline-array prototype-bucket-shrub) pointer))
 (define-extern draw-drawable-tree-instance-shrub (function drawable-tree-instance-shrub level none))
 (define-extern *dma-test* dma-test)
 (define-extern *dma-test-work* dma-test-work)
@@ -28189,7 +28191,7 @@
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern attack-mode-is-invinc (function symbol symbol))
 (define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
-(define-extern target-send-attack (function process-focusable uint uint int int uint object :behavior target))
+(define-extern target-send-attack (function process uint uint int int uint symbol :behavior target))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target)) ;; (function process int symbol event-message-block object :behavior target)
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
@@ -28383,27 +28385,27 @@
 
 ;; (define-extern *kernel-packages* object) ;; pair
 (define-extern *gun-walk-mods* surface)
-;; (define-extern target-gun-event-handler function)
+(define-extern target-gun-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-gun-setup (function symbol none :behavior target))
 (define-extern target-gun-init (function int none :behavior target))
-(define-extern target-gun-exit (function none :behavior target))
+(define-extern target-gun-exit (function symbol))
 (define-extern target-gun-end-mode (function symbol symbol :behavior target))
-;; (define-extern quat<-gun! function)
-;; (define-extern target-gun-ammo-out-pick function)
+(define-extern quat<-gun! (function quaternion quaternion quaternion))
+(define-extern target-gun-ammo-out-pick (function int :behavior target))
 (define-extern target-gun-type-set! (function int none :behavior target))
-;; (define-extern target-gun-marking-menu function)
-;; (define-extern target-gun-build-track-list function)
-;; (define-extern target-gun-find-track function)
+(define-extern target-gun-marking-menu (function target none))
+(define-extern target-gun-build-track-list (function none :behavior target))
+(define-extern target-gun-find-track (function none :behavior target))
 (define-extern target-top-anim-base-mode (function int none :behavior target))
-;; (define-extern target-gun-combo-start function)
+(define-extern target-gun-combo-start (function int time-frame none :behavior target))
 (define-extern target-gun-joint-pre0 (function none :behavior target))
 (define-extern target-gun-joint-pre (function none :behavior target))
 (define-extern target-gun-compute-pos (function matrix :behavior target))
 (define-extern target-gun-joint-points (function none :behavior target))
-(define-extern target-gun-fire (function none :behavior target))
+(define-extern target-gun-fire (function pickup-type none :behavior target))
 (define-extern target-gun-check (function none :behavior target))
-;; (define-extern camera-rotate-to-vector function)
-;; (define-extern target-gun-real-post function)
+(define-extern camera-rotate-to-vector (function vector vector none))
+(define-extern target-gun-real-post (function none :behavior target))
 (define-extern target-gun-post (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28488,7 +28490,7 @@
   )
 |#
 
-;; (define-extern target-gun-fire-blue function)
+(define-extern target-gun-fire-blue (function none :behavior target))
 ;; (define-extern gun-blue-shot-move function)
 ;; (define-extern cshape-reaction-blue-shot function)
 
@@ -28545,7 +28547,7 @@
   )
 |#
 
-;; (define-extern target-gun-fire-red function)
+(define-extern target-gun-fire-red (function none :behavior target))
 ;; (define-extern gun-red-shot-event-handler function)
 ;; (define-extern gun-red-shot-init-by-other function)
 
@@ -28578,7 +28580,7 @@
   )
 |#
 
-;; (define-extern target-gun-fire-dark function)
+(define-extern target-gun-fire-dark (function none :behavior target))
 ;; (define-extern process-drawable-shock-effect-bullseye function)
 ;; (define-extern gun-dark-shot-init-fizzle function)
 
@@ -28652,7 +28654,7 @@
 (define-extern target-board-anim-trans (function none :behavior target))
 (define-extern target-board-spin-check (function none :behavior target))
 (define-extern target-board-halfpipe-trans (function none :behavior target))
-(define-extern target-board-resolve-points (function float float float float none :behavior target)) ;; only arg3 used?
+(define-extern target-board-resolve-points (function none :behavior target))
 (define-extern target-board-ground-check (function none :behavior target))
 (define-extern target-board-halfpipe-check (function collide-action :behavior target))
 (define-extern target-board-jump-trans (function none :behavior target))
@@ -28676,7 +28678,7 @@
 (define-extern target-board-get-off (state object symbol target)) ;; unused arg0
 (define-extern target-board-grab (state symbol target))
 (define-extern target-board-clone-anim (state handle target))
-(define-extern target-board-hit (state vector target))
+(define-extern target-board-hit (state vector attack-info target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-h                         ;;
@@ -29749,16 +29751,16 @@
   :flag-assert         #x2900a00120
   (:methods
     (hide () _type_ :state 27)
-    (idle () _type_ :state 28) ;; (dummy-28 (_type_) none 28)
+    (idle () _type_ :state 28)
     (die (symbol int) _type_ :state 29)
     (special-contents-die () _type_ :state 30)
     (bounce-on () _type_ :state 31)
     (notice-blue (handle) _type_ :state 32)
     (carry () _type_ :state 33)
     (fall () _type_ :state 34)
-    (init-crate! (_type_ entity-actor) none 35)
-    (init-skel! (_type_) none 36)
-    (params-set! (_type_ symbol symbol) none 37)
+    (crate-init! "Initialize the [[crate]] with the specified [[entity-actor]]." (_type_ entity-actor) none 35)
+    (skel-init! "Initialize the [[crate]]'s skeleton and other parameters based on the crate type." (_type_) none 36)
+    (params-set! "Set [[crate]] params based on the arguments." (_type_ symbol symbol) none 37)
     (crate-method-38 (_type_) none 38)
     (smush-update! (_type_) none 39)
     (crate-method-40 (_type_) symbol :behavior crate 40)
@@ -31606,15 +31608,17 @@
   :size-assert         #x100
   :flag-assert         #x1d00800100
   (:methods
-    (water-anim-method-20 () none 20)
+    (water-anim-method-20 "Nonexistent?" () none 20)
     (idle () _type_ :state 21)
-    (water-anim-method-22 (_type_ vector) int 22)
+    (move-to-point!
+    "Set a [[water-anim]]'s `trans` as specified by the [[vector]] and update `water-height`."
+    (_type_ vector) int 22)
     (get-ripple-height (_type_ vector) float 23)
-    (skel-group-init! (_type_ entity-actor object) none 24)
-    (reset-root! (_type_) none 25)
-    (water-anim-method-26 (_type_) none 26)
-    (water-anim-method-27 (_type_) none 27)
-    (water-anim-method-28 (_type_) ambient-sound 28)
+    (art-init! "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience." (_type_) none 24)
+    (reset-root! "Reset a [[water-anim]]'s `root`." (_type_) trsqv 25)
+    (water-anim-init! "Initialize a [[water-anim]]." (_type_) none 26)
+    (water-anim-method-27 "Empty." (_type_) none 27)
+    (offset! "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`." (_type_) none 28)
     )
   )
 
@@ -31630,7 +31634,7 @@
 
 (define-extern *water-anim-look* (array water-anim-look))
 (define-extern water-anim-event-handler (function process int symbol event-message-block object :behavior water-anim))
-(define-extern water-anim-init-by-other (function entity-actor object object none :behavior water-anim))
+(define-extern water-anim-init-by-other (function entity-actor none :behavior water-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blocking-plane                 ;;
