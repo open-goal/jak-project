@@ -7,3 +7,104 @@
 
 ;; DECOMP BEGINS
 
+(defun ray-plane-equation-intersect ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  (let* ((f0-1 (vector4-dot arg3 arg1))
+         (f1-1 (vector-dot arg3 arg2))
+         (f30-0 (/ (- f0-1) f1-1))
+         )
+    (vector-v*float+! arg0 arg1 arg2 f30-0)
+    f30-0
+    )
+  )
+
+(deftype flow-section (structure)
+  ((start      vector :inline :offset-assert   0)
+   (trailing   plane  :inline :offset-assert  16)
+   (pull-dir   vector :inline :offset-assert  32)
+   (radial-dir vector :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype flow-section-array (inline-array-class)
+  ((data flow-section :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> flow-section-array heap-base) (the-as uint 64))
+
+(deftype flow-control (basic)
+  ((path           path-control               :offset-assert   4)
+   (speed          float                      :offset-assert   8)
+   (belt-radius    float                      :offset-assert  12)
+   (sections       flow-section-array         :offset-assert  16)
+   (leading        plane              :inline :offset-assert  32)
+   (collide-bounds sphere             :inline :offset-assert  48)
+   )
+  :method-count-assert 13
+  :size-assert         #x40
+  :flag-assert         #xd00000040
+  (:methods
+    (new (symbol type process-drawable res-lump) _type_ 0)
+    (draw-path (_type_) none 9)
+    (flow-control-method-10 () none 10)
+    (flow-control-method-11 () none 11)
+    (flow-control-method-12 () none 12)
+    )
+  )
+
+
+(defmethod relocate flow-control ((obj flow-control) (arg0 int))
+  (if (nonzero? (-> obj sections))
+      (&+! (-> obj sections) arg0)
+      )
+  (if (nonzero? (-> obj path))
+      (&+! (-> obj path) arg0)
+      )
+  ((the-as (function flow-control int flow-control) (find-parent-method flow-control 7)) obj arg0)
+  )
+
+(defmethod draw-path flow-control ((obj flow-control))
+  (let ((a0-1 (-> obj path)))
+    (if (nonzero? a0-1)
+        (debug-draw a0-1)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod new flow-control ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 res-lump))
+  (if (not arg1)
+      (set! arg1 (-> arg0 entity))
+      )
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (nonzero? s5-0)
+      (let ((v1-6 (new 'process 'curve-control arg0 'flow -1000000000.0)))
+        (cond
+          ((nonzero? v1-6)
+           (set! (-> s5-0 path) v1-6)
+           (logior! (-> v1-6 flags) (path-control-flag display draw-line draw-point draw-text))
+           (if (< (-> v1-6 curve num-cverts) 2)
+               (go process-drawable-art-error "bad flow path")
+               )
+           (set! (-> s5-0 speed) (res-lump-float arg1 'speed :default 12288.0))
+           (set! (-> s5-0 belt-radius) (res-lump-float arg1 'extra-radius :default 16384.0))
+           ((method-of-object s5-0 flow-control-method-10))
+           )
+          (else
+            (go process-drawable-art-error "no flow path")
+            )
+          )
+        )
+      )
+    s5-0
+    )
+  )
