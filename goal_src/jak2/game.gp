@@ -166,6 +166,24 @@
      :dep stuff)
   )
 
+
+(defun copy-iso-file (name subdir ext)
+  (let* ((path (string-append "$ISO/" subdir name ext))
+         (out-name (string-append "$OUT/iso/" name ext)))
+    (defstep :in path
+             :tool 'copy
+             :out `(,out-name))
+    out-name))
+
+(defmacro copy-sbk-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
+
+(defmacro copy-mus-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-mus* (cons (copy-iso-file ,x "MUS/" ".MUS") *all-mus*))) files)))
+
+(defmacro copy-vag-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-vag* (cons (copy-iso-file "VAGWAD" "VAG/" (string-append "." ,x)) *all-vag*))) files)))
+
 ;;;;;;;;;;;;;;;;;
 ;; GOAL Kernel
 ;;;;;;;;;;;;;;;;;
@@ -663,6 +681,9 @@
   "jak-swim+0-ag"
   "blocking-plane-ag"
   )
+
+(copy-sbk-files "COMMON" "COMMONJ" "EMPTY0" "EMPTY1" "EMPTY2")
+(copy-mus-files "CITY1")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Text

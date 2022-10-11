@@ -357,12 +357,18 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 }
 
 void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
-  if (g_game_version == GameVersion::Jak2) {
-    printf("RPC_Loader skip %d\n", (int)((SoundRpcCommand*)data)->command);
-    return nullptr;
-  }
   int n_messages = size / SRPC_MESSAGE_SIZE;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
+  if (g_game_version == GameVersion::Jak2) {
+    printf("RPC_Loader skip %d\n", (int)((SoundRpcCommand*)data)->command);
+    if (cmd->command == (SoundCommand)16) {
+      cmd->irx_version.major = 4;
+      cmd->irx_version.minor = 0;
+      gInfoEE = cmd->irx_version.ee_addr;
+      return data;
+    }
+    return nullptr;
+  }
   if (gSoundEnable) {
     // I don't think it should be possible to have > 1 message here - the buffer isn't big enough.
     if (n_messages > 1) {
