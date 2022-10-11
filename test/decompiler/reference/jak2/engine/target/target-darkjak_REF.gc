@@ -272,16 +272,16 @@
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-get-on (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('darkjak)
        (when (zero? (-> self darkjak want-stage))
-         (set! (-> self darkjak want-stage) (-> arg3 param 0))
+         (set! (-> self darkjak want-stage) (-> event param 0))
          #t
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -410,16 +410,16 @@
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-get-off (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('pole-grab 'darkjak 'slide 'wade 'launch 'edge-grab)
        #f
        )
       (('change-mode)
-       (case (-> arg3 param 0)
+       (case (-> event param 0)
          (('grab)
           (when (not (logtest? (-> self focus-status) (focus-status dead)))
-            (if (not (-> arg3 param 1))
+            (if (not (-> event param 1))
                 #t
                 (go target-grab 'stance)
                 )
@@ -428,7 +428,7 @@
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1065,14 +1065,14 @@
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-bomb0 (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('pole-grab 'darkjak 'slide 'wade 'launch 'edge-grab 'jump 'shove 'attack 'attack-or-shove)
        #f
        )
       (('hit)
-       (let ((v1-1 (the-as object (-> arg3 param 1))))
-         (when (and (= (-> arg3 param 0) 'bomb)
+       (let ((v1-1 (the-as object (-> event param 1))))
+         (when (and (= (-> event param 0) 'bomb)
                     (logtest? (process-mask enemy) (-> (the-as process v1-1) mask))
                     (let ((v1-7 (ja-group)))
                       (and v1-7 (= v1-7 (-> self draw art-group data 418)))
@@ -1092,7 +1092,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1660,7 +1660,7 @@
       (sv-32 (array collide-shape))
       (sv-40 int)
       (sv-48 int)
-      (sv-56 vector)
+      (sv-56 sphere)
       (sv-60 (pointer handle))
       (sv-64 int)
       (sv-72 time-frame)
@@ -1704,7 +1704,7 @@
       (set! sv-32 (-> self focus-search))
       (set! sv-40 0)
       (set! sv-48 0)
-      (set! sv-56 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+      (set! sv-56 (the-as sphere (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))))
       (set! sv-60
             (new 'static 'array handle 128
               (new 'static 'handle)
@@ -1837,7 +1837,7 @@
               (new 'static 'handle)
               )
             )
-      (set! (-> sv-56 w)
+      (set! (-> sv-56 r)
             (if (and (logtest? (focus-status dark) (-> self focus-status))
                      (and (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
                      )

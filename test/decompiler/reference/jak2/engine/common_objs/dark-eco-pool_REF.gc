@@ -53,35 +53,40 @@
   )
 
 ;; definition for method 28 of type dark-eco-pool
-(defmethod water-anim-method-28 dark-eco-pool ((obj dark-eco-pool))
-  (let ((t9-0 (method-of-type water-anim water-anim-method-28)))
+;; WARN: Return type mismatch ambient-sound vs none.
+(defmethod offset! dark-eco-pool ((obj dark-eco-pool))
+  "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
+  (let ((t9-0 (method-of-type water-anim offset!)))
     (t9-0 obj)
     )
   (logclear! (-> obj flags) (water-flags part-water))
   (logior! (-> obj flags) (water-flags dark-eco))
-  (set! (-> obj attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
-                                              (-> obj entity)
-                                              'attack-event
-                                              'interp
-                                              -1000000000.0
-                                              (the-as structure 'dark-eco-pool)
-                                              (the-as (pointer res-tag) #f)
-                                              *res-static-buf*
-                                              )
-                                      )
+  (set! (-> obj attack-event)
+        (the-as
+          symbol
+          ((method-of-type res-lump get-property-struct)
+           (-> obj entity)
+           'attack-event
+           'interp
+           -1000000000.0
+           (the-as structure 'dark-eco-pool)
+           (the-as (pointer res-tag) #f)
+           *res-static-buf*
+           )
+          )
         )
-  (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "eco-pool" :fo-min 30 :fo-max 50) (-> obj root trans)))
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-pool" :fo-min 30 :fo-max 50) (-> obj root trans))
         )
-    (set! (-> obj sound) v0-2)
-    v0-2
-    )
+  (none)
   )
 
 ;; definition for method 24 of type dark-eco-pool
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod skel-group-init! dark-eco-pool ((obj dark-eco-pool) (arg0 entity-actor) (arg1 object))
-  (let ((t9-0 (method-of-type water-anim skel-group-init!)))
-    (t9-0 obj arg0 arg1)
+(defmethod art-init! dark-eco-pool ((obj dark-eco-pool))
+  "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience."
+  (let ((t9-0 (method-of-type water-anim art-init!)))
+    (t9-0 obj)
     )
   (let ((s5-0 (new 'process 'ripple-control)))
     (set! (-> obj draw ripple) s5-0)
@@ -328,7 +333,3 @@
     (none)
     )
   )
-
-
-
-
