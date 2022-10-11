@@ -1208,8 +1208,8 @@ goos::Object decompile_structure(const TypeSpec& type,
           }
           if (field.type() == TypeSpec("object")) {
             field_defs_out.emplace_back(
-                field.name(),
-                decompile_at_label_guess_type(labels.at(word.label_id()), labels, words, ts, file, version));
+                field.name(), decompile_at_label_guess_type(labels.at(word.label_id()), labels,
+                                                            words, ts, file, version));
           } else {
             field_defs_out.emplace_back(
                 field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
