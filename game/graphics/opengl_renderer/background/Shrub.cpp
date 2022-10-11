@@ -1,5 +1,7 @@
 #include "Shrub.h"
 
+#include "common/log/log.h"
+
 Shrub::Shrub(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
@@ -50,9 +52,8 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
 
-  for (int i = 0; i < 8; i++) {
-    settings.time_of_day_weights[i] =
-        2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
+  for (int i = 0; i < 4; i++) {
+    settings.itimes[i] = m_pc_port_data.itimes[i];
   }
 
   update_render_state_from_pc_settings(render_state, m_pc_port_data);
@@ -184,7 +185,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("Shrub setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("Shrub setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -227,7 +228,7 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+  interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;

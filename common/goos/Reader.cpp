@@ -13,6 +13,7 @@
 
 #include "ReplUtils.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
 
@@ -291,11 +292,16 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
   ts.seek_past_whitespace_and_comments();
 
   // read list!
-  auto objs = read_list(ts, false);
-  if (add_top_level) {
-    return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
-  } else {
-    return objs;
+  try {
+    auto objs = read_list(ts, false);
+    if (add_top_level) {
+      return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+    } else {
+      return objs;
+    }
+  } catch (std::exception& e) {
+    lg::print("{}", e.what());
+    throw e;
   }
 }
 

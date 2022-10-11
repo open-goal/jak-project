@@ -2152,7 +2152,7 @@ TEST_F(FormRegressionTestJak1, ExprPrintTreeBitmask) {
       "(begin\n"
       "  (dotimes\n"
       "   (s4-0 arg1)\n"
-      "   (if (zero? (logand arg0 1)) (format #t \"    \") (format #t \"|   \"))\n"
+      "   (if (not (logtest? arg0 1)) (format #t \"    \") (format #t \"|   \"))\n"
       "   (set! arg0 (shr arg0 1))\n"
       "   )\n"
       "  #f\n"

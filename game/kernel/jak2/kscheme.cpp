@@ -1460,7 +1460,7 @@ int InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_ASIZE_OF_BASIC_FUNC, "asize-of-basic-func",
                    make_function_from_c((void*)asize_of_basic).offset);
   set_fixed_symbol(FIX_SYM_COPY_BASIC_FUNC, "asize-of-basic-func",
-                   make_function_from_c((void*)copy_basic).offset);
+                   make_function_from_c((void*)copy_basic, true).offset);
   set_fixed_symbol(FIX_SYM_DELETE_BASIC, "delete-basic",
                    make_function_from_c((void*)delete_basic).offset);
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
@@ -1509,7 +1509,7 @@ int InitHeapAndSymbol() {
       set_fixed_type(FIX_SYM_BASIC, "basic", get_fixed_type_symbol(FIX_SYM_STRUCTURE),
                      pack_type_flag(9, 0, 4), make_function_from_c((void*)print_basic).offset,
                      make_function_from_c((void*)inspect_basic).offset);
-  basic_type->new_method = make_function_from_c((void*)new_basic);
+  basic_type->new_method = make_function_from_c((void*)new_basic, true);
   basic_type->delete_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_DELETE_BASIC));
   basic_type->asize_of_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_ASIZE_OF_BASIC_FUNC));
   basic_type->copy_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_COPY_BASIC_FUNC));
@@ -1636,7 +1636,7 @@ int InitHeapAndSymbol() {
                  pack_type_flag(9, 0, 16), 0, 0);
 
   Ptr<Type>(u32_in_fixed_sym(FIX_SYM_OBJECT_TYPE))->new_method =
-      make_function_from_c((void*)alloc_heap_object);
+      make_function_from_c((void*)alloc_heap_object, true);
 
   make_function_symbol_from_c("string->symbol", (void*)intern);
   make_function_symbol_from_c("print", (void*)sprint);

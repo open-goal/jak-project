@@ -5,6 +5,7 @@
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/versions.h"
 
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/IR2/LabelDB.h"
@@ -25,37 +26,43 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
                                 const LinkedObjectFile* file,
+                                GameVersion version,
                                 bool in_static_pair = false);
 goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
                                           DecompilerTypeSystem& dts,
-                                          const LinkedObjectFile* file);
+                                          const LinkedObjectFile* file,
+                                          GameVersion version);
 goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
                                            const TypeSystem& ts,
-                                           const LinkedObjectFile* file);
+                                           const LinkedObjectFile* file,
+                                           GameVersion version);
 goos::Object decompile_structure(const TypeSpec& actual_type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
                                  const TypeSystem& ts,
                                  const LinkedObjectFile* file,
-                                 bool use_fancy_macros);
+                                 bool use_fancy_macros,
+                                 GameVersion version);
 goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
                             const TypeSystem& ts,
                             bool add_quote,
-                            const LinkedObjectFile* file);
+                            const LinkedObjectFile* file,
+                            GameVersion version);
 goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
                                    const TypeSystem& ts,
                                    const LinkedObjectFile* file,
-                                   const std::optional<TypeSpec>& content_type_override);
+                                   const std::optional<TypeSpec>& content_type_override,
+                                   GameVersion version);
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts);

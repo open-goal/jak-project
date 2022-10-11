@@ -2481,11 +2481,12 @@ void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 
 void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* file) {
   if (m_label_info) {
-    m_description = decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
-                                                 env.file->words_by_seg, *env.dts, file);
+    m_description =
+        decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
+                                     env.file->words_by_seg, *env.dts, file, env.version);
   } else {
     m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
-                                                  env.dts->ts, file);
+                                                  env.dts->ts, file, env.version);
   }
   m_decompiled = true;
 }
@@ -3095,11 +3096,13 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
   forms.push_back(pretty_print::to_symbol(fmt::format("defpartgroup {}", name())));
   forms.push_back(pretty_print::to_symbol(fmt::format(":id {}", m_group_id)));
   if (m_static_info.duration != 3000) {
-    forms.push_back(pretty_print::to_symbol(fmt::format(":duration {}", m_static_info.duration)));
+    forms.push_back(pretty_print::to_symbol(
+        fmt::format(":duration (seconds {})", seconds_to_string(m_static_info.duration))));
   }
   if (m_static_info.linger != 1500) {
-    forms.push_back(
-        pretty_print::to_symbol(fmt::format(":linger-duration {}", m_static_info.linger)));
+    // 5 seconds is default
+    forms.push_back(pretty_print::to_symbol(
+        fmt::format(":linger-duration (seconds {})", seconds_to_string(m_static_info.linger))));
   }
   if (m_static_info.flags != 0) {
     auto things = decompile_bitfield_enum_from_int(TypeSpec("sp-group-flag"), env.dts->ts,
@@ -3117,6 +3120,21 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
       ":bounds (static-bspherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
       meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
       meters_to_string(m_static_info.bounds.w()))));
+
+  if (env.version != GameVersion::Jak1) {
+    // jak 2 stuff.
+    if (m_static_info.rot != 0) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(
+          ":rotate ((degrees {}) (degrees {}) (degrees {}))",
+          meters_to_string(m_static_info.rot.x()), meters_to_string(m_static_info.rot.y()),
+          meters_to_string(m_static_info.rot.z()))));
+    }
+    if (m_static_info.scale != 1) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(
+          ":scale ({} {} {})", float_to_string(m_static_info.rot.x()),
+          float_to_string(m_static_info.rot.y()), float_to_string(m_static_info.rot.z()))));
+    }
+  }
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.elts) {
@@ -3204,12 +3222,11 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.fields) {
-    if (e.field_id == 67) {
+    if (e.is_sp_end(env.version)) {
       // sp-end
       break;
     }
-    ASSERT(env.version == GameVersion::Jak1);  // need to update enums
-    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
+    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts, env.version));
   }
   if (!item_forms.empty()) {
     forms.push_back(pretty_print::to_symbol(":init-specs"));

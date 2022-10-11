@@ -16,7 +16,6 @@
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
-
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
  * Will actually exit the next time the REPL runs.
@@ -369,10 +368,10 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
 
   auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
   if (!result) {
-    fmt::print("No results found.\n");
+    lg::print("No results found.\n");
   } else {
     for (auto& info : *result) {
-      fmt::print("{}", make_symbol_info_description(info));
+      lg::print("{}", make_symbol_info_description(info));
     }
   }
 
@@ -496,11 +495,11 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   auto time = timer.getMs();
 
   for (auto& x : result) {
-    fmt::print(" {}\n", x);
+    lg::print(" {}\n", x);
   }
 
-  fmt::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
-             m_symbol_info.symbol_count(), time);
+  lg::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
+            m_symbol_info.symbol_count(), time);
 
   return get_none();
 }
@@ -562,12 +561,12 @@ Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
-  fmt::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
-  fmt::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
-  fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
-  fmt::print("Total functions: {}\n", m_debug_stats.total_funcs);
-  fmt::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
-  fmt::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
+  lg::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  lg::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
+  lg::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  lg::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  lg::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  lg::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
 
   return get_none();
 }

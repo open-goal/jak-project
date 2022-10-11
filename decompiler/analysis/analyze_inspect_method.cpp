@@ -1,4 +1,5 @@
 #include "analyze_inspect_method.h"
+#include "common/log/log.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
@@ -371,13 +372,13 @@ FieldPrint get_field_print(const std::string& str) {
 
 int get_start_idx_process(Function& function, const std::string& parent_type, Env& env) {
   if (function.basic_blocks.size() != 5) {
-    fmt::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
-               function.basic_blocks.size());
+    lg::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
+              function.basic_blocks.size());
     return -1;
   }
 
   if (!function.ir2.atomic_ops) {
-    fmt::print("[iim] no atomic ops in {}\n", function.name());
+    lg::print("[iim] no atomic ops in {}\n", function.name());
     return -1;
   }
   auto& aos = *function.ir2.atomic_ops;
@@ -390,23 +391,23 @@ int get_start_idx_process(Function& function, const std::string& parent_type, En
    */
 
   if (aos.block_id_to_end_atomic_op.at(0) != 2) {
-    fmt::print("[iim] block 0 had the wrong number of ops: {} for {}\n",
-               aos.block_id_to_end_atomic_op.at(0), function.name());
+    lg::print("[iim] block 0 had the wrong number of ops: {} for {}\n",
+              aos.block_id_to_end_atomic_op.at(0), function.name());
     return -1;
   }
 
   if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::A0))) {
-    fmt::print("[iim] block 0 op 0 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 0 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   auto br = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
   if (!br) {
-    fmt::print("[iim] block 0 op 1 bad in {}: {} (not branch)\n", aos.ops.at(1)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 1 bad in {}: {} (not branch)\n", aos.ops.at(1)->to_string(env),
+              function.name());
     return -1;
   }
 
@@ -415,8 +416,8 @@ int get_start_idx_process(Function& function, const std::string& parent_type, En
       br->condition().src(0).var().reg() != Register(Reg::GPR, Reg::GP) ||
       br->branch_delay().kind() != IR2_BranchDelay::Kind::SET_REG_FALSE ||
       br->branch_delay().var(0).reg() != Register(Reg::GPR, Reg::V1)) {
-    fmt::print("[iim] block 0 op 1 bad in {}: {} (bad branch)\n", aos.ops.at(1)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 1 bad in {}: {} (bad branch)\n", aos.ops.at(1)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
@@ -427,29 +428,29 @@ int get_start_idx_process(Function& function, const std::string& parent_type, En
    *  (b! #t L371 (nop!))
    */
   if (aos.block_id_to_end_atomic_op.at(1) != 4) {
-    fmt::print("[iim] block 1 had the wrong number of ops: {} for {}\n",
-               aos.block_id_to_end_atomic_op.at(1), function.name());
+    lg::print("[iim] block 1 had the wrong number of ops: {} for {}\n",
+              aos.block_id_to_end_atomic_op.at(1), function.name());
     return -1;
   }
 
   if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::GP))) {
-    fmt::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
   }
   op_idx++;
 
   auto br2 = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
   if (!br2) {
-    fmt::print("[iim] op 3 bad in {}: {} (not branch)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op 3 bad in {}: {} (not branch)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
 
   if (br2->likely() || br2->condition().kind() != IR2_Condition::Kind::ALWAYS ||
       br2->branch_delay().kind() != IR2_BranchDelay::Kind::NOP) {
-    fmt::print("[iim] op3 bad in {}: {} (bad branch)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op3 bad in {}: {} (bad branch)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
@@ -468,37 +469,37 @@ L2:
     sll v0, ra, 0
 */
   if (!is_set_reg_to_int(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::V1), 0)) {
-    fmt::print("[iim] op4 bad in {}: {} (bad set 0)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op4 bad in {}: {} (bad set 0)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   if (!is_set_reg_to_symbol_value(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::V1),
                                   parent_type)) {
-    fmt::print("[iim] op5 bad in {}: {} (bad set parent type)\n",
-               aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op5 bad in {}: {} (bad set parent type)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   if (aos.ops.at(op_idx).get()->to_string(env) != "(set! t9 (l.wu (+ v1 28)))") {
-    fmt::print("[iim] op6 bad in {}: {} (bad load inspect)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op6 bad in {}: {} (bad load inspect)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   if (aos.ops.at(op_idx).get()->to_string(env) != "(set! a0 gp)") {
-    fmt::print("[iim] op7 bad in {}: {} (bad set arg)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op7 bad in {}: {} (bad set arg)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   if (aos.ops.at(op_idx).get()->to_string(env) != "(call!)") {
-    fmt::print("[iim] op8 bad in {}: {} (bad call)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op8 bad in {}: {} (bad call)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
@@ -539,13 +540,13 @@ int get_start_idx(Function& function,
                   const std::string& type_name,
                   Env& env) {
   if (function.basic_blocks.size() != 5) {
-    fmt::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
-               function.basic_blocks.size());
+    lg::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
+              function.basic_blocks.size());
     return -1;
   }
 
   if (!function.ir2.atomic_ops) {
-    fmt::print("[iim] no atomic ops in {}\n", function.name());
+    lg::print("[iim] no atomic ops in {}\n", function.name());
     return -1;
   }
   auto& aos = *function.ir2.atomic_ops;
@@ -558,23 +559,23 @@ int get_start_idx(Function& function,
    */
 
   if (aos.block_id_to_end_atomic_op.at(0) != 2) {
-    fmt::print("[iim] block 0 had the wrong number of ops: {} for {}\n",
-               aos.block_id_to_end_atomic_op.at(0), function.name());
+    lg::print("[iim] block 0 had the wrong number of ops: {} for {}\n",
+              aos.block_id_to_end_atomic_op.at(0), function.name());
     return -1;
   }
 
   if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::A0))) {
-    fmt::print("[iim] block 0 op 0 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 0 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
 
   auto br = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
   if (!br) {
-    fmt::print("[iim] block 0 op 1 bad in {}: {} (not branch)\n", aos.ops.at(1)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 1 bad in {}: {} (not branch)\n", aos.ops.at(1)->to_string(env),
+              function.name());
     return -1;
   }
 
@@ -583,8 +584,8 @@ int get_start_idx(Function& function,
       br->condition().src(0).var().reg() != Register(Reg::GPR, Reg::GP) ||
       br->branch_delay().kind() != IR2_BranchDelay::Kind::SET_REG_FALSE ||
       br->branch_delay().var(0).reg() != Register(Reg::GPR, Reg::V1)) {
-    fmt::print("[iim] block 0 op 1 bad in {}: {} (bad branch)\n", aos.ops.at(1)->to_string(env),
-               function.name());
+    lg::print("[iim] block 0 op 1 bad in {}: {} (bad branch)\n", aos.ops.at(1)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
@@ -595,29 +596,29 @@ int get_start_idx(Function& function,
    *  (b! #t L371 (nop!))
    */
   if (aos.block_id_to_end_atomic_op.at(1) != 4) {
-    fmt::print("[iim] block 1 had the wrong number of ops: {} for {}\n",
-               aos.block_id_to_end_atomic_op.at(1), function.name());
+    lg::print("[iim] block 1 had the wrong number of ops: {} for {}\n",
+              aos.block_id_to_end_atomic_op.at(1), function.name());
     return -1;
   }
 
   if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::GP))) {
-    fmt::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
   }
   op_idx++;
 
   auto br2 = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
   if (!br2) {
-    fmt::print("[iim] op 3 bad in {}: {} (not branch)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op 3 bad in {}: {} (not branch)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
 
   if (br2->likely() || br2->condition().kind() != IR2_Condition::Kind::ALWAYS ||
       br2->branch_delay().kind() != IR2_BranchDelay::Kind::NOP) {
-    fmt::print("[iim] op3 bad in {}: {} (bad branch)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op3 bad in {}: {} (bad branch)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
     return -1;
   }
   op_idx++;
@@ -634,38 +635,38 @@ int get_start_idx(Function& function,
    */
 
   if (!is_set_reg_to_int(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::V1), 0)) {
-    fmt::print("[iim] op4 bad in {}: {} (bad set 0)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op4 bad in {}: {} (bad set 0)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
   }
   op_idx++;
 
   if (!is_set_reg_to_symbol_value(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::T9),
                                   "format")) {
-    fmt::print("[iim] op5 bad in {}: {} (bad set format)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op5 bad in {}: {} (bad set format)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
   }
   op_idx++;
 
   if (!is_set_reg_to_symbol_ptr(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::A0), "#t")) {
-    fmt::print("[iim] op6 bad in {}: {} (bad set #t)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op6 bad in {}: {} (bad set #t)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
   }
   op_idx++;
 
   auto type_name_str =
       get_string_loaded_to_reg(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::A1), file);
   if (!type_name_str) {
-    fmt::print("[iim] op7 bad in {}: {} (bad string)\n", aos.ops.at(op_idx)->to_string(env),
-               function.name());
+    lg::print("[iim] op7 bad in {}: {} (bad string)\n", aos.ops.at(op_idx)->to_string(env),
+              function.name());
   } else if (type_name_str != "[~8x] ~A~%") {
-    fmt::print("[iim] op7 bad in {}: {} (bad string: {})\n", aos.ops.at(op_idx)->to_string(env),
-               function.name(), *type_name_str);
+    lg::print("[iim] op7 bad in {}: {} (bad string: {})\n", aos.ops.at(op_idx)->to_string(env),
+              function.name(), *type_name_str);
   }
   op_idx++;
 
   if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
                Register(Reg::GPR, Reg::A2), Register(Reg::GPR, Reg::GP))) {
-    fmt::print("[iim] op 8 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op 8 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
   }
   op_idx++;
@@ -675,13 +676,13 @@ int get_start_idx(Function& function,
   } else if (aos.ops.at(op_idx)->to_string(env) == "(set! a3 (l.wu (+ gp -4)))") {
     result->is_basic = true;
   } else {
-    fmt::print("[iim] op 9 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op 9 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
   }
   op_idx++;
 
   if (!dynamic_cast<CallOp*>(aos.ops.at(op_idx).get())) {
-    fmt::print("[iim] op 10 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    lg::print("[iim] op 10 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
   }
   op_idx++;
@@ -1040,7 +1041,7 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    DecompilerTypeSystem& previous_game_ts,
                                    TypeInspectorCache& ti_cache,
                                    ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
-  fmt::print(" iim: {}\n", inspect_method.name());
+  lg::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
   ASSERT(type_name == inspect_method.guessed_name.type_name);
   TypeFlags flags;
@@ -1072,7 +1073,7 @@ std::string inspect_inspect_method(Function& inspect_method,
     }
   }
   if (!result.found_flags) {
-    fmt::print("[iim] no flags found for {}, maybe defined in the kernel\n", type_name);
+    lg::print("[iim] no flags found for {}, maybe defined in the kernel\n", type_name);
   }
 
   result.parent_type_name = dts.lookup_parent_from_inspects(type_name);
@@ -1495,13 +1496,13 @@ void inspect_top_level_for_metadata(Function& top_level,
       continue;
     }
 
-    fmt::print("got 1\n");
+    lg::print("got 1\n");
 
     // lwu t9, 16(v1)            ;; [ 21] (set! t9-0 (l.wu (+ v1-10 16)))
     //                           ;; [v1: <the etype type> ] -> [t9: (function symbol type int type)
     const auto& aop_1 = top_level.ir2.atomic_ops->ops.at(i + 1);
     if (!is_set_reg_to_load(aop_1.get(), Register(Reg::GPR, Reg::T9), 16)) {
-      fmt::print("fail1\n");
+      lg::print("fail1\n");
       continue;
     }
 
@@ -1509,7 +1510,7 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_2 = top_level.ir2.atomic_ops->ops.at(i + 2);
     auto type_name = get_set_reg_to_symbol_ptr(aop_2.get(), Register(Reg::GPR, Reg::A0));
     if (!type_name) {
-      fmt::print("fail2\n");
+      lg::print("fail2\n");
       continue;
     }
 
@@ -1517,7 +1518,7 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_3 = top_level.ir2.atomic_ops->ops.at(i + 3);
     auto parent_name = get_set_reg_to_symbol_value(aop_3.get(), Register(Reg::GPR, Reg::A1));
     if (!parent_name) {
-      fmt::print("fail3\n");
+      lg::print("fail3\n");
       continue;
     }
 
@@ -1525,14 +1526,14 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_4 = top_level.ir2.atomic_ops->ops.at(i + 4);
     auto flags = get_set_reg_to_u64_load(aop_4.get(), Register(Reg::GPR, Reg::A2), file);
     if (!flags) {
-      fmt::print("fail3\n");
+      lg::print("fail3\n");
       continue;
     }
 
     // jalr ra, t9               ;; [ 25] (call! a0-0 a1-0 a2-0)
     const auto& aop_5 = top_level.ir2.atomic_ops->ops.at(i + 5);
     if (!dynamic_cast<CallOp*>(aop_5.get())) {
-      fmt::print("fial4\n");
+      lg::print("fial4\n");
       continue;
     }
 

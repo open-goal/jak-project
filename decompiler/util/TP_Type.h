@@ -1,9 +1,9 @@
 #pragma once
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 #include "common/common_types.h"
-#include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/util/Assert.h"
 

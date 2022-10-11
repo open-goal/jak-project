@@ -127,7 +127,7 @@ TEST_F(DataDecompTest, String) {
       "    .word 0x0\n";
   auto parsed = parse_data(input);
   auto decomp = decompile_at_label_guess_type(parsed.label("L62"), parsed.labels, {parsed.words},
-                                              dts->ts, nullptr);
+                                              dts->ts, nullptr, GameVersion::Jak1);
   EXPECT_EQ(decomp.print(), "\"finalboss-fight\"");
 }
 
@@ -148,8 +148,9 @@ TEST_F(DataDecompTest, SimpleStructure) {
       "    .word 0x79637473\n"
       "    .word 0x6c63\n";
   auto parsed = parse_data(input);
-  auto decomp = decompile_at_label(TypeSpec("vif-disasm-element"), parsed.label("L217"),
-                                   parsed.labels, {parsed.words}, dts->ts, nullptr);
+  auto decomp =
+      decompile_at_label(TypeSpec("vif-disasm-element"), parsed.label("L217"), parsed.labels,
+                         {parsed.words}, dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print "
                     "#x2 :string1 \"stcycl\")");
@@ -210,7 +211,7 @@ TEST_F(DataDecompTest, VifDisasmArray) {
       "    .word 0x0";
   auto parsed = parse_data(input);
   auto decomp = decompile_at_label_guess_type(parsed.label("L148"), parsed.labels, {parsed.words},
-                                              dts->ts, nullptr);
+                                              dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'boxed-array :type vif-disasm-element\n"
                     "  (new 'static 'vif-disasm-element :mask #x7f :string1 \"nop\")\n"
@@ -286,7 +287,7 @@ TEST_F(DataDecompTest, ContinuePoint) {
       "    .word 0x747261";
   auto parsed = parse_data(input);
   auto decomp = decompile_at_label_guess_type(parsed.label("L63"), parsed.labels, {parsed.words},
-                                              dts->ts, nullptr);
+                                              dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'continue-point\n"
                     "     :name \"finalboss-start\"\n"
@@ -344,7 +345,7 @@ TEST_F(DataDecompTest, FloatArray) {
   info.array_size = 7;
   info.is_value = false;
   auto decomp = decompile_at_label_with_hint(info, parsed.label("L63"), parsed.labels,
-                                             {parsed.words}, *dts, nullptr);
+                                             {parsed.words}, *dts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'array float 7\n"
                     "1.0 0.0 1.0 0.0 1.0 0.0 1.0)");
@@ -382,7 +383,7 @@ TEST_F(DataDecompTest, KernelContext) {
       "    .symbol #t\n";
   auto parsed = parse_data(input);
   auto decomp = decompile_at_label_guess_type(parsed.label("L345"), parsed.labels, {parsed.words},
-                                              dts->ts, nullptr);
+                                              dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'kernel-context\n"
                     "  :prevent-from-run (process-mask execute sleep)\n"

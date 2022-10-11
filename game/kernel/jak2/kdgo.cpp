@@ -11,6 +11,30 @@
 namespace jak2 {
 
 /*!
+ * Instruct the IOP to continue loading the next object.
+ * Only should be called once it is safe to overwrite the previous.
+ * @param heapPtr : pointer to heap so the IOP could try to load directly into a heap if it wants.
+ * This should be updated after each object file load to make sure the IOP knows the exact location
+ * of the end of the GOAL heap data.
+ *
+ * Unlike jak 1, we update buffer1 and buffer2 here for borrow heap loads.
+ */
+void ContinueLoadingDGO(Ptr<u8> b1, Ptr<u8> b2, Ptr<u8> heapPtr) {
+  u32 msgID = sMsgNum;
+  RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
+  sMsgNum = sMsgNum ^ 1;
+  sendBuff->result = DGO_RPC_RESULT_INIT;
+  sMsg[msgID].buffer1 = b1.offset;
+  sMsg[msgID].buffer2 = b2.offset;
+  sMsg[msgID].buffer_heap_top = heapPtr.offset;
+  // the IOP will wait for this RpcCall to continue the DGO state machine.
+  RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_NEXT_FNO, true, sendBuff, sizeof(RPC_Dgo_Cmd), sendBuff,
+          sizeof(RPC_Dgo_Cmd));
+  // this async RPC call will complete when the next object is fully loaded.
+  sLastMsg = sendBuff;
+}
+
+/*!
  * Load and link a DGO file.
  * This does not use the mutli-threaded linker and will block until the entire file is done.
  */
@@ -85,7 +109,7 @@ void load_and_link_dgo_from_c(const char* name,
 
     // inform IOP we are done
     if (!lastObjectLoaded) {
-      ContinueLoadingDGO(Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));
+      ContinueLoadingDGO(buffer1, buffer2, Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));
     }
   }
   sShowStallMsg = oldShowStall;

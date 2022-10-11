@@ -4,7 +4,7 @@ import argparse
 
 
 ### Script to track decompilation progress.
-### Example usage: python3 scripts/decomp_progress.py ~/jak-project/goal_src
+### Example usage: python3 scripts/decomp_progress.py ~/jak-project/goal_src/jak2
 
 def get_goal_files(root_dir, ext = "*.gc"):
     """Get all GOAL source files under root_dir."""
@@ -29,7 +29,7 @@ def print_table(stats, total_gc_files):
     print("-------------------------------------")
     print("| {: <24} | {: >6} |".format("TOTAL", total_lines))
     print("-------------------------------------")
-    estimated_lines = 500000
+    estimated_lines = 1000000
     print("Progress: {}/{} lines ({:.2f}%)".format(total_lines, estimated_lines, 100. * total_lines / estimated_lines))
     print("{}/{} files modified from template ({:.2f}%)".format(len(stats), total_gc_files,
                                                                 100. * len(stats) / total_gc_files))
@@ -41,8 +41,7 @@ def main():
     args = parser.parse_args()
     all_files = get_goal_files(args.goal_src)
 
-    ref_files = get_goal_files(args.goal_src + "/../test/", "*_REF.gc")
-
+    ref_files = get_goal_files(args.goal_src + "/../../test/decompiler/reference/jak2", "*_REF.gc")
     ref_files_no_ext = [os.path.basename(fn)[:-7] for fn in ref_files]
 
 

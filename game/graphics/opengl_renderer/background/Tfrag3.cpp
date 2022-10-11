@@ -1,5 +1,7 @@
 #include "Tfrag3.h"
 
+#include "common/log/log.h"
+
 #include "third-party/imgui/imgui.h"
 
 Tfrag3::Tfrag3() {
@@ -161,7 +163,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("TFRAG setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("TFRAG setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -181,9 +183,9 @@ void Tfrag3::render_tree(int geom,
     m_color_result.resize(tree.colors->size());
   }
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);

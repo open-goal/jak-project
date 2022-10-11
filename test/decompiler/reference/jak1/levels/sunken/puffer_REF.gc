@@ -163,10 +163,10 @@
 (defbehavior puffer-post puffer ()
   (when (and (-> self hit-player?)
              (or (not *target*)
-                 (and (zero? (logand (-> *target* state-flags)
+                 (and (not (logtest? (-> *target* state-flags)
                                      (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                      )
-                             )
+                           )
                       (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
                       )
                  )
@@ -268,10 +268,10 @@
 (defmethod dummy-25 puffer ((obj puffer) (arg0 float))
   (when *target*
     (let ((gp-0 (target-pos 0)))
-      (when (and (zero? (logand (-> *target* state-flags)
+      (when (and (not (logtest? (-> *target* state-flags)
                                 (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                 )
-                        )
+                      )
                  (dummy-24 obj gp-0)
                  (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
                  (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
@@ -710,8 +710,8 @@
 
 ;; failed to figure out what this is:
 (defstate puffer-die (puffer)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as
         uint
         (cond
