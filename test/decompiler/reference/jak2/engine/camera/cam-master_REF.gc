@@ -1,17 +1,25 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: cam-master.gc
-;; name in dgo: cam-master
-;; dgos: ENGINE, GAME
+;; definition for method 16 of type camera-master
+(defmethod camera-master-method-16 camera-master ((obj camera-master) (arg0 symbol))
+  (let ((a2-0 (the-as target (handle->process (-> obj focus handle))))
+        (v1-4 0)
+        )
+    (if a2-0
+        (set! v1-4 (the-as int (incomplete-bitfield-access (-> a2-0 control pat-ignore-mask))))
+        )
+    (logior (if arg0
+                #x9010002
+                #x9000002
+                )
+            v1-4
+            )
+    )
+  )
 
-;; TODO - waiting for particle code for cam-master-effect and such, two instances of commented out code here
-
-;;og:ignore-form:camera-master-method-16
-
-;; DECOMP BEGINS
-
-
+;; definition for function reset-follow
+;; INFO: Used lq/sq
 (defbehavior reset-follow camera-master ()
   (let ((a0-1 (handle->process (-> self focus handle))))
     (when (the-as process-focusable a0-1)
@@ -25,6 +33,8 @@
     )
   )
 
+;; definition for function reset-target-tracking
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs symbol.
 (defbehavior reset-target-tracking camera-master ()
   (let ((gp-0 (handle->process (-> self focus handle))))
@@ -82,6 +92,8 @@
     )
   )
 
+;; definition for function master-track-target
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior master-track-target camera-master ()
   (let ((gp-0 (handle->process (-> self focus handle))))
@@ -310,6 +322,7 @@
     )
   )
 
+;; definition for function setup-slave-for-hopefull
 (defun setup-slave-for-hopefull ((arg0 camera-slave))
   (when (= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
     (cam-calc-follow! (-> arg0 tracking) (-> arg0 trans) #f)
@@ -318,6 +331,7 @@
   (none)
   )
 
+;; definition for function master-is-hopeful-better?
 (defbehavior master-is-hopeful-better? camera-master ((arg0 camera-slave) (arg1 camera-slave))
   (cond
     ((not *camera-combiner*)
@@ -334,6 +348,8 @@
     )
   )
 
+;; definition for function master-choose-entity
+;; INFO: Used lq/sq
 (defbehavior master-choose-entity camera-master ((arg0 cam-setting-data))
   (local-vars
     (v1-22 symbol)
@@ -489,6 +505,8 @@
     )
   )
 
+;; definition for function cam-master-set-entity
+;; WARN: Return type mismatch int vs none.
 (defun cam-master-set-entity ((arg0 cam-setting-data))
   (if (-> arg0 entity-or-mode-changed)
       (master-choose-entity arg0)
@@ -557,6 +575,8 @@
   (none)
   )
 
+;; definition for function cam-master-activate-slave
+;; WARN: Return type mismatch int vs none.
 (defun cam-master-activate-slave ((arg0 symbol))
   (when (and *camera* (or arg0 (not (-> *camera* slave)) (-> *camera* settings entity-or-mode-changed)))
     (when (and arg0 (-> *camera* slave))
@@ -583,6 +603,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate cam-master-active (camera-master)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 none) (v1-125 uint))
@@ -966,8 +987,7 @@
         (-> self local-down)
         (vector-normalize-copy! (-> self local-down) (-> *standard-dynamics* gravity) 1.0)
         )
-      ;; TODO - waiting for particle code
-      ;; (cam-master-effect)
+      (cam-master-effect)
       )
     (none)
     )
@@ -1045,6 +1065,9 @@
     )
   )
 
+;; definition for function cam-master-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior cam-master-init camera-master ()
   (stack-size-set! (-> self main-thread) 512)
   (logclear! (-> self mask) (process-mask menu))
@@ -1069,14 +1092,14 @@
   (let ((a1-4 (new-stack-vector0)))
     (tracking-spline-method-10 (-> self target-spline) a1-4)
     )
-  ;; TODO - waiting for particle code
-  ;; (set! (-> self water-drip) (create-launch-control group-rain-screend-drop self))
-  ;; (set! (-> self water-drip-time) (seconds -60))
+  (set! (-> self water-drip) (create-launch-control group-rain-screend-drop self))
+  (set! (-> self water-drip-time) (seconds -60))
   (go cam-master-active)
   0
   (none)
   )
 
+;; definition for method 14 of type camera-master
 (defmethod camera-master-method-14 camera-master ((obj camera-master) (arg0 vector))
   (if (handle->process (-> obj focus handle))
       (vector-! arg0 (-> obj tpos-curr) (-> obj tpos-old))
@@ -1085,6 +1108,8 @@
   arg0
   )
 
+;; definition for method 15 of type camera-master
+;; INFO: Used lq/sq
 (defmethod camera-master-method-15 camera-master ((obj camera-master) (arg0 vector))
   (if (and (-> obj slave) (-> obj slave 0 next-state) (= (-> obj slave 0 next-state name) 'cam-string))
       (set! (-> arg0 quad) (-> obj slave 0 view-flat quad))

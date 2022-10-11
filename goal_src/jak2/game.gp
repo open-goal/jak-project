@@ -660,6 +660,22 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; Text
+;;;;;;;;;;;;;;;;;;;;;
+
+(defstep :in "game/assets/jak2/game_text.gp"
+  :tool 'text
+  :out '("$OUT/iso/0COMMON.TXT"
+         "$OUT/iso/1COMMON.TXT"
+         "$OUT/iso/2COMMON.TXT"
+         "$OUT/iso/3COMMON.TXT"
+         "$OUT/iso/4COMMON.TXT"
+         "$OUT/iso/5COMMON.TXT"
+         "$OUT/iso/6COMMON.TXT"
+         "$OUT/iso/7COMMON.TXT")
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; COMMON CITY STUFF
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -848,12 +864,17 @@
 ;; the iso group is a group of files built by the "(mi)" command.
 
 (group-list "iso"
- `(,@(reverse *all-vis*)
+ `("$OUT/iso/0COMMON.TXT"
+   ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
    ,@(reverse *all-mus*)
    ,@(reverse *all-vag*)
    ,@(reverse *all-cgos*))
+ )
+
+(group-list "text"
+ `("$OUT/iso/0COMMON.TXT")
  )
 
 ;; used for the type consistency test.

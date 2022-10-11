@@ -34,7 +34,7 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\":false,\\\"allowed_objects\\\":[]}"'
   boot-game:
     desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
@@ -89,6 +89,9 @@ tasks:
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+  lint-gsrc-file:
+    cmds:
+      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
@@ -96,6 +99,7 @@ tasks:
     cmds:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+      - task: lint-gsrc-file
   # TOOLS
   analyze-ee-memory:
     cmds:
@@ -131,10 +135,6 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
-  # check-gsrc-file:
-  #   cmds:
-  #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
   type-test:
     cmds:
       - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
-        ignore_error: true
