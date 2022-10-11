@@ -5,7 +5,7 @@
 #include "third-party/imgui/imgui.h"
 
 Generic2::Generic2(const std::string& name,
-                   BucketId my_id,
+                   int my_id,
                    u32 num_verts,
                    u32 num_frags,
                    u32 num_adgif,

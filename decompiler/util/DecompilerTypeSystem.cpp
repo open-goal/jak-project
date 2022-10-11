@@ -102,7 +102,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       }
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);
-      lg::error("{} when parsing decompiler type file:\n{}", e.what(), info);
+      lg::error("{} when parsing decompiler type file:{}", e.what(), info);
       throw e;
     }
   });
@@ -184,8 +184,8 @@ void DecompilerTypeSystem::add_symbol(const std::string& name,
   } else {
     if (ts.tc(type_spec, skv->second)) {
     } else {
-      lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
-               skv->second.print(), type_spec.print());
+      lg::warn("Attempting to redefine type of symbol {} from {} to {}", name, skv->second.print(),
+               type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }
@@ -287,10 +287,10 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         }
       case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
         if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_t = coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                                    add.get_objects_typespec()));
           auto new_child = TP_Type::make_from_integer_constant_plus_var(
-              existing.get_integer_constant(),
-              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
-                                                           add.get_objects_typespec())));
+              existing.get_integer_constant(), new_t, new_t);
           *changed = (new_child != existing);
           return new_child;
         } else {
@@ -318,6 +318,9 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::LABEL_ADDR:
         *changed = false;
         return existing;
+      case TP_Type::Kind::SYMBOL:
+        *changed = true;
+        return TP_Type::make_from_ts("symbol");
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
@@ -420,32 +423,31 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
     return bad_it->second;
   }
 
-  static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {
-      "0L", "1L", "3L", "1k", "1K", "2j", "0k", "0K", "30L", "1T", "2T"};
+  static const std::vector<std::string> code_ignore_list = {
+      "%",  "T",   "0L", "1L", "3L",   "1k",   "1K",   "2j", "0k",
+      "0K", "30L", "1T", "2T", "100h", "200h", "350h", "t"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
 
-      // Check for codes that take no args
       bool code_takes_no_arg = false;
-      for (char c : single_char_ignore_list) {
-        if (i < str.length() && str.at(i) == c) {
-          code_takes_no_arg = true;
-          break;
+      for (auto& ignored_code : code_ignore_list) {
+        size_t j = i;
+        bool match = true;
+        for (const char c : ignored_code) {
+          if (j > str.length()) {
+            match = false;
+            break;
+          }
+          if (str.at(j) != c) {
+            match = false;
+            break;
+          }
+          j++;
         }
-      }
-
-      for (auto& code : multi_char_ignore_list) {
-        if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1)) {
-          code_takes_no_arg = true;
-          break;
-        }
-        if (i + 2 < str.length() && code.length() == 3 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1) && str.at(i + 2) == code.at(2)) {
+        if (match) {
           code_takes_no_arg = true;
           break;
         }

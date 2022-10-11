@@ -424,9 +424,27 @@ int ShutdownMachine() {
   return 0;
 }
 
-Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
+u32 MouseGetData(u32 _mouse) {
   // stubbed out in the actual game
-  return mouse;
+  static double px = 0;
+  static double py = 0;
+
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
+
+  mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->status = 1;
+  mouse->button0 = 0;
+
+  // TODO: actually hook these up.
+  double last_cursor_x_position = 0;
+  double last_cursor_y_position = 0;
+
+  mouse->deltax = last_cursor_x_position - px;
+  mouse->deltay = last_cursor_y_position - py;
+  px = last_cursor_x_position;
+  py = last_cursor_y_position;
+  return _mouse;
 }
 
 /*!
@@ -457,16 +475,29 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+void pc_set_levels(u32 lev_list) {
+  std::vector<std::string> levels;
+  for (int i = 0; i < 6; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::set_levels(levels);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
-  // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
@@ -531,23 +562,19 @@ void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
 }
 
-u32 sceGsSyncV(u32 /*mode*/) {
-  // stub, jak2 probably works differently here
-  ASSERT(false);
-  return 0;
-  /*
+u32 sceGsSyncV(u32 mode) {
   ASSERT(mode == 0);
-  VBlank_Handler();
+  // VBlank_Handler(); meh...
+  if (vblank_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
+    call_goal(Ptr<Function>(vblank_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+  }
+
   return Gfx::vsync();
-   */
 }
 
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
-  // stub, jak2 probably works differently here
   ASSERT(mode == 0 && timeout == 0);
-  ASSERT(false);
-  return 0;
-  // return Gfx::sync_path();
+  return Gfx::sync_path();
 }
 
 void aybabtu() {}

@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/math_util.h"
 
@@ -18,11 +19,11 @@
 namespace {
 template <typename... Args>
 [[noreturn]] void throw_typesystem_error(const std::string& str, Args&&... args) {
-  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Type Error! --\n");
+  lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Type Error! --\n");
   if (!str.empty() && str.back() == '\n') {
-    fmt::print(fg(fmt::color::yellow), str, std::forward<Args>(args)...);
+    lg::print(fg(fmt::color::yellow), str, std::forward<Args>(args)...);
   } else {
-    fmt::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
+    lg::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
   }
 
   throw std::runtime_error(
@@ -63,8 +64,8 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
       if (m_allow_redefinition ||
           std::find(m_types_allowed_to_be_redefined.begin(), m_types_allowed_to_be_redefined.end(),
                     kv->second->get_name()) != m_types_allowed_to_be_redefined.end()) {
-        fmt::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
-                   kv->second->get_name(), kv->second->print(), type->print());
+        lg::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
+                  kv->second->get_name(), kv->second->print(), type->print());
         // extra dangerous, we have allowed type redefinition!
 
         // keep the unique_ptr around, just in case somebody references this old type pointer.
@@ -1304,6 +1305,126 @@ int TypeSystem::get_size_in_type(const Field& field) const {
   }
 }
 
+std::vector<std::string> TypeSystem::search_types_by_parent_type(
+    const std::string& parent_type,
+    const std::vector<std::string>& existing_matches) {
+  std::vector<std::string> results = {};
+  // If we've been given a list of already matched types, narrow it down from there, otherwise
+  // iterate through the entire map
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      if (typecheck_base_types(type_name, parent_type, false)) {
+        results.push_back(type_name);
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      // Only NullType's have no parent
+      if (!type_info->has_parent()) {
+        continue;
+      }
+      if (typecheck_base_types(type_name, parent_type, false)) {
+        results.push_back(type_name);
+      }
+    }
+  }
+
+  return results;
+}
+
+std::vector<std::string> TypeSystem::search_types_by_size(
+    const int search_size,
+    const std::vector<std::string>& existing_matches) {
+  std::vector<std::string> results = {};
+  // If we've been given a list of already matched types, narrow it down from there, otherwise
+  // iterate through the entire map
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      if (m_types[type_name]->get_size_in_memory() == search_size) {
+        results.push_back(type_name);
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      // Only NullType's have no parent
+      if (!type_info->has_parent()) {
+        continue;
+      }
+      if (type_info->get_size_in_memory() == search_size) {
+        results.push_back(type_name);
+      }
+    }
+  }
+
+  return results;
+}
+
+std::vector<std::string> TypeSystem::search_types_by_fields(
+    const std::vector<TypeSearchFieldInput>& search_fields,
+    const std::vector<std::string>& existing_matches) {
+  // TODO - maybe support partial matches eventually
+  std::vector<std::string> results = {};
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      // For each type, look at it's fields
+      if (dynamic_cast<StructureType*>(m_types[type_name].get()) != nullptr) {
+        bool type_valid = true;
+        auto struct_type = dynamic_cast<StructureType*>(m_types[type_name].get());
+        for (const auto& req_field : search_fields) {
+          bool field_valid = false;
+          // iterate through the type's fields until one is found with the right offset
+          // once found, check the underlying type name, if it doesn't match it's invalid
+          // if we don't find one with that offset, it's also invalid
+          for (const auto& type_field : struct_type->fields()) {
+            if (type_field.offset() == req_field.field_offset &&
+                type_field.type().base_type() == req_field.field_type_name) {
+              field_valid = true;
+              break;
+            }
+          }
+          if (!field_valid) {
+            type_valid = false;
+            break;
+          }
+        }
+        if (type_valid) {
+          results.push_back(type_name);
+        }
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      // For each type, look at it's fields
+      if (dynamic_cast<StructureType*>(type_info.get()) != nullptr) {
+        bool type_valid = true;
+        auto struct_type = dynamic_cast<StructureType*>(type_info.get());
+        for (const auto& req_field : search_fields) {
+          bool field_valid = false;
+          // iterate through the type's fields until one is found with the right offset
+          // once found, check the underlying type name, if it doesn't match it's invalid
+          // if we don't find one with that offset, it's also invalid
+          for (const auto& type_field : struct_type->fields()) {
+            if (type_field.offset() == req_field.field_offset &&
+                type_field.type().base_type() == req_field.field_type_name) {
+              field_valid = true;
+              break;
+            }
+          }
+          if (!field_valid) {
+            type_valid = false;
+            break;
+          }
+        }
+        if (type_valid) {
+          results.push_back(type_name);
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
 /*!
  * Add a simple structure type - don't use this outside of add_builtin_types as it forces you to do
  * things in the wrong order.
@@ -1410,11 +1531,11 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
   if (!success) {
     if (print_on_error) {
       if (error_source_name.empty()) {
-        fmt::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
-                   expected.print());
+        lg::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
+                  expected.print());
       } else {
-        fmt::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n",
-                   error_source_name, actual.print(), expected.print());
+        lg::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n", error_source_name,
+                  actual.print(), expected.print());
       }
     }
 

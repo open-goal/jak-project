@@ -93,6 +93,8 @@ lines_to_ignore = [
     ";; failed to figure",
     ";; Used lq/sq",
     ";; this part is debug only",
+    ";; WARN: Return type mismatch int vs none",
+    ";; WARN: Stack slot offset"
 ]
 
 if decomp_ignore_errors:
@@ -111,6 +113,7 @@ def should_ignore_line(line):
             return True
     return False
 
+# TODO - ignore brackets inside strings!
 
 decomp_file_path = "./decompiler_out/{}/{}_disasm.gc".format(args.game, args.file)
 with open(decomp_file_path) as f:
@@ -142,10 +145,10 @@ with open(decomp_file_path) as f:
                 if not skip_form:
                     decomp_form_def_lines.append(decomp_within_form)
                     decomp_lines.append(line)
-                while i < len(lines):
+                while i + 1 < len(lines):
                     i = i + 1
                     line = lines[i]
-                    if not skip_form:
+                    if not skip_form and not should_ignore_line(line):
                         decomp_lines.append(line)
                     if has_form_ended(decomp_form_paren_stack, line):
                         decomp_within_form = None
@@ -179,6 +182,18 @@ else:
 if args.preserve:
     handle_dangling_blocks(comments, final_lines, debug_lines)
 
-# Step 4: Write it out
+# Step 4.a: Remove excessive new-lines from the end of the output, only leave a single empty new-line
+lines_to_ignore = 0
+i = len(final_lines) - 1
+while i > 0 and (final_lines[i] == "\n" or final_lines[i] == "0\n"):
+    lines_to_ignore = lines_to_ignore + 1
+    i = i - 1
+
+print("ignoring - {}".format(lines_to_ignore))
+
+# Step 4.b: Write it out
 with open(gsrc_path, "w") as f:
-    f.writelines(final_lines)
+    i = 0
+    while i + lines_to_ignore < len(final_lines):
+        f.write(final_lines[i])
+        i = i + 1

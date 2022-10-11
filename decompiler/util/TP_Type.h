@@ -1,9 +1,9 @@
 #pragma once
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 #include "common/common_types.h"
-#include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/util/Assert.h"
 
@@ -26,6 +26,7 @@ class TP_Type {
     PRODUCT_WITH_CONSTANT,              // representing: (val * multiplier)
     OBJECT_PLUS_PRODUCT_WITH_CONSTANT,  // address: obj + (val * multiplier)
     OBJECT_NEW_METHOD,          // the method new of object, as used in an (object-new) or similar.
+    NON_OBJECT_NEW_METHOD,      // the method new of some type that's not object.
     STRING_CONSTANT,            // a string that's part of the string pool
     FORMAT_STRING,              // a string with a given number of format arguments
     INTEGER_CONSTANT,           // a constant integer.
@@ -42,6 +43,7 @@ class TP_Type {
     RUN_FUNCTION_IN_PROCESS_FUNCTION,
     SET_TO_RUN_FUNCTION,
     GET_ART_BY_NAME_METHOD,
+    SYMBOL,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -75,6 +77,8 @@ class TP_Type {
       case Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION:
       case Kind::SET_TO_RUN_FUNCTION:
       case Kind::GET_ART_BY_NAME_METHOD:
+      case Kind::NON_OBJECT_NEW_METHOD:
+      case Kind::SYMBOL:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -98,6 +102,7 @@ class TP_Type {
   }
   bool is_format_string() const { return kind == Kind::FORMAT_STRING; }
   bool can_be_format_string() const { return is_format_string() || is_constant_string(); }
+  bool is_symbol() const { return kind == Kind::SYMBOL; }
 
   int get_format_string_arg_count() const {
     ASSERT(is_format_string());
@@ -174,6 +179,13 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_symbol(const std::string& name) {
+    TP_Type result;
+    result.kind = Kind::SYMBOL;
+    result.m_str = name;
+    return result;
+  }
+
   static TP_Type make_uninitialized() {
     TP_Type result;
     result.kind = Kind::UNINITIALIZED;
@@ -187,11 +199,14 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_from_integer_constant_plus_var(int64_t value, const TypeSpec& var_type) {
+  static TP_Type make_from_integer_constant_plus_var(int64_t value,
+                                                     const TypeSpec& var_type,
+                                                     const TypeSpec& sum_type) {
     TP_Type result;
     result.kind = Kind::INTEGER_CONSTANT_PLUS_VAR;
     result.m_int = value;
     result.m_ts = var_type;
+    result.m_method_from_type = sum_type;
     return result;
   }
 
@@ -224,6 +239,14 @@ class TP_Type {
     TP_Type result;
     result.kind = Kind::OBJECT_NEW_METHOD;
     result.m_ts = ts;
+    return result;
+  }
+
+  static TP_Type make_non_object_new(const TypeSpec& function_type, const TypeSpec& object_type) {
+    TP_Type result;
+    result.kind = Kind::NON_OBJECT_NEW_METHOD;
+    result.m_ts = function_type;
+    result.m_method_from_type = object_type;
     return result;
   }
 
@@ -361,7 +384,7 @@ class TP_Type {
 
   const TypeSpec& method_from_type() const {
     ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD ||
-           kind == Kind::GET_ART_BY_NAME_METHOD);
+           kind == Kind::GET_ART_BY_NAME_METHOD || kind == Kind::NON_OBJECT_NEW_METHOD);
     return m_method_from_type;
   }
 
@@ -383,7 +406,7 @@ class TP_Type {
 
  private:
   TypeSpec m_ts;
-  TypeSpec m_method_from_type;
+  TypeSpec m_method_from_type;  // hack, also stores sum type.
   int m_method_id = -1;
   std::string m_str;
   int64_t m_int = 0;

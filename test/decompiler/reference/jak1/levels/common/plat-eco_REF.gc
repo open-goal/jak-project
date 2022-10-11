@@ -52,13 +52,13 @@
 ;; failed to figure out what this is:
 (defstate plat-idle (plat-eco)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('wake)
        (go-virtual plat-path-active (the-as plat #f))
        )
       (('eco-blue)
-       (go-virtual notice-blue (process->handle arg0))
+       (go-virtual notice-blue (process->handle proc))
        )
       (('ridden 'edge-grabbed)
        (when (send-event *target* 'query 'powerup (pickup-type eco-blue))
@@ -100,8 +100,8 @@
 ;; failed to figure out what this is:
 (defstate notice-blue (plat-eco)
   :virtual override
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('wake)
        (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
        (go-virtual plat-path-active (the-as plat #f))

@@ -148,6 +148,7 @@ void SavePeripheralSettings() {
 void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
   Pad::DefaultMapping(g_settings.pad_mapping_info);
 
+  lg::info("reading {}", filepath.string());
   auto file_txt = file_util::read_text_file(filepath);
   auto configuration = parse_commented_json(file_txt, filepath.string());
 
@@ -155,7 +156,7 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
     g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
   }
 
-  if (configuration.find("Debug Menu Visibility") != configuration.end()) {
+  if (configuration.find("Use Mouse") != configuration.end()) {
     g_settings.pad_mapping_info.use_mouse = configuration["Use Mouse"].get<bool>();
   }
   int controller_index = 0;

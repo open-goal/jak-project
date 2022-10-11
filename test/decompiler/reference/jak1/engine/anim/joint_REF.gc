@@ -541,7 +541,7 @@
 
 ;; definition for method 9 of type art-mesh-geo
 ;; ERROR: Type Propagation failed: Failed type prop at op 20 ((set! v1 (l.h (+ s4 6)))): Could not get type of load: (set! v1 (l.h (+ s4 6))). 
-;; WARN: Type analysis failed
+;; ERROR: Type analysis failed
 (defmethod login art-mesh-geo ((a0-0 art-mesh-geo))
   (local-vars
     (v0-0 none)
@@ -976,7 +976,7 @@
         (v0-0 (the-as object (-> arg0 data arg2 data)))
         )
     (cond
-      ((zero? (logand (-> arg0 fixed hdr matrix-bits) 1))
+      ((not (logtest? (-> arg0 fixed hdr matrix-bits) 1))
        (set! v1-1 (cond
                     ((zero? arg1)
                      (return (the-as matrix v1-1))
@@ -995,7 +995,7 @@
         (set! v0-0 (-> (the-as (inline-array vector) v0-0) 4))
         )
       )
-    (if (zero? (logand (-> arg0 fixed hdr matrix-bits) 2))
+    (if (not (logtest? (-> arg0 fixed hdr matrix-bits) 2))
         (return (the-as matrix v1-1))
         )
     (the-as matrix v0-0)
@@ -1055,7 +1055,7 @@
        )
       (else
         (let ((a2-3 (matrix-from-control-channel!
-                      (the-as matrix (+ 16 (the-as int (the-as terrain-context #x70000000))))
+                      (the-as matrix (-> (the-as terrain-context #x70000000) work))
                       arg2
                       (the-as joint-control-channel arg1)
                       )
@@ -1213,7 +1213,7 @@
 ;; INFO: Used lq/sq
 (defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 joint-control))
   (let ((v1-2 (matrix-from-control!
-                (the-as matrix-stack (+ 80 (the-as int (the-as terrain-context #x70000000))))
+                (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack)
                 (-> arg0 joint)
                 arg1
                 'no-push

@@ -273,7 +273,7 @@
    (pid              int32                       ) ;; globally unique ID, never reused for another
    (main-thread      cpu-thread :offset-assert 48) ;; suspendable main thread
    (top-thread       cpu-thread :offset-assert 52) ;; currently running thread
-   (entity           entity     :offset-assert 56) ;; if we were spawned from an entity, that entity
+   (entity           entity-actor  :offset-assert 56) ;; if we were spawned from an entity, that entity
    (level            level      :offset-assert 60) ;; if we're associated with a level, that level
    (state            state      :offset-assert 64) ;; current state, if we're in one
    (next-state       state      :offset-assert 68) ;; set if we have a pending (go)
@@ -287,7 +287,7 @@
    (allocated-length int32 :offset-assert 84)
 
    ;; ??
-   (pad0 uint32 2)
+   (pad-unknown-0 uint32 2) ;; had to rename this unfortunately, there is a type that uses this same name "vehicle"
 
    ;; process heap
    (heap-base pointer :offset-assert 96)
@@ -475,7 +475,7 @@
   ;; this uses the self field, which seems to always just get set to the object.
   ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (the process-tree (if the-pp (-> the-pp 0 self)))
+     (the process (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -583,6 +583,8 @@
     )
   )
 
+(define-extern sql-query (function string sql-result))
+
 (defmethod new sql-result ((allocation symbol) (type-to-make type) (arg0 uint))
   "Allocate a new sql-result with enough room for arg0 entries in data."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
@@ -620,19 +622,19 @@
   )
 
 (defmacro process-stack-used (proc)
-  ;; get how much stack the top thread of a process has used.
+  "get how much stack the top thread of a process has used."
   `(- (the int (-> ,proc top-thread stack-top))
       (the int (-> ,proc top-thread sp))
       )
   )
 
 (defmacro process-stack-size (proc)
-  ;; get how much stack the top thread of a process has
+  "get how much stack the top thread of a process has"
   `(-> ,proc top-thread stack-size)
   )
 
 (defmacro process-heap-used (proc)
-  ;; get how much heap a process has used.
+  "get how much heap a process has used."
   `(- (-> ,proc allocated-length)
       (- (the int (-> ,proc heap-top))
          (the int (-> ,proc heap-cur))
@@ -641,11 +643,12 @@
   )
 
 (defmacro process-heap-size (proc)
-  ;; get how much heap a process has
+  "get how much heap a process has"
   `(the int (-> ,proc allocated-length))
   )
 
 (defmacro break ()
+  "crash the game by dividing by 0."
   `(/ 0 0)
   )
 
@@ -656,16 +659,17 @@
   )
 
 (defmacro process-mask? (mask enum-value)
+  "Are any of the given bits set in the process mask?"
   `(!= 0 (logand ,mask (process-mask ,enum-value)))
   )
 
 (defmacro process-mask-set! (mask &rest enum-value)
-  ;; sets the given bits in the process mask (with or)
+  "Set the given bits in the process mask"
   `(set! ,mask (logior ,mask (process-mask ,@enum-value)))
   )
 
 (defmacro process-mask-clear! (mask &rest enum-value)
-  ;; sets the given bits in the process mask (with or)
+  "Clear the given bits in the process mask."
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
@@ -719,4 +723,9 @@
 (defmacro scratchpad-object (type &key (offset 0))
   "Access an object on the scratchpad."
   `(the-as ,type (&+ *fake-scratchpad-data* ,offset))
+  )
+
+(defmacro scratchpad-ptr (type &key (offset 0))
+  "Create a pointer to an object on the scratchpad."
+  `(the-as (pointer ,type) (&+ *fake-scratchpad-data* ,offset))
   )

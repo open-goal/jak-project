@@ -1,6 +1,7 @@
 #include "BspHeader.h"
 
 #include "common/dma/dma.h"
+#include "common/log/log.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -93,7 +94,8 @@ std::string FileInfo::print(int indent) const {
 
 void DrawableTreeUnknown::read_from_file(TypedRef ref,
                                          const decompiler::DecompilerTypeSystem& /*dts*/,
-                                         DrawStats* /*stats*/) {
+                                         DrawStats* /*stats*/,
+                                         GameVersion /*version*/) {
   type_name = ref.type->get_name();
 }
 
@@ -110,7 +112,8 @@ std::string DrawableTreeUnknown::my_type() const {
 
 void DrawableInlineArrayUnknown::read_from_file(TypedRef ref,
                                                 const decompiler::DecompilerTypeSystem& /*dts*/,
-                                                DrawStats* /*stats*/) {
+                                                DrawStats* /*stats*/,
+                                                GameVersion /*version*/) {
   type_name = ref.type->get_name();
 }
 
@@ -127,26 +130,27 @@ std::string DrawableInlineArrayUnknown::my_type() const {
 
 std::unique_ptr<Drawable> make_draw_node_child(TypedRef ref,
                                                const decompiler::DecompilerTypeSystem& dts,
-                                               DrawStats* stats) {
+                                               DrawStats* stats,
+                                               GameVersion version) {
   if (ref.type->get_name() == "draw-node") {
     auto result = std::make_unique<DrawNode>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   } else if (ref.type->get_name() == "tfragment") {
     auto result = std::make_unique<TFragment>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   } else if (ref.type->get_name() == "instance-tie") {
     auto result = std::make_unique<InstanceTie>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   } else if (ref.type->get_name() == "drawable-actor") {
     auto result = std::make_unique<DrawableActor>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   } else if (ref.type->get_name() == "instance-shrubbery") {
     auto result = std::make_unique<shrub_types::InstanceShrubbery>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   } else {
     throw Error("Unknown child of draw node: {}\n", ref.type->get_name());
@@ -212,7 +216,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
 
   while (word_offset < qwc_total * 4) {
     VifCode next(deref_u32(start, word_offset));
-    fmt::print("{} at: {} bytes, {} qw\n", next.print(), word_offset * 4, word_offset / 4);
+    lg::debug("{} at: {} bytes, {} qw", next.print(), word_offset * 4, word_offset / 4);
     word_offset++;
     switch (next.kind) {
       case VifCode::Kind::UNPACK_V4_16: {
@@ -228,8 +232,8 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[1] = deref_u32(start, word_offset++);
           u16 unpacked[4];
           memcpy(unpacked, words, 8);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", unpacked[0], unpacked[1], unpacked[2],
-                     unpacked[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]", unpacked[0], unpacked[1], unpacked[2],
+                    unpacked[3]);
         }
 
       } break;
@@ -246,7 +250,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[1] = deref_u32(start, word_offset++);
           words[2] = deref_u32(start, word_offset++);
           words[3] = deref_u32(start, word_offset++);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]", words[0], words[1], words[2], words[3]);
         }
       } break;
 
@@ -261,7 +265,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[0] = deref_u32(start, word_offset++);
           words[1] = deref_u32(start, word_offset++);
           words[2] = deref_u32(start, word_offset++);
-          fmt::print("  [{:3d} {:3d} {:3d}]\n", words[0], words[1], words[2]);
+          lg::debug("  [{:3d} {:3d} {:3d}]", words[0], words[1], words[2]);
         }
       } break;
 
@@ -271,7 +275,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
         words[1] = deref_u32(start, word_offset++);
         words[2] = deref_u32(start, word_offset++);
         words[3] = deref_u32(start, word_offset++);
-        fmt::print(" row data [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+        lg::debug(" row data [{:3d} {:3d} {:3d} {:3d}]", words[0], words[1], words[2], words[3]);
       } break;
 
       case VifCode::Kind::STMOD: {
@@ -290,7 +294,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           s8 words[4];
           u32 all = deref_u32(start, word_offset++);
           memcpy(words, &all, 4);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]", words[0], words[1], words[2], words[3]);
         }
       } break;
       case VifCode::Kind::NOP:
@@ -299,7 +303,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
         ASSERT_MSG(false, fmt::format("unknown: {}", next.print()));
     }
   }
-  fmt::print("-------------------------------------------\n");
+  lg::debug("-------------------------------------------");
 }
 
 std::vector<u8> read_dma_chain(Ref& start, u32 qwc) {
@@ -314,7 +318,8 @@ std::vector<u8> read_dma_chain(Ref& start, u32 qwc) {
 
 void TFragment::read_from_file(TypedRef ref,
                                const decompiler::DecompilerTypeSystem& dts,
-                               DrawStats* stats) {
+                               DrawStats* stats,
+                               GameVersion version) {
   stats->total_tfragments++;
   id = read_plain_data_field<s16>(ref, "id", dts);
   color_index = read_plain_data_field<s16>(ref, "color-index", dts);
@@ -346,22 +351,22 @@ void TFragment::read_from_file(TypedRef ref,
 
   if (stats->debug_print_dma_data) {
     // first, common
-    fmt::print("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
+    lg::info("DMA COMMON {}, {} qwc:", dmas[0].label_name, dma_qwc[0]);
     tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[0]);
 
     // next "base"
-    fmt::print("DMA BASE {}, {} qwc:\n", dmas[1].label_name, dma_qwc[1]);
+    lg::info("DMA BASE {}, {} qwc:", dmas[1].label_name, dma_qwc[1]);
     tfrag_debug_print_unpack(dmas[1].ref, dma_qwc[1]);
 
     // next "level0"
-    //  fmt::print("DMA LEVEL0 {}, {} qwc:\n", dmas[0].label_name, dma_qwc[3]);
+    //  lg::print("DMA LEVEL0 {}, {} qwc:\n", dmas[0].label_name, dma_qwc[3]);
     //  tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[3]);
 
     // next "level1"
-    fmt::print("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
+    lg::info("DMA LEVEL1 {}, {} qwc:", dmas[2].label_name, dma_qwc[2]);
     tfrag_debug_print_unpack(dmas[2].ref, dma_qwc[2]);
 
-    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
+    lg::info("qwc's: {} {} {} {}", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
   }
 
   num_base_colors = read_plain_data_field<u8>(ref, "num-base-colors", dts);
@@ -400,10 +405,14 @@ void TFragment::read_from_file(TypedRef ref,
   // todo shader
 
   ASSERT(num_colors / 4 == color_count);
-  // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
-  ASSERT(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
-  ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
-  ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
+  // lg::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
+  if (version == GameVersion::Jak1) {
+    ASSERT(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
+    ASSERT(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
+    ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
+  } else {
+    ASSERT(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
+  }
 }
 
 std::string TFragment::print(const PrintSettings& settings, int indent) const {
@@ -438,10 +447,24 @@ std::string TFragment::print(const PrintSettings& settings, int indent) const {
 
 void TieFragment::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
-                                 DrawStats* stats) {
+                                 DrawStats* stats,
+                                 GameVersion version) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
-  num_tris = read_plain_data_field<u16>(ref, "num-tris", dts);
-  num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
+  switch (version) {
+    case GameVersion::Jak1:
+      num_tris = read_plain_data_field<u16>(ref, "num-tris", dts);
+      num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
+      break;
+    case GameVersion::Jak2: {
+      auto debug_data_ref = TypedRef(deref_label(get_field_ref(ref, "debug", dts)),
+                                     dts.ts.lookup_type("tie-fragment-debug"));
+      num_tris = read_plain_data_field<u16>(debug_data_ref, "num-tris", dts);
+      num_dverts = read_plain_data_field<u16>(debug_data_ref, "num-dverts", dts);
+    } break;
+    default:
+      ASSERT(false);
+  }
+
   tex_count = read_plain_data_field<u16>(ref, "tex-count", dts);
   gif_count = read_plain_data_field<u16>(ref, "gif-count", dts);
   vertex_count = read_plain_data_field<u16>(ref, "vertex-count", dts);
@@ -482,7 +505,8 @@ std::string TieFragment::print(const PrintSettings& /*settings*/, int indent) co
 
 void DrawableActor::read_from_file(TypedRef ref,
                                    const decompiler::DecompilerTypeSystem& dts,
-                                   DrawStats* stats) {
+                                   DrawStats* stats,
+                                   GameVersion /*version*/) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   stats->total_actors++;
 }
@@ -496,7 +520,8 @@ std::string DrawableActor::print(const PrintSettings& /*settings*/, int indent) 
 
 void InstanceTie::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
-                                 DrawStats* stats) {
+                                 DrawStats* stats,
+                                 GameVersion /*version*/) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
   id = read_plain_data_field<s16>(ref, "id", dts);
@@ -518,7 +543,8 @@ std::string InstanceTie::print(const PrintSettings& /*settings*/, int indent) co
 
 void DrawNode::read_from_file(TypedRef ref,
                               const decompiler::DecompilerTypeSystem& dts,
-                              DrawStats* stats) {
+                              DrawStats* stats,
+                              GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);             // 4
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));  // 16
   child_count = read_plain_data_field<u8>(ref, "child-count", dts);
@@ -530,7 +556,7 @@ void DrawNode::read_from_file(TypedRef ref,
 
   for (int i = 0; i < child_count; i++) {
     children.push_back(
-        make_draw_node_child(typed_ref_from_basic(first_child_obj, dts), dts, stats));
+        make_draw_node_child(typed_ref_from_basic(first_child_obj, dts), dts, stats, version));
     first_child_obj.byte_offset += get_child_stride(get_type_of_basic(first_child_obj));
   }
 
@@ -562,7 +588,8 @@ std::string DrawNode::my_type() const {
 
 void DrawableInlineArrayNode::read_from_file(TypedRef ref,
                                              const decompiler::DecompilerTypeSystem& dts,
-                                             DrawStats* stats) {
+                                             DrawStats* stats,
+                                             GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -576,7 +603,7 @@ void DrawableInlineArrayNode::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     draw_nodes.emplace_back();
-    draw_nodes.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    draw_nodes.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -604,7 +631,8 @@ std::string DrawableInlineArrayNode::my_type() const {
 
 void DrawableInlineArrayTFrag::read_from_file(TypedRef ref,
                                               const decompiler::DecompilerTypeSystem& dts,
-                                              DrawStats* stats) {
+                                              DrawStats* stats,
+                                              GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -618,7 +646,7 @@ void DrawableInlineArrayTFrag::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     tfragments.emplace_back();
-    tfragments.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    tfragments.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -646,7 +674,8 @@ std::string DrawableInlineArrayTFrag::my_type() const {
 
 void DrawableInlineArrayInstanceTie::read_from_file(TypedRef ref,
                                                     const decompiler::DecompilerTypeSystem& dts,
-                                                    DrawStats* stats) {
+                                                    DrawStats* stats,
+                                                    GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -660,7 +689,7 @@ void DrawableInlineArrayInstanceTie::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     instances.emplace_back();
-    instances.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    instances.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -692,7 +721,8 @@ std::string PrototypeTie::my_type() const {
 
 void PrototypeTie::read_from_file(TypedRef ref,
                                   const decompiler::DecompilerTypeSystem& dts,
-                                  DrawStats* stats) {
+                                  DrawStats* stats,
+                                  GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -706,7 +736,7 @@ void PrototypeTie::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     tie_fragments.emplace_back();
-    tie_fragments.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    tie_fragments.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -731,45 +761,59 @@ std::string PrototypeTie::print(const PrintSettings& settings, int indent) const
 std::unique_ptr<DrawableInlineArray> make_drawable_inline_array(
     TypedRef ref,
     const decompiler::DecompilerTypeSystem& dts,
-    DrawStats* stats) {
+    DrawStats* stats,
+    GameVersion version) {
   if (ref.type->get_name() == "drawable-inline-array-node") {
     auto result = std::make_unique<DrawableInlineArrayNode>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   }
 
   if (ref.type->get_name() == "drawable-inline-array-tfrag") {
     auto result = std::make_unique<DrawableInlineArrayTFrag>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   }
 
   if (ref.type->get_name() == "drawable-inline-array-trans-tfrag") {
     auto result = std::make_unique<DrawableInlineArrayTransTFrag>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
+    return result;
+  }
+
+  if (ref.type->get_name() == "drawable-inline-array-tfrag-trans") {
+    auto result = std::make_unique<DrawableInlineArrayTFragTrans>();
+    result->read_from_file(ref, dts, stats, version);
+    return result;
+  }
+
+  if (ref.type->get_name() == "drawable-inline-array-tfrag-water") {
+    auto result = std::make_unique<DrawableInlineArrayTFragWater>();
+    result->read_from_file(ref, dts, stats, version);
     return result;
   }
 
   if (ref.type->get_name() == "drawable-inline-array-instance-tie") {
     auto result = std::make_unique<DrawableInlineArrayInstanceTie>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   }
 
   if (ref.type->get_name() == "drawable-inline-array-instance-shrub") {
     auto result = std::make_unique<shrub_types::DrawableInlineArrayInstanceShrub>();
-    result->read_from_file(ref, dts, stats);
+    result->read_from_file(ref, dts, stats, version);
     return result;
   }
 
   auto result = std::make_unique<DrawableInlineArrayUnknown>();
-  result->read_from_file(ref, dts, stats);
+  result->read_from_file(ref, dts, stats, version);
   return result;
 }
 
 void DrawableTreeTfrag::read_from_file(TypedRef ref,
                                        const decompiler::DecompilerTypeSystem& dts,
-                                       DrawStats* stats) {
+                                       DrawStats* stats,
+                                       GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -797,7 +841,8 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
     Ref object_ref = deref_label(array_slot_ref);
     object_ref.byte_offset -= 4;
 
-    arrays.push_back(make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+    arrays.push_back(
+        make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
   }
 }
 
@@ -830,7 +875,8 @@ std::string DrawableTreeTfrag::my_type() const {
 
 void DrawableTreeActor::read_from_file(TypedRef ref,
                                        const decompiler::DecompilerTypeSystem& dts,
-                                       DrawStats* stats) {
+                                       DrawStats* stats,
+                                       GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -847,7 +893,8 @@ void DrawableTreeActor::read_from_file(TypedRef ref,
     Ref object_ref = deref_label(array_slot_ref);
     object_ref.byte_offset -= 4;
 
-    arrays.push_back(make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+    arrays.push_back(
+        make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
   }
 }
 
@@ -876,23 +923,39 @@ std::string DrawableTreeActor::my_type() const {
 
 void PrototypeBucketTie::read_from_file(TypedRef ref,
                                         const decompiler::DecompilerTypeSystem& dts,
-                                        DrawStats* stats) {
+                                        DrawStats* stats,
+                                        GameVersion version) {
   name = read_string_field(ref, "name", dts, true);
-  flags = read_plain_data_field<u32>(ref, "flags", dts);
-  ASSERT(flags == 0 || flags == 2);
+  switch (version) {
+    case GameVersion::Jak1:
+      flags = read_plain_data_field<u32>(ref, "flags", dts);
+      ASSERT(flags == 0 || flags == 2);
+      break;
+    case GameVersion::Jak2:
+      flags = read_plain_data_field<u16>(ref, "flags", dts);
+      lg::print("flag: {}\n", flags);
+      break;
+    default:
+      ASSERT(false);
+  }
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);
   utextures = read_plain_data_field<u16>(ref, "utextures", dts);
   dists.read_from_file(get_field_ref(ref, "dists", dts));
   rdists.read_from_file(get_field_ref(ref, "rdists", dts));
   stiffness = read_plain_data_field<float>(ref, "stiffness", dts);
-  auto fr = get_field_ref(ref, "collide-frag", dts);
-  {
-    const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
-    if (word.kind() == decompiler::LinkedWord::PTR) {
-      auto p = deref_label(fr);
-      p.byte_offset -= 4;
-      collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats);
+
+  if (version == GameVersion::Jak1) {
+    auto fr = get_field_ref(ref, "collide-frag", dts);
+    {
+      const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+      if (word.kind() == decompiler::LinkedWord::PTR) {
+        auto p = deref_label(fr);
+        p.byte_offset -= 4;
+        collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats, version);
+      }
     }
+  } else {
+    lg::warn("Skipping prototype-bucket-tie collision");
   }
 
   auto next_slot = get_field_ref(ref, "next", dts);
@@ -913,9 +976,9 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     memcpy(count + 2 * i, &word.data, 4);
   }
 
-  auto block_slot = get_field_ref(ref, "generic-count", dts);
-  u8* block_start = (u8*)generic_count;
-  for (int i = 0; i < 12; i++) {
+  auto block_slot = get_field_ref(ref, "frag-count", dts);
+  u8* block_start = (u8*)frag_count;
+  for (int i = 0; i < 6; i++) {
     auto& word = ref.ref.data->words_by_seg.at(block_slot.seg).at(i + (block_slot.byte_offset / 4));
     if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
       throw Error("bad word type in PrototypeBucketTie slot");
@@ -931,7 +994,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     if (get_type_of_basic(geom) != "prototype-tie") {
       throw Error("bad type in prototype-bucket-tie: {}", get_type_of_basic(geom));
     }
-    geometry[i].read_from_file(typed_ref_from_basic(geom, dts), dts, stats);
+    geometry[i].read_from_file(typed_ref_from_basic(geom, dts), dts, stats, version);
     geom_start.byte_offset += 4;
   }
 
@@ -941,12 +1004,12 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   for (auto x : count) {
     ASSERT(x == 0);
   }
-  for (auto x : generic_count) {
-    ASSERT(x == 0);
-  }
-  for (auto x : generic_next) {
-    ASSERT(x == 0);
-  }
+  //  for (auto x : generic_count) {
+  //    ASSERT(x == 0);
+  //  }
+  //  for (auto x : generic_next) {
+  //    ASSERT(x == 0);
+  //  }
 
   // get the color count data
   {
@@ -954,7 +1017,6 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     for (int i = 0; i < 4; i++) {
       u32 start = index_start[i];
       u32 end = start + frag_count[i];
-      // fmt::print("i = {}: {} -> {}\n", i, start, end);
       ASSERT(num_color_qwcs <= end);
       num_color_qwcs = std::max(end, num_color_qwcs);
     }
@@ -1018,7 +1080,8 @@ std::string PrototypeBucketTie::print(const PrintSettings& settings, int indent)
 
 void PrototypeArrayTie::read_from_file(TypedRef ref,
                                        const decompiler::DecompilerTypeSystem& dts,
-                                       DrawStats* stats) {
+                                       DrawStats* stats,
+                                       GameVersion version) {
   length = read_plain_data_field<u32>(ref, "length", dts);
   allocated_length = read_plain_data_field<u32>(ref, "allocated-length", dts);
   content_type = read_type_field(ref, "content-type", dts, true);
@@ -1034,7 +1097,7 @@ void PrototypeArrayTie::read_from_file(TypedRef ref,
       throw Error("bad type in PrototypeArrayTie data: {}\n", type);
     }
     data.emplace_back();
-    data.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats);
+    data.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats, version);
   }
 }
 
@@ -1055,10 +1118,11 @@ std::string PrototypeArrayTie::print(const PrintSettings& settings, int indent) 
 
 void ProxyPrototypeArrayTie::read_from_file(TypedRef ref,
                                             const decompiler::DecompilerTypeSystem& dts,
-                                            DrawStats* stats) {
+                                            DrawStats* stats,
+                                            GameVersion version) {
   prototype_array_tie.read_from_file(
       get_and_check_ref_to_basic(ref, "prototype-array-tie", "prototype-array-tie", dts), dts,
-      stats);
+      stats, version);
   wind_vectors = deref_label(get_field_ref(ref, "wind-vectors", dts));
 }
 
@@ -1069,7 +1133,8 @@ std::string ProxyPrototypeArrayTie::print(const PrintSettings& settings, int ind
 
 void DrawableTreeInstanceTie::read_from_file(TypedRef ref,
                                              const decompiler::DecompilerTypeSystem& dts,
-                                             DrawStats* stats) {
+                                             DrawStats* stats,
+                                             GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -1077,7 +1142,7 @@ void DrawableTreeInstanceTie::read_from_file(TypedRef ref,
   auto pt = deref_label(get_field_ref(ref, "prototypes", dts));
   pt.byte_offset -= 4;
 
-  prototypes.read_from_file(typed_ref_from_basic(pt, dts), dts, stats);
+  prototypes.read_from_file(typed_ref_from_basic(pt, dts), dts, stats, version);
 
   auto data_ref = get_field_ref(ref, "data", dts);
   if ((data_ref.byte_offset % 4) != 0) {
@@ -1090,7 +1155,8 @@ void DrawableTreeInstanceTie::read_from_file(TypedRef ref,
     Ref object_ref = deref_label(array_slot_ref);
     object_ref.byte_offset -= 4;
 
-    arrays.push_back(make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+    arrays.push_back(
+        make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
   }
 }
 
@@ -1126,7 +1192,8 @@ std::string DrawableTreeInstanceTie::my_type() const {
 
 void DrawableTreeCollideFragment::read_from_file(TypedRef ref,
                                                  const decompiler::DecompilerTypeSystem& dts,
-                                                 DrawStats* stats) {
+                                                 DrawStats* stats,
+                                                 GameVersion version) {
   s16 length = read_plain_data_field<s16>(ref, "length", dts);
   auto data_ref = get_field_ref(ref, "data", dts);
   if ((data_ref.byte_offset % 4) != 0) {
@@ -1138,7 +1205,7 @@ void DrawableTreeCollideFragment::read_from_file(TypedRef ref,
 
   Ref object_ref = deref_label(array_slot_ref);
   object_ref.byte_offset -= 4;
-  last_array.read_from_file(typed_ref_from_basic(object_ref, dts), dts, stats);
+  last_array.read_from_file(typed_ref_from_basic(object_ref, dts), dts, stats, version);
 }
 
 std::string DrawableTreeCollideFragment::print(const PrintSettings& settings, int indent) const {
@@ -1151,7 +1218,8 @@ std::string DrawableTreeCollideFragment::my_type() const {
 
 void DrawableInlineArrayCollideFragment::read_from_file(TypedRef ref,
                                                         const decompiler::DecompilerTypeSystem& dts,
-                                                        DrawStats* stats) {
+                                                        DrawStats* stats,
+                                                        GameVersion /*version*/) {
   ASSERT(ref.type->get_name() == "drawable-inline-array-collide-fragment");
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
@@ -1246,7 +1314,8 @@ namespace shrub_types {
 
 void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
                                                const decompiler::DecompilerTypeSystem& dts,
-                                               level_tools::DrawStats* stats) {
+                                               level_tools::DrawStats* stats,
+                                               GameVersion version) {
   // the usual drawable stuff
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
@@ -1266,7 +1335,8 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
     Ref object_ref = deref_label(array_slot_ref);
     object_ref.byte_offset -= 4;
 
-    arrays.push_back(make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+    arrays.push_back(
+        make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
   }
   // confirm that we have the weird shrub pattern and only found one array.
   ASSERT(length == 1);
@@ -1280,7 +1350,7 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
   Ref object_ref = deref_label(data_ref);
   object_ref.byte_offset -= 4;
   discovered_arrays.push_back(
-      make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+      make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
 
   bool done = false;
   object_ref.byte_offset += 16;
@@ -1289,11 +1359,13 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
     if (word.kind() == decompiler::LinkedWord::TYPE_PTR) {
       if (word.symbol_name() == "drawable-inline-array-node") {
         discovered_arrays.push_back(
-            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
+            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
       } else if (word.symbol_name() == "drawable-inline-array-instance-shrub") {
         discovered_arrays.push_back(
-            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats));
-      } else if (word.symbol_name() == "time-of-day-palette") {
+            make_drawable_inline_array(typed_ref_from_basic(object_ref, dts), dts, stats, version));
+      } else if (word.symbol_name() == "time-of-day-palette" ||
+                 word.symbol_name() == "light-hash" ||
+                 word.symbol_name() == "collide-hash-fragment") {
         done = true;
       } else {
         ASSERT(word.symbol_name() == "draw-node" || word.symbol_name() == "instance-shrubbery");
@@ -1305,7 +1377,7 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
   // this "info" thing holds all the prototypes
   auto pt = deref_label(get_field_ref(ref, "info", dts));
   pt.byte_offset -= 4;
-  info.read_from_file(typed_ref_from_basic(pt, dts), dts, stats);
+  info.read_from_file(typed_ref_from_basic(pt, dts), dts, stats, version);
 
   // time of day palette. we'll want these colors in the FR3 file.
   auto palette = deref_label(get_field_ref(ref, "colors-added", dts));
@@ -1350,13 +1422,14 @@ std::string DrawableTreeInstanceShrub::print(const level_tools::PrintSettings& s
 
 void InstanceShrubbery::read_from_file(TypedRef ref,
                                        const decompiler::DecompilerTypeSystem& dts,
-                                       level_tools::DrawStats* /*stats*/) {
+                                       level_tools::DrawStats* /*stats*/,
+                                       GameVersion /*version*/) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   bucket_index = read_plain_data_field<u16>(ref, "bucket-index", dts);
   id = read_plain_data_field<s16>(ref, "id", dts);
   origin.read_from_file(get_field_ref(ref, "origin", dts));
   wind_index = read_plain_data_field<u16>(ref, "wind-index", dts);
-  color_indices = read_plain_data_field<u32>(ref, "color-indices", dts);
+  color_indices = read_plain_data_field<u32>(ref, "color", dts);
   flat_normal.read_from_file(get_field_ref(ref, "flat-normal", dts));
 }
 
@@ -1374,7 +1447,8 @@ std::string InstanceShrubbery::print(const level_tools::PrintSettings& /*setting
 
 void DrawableInlineArrayInstanceShrub::read_from_file(TypedRef ref,
                                                       const decompiler::DecompilerTypeSystem& dts,
-                                                      DrawStats* stats) {
+                                                      DrawStats* stats,
+                                                      GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -1388,7 +1462,7 @@ void DrawableInlineArrayInstanceShrub::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     instances.emplace_back();
-    instances.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    instances.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -1413,11 +1487,12 @@ std::string DrawableInlineArrayInstanceShrub::print(const PrintSettings& setting
 
 void PrototypeArrayShrubInfo::read_from_file(TypedRef ref,
                                              const decompiler::DecompilerTypeSystem& dts,
-                                             level_tools::DrawStats* stats) {
+                                             level_tools::DrawStats* stats,
+                                             GameVersion version) {
   prototype_inline_array_shrub.read_from_file(
       get_and_check_ref_to_basic(ref, "prototype-inline-array-shrub",
                                  "prototype-inline-array-shrub", dts),
-      dts, stats);
+      dts, stats, version);
   wind_vectors = deref_label(get_field_ref(ref, "wind-vectors", dts));
 }
 
@@ -1428,7 +1503,8 @@ std::string PrototypeArrayShrubInfo::print(const level_tools::PrintSettings& set
 
 void PrototypeInlineArrayShrub::read_from_file(TypedRef ref,
                                                const decompiler::DecompilerTypeSystem& dts,
-                                               level_tools::DrawStats* stats) {
+                                               level_tools::DrawStats* stats,
+                                               GameVersion version) {
   length = read_plain_data_field<s16>(ref, "length", dts);
   auto data_ref = get_field_ref(ref, "data", dts);
 
@@ -1441,7 +1517,7 @@ void PrototypeInlineArrayShrub::read_from_file(TypedRef ref,
       throw Error("bad type in PrototypeInlineArrayShrub data: {}\n", type);
     }
     data.emplace_back();
-    data.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats);
+    data.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats, version);
   }
 }
 
@@ -1461,7 +1537,8 @@ std::string PrototypeGenericShrub::print(const level_tools::PrintSettings& setti
 
 void PrototypeGenericShrub::read_from_file(TypedRef ref,
                                            const decompiler::DecompilerTypeSystem& dts,
-                                           level_tools::DrawStats* stats) {
+                                           level_tools::DrawStats* stats,
+                                           GameVersion version) {
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   auto data_ref = get_field_ref(ref, "data", dts);
@@ -1476,7 +1553,7 @@ void PrototypeGenericShrub::read_from_file(TypedRef ref,
       throw Error("bad type in PrototypeGenericShrub data: {}\n", type);
     }
     shrubs.emplace_back();
-    shrubs.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats);
+    shrubs.back().read_from_file(typed_ref_from_basic(thing, dts), dts, stats, version);
   }
 }
 
@@ -1496,14 +1573,24 @@ std::string PrototypeInlineArrayShrub::print(const level_tools::PrintSettings& s
 
 void PrototypeBucketShrub::read_from_file(TypedRef ref,
                                           const decompiler::DecompilerTypeSystem& dts,
-                                          level_tools::DrawStats* stats) {
+                                          level_tools::DrawStats* stats,
+                                          GameVersion version) {
   name = read_string_field(ref, "name", dts, true);
-  flags = read_plain_data_field<u32>(ref, "flags", dts);
+  switch (version) {
+    case GameVersion::Jak1:
+      flags = read_plain_data_field<u32>(ref, "flags", dts);
+      ASSERT(flags == 0 || flags == 2);
+      break;
+    case GameVersion::Jak2:
+      flags = read_plain_data_field<u16>(ref, "flags", dts);
+      break;
+    default:
+      ASSERT(false);
+  }
   if (flags) {
     // lid in misty has flag 2, not sure what it means yet.
-    fmt::print("proto: {} flags: {}\n", name, flags);
+    lg::info("proto: {} flags: {}", name, flags);
   }
-  ASSERT(flags == 0 || flags == 2);
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);
   utextures = read_plain_data_field<u16>(ref, "utextures", dts);
   dists.read_from_file(get_field_ref(ref, "dists", dts));
@@ -1530,10 +1617,10 @@ void PrototypeBucketShrub::read_from_file(TypedRef ref,
   if (get_type_of_basic(normal_geom) != "prototype-shrubbery") {
     throw Error("bad normal shrub type: {}", get_type_of_basic(normal_geom));
   }
-  shrubbery_geom.read_from_file(typed_ref_from_basic(normal_geom, dts), dts, stats);
+  shrubbery_geom.read_from_file(typed_ref_from_basic(normal_geom, dts), dts, stats, version);
   geom_start.byte_offset += 4;
 
-  generic_geom.read_from_file(typed_ref_from_basic(generic_geom_l, dts), dts, stats);
+  generic_geom.read_from_file(typed_ref_from_basic(generic_geom_l, dts), dts, stats, version);
 
   // todo transparent version
   // todo billboard version.
@@ -1557,7 +1644,8 @@ std::string PrototypeBucketShrub::print(const level_tools::PrintSettings& settin
 
 void PrototypeShrubbery::read_from_file(TypedRef ref,
                                         const decompiler::DecompilerTypeSystem& dts,
-                                        level_tools::DrawStats* stats) {
+                                        level_tools::DrawStats* stats,
+                                        GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
@@ -1571,7 +1659,7 @@ void PrototypeShrubbery::read_from_file(TypedRef ref,
       throw Error("bad draw node type: {}", type);
     }
     shrubs.emplace_back();
-    shrubs.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats);
+    shrubs.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
 }
 
@@ -1602,7 +1690,8 @@ void copy_dma_to_vector(std::vector<u8>* out, Ref data_start, int qwc) {
 
 void Shrubbery::read_from_file(TypedRef ref,
                                const decompiler::DecompilerTypeSystem& dts,
-                               level_tools::DrawStats* /*stats*/) {
+                               level_tools::DrawStats* /*stats*/,
+                               GameVersion /*version*/) {
   // read the easy ones.
   obj_qwc = read_plain_data_field<u8>(ref, "obj-qwc", dts);
   vtx_qwc = read_plain_data_field<u8>(ref, "vtx-qwc", dts);
@@ -1640,7 +1729,8 @@ std::string GenericShrubFragment::print(const level_tools::PrintSettings& /*sett
 
 void GenericShrubFragment::read_from_file(TypedRef ref,
                                           const decompiler::DecompilerTypeSystem& dts,
-                                          level_tools::DrawStats* /*stats*/) {
+                                          level_tools::DrawStats* /*stats*/,
+                                          GameVersion /*version*/) {
   cnt_qwc = read_plain_data_field<u8>(ref, "cnt-qwc", dts);
   vtx_qwc = read_plain_data_field<u8>(ref, "vtx-qwc", dts);
   col_qwc = read_plain_data_field<u8>(ref, "col-qwc", dts);
@@ -1657,69 +1747,83 @@ void GenericShrubFragment::read_from_file(TypedRef ref,
 
 std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
                                                  const decompiler::DecompilerTypeSystem& dts,
-                                                 DrawStats* stats) {
+                                                 DrawStats* stats,
+                                                 GameVersion version) {
   if (ref.type->get_name() == "drawable-tree-tfrag") {
     auto tree = std::make_unique<DrawableTreeTfrag>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-trans-tfrag") {
     auto tree = std::make_unique<DrawableTreeTransTfrag>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-lowres-tfrag") {
     auto tree = std::make_unique<DrawableTreeLowresTfrag>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-dirt-tfrag") {
     auto tree = std::make_unique<DrawableTreeDirtTfrag>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-ice-tfrag") {
     auto tree = std::make_unique<DrawableTreeIceTfrag>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-instance-tie") {
     auto tree = std::make_unique<DrawableTreeInstanceTie>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-tfrag-trans") {
+    auto tree = std::make_unique<DrawableTreeTfragTrans>();
+    tree->read_from_file(ref, dts, stats, version);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-tfrag-water") {
+    auto tree = std::make_unique<DrawableTreeTfragWater>();
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-actor") {
     auto tree = std::make_unique<DrawableTreeActor>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-instance-shrub") {
     auto tree = std::make_unique<shrub_types::DrawableTreeInstanceShrub>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   if (ref.type->get_name() == "drawable-tree-collide-fragment") {
     auto tree = std::make_unique<DrawableTreeCollideFragment>();
-    tree->read_from_file(ref, dts, stats);
+    tree->read_from_file(ref, dts, stats, version);
     return tree;
   }
 
   auto tree = std::make_unique<DrawableTreeUnknown>();
-  tree->read_from_file(ref, dts, stats);
+  tree->read_from_file(ref, dts, stats, version);
   return tree;
 }
 
 void DrawableTreeArray::read_from_file(TypedRef ref,
                                        const decompiler::DecompilerTypeSystem& dts,
-                                       DrawStats* stats) {
+                                       DrawStats* stats,
+                                       GameVersion version) {
   id = read_plain_data_field<s16>(ref, "id", dts);
   length = read_plain_data_field<s16>(ref, "length", dts);
 
@@ -1735,7 +1839,7 @@ void DrawableTreeArray::read_from_file(TypedRef ref,
     Ref object_ref = deref_label(array_slot_ref);
     object_ref.byte_offset -= 4;
 
-    trees.push_back(make_drawable_tree(typed_ref_from_basic(object_ref, dts), dts, stats));
+    trees.push_back(make_drawable_tree(typed_ref_from_basic(object_ref, dts), dts, stats, version));
   }
 }
 
@@ -1756,7 +1860,8 @@ std::string DrawableTreeArray::print(const PrintSettings& settings, int indent) 
 
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
-                               DrawStats* stats) {
+                               DrawStats* stats,
+                               GameVersion version) {
   TypedRef ref;
   ref.ref.byte_offset = 0;
   ref.ref.seg = 0;
@@ -1766,10 +1871,20 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
 
-  visible_list_length = read_plain_data_field<s32>(ref, "visible-list-length", dts);
+  switch (version) {
+    case GameVersion::Jak1:
+      visible_list_length = read_plain_data_field<s32>(ref, "visible-list-length", dts);
+      break;
+    case GameVersion::Jak2:
+      visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
+      break;
+    default:
+      ASSERT(false);
+  }
 
   drawable_tree_array.read_from_file(
-      get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats);
+      get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats,
+      version);
 
   texture_remap_table.clear();
 

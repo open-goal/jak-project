@@ -88,14 +88,11 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (plat-eco-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('target)
        (process-entity-status! self (entity-perm-status complete) #t)
-       (let ((f0-0 (the-as float (-> arg3 param 0))))
-         (set! (-> self force-dest) f0-0)
-         f0-0
-         )
+       (set! (-> self force-dest) (the-as float (-> event param 0)))
        )
       (('ridden 'edge-grabbed)
        (if (>= (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 2))
@@ -117,7 +114,7 @@
        #f
        )
       (else
-        (plat-event arg0 arg1 arg2 arg3)
+        (plat-event proc arg1 event-type event)
         )
       )
     )
@@ -429,13 +426,13 @@
          (271 joint "camera")
          (269 send-event self activate-particle 5)
          (272 send-event self flash)
-         (272 eval (lambda :behavior sage-finalboss
-                     ()
-                     (let ((a0-1 (get-task-control (game-task finalboss-movies))))
-                       (save-reminder a0-1 (logior (get-reminder a0-1 0) 1) 0)
-                       )
-                     (none)
-                     )
+         (272 eval ,(lambda :behavior sage-finalboss
+                      ()
+                      (let ((a0-1 (get-task-control (game-task finalboss-movies))))
+                        (save-reminder a0-1 (logior (get-reminder a0-1 0) 1) 0)
+                        )
+                      (none)
+                      )
               )
          (273 send-event self deactivate-particle 5)
          (333 joint "cameraB")
@@ -632,28 +629,22 @@
 ;; failed to figure out what this is:
 (defstate play-anim (sage-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('fade)
-       (let ((f0-0 1.0))
-         (set! (-> self credit-fade) f0-0)
-         f0-0
-         )
+       (set! (-> self credit-fade) 1.0)
        )
       (('flash)
-       (let ((f0-1 1.9921875))
-         (set! (-> self palette-val) f0-1)
-         f0-1
-         )
+       (set! (-> self palette-val) 1.9921875)
        )
       (('activate-particle)
        (let ((v0-0 (the-as object #t)))
-         (set! (-> self particle (-> arg3 param 0) active) (the-as symbol v0-0))
+         (set! (-> self particle (-> event param 0) active) (the-as symbol v0-0))
          v0-0
          )
        )
       (('deactivate-particle)
-       (set! (-> self particle (-> arg3 param 0) active) #f)
+       (set! (-> self particle (-> event param 0) active) #f)
        #f
        )
       )

@@ -160,7 +160,7 @@
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -175,7 +175,7 @@
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -898,3 +898,248 @@
   `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
   )
 
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
+  )
+
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (fo-curve 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? fo-curve) (cons! snd-mask 'fo-curve))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :fo-curve ,fo-curve
+          :mask (sound-mask ,@snd-mask)
+          ))
+  )
+
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds
+                             &key (rotate (0.0 0.0 0.0)) &key (scale (1.0 1.0 1.0)))
+  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          :rotate-x ,(car rotate)
+          :rotate-y ,(cadr rotate)
+          :rotate-z ,(caddr rotate)
+          :scale-x ,(car scale)
+          :scale-y ,(cadr scale)
+          :scale-z ,(caddr scale)
+          )
+      )
+    )
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  `(set! (-> *part-id-table* ,id)
+      (new 'static 'sparticle-launcher
+          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                  ,@init-specs
+                  (sp-end)
+                  )))
+  )
+
+(defmacro sp-tex (field-name tex-id)
+  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
+  )
+
+(defmacro sp-rnd-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef ,range
+        :random-multf ,mult
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-flt (field-name val)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef 0.0
+        :random-multf 1.0
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-int (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range 0
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-int-plain-rnd (field-name val range mult)
+  "For when we use plain integer, but set the randoms."
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-mult ,mult
+        )
+  )
+
+(defmacro sp-rnd-int (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+
+(defmacro sp-rnd-int-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+(defmacro sp-cpuinfo-flags (&rest flags)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-flags)
+        :initial-value (sp-cpuinfo-flag ,@flags)
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-launcher-by-id (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :flags (sp-flag part-by-id)
+        )
+  )
+
+(defmacro sp-func (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :sym ,val
+        :flags (sp-flag from-pointer)
+        )
+  )
+
+(defmacro sp-sound (sound)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-sound)
+        :sound ,sound
+        :flags (sp-flag plain-v2)
+        )
+  )
+
+(defmacro sp-end ()
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-end)
+        )
+  )
+
+(defmacro sp-copy-from-other (field-name offset)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,offset
+        :random-mult 1
+        :flags (sp-flag copy-from-other-field)
+        )
+  )
+
+(defmacro static-spherem (x y z r)
+  "actually makes a vector. use bspherem for sphere."
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+(defmacro static-bspherem (x y z r)
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )

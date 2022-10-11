@@ -24,7 +24,7 @@ QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 4>>& in)
       result.vtx_to_color.push_back(existing->second);
     }
   }
-  fmt::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
+  lg::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
   ASSERT(result.final_colors.size() < 8192);
   return result;
 }
@@ -205,7 +205,7 @@ QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& i
 
   float total_error[3] = {0, 0, 0};
   for (size_t i = 0; i < in.size(); i++) {
-    // fmt::print(" {} -> {}\n", in[i].to_string_hex_byte(),
+    // lg::print(" {} -> {}\n", in[i].to_string_hex_byte(),
     // out.final_colors[out.vtx_to_color[i]].to_string_hex_byte());
     auto diff = in[i].cast<int>() - out.final_colors[out.vtx_to_color[i]].cast<int>();
 

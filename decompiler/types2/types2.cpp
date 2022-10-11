@@ -2,9 +2,11 @@
 
 #include <set>
 
+#include "common/log/log.h"
+
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/types2.h"
-#include "decompiler/util/goal_constants.h"
+#include "decompiler/util/type_utils.h"
 
 namespace decompiler::types2 {
 
@@ -316,7 +318,7 @@ void backprop_from_preds(FunctionCache& cache,
               tag->is_reg = true;
               tag->reg = reg;
               tag->type_to_clear = &cache.blocks.at(succ_idx).start_type_state[reg]->type;
-              // fmt::print("mark to clear {}\n", succ_idx);
+              // lg::print("mark to clear {}\n", succ_idx);
               // add the tag to the type.
               auto& st = succ_cblock.start_types[reg];
               ASSERT(!st.tag.has_tag());
@@ -344,7 +346,7 @@ void backprop_from_preds(FunctionCache& cache,
     if (my_tag->updated) {
       tags_updated = true;
       my_tag->updated = false;
-      // fmt::print("clearing {}\n", block_idx);
+      // lg::print("clearing {}\n", block_idx);
       cblock.needs_run = true;      // maybe?
       *my_tag->type_to_clear = {};  // meh..
     }
@@ -403,9 +405,9 @@ bool tp_lca(types2::TypeState* combined, const types2::TypeState& add, Decompile
     bool diff = false;
     auto comb = combined->try_find_stack_spill_slot(x->slot);
     if (!comb) {
-      fmt::print("failed to find {}\n", x->slot);
+      lg::print("failed to find {}\n", x->slot);
       for (auto& x : combined->stack_slot_types) {
-        fmt::print("x = {}\n", x->slot);
+        lg::print("x = {}\n", x->slot);
       }
     }
     ASSERT(comb);
@@ -434,7 +436,6 @@ bool propagate_block(FunctionCache& cache,
                      Function& func,
                      DecompilerTypeSystem& dts,
                      bool tag_lock) {
-  bool debug = false;  // func.name() == "string->float";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see
@@ -448,7 +449,7 @@ bool propagate_block(FunctionCache& cache,
       auto& aop = func.ir2.atomic_ops->ops.at(instr->aop_idx);
       TypePropExtras extras;
       extras.tags_locked = tag_lock;
-      // fmt::print("run: {}\n", aop->to_string(func.ir2.env));
+      // lg::print("run: {}\n", aop->to_string(func.ir2.env));
 
       try {
         aop->propagate_types2(*instr, func.ir2.env, *previous_typestate, *func.ir2.env.dts, extras);
@@ -683,13 +684,13 @@ end_type_pass:
   std::string error;
   if (!convert_to_old_format(out, function_cache, error, input.func->ir2.env.casts(),
                              input.func->ir2.env.stack_casts(), *input.dts, hit_error)) {
-    fmt::print("Failed convert_to_old_format: {}\n", error);
+    lg::print("Failed convert_to_old_format: {}\n", error);
   } else {
     input.func->ir2.env.types_succeeded = true;
     auto last_type = out.op_end_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
     if (last_type != input.function_type.last_arg()) {
-      input.func->warnings.info("Return type mismatch {} vs {}.", last_type.print(),
-                                input.function_type.last_arg().print());
+      input.func->warnings.warning("Return type mismatch {} vs {}.", last_type.print(),
+                                   input.function_type.last_arg().print());
     }
   }
 
@@ -718,7 +719,7 @@ end_type_pass:
   for (auto& info : env.stack_slot_entries) {
     info.second.typespec = info.second.tp_type.typespec();
     //     debug
-    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    // lg::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
     //         info.second.tp_type.print());
   }
 
@@ -726,9 +727,11 @@ end_type_pass:
   for (auto& instr : function_cache.instructions) {
     if (instr.unknown_label_tag) {
       if (!instr.unknown_label_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess label use for {} in {}:{}",
-                                             instr.unknown_label_tag->label_name,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess label use for {} in {}:{}",
+                                 instr.unknown_label_tag->label_name, input.func->name(),
+                                 instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
       auto& type = instr.unknown_label_tag->selected_type.value();
       int idx = instr.unknown_label_tag->label_idx;
@@ -738,9 +741,11 @@ end_type_pass:
 
     if (instr.unknown_stack_structure_tag) {
       if (!instr.unknown_stack_structure_tag->selected_type) {
-        throw std::runtime_error(fmt::format("Failed to guess stack use for {} in {}:{}",
-                                             instr.unknown_stack_structure_tag->stack_offset,
-                                             input.func->name(), instr.aop_idx));
+        env.func->warnings.error("Failed to guess stack use for {} in {}:{}",
+                                 instr.unknown_stack_structure_tag->stack_offset,
+                                 input.func->name(), instr.aop_idx);
+        out.succeeded = false;
+        return;  // abort here - the type analysis above likely failed
       }
 
       auto& type = instr.unknown_stack_structure_tag->selected_type.value();

@@ -1,5 +1,7 @@
 #include "SpriteRenderer.h"
 
+#include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
@@ -35,8 +37,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
 
-SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+SpriteRenderer::SpriteRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -615,7 +616,7 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+    lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
     tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);

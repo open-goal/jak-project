@@ -719,8 +719,8 @@
 
 ;; failed to figure out what this is:
 (defstate mistycannon-missile-idle (mistycannon-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (go mistycannon-missile-explode)
        )
@@ -756,7 +756,7 @@
       )
     (restore-collide-with-as (-> self root-override))
     (set-vector! (-> self root-override scale) 0.6 0.6 0.6 1.0)
-    (while (zero? (logand (-> self root-override status) (cshape-moving-flags onsurf)))
+    (while (not (logtest? (-> self root-override status) (cshape-moving-flags onsurf)))
       (if (and (zero? (-> self sfx))
                (< (if *target*
                       (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -894,10 +894,10 @@
 
 ;; failed to figure out what this is:
 (defstate mistycannon-missile-explode (mistycannon-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
-       (let* ((s4-0 arg0)
+       (let* ((s4-0 proc)
               (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
                         s4-0
                         )
@@ -925,22 +925,22 @@
                       0.0
                       )
                (cond
-                 ((= (-> arg0 type) target)
-                  (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+                 ((= (-> proc type) target)
+                  (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
                   )
                  (else
                    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-4 from) self)
                      (set! (-> a1-4 num-params) 4)
                      (set! (-> a1-4 message) 'attack)
-                     (set! (-> a1-4 param 0) (-> arg3 param 0))
+                     (set! (-> a1-4 param 0) (-> event param 0))
                      (set! (-> a1-4 param 1) (the-as uint 'explode))
                      (let ((v1-18 (+ *global-attack-id* 1)))
                        (set! *global-attack-id* v1-18)
                        (set! (-> a1-4 param 2) (the-as uint v1-18))
                        )
                      (set! (-> a1-4 param 3) (the-as uint 0))
-                     (send-event-function arg0 a1-4)
+                     (send-event-function proc a1-4)
                      )
                    )
                  )
@@ -1605,11 +1605,11 @@
 
 ;; failed to figure out what this is:
 (defstate mistycannon-waiting-for-player (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> arg3 param 0))
+              (the-as touching-shapes-entry (-> event param 0))
               (-> self root-override)
               (the-as uint 1)
               )
@@ -1688,7 +1688,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (zero? (logand (-> *camera* master-options) 2))
+    (if (not (logtest? (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
@@ -1712,8 +1712,8 @@
 
 ;; failed to figure out what this is:
 (defstate mistycannon-player-control (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('change-mode)
        (send-event *camera* 'change-state cam-mistycannon 0)
        )
@@ -1771,9 +1771,7 @@
                     )
               (sound-play "cannon-charge" :id (-> self sound-id) :pitch (* 0.008 (the float gp-0)))
               )
-            (when (or (= gp-0 300)
-                      (and (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))) (nonzero? gp-0))
-                      )
+            (when (or (= gp-0 300) (and (not (cpad-hold? 0 x)) (nonzero? gp-0)))
               (let ((gp-1 (+ 50 (the int (* 0.16666667 (the float gp-0))))))
                 (level-hint-spawn
                   (game-text-id sidekick-mistycannon)
@@ -1801,7 +1799,7 @@
                 )
             )
           )
-        (if (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x)))
+        (if (not (cpad-hold? 0 x))
             (set! s5-0 0)
             )
         (suspend)
@@ -1814,11 +1812,11 @@
 
 ;; failed to figure out what this is:
 (defstate mistycannon-waiting-for-player-to-fuck-off (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (when (= v1-0 'touch)
                        (when ((method-of-type touching-shapes-entry prims-touching?)
-                              (the-as touching-shapes-entry (-> arg3 param 0))
+                              (the-as touching-shapes-entry (-> event param 0))
                               (-> self root-override)
                               (the-as uint 1)
                               )

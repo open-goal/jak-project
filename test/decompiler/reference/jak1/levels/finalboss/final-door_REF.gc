@@ -88,8 +88,8 @@
 ;; failed to figure out what this is:
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('open)
        (go-virtual open #f)
        )
@@ -107,11 +107,11 @@
 ;; failed to figure out what this is:
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (when (= v1-0 'brightness)
-                       (let ((f0-0 (the-as float (-> arg3 param 0)))
-                             (f1-0 (the-as float (-> arg3 param 1)))
+                       (let ((f0-0 (the-as float (-> event param 0)))
+                             (f1-0 (the-as float (-> event param 1)))
                              )
                          (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
                          (let ((v0-0 (-> self draw color-emissive)))
@@ -222,7 +222,7 @@
     (ja-post)
     (loop
       (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-               (and (zero? (logand (-> *target* state-flags) (state-flags grabbed)))
+               (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
                     (and (>= (-> *game-info* fuel) 100.0)
                          (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
                          (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
@@ -382,8 +382,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-final-door (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    ((-> target-grab event) arg0 arg1 arg2 arg3)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    ((-> target-grab event) proc arg1 event-type event)
     )
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")

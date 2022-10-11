@@ -119,8 +119,22 @@ namespace collide_do_primitives { extern void link(); }
 namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace calc_animation_from_spr { extern void link(); }
 namespace cspace_parented_transformq_joint { extern void link(); }
-
-
+namespace draw_string_asm { extern void link(); }
+namespace draw_string { extern void link(); }
+namespace get_string_length { extern void link(); }
+namespace adgif_shader_texture_with_update { extern void link(); }
+namespace debug_line_clip { extern void link(); }
+namespace init_boundary_regs { extern void link(); }
+namespace render_boundary_tri { extern void link(); }
+namespace render_boundary_quad { extern void link(); }
+namespace set_sky_vf27 { extern void link(); }
+namespace draw_boundary_polygon { extern void link(); }
+namespace sp_init_fields { extern void link(); }
+namespace particle_adgif { extern void link(); }
+namespace sp_launch_particles_var { extern void link(); }
+namespace sparticle_motion_blur { extern void link(); }
+namespace sp_process_block_2d { extern void link(); }
+namespace sp_process_block_3d { extern void link(); }
 }
 // clang-format on
 
@@ -198,8 +212,18 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
     /////////// JAK 2
     {{"collide-func",
       {jak2::collide_do_primitives::link, jak2::moving_sphere_triangle_intersect::link}},
-     {"joint",
-      {jak2::calc_animation_from_spr::link, jak2::cspace_parented_transformq_joint::link}}},
+     {"joint", {jak2::calc_animation_from_spr::link, jak2::cspace_parented_transformq_joint::link}},
+     {"font",
+      {jak2::draw_string::link, jak2::get_string_length::link, jak2::draw_string_asm::link}},
+     {"texture", {jak2::adgif_shader_texture_with_update::link}},
+     {"debug",
+      {jak2::debug_line_clip::link, jak2::init_boundary_regs::link,
+       jak2::render_boundary_quad::link, jak2::render_boundary_tri::link, jak2::set_sky_vf27::link,
+       jak2::draw_boundary_polygon::link}},
+     {"sparticle-launcher",
+      {jak2::sp_init_fields::link, jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
+       jak2::sparticle_motion_blur::link}},
+     {"sparticle", {jak2::sp_process_block_2d::link, jak2::sp_process_block_3d::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
@@ -279,7 +303,7 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
 u32 LinkedFunctionTable::get(const std::string& name) {
   auto it = m_executes.find(name);
   if (it == m_executes.end()) {
-    ASSERT(false);
+    ASSERT_NOT_REACHED_MSG(fmt::format("mips2c function {} is unknown", name));
   }
   return it->second.goal_trampoline.offset;
 }

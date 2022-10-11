@@ -7,11 +7,22 @@
 
 (declare-type prototype-tie drawable)
 
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0)
+  ;; (use-envmap 1) maybe
+  (tpage-alpha 2)
+  (vanish      3)
+  (tpage-water 7)
+
+  )
+
 ;; DECOMP BEGINS
 
 (deftype prototype-bucket (basic)
   ((name                string           :offset-assert   4)
-   (flags               uint16           :offset-assert   8)
+   (flags               prototype-flags  :offset-assert   8)
    (texture-masks-index uint16           :offset-assert  10)
    (in-level            uint16           :offset-assert  12)
    (utextures           uint16           :offset-assert  14)
@@ -33,13 +44,14 @@
   )
 
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((next        uint32     4 :offset-assert  64)
-   (count       uint16     4 :offset-assert  80)
-   (mod-count   uint16     4 :offset-assert  88)
-   (last        dma-packet 4 :offset-assert  96)
-   (next-clear  uint128      :offset         64)
-   (count-clear uint64       :offset         80)
-   (last-clear  uint128      :offset         96)
+  ((next              uint32     4 :offset-assert  64)
+   (count             uint16     4 :offset-assert  80)
+   (mod-count         uint16     4 :offset-assert  88)
+   (last              dma-packet 4 :offset-assert  96)
+   (next-clear        uint128      :offset         64)
+   (count-clear       uint64       :offset         80)
+   (count-clear-qword uint128      :offset         80)
+   (last-clear        uint128      :offset         96)
    )
   :method-count-assert 9
   :size-assert         #x70

@@ -17,13 +17,13 @@ ProfilerNode* ProfilerNode::make_child(const std::string& name) {
 
 void ProfilerNode::finish() {
   if (m_finished) {
-    lg::error("finish() called twice on {}\n", m_name);
+    lg::error("finish() called twice on {}", m_name);
   } else {
     m_stats.duration = m_timer.getSeconds();
     float total_child_time = 0;
     for (const auto& child : m_children) {
       if (!child.finished()) {
-        lg::error("finish() not called on {}\n", child.name());
+        lg::error("finish() not called on {}", child.name());
       }
       total_child_time += child.m_stats.duration;
       m_stats.add_draw_stats(child.m_stats);

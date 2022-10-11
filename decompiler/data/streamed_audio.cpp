@@ -42,7 +42,7 @@ struct AudioDir {
 
   void debug_print() const {
     for (auto& e : entries) {
-      fmt::print("\"{}\" 0x{:07x} - 0x{:07x}\n", e.name, e.start_byte, e.end_byte);
+      lg::debug("\"{}\" 0x{:07x} - 0x{:07x}", e.name, e.start_byte, e.end_byte);
     }
   }
 };
@@ -80,9 +80,9 @@ struct VagFileHeader {
     char temp_name[17];
     memcpy(temp_name, name, 16);
     temp_name[16] = '\0';
-    fmt::print("{}{}{}{} v {} zero {} chan {} samp {} z {} {} {} name {}\n", magic[0], magic[1],
-               magic[2], magic[3], version, zero, channel_size, sample_rate, z[0], z[1], z[2],
-               temp_name);
+    lg::debug("{}{}{}{} v {} zero {} chan {} samp {} z {} {} {} name {}", magic[0], magic[1],
+              magic[2], magic[3], version, zero, channel_size, sample_rate, z[0], z[1], z[2],
+              temp_name);
   }
 };
 
@@ -96,7 +96,7 @@ AudioDir read_audio_dir(const fs::path& path) {
     u32 value;
   };
   auto data = file_util::read_binary_file(path);
-  lg::info("Got {} bytes of audio dir.\n", data.size());
+  lg::info("Got {} bytes of audio dir.", data.size());
   auto reader = BinaryReader(data);
 
   u32 count = reader.read<u32>();

@@ -140,7 +140,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
     } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
-               is_symbol(field_info.type)) {
+               is_symbol(field_info.type) || field_info.type == TypeSpec("object")) {
       if (is_pair(field_info.type)) {
         ASSERT(!field_info.field.is_inline());
       }
@@ -586,14 +586,14 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                                         bool can_macro) {
   auto fie = env->file_env();
   if (form.is_pair()) {
-    if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
-                                            form.as_pair()->car.as_symbol()->name == "the" ||
-                                            form.as_pair()->car.as_symbol()->name == "lambda")) {
+    if (form.as_pair()->car.is_symbol("new") || form.as_pair()->car.is_symbol("the") ||
+        (can_macro && form.as_pair()->car.is_symbol("lambda"))) {
       return compile_static(form, env);
     }
     if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol()->name == "unquote") {
       // ,(macro-name args...) is actually (unquote (macro-name args...))
       // decompile the arg as macro if possible.
+      // ,(lambda ...) is also a special case.
       auto& unq_arg_pair = form.as_pair()->cdr;
       if (unq_arg_pair.is_empty_list()) {
         throw_compiler_error(form, "Cannot unquote empty list");
@@ -603,7 +603,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
         throw_compiler_error(form, "Cannot unquote non-list");
       }
       goos::Object macro_obj;
-      if (!try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
+      if (!unq_arg.as_pair()->car.is_symbol("lambda") &&
+          !try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
         throw_compiler_error(form, "Macro {} not found", unq_arg.as_pair()->car.print());
       }
       return compile_static_no_eval_for_pairs(form.as_pair()->cdr.as_pair()->car, env, seg, true);
@@ -1081,7 +1082,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   ASSERT(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, false);
   ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

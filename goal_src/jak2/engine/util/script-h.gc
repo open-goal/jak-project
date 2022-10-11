@@ -7,14 +7,23 @@
 
 (define-extern *load-state* load-state)
 
+;; NOTE - for editable-player
+(declare-type script-context structure)
+(define-extern *syntax-context* script-context)
+(define-extern *script-context* script-context)
+
+;; NOTE - for menu
+(define-extern command-get-int (function object int int))
+(define-extern command-get-float (function object float float))
 
 ;; DECOMP BEGINS
 
 (deftype script-form (structure)
-  ((name string  :offset-assert   0)
-   (spec basic   :offset-assert   4)
-   (func basic   :offset-assert   8)
+  ((name symbol                            :offset-assert   0)
+   (spec pair                              :offset-assert   4)
+   (func (function script-context object)  :offset-assert   8)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #xc
   :flag-assert         #xa0000000c
@@ -23,6 +32,7 @@
     )
   )
 
+
 (deftype script-context (structure)
   ((load-state   load-state    :offset-assert   0)
    (key          basic         :offset-assert   4)
@@ -30,7 +40,7 @@
    (trans        vector        :offset-assert  12)
    (side-effect? symbol        :offset-assert  16)
    (got-error?   symbol        :offset-assert  20)
-   (expr         basic         :offset-assert  24)
+   (expr         pair          :offset-assert  24)
    (param-count  int32         :offset-assert  28)
    (param        object     16 :offset-assert  32)
    (param-type   object     16 :offset-assert  96)
@@ -40,36 +50,14 @@
   :flag-assert         #xc000000a0
   (:methods
     (new (symbol type basic process vector) _type_ 0)
-    (script-context-method-9 () none 9)
-    (script-context-method-10 () none 10)
-    (script-context-method-11 () none 11)
+    (eval! (_type_ pair) object 9)
+    (script-context-method-10 (_type_ object pair) object 10)
+    (script-context-method-11 (_type_ pair pair symbol) symbol 11)
     )
   )
 
-(defmethod inspect script-context ((obj script-context))
-  (when (not obj)
-    (return obj)
-    )
-  (format #t "[~8x] ~A~%" obj 'script-context)
-  (format #t "~1Tload-state: ~A~%" (-> obj load-state))
-  (format #t "~1Tkey: ~A~%" (-> obj key))
-  (format #t "~1Tprocess: ~A~%" (-> obj process))
-  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
-  (format #t "~1Tside-effect?: ~A~%" (-> obj side-effect?))
-  (format #t "~1Tgot-error?: ~A~%" (-> obj got-error?))
-  (format #t "~1Texpr: ~A~%" (-> obj expr))
-  (format #t "~1Tparam-count: ~D~%" (-> obj param-count))
-  (format #t "~1Tparam[16] @ #x~X~%" (-> obj param))
-  (dotimes (s5-0 (-> obj param-count))
-    (format #t "~T  [~D]~1Tparam: ~`object`P~%" s5-0 (-> obj param s5-0))
-    )
-  (format #t "~1Tparam-type[16] @ #x~X~%" (-> obj param-type))
-  (dotimes (s5-1 (-> obj param-count))
-    (format #t "~T  [~D]~1Tparam-type: ~`object`P~%" s5-1 (-> obj param-type s5-1))
-    )
-  obj
-  )
 
+;; WARN: Return type mismatch structure vs script-context.
 (defmethod new script-context ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 process) (arg2 vector))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
@@ -86,4 +74,3 @@
       )
     )
   )
-

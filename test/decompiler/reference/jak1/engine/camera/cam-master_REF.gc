@@ -52,10 +52,7 @@
   (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
   (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
   (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
-  (let ((f0-0 0.0))
-    (set! (-> self upspeed) f0-0)
-    f0-0
-    )
+  (set! (-> self upspeed) 0.0)
   )
 
 ;; definition for function reset-target-tracking
@@ -99,7 +96,7 @@
     (else
       (set! (-> self attack-start) (-> *display* base-frame-counter))
       (set! (-> self being-attacked) #t)
-      (when (and (zero? (logand (-> self master-options) 64))
+      (when (and (not (logtest? (-> self master-options) 64))
                  (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
                  )
         (set! (-> self string-max target y) (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert)))
@@ -137,10 +134,7 @@
   (set! (-> self tpos-curr quad) (-> self tpos-old quad))
   (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
   (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
-  (let ((f0-0 0.0))
-    (set! (-> self upspeed) f0-0)
-    f0-0
-    )
+  (set! (-> self upspeed) 0.0)
   )
 
 ;; definition for function reset-drawable-tracking
@@ -332,7 +326,7 @@
                (set! (-> self attack-start) (-> *display* base-frame-counter))
                )
            (set! (-> self being-attacked) #t)
-           (when (and (zero? (logand (-> self master-options) 64))
+           (when (and (not (logtest? (-> self master-options) 64))
                       (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
                       )
              (set! (-> self string-max target y) (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert)))
@@ -494,7 +488,7 @@
              )
            )
          )
-       (if (zero? (logand (-> self slave-options) 16))
+       (if (not (logtest? (-> self slave-options) 16))
            (reset-follow)
            )
        (let ((v1-196 (-> *target* water flags)))
@@ -633,10 +627,9 @@
   (if (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
       (send-event *camera* 'set-slave-option #x10000)
       )
-  (let ((f0-12 (cam-slave-get-float arg0 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))))
-    (set! (-> *camera-combiner* tracking tilt-adjust target) f0-12)
-    f0-12
-    )
+  (set! (-> *camera-combiner* tracking tilt-adjust target)
+        (cam-slave-get-float arg0 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))
+        )
   )
 
 ;; definition for function setup-slave-for-hopefull

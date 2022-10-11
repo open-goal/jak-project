@@ -75,7 +75,8 @@ namespace {
  */
 
 // texture format names.
-const std::unordered_map<u8, std::string> psms = {{0x02, "PSMCT16"},
+const std::unordered_map<u8, std::string> psms = {{0x00, "PSM32"},
+                                                  {0x02, "PSMCT16"},
                                                   {0x13, "PSMT8"},
                                                   {0x14, "PSMT4"}};
 
@@ -343,7 +344,16 @@ TexturePage read_texture_page(ObjectFileData& data,
   tpage.info_label = get_label(data, words.at(offset));
   tpage.info = read_file_info(data, words, label_to_word_offset(tpage.info_label, true));
   ASSERT(tpage.info.file_type == "texture-page");
-  ASSERT(tpage.info.major_version == versions::jak1::TX_PAGE_VERSION);
+  switch (data.linked_data.version) {
+    case GameVersion::Jak1:
+      ASSERT(tpage.info.major_version == versions::jak1::TX_PAGE_VERSION);
+      break;
+    case GameVersion::Jak2:
+      ASSERT(tpage.info.major_version == versions::jak2::TX_PAGE_VERSION);
+      break;
+    default:
+      ASSERT(false);
+  }
   ASSERT(tpage.info.minor_version == 0);
   ASSERT(tpage.info.maya_file_name == "Unknown");
   ASSERT(tpage.info.mdb_file_name == 0);
@@ -670,6 +680,31 @@ TPageResultStats process_tpage(ObjectFileData& data,
           u32 clut_addr = psmct32_addr(clx, cly, 64) + tex.clutdest * 256;
           u32 clut_value = *(u32*)(vram.data() + clut_addr);
           out.push_back(clut_value);
+        }
+      }
+
+      // write texture to a PNG.
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name, level_names);
+      stats.successful_textures++;
+    } else if (tex.psm == int(PSM::PSMCT32) && tex.clutpsm == 0) {
+      // not a clut.
+      // will store output pixels, rgba (8888)
+      std::vector<u32> out;
+
+      // width is like the TEX0 register, in 64 texel units.
+      // not sure what the other widths are yet.
+      int read_width = 64 * tex.width[0];
+
+      // loop over pixels in output texture image
+      for (int y = 0; y < tex.h; y++) {
+        for (int x = 0; x < tex.w; x++) {
+          // read as the PSMT32 type. The dest field tells us a block offset.
+          auto addr32 = psmct32_addr(x, y, read_width) + tex.dest[0] * 256;
+          u32 value = *(u32*)(vram.data() + addr32);
+          out.push_back(value);
         }
       }
 

@@ -8,37 +8,37 @@
 (defenum focus-status
   :bitfield #t
   :type uint32
-  (fs0 0) ;; if set, all collide checks fail
-  (fs1 1) ;; if set, all collide checks fail
-  (fs2 2)
-  (fs3 3)
-  (fs4 4)
-  (fs5 5)
-  (fs6 6)
-  (fs7 7)
-  (fs8 8)
-  (fs9 9)
-  (fs10 10)
-  (fs11 11)
-  (fs12 12)
-  (fs13 13)
-  (fs14 14)
-  (fs15 15)
-  (fs16 16)
-  (fs17 17)
-  (fs18 18)
-  (fs19 19)
-  (fs20 20)
-  (fs21 21)
-  (fs22 22)
-  (fs23 23)
-  (fs24 24)
-  (fs25 25)
-  (fs26 26)
-  (fs27 27)
-  (fs28 28)
-  (fs29 29)
-  (fs30 30)
+  (disable 0) ;; if set, all collide checks fail
+  (dead 1)    ;; if set, all collide checks fail
+  (ignore 2)
+  (inactive 3)
+  (dangerous 4)
+  (in-air 5)
+  (hit 6)
+  (grabbed 7)
+  (in-head 8)
+  (touch-water 9)
+  (on-water 10)
+  (under-water 11)
+  (edge-grab 12)
+  (pole 13)
+  (pilot-riding 14)
+  (flut 15)
+  (tube 16)
+  (ice 17)
+  (board 18)
+  (gun 19)
+  (pilot 20) ;; also racer?
+  (mech 21)
+  (dark 22)
+  (rail 23)
+  (halfpipe 24)
+  (carry 25)
+  (super 26)
+  (shooting 27)
+  (indax 28)
+  (arrestable 29)
+  (teleporting 30)
   (fs31 31)
   )
 
@@ -53,17 +53,19 @@
   :flag-assert         #x1b005000cc
   (:methods
     (get-trans (_type_ int) vector 20)
-    (get-quat (_type_) quaternion 21)
+    (get-quat (_type_ int) quaternion 21)
     (get-transv (_type_) vector 22)
     (process-focusable-method-23 (_type_) none 23)
-    (process-focusable-method-24 (_type_) none 24)
-    (process-focusable-method-25 (_type_) int 25)
+    (process-focusable-method-24 (_type_) float 24)
+    (process-focusable-method-25 (_type_) time-frame 25)
     (process-focusable-method-26 (_type_) none 26)
     )
   )
 
 
+;; WARN: Return type mismatch structure vs vector.
 (defmethod get-trans process-focusable ((obj process-focusable) (arg0 int))
+  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
   (let ((gp-0 (-> obj root)))
     (the-as vector (cond
                      ((zero? arg0)
@@ -87,7 +89,7 @@
   (-> obj root transv)
   )
 
-(defmethod get-quat process-focusable ((obj process-focusable))
+(defmethod get-quat process-focusable ((obj process-focusable) (arg0 int))
   (-> obj root quat)
   )
 
@@ -97,8 +99,7 @@
   )
 
 (defmethod process-focusable-method-24 process-focusable ((obj process-focusable))
-  0
-  (none)
+  0.0
   )
 
 (defmethod process-focusable-method-26 process-focusable ((obj process-focusable))
@@ -106,12 +107,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch int vs time-frame.
 (defmethod process-focusable-method-25 process-focusable ((obj process-focusable))
-  0
+  (the-as time-frame 0)
   )
-
-0
-
-
-
-

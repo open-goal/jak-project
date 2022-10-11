@@ -34,7 +34,7 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\":false,\\\"allowed_objects\\\":[]}"'
   boot-game:
     desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
@@ -55,7 +55,7 @@ tasks:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -{{.GAME}} -v"
   # DEVELOPMENT
   repl:
     desc: "Start the REPL"
@@ -89,6 +89,9 @@ tasks:
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+  lint-gsrc-file:
+    cmds:
+      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
@@ -96,6 +99,7 @@ tasks:
     cmds:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+      - task: lint-gsrc-file
   # TOOLS
   analyze-ee-memory:
     cmds:
@@ -106,21 +110,31 @@ tasks:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
     vars:
       SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  type-search:
+    desc: Just an example to show it running
+    cmds:
+      - "{{.TYPESEARCH_BIN_RELEASE_DIR}}/type_searcher --output-path ./search-results.json --game {{.GAME}} --fields '[{\"type\":\"int16\",\"offset\":2},{\"type\":\"int16\",\"offset\":4}]'"
   # TESTS
   offline-tests:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
+  offline-test-file:
+    cmds:
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
   update-ref-tests:
     cmds:
       - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
       - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output'
         ignore_error: true
-      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
+      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-tests
-  # check-gsrc-file:
-  #   cmds:
-  #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
+  update-ref-file:
+    cmds:
+      - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output'
+        ignore_error: true
+      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
+      - task: offline-test-file
   type-test:
     cmds:
       - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
-        ignore_error: true

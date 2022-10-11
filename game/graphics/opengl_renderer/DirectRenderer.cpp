@@ -9,7 +9,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
+DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
@@ -311,11 +311,10 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   if (!tex) {
     // TODO Add back
     if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
-      fmt::print("Failed to find texture at {}, using random (eye zone)\n", state.texture_base_ptr);
-
+      lg::warn("Failed to find texture at {}, using random (eye zone)", state.texture_base_ptr);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+      lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
@@ -572,6 +571,9 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::XYZF2:
               handle_xyzf2_packed(data + offset, render_state, prof);
               break;
+            case GifTag::RegisterDescriptor::XYZ2:
+              handle_xyz2_packed(data + offset, render_state, prof);
+              break;
             case GifTag::RegisterDescriptor::PRIM:
               handle_prim_packed(data + offset, render_state, prof);
               break;
@@ -579,9 +581,8 @@ void DirectRenderer::render_gif(const u8* data,
               handle_tex0_1_packed(data + offset);
               break;
             default:
-              fmt::print("Register {} is not supported in packed mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -603,9 +604,8 @@ void DirectRenderer::render_gif(const u8* data,
               handle_xyzf2(register_data, render_state, prof);
               break;
             default:
-              fmt::print("Register {} is not supported in reglist mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in reglist mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 8;  // PACKED = quadwords
         }
@@ -793,6 +793,22 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
   handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
 }
 
+void DirectRenderer::handle_xyz2_packed(const u8* data,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
+  u32 x, y;
+  memcpy(&x, data, 4);
+  memcpy(&y, data + 4, 4);
+
+  u64 upper;
+  memcpy(&upper, data + 8, 8);
+  u32 z = upper;
+
+  bool adc = upper & (1ull << 47);
+  handle_xyzf2_common(x << 16, y << 16, z, 0, render_state, prof, !adc);
+}
+
+PerGameVersion<u32> normal_zbp = {448, 304};
 void DirectRenderer::handle_zbuf1(u64 val,
                                   SharedRenderState* render_state,
                                   ScopedProfilerNode& prof) {
@@ -800,7 +816,7 @@ void DirectRenderer::handle_zbuf1(u64 val,
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   ASSERT(x.psm() == TextureFormat::PSMZ24);
-  ASSERT(x.zbp() == 448);
+  ASSERT(x.zbp() == normal_zbp[render_state->version]);
 
   bool write = !x.zmsk();
   //  ASSERT(write);
@@ -925,9 +941,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof,
                                          bool advance) {
-  if (m_my_id == BucketId::MERC_TFRAG_TEX_LEVEL0) {
-    // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
-  }
   if (m_prim_buffer.is_full()) {
     lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
              m_prim_buffer.vert_count * sizeof(Vertex));

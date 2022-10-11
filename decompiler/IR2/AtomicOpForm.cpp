@@ -119,14 +119,14 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
             menv->disable_use(src_var);
           }
 
-          // fmt::print("marked {} as dead set\n", to_string(env));
+          // lg::print("marked {} as dead set\n", to_string(env));
         }
       } else if (m_src.get_arg(0).is_sym_val() && m_src.get_arg(0).get_str() == "#f" &&
                  m_dst.reg().allowed_local_gpr()) {
         auto& ri = env.reg_use().op.at(m_my_idx);
         if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
           result->mark_as_dead_false();
-          // fmt::print("marked {} as dead set false\n", to_string(env));
+          // lg::print("marked {} as dead set false\n", to_string(env));
         }
       }
     }
@@ -727,6 +727,14 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         return pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
                                                             std::vector<DerefToken>());
       }
+
+      // if we fail here, report a LoadSourceElement with the register and offset to be consumed
+      // by the expression pass, which can detect more complicated cases (see
+      // LoadSourceElement::update_from_stack, which needs expressions)
+      auto source =
+          pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
+      return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind, ro,
+                                                               input_type);
     }
   }
 
@@ -738,7 +746,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
   }
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
+  return pool.alloc_single_element_form<LoadSourceElement>(
+      nullptr, source, m_size, m_kind, std::optional<IR2_RegOffset>{}, TP_Type());
 }
 
 FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {

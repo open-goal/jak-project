@@ -125,6 +125,7 @@ const std::unordered_map<
         {".pcpyud", &Compiler::compile_asm_pcpyud},
         {".pceqw", &Compiler::compile_asm_pceqw},
         {".ppach", &Compiler::compile_asm_ppach},
+        {".ppacb", &Compiler::compile_asm_ppacb},
         {".psubw", &Compiler::compile_asm_psubw},
 
         // BLOCK FORMS
