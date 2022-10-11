@@ -1360,23 +1360,41 @@ void SimpleExpressionElement::update_from_stack_mult_si(const Env& env,
                                                         FormStack& stack,
                                                         std::vector<FormElement*>* result,
                                                         bool allow_side_effects) {
-  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+  if (m_expr.get_arg(0).is_int()) {
+    // annoyingly there's a mult3 v1, r0, v1 in jak 2.
+    auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
 
-  auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                           allow_side_effects);
+    auto args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
 
-  if (!arg0_i) {
-    args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(0));
+    if (!arg1_i) {
+      args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
+    }
+
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION),
+        pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(m_expr.get_arg(0).get_int())),
+        args.at(0));
+
+    result->push_back(new_form);
+  } else {
+    auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+    auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+    auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                             allow_side_effects);
+
+    if (!arg0_i) {
+      args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(0));
+    }
+
+    if (!arg1_i) {
+      args.at(1) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
+    }
+
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0), args.at(1));
+    result->push_back(new_form);
   }
-
-  if (!arg1_i) {
-    args.at(1) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
-  }
-
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0), args.at(1));
-  result->push_back(new_form);
 }
 
 void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,

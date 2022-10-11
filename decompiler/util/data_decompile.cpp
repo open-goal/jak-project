@@ -995,7 +995,12 @@ goos::Object decompile_structure(const TypeSpec& type,
     }
 
     if (all_zero) {
-      // field has nothing in it, just skip it.
+      // special case for dynamic arrays at the end of a type
+      // TODO - this causes an assert in Type.hL240
+      // if (!(field_start == field_end && field.is_dynamic())) {
+      //  // field has nothing in it, just skip it.
+      //  continue;
+      //}
       continue;
     }
 
@@ -1007,7 +1012,7 @@ goos::Object decompile_structure(const TypeSpec& type,
 
     // first, let's see if it's a value or reference
     auto field_type_info = ts.lookup_type_allow_partial_def(field.type());
-    if (!field_type_info->is_reference()) {
+    if (!field_type_info->is_reference() && field.type() != TypeSpec("object")) {
       // value type. need to get bytes.
       ASSERT(!field.is_inline());
       if (field.is_array()) {
@@ -1201,9 +1206,15 @@ goos::Object decompile_structure(const TypeSpec& type,
           if (field.type() == TypeSpec("symbol")) {
             continue;
           }
-          field_defs_out.emplace_back(
-              field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
-                                               words, ts, file, version));
+          if (field.type() == TypeSpec("object")) {
+            field_defs_out.emplace_back(
+                field.name(), decompile_at_label_guess_type(labels.at(word.label_id()), labels,
+                                                            words, ts, file, version));
+          } else {
+            field_defs_out.emplace_back(
+                field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
+                                                 words, ts, file, version));
+          }
         } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));

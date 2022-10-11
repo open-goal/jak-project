@@ -670,8 +670,7 @@
   #f
   )
 
-(defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (start vector) (end vector) (color vector))
-  "Draw a line in screen coordinates"
+(defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (start vector4w) (end vector4w) (color vector4w))
   (if (not enable)
       (return #f)
       )
@@ -683,11 +682,11 @@
           )
       (set! (-> p0 quad) (-> start quad))
       (set! (-> p1 quad) (-> end quad))
-      (set! (-> p0 x) (* (+ (-> p0 x) 2048) 16))
-      (set! (-> p0 y) (* -16 (- 2048 (-> p0 y))))
+      (set! (-> p0 x) (the-as int (* (+ (-> p0 x) 2048) 16)))
+      (set! (-> p0 y) (* -16 (the-as int (- 2048 (the-as int (-> p0 y))))))
       (set! (-> p0 z) #x7fffff)
-      (set! (-> p1 x) (* (+ (-> p1 x) 2048) 16))
-      (set! (-> p1 y) (* -16 (- 2048 (-> p1 y))))
+      (set! (-> p1 x) (the-as int (* (+ (-> p1 x) 2048) 16)))
+      (set! (-> p1 y) (* -16 (the-as int (- 2048 (the-as int (-> p1 y))))))
       (set! (-> p1 z) #x7fffff)
       (let ((a0-18 (the-as (pointer uint64) (-> buf base))))
         (let* ((a1-7 buf)
@@ -701,22 +700,20 @@
         (let* ((a1-8 buf)
                (giftag (the-as gs-gif-tag (-> a1-8 base)))
                )
-          (set! (-> giftag tag)
-                (new 'static 'gif-tag64
-                  :nloop #x1
-                  :eop #x1
-                  :pre #x1
-                  :prim (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
-                  :nreg #x4
-                  )
+          (set! (-> giftag tag) (new 'static 'gif-tag64
+                                  :nloop #x1
+                                  :eop #x1
+                                  :pre #x1
+                                  :prim (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
+                                  :nreg #x4
+                                  )
                 )
-          (set! (-> giftag regs)
-                (new 'static 'gif-tag-regs
-                  :regs0 (gif-reg-id rgbaq)
-                  :regs1 (gif-reg-id xyzf2)
-                  :regs2 (gif-reg-id rgbaq)
-                  :regs3 (gif-reg-id xyzf2)
-                  )
+          (set! (-> giftag regs) (new 'static 'gif-tag-regs
+                                   :regs0 (gif-reg-id rgbaq)
+                                   :regs1 (gif-reg-id xyzf2)
+                                   :regs2 (gif-reg-id rgbaq)
+                                   :regs3 (gif-reg-id xyzf2)
+                                   )
                 )
           (set! (-> a1-8 base) (&+ (the-as pointer giftag) 16))
           )
