@@ -455,8 +455,10 @@ goos::Object decomp_ref_to_inline_array_guess_size(
 
   // inline-arrays can also be initialized as #f
   if (pointer_to_data.kind() == LinkedWord::SYM_PTR) {
-    ASSERT_MSG(pointer_to_data.symbol_name() == "#f", "inline-array data decompilation found a non-#f symbol");
-    return pretty_print::to_symbol(fmt::format("(the-as (inline-array {}) #f)", array_elt_type.print()));
+    ASSERT_MSG(pointer_to_data.symbol_name() == "#f",
+               "inline-array data decompilation found a non-#f symbol");
+    return pretty_print::to_symbol(
+        fmt::format("(the-as (inline-array {}) #f)", array_elt_type.print()));
   }
 
   ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
@@ -622,14 +624,13 @@ goos::Object xz_height_map_data_arr_decompile(const std::vector<LinkedWord>& wor
                                                file, TypeSpec("vector4b"), 4);
 }
 
-goos::Object race_turbo_pad_arr_decompile(
-    const std::vector<LinkedWord>& words,
-    const std::vector<DecompilerLabel>& labels,
-    int my_seg,
-    int field_location,
-    const TypeSystem& ts,
-    const std::vector<std::vector<LinkedWord>>& all_words,
-    const LinkedObjectFile* file) {
+goos::Object race_turbo_pad_arr_decompile(const std::vector<LinkedWord>& words,
+                                          const std::vector<DecompilerLabel>& labels,
+                                          int my_seg,
+                                          int field_location,
+                                          const TypeSystem& ts,
+                                          const std::vector<std::vector<LinkedWord>>& all_words,
+                                          const LinkedObjectFile* file) {
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
                                                file, TypeSpec("race-turbo-pad"), 32);
 }
@@ -646,14 +647,13 @@ goos::Object race_decision_point_arr_decompile(
                                                file, TypeSpec("race-decision-point"), 16);
 }
 
-goos::Object race_racer_info_arr_decompile(
-    const std::vector<LinkedWord>& words,
-    const std::vector<DecompilerLabel>& labels,
-    int my_seg,
-    int field_location,
-    const TypeSystem& ts,
-    const std::vector<std::vector<LinkedWord>>& all_words,
-    const LinkedObjectFile* file) {
+goos::Object race_racer_info_arr_decompile(const std::vector<LinkedWord>& words,
+                                           const std::vector<DecompilerLabel>& labels,
+                                           int my_seg,
+                                           int field_location,
+                                           const TypeSystem& ts,
+                                           const std::vector<std::vector<LinkedWord>>& all_words,
+                                           const LinkedObjectFile* file) {
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
                                                file, TypeSpec("race-racer-info"), 16);
 }
@@ -1089,26 +1089,23 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(field.name(), xz_height_map_data_arr_decompile(
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
-        }
-        else if (type.print() == "race-info" && field.name() == "turbo-pad-array" &&
+        } else if (type.print() == "race-info" && field.name() == "turbo-pad-array" &&
                    file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(field.name(), race_turbo_pad_arr_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file));
+          field_defs_out.emplace_back(
+              field.name(), race_turbo_pad_arr_decompile(obj_words, labels, label.target_segment,
+                                                         field_start, ts, words, file));
         } else if (type.print() == "race-info" && field.name() == "racer-array" &&
                    file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(field.name(), race_racer_info_arr_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file));
-        } else if (type.print() == "race-info" && 
-                    field.name() == "decision-point-array" &&
+          field_defs_out.emplace_back(
+              field.name(), race_racer_info_arr_decompile(obj_words, labels, label.target_segment,
+                                                          field_start, ts, words, file));
+        } else if (type.print() == "race-info" && field.name() == "decision-point-array" &&
                    file->version == GameVersion::Jak2) {
           field_defs_out.emplace_back(field.name(), race_decision_point_arr_decompile(
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, words, file));
-        }
-        else if (field.name() == "route" && type.print() == "nav-mesh" &&
-                 file->version == GameVersion::Jak1) {
+        } else if (field.name() == "route" && type.print() == "nav-mesh" &&
+                   file->version == GameVersion::Jak1) {
           field_defs_out.emplace_back(
               field.name(), nav_mesh_route_arr_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, words, file));
