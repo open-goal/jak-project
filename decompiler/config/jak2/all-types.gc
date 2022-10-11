@@ -1646,7 +1646,7 @@
 (define-extern matrix-rotate-yzx! (function matrix vector matrix))
 (define-extern matrix-rotate-yxy! (function matrix vector matrix))
 (define-extern matrix-rotate-yx! (function matrix float float matrix))
-(define-extern matrix-axis-sin-cos-vu! (function matrix vector float float matrix))
+(define-extern matrix-axis-sin-cos-vu! "@unused" (function matrix vector float float none))
 (define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
 (define-extern matrix-axis-angle! (function matrix vector float matrix))
 (define-extern matrix-lerp! (function matrix matrix matrix float matrix))
@@ -12812,7 +12812,7 @@
   )
 
 (deftype talker (process)
-  ((trans          vector              :inline :offset-assert 128)
+  ((trans          vector              :inline :offset-assert 128 :score 999)
    (message        talker-speech-class         :offset-assert 144)
    (total-time     time-frame                      :offset-assert 152)
    (total-off-time time-frame                      :offset-assert 160)
@@ -12842,11 +12842,13 @@
 ;; speech-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++speech-h:speech-type-flag
 (defenum speech-type-flag
   :type uint8
   :bitfield #t
   (random-order 0)
   )
+;; ---speech-h:speech-type-flag
 
 (deftype speech-type-info (structure)
   ((channel         uint8             :offset-assert   0)
@@ -12864,6 +12866,7 @@
   :flag-assert         #x900000014
   )
 
+;; +++speech-h:speech-type
 (defenum speech-type
   :type int8
   :bitfield #t
@@ -12872,6 +12875,7 @@
   (speech-type-2 2)
   (speech-type-3 3)
   )
+;; ---speech-h:speech-type
 
 (deftype speech-request (structure)
   ((handle      handle  :offset-assert 0)
@@ -12885,17 +12889,19 @@
   :flag-assert         #x900000015
   )
 
+;; +++speech-h:speech-channel-flag
 (defenum speech-channel-flag
   :type uint8
   :bitfield #t
   (disable 0)
   )
+;; ---speech-h:speech-channel-flag
 
 (deftype speech-channel (structure)
   ((flags        speech-channel-flag         :offset-assert   0)
    (gui-channel  gui-channel                 :offset-assert   1)
    (delay        uint16                      :offset-assert   2)
-   (id           uint32                      :offset-assert   4)
+   (id           sound-id                      :offset-assert   4)
    (update-time  time-frame                  :offset-assert   8)
    (start-time   time-frame                  :offset-assert  16)
    (end-time     time-frame                  :offset-assert  24)
@@ -13651,9 +13657,9 @@
    (flags             lightning-spec-flags  :offset-assert 8)
    (rand-func         uint8   :offset-assert 10)
    (adjust-distance   uint8   :offset-assert 11)
-   (start-color       uint32  :offset-assert 12)
-   (end-color         uint32  :offset-assert 16)
-   (fade-to-color     uint32  :offset-assert 20)
+   (start-color       uint32  :offset-assert 12) ;; TODO - these are gs-packed-rgba's but data decomp issue (structure from value)
+   (end-color         uint32  :offset-assert 16) ;; TODO - these are gs-packed-rgba's but data decomp issue (structure from value)
+   (fade-to-color     uint32  :offset-assert 20) ;; TODO - these are gs-packed-rgba's but data decomp issue (structure from value)
    (fade-start-factor float   :offset-assert 24)
    (fade-time         float   :offset-assert 28)
    (texture           uint32  :offset-assert 32)
@@ -27053,8 +27059,8 @@
 (define-extern talker-displayed? (function symbol))
 (define-extern kill-current-talker (function symbol pair symbol none)) ;; see (exit play-anim scene-player)
 (define-extern string->talker-speech (function string talker-speech-class))
-(define-extern talker-spawn-func (function talker-speech-class process-tree vector basic int))
-(define-extern talker-init (function talker-speech-class vector basic none :behavior talker))
+(define-extern talker-spawn-func (function talker-speech-class process-tree vector region int))
+(define-extern talker-init (function talker-speech-class vector region none :behavior talker))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech                         ;;
@@ -27075,6 +27081,7 @@
 ;; fma-sphere                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++fma-sphere:fma-sphere-mode
 (defenum fma-sphere-mode
   :type uint32
   :bitfield #t
@@ -27082,6 +27089,7 @@
   (kill-once 1)
   (danger 2)
   (deadly-overlap 3))
+;; ---fma-sphere:fma-sphere-mode
 
 (deftype fma-sphere (process-drawable)
   ((root-override collide-shape               :offset 128 :score 999)
@@ -27102,7 +27110,8 @@
     )
   )
 
-(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame vector vector fma-sphere :behavior fma-sphere))
+;; TODO - takes vectors, but hits an assertion!
+(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere :behavior fma-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; script                         ;;

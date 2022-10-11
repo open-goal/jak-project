@@ -13,7 +13,7 @@
 ;; definition for method 13 of type speech-channel
 ;; WARN: Return type mismatch int vs none.
 (defmethod speech-channel-method-13 speech-channel ((obj speech-channel))
-  (set! (-> obj id) (the-as uint 0))
+  (set! (-> obj id) (new 'static 'sound-id))
   (set! (-> obj last-request handle) (the-as handle #f))
   (set! (-> obj last-request priority) -10000000000000000000000000000000000000.0)
   0
@@ -34,7 +34,7 @@
         (logior! (-> obj flags) (speech-channel-flag disable))
         )
     (set! (-> obj target-pos quad) (-> (target-pos 0) quad))
-    (when (zero? (logand (-> obj flags) (speech-channel-flag disable)))
+    (when (not (logtest? (-> obj flags) (speech-channel-flag disable)))
       (let ((s5-1 (-> obj speech-table (-> obj request speech-type))))
         (cond
           (s5-1
@@ -92,7 +92,7 @@
                               )
                         (set! (-> s5-1 delay) (-> obj delay))
                         (set! (-> obj id)
-                              (the-as uint (gui-control-method-9 *gui-control* s4-0 (-> obj gui-channel) (gui-action play) s3-1 -99.0 0))
+                              (gui-control-method-9 *gui-control* s4-0 (-> obj gui-channel) (gui-action play) s3-1 -99.0 0)
                               )
                         )
                       (speech-channel-method-12 obj)
@@ -117,7 +117,7 @@
            (when *sound-player-enable*
              (let ((s5-2 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
                (set! (-> s5-2 command) (sound-command set-param))
-               (set! (-> s5-2 id) (the-as sound-id (-> obj id)))
+               (set! (-> s5-2 id) (-> obj id))
                (set! (-> s5-2 params fo-min) 15)
                (set! (-> s5-2 params fo-max) 90)
                (set! (-> s5-2 params fo-curve) 9)
@@ -141,37 +141,37 @@
             (gui-control-method-16
               *gui-control*
               (gui-action stop)
-              (the-as sound-id (-> obj id))
+              (-> obj id)
               (gui-channel none)
               (gui-action none)
               (the-as string #f)
               (the-as (function gui-connection symbol) #f)
               (the-as process #f)
               )
-            (set! (-> obj id) (the-as uint 0))
+            (set! (-> obj id) (new 'static 'sound-id))
             0
             )
           )
         )
-      (case (gui-control-method-17 *gui-control* (the-as sound-id (-> obj id)))
+      (case (gui-control-method-17 *gui-control* (-> obj id))
         (((gui-action queue))
          (when (>= (- (-> pp clock frame-counter) (-> obj start-time)) (seconds 1))
            (gui-control-method-16
              *gui-control*
              (gui-action stop)
-             (the-as sound-id (-> obj id))
+             (-> obj id)
              (gui-channel none)
              (gui-action none)
              (the-as string #f)
              (the-as (function gui-connection symbol) #f)
              (the-as process #f)
              )
-           (set! (-> obj id) (the-as uint 0))
+           (set! (-> obj id) (new 'static 'sound-id))
            (set! (-> obj end-time) (-> obj update-time))
            )
          )
         (((gui-action none))
-         (set! (-> obj id) (the-as uint 0))
+         (set! (-> obj id) (new 'static 'sound-id))
          (set! (-> obj last-request handle) (the-as handle #f))
          (set! (-> obj end-time) (-> obj update-time))
          )
@@ -215,14 +215,14 @@
     (gui-control-method-16
       *gui-control*
       (gui-action stop)
-      (the-as sound-id (-> obj id))
+      (-> obj id)
       (gui-channel none)
       (gui-action none)
       (the-as string #f)
       (the-as (function gui-connection symbol) #f)
       (the-as process #f)
       )
-    (set! (-> obj id) (the-as uint 0))
+    (set! (-> obj id) (new 'static 'sound-id))
     (set! (-> obj last-request handle) (the-as handle #f))
     )
   0
@@ -235,7 +235,7 @@
   (let ((v1-2 (-> obj speech-table arg1)))
     (when v1-2
       (let ((a0-1 (-> obj channel-array (-> v1-2 channel))))
-        (if (zero? (logand (-> a0-1 flags) (speech-channel-flag disable)))
+        (if (not (logtest? (-> a0-1 flags) (speech-channel-flag disable)))
             (speech-channel-method-9 a0-1 arg0 arg1)
             )
         )
@@ -294,7 +294,7 @@
 ;; definition for method 15 of type speech-control
 ;; WARN: Return type mismatch int vs none.
 (defmethod speech-control-method-15 speech-control ((obj speech-control) (arg0 process-drawable))
-  (when (zero? (logand (-> obj channel-array 0 flags) (speech-channel-flag disable)))
+  (when (not (logtest? (-> obj channel-array 0 flags) (speech-channel-flag disable)))
     (let ((v1-3 *target*))
       (when v1-3
         (cond

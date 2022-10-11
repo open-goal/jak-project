@@ -5,9 +5,9 @@
 ;; name in dgo: fma-sphere
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
+;; og:ignore-form:(defbehavior fma-sphere-init-by-other
 
-
+;; +++fma-sphere-mode
 (defenum fma-sphere-mode
   :type uint32
   :bitfield #t
@@ -15,17 +15,25 @@
   (kill-once 1)
   (danger 2)
   (deadly-overlap 3))
+;; ---fma-sphere-mode
+
+(declare-type fma-sphere process-drawable)
+(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere :behavior fma-sphere))
+
+;; DECOMP BEGINS
 
 (deftype fma-sphere (process-drawable)
-  ((first-time?  symbol                      :offset-assert 200)
-   (mode         fma-sphere-mode                      :offset-assert 204)
-   (track-handle handle                      :offset-assert 208)
-   (track-joint  int32                       :offset-assert 216)
-   (attack-id    uint32                      :offset-assert 220)
-   (duration     time-frame                      :offset-assert 224)
-   (sphere       sphere              :inline :offset-assert 240)
-   (danger       traffic-danger-info :inline :offset-assert 256)
+  ((root-override collide-shape               :offset        128)
+   (first-time?   symbol                      :offset-assert 200)
+   (mode          fma-sphere-mode             :offset-assert 204)
+   (track-handle  handle                      :offset-assert 208)
+   (track-joint   int32                       :offset-assert 216)
+   (attack-id     uint32                      :offset-assert 220)
+   (duration      time-frame                  :offset-assert 224)
+   (sphere        sphere              :inline :offset-assert 240)
+   (danger        traffic-danger-info :inline :offset-assert 256)
    )
+  :heap-base #xc0
   :method-count-assert 21
   :size-assert         #x136
   :flag-assert         #x1500c00136
@@ -34,4 +42,121 @@
     )
   )
 
-(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere))
+
+(defmethod run-logic? fma-sphere ((obj fma-sphere))
+  (or (logtest? *display-scene-control* (scene-controls display-controls))
+      (and *display-nav-marks* (logtest? (-> obj mode) (fma-sphere-mode nav)))
+      (logtest? (-> obj mode) (fma-sphere-mode deadly-overlap))
+      (>= (-> obj track-joint) 0)
+      (-> obj first-time?)
+      )
+  )
+
+(defstate idle (fma-sphere)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touched)
+       (let ((v1-1 (-> event param 0)))
+         (when v1-1
+           (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-2 from) (process->ppointer self))
+             (set! (-> a1-2 num-params) 2)
+             (set! (-> a1-2 message) 'attack)
+             (set! (-> a1-2 param 0) v1-1)
+             (let ((v1-2 (new 'static 'attack-info :mask (attack-info-mask mode id attacker-velocity damage knock))))
+               (set! (-> v1-2 id) (-> self attack-id))
+               (set! (-> v1-2 mode) 'eco-red)
+               (set! (-> v1-2 attacker-velocity quad) (-> self root-override transv quad))
+               (set! (-> v1-2 damage) 2.0)
+               (set! (-> v1-2 knock) (the-as uint 2))
+               (set! (-> a1-2 param 1) (the-as uint v1-2))
+               )
+             (send-event-function proc a1-2)
+             )
+           )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self first-time?) #f)
+    (if (logtest? (-> self mode) (fma-sphere-mode kill-once))
+        (send-event *traffic-manager* 'kill-traffic-sphere (-> self sphere))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (local-vars (at-0 int))
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((v1-0 (-> self duration)))
+        (if (and (nonzero? v1-0) (>= (- (-> self clock frame-counter) (-> self state-time)) v1-0))
+            (go empty-state)
+            )
+        )
+      (let ((v1-5 (-> self track-joint)))
+        (when (>= v1-5 0)
+          (let ((a2-0 (handle->process (-> self track-handle)))
+                (gp-0 (new 'stack-no-clear 'vector))
+                )
+            (when a2-0
+              (set! (-> gp-0 quad) (-> self sphere quad))
+              (set! (-> gp-0 w) 1.0)
+              (vector-matrix*! gp-0 gp-0 (-> (the-as process-drawable a2-0) node-list data v1-5 bone transform))
+              (let ((v1-9 (-> self root-override)))
+                (vector-! (-> v1-9 transv) gp-0 (-> v1-9 trans))
+                (let ((a0-12 (-> v1-9 transv)))
+                  (.lvf vf1 (&-> (-> v1-9 transv) quad))
+                  (let ((f0-1 (-> self clock frames-per-second)))
+                    (.mov at-0 f0-1)
+                    )
+                  (.mov vf2 at-0)
+                  (.mov.vf vf1 vf0 :mask #b1000)
+                  (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                  (.svf (&-> a0-12 quad) vf1)
+                  )
+                )
+              (collide-shape-method-29 (-> self root-override) gp-0)
+              (set! (-> self danger sphere x) (-> gp-0 x))
+              (set! (-> self danger sphere y) (-> gp-0 y))
+              (set! (-> self danger sphere z) (-> gp-0 z))
+              )
+            )
+          )
+        )
+      (if (logtest? (-> self mode) (fma-sphere-mode danger))
+          (send-event *traffic-manager* 'add-danger-sphere (-> self danger))
+          )
+      (when (logtest? (-> self mode) (fma-sphere-mode deadly-overlap))
+        (let ((a1-10 (new 'stack-no-clear 'overlaps-others-params)))
+          (set! (-> a1-10 options) (overlaps-others-options))
+          (set! (-> a1-10 collide-with-filter) (the-as collide-spec -1))
+          (set! (-> a1-10 tlist) *touching-list*)
+          (find-overlapping-shapes (-> self root-override) a1-10)
+          )
+        )
+      (if (or (logtest? *display-scene-control* (scene-controls display-controls))
+              (and *display-nav-marks* (logtest? (-> self mode) (fma-sphere-mode nav)))
+              )
+          (add-debug-sphere
+            #t
+            (bucket-id debug2)
+            (-> self root-override trans)
+            (-> self sphere r)
+            (new 'static 'rgba :r #x80 :g #x40 :a #x80)
+            )
+          )
+      (none)
+      )
+    )
+  :code (the-as (function none :behavior fma-sphere) sleep-code)
+  )
+
+;; ERROR: failed type prop at 36: Could not figure out load: (set! a0 (l.q a0))
+;; WARN: Return type mismatch none vs fma-sphere.
+;; ERROR: Unsupported inline assembly instruction kind - [sllv v1, v1, r0]
