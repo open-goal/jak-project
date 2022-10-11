@@ -947,7 +947,7 @@ goos::Object decompile_structure(const TypeSpec& type,
       } else {
         // array field special cases, uses the map initialized above!
         // check if there is a special case for this type+field+version combination
-        if (array_field_decomp_special_cases.count(file->version) > 0 &&
+        if (file && array_field_decomp_special_cases.count(file->version) > 0 &&
             array_field_decomp_special_cases.at(file->version).count(type.print()) > 0 &&
             array_field_decomp_special_cases.at(file->version)
                     .at(type.print())
@@ -957,9 +957,10 @@ goos::Object decompile_structure(const TypeSpec& type,
               array_field_decomp_special_cases.at(file->version).at(type.print()).at(field.name());
           if (metadata.kind == ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR) {
             field_defs_out.emplace_back(
-                field.name(), decomp_ref_to_inline_array_guess_size(
-                                  obj_words, labels, label.target_segment, field_start, ts, words,
-                                  file, metadata.element_type, metadata.bytes_per_element, file->version));
+                field.name(),
+                decomp_ref_to_inline_array_guess_size(
+                    obj_words, labels, label.target_segment, field_start, ts, words, file,
+                    metadata.element_type, metadata.bytes_per_element, file->version));
           } else if (metadata.kind == ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR) {
             field_defs_out.emplace_back(
                 field.name(), decomp_ref_to_integer_array_guess_size(
