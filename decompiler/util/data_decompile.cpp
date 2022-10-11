@@ -303,6 +303,64 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
   return pretty_print::build_list(array_def);
 }
 
+goos::Object decompile_ref_array(const TypeSpec& elt_type,
+                                 int length,
+                                 int my_seg,
+                                 int offset_in_seg,
+                                 const std::vector<DecompilerLabel>& labels,
+                                 const std::vector<std::vector<LinkedWord>>& words,
+                                 const TypeSystem& ts,
+                                 const LinkedObjectFile* file,
+                                 GameVersion version,
+                                 const Field* field_for_errors,
+                                 const TypeSpec* actual_type_for_errors) {
+  std::vector<goos::Object> array_def = {
+      pretty_print::to_symbol(fmt::format("new 'static 'array {} {}", elt_type.print(), length))};
+
+  int end_elt = 0;
+  for (int elt = length; elt-- > 0;) {
+    auto& word = words.at(my_seg).at((offset_in_seg / 4) + elt);
+    if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
+      continue;
+    }
+    end_elt = elt + 1;
+    break;
+  }
+
+  for (int elt = 0; elt < end_elt; elt++) {
+    auto& word = words.at(my_seg).at((offset_in_seg / 4) + elt);
+
+    if (word.kind() == LinkedWord::PTR) {
+      array_def.push_back(decompile_at_label(elt_type, labels.at(word.label_id()), labels, words,
+                                             ts, file, version));
+    } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
+      // do nothing, the default is zero?
+      array_def.push_back(pretty_print::to_symbol("0"));
+    } else if (word.kind() == LinkedWord::SYM_PTR) {
+      if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
+        array_def.push_back(pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
+      } else {
+        array_def.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
+      }
+    } else if (word.kind() == LinkedWord::EMPTY_PTR) {
+      array_def.push_back(pretty_print::to_symbol("'()"));
+    } else {
+      if (field_for_errors && actual_type_for_errors) {
+        throw std::runtime_error(
+            fmt::format("Field {} in type {} offset {} did not have a proper reference for "
+                        "array element {} k = {}",
+                        field_for_errors->name(), actual_type_for_errors->print(),
+                        field_for_errors->offset(), elt, (int)word.kind()));
+      } else {
+        throw std::runtime_error(
+            fmt::format("Failed to decompile_ref_array: offset {}, elt {}, type {}, k = {}",
+                        offset_in_seg, elt, elt_type.print(), (int)word.kind()));
+      }
+    }
+  }
+  return pretty_print::build_list(array_def);
+}
+
 namespace {
 float word_as_float(const LinkedWord& w) {
   ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
@@ -428,6 +486,90 @@ goos::Object decomp_ref_to_integer_array_guess_size(
 
   return decompile_value_array(array_elt_type, elt_type_info, size_elts, stride, start_label.offset,
                                all_words.at(start_label.target_segment), ts);
+}
+
+// TODO: add some disclaimer about this.
+goos::Object decomp_ref_to_ref_array_guess_size(
+    const std::vector<DecompilerLabel>& labels,
+    int my_seg,
+    int offset_of_array,
+    const TypeSystem& ts,
+    const std::vector<std::vector<LinkedWord>>& all_words,
+    const LinkedObjectFile* file,
+    const TypeSpec& array_elt_type,
+    int stride) {
+  // verify types
+  auto elt_type_info = ts.lookup_type(array_elt_type);
+  ASSERT(stride == 4);
+  ASSERT(elt_type_info->is_reference());
+
+  // the input is the location of the data field.
+  // we expect that to be a label:
+  ASSERT((offset_of_array % 4) == 0);
+//  auto pointer_to_data = all_words.at(my_seg).at(offset_of_array / 4);
+//  ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
+
+  // the data shouldn't have any labels in the middle of it, so we can find the end of the array
+  // by searching for the label after the start label.
+  // const auto& start_label = labels.at(pointer_to_data.label_id());
+  int end_label_idx =
+      index_of_closest_following_label_in_segment(offset_of_array, my_seg, labels);
+
+  int end_offset = all_words.at(my_seg).size() * 4;
+  if (end_label_idx < 0) {
+    lg::warn(
+        "Failed to find label: likely just an unimplemented case for when the data is the last "
+        "thing in the file.");
+  } else {
+    const auto& end_label = labels.at(end_label_idx);
+    end_offset = end_label.offset;
+  }
+
+  // see if we need to cheat it back 4 bytes for a type tag
+  while (end_offset >= 4) {
+    auto& last_word = all_words.at(my_seg).at((end_offset - 4) / 4);
+    if (last_word.kind() == LinkedWord::TYPE_PTR) {
+      end_offset -= 4;
+    } else if (last_word.kind() == LinkedWord::SYM_PTR) {
+      end_offset -= 4;
+    } else if (last_word.kind() == LinkedWord::PLAIN_DATA && last_word.data == 0) {
+      end_offset -= 4;
+    } else {
+      break;
+    }
+  }
+
+  // now we can figure out the size
+  int size_bytes = end_offset - offset_of_array;
+  int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
+  int leftover_bytes = size_bytes % stride;
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // size_elts,leftover_bytes);
+
+  // if we have leftover, should verify that its all zeros, or that it's the type pointer
+  // of the next basic in the data section.
+  // ex:
+  // .word <data>
+  // .type <some-other-basic's type tag>
+  // L21: ; label some other basic
+  // <other basic's data>
+  int padding_start = end_offset - leftover_bytes;
+  int padding_end = end_offset;
+  for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
+    auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
+    switch (word.kind()) {
+      case LinkedWord::PLAIN_DATA:
+        ASSERT(word.get_byte(pad_byte_idx) == 0);
+        break;
+      case LinkedWord::TYPE_PTR:
+        break;
+      default:
+        ASSERT(false);
+    }
+  }
+
+  return decompile_ref_array(array_elt_type, size_elts, my_seg, offset_of_array, labels, all_words,
+                             ts, file, file->version, nullptr, nullptr);
 }
 
 /*!
@@ -994,255 +1136,226 @@ goos::Object decompile_structure(const TypeSpec& type,
       }
     }
 
-    if (all_zero) {
-      // special case for dynamic arrays at the end of a type
-      // TODO - this causes an assert in Type.hL240
-      // if (!(field_start == field_end && field.is_dynamic())) {
-      //  // field has nothing in it, just skip it.
-      //  continue;
-      //}
-      continue;
-    }
-
     if (any_overlap) {
       // for now, let's just skip fields that overlapped with the previous.
       // eventually we should do something smarter here...
       continue;
     }
 
-    // first, let's see if it's a value or reference
-    auto field_type_info = ts.lookup_type_allow_partial_def(field.type());
-    if (!field_type_info->is_reference() && field.type() != TypeSpec("object")) {
-      // value type. need to get bytes.
-      ASSERT(!field.is_inline());
-      if (field.is_array()) {
-        // array of values.
-        auto len = field.array_size();
-        auto stride = ts.get_size_in_type(field) / len;
-        ASSERT(stride == field_type_info->get_size_in_memory());
-
-        field_defs_out.emplace_back(
-            field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
-                                                field_start, obj_words, ts));
-      } else if (field.is_dynamic()) {
-        throw std::runtime_error(
-            fmt::format("Dynamic value field {} in static data type {} not yet implemented",
-                        field.name(), actual_type.print()));
-      } else {
-        // TODO - this is getting a little unwieldly -- refactor this at some point
-        if (field.name() == "data" && type.print() == "ocean-near-indices") {
-          // first, get the label:
-          field_defs_out.emplace_back(
-              field.name(), ocean_near_indices_decompile(obj_words, labels, label.target_segment,
-                                                         field_start, ts, words, file, version));
-        } else if (field.name() == "data" && type.print() == "ocean-mid-masks") {
-          field_defs_out.emplace_back(
-              field.name(), ocean_mid_masks_decompile(obj_words, labels, label.target_segment,
+    // TODO - this is getting a little unwieldly -- refactor this at some point
+    if (field.name() == "data" && type.print() == "ocean-near-indices") {
+      // first, get the label:
+      field_defs_out.emplace_back(
+          field.name(), ocean_near_indices_decompile(obj_words, labels, label.target_segment,
+                                                     field_start, ts, words, file, version));
+    } else if (field.name() == "data" && type.print() == "ocean-mid-masks") {
+      field_defs_out.emplace_back(field.name(),
+                                  ocean_mid_masks_decompile(obj_words, labels, label.target_segment,
+                                                            field_start, ts, words, file, version));
+    } else if (field.name() == "init-specs" && type.print() == "sparticle-launcher") {
+      field_defs_out.emplace_back(
+          field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
+                                                     field_start, ts, words, file, version));
+    } else if (field.name() == "vertex" && type.print() == "nav-mesh" &&
+               file->version == GameVersion::Jak1) {
+      field_defs_out.emplace_back(
+          field.name(), nav_mesh_vertex_arr_decompile(obj_words, labels, label.target_segment,
                                                       field_start, ts, words, file, version));
-        } else if (field.name() == "init-specs" && type.print() == "sparticle-launcher") {
-          field_defs_out.emplace_back(
-              field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
+    } else if (field.name() == "poly" && type.print() == "nav-mesh" &&
+               file->version == GameVersion::Jak1) {
+      field_defs_out.emplace_back(
+          field.name(), nav_mesh_poly_arr_decompile(obj_words, labels, label.target_segment,
+                                                    field_start, ts, words, file, version));
+    } else if (field.name() == "poly-array" && type.print() == "nav-mesh" &&
+               file->version == GameVersion::Jak2) {
+      field_defs_out.emplace_back(
+          field.name(), nav_mesh_poly_arr_jak2_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, words, file, version));
-        } else if (field.name() == "vertex" && type.print() == "nav-mesh" &&
-                   file->version == GameVersion::Jak1) {
-          field_defs_out.emplace_back(
-              field.name(), nav_mesh_vertex_arr_decompile(obj_words, labels, label.target_segment,
-                                                          field_start, ts, words, file, version));
-        } else if (field.name() == "poly" && type.print() == "nav-mesh" &&
-                   file->version == GameVersion::Jak1) {
-          field_defs_out.emplace_back(
-              field.name(), nav_mesh_poly_arr_decompile(obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file, version));
-        } else if (field.name() == "poly-array" && type.print() == "nav-mesh" &&
-                   file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(field.name(), nav_mesh_poly_arr_jak2_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file, version));
-        } else if (field.name() == "nav-control-array" && type.print() == "nav-mesh" &&
-                   file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(field.name(), nav_mesh_nav_control_arr_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file, version));
-        } else if (field.name() == "data" && type.print() == "xz-height-map" &&
-                   file->version == GameVersion::Jak2) {
-          field_defs_out.emplace_back(field.name(), xz_height_map_data_arr_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file, version));
-        } else if (field.name() == "route" && type.print() == "nav-mesh" &&
-                   file->version == GameVersion::Jak1) {
-          field_defs_out.emplace_back(
-              field.name(), nav_mesh_route_arr_decompile(obj_words, labels, label.target_segment,
+    } else if (field.name() == "nav-control-array" && type.print() == "nav-mesh" &&
+               file->version == GameVersion::Jak2) {
+      field_defs_out.emplace_back(
+          field.name(), nav_mesh_nav_control_arr_decompile(obj_words, labels, label.target_segment,
+                                                           field_start, ts, words, file, version));
+    } else if (field.name() == "data" && type.print() == "xz-height-map" &&
+               file->version == GameVersion::Jak2) {
+      field_defs_out.emplace_back(
+          field.name(), xz_height_map_data_arr_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, words, file, version));
-        } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
-          field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
-                                                        obj_words, labels, label.target_segment,
-                                                        field_start, ts, words, file, version));
-        } else if (field.name() == "col-mesh-indexes" && type.print() == "ropebridge-tuning") {
-          field_defs_out.emplace_back(
-              field.name(), decomp_ref_to_integer_array_guess_size(
-                                obj_words, labels, label.target_segment, field_start, ts, words,
-                                file, TypeSpec("uint8"), 1));
-        } else if (field.name() == "probe-dirs" && type.print() == "lightning-probe-vars") {
-          field_defs_out.emplace_back(field.name(),
-                                      probe_dir_decompile(obj_words, labels, label.target_segment,
-                                                          field_start, ts, words, file, version));
-        } else {
-          if (field.type().base_type() == "pointer") {
-            if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {
-              continue;
-            }
-
-            if (obj_words.at(field_start / 4).symbol_name() != "#f") {
-              lg::warn("Got a weird symbol in a pointer field: {}",
-                       obj_words.at(field_start / 4).symbol_name());
-              continue;
-            }
-
-            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("#f"));
-
-          } else {
-            if (obj_words.at(field_start / 4).kind() != LinkedWord::PLAIN_DATA) {
-              continue;
-            }
-            std::vector<u8> bytes_out;
-            for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
-              bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
-            }
-            field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
-          }
-        }
+    } else if (field.name() == "route" && type.print() == "nav-mesh" &&
+               file->version == GameVersion::Jak1) {
+      field_defs_out.emplace_back(
+          field.name(), nav_mesh_route_arr_decompile(obj_words, labels, label.target_segment,
+                                                     field_start, ts, words, file, version));
+    } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
+      field_defs_out.emplace_back(
+          field.name(), sp_launch_grp_launcher_decompile(obj_words, labels, label.target_segment,
+                                                         field_start, ts, words, file, version));
+    } else if (field.name() == "col-mesh-indexes" && type.print() == "ropebridge-tuning") {
+      field_defs_out.emplace_back(
+          field.name(), decomp_ref_to_integer_array_guess_size(
+                            obj_words, labels, label.target_segment, field_start, ts, words, file,
+                            TypeSpec("uint8"), 1));
+    } else if (field.name() == "probe-dirs" && type.print() == "lightning-probe-vars") {
+      field_defs_out.emplace_back(
+          field.name(), probe_dir_decompile(obj_words, labels, label.target_segment, field_start,
+                                            ts, words, file, version));
+    } else if (field.name() == "options" && type.print() == "menu-option-list") {
+      field_defs_out.emplace_back(
+          field.name(), decomp_ref_to_ref_array_guess_size(
+                            labels, label.target_segment, field_start + offset_location, ts, words,
+                            file, TypeSpec("array", {TypeSpec("menu-option")}), 4));
+    } else {
+      if (all_zero) {
+        // special case for dynamic arrays at the end of a type
+        continue;
       }
 
-    } else {
-      if (!field.is_dynamic() && !field.is_array() && field.is_inline()) {
-        // inline structure!
-        DecompilerLabel fake_label;
-        fake_label.target_segment = label.target_segment;
-        // offset from real start of outer + field offset + tag, we want to fake that.
-        fake_label.offset = offset_location + field.offset() + field_type_info->get_offset();
-        fake_label.name = fmt::format("fake-label-{}-{}", actual_type.print(), field.name());
-        field_defs_out.emplace_back(
-            field.name(),
-            decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
-      } else if (!field.is_dynamic() && field.is_array() && field.is_inline()) {
-        // it's an inline array.  let's figure out the len and stride
-        auto len = field.array_size();
-        auto total_size = ts.get_size_in_type(field);
-        auto stride = total_size / len;
-        ASSERT(stride * len == total_size);
-        ASSERT(stride == align(field_type_info->get_size_in_memory(),
-                               field_type_info->get_inline_array_stride_alignment()));
+      // first, let's see if it's a value or reference
+      auto field_type_info = ts.lookup_type_allow_partial_def(field.type());
+      if (!field_type_info->is_reference() && field.type() != TypeSpec("object")) {
+        // value type. need to get bytes.
+        ASSERT(!field.is_inline());
+        if (field.is_array()) {
+          // array of values.
+          auto len = field.array_size();
+          auto stride = ts.get_size_in_type(field) / len;
+          ASSERT(stride == field_type_info->get_size_in_memory());
 
-        std::vector<goos::Object> array_def = {pretty_print::to_symbol(fmt::format(
-            "new 'static 'inline-array {} {}", field.type().print(), field.array_size()))};
-        for (int elt = 0; elt < len; elt++) {
+          field_defs_out.emplace_back(
+              field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
+                                                  field_start, obj_words, ts));
+        } else if (field.is_dynamic()) {
+          throw std::runtime_error(
+              fmt::format("Dynamic value field {} in static data type {} not yet implemented",
+                          field.name(), actual_type.print()));
+        } else {
+          {
+            if (field.type().base_type() == "pointer") {
+              if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {
+                continue;
+              }
+
+              if (obj_words.at(field_start / 4).symbol_name() != "#f") {
+                lg::warn("Got a weird symbol in a pointer field: {}",
+                         obj_words.at(field_start / 4).symbol_name());
+                continue;
+              }
+
+              field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("#f"));
+
+            } else {
+              if (obj_words.at(field_start / 4).kind() != LinkedWord::PLAIN_DATA) {
+                continue;
+              }
+              std::vector<u8> bytes_out;
+              for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
+                bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+              }
+              field_defs_out.emplace_back(field.name(),
+                                          decompile_value(field.type(), bytes_out, ts));
+            }
+          }
+        }
+
+      } else {
+        if (!field.is_dynamic() && !field.is_array() && field.is_inline()) {
+          // inline structure!
           DecompilerLabel fake_label;
           fake_label.target_segment = label.target_segment;
           // offset from real start of outer + field offset + tag, we want to fake that.
-          fake_label.offset =
-              offset_location + field.offset() + field_type_info->get_offset() + stride * elt;
-          fake_label.name =
-              fmt::format("fake-label-{}-{}-elt-{}", actual_type.print(), field.name(), elt);
-          array_def.push_back(
+          fake_label.offset = offset_location + field.offset() + field_type_info->get_offset();
+          fake_label.name = fmt::format("fake-label-{}-{}", actual_type.print(), field.name());
+          field_defs_out.emplace_back(
+              field.name(),
               decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
-        }
-        field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
-      } else if (!field.is_dynamic() && field.is_array() && !field.is_inline()) {
-        auto len = field.array_size();
-        auto total_size = ts.get_size_in_type(field);
-        auto stride = total_size / len;
-        ASSERT(stride * len == total_size);
-        ASSERT(stride == 4);
+        } else if (!field.is_dynamic() && field.is_array() && field.is_inline()) {
+          // it's an inline array.  let's figure out the len and stride
+          auto len = field.array_size();
+          auto total_size = ts.get_size_in_type(field);
+          auto stride = total_size / len;
+          ASSERT(stride * len == total_size);
+          ASSERT(stride == align(field_type_info->get_size_in_memory(),
+                                 field_type_info->get_inline_array_stride_alignment()));
 
-        std::vector<goos::Object> array_def = {pretty_print::to_symbol(
-            fmt::format("new 'static 'array {} {}", field.type().print(), field.array_size()))};
-
-        int end_elt = 0;
-        for (int elt = len; elt-- > 0;) {
-          auto& word = obj_words.at((field_start / 4) + elt);
-          if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
-            continue;
+          std::vector<goos::Object> array_def = {pretty_print::to_symbol(fmt::format(
+              "new 'static 'inline-array {} {}", field.type().print(), field.array_size()))};
+          for (int elt = 0; elt < len; elt++) {
+            DecompilerLabel fake_label;
+            fake_label.target_segment = label.target_segment;
+            // offset from real start of outer + field offset + tag, we want to fake that.
+            fake_label.offset =
+                offset_location + field.offset() + field_type_info->get_offset() + stride * elt;
+            fake_label.name =
+                fmt::format("fake-label-{}-{}-elt-{}", actual_type.print(), field.name(), elt);
+            array_def.push_back(
+                decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
           }
-          end_elt = elt + 1;
-          break;
-        }
+          field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
+        } else if (!field.is_dynamic() && field.is_array() && !field.is_inline()) {
+          auto len = field.array_size();
+          auto total_size = ts.get_size_in_type(field);
+          auto stride = total_size / len;
+          ASSERT(stride * len == total_size);
+          ASSERT(stride == 4);
 
-        for (int elt = 0; elt < end_elt; elt++) {
-          auto& word = obj_words.at((field_start / 4) + elt);
+          int offset = field_start + offset_location;
+          auto array_def =
+              decompile_ref_array(field.type(), field.array_size(), label.target_segment, offset,
+                                  labels, words, ts, file, version, &field, &actual_type);
+
+          field_defs_out.emplace_back(field.name(), array_def);
+
+        } else if (field.is_dynamic() || field.is_array() || field.is_inline()) {
+          throw std::runtime_error(fmt::format(
+              "Dynamic/array/inline reference field {} type {} in static data not yet implemented",
+              field.name(), actual_type.print()));
+        } else {
+          // then we expect a label.
+          ASSERT(field_end - field_start == 4);
+          auto& word = obj_words.at(field_start / 4);
 
           if (word.kind() == LinkedWord::PTR) {
-            array_def.push_back(decompile_at_label(field.type(), labels.at(word.label_id()), labels,
+            if (field.type() == TypeSpec("symbol")) {
+              continue;
+            }
+            if (field.type() == TypeSpec("object")) {
+              field_defs_out.emplace_back(
+                  field.name(), decompile_at_label_guess_type(labels.at(word.label_id()), labels,
+                                                              words, ts, file, version));
+            } else {
+              field_defs_out.emplace_back(
+                  field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
                                                    words, ts, file, version));
+            }
           } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
             // do nothing, the default is zero?
-            array_def.push_back(pretty_print::to_symbol("0"));
+            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
           } else if (word.kind() == LinkedWord::SYM_PTR) {
             if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
-              array_def.push_back(pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
+              field_defs_out.emplace_back(
+                  field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
             } else {
-              array_def.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
+              field_defs_out.emplace_back(
+                  field.name(), pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
             }
           } else if (word.kind() == LinkedWord::EMPTY_PTR) {
-            array_def.push_back(pretty_print::to_symbol("'()"));
+            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("'()"));
+          } else if (word.kind() == LinkedWord::TYPE_PTR) {
+            if (field.type() != TypeSpec("type")) {
+              throw std::runtime_error(fmt::format(
+                  "Field {} in type {} offset {} had a reference to type {}, but the "
+                  "type of the field is not type.",
+                  field.name(), actual_type.print(), field.offset(), word.symbol_name()));
+            }
+            int method_count = ts.get_type_method_count(word.symbol_name());
+            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol(fmt::format(
+                                                          "(type-ref {} :method-count {})",
+                                                          word.symbol_name(), method_count)));
           } else {
-            throw std::runtime_error(fmt::format(
-                "Field {} in type {} offset {} did not have a proper reference for "
-                "array element {} k = {}",
-                field.name(), actual_type.print(), field.offset(), elt, (int)word.kind()));
-          }
-        }
-        field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
-
-      } else if (field.is_dynamic() || field.is_array() || field.is_inline()) {
-        throw std::runtime_error(fmt::format(
-            "Dynamic/array/inline reference field {} type {} in static data not yet implemented",
-            field.name(), actual_type.print()));
-      } else {
-        // then we expect a label.
-        ASSERT(field_end - field_start == 4);
-        auto& word = obj_words.at(field_start / 4);
-
-        if (word.kind() == LinkedWord::PTR) {
-          if (field.type() == TypeSpec("symbol")) {
-            continue;
-          }
-          if (field.type() == TypeSpec("object")) {
-            field_defs_out.emplace_back(
-                field.name(),
-                decompile_at_label_guess_type(labels.at(word.label_id()), labels, words, ts, file, version));
-          } else {
-            field_defs_out.emplace_back(
-                field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
-                                                 words, ts, file, version));
-          }
-        } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
-          // do nothing, the default is zero?
-          field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
-        } else if (word.kind() == LinkedWord::SYM_PTR) {
-          if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
-            field_defs_out.emplace_back(
-                field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
-          } else {
-            field_defs_out.emplace_back(
-                field.name(), pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
-          }
-        } else if (word.kind() == LinkedWord::EMPTY_PTR) {
-          field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("'()"));
-        } else if (word.kind() == LinkedWord::TYPE_PTR) {
-          if (field.type() != TypeSpec("type")) {
             throw std::runtime_error(
-                fmt::format("Field {} in type {} offset {} had a reference to type {}, but the "
-                            "type of the field is not type.",
-                            field.name(), actual_type.print(), field.offset(), word.symbol_name()));
+                fmt::format("Field {} in type {} offset {} did not have a proper reference",
+                            field.name(), actual_type.print(), field.offset()));
           }
-          int method_count = ts.get_type_method_count(word.symbol_name());
-          field_defs_out.emplace_back(
-              field.name(), pretty_print::to_symbol(fmt::format("(type-ref {} :method-count {})",
-                                                                word.symbol_name(), method_count)));
-        } else {
-          throw std::runtime_error(
-              fmt::format("Field {} in type {} offset {} did not have a proper reference",
-                          field.name(), actual_type.print(), field.offset()));
         }
       }
     }
