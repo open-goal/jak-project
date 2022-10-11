@@ -6,9 +6,11 @@
 #include <optional>
 
 #include "midi_handler.h"
+#include "sfxblock.h"
 
 #include "common/log/log.h"
 
+#include "sfxblock2.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -43,7 +45,11 @@ u32 loader::read_bank(std::fstream& in) {
   if (bank_tag->DataID == FOURCC('S', 'B', 'v', '2')) {
     bank = std::make_unique<MusicBank>(*this, bank_id, bank_tag);
   } else if (bank_tag->DataID == FOURCC('S', 'B', 'l', 'k')) {
-    bank = std::make_unique<SFXBlock>(*this, bank_id, bank_tag);
+    if (bank_tag->Version < 2) {
+      bank = std::make_unique<SFXBlock>(*this, bank_id, bank_tag);
+    } else {
+      bank = std::make_unique<SFXBlock2>(*this, bank_id, bank_tag);
+    }
   } else {
     m_id_allocator.free_id(bank_id);
     throw std::runtime_error("Unknown bank ID, bad file?");

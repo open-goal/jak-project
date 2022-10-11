@@ -8,15 +8,11 @@ namespace snd {
 
 SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
     : SoundBank(id, BankType::SFX), m_locator(loc) {
+  m_version = tag->Version;
+
   auto data = (SFXBlockData*)tag;
-
-  lg::warn("BlockNames {:x}", data->BlockNames);
-  lg::warn("FirstSound {:x}", data->FirstSound);
-  lg::warn("SFXUD {:x}", data->SFXUD);
-
-  m_version = data->Version;
-
   auto sounddata = (SFXData*)((uintptr_t)data + data->FirstSound);
+
   for (int i = 0; i < data->NumSounds; i++) {
     SFX sound;
     sound.d = sounddata[i];
@@ -28,38 +24,9 @@ SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
     for (int i = 0; i < sound.d.NumGrains; i++) {
       SFXGrain grain = graindata[i];
       if (grain.Type == 1) {
-        grain.GrainParams.tone.BankID = id;
+        grain.GrainParams.tone.BankID = bank_id;
       }
       sound.grains.push_back(grain);
-    }
-  }
-
-  if (m_version > 1) {
-    auto data2 = (SFXBlockData2*)data;
-    read_names((SFXBlockNames*)((uintptr_t)data2 + data2->BlockNames));
-  }
-}
-
-void SFXBlock::read_names(SFXBlockNames* names) {
-  lg::warn("{:x} {:x} {}", names->BlockName[0], names->BlockName[1], names->SFXNameTableOffset);
-  if (names->SFXNameTableOffset != 0) {
-    // The sound names are hashed and divided up into 32 buckets
-    // to reduce the number of comparisons needed to search the list.
-    // An empty name entry signifies the end of each bucket.
-    // Let's go through all the buckets and collect the names.
-
-    auto name_table = (SFXName*)((uintptr_t)names + names->SFXNameTableOffset);
-    for (int i = 0; i < 32; i++) {
-      auto name = &name_table[names->SFXHashOffsets[i]];
-      while (name->Name[0] != 0) {
-        char buf[16];
-        strncpy(buf, (char*)name->Name, 16);
-
-        std::string str(buf);
-        m_names[str] = name->Index;
-
-        name++;
-      }
     }
   }
 }

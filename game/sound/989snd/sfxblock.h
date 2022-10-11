@@ -5,27 +5,6 @@
 
 namespace snd {
 
-struct SFXBlockData2 : BankTag {
-  /*  10 */ s8 BlockNum;
-  /*  11 */ s8 pad1;
-  /*  12 */ s16 pad2;
-  /*  14 */ s16 pad3;
-  /*  16 */ s16 NumSounds;
-  /*  18 */ s16 NumGrains;
-  /*  1a */ s16 NumVAGs;
-  /*  1c */ /* SFX2Ptr */ u32 FirstSound;
-  /*  20 */ /* SFXGrain2Ptr */ u32 FirstGrain;
-  /*  24 */ u32 VagsInSR;
-  /*  28 */ u32 VagDataSize;
-  /*  2c */ u32 SRAMAllocSize;
-  /*  30 */ u32 NextBlock;
-  /*  34 */ u32 GrainData;  // new
-  /*  38 */ /* SFXBlockNames* */ u32 BlockNames;
-  /*  3c */ /* SFXUserData* */ u32 SFXUD;
-};
-
-static_assert(sizeof(SFXBlockData2) == 0x3c + 4);
-
 struct SFXBlockData : BankTag {
   /*  10 */ s8 BlockNum;
   /*  11 */ s8 pad1;
@@ -40,51 +19,13 @@ struct SFXBlockData : BankTag {
   /*  28 */ u32 VagDataSize;
   /*  2c */ u32 SRAMAllocSize;
   /*  30 */ u32 NextBlock;
+
+  /* these last ones are probably not in jak1?  */
   /*  34 */ u32 BlockNames;
   /*  38 */ u32 SFXUD;
 };
 
 static_assert(sizeof(SFXBlockData) == 0x38 + 4);
-
-struct SFXUserData {
-  /*   0 */ u32 data[4];
-};
-
-struct SFXName {
-  /*   0 */ u32 Name[4];
-  /*  10 */ s16 Index;
-  /*  12 */ s16 reserved;
-};
-
-struct VAGName {
-  /*   0 */ u32 Name[4];
-  /*  10 */ u32 Offset;
-  /*  14 */ u32 res1;
-  /*  18 */ u32 res2;
-};
-
-struct VAGImport {
-  /*   0 */ u32 BlockName[2];
-  /*   8 */ u32 VAGName[4];
-  /*  18 */ u32 VAGLocation;
-  /*  1c */ u32 VAGSR;
-};
-
-struct VAGExport {
-  /*   0 */ u32 VAGName[4];
-  /*  10 */ u32 VAGLocation;
-  /*  14 */ u32 VAGSR;
-};
-
-struct SFXBlockNames {
-  /*   0 */ u32 BlockName[2];
-  /*   8 */ u32 SFXNameTableOffset;
-  /*   c */ u32 VAGNameTableOffset;
-  /*  10 */ u32 VAGImportsTableOffset;
-  /*  14 */ u32 VAGExportsTableOffset;
-  /*  18 */ s16 SFXHashOffsets[32];
-  /*  58 */ s16 VAGHashOffsets[32];
-};
 
 struct XREFGrainParams {
   /*   0 */ u32 BankID;
@@ -146,19 +87,6 @@ struct SFXGrain {
   } GrainParams;
 };
 
-struct SFXGrain2 {
-  union {
-    struct {
-      s8 arg[3];
-      u8 type;
-    };
-
-    u32 Opcode;
-  } OpcodeData;
-
-  s32 Delay;
-};
-
 struct SFXData {
   /*   0 */ s8 Vol;
   /*   1 */ s8 VolGroup;
@@ -190,8 +118,6 @@ class SFXBlock : public SoundBank {
                                               s32 pb) override;
 
  private:
-  void read_names(SFXBlockNames* names);
-
   locator& m_locator;
   u32 m_version;
 
