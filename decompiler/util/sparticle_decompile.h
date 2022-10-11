@@ -13,9 +13,11 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                                             const std::vector<DecompilerLabel>& labels,
                                             const std::vector<std::vector<LinkedWord>>& words,
                                             const TypeSystem& ts,
-                                            const LinkedObjectFile* file);
+                                            const LinkedObjectFile* file,
+                                            GameVersion version);
 goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::PartField& field,
-                                            const TypeSystem& ts);
+                                            const TypeSystem& ts,
+                                            GameVersion version);
 goos::Object decompile_sparticle_group_item(const TypeSpec& type,
                                             const DecompilerLabel& label,
                                             const std::vector<DecompilerLabel>& labels,

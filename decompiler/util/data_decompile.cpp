@@ -26,7 +26,8 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
                                           DecompilerTypeSystem& dts,
-                                          const LinkedObjectFile* file) {
+                                          const LinkedObjectFile* file,
+                                          GameVersion version) {
   const auto& type = hint.result_type;
   if (!hint.array_size.has_value()) {
     // if we don't have an array size, treat it as just a normal type.
@@ -34,7 +35,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       throw std::runtime_error(fmt::format(
           "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
     }
-    return decompile_at_label(type, label, labels, words, dts.ts, file);
+    return decompile_at_label(type, label, labels, words, dts.ts, file, version);
   }
 
   if (type.base_type() == "pointer") {
@@ -95,8 +96,8 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
         fake_label.target_segment = label.target_segment;
         fake_label.offset = label.offset + field_type_info->get_offset() + stride * elt;
         fake_label.name = fmt::format("fake-label-{}-elt-{}", type.get_single_arg().print(), elt);
-        array_def.push_back(
-            decompile_at_label(type.get_single_arg(), fake_label, labels, words, dts.ts, file));
+        array_def.push_back(decompile_at_label(type.get_single_arg(), fake_label, labels, words,
+                                               dts.ts, file, version));
       }
       return pretty_print::build_list(array_def);
     }
@@ -151,12 +152,13 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
                                            const TypeSystem& ts,
-                                           const LinkedObjectFile* file) {
+                                           const LinkedObjectFile* file,
+                                           GameVersion version) {
   auto guessed_type = get_type_of_label(label, words);
   if (!guessed_type.has_value()) {
     throw std::runtime_error("Could not guess the type of " + label.name);
   }
-  return decompile_at_label(*guessed_type, label, labels, words, ts, file);
+  return decompile_at_label(*guessed_type, label, labels, words, ts, file, version);
 }
 
 goos::Object decompile_function_at_label(const DecompilerLabel& label,
@@ -187,6 +189,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
                                 const LinkedObjectFile* file,
+                                GameVersion version,
                                 bool in_static_pair) {
   if (type == TypeSpec("string")) {
     return decompile_string_at_label(label, words);
@@ -201,15 +204,15 @@ goos::Object decompile_at_label(const TypeSpec& type,
     if (type.has_single_arg()) {
       content_type_spec = type.get_single_arg();
     }
-    return decompile_boxed_array(label, labels, words, ts, file, content_type_spec);
+    return decompile_boxed_array(label, labels, words, ts, file, content_type_spec, version);
   }
 
   if (ts.tc(TypeSpec("structure"), type)) {
-    return decompile_structure(type, label, labels, words, ts, file, true);
+    return decompile_structure(type, label, labels, words, ts, file, true, version);
   }
 
   if (type == TypeSpec("pair")) {
-    return decompile_pair(label, labels, words, ts, true, file);
+    return decompile_pair(label, labels, words, ts, true, file, version);
   }
 
   throw std::runtime_error("Unimplemented decompile_at_label for " + type.print());
@@ -439,7 +442,8 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const std::vector<std::vector<LinkedWord>>& all_words,
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
-    int stride) {
+    int stride,
+    GameVersion version) {
   // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
@@ -520,7 +524,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     fake_label.target_segment = my_seg;  // same segment
     fake_label.offset = start_label.offset + elt * stride;
     array_def.push_back(
-        decompile_at_label(array_elt_type, fake_label, labels, all_words, ts, file));
+        decompile_at_label(array_elt_type, fake_label, labels, all_words, ts, file, version));
   }
 
   // build into a list.
@@ -532,7 +536,8 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
                                   const std::vector<DecompilerLabel>& labels,
                                   const std::vector<std::vector<LinkedWord>>& words,
                                   const TypeSystem& ts,
-                                  const LinkedObjectFile* file) {
+                                  const LinkedObjectFile* file,
+                                  GameVersion version) {
   // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
   // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
@@ -553,7 +558,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
   for (int i = 0; i < word_count - 1; ++i) {
     if (i == word_count - 2 && !obj_words.at(i).data) {
       // just some default initialized sound spec, don't attempt anything fancy.
-      return decompile_structure(type, label, labels, words, ts, file, false);
+      return decompile_structure(type, label, labels, words, ts, file, false, version);
     }
     if (obj_words.at(i).data)
       break;
@@ -733,14 +738,15 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const std::vector<std::vector<LinkedWord>>& words,
                                  const TypeSystem& ts,
                                  const LinkedObjectFile* file,
-                                 bool use_fancy_macros) {
+                                 bool use_fancy_macros,
+                                 GameVersion version) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   // temp hack!!
   if (use_fancy_macros && file) {
     if (file->version == GameVersion::Jak1) {
       if (type == TypeSpec("sp-field-init-spec")) {
         ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-        return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+        return decompile_sparticle_field_init(type, label, labels, words, ts, file, version);
       }
       if (type == TypeSpec("sparticle-group-item")) {
         ASSERT(file->version == GameVersion::Jak1);  // need to update enums
@@ -748,7 +754,7 @@ goos::Object decompile_structure(const TypeSpec& type,
       }
     }
     if (type == TypeSpec("sound-spec")) {
-      return decompile_sound_spec(type, label, labels, words, ts, file);
+      return decompile_sound_spec(type, label, labels, words, ts, file, version);
     }
   }
 
@@ -783,7 +789,7 @@ goos::Object decompile_structure(const TypeSpec& type,
 
         // try again with the right type. this resets back to decompile_at_label because we may
         // want to get the specific function/string/etc implementations.
-        return decompile_at_label(actual_type, label, labels, words, ts, file);
+        return decompile_at_label(actual_type, label, labels, words, ts, file, version);
       } else {
         throw std::runtime_error(
             fmt::format("Basic has the wrong type pointer, got {} expected {} at label {}:{}",
@@ -953,7 +959,7 @@ goos::Object decompile_structure(const TypeSpec& type,
             field_defs_out.emplace_back(
                 field.name(), decomp_ref_to_inline_array_guess_size(
                                   obj_words, labels, label.target_segment, field_start, ts, words,
-                                  file, metadata.element_type, metadata.bytes_per_element));
+                                  file, metadata.element_type, metadata.bytes_per_element, file->version));
           } else if (metadata.kind == ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR) {
             field_defs_out.emplace_back(
                 field.name(), decomp_ref_to_integer_array_guess_size(
@@ -996,7 +1002,8 @@ goos::Object decompile_structure(const TypeSpec& type,
         fake_label.offset = offset_location + field.offset() + field_type_info->get_offset();
         fake_label.name = fmt::format("fake-label-{}-{}", actual_type.print(), field.name());
         field_defs_out.emplace_back(
-            field.name(), decompile_at_label(field.type(), fake_label, labels, words, ts, file));
+            field.name(),
+            decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
       } else if (!field.is_dynamic() && field.is_array() && field.is_inline()) {
         // it's an inline array.  let's figure out the len and stride
         auto len = field.array_size();
@@ -1017,7 +1024,7 @@ goos::Object decompile_structure(const TypeSpec& type,
           fake_label.name =
               fmt::format("fake-label-{}-{}-elt-{}", actual_type.print(), field.name(), elt);
           array_def.push_back(
-              decompile_at_label(field.type(), fake_label, labels, words, ts, file));
+              decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
         }
         field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
       } else if (!field.is_dynamic() && field.is_array() && !field.is_inline()) {
@@ -1045,7 +1052,7 @@ goos::Object decompile_structure(const TypeSpec& type,
 
           if (word.kind() == LinkedWord::PTR) {
             array_def.push_back(decompile_at_label(field.type(), labels.at(word.label_id()), labels,
-                                                   words, ts, file));
+                                                   words, ts, file, version));
           } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
             // do nothing, the default is zero?
             array_def.push_back(pretty_print::to_symbol("0"));
@@ -1081,7 +1088,7 @@ goos::Object decompile_structure(const TypeSpec& type,
           }
           field_defs_out.emplace_back(
               field.name(), decompile_at_label(field.type(), labels.at(word.label_id()), labels,
-                                               words, ts, file));
+                                               words, ts, file, version));
         } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
@@ -1315,7 +1322,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<std::vector<LinkedWord>>& words,
                                    const TypeSystem& ts,
                                    const LinkedObjectFile* file,
-                                   const std::optional<TypeSpec>& content_type_override) {
+                                   const std::optional<TypeSpec>& content_type_override,
+                                   GameVersion version) {
   TypeSpec content_type;
   auto type_ptr_word_idx = (label.offset / 4) - 1;
   if ((label.offset % 8) == 4) {
@@ -1372,11 +1380,11 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
         result.push_back(pretty_print::to_symbol("0"));
       } else if (word.kind() == LinkedWord::PTR) {
         if (content_type == TypeSpec("object")) {
-          result.push_back(
-              decompile_at_label_guess_type(labels.at(word.label_id()), labels, words, ts, file));
+          result.push_back(decompile_at_label_guess_type(labels.at(word.label_id()), labels, words,
+                                                         ts, file, version));
         } else {
           result.push_back(decompile_at_label(content_type, labels.at(word.label_id()), labels,
-                                              words, ts, file));
+                                              words, ts, file, version));
         }
       } else if (word.kind() == LinkedWord::SYM_PTR) {
         result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
@@ -1404,7 +1412,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       auto segment = labels.at(word.label_id()).target_segment;
       result.push_back(decomp_ref_to_inline_array_guess_size(
           words.at(segment), labels, segment, (first_elt_word_idx + elt) * 4, ts, words, file,
-          content_type.get_single_arg(), ts.get_deref_info(content_type).stride));
+          content_type.get_single_arg(), ts.get_deref_info(content_type).stride, version));
     }
 
     return pretty_print::build_list(result);
@@ -1437,7 +1445,8 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
-                                const LinkedObjectFile* file) {
+                                const LinkedObjectFile* file,
+                                GameVersion version) {
   if (word.kind() == LinkedWord::PTR) {
     auto& label = labels.at(word.label_id());
     auto guessed_type = get_type_of_label(label, words);
@@ -1446,10 +1455,10 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
     }
 
     if (guessed_type == TypeSpec("pair")) {
-      return decompile_pair(label, labels, words, ts, false, file);
+      return decompile_pair(label, labels, words, ts, false, file, version);
     }
 
-    return decompile_at_label(*guessed_type, label, labels, words, ts, file, true);
+    return decompile_at_label(*guessed_type, label, labels, words, ts, file, version, true);
   } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
     // do nothing, the default is zero?
     return pretty_print::to_symbol("0");
@@ -1474,7 +1483,8 @@ goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<std::vector<LinkedWord>>& words,
                             const TypeSystem& ts,
                             bool add_quote,
-                            const LinkedObjectFile* file) {
+                            const LinkedObjectFile* file,
+                            GameVersion version) {
   if ((label.offset % 8) != 2) {
     if ((label.offset % 4) != 0) {
       throw std::runtime_error(
@@ -1503,7 +1513,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
     if ((to_print.offset % 8) == 2) {
       // continue
       auto car_word = words.at(to_print.target_segment).at((to_print.offset - 2) / 4);
-      list_tokens.push_back(decompile_pair_elt(car_word, labels, words, ts, file));
+      list_tokens.push_back(decompile_pair_elt(car_word, labels, words, ts, file, version));
 
       auto cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
       // if empty
@@ -1521,7 +1531,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       }
       // improper
       list_tokens.push_back(pretty_print::to_symbol("."));
-      list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
+      list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file, version));
       if (add_quote) {
         return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
       } else {
@@ -1534,8 +1544,9 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       } else {
         // improper
         list_tokens.push_back(pretty_print::to_symbol("."));
-        list_tokens.push_back(decompile_pair_elt(
-            words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts, file));
+        list_tokens.push_back(
+            decompile_pair_elt(words.at(to_print.target_segment).at(to_print.offset / 4), labels,
+                               words, ts, file, version));
         if (add_quote) {
           return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
         } else {
