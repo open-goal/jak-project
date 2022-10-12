@@ -5,8 +5,13 @@
 ;; name in dgo: bigmap-h
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
+(declare-type bigmap-compressed-layers structure)
+(define-extern *bigmap-compressed-layers* bigmap-compressed-layers)
 
+(declare-type bigmap basic)
+(define-extern *bigmap* bigmap)
+
+;; DECOMP BEGINS
 
 (deftype bigmap-bit-mask (structure)
   ((data uint8 6656 :offset-assert   0)
@@ -16,6 +21,7 @@
   :flag-assert         #x900001a00
   )
 
+
 (deftype bigmap-layer-mask (structure)
   ((data uint8 26624 :offset-assert   0)
    )
@@ -23,6 +29,7 @@
   :size-assert         #x6800
   :flag-assert         #x900006800
   )
+
 
 (deftype bigmap-image (structure)
   ((clut-offset  uint32   :offset-assert   0)
@@ -35,6 +42,7 @@
   :flag-assert         #x900000011
   )
 
+
 (deftype bigmap-info (vector)
   ((scale     float  :offset   8)
    (inv-scale float  :offset  12)
@@ -44,6 +52,7 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype bigmap-info-array (structure)
   ((data bigmap-info 21 :inline :offset-assert   0)
    )
@@ -51,6 +60,7 @@
   :size-assert         #x150
   :flag-assert         #x900000150
   )
+
 
 (deftype bigmap-compressed-layers (structure)
   ((data    uint32 20 :offset-assert   0)
@@ -79,7 +89,6 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-(define-extern *bigmap-compressed-layers* bigmap-compressed-layers)
 
 
 (deftype bigmap (basic)
@@ -130,7 +139,7 @@
     (new (symbol type) _type_ 0)
     (initialize (_type_) none 9)
     (update (_type_) none 10)
-    (bigmap-method-11 () none 11)
+    (bigmap-method-11 (_type_ int int int int) none 11)
     (bigmap-method-12 () none 12)
     (bigmap-method-13 () none 13)
     (bigmap-method-14 (_type_) none 14)
@@ -149,6 +158,7 @@
     (bigmap-method-27 () none 27)
     )
   )
+
 
 (defmethod new bigmap ((allocation symbol) (type-to-make type))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -199,57 +209,18 @@
     (set! (-> gp-0 sprite-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
     (set! (-> gp-0 sprite-tmpl dma-vif vif0) (new 'static 'vif-tag))
     (set! (-> gp-0 sprite-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> gp-0 sprite-tmpl gif0)
-          (the uint64 (new 'static 'gif-tag64
-                           :nloop #x1
-                           :eop #x1
-                           :pre #x1
-                           :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
-                           :nreg #x5
-                           )
-               )
-          )
-    (set! (-> gp-0 sprite-tmpl gif1)
-          (the uint64 (new 'static 'gif-tag-regs
-                           :regs0 (gif-reg-id rgbaq)
-                           :regs1 (gif-reg-id uv)
-                           :regs2 (gif-reg-id xyz2)
-                           :regs3 (gif-reg-id uv)
-                           :regs4 (gif-reg-id xyz2)
-                           )
-               )
-          )
+    (set! (-> gp-0 sprite-tmpl gif0) (the-as uint #x50ab400000008001))
+    (set! (-> gp-0 sprite-tmpl gif1) (the-as uint #x53531))
     (set! (-> gp-0 draw-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
     (set! (-> gp-0 draw-tmpl dma-vif vif0) (new 'static 'vif-tag))
     (set! (-> gp-0 draw-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> gp-0 draw-tmpl gif0)
-          (the uint64 (new 'static 'gif-tag64
-                           :nloop #x1
-                           :eop #x1
-                           :pre #x1
-                           :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :abe #x1 :fst #x1)
-                           :nreg #x9
-                           )
-               )
-          )
-    (set! (-> gp-0 draw-tmpl gif1) (the uint64 (new 'static 'gif-tag-regs
-                                                    :regs0 (gif-reg-id rgbaq)
-                                                    :regs1 (gif-reg-id uv)
-                                                    :regs2 (gif-reg-id xyz2)
-                                                    :regs3 (gif-reg-id uv)
-                                                    :regs4 (gif-reg-id xyz2)
-                                                    :regs5 (gif-reg-id uv)
-                                                    :regs6 (gif-reg-id xyz2)
-                                                    :regs7 (gif-reg-id uv)
-                                                    :regs8 (gif-reg-id xyz2)
-                                                    )
-                                        )
-          )
+    (set! (-> gp-0 draw-tmpl gif0) (the-as uint #x90aa400000008001))
+    (set! (-> gp-0 draw-tmpl gif1) (the-as uint #x535353531))
     (set! (-> gp-0 adgif-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
     (set! (-> gp-0 adgif-tmpl dma-vif vif0) (new 'static 'vif-tag))
     (set! (-> gp-0 adgif-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> gp-0 adgif-tmpl gif0) (the uint64 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)))
-    (set! (-> gp-0 adgif-tmpl gif1) (the uint64 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))))
+    (set! (-> gp-0 adgif-tmpl gif0) (the-as uint #x1000000000008005))
+    (set! (-> gp-0 adgif-tmpl gif1) (the-as uint 14))
     (set-vector! (-> gp-0 offset) 0.0 0.0 0.0 0.0)
     (set-vector! (-> gp-0 scroll) 0.0 0.0 0.0 0.0)
     (set-vector! (-> gp-0 pos) 0 0 0 0)
@@ -292,8 +263,3 @@
       )
     )
   )
-
-
-(define-extern *bigmap* bigmap)
-
-

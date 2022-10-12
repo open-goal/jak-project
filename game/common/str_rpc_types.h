@@ -8,7 +8,22 @@
 constexpr PerGameVersion<int> STR_RPC_ID(0xdeb5, 0xfab4);
 constexpr int STR_RPC_CHANNEL = 4;
 
-struct RPC_Str_Cmd {
+/*
+(deftype load-chunk-msg (structure)
+  ((rsvd     uint16     :offset-assert 0)
+   (result   load-msg-result     :offset-assert 2)
+   (address  pointer    :offset-assert 4)
+   (section  uint32     :offset-assert 8)
+   (maxlen   uint32     :offset-assert 12)
+   (id       uint32     :offset 4)
+   (basename uint8 48 :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+*/
+struct RPC_Str_Cmd_Jak1 {
   u16 rsvd;       // 0, seems unused
   u16 result;     // 2, return code. see STR_RPC_RESULT_XXX
   u32 ee_addr;    // 4, GOAL address to load to.
@@ -16,6 +31,31 @@ struct RPC_Str_Cmd {
                   // whole file.
   u32 length;     // 12, length that was actually loaded
   char name[64];  // file name
+};
+
+/*
+(deftype load-chunk-msg (structure)
+  ((rsvd     uint16                    :offset-assert   0)
+   (result   load-msg-result           :offset-assert   2)
+   (address  pointer                   :offset-assert   4)
+   (section  uint32                    :offset-assert   8)
+   (maxlen   uint32                    :offset-assert  12)
+   (dummy    uint32            4       :offset-assert  16)
+   (basename sound-stream-name :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+*/
+struct RPC_Str_Cmd_Jak2 {
+  u16 rsvd;
+  u16 result;  // 2
+  u32 address;
+  s32 section;  // 8
+  u32 maxlen;
+  u32 dummy[4];
+  char basename[48];  // 32
 };
 
 struct RPC_Play_Cmd {

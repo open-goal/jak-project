@@ -140,7 +140,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
     } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
-               is_symbol(field_info.type)) {
+               is_symbol(field_info.type) || field_info.type == TypeSpec("object")) {
       if (is_pair(field_info.type)) {
         ASSERT(!field_info.field.is_inline());
       }

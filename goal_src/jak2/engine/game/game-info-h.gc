@@ -9,29 +9,6 @@
 (declare-type continue-point basic)
 (declare-type game-save basic)
 
-
-(defenum mc-status-code
-  :type uint32
-  ; (busy 0)
-  (ok 1)
-  ; (bad-handle 2)
-  ; (format-failed 3)
-  ; (internal-error 4)
-  ; (write-error 5)
-  ; (read-error 6)
-  ; (new-game 7)
-  ; (no-memory 8)
-  ; (no-card 9)
-  ; (no-last 10)
-  ; (no-format 11)
-  ; (no-file 12)
-  ; (no-save 13)
-  ; (no-space 14)
-  ; (bad-version 15)
-  ; (no-process 16)
-  ; (no-auto-save 17)
-  )
-
 (defenum continue-flags
   :type uint32
   :bitfield #t
@@ -130,6 +107,10 @@
 ;; NOTE - for default-menu
 (define-extern bug-report-display (function symbol int))
 (define-extern trsq->continue-point (function trsq int))
+
+;; NOTE - for progress
+(declare-type highscore-info structure)
+(define-extern *highscore-info-array* (array highscore-info))
 
 (declare-type entity-perm structure)
 (define-extern *task-level* (array symbol))
@@ -276,7 +257,7 @@
    (debug-features         game-feature                   :offset-assert 136)
    (secrets                game-secrets                   :offset-assert 144)
    (unknown-pad1           uint32                         :offset-assert 148)
-   (purchase-secrets       uint32                         :offset-assert 152)
+   (purchase-secrets       game-secrets                   :offset-assert 152)
    (unknown-pad2           uint32                         :offset-assert 156)
    (gun-type               int32                          :offset-assert 160)
    (gun-ammo               float                       4  :offset-assert 164)
@@ -295,7 +276,7 @@
    (last-continue          continue-point                 :offset-assert 244)
    (play-list              (array game-task-info)         :offset-assert 248)
    (sub-task-list          (array game-task-node-info)    :offset-assert 252)
-   (unknown-pad5           (array game-task-node-info)    :offset-assert 256)
+   (mission-list           (array game-task-node-info)    :offset-assert 256)
    (task-counter           uint32                         :offset-assert 260)
    (unknown-pad6           (array uint16)                 :offset-assert 264)
    (level-opened           uint8                       32 :offset-assert 268)
@@ -318,7 +299,7 @@
    (letterbox-time         time-frame                     :offset-assert 400)
    (hint-play-time         time-frame                     :offset-assert 408)
    (display-text-time      time-frame                     :offset-assert 416)
-   (display-text-handle    uint64                         :offset-assert 424)
+   (display-text-handle    handle                         :offset-assert 424)
    (death-movie-tick       int32                          :offset-assert 432)
    (want-auto-save         symbol                         :offset-assert 436)
    (auto-save-proc         handle                         :offset-assert 440)
