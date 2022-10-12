@@ -93,7 +93,8 @@ lines_to_ignore = [
     ";; failed to figure",
     ";; Used lq/sq",
     ";; this part is debug only",
-    ";; WARN: Return type mismatch int vs none"
+    ";; WARN: Return type mismatch int vs none",
+    ";; WARN: Stack slot offset"
 ]
 
 if decomp_ignore_errors:

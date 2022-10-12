@@ -75,6 +75,10 @@ class GameTextFontBank {
 
   GameTextVersion version() const { return m_version; }
 
+  // TODO - methods would help make this code a lot better for different game versions
+  // hacking it for now
+  bool valid_char_range(const char in) const;
+
   std::string convert_utf8_to_game_with_escape(const std::string& str) const;
   std::string convert_utf8_to_game(std::string str) const;
   std::string convert_game_to_utf8(const char* in) const;
