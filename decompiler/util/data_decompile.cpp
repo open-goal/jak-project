@@ -459,8 +459,11 @@ goos::Object decomp_ref_to_inline_array_guess_size(
 
   // inline-arrays can also be initialized as #f
   if (pointer_to_data.kind() == LinkedWord::SYM_PTR) {
-    ASSERT_MSG(pointer_to_data.symbol_name() == "#f",
-               "inline-array data decompilation found a non-#f symbol");
+    ASSERT_MSG(
+        pointer_to_data.symbol_name() == "#f",
+        fmt::format(
+            "attempted to decompile an inline-array of '{}', but encounted a non `#f` symbol",
+            array_elt_type.base_type()));
     return pretty_print::to_symbol("#f");
   }
 
