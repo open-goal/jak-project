@@ -27,9 +27,7 @@ MusicBank::MusicBank(locator& loc, u32 id, BankTag* tag)
   for (auto& prog : m_programs) {
     auto tonedata = (Tone*)((uintptr_t)data + prog.d.FirstTone);
     for (int i = 0; i < prog.d.NumTones; i++) {
-      Tone tone = tonedata[i];
-      tone.BankID = id;
-      prog.tones.emplace_back(tone);
+      prog.tones.emplace_back(tonedata[i]);
     }
   }
 

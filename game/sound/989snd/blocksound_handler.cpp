@@ -175,7 +175,7 @@ s32 blocksound_handler::play_tone(SFXGrain& grain) {
   voice->start_fine = m_fine;
   voice->group = m_group;
 
-  m_vm.start_tone(voice);
+  m_vm.start_tone(voice, m_bank);
   m_voices.emplace_front(voice);
 
   return 0;

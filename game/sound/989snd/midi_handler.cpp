@@ -197,7 +197,7 @@ void midi_handler::note_on() {
       // voice->current_pb = 0;
 
       voice->group = m_sound.VolGroup;
-      m_vm.start_tone(voice);
+      m_vm.start_tone(voice, m_bank);
       m_voices.emplace_front(voice);
     }
   }

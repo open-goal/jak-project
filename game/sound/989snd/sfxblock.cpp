@@ -23,9 +23,6 @@ SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
     auto graindata = (SFXGrain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
     for (int i = 0; i < sound.d.NumGrains; i++) {
       SFXGrain grain = graindata[i];
-      if (grain.Type == 1) {
-        grain.GrainParams.tone.BankID = bank_id;
-      }
       sound.grains.push_back(grain);
     }
   }
