@@ -230,13 +230,25 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
     } else if (field_info.type.base_type() == "inline-array") {
       auto sr = compile_static(field_value, env);
-      if (!sr.is_reference()) {
+      if (sr.is_symbol() && sr.symbol_name() == "#f") {
+        // allow #f to be used for an inline-array
+        structure->add_symbol_record(sr.symbol_name(), field_offset);
+        auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+        ASSERT(deref_info.mem_deref);
+        ASSERT(deref_info.can_deref);
+        ASSERT(deref_info.load_size == 4);
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(structure->data.data() + field_offset, &linker_val, 4);
+      } else if (!sr.is_reference()) {
         throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      } else {
+        typecheck(form, field_info.type, sr.typespec());
+        ASSERT(sr.reference()->get_addr_offset() == 0);
+        structure->add_pointer_record(field_offset, sr.reference(),
+                                      sr.reference()->get_addr_offset());
       }
-      typecheck(form, field_info.type, sr.typespec());
-      ASSERT(sr.reference()->get_addr_offset() == 0);
-      structure->add_pointer_record(field_offset, sr.reference(),
-                                    sr.reference()->get_addr_offset());
     } else if (field_info.type.base_type() == "pointer") {
       auto sr = compile_static(field_value, env);
       if (sr.is_symbol() && sr.symbol_name() == "#f") {

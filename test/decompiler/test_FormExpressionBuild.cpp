@@ -4,7 +4,7 @@
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTestJak1, DraftExprIdentity) {
+TEST_F(FormRegressionTestJak1, ExprIdentity) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"

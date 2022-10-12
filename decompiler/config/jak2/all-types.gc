@@ -13001,7 +13001,7 @@
    (max-delay uint16)
    (delay uint16)
    (play-index int16)
-   (list basic)
+   (list (array string))
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -13043,7 +13043,6 @@
   :method-count-assert 14
   :size-assert         #x64
   :flag-assert         #xe00000064
-  ;; Failed to read fields.
   (:methods
     (speech-channel-method-9 () none 9)
     (speech-channel-method-10 () none 10)
@@ -13056,14 +13055,14 @@
 
 (deftype speech-control (structure)
   ((channel-array speech-channel 2  :inline :offset-assert 0)
-   (speech-table  uint32 57 :offset-assert 224) ;; guess
+   (speech-table  speech-type-info 57 :offset-assert 224) ;; guess
    )
   :method-count-assert 17
   :size-assert         #x1c4
   :flag-assert         #x11000001c4
   (:methods
     (speech-control-method-9 () none 9)
-    (speech-control-method-10 () none 10)
+    (speech-control-method-10 (_type_ int speech-type-info) none 10)
     (speech-control-method-11 (_type_) none 11)
     (speech-control-method-12 () none 12)
     (speech-control-method-13 () none 13)
@@ -14667,6 +14666,7 @@
   (sf31 31)
   )
 
+(declare-type rigid-body-control basic)
 (deftype process-drawable (process)
   ((root        trsqv                     :offset-assert 128) ;; guessed by decompiler
    (node-list   cspace-array              :offset-assert 132) ;; guessed by decompiler
@@ -14682,7 +14682,7 @@
    (water       water-control             :offset-assert 172) ;; guessed by decompiler
    (sound       ambient-sound             :offset-assert 176) ;; guessed by decompiler
    (carry       basic                     :offset-assert 180)
-   (rbody       basic                     :offset-assert 184)
+   (rbody       rigid-body-control                     :offset-assert 184)
    (state-flags state-flags               :offset-assert 188) ;; guessed by decompiler
    (state-time  time-frame                    :offset-assert 192) ;; time-frame
    )
@@ -16063,25 +16063,24 @@
 ;; ---collide-shape-h:nav-flags
 
 (declare-type collide-query structure)
-
 (deftype collide-shape (trsqv)
-  ((actor-hash-index int16 :offset 12)
-   (process process-drawable :offset-assert 140)
-   (max-iteration-count uint8)
-   (nav-flags nav-flags)
-   (total-prims uint8)
-   (num-riders uint8)
-   (pat-ignore-mask pat-surface)
-   (event-self symbol)
-   (event-other symbol)
-   (root-prim collide-shape-prim)
-   (riders pointer) ;; no
-   (penetrate-using penetrate)
-   (penetrated-by penetrate)
-   (backup-collide-as collide-spec)
-   (backup-collide-with collide-spec)
-   (event-priority uint8)
-   (rider-max-momentum float)
+  ((actor-hash-index    int16               :offset         12)
+   (process             process-drawable    :offset-assert 140)
+   (max-iteration-count uint8               :offset-assert 144)
+   (nav-flags           nav-flags           :offset-assert 145)
+   (total-prims         uint8               :offset-assert 146)
+   (num-riders          uint8               :offset-assert 147)
+   (pat-ignore-mask     pat-surface         :offset-assert 148)
+   (event-self          symbol              :offset-assert 152)
+   (event-other         symbol              :offset-assert 156)
+   (root-prim           collide-shape-prim  :offset-assert 160)
+   (riders              pointer             :offset-assert 164) ;; no
+   (penetrate-using     penetrate           :offset-assert 168)
+   (penetrated-by       penetrate           :offset-assert 176)
+   (backup-collide-as   collide-spec        :offset-assert 184)
+   (backup-collide-with collide-spec        :offset-assert 188)
+   (event-priority      uint8               :offset-assert 192)
+   (rider-max-momentum  float               :offset-assert 196)
    )
   :method-count-assert 55
   :size-assert         #xc8
@@ -16115,7 +16114,7 @@
     (collide-shape-method-51 () none 51) ;; (set-root-prim-collide-with! (_type_ collide-kind) none 51)
     (collide-shape-method-52 () none 52) ;; (set-root-prim-collide-as! (_type_ collide-kind) none 52)
     (collide-shape-method-53 () none 53) ;; (set-collide-kinds (_type_ int collide-kind collide-kind) none 53)
-    (collide-shape-method-54 () none 54) ;; (set-collide-offense (_type_ int collide-offense) none 54)
+    (collide-shape-method-54 (_type_) none 54) ;; (set-collide-offense (_type_ int collide-offense) none 54)
     )
   )
 
@@ -16192,7 +16191,7 @@
   )
 
 (declare-type collide-query structure)
-
+(declare-type control-info basic)
 (deftype collide-shape-moving (collide-shape)
   ((rider-time time-frame :offset-assert 200)
    (rider-last-move vector :inline)
@@ -16204,7 +16203,7 @@
    (old-status cshape-moving-flags)
    (prev-status cshape-moving-flags :offset-assert 304)
    (reaction-flag cshape-reaction-flags)
-   (reaction function) ;; function types...
+   (reaction (function control-info collide-query vector vector cshape-moving-flags)) ;; function types...
    (no-reaction function)
    (local-normal vector :inline)
    (surface-normal vector :inline)
@@ -16802,6 +16801,7 @@
   :flag-assert         #x900000068
   )
 
+(declare-type touching-shapes-entry structure)
 (deftype touching-prims-entry (structure)
   ((next       touching-prims-entry         :offset-assert 0)
    (prev       touching-prims-entry         :offset-assert 4)
@@ -16814,9 +16814,9 @@
   :size-assert         #xe8
   :flag-assert         #xc000000e8
   (:methods
-    (touching-prims-entry-method-9 () none 9) ;; (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim 9)
-    (touching-prims-entry-method-10 () none 10) ;; (dummy-10 () none 10)
-    (touching-prims-entry-method-11 () none 11) ;; (get-middle-of-bsphere-overlap (_type_ vector) vector 11)
+    (touching-prims-entry-method-9 (_type_ vector) vector 9) ;; (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim 9)
+    (touching-prims-entry-method-10 (_type_  collide-shape touching-shapes-entry) collide-shape-prim 10) ;; (dummy-10 () none 10)
+    (touching-prims-entry-method-11 (_type_ collide-shape touching-shapes-entry) collide-tri-result 11) ;; (get-middle-of-bsphere-overlap (_type_ vector) vector 11)
     )
   )
 
@@ -17119,7 +17119,7 @@
     (process-focusable-method-23 (_type_) none 23)
     (process-focusable-method-24 (_type_) float 24)
     (process-focusable-method-25 (_type_) time-frame 25)
-    (process-focusable-method-26 (_type_) none 26)
+    (process-focusable-method-26 (_type_) float 26)
     )
   )
 
@@ -26121,7 +26121,7 @@
   )
 |#
 
-;; (define-extern get-intersect-point function) ;; (function vector touching-prims-entry control-info process vector)
+(define-extern get-intersect-point (function vector touching-prims-entry collide-shape touching-shapes-entry vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-edge-grab              ;;
@@ -26165,7 +26165,7 @@
 ;; (define-extern target-attack-up function) ;; (function target symbol symbol none)
 ;; (define-extern collide-shape-moving-angle-set! function) ;; (function collide-shape-moving vector vector none)
 ;; (define-extern cshape-reaction-update-state function)
-;; (define-extern cshape-reaction-default function)
+(define-extern cshape-reaction-default (function control-info collide-query vector vector cshape-moving-flags))
 ;; (define-extern cshape-reaction-just-move function)
 (define-extern collide-shape-draw-debug-marks (function none))
 ;; (define-extern *col-timer* object) ;; stopwatch
@@ -32402,6 +32402,7 @@
    (cm-joint-x         meters                               :offset 32)
    (cm-joint-y         meters                               :offset 36)
    (cm-joint-z         meters                               :offset 40)
+   (cm-joint-w         float                                :offset 44) ;; added to make data decompilation happy
    (linear-damping     float                                :offset 8)
    (angular-damping    float                                :offset 12)
    (bounce-factor      float                                :offset 16)
@@ -32414,7 +32415,7 @@
    (gravity            meters                               :offset 192)
    (idle-distance      meters                               :offset 196)
    (attack-force-scale float                                :offset 200)
-   (name               basic                                :offset-assert 204)
+   (name               symbol                               :offset-assert 204)
    )
   :method-count-assert 9
   :size-assert         #xd0
@@ -32448,11 +32449,12 @@
   )
 ;; ---rigid-body-h:rigid-body-flag
 
+(declare-type rigid-body-work structure)
 (deftype rigid-body (structure)
-  ((work           basic              :offset-assert 0)
+  ((work           rigid-body-work              :offset-assert 0)
    (info           rigid-body-info    :offset-assert 4)
    (flags          rigid-body-flag    :offset-assert 8)
-   (force-callback basic              :offset-assert 12)
+   (force-callback (function object float none)              :offset-assert 12) ;; TODO - type!
    (blocked-by     basic              :offset-assert 16)
    (time-remaining float              :offset-assert 20)
    (step-count     int16              :offset-assert 24)
@@ -32472,9 +32474,9 @@
   :size-assert         #x120
   :flag-assert         #x2000000120
   (:methods
-    (rigid-body-method-9 (_type_) none 9)
+    (rigid-body-method-9 (_type_ collide-shape-moving float) none 9)
     (rigid-body-method-10 (_type_) none 10)
-    (rigid-body-method-11 (_type_) none 11)
+    (rigid-body-method-11 (_type_ collide-shape-moving) none 11)
     (rigid-body-method-12 (_type_ float) none 12)
     (rigid-body-method-13 (_type_) none 13)
     (rigid-body-method-14 (_type_ float) none 14)
@@ -32488,7 +32490,7 @@
     (rigid-body-method-22 (_type_ vector vector) vector 22)
     (rigid-body-method-23 (_type_ vector) vector 23)
     (rigid-body-method-24 (_type_) none 24)
-    (rigid-body-method-25 (_type_ rigid-body-info vector quaternion basic) none 25)
+    (rigid-body-method-25 (_type_ rigid-body-info vector quaternion function) none 25)
     (rigid-body-method-26 (_type_ vector quaternion) none 26) ;; TODO: stack
     (print-physics (_type_ object) none 27) ;; probably a better name for this
     (print-force-torque (_type_ object) none 28)
@@ -32498,6 +32500,7 @@
     )
   )
 
+(declare-type rigid-body-object process-focusable)
 (deftype rigid-body-control (basic)
   ((process        process            :offset-assert 4)
    (state          rigid-body :inline :offset-assert 16)
@@ -32524,9 +32527,10 @@
   :size-assert         #x130
   :flag-assert         #x1a00000130
   (:methods
-    (rigid-body-control-method-9 (_type_) none 9)
-    (rigid-body-control-method-10 (_type_) none 10)
-    (rigid-body-control-method-11 (_type_) none 11)
+    (new (symbol type process) _type_ 0)
+    (rigid-body-control-method-9 (_type_ collide-shape-moving float) none 9)
+    (rigid-body-control-method-10 (_type_ rigid-body-object float float) object 10)
+    (rigid-body-control-method-11 (_type_ collide-shape-moving) none 11)
     (rigid-body-control-method-12 (_type_ float) none 12)
     (rigid-body-control-method-13 (_type_) none 13)
     (rigid-body-control-method-14 (_type_ float) none 14)
@@ -32596,7 +32600,8 @@
 ;; ---rigid-body-h:rigid-body-object-flag
 
 (deftype rigid-body-object (process-focusable)
-  ((info                  rigid-body-object-constants :offset-assert 204)
+  ((root-override collide-shape-moving :offset 128 :score 999)
+   (info                  rigid-body-object-constants :offset-assert 204)
    (flags                 rigid-body-object-flag      :offset-assert 208)
    (max-time-step         float                       :offset-assert 216)
    (incoming-attack-id    uint32                      :offset-assert 220)
@@ -32609,32 +32614,32 @@
   :size-assert         #x110
   :flag-assert         #x3500900110
   (:methods
-    (rigid-body-object-method-27 () none 27)
-    (rigid-body-object-method-28 () none 28)
-    (rigid-body-object-method-29 () none 29)
-    (rigid-body-object-method-30 () none 30)
-    (rigid-body-object-method-31 () none 31)
-    (rigid-body-object-method-32 () none 32)
-    (rigid-body-object-method-33 () none 33)
-    (rigid-body-object-method-34 () none 34)
-    (rigid-body-object-method-35 () none 35)
+    (idle () _type_ :state 27)
+    (active () _type_ :state 28)
+    (rigid-body-object-method-29 (_type_) none 29)
+    (rigid-body-object-method-30 (_type_) none 30)
+    (rigid-body-object-method-31 (_type_ rigid-body-object-constants) none 31)
+    (rigid-body-object-method-32 (_type_) none 32)
+    (rigid-body-object-method-33 (_type_) none 33)
+    (rigid-body-object-method-34 (_type_) none 34)
+    (rigid-body-object-method-35 (_type_) none 35)
     (rigid-body-object-method-36 () none 36)
-    (rigid-body-object-method-37 () none 37)
-    (rigid-body-object-method-38 () none 38)
-    (rigid-body-object-method-39 () none 39)
-    (rigid-body-object-method-40 () none 40)
-    (rigid-body-object-method-41 () none 41)
-    (rigid-body-object-method-42 () none 42)
-    (rigid-body-object-method-43 () none 43)
-    (rigid-body-object-method-44 () none 44)
+    (rigid-body-object-method-37 (_type_) none 37)
+    (rigid-body-object-method-38 (_type_) none 38)
+    (rigid-body-object-method-39 (_type_) none 39)
+    (rigid-body-object-method-40 (_type_) none 40)
+    (rigid-body-object-method-41 (_type_) none 41)
+    (rigid-body-object-method-42 (_type_) none :behavior rigid-body-object 42)
+    (rigid-body-object-method-43 (_type_) none 43)
+    (rigid-body-object-method-44 (_type_ float) none 44)
     (rigid-body-object-method-45 () none 45)
-    (rigid-body-object-method-46 () none 46)
-    (rigid-body-object-method-47 () none 47)
-    (rigid-body-object-method-48 () none 48)
-    (rigid-body-object-method-49 () none 49)
-    (rigid-body-object-method-50 () none 50)
-    (rigid-body-object-method-51 () none 51)
-    (rigid-body-object-method-52 () none 52)
+    (rigid-body-object-method-46 (_type_ process-drawable int symbol event-message-block) none :behavior rigid-body-object 46)
+    (rigid-body-object-method-47 (_type_ process-drawable attack-info object penetrate) symbol 47)
+    (rigid-body-object-method-48 (_type_ object object) none 48)
+    (rigid-body-object-method-49 (_type_ matrix touching-shapes-entry) none 49)
+    (rigid-body-object-method-50 (_type_ float) none 50)
+    (rigid-body-object-method-51 (_type_) none 51)
+    (rigid-body-object-method-52 (_type_) none 52)
     )
   )
 
@@ -32646,14 +32651,14 @@
   :size-assert         #x408
   :flag-assert         #x1100000408
   (:methods
-    (rigid-body-queue-method-9 () none 9)
-    (rigid-body-queue-method-10 () none 10)
-    (rigid-body-queue-method-11 () none 11)
-    (rigid-body-queue-method-12 () none 12)
-    (rigid-body-queue-method-13 () none 13)
-    (rigid-body-queue-method-14 () none 14)
-    (rigid-body-queue-method-15 () none 15)
-    (rigid-body-queue-method-16 () none 16)
+    (rigid-body-queue-method-9 (_type_) none 9)
+    (rigid-body-queue-method-10 (_type_) none 10)
+    (rigid-body-queue-method-11 (_type_) none 11)
+    (rigid-body-queue-method-12 (_type_ int int) none 12)
+    (rigid-body-queue-method-13 (_type_) none 13)
+    (rigid-body-queue-method-14 (_type_ int) none 14)
+    (rigid-body-queue-method-15 (_type_) none 15)
+    (validate (_type_) symbol 16)
     )
   )
 
@@ -32663,7 +32668,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *enemy-dummy-shadow-control* shadow-control)
-;; (define-extern get-penetrate-using-from-attack-event function)
+(define-extern get-penetrate-using-from-attack-event (function process-drawable event-message-block penetrate))
 ;; (define-extern enemy-init-by-other function)
 ;; (define-extern enemy-event-handler function)
 ;; (define-extern enemy-simple-post function)
@@ -33151,34 +33156,27 @@
 (define-extern *rigid-body-work* rigid-body-work)
 (define-extern matrix-3x3-triple-transpose-product (function matrix matrix matrix matrix))
 (define-extern damping-time-adjust (function float float float))
-;; (define-extern transform-rigid-body-prims (function object matrix none)) ;; TODO: first param
+(define-extern transform-rigid-body-prims (function collide-shape-prim matrix symbol))
 (define-extern *rigid-body-object-constants* rigid-body-object-constants)
-;; (define-extern rigid-body-object-event-handler function)
+(define-extern rigid-body-object-event-handler (function process int symbol event-message-block none :behavior rigid-body-object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body-queue               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rigid-body-queue-manager (process)
-  ((queue rigid-body-queue  :offset-assert 124)
+  ((queue rigid-body-queue  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
   :flag-assert         #xf00100084
   (:methods
-    (rigid-body-queue-manager-method-9 () none 9)
-    (rigid-body-queue-manager-method-10 () none 10)
-    (rigid-body-queue-manager-method-11 () none 11)
-    (rigid-body-queue-manager-method-12 () none 12)
-    (rigid-body-queue-manager-method-13 () none 13)
     (idle () _type_ :state 14)
     )
   )
-|#
 
-;; (define-extern rigid-body-queue-manager-init-by-other function)
-;; (define-extern rigid-body-queue-manager-spawn function)
+(define-extern rigid-body-queue-manager-init-by-other (function rigid-body-queue object :behavior rigid-body-queue-manager))
+(define-extern rigid-body-queue-manager-spawn (function rigid-body-queue process-tree process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body-plat                ;;
@@ -33222,28 +33220,26 @@
   :flag-assert         #x900000010
   )
 
-#|
+(declare-type water-anim process-drawable) ;; TODO - not decompiled yet
 (deftype rigid-body-platform (rigid-body-object)
-  ((control-point-array   rigid-body-control-point-inline-array         :offset-assert 268) ;; guessed by decompiler
-   (player-velocity       vector                                :inline :offset-assert 284)
-   (player-velocity-prev  vector                                :inline :offset-assert 300)
-   (player-force-position vector                                :inline :offset-assert 236)
-   (player-force          vector                                :inline :offset-assert 252)
-   (float-height-offset   float                                         :offset-assert 348)
-   (player-bonk-timeout   uint64                                        :offset-assert 356) ;; time-frame
-   (water-anim            water-anim                                    :offset-assert 364) ;; guessed by decompiler
+  ((control-point-array   rigid-body-control-point-inline-array         :offset-assert 272) ;; guessed by decompiler
+   (player-velocity       vector                                :inline :offset-assert 288)
+   (player-velocity-prev  vector                                :inline :offset-assert 304)
+   (unknown-pad uint32 8 :offset-assert 320)
+   (float-height-offset   float                                         :offset-assert 352)
+   (player-bonk-timeout   uint64                                        :offset-assert 360) ;; time-frame
+   (water-anim            water-anim                                    :offset-assert 368) ;; guessed by decompiler
    )
   :method-count-assert 57
   :size-assert         #x174
   :flag-assert         #x3901000174
   (:methods
-    (rigid-body-platform-method-53 () none 53)
+    (rigid-body-platform-method-53 (_type_) none 53)
     (rigid-body-platform-method-54 () none 54)
     (rigid-body-platform-method-55 () none 55)
     (rigid-body-platform-method-56 () none 56)
     )
   )
-|#
 
 (define-extern *rigid-body-platform-constants* rigid-body-platform-constants)
 
@@ -34145,7 +34141,6 @@
 ;; cty-guard-turret-button        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cty-guard-turret-button (basebutton)
   ()
   :method-count-assert 40
@@ -34155,8 +34150,6 @@
     (pop-up () _type_ :state 39)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; meet-brutter                   ;;
@@ -34294,7 +34287,6 @@
 ;; race-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype race-turbo-pad (structure)
   ((position vector :inline :offset-assert 0)
    (handle   uint64         :offset-assert 16)
@@ -34303,9 +34295,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype race-decision-point (structure)
   ((pos           float  :offset-assert 0)
    (decision-type uint8  :offset-assert 4)
@@ -34316,9 +34306,7 @@
   :size-assert         #x7
   :flag-assert         #x900000007
   )
-|#
 
-#|
 (deftype race-racer-info (structure)
   ((rider       uint8  :offset-assert 0)
    (vehicle     uint8  :offset-assert 1)
@@ -34329,12 +34317,10 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype race-info (basic)
-  ((race-mesh-name           basic          :offset-assert 4)
-   (path-group-name          basic          :offset-assert 8)
+  ((race-mesh-name           string          :offset-assert 4)
+   (path-group-name          string          :offset-assert 8)
    (task-node                uint16         :offset-assert 12)
    (mesh                     basic          :offset-assert 16)
    (ai-min-speed-factor      float          :offset-assert 20)
@@ -34353,31 +34339,28 @@
    (map-index                int8           :offset-assert 117)
    (decision-point-count     int8           :offset-assert 118)
    (safe-paths               uint8          :offset-assert 119)
-   (turbo-pad-array          uint32         :offset-assert 120)
-   (racer-array              uint32         :offset-assert 124)
-   (decision-point-array     uint32         :offset-assert 128)
-   (level                    basic          :offset-assert 132)
-   (borrow-level             basic          :offset-assert 136)
-   (borrow                   basic          :offset-assert 140)
+   (turbo-pad-array          (inline-array race-turbo-pad)         :offset-assert 120)
+   (racer-array              (inline-array race-racer-info)         :offset-assert 124)
+   (decision-point-array     (inline-array race-decision-point)         :offset-assert 128)
+   (level                    symbol          :offset-assert 132)
+   (borrow-level             symbol          :offset-assert 136)
+   (borrow                   pair          :offset-assert 140)
    (manager                  uint64         :offset-assert 144)
-   (manager-handle-init-hack basic          :offset-assert 144)
-   (hatch-actor-name         basic          :offset-assert 152)
+   (manager-handle-init-hack basic          :offset 144)
+   (hatch-actor-name         string          :offset-assert 152)
    (countdown-scene          basic          :offset-assert 156)
    (complete-continue        basic          :offset-assert 160)
-   (start-camera             basic          :offset-assert 164)
+   (start-camera             string          :offset-assert 164)
    (go-speech                uint16         :offset-assert 168)
    )
   :method-count-assert 10
   :size-assert         #xaa
   :flag-assert         #xa000000aa
-  ;; field borrow uses ~A with a signed load
   (:methods
-    (race-info-method-9 () none 9)
+    (race-info-method-9 (_type_) none 9)
     )
   )
-|#
 
-#|
 (deftype racer-state (structure)
   ((position          vector  :inline :offset-assert 0)
    (racer             uint64          :offset-assert 16)
@@ -34395,7 +34378,7 @@
    (finish-time       uint32          :offset-assert 52)
    (lap-start         uint32          :offset-assert 56)
    (best-lap-time     uint32          :offset-assert 60)
-   (lap-time-array    UNKNOWN 5       :offset-assert 64)
+   (lap-time-array    float   5       :offset-assert 64) ;; kinda a guess, too small to be time-frames
    (start-position    vector  :inline :offset-assert 96)
    )
   :method-count-assert 14
@@ -34409,9 +34392,7 @@
     (racer-state-method-13 () none 13)
     )
   )
-|#
 
-#|
 (deftype race-state (structure)
   ((info                 basic               :offset-assert 0)
    (flags                uint8               :offset-assert 4)
@@ -34431,10 +34412,10 @@
    (current-time         uint32              :offset-assert 80)
    (countdown-start-time uint32              :offset-assert 84)
    (race-start-time      uint32              :offset-assert 88)
-   (rankings             UNKNOWN     10      :offset-assert 92)
+   (rankings             int8     10      :offset-assert 92) ;; weird size
    (target-pos           float               :offset-assert 104)
    (suck-factor          float               :offset-assert 108)
-   (racer-array          UNKNOWN     10      :offset-assert 112)
+   (racer-array          racer-state     10      :inline :offset-assert 112)
    (player-intro-curve   cubic-curve :inline :offset-assert 1232)
    )
   :method-count-assert 19
@@ -34453,31 +34434,24 @@
     (race-state-method-18 () none 18)
     )
   )
-|#
 
-#|
 (deftype race-manager (process)
-  ((race-state           race-state  :offset-assert 124)
-   (state-time           time-frame      :offset-assert 132)
-   (player-on-track-time time-frame      :offset-assert 140)
-   (message-id           uint32      :offset-assert 148)
-   (finish-sound-id      uint32      :offset-assert 152)
+  ((race-state           race-state  :offset-assert 128)
+   (state-time           time-frame      :offset-assert 136)
+   (player-on-track-time time-frame      :offset-assert 144)
+   (message-id           uint32      :offset-assert 152)
+   (finish-sound-id      uint32      :offset-assert 156)
    )
   :method-count-assert 28
   :size-assert         #xa0
   :flag-assert         #x1c002000a0
   (:methods
-    (race-manager-method-9 () none 9)
-    (race-manager-method-10 () none 10)
-    (race-manager-method-11 () none 11)
-    (race-manager-method-12 () none 12)
-    (race-manager-method-13 () none 13)
-    (race-manager-method-14 () none 14)
-    (race-manager-method-15 () none 15)
-    (race-manager-method-16 () none 16)
-    (race-manager-method-17 () none 17)
-    (race-manager-method-18 () none 18)
-    (race-manager-method-19 () none 19)
+    (idle () _type_ :state 14)
+    (active () _type_ :state 15)
+    (fail () _type_ :state 16)
+    (win () _type_ :state 17)
+    (lose () _type_ :state 18)
+    (die () _type_ :state 19)
     (race-manager-method-20 () none 20)
     (race-manager-method-21 () none 21)
     (race-manager-method-22 () none 22)
@@ -34488,7 +34462,6 @@
     (race-manager-method-27 () none 27)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34829,17 +34802,17 @@
 ;; race-info                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *race-info-array* array)
+(define-extern *race-info-array* (array race-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-manager                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern race-find-ground function)
-;; (define-extern *race-state* object)
-;; (define-extern *race-rigid-body-queue* object)
+(define-extern race-find-ground (function object none))
+(define-extern *race-state* race-state)
+(define-extern *race-rigid-body-queue* rigid-body-queue)
 ;; (define-extern race-manager-event-handler function)
-;; (define-extern *race-manager* object)
+(define-extern *race-manager* race-manager)
 ;; (define-extern race-manager-init-by-other function)
 ;; (define-extern race-start function)
 ;; (define-extern race-kill function)
@@ -48814,7 +48787,7 @@
     (nav-node-method-11 (_type_ int) none 11)
     (nav-node-method-12 (_type_ vector nav-node) none 12)
     (nav-node-method-13 (_type_ vector) none 13)
-    (nav-node-method-14 (_type_ nav-node) none 14)
+    (nav-node-method-14 (_type_ vector) none 14)
     (nav-node-method-15 (_type_ uint) none 15)
     (nav-node-method-16 (_type_ float) none 16)
     (nav-node-method-17 (_type_ float) none 17)
@@ -48885,7 +48858,7 @@
     (nav-graph-method-24 (_type_ int int) none 24)
     (nav-graph-method-25 (_type_ symbol symbol) none 25)
     (nav-graph-method-26 (_type_ symbol symbol) none 26)
-    (nav-graph-method-27 (_type_) none 27)
+    (nav-graph-method-27 (_type_ nav-node-flag-byte nav-node-flag-byte symbol) none 27)
     (nav-graph-method-28 (_type_) none 28)
     (nav-graph-method-29 (_type_ symbol) none 29)
     (nav-graph-method-30 (_type_ uint) none 30)
@@ -48896,7 +48869,7 @@
     (nav-graph-method-35 (_type_ int) none 35)
     (nav-graph-method-36 (_type_ int) none 36)
     (nav-graph-method-37 (_type_ vector) none 37)
-    (nav-graph-method-38 () none 38)
+    (nav-graph-method-38 (_type_) none 38)
     (nav-graph-method-39 (_type_) none 39)
     (nav-graph-method-40 (_type_ int) int 40)
     (node-at-idx
@@ -49577,9 +49550,9 @@
   (:methods
     (vehicle-controller-method-9 () none 9) ;; (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none 9)
     (vehicle-controller-method-10 () none 10) ;; (TODO-RENAME-10 (_type_ vector float int) none 10)
-    (vehicle-controller-method-11 () none 11) ;; (dummy-11 (_type_) none 11)
+    (vehicle-controller-method-11 (_type_) none 11) ;; (dummy-11 (_type_) none 11)
     (vehicle-controller-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ int vector) none 12)
-    (vehicle-controller-method-13 () none 13) ;; (move-to-next-point (_type_ vector) none 13)
+    (vehicle-controller-method-13 (_type_ nav-branch vector) none 13) ;; (move-to-next-point (_type_ vector) none 13)
     (vehicle-controller-method-14 () none 14) ;; (TODO-RENAME-14 (_type_ vector vector) none 14)
     (vehicle-controller-method-15 () none 15) ;; (dummy-15 (_type_ collide-shape-moving) none 15)
     (vehicle-controller-method-16 () none 16) ;; (dummy-16 (_type_) none 16)
@@ -49822,7 +49795,7 @@
    (dim           int16   2 :offset-assert 24)
    (x-dim         int16     :offset 24)
    (z-dim         int16     :offset 26)
-   (data          (pointer int8)    :offset-assert 28) ;; 2240 words for the traffic-height-map - this could be so many things, but its something with an `int8` at offset 0
+   (data          (pointer int8)    :offset-assert 28)
    )
   :method-count-assert 15
   :size-assert         #x20
