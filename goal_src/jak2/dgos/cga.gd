@@ -1,0 +1,10 @@
+("CGA.DGO"
+  ("ctygena-part.o" "ctygena-part")
+  ("neon-praxis-part.o" "neon-praxis-part")
+  ("tpage-1137.go" "tpage-1137")
+  ("tpage-1138.go" "tpage-1138")
+  ("tpage-1117.go" "tpage-1117")
+  ("tpage-1637.go" "tpage-1637")
+  ("ctyn-lamp-ag.go" "ctyn-lamp")
+  ("ctygena-vis.go" "ctygena-vis")
+  )
