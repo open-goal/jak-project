@@ -1,0 +1,13 @@
+("LYSKDCD.DGO"
+  ("youngsamos-lyskdcd+0-ag.go" "youngsamos-lyskdcd+0")
+  ("kid-lyskdcd+0-ag.go" "kid-lyskdcd+0")
+  ("tpage-1772.go" "tpage-1772")
+  ("tpage-3261.go" "tpage-3261")
+  ("daxter-highres-ag.go" "daxter-highres")
+  ("youngsamos-highres-ag.go" "youngsamos-highres")
+  ("jak-highres-ag.go" "jak-highres")
+  ("crocadog-highres-ag.go" "crocadog-highres")
+  ("kid-highres-ag.go" "kid-highres")
+  ("particleman-ag.go" "particleman")
+  ("lyskdcd.go" "lyskdcd")
+  )

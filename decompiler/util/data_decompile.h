@@ -118,4 +118,22 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
 std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& ts, u64 value);
 goos::Object bitfield_defs_print(const TypeSpec& type,
                                  const std::vector<BitFieldConstantDef>& defs);
+
+struct ArrayFieldDecompMeta {
+  enum class Kind { REF_TO_INLINE_ARR, REF_TO_INTEGER_ARR };
+
+  TypeSpec element_type;
+  int bytes_per_element;  // aka stride
+  Kind kind;
+
+  ArrayFieldDecompMeta(TypeSpec _element_type,
+                       int _bytes_per_element,
+                       Kind _kind = Kind::REF_TO_INLINE_ARR)
+      : element_type(_element_type), bytes_per_element(_bytes_per_element), kind(_kind){};
+};
+
+extern const std::unordered_map<
+    GameVersion,
+    std::unordered_map<std::string, std::unordered_map<std::string, ArrayFieldDecompMeta>>>
+    array_field_decomp_special_cases;
 }  // namespace decompiler

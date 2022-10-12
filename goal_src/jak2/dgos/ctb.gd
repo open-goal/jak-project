@@ -1,0 +1,12 @@
+("CTB.DGO"
+  ("ctyslumb-part.o" "ctyslumb-part")
+  ("tpage-977.go" "tpage-977")
+  ("tpage-1308.go" "tpage-1308")
+  ("tpage-978.go" "tpage-978")
+  ("tpage-1022.go" "tpage-1022")
+  ("tpage-1647.go" "tpage-1647")
+  ("com-airlock-outer-ag.go" "com-airlock-outer")
+  ("com-airlock-inner-ag.go" "com-airlock-inner")
+  ("fort-entry-gate-ag.go" "fort-entry-gate")
+  ("ctyslumb-vis.go" "ctyslumb-vis")
+  )
