@@ -862,7 +862,7 @@
 ;; STADIUM D
 ;;;;;;;;;;;;;;;;;;;;;
 
-(cgo "STD.DGO" "std.gd")
+;; TODO
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
