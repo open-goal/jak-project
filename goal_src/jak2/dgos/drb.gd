@@ -1,0 +1,12 @@
+("DRB.DGO"
+  ("tpage-2298.go" "tpage-2298")
+  ("tpage-2299.go" "tpage-2299")
+  ("tpage-2492.go" "tpage-2492")
+  ("drill-elevator-ag.go" "drill-elevator")
+  ("drill-flip-step-ag.go" "drill-flip-step")
+  ("drill-elevator-base-ag.go" "drill-elevator-base")
+  ("drill-falling-door-ag.go" "drill-falling-door")
+  ("drill-drop-plat-ag.go" "drill-drop-plat")
+  ("drill-switch-ag.go" "drill-switch")
+  ("drillb-vis.go" "drillb-vis")
+  )
