@@ -4,6 +4,7 @@ add_executable(lsp
   state/workspace.cpp
   handlers/lsp_router.cpp
   protocol/common_types.cpp
+  protocol/completion.cpp
   protocol/document_symbols.cpp
   protocol/document_synchronization.cpp
   protocol/document_diagnostics.cpp
