@@ -31,7 +31,8 @@ int main(int argc, char** argv) {
   app.add_option("--output-path", output_path, "Where to output the search results file");
   app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_option("-s,--size", type_size, "The size of the type we are searching for");
-  app.add_option("-m,--method_id", method_id_min, "Require the provided method id to be supported by the type");
+  app.add_option("-m,--method_id", method_id_min,
+                 "Require the provided method id to be supported by the type");
   app.add_option("-p,--parent", parent_type, "The type of which it is an descendent of");
   app.add_option("-f,--fields", field_json,
                  "JSON encoded string specifying which field types and their offsets are required "

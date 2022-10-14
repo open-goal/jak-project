@@ -1313,7 +1313,7 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
   // iterate through the entire map
   if (!existing_matches.empty()) {
     for (const auto& type_name : existing_matches) {
-      if (typecheck_base_types(type_name, parent_type, false)) {
+      if (typecheck_base_types(parent_type, type_name, false)) {
         results.push_back(type_name);
       }
     }
@@ -1323,7 +1323,7 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
       if (!type_info->has_parent()) {
         continue;
       }
-      if (typecheck_base_types(type_name, parent_type, false)) {
+      if (typecheck_base_types(parent_type, type_name, false)) {
         results.push_back(type_name);
       }
     }
@@ -1333,8 +1333,8 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
 }
 
 std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
-  const int minimum_method_id,
-  const std::vector<std::string>& existing_matches) {
+    const int minimum_method_id,
+    const std::vector<std::string>& existing_matches) {
   std::vector<std::string> results = {};
   // If we've been given a list of already matched types, narrow it down from there, otherwise
   // iterate through the entire map
