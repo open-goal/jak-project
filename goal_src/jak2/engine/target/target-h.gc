@@ -6,6 +6,7 @@
 ;; dgos: ENGINE, GAME
 
 (declare-type sidekick process-drawable)
+(declare-type gun process-drawable)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
 (declare-type flut-info basic)
@@ -13,6 +14,7 @@
 (declare-type pilot-info basic)
 (declare-type gun-info basic)
 (declare-type darkjak-info basic)
+(declare-type sparticle-launcher basic)
 
 ;; NOTE - for level-info, defined in `logic-target`
 (define-extern start (function symbol continue-point target))
@@ -22,7 +24,7 @@
 (define-extern target-darkjak-get-on (state int target))
 (define-extern target-darkjak-running-attack (state target))
 (define-extern target-darkjak-bomb0 (state target))
-(define-extern target-darkjak-bomb1 (state target))
+(define-extern target-darkjak-bomb1 (state float float target))
 (define-extern can-feet? (function symbol symbol :behavior target))
 (define-extern target-attack-air (state symbol target))
 (define-extern target-hit-ground (state symbol target))
@@ -44,7 +46,7 @@
 (define-extern target-running-attack (state target))
 (define-extern target-gun-stance (state target))
 (define-extern target-carry-pickup (state target))
-(define-extern fall-test (function state float none :behavior target))
+(define-extern fall-test (function (state symbol target) float none :behavior target))
 (define-extern target-falling (state symbol target))
 (define-extern target-stance-anim (function none :behavior target))
 (define-extern target-effect-exit (function none :behavior target))
@@ -81,10 +83,10 @@
 (define-extern target-hit-ground-anim (function symbol symbol :behavior target))
 (define-extern are-still? (function symbol :behavior target))
 (define-extern *attack-end-mods* surface)
-(define-extern target-send-attack (function process uint uint int int symbol :behavior target))
+(define-extern target-send-attack (function process uint uint int int uint symbol :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-start-attack (function none :behavior target))
-(define-extern target-danger-set! (function symbol symbol float :behavior target))
+(define-extern target-danger-set! (function symbol symbol none :behavior target))
 (define-extern smack-surface? (function symbol symbol :behavior target))
 (define-extern target-height-above-ground (function float :behavior target))
 (define-extern target-align-vel-z-adjust (function float float :behavior target))
@@ -104,11 +106,41 @@
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern target-roll-flip (state float float target))
 
+;; target-util
+(define-extern target-move-dist (function time-frame float :behavior target))
+(define-extern target-slide-down (state target))
+(define-extern get-intersect-point (function vector touching-prims-entry collide-shape touching-shapes-entry vector))
+
+;; target-swim
+(define-extern target-swim-jump (state float float target))
+(define-extern target-swim-jump-jump (state float float surface target))
+
+;; target-darkjak
+(define-extern target-darkjak-get-off (state target))
+(define-extern set-darkjak-texture-morph! (function float none))
+(define-extern process-drawable-random-point! (function process-drawable vector vector))
+(define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
+(define-extern target-grab (state symbol target))
+(define-extern target-darkjak-giant (state target))
+(define-extern target-falling-anim-trans (function none :behavior target))
+(define-extern ja-blend-eval (function int :behavior process-drawable))
+
+;; target-gun
+(define-extern target-look-around (state target))
+(define-extern target-gun-end-mode (function symbol symbol :behavior target))
+(define-extern target-gun-marking-menu (function target none))
+(define-extern gun-init (function none :behavior gun))
+(define-extern target-gun-type-set! (function int none :behavior target))
+(define-extern target-gun-fire-blue (function none :behavior target))
+(define-extern target-gun-fire-yellow (function none :behavior target))
+(define-extern target-gun-fire-red (function none :behavior target))
+(define-extern target-gun-fire-dark (function none :behavior target))
+
 ;; DECOMP BEGINS
 
 (deftype target (process-focusable)
   ((control                 control-info                               :offset        128)
-   (skel2                   basic                                      :offset-assert 204)
+   (skel2                   joint-control                              :offset-assert 204)
    (shadow-backup           shadow-geo                                 :offset-assert 208)
    (target-flags            uint32                                     :offset        188)
    (game                    game-info                                  :offset-assert 212)
@@ -143,7 +175,7 @@
    (excitement              float                                      :offset-assert 2052)
    (shock-effect-time       time-frame                                 :offset-assert 2056)
    (beard?                  symbol                                     :offset-assert 2064)
-   (spool-anim              symbol                                     :offset-assert 2068)
+   (spool-anim              spool-anim                                 :offset-assert 2068)
    (ambient-time            time-frame                                 :offset-assert 2072)
    (fp-hud                  handle                                     :offset-assert 2080)
    (no-load-wait            uint64                                     :offset-assert 2088)

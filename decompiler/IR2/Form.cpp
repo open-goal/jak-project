@@ -3014,8 +3014,8 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("defskelgroup"));
   forms.push_back(pretty_print::to_symbol(m_name));
-  forms.push_back(pretty_print::to_symbol(m_static_info.art_name));
-  const auto& art = env.dts->art_group_info.find(m_static_info.art_name + "-ag");
+  forms.push_back(pretty_print::to_symbol(m_static_info.art_group_name));
+  const auto& art = env.dts->art_group_info.find(m_static_info.art_group_name + "-ag");
   bool has_art = art != env.dts->art_group_info.end();
   auto jg = m_info.jgeo->to_form(env);
   if (jg.is_int() && has_art && art->second.count(jg.as_int())) {
@@ -3069,8 +3069,29 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   if (m_static_info.sort != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":sort {}", m_static_info.sort)));
   }
-  if (m_static_info.version != 6) {
-    forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+  // jak 2 skelgroups seem to be using version 7
+  if (env.version != GameVersion::Jak1) {
+    if (m_static_info.version != 7) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+    }
+  } else {
+    if (m_static_info.version != 6) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+    }
+  }
+  if (env.version != GameVersion::Jak1) {
+    if (m_static_info.origin_joint_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":origin-joint-index {}", m_static_info.origin_joint_index)));
+    }
+    if (m_static_info.shadow_joint_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":shadow-joint-index {}", m_static_info.origin_joint_index)));
+    }
+    if (m_static_info.light_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":light-index {}", m_static_info.origin_joint_index)));
+    }
   }
 
   return pretty_print::build_list(forms);

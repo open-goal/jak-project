@@ -21,6 +21,7 @@
   )
 
 
+;; WARN: Return type mismatch symbol vs load-dir.
 (defmethod mem-usage load-dir ((obj load-dir) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 85 (-> arg0 length)))
   (set! (-> arg0 data 84 name) "array")
@@ -94,13 +95,13 @@
   )
 
 (defun drawable-load ((arg0 drawable) (arg1 kheap))
-  ;; (local-vars (sp-0 pointer))
+  (local-vars (sp-0 pointer))
   (cond
     ((type? arg0 string)
-     ;; (the-as none sp-0)
-     ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-     ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-     ;;     )
+     (the-as none sp-0)
+     (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+         (set! sp-0 (&+ *kernel-sp* -1024))
+         )
      (let ((s5-1 (loado (the-as string arg0) arg1)))
        (if (and s5-1 (type? s5-1 drawable))
            (login (the-as drawable s5-1))
@@ -114,11 +115,11 @@
   )
 
 (defun art-load ((arg0 string) (arg1 kheap))
-  ;; (local-vars (sp-0 pointer))
-  ;; (the-as none sp-0)
-  ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-  ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-  ;;     )
+  (local-vars (sp-0 pointer))
+  (the-as none sp-0)
+  (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+      (set! sp-0 (&+ *kernel-sp* -1024))
+      )
   (let ((s5-0 (loado arg0 arg1)))
     (if (type? s5-0 art)
         (login (the-as art s5-0))
@@ -128,12 +129,12 @@
   )
 
 (defun art-group-load-check ((arg0 string) (arg1 kheap) (arg2 int))
-  ;; (local-vars (sp-0 pointer))
+  (local-vars (sp-0 pointer))
   (when *debug-segment*
-    ;; (the-as none sp-0)
-    ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-    ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-    ;;     )
+    (the-as none sp-0)
+    (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+        (set! sp-0 (&+ *kernel-sp* -1024))
+        )
     (let ((s3-1 (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1)))
       (cond
         ((not s3-1)
@@ -515,7 +516,7 @@
     (set! (-> obj buffer v1-5 frame-lock) #f)
     )
   (dotimes (v1-8 3)
-    (set! (-> obj rec v1-8 buffer) #f)
+    (set! (-> obj rec v1-8 anim-name) #f)
     )
   (dotimes (s4-0 2)
     (let ((s3-0 (-> obj rec s4-0)))
@@ -525,7 +526,7 @@
                      (not (-> obj buffer s2-0 frame-lock))
                      )
             (set! (-> obj buffer s2-0 frame-lock) #t)
-            (set! (-> s3-0 buffer) (-> obj buffer s2-0))
+            (set! (-> s3-0 anim-name) (-> obj buffer s2-0))
             (set! (-> obj buffer s2-0 pending-load-file-owner) (-> s3-0 owner))
             (set! (-> obj buffer s2-0 load-file-owner) (-> s3-0 owner))
             (set! (-> obj buffer s2-0 pending-load-file-priority) (-> s3-0 priority))
@@ -539,7 +540,7 @@
     )
   (dotimes (s4-1 2)
     (let ((s3-1 (-> obj rec s4-1)))
-      (when (and (-> s3-1 name) (not (-> s3-1 buffer)))
+      (when (and (-> s3-1 name) (not (-> s3-1 anim-name)))
         (if (and (not *preload-spool-anims*) (>= (-> s3-1 priority) 0.0))
             (goto cfg-46)
             )
@@ -553,7 +554,7 @@
               (-> s3-1 owner)
               (-> s3-1 priority)
               )
-            (set! (-> s3-1 buffer) (-> obj buffer s2-1))
+            (set! (-> s3-1 anim-name) (-> obj buffer s2-1))
             (goto cfg-46)
             )
           )
@@ -562,13 +563,19 @@
     (label cfg-46)
     )
   (when (not (-> obj reserve-buffer))
-    (let ((s4-2 (-> obj rec 0 buffer)))
+    (let ((s4-2 (-> obj rec 0 anim-name)))
       (if (and s4-2
-               (-> s4-2 locked?)
-               (not (string= (-> s4-2 pending-load-file) "reserved"))
-               (not (string= (-> s4-2 other pending-load-file) "reserved"))
+               (-> (the-as external-art-buffer s4-2) locked?)
+               (not (string= (-> (the-as external-art-buffer s4-2) pending-load-file) "reserved"))
+               (not (string= (-> (the-as external-art-buffer s4-2) other pending-load-file) "reserved"))
                )
-          (set-pending-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+          (set-pending-file
+            (-> (the-as external-art-buffer s4-2) other)
+            (the-as string #f)
+            -1
+            (the-as handle #f)
+            100000000.0
+            )
           )
       )
     )
@@ -777,7 +784,6 @@
   )
 
 
-(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars (v0-59 int) (sv-176 int))
   (let ((s2-0 arg2)
@@ -993,7 +999,7 @@
         -20.0
         (-> gp-0 sid)
         )
-      (let ((s5-8 (get-art-by-name (-> self draw art-group) (the-as string (-> gp-0 anim buffer)) art-joint-anim)))
+      (let ((s5-8 (get-art-by-name (-> self draw art-group) (the-as string (-> gp-0 anim anim-name)) art-joint-anim)))
         (cond
           (s5-8
             (ja-channel-set! 1)
@@ -1109,7 +1115,7 @@
   (restore-load-state-and-cleanup *load-state*)
   (set! (-> *art-control* active-stream) #f)
   (logclear! (-> self skel status) (joint-control-status spooling spooling-not-last-block))
-  (if (zero? (logand (-> self skel status) (joint-control-status sync-math)))
+  (if (not (logtest? (-> self skel status) (joint-control-status sync-math)))
       (logclear! (-> self skel status) (joint-control-status sync-math))
       )
   (cond
@@ -1462,6 +1468,7 @@
     )
   )
 
+;; WARN: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 34. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod gui-control-method-18 gui-control ((obj gui-control) (arg0 gui-channel))
   (let ((v1-0 arg0))
@@ -1620,6 +1627,7 @@
     )
   )
 
+;; WARN: Return type mismatch int vs gui-action.
 (defmethod gui-control-method-17 gui-control ((obj gui-control) (arg0 sound-id))
   (let ((gp-0 (the-as gui-connection #f)))
     (if (zero? arg0)
@@ -1801,6 +1809,7 @@
   0
   )
 
+;; WARN: Return type mismatch int vs sound-id.
 (defmethod gui-control-method-9 gui-control ((obj gui-control)
                                            (arg0 process)
                                            (arg1 gui-channel)
@@ -1891,6 +1900,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch int vs sound-id.
 (defmethod gui-control-method-12 gui-control ((obj gui-control)
                                             (arg0 process)
                                             (arg1 gui-channel)
@@ -2463,7 +2473,3 @@
     )
 
 (kmemclose)
-
-
-
-
