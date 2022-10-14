@@ -1332,6 +1332,28 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
   return results;
 }
 
+std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
+  const int minimum_method_id,
+  const std::vector<std::string>& existing_matches) {
+  std::vector<std::string> results = {};
+  // If we've been given a list of already matched types, narrow it down from there, otherwise
+  // iterate through the entire map
+  if (!existing_matches.empty()) {
+    for (const auto& type_name : existing_matches) {
+      if (get_type_method_count(type_name) - 1 >= minimum_method_id) {
+        results.push_back(type_name);
+      }
+    }
+  } else {
+    for (const auto& [type_name, type_info] : m_types) {
+      if (get_type_method_count(type_name) - 1 >= minimum_method_id) {
+        results.push_back(type_name);
+      }
+    }
+  }
+  return results;
+}
+
 std::vector<std::string> TypeSystem::search_types_by_size(
     const int search_size,
     const std::vector<std::string>& existing_matches) {

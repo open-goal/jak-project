@@ -267,6 +267,10 @@ class TypeSystem {
       const std::string& parent_type,
       const std::vector<std::string>& existing_matches = {});
 
+  std::vector<std::string> search_types_by_minimum_method_id(
+      const int minimum_method_id,
+      const std::vector<std::string>& existing_matches = {});
+
   std::vector<std::string> search_types_by_size(
       const int search_size,
       const std::vector<std::string>& existing_matches = {});
