@@ -12207,7 +12207,7 @@
     (set-offset-bit (shadow-control) int 10)
     (set-top-plane-offset (shadow-control float) int 11)
     (set-bottom-plane-offset (shadow-control float) int 12)
-    (shadow-control-method-13 () none 13) ;; (unused-13 (_type_) none 13)
+    (shadow-control-method-13 (_type_ vector float float float) none 13) ;; (unused-13 (_type_) none 13)
     (shadow-control-method-14 () none 14) ;; (update-direction-from-time-of-day (_type_) none 14)
     )
   )
@@ -17129,7 +17129,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype process-taskable (process-focusable)
-  ((task              basic                   :offset-assert 204)
+  ((root-override     collide-shape           :offset 128 :score 100)
+   (task              basic                   :offset-assert 204)
    (ambient           ambient-control :inline :offset-assert 208)
    (neck-joint-index  int32                   :offset-assert 224)
    (talk-message      game-text-id            :offset-assert 228) ;; guessed by decompiler
@@ -17148,17 +17149,17 @@
   :size-assert         #x120
   :flag-assert         #x2600a00120
   (:methods
-    (process-taskable-method-27 () none 27) ;; (play-anim () _type_ :state 27)
-    (process-taskable-method-28 () none 28) ;; (hidden () _type_ :state 28)
-    (process-taskable-method-29 () none 29) ;; (be-clone (handle) _type_ :state 29)
-    (process-taskable-method-30 () none 30) ;; (idle () _type_ :state 30)
-    (process-taskable-method-31 () none 31) ;; (get-art-elem (_type_) art-element 31)
-    (process-taskable-method-32 () none 32) ;; (play-anim! (_type_ symbol) basic 32)
-    (process-taskable-method-33 () none 33) ;; (dummy-33 (_type_) none 33)
-    (process-taskable-method-34 () none 34) ;; (get-accept-anim (_type_ symbol) spool-anim 34)
-    (process-taskable-method-35 () none 35) ;; (push-accept-anim (_type_) none 35)
-    (process-taskable-method-36 () none 36) ;; (get-reject-anim (_type_ symbol) spool-anim 36)
-    (process-taskable-method-37 () none 37) ;; (push-reject-anim (_type_) none 37)
+    (hide () _type_ :state 27) ;; (play-anim () _type_ :state 27)
+    (idle () _type_ :state 28) ;; (hidden () _type_ :state 28)
+    (active (process) _type_ :state 29) ;; (be-clone (handle) _type_ :state 29)
+    (play-game () _type_ :state 30) ;; (idle () _type_ :state 30)
+    (process-taskable-method-31 (_type_) none 31) ;; (get-art-elem (_type_) art-element 31)
+    (process-taskable-method-32 (_type_) none 32) ;; (play-anim! (_type_ symbol) basic 32)
+    (process-taskable-method-33 (_type_) none 33) ;; (dummy-33 (_type_) none 33)
+    (process-taskable-method-34 (_type_) symbol 34) ;; (get-accept-anim (_type_ symbol) spool-anim 34)
+    (process-taskable-method-35 (_type_) art-joint-anim 35) ;; (push-accept-anim (_type_) none 35)
+    (process-taskable-method-36 (_type_) none 36) ;; (get-reject-anim (_type_ symbol) spool-anim 36)
+    (process-taskable-method-37 (_type_) none 37) ;; (push-reject-anim (_type_) none 37)
     )
   )
 
@@ -26229,22 +26230,20 @@
 ;; actor-hash                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype actor-cshape-ptr (structure)
-  ((cshape basic  :offset-assert 0)
+  ((cshape collide-shape  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype actor-hash-bucket (structure)
   ((length     int16   :offset-assert 0)
    (max-length int16   :offset-assert 2)
-   (data       uint32  :offset-assert 4)
+   (data       (pointer uint32)  :offset-assert 4) ;;an array of....something TODO
    )
+  :allow-misaligned
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
@@ -26252,13 +26251,11 @@
     (actor-hash-bucket-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype actor-hash-buckets (structure)
   ((hash basic           :offset-assert 0)
    (list basic           :offset-assert 4)
-   (data UNKNOWN 4       :offset-assert 8)
+   (data actor-hash-bucket 4       :inline :offset-assert 8)
    (tpos vector  :inline :offset-assert 80)
    )
   :method-count-assert 10
@@ -26268,10 +26265,9 @@
     (actor-hash-buckets-method-9 () none 9)
     )
   )
-|#
 
 (define-extern *actor-hash* spatial-hash)
-;; (define-extern *actor-hash-buckets* object)
+(define-extern *actor-hash-buckets* actor-hash-buckets)
 (define-extern update-actor-hash (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30640,9 +30636,8 @@
 ;; viewer                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype viewer (process-drawable)
-  ((janim art-joint-anim  :offset-assert 196) ;; guessed by decompiler
+  ((janim art-joint-anim  :offset-assert 200) ;; guessed by decompiler
    )
   :method-count-assert 20
   :size-assert         #xcc
@@ -30650,18 +30645,18 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *viewer-sg* skeleton-group) ;; skeleton-group
-;; (define-extern viewer-process state) ;; (state viewer)
-;; (define-extern viewer-string object) ;; string
-;; (define-extern viewer-ja-name object) ;; string
-;; (define-extern viewer-geo-name object) ;; string
-;; (define-extern actor-get-arg! function) ;; (function string string string symbol)
-;; (define-extern art-part-name function) ;; (function string string)
-;; (define-extern init-viewer function) ;; (function string object :behavior viewer)
-;; (define-extern init-viewer-for-other function) ;; (function string vector none :behavior viewer)
-;; (define-extern add-a-bunch function) ;; (function string int int float symbol)
+(define-extern *viewer* viewer)
+(define-extern *viewer-sg* skeleton-group) ;; skeleton-group
+(define-extern viewer-process (state viewer)) ;; 
+(define-extern viewer-string string) ;; 
+(define-extern viewer-ja-name string) ;; string
+(define-extern viewer-geo-name string) ;; string
+(define-extern actor-get-arg! (function string string string symbol)) ;; 
+(define-extern art-part-name (function string string)) ;; 
+(define-extern init-viewer (function string string none :behavior viewer)) ;; 
+(define-extern init-viewer-for-other (function string vector entity-actor none :behavior viewer)) ;; 
+(define-extern add-a-bunch (function string int int float process-tree entity-actor symbol)) ;; 
 (define-extern birth-viewer (function process entity-actor object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33411,7 +33406,7 @@
 ;; process-taskable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern process-taskable-anim-loop function) ;; (function none :behavior process-taskable)
+(define-extern process-taskable-anim-loop (function none :behavior process-taskable)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-actor                    ;;
@@ -39144,7 +39139,6 @@
 ;; sig-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sig-plasma (structure)
   ((flags            uint8   :offset-assert 0)
    (level            float   :offset-assert 4)
@@ -39165,29 +39159,25 @@
     (sig-plasma-method-14 () none 14)
     )
   )
-|#
 
-#|
 (deftype sig-path-sample (structure)
-  ((bytes  UNKNOWN    32      :offset-assert 0)
+  ((bytes  uint8      32      :offset-assert 0)
    (pos    vector     :inline :offset-assert 32)
    (quat   quaternion :inline :offset-assert 48)
-   (flags  uint8              :offset-assert 12)
-   (pos-x  float              :offset-assert 32)
-   (pos-y  float              :offset-assert 36)
-   (pos-z  float              :offset-assert 40)
-   (quat-x float              :offset-assert 48)
-   (quat-y float              :offset-assert 52)
-   (quat-z float              :offset-assert 56)
-   (quat-w float              :offset-assert 60)
+   (flags  uint8              :offset 12)
+   (pos-x  float              :offset 32)
+   (pos-y  float              :offset 36)
+   (pos-z  float              :offset 40)
+   (quat-x float              :offset 48)
+   (quat-y float              :offset 52)
+   (quat-z float              :offset 56)
+   (quat-w float              :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sig-path (basic)
   ((sample-count int32   :offset-assert 4)
    (samples      uint32  :offset-assert 8)
@@ -39196,7 +39186,6 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 #|
 (deftype sig (bot)
