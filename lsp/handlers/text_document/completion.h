@@ -10,5 +10,6 @@ std::optional<json> get_completions_handler(Workspace& workspace, int id, json p
 
   // TODO - implement response object
 
-  return json::array();;
+  return json::array();
+  ;
 }

@@ -4,11 +4,11 @@
 
 #include "lsp/handlers/initialize.h"
 #include "lsp/protocol/error_codes.h"
+#include "text_document/completion.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
-#include "text_document/completion.h"
 
 #include "third-party/fmt/core.h"
 
