@@ -8,11 +8,9 @@ namespace snd {
 
 SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
     : SoundBank(id, BankType::SFX), m_locator(loc) {
-  m_version = tag->Version;
-
   auto data = (SFXBlockData*)tag;
-  auto sounddata = (SFXData*)((uintptr_t)data + data->FirstSound);
 
+  auto sounddata = (SFXData*)((uintptr_t)data + data->FirstSound);
   for (int i = 0; i < data->NumSounds; i++) {
     SFX sound;
     sound.d = sounddata[i];
@@ -34,12 +32,6 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
                                                       s32 pan,
                                                       s32 pm,
                                                       s32 pb) {
-  if (m_version > 1) {
-    lg::warn("version {}", m_version);
-    return nullptr;
-  }
-
-  std::unique_ptr<blocksound_handler> handler;
   auto& SFX = m_sounds[sound_id];
 
   if (SFX.grains.empty()) {
@@ -47,7 +39,7 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
     return nullptr;
   }
 
-  handler = std::make_unique<blocksound_handler>(m_sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
+  auto handler = std::make_unique<blocksound_handler>(m_sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
   handler->init();
   return handler;
 }

@@ -119,9 +119,6 @@ class SFXBlock : public SoundBank {
 
  private:
   locator& m_locator;
-  u32 m_version;
-
-  std::unordered_map<std::string, u32> m_names;
   std::vector<SFX> m_sounds;
 };
 

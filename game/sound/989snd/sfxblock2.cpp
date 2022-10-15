@@ -1,17 +1,30 @@
 #include "sfxblock2.h"
 
-#include "blocksound_handler.h"
-
 #include "common/log/log.h"
+
+#include "blocksound_handler2.h"
 
 namespace snd {
 SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
     : SoundBank(id, BankType::SFX), m_locator(loc) {
-  m_version = tag->Version;
-
   auto data = (SFXBlockData2*)tag;
+
+  auto sounddata = (SFX2Data*)((uintptr_t)data + data->FirstSound);
+  for (int i = 0; i < data->NumSounds; i++) {
+    SFX2 sound;
+    sound.d = sounddata[i];
+    m_sounds.push_back(sound);
+  }
+
+  for (auto& sound : m_sounds) {
+    auto graindata = (SFXGrain2*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
+    for (int i = 0; i < sound.d.NumGrains; i++) {
+      SFXGrain2 grain = graindata[i];
+      sound.grains.push_back(grain);
+    }
+  }
+
   auto names = (SFXBlockNames*)((uintptr_t)data + data->BlockNames);
-  lg::warn("{:x} {:x} {}", names->BlockName[0], names->BlockName[1], names->SFXNameTableOffset);
   if (names->SFXNameTableOffset != 0) {
     // The sound names are hashed and divided up into 32 buckets
     // to reduce the number of comparisons needed to search the list.
@@ -26,6 +39,7 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
         strncpy(buf, (char*)name->Name, 16);
 
         std::string str(buf);
+        lg::warn("{}: {}", name->Index, str);
         m_names[str] = name->Index;
 
         name++;
@@ -40,7 +54,12 @@ std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,
                                                        s32 pan,
                                                        s32 pm,
                                                        s32 pb) {
-  return nullptr;
+  auto& SFX = m_sounds[sound_id];
+
+  auto handler =
+      std::make_unique<blocksound_handler2>(m_sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
+  handler->init();
+  return handler;
 }
 
 }  // namespace snd

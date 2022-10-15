@@ -1,16 +1,17 @@
 #pragma once
 #include <unordered_map>
 
-#include "sfxblock.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 
 #include "common/common_types.h"
 
+#include "sfxblock2.h"
+
 namespace snd {
 class blocksound_handler2 : public sound_handler {
  public:
-  blocksound_handler2(SFX& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
+  blocksound_handler2(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
       : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
     vol = (vol * m_sfx.d.Vol) >> 10;
     if (vol >= 128) {
@@ -75,16 +76,19 @@ class blocksound_handler2 : public sound_handler {
     loop_continue = 23,
     rand_play = 25,
     rand_delay = 26,
+    rand_pb = 27,
+    set_register_rand = 31,
+    play_cycle = 39,
   };
 
   void do_grain();
 
-  s32 null(SFXGrain& grain);
-  s32 play_tone(SFXGrain& grain);
-  s32 rand_play(SFXGrain& grain);
+  s32 null(SFXGrain2& grain);
+  s32 play_tone(SFXGrain2& grain);
+  s32 rand_play(SFXGrain2& grain);
   void update_pitch();
 
-  using grain_fp = int (blocksound_handler2::*)(SFXGrain& grain);
+  using grain_fp = int (blocksound_handler2::*)(SFXGrain2& grain);
   std::unordered_map<grain_type, grain_fp> m_grain_handler;
 
   bool m_paused{false};
@@ -96,7 +100,7 @@ class blocksound_handler2 : public sound_handler {
   u32 m_grains_to_skip{0};
   bool m_skip_grains{false};
 
-  SFX& m_sfx;
+  SFX2& m_sfx;
   voice_manager& m_vm;
 
   std::list<std::weak_ptr<vag_voice>> m_voices;

@@ -90,7 +90,7 @@ struct SFXGrain2 {
 
 struct SFX2 {
   SFX2Data d;
-  // std::vector<SFXGrain> grains;
+  std::vector<SFXGrain2> grains;
 };
 
 class SFXBlock2 : public SoundBank {
@@ -105,8 +105,6 @@ class SFXBlock2 : public SoundBank {
 
  private:
   locator& m_locator;
-  u32 m_version;
-
   std::unordered_map<std::string, u32> m_names;
   std::vector<SFX2> m_sounds;
 };
