@@ -552,6 +552,14 @@ struct ExecutionContext {
     }
   }
 
+  void paddb(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 16; i++) {
+      gprs[rd].du8[i] = s.du8[i] + t.du8[i];
+    }
+  }
+
   void pextub(int rd, int rs, int rt) {
     auto s = gpr_src(rs);
     auto t = gpr_src(rt);
