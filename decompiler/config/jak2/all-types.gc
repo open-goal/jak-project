@@ -4779,7 +4779,7 @@
 (deftype subtitle-range (basic)
   ((start-frame float :offset-assert 4)
    (end-frame   float :offset-assert 8)
-   (message    object 8 :offset-assert 12)
+   (message    basic 8 :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x2c
@@ -6949,6 +6949,8 @@
   (text-x24d #x024d)
   (text-x24e #x024e)
   (text-x24f #x024f)
+  (text-781 781)
+  (text-782 782)
   (progress-unknown-continue 784)
 )
 ;; ---text-id-h:game-text-id
@@ -8270,7 +8272,9 @@
   (bounds-spheres)
   (actors)
   (actor-marks)
-  (special-fma-spheres))
+  (special-fma-spheres)
+  (scene-controls-7)
+  (scene-controls-8))
 ;; ---main-h:scene-controls
 
 (define-extern *display-scene-control* scene-controls)
@@ -15065,14 +15069,14 @@
   )
 
 (deftype scene-player (process-drawable)
-  ((scene-list           (pointer symbol)              :offset-assert 200)
+  ((scene-list           (array scene)              :offset-assert 200) ;; string/scene
    (scene                scene              :offset-assert 204)
    (scene-index          int32              :offset-assert 208)
    (anim                 spool-anim              :offset-assert 212)
    (next-anim            spool-anim              :offset-assert 216)
    (camera               handle             :offset-assert 224)
    (main-entity          entity-actor              :offset-assert 232)
-   (wait                 basic              :offset-assert 236)
+   (wait                 symbol              :offset-assert 236)
    (old-target-pos       transformq :inline :offset-assert 240)
    (pre-cut-frame        basic              :offset-assert 288)
    (preload-continue     string              :offset-assert 292)
@@ -15086,7 +15090,7 @@
    (speed-press-time     time-frame             :offset-assert 336)
    (speed-change-speed   float              :offset-assert 344)
    (subtitle-change-time time-frame             :offset-assert 352)
-   (user-sound           uint32    4       :offset-assert 360) ;; guess
+   (user-sound           sound-id    4       :offset-assert 360) ;; guess
    )
   :method-count-assert 26
   :size-assert         #x178
@@ -15096,7 +15100,7 @@
     (release () _type_ :state 21)
     (play-anim () _type_ :state 22)
     (scene-player-method-23 (_type_ string symbol) none 23)
-    (scene-player-method-24 (_type_ basic symbol) scene 24)
+    (scene-player-method-24 "TODO - arg1 can be string/scene" (_type_ basic symbol) scene 24)
     (scene-player-method-25 (_type_ float) none 25)
     )
   )
@@ -20429,14 +20433,14 @@
    (scale-x float            :offset-assert 36)
    (scale-y float            :offset-assert 40)
    (angle   float            :offset-assert 44)
-   (tex     basic            :offset-assert 48)
+   (tex     texture            :offset-assert 48)
    )
   :method-count-assert 11
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
     (hud-sprite-method-9 (_type_ dma-buffer level) none 9)
-    (hud-sprite-method-10 () none 10)
+    (hud-sprite-method-10 (_type_) none 10)
     )
   )
 
@@ -20486,34 +20490,35 @@
   :type uint32
   :bitfield #t
   )
+
 (deftype hud (process)
   ((trigger-time   time-frame      :offset-assert 128) ;; time-frame
    (last-hide-time time-frame      :offset-assert 136) ;; time-frame
    (offset         float       :offset-assert 144) ;; int32
    (flags          hud-flags   :offset-assert 148)
-   (values         hud-value  8 :inline :offset-assert 152)
-   (strings        hud-string  14 :inline :offset-assert 288)
+   (values         hud-value  8 :inline :offset-assert 152 :score 999)
+   (strings        hud-string  14 :inline :offset-assert 288  :score 999)
    (sprites        hud-sprite  30 :inline :offset-assert 960)
    (icons          hud-icon 2  :inline :offset-assert 2880) ;; guessed by decompiler
-   (gui-id         uint32      :offset-assert 2976)
+   (gui-id         sound-id      :offset-assert 2976)
    )
   :method-count-assert 27
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   (:methods
-    (hud-method-14 () none 14) ;; (hidden? (_type_) symbol 14)
-    (hud-method-15 () none 15) ;; (draw-hud (_type_) none 15)
-    (hud-method-16 () none 16) ;; (tally-value (_type_ int int) none 16)
-    (hud-method-17 () none 17) ;; (draw-icons (_type_) none 17)
-    (hud-method-18 () none 18) ;; (draw-particles (_type_) none 18)
-    (hud-method-19 () none 19) ;; (hud-update (_type_) none 19)
-    (hud-method-20 () none 20) ;; (init-particles! (_type_ int) none 20)
-    (hud-method-21 () none 21) ;; (get-icon-pos-x (_type_) int 21)
-    (hud-method-22 () none 22) ;; (get-icon-pos-y (_type_) int 22)
-    (hud-method-23 () none 23) ;; (dummy-23 (_type_) none 23)
-    (hud-method-24 () none 24) ;; (set-pos-and-scale (_type_ symbol symbol) none 24)
-    (hud-method-25 () none 25) ;; (get-icon-scale-x (_type_) float 25)
-    (hud-method-26 () none 26) ;; (get-icon-scale-y (_type_) float 26)
+    (hidden? (_type_) symbol 14) ;; (hidden? (_type_) symbol 14)
+    (hud-method-15 (_type_) none 15) ;; (draw-hud (_type_) none 15)
+    (hud-method-16 (_type_ int int) none 16) ;; (tally-value (_type_ int int) none 16)
+    (hud-method-17 (_type_) none 17) ;; (draw-icons (_type_) none 17)
+    (hud-method-18 (_type_) symbol 18) ;; (draw-particles (_type_) none 18)
+    (hud-method-19 (_type_) none 19) ;; (hud-update (_type_) none 19)
+    (hud-method-20 (_type_) none 20) ;; (init-particles! (_type_ int) none 20)
+    (hud-method-21 (_type_) none 21) ;; (get-icon-pos-x (_type_) int 21)
+    (hud-method-22 (_type_) none 22) ;; (get-icon-pos-y (_type_) int 22)
+    (hud-method-23 (_type_) none 23) ;; (dummy-23 (_type_) none 23)
+    (hud-method-24 (_type_ symbol) none 24) ;; (set-pos-and-scale (_type_ symbol symbol) none 24)
+    (hud-method-25 (_type_) none 25) ;; (get-icon-scale-x (_type_) float 25)
+    (hud-method-26 (_type_ int) none 26) ;; (get-icon-scale-y (_type_) float 26)
     )
   )
 
@@ -29849,7 +29854,7 @@
 (define-extern *subtitle-work* subtitle-work)
 (define-extern draw-subtitle-image (function subtitle-image font-context pointer))
 (define-extern process-drawable-draw-subtitles (function none :behavior process-drawable))
-(define-extern scene-player-init (function string symbol object none :behavior scene-player))
+(define-extern scene-player-init "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`" (function object symbol string none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pov-camera                     ;;
@@ -29952,8 +29957,8 @@
    (mask-tmpl   dma-gif-packet :inline :offset-assert 160)
    (line-tmpl   dma-gif-packet :inline :offset-assert 192)
    (scan-tmpl   dma-gif-packet :inline :offset-assert 224)
-   (line-color  uint64                 :offset-assert 256)
-   (scan-colors uint64         32      :offset 272)
+   (line-color  vector4w :inline                 :offset-assert 256)
+   (scan-colors vector4w         32  :inline    :offset 272)
    (scanline    uint32                 :offset 784)
    )
   :method-count-assert 9
@@ -29962,11 +29967,11 @@
   )
 
 (define-extern *hud-sprite-work* hud-sprite-work)
-;; (define-extern hud-create-icon function)
-;; (define-extern hud-hidden state) ;; (state hud)
-;; (define-extern hud-arriving state) ;; (state hud)
-;; (define-extern hud-in state) ;; (state hud)
-;; (define-extern hud-leaving state) ;; (state int hud)
+(define-extern hud-create-icon (function none))
+(define-extern hud-hidden (state hud)) ;; (state hud)
+(define-extern hud-arriving (state hud)) ;; 
+(define-extern hud-in (state hud)) ;; (state hud)
+(define-extern hud-leaving (state int hud)) ;; (state int hud)
 (define-extern hud-init-by-other (function object :behavior hud))
 (define-extern hide-hud (function symbol none))
 ;; (define-extern enable-hud function) ;; (function none)
@@ -30276,7 +30281,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype minimap-texture-name-array (structure)
-  ((data uint32 35 :offset-assert 0)
+  ((data object 35 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8c
