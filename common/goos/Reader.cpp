@@ -301,7 +301,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
     }
   } catch (std::exception& e) {
     lg::print("{}", e.what());
-    throw e;
+    throw;
   }
 }
 
