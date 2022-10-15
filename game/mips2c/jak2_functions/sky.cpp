@@ -37,7 +37,7 @@ void link() {
 }
 
 }  // namespace set_sky_vf23_value
-}  // namespace Mips2C
+}  // namespace Mips2C::jak2
 
 //--------------------------MIPS2C---------------------
 // clang-format off
