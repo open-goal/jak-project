@@ -4,6 +4,7 @@
 #include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/Range.h"
+#include "common/util/print_float.h"
 
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
@@ -44,7 +45,12 @@ goos::Object BitfieldStaticDefElement::to_form_internal(const Env& env) const {
     auto def_as_atom = form_as_atom(def.value);
     if (def_as_atom && def_as_atom->is_int()) {
       u64 v = def_as_atom->get_int();
-      if (def.is_signed) {
+      if (def.is_float) {
+        float vf;
+        memcpy(&vf, &v, 4);
+        result.push_back(pretty_print::to_symbol(
+            fmt::format(":{} {}", def.field_name, float_to_string(vf, true))));
+      } else if (def.is_signed) {
         result.push_back(pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)v)));
       } else {
         result.push_back(pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, v)));
@@ -709,6 +715,7 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   BitFieldDef bfd;
   bfd.field_name = constant.field_name;
   bfd.is_signed = constant.is_signed;
+  bfd.is_float = constant.is_float;
   if (constant.nested_field) {
     std::vector<BitFieldDef> defs;
     for (auto& x : constant.nested_field->fields) {
