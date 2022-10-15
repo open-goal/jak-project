@@ -157,7 +157,7 @@
 ;; WARN: Return type mismatch spool-anim vs none.
 (defmethod scene-method-15 scene ((obj scene) (arg0 spool-anim))
   (set! (-> arg0 name) (-> obj anim))
-  (set! (-> arg0 buffer) (the-as external-art-buffer (-> obj anim)))
+  (set! (-> arg0 anim-name) (-> obj anim))
   (set! (-> arg0 parts) (the-as int (-> obj parts)))
   (set! (-> arg0 command-list) (the-as pair (-> obj command-list)))
   (none)
@@ -608,14 +608,14 @@
              (scene-method-15 a0-34 (-> obj next-anim))
              )
            (else
-             (set! (-> obj next-anim buffer) (the-as external-art-buffer 0))
+             (set! (-> obj next-anim anim-name) (the-as basic 0))
              0
              )
            )
          )
        )
       (else
-        (set! (-> obj next-anim buffer) (the-as external-art-buffer 0))
+        (set! (-> obj next-anim anim-name) (the-as basic 0))
         0
         )
       )
@@ -731,18 +731,32 @@
   )
 
 ;; definition for symbol *subtitle-work*, type subtitle-work
-(define *subtitle-work* (new 'static 'subtitle-work
-                          :draw-tmpl (new 'static 'dma-gif-packet
-                            :dma-vif (new 'static 'dma-packet
-                              :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                              :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                              )
-                            :gif (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
-                            )
-                          :color0 (new 'static 'vector4w :w #x80)
-                          :color1 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                          )
+(define *subtitle-work*
+  (new 'static 'subtitle-work
+    :draw-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :color0 (new 'static 'vector4w :w #x80)
+    :color1 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    )
+  )
 
 ;; definition for function draw-subtitle-image
 ;; INFO: Used lq/sq
@@ -1078,7 +1092,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (and (-> self scene) (nonzero? (-> self anim buffer)) (not (load-in-progress? *level*)))
+    (if (and (-> self scene) (nonzero? (-> self anim anim-name)) (not (load-in-progress? *level*)))
         (gui-control-method-12
           *gui-control*
           self
@@ -1225,12 +1239,12 @@
     (when (< (-> self scene-index) (-> self scene-list length))
       (scene-player-method-24 self (-> self scene-list (-> self scene-index)) #t)
       (while (and (-> self scene)
-                  (nonzero? (-> self anim buffer))
+                  (nonzero? (-> self anim anim-name))
                   (let ((v1-161 (file-status *art-control* (-> self anim name) 0)))
                     (or (not (or (= v1-161 'active) (= v1-161 'locked)))
                         (let* ((a1-26 (gui-control-method-14
                                         *gui-control*
-                                        (the-as string (-> self anim buffer))
+                                        (the-as string (-> self anim anim-name))
                                         (gui-channel none)
                                         (gui-action none)
                                         )
@@ -1386,7 +1400,7 @@
   :trans (behavior ()
     (cond
       ((not (-> *setting-control* user-current spooling))
-       (if (and (-> self scene) (nonzero? (-> self anim buffer)))
+       (if (and (-> self scene) (nonzero? (-> self anim anim-name)))
            (gui-control-method-12
              *gui-control*
              self
@@ -1400,7 +1414,7 @@
            )
        )
       (else
-        (if (and (-> self scene) (nonzero? (-> self next-anim buffer)))
+        (if (and (-> self scene) (nonzero? (-> self next-anim anim-name)))
             (gui-control-method-12
               *gui-control*
               self
@@ -1815,13 +1829,7 @@
   (set! (-> self wait) arg1)
   (set! (-> self pre-cut-frame) #f)
   (set! (-> self aborted?) #f)
-  (let ((t9-8 (method-of-type draw-control new))
-        (a0-19 'process)
-        (a1-12 draw-control)
-        )
-    self
-    (set! (-> self draw) (t9-8 a0-19 a1-12))
-    )
+  (set! (-> self draw) (new 'process 'draw-control self #f))
   (set! (-> self skel) (new 'process 'joint-control 48))
   (set! (-> self anim) (new 'static 'spool-anim))
   (set! (-> self next-anim) (new 'static 'spool-anim))

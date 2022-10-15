@@ -7,8 +7,6 @@
 
 ;; DECOMP BEGINS
 
-;; definition for function target-falling-trans
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-falling-trans target ((arg0 symbol) (arg1 time-frame))
   (if (want-to-darkjak?)
       (go target-darkjak-get-on 2)
@@ -36,7 +34,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-startup (target)
   :event target-standard-event-handler
   :code (behavior ()
@@ -48,7 +45,6 @@
   :post target-no-move-post
   )
 
-;; failed to figure out what this is:
 (defstate target-stance (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -148,7 +144,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-walk (target)
   :event target-walk-event-handler
   :enter (behavior ()
@@ -260,7 +255,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-turn-around (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -296,7 +290,7 @@
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square) (can-hands? #t))
         (go target-running-attack)
         )
-    (if (and (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+    (if (and (not (logtest? (-> self control status) (cshape-moving-flags on-surface)))
              (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06)) (seconds 0.08))
              )
         (go target-falling #f)
@@ -326,7 +320,6 @@
   :post target-no-stick-post
   )
 
-;; failed to figure out what this is:
 (defstate target-slide-down (target)
   :event target-walk-event-handler
   :enter (behavior ()
@@ -373,7 +366,6 @@
   :post target-post
   )
 
-;; definition for symbol *slide-down-mods*, type surface
 (define *slide-down-mods* (new 'static 'surface
                             :name 'run
                             :turnv 131072.0
@@ -406,7 +398,6 @@
                             )
         )
 
-;; definition for symbol *slide-jump-mods*, type surface
 (define *slide-jump-mods* (new 'static 'surface
                             :name 'jump
                             :turnv 32768.0
@@ -440,15 +431,14 @@
                             )
         )
 
-;; failed to figure out what this is:
 (defstate target-slide-down-to-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('slide)
        #f
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -578,8 +568,6 @@
     )
   )
 
-;; definition for function init-var-jump
-;; INFO: Used lq/sq
 (defbehavior init-var-jump target ((arg0 float) (arg1 float) (arg2 symbol) (arg3 symbol) (arg4 vector) (arg5 float))
   (when (and (logtest? (focus-status dark) (-> self focus-status))
              (nonzero? (-> self darkjak))
@@ -658,8 +646,6 @@
     )
   )
 
-;; definition for function mod-var-jump
-;; INFO: Used lq/sq
 (defbehavior mod-var-jump target ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 vector))
   (local-vars (v0-1 vector))
   (let ((f0-1 (* 0.033333335 (the float (- (-> self clock frame-counter) (-> self state-time))))))
@@ -736,7 +722,6 @@
     )
   )
 
-;; definition for symbol *duck-mods*, type surface
 (define *duck-mods*
   (new 'static 'surface
     :name 'duck
@@ -790,7 +775,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-stance (target)
   :event target-standard-event-handler
   :enter (behavior ((arg0 symbol))
@@ -823,8 +807,7 @@
     )
   :trans (behavior ()
     ((-> self state-hook))
-    (if (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1))
-                        )
+    (if (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1))
                  (logtest? (-> self state-flags) (state-flags sf9))
                  )
              (let ((v1-13 (ja-group)))
@@ -835,7 +818,7 @@
                                         )
                               )
                          )
-                    (begin self (can-exit-duck?))
+                    (can-exit-duck? self)
                     )
                )
              )
@@ -863,8 +846,8 @@
       )
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (can-hands? #t)
-             (begin self (can-exit-duck?))
-             (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-jump)))
+             (can-exit-duck? self)
+             (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-jump)))
              (zero? (logand (-> self state-flags) (state-flags sf7)))
              )
         (go
@@ -962,7 +945,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-walk (target)
   :event target-standard-event-handler
   :enter (behavior ((arg0 symbol))
@@ -982,14 +964,13 @@
   :trans (behavior ()
     (local-vars (v1-22 joint-control-channel))
     ((-> self state-hook))
-    (when (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1))
-                          )
+    (when (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1))
                    (logtest? (-> self state-flags) (state-flags sf9))
                    (and (logtest? (water-flags wading) (-> self water flags))
                         (>= (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
                         )
                    )
-               (begin self (can-exit-duck?))
+               (can-exit-duck? self)
                )
       (if (and (using-gun? self)
                (begin (set! v1-22 (top-anim-joint-control-method-11 (-> self skel top-anim) 0)) v1-22)
@@ -1021,8 +1002,8 @@
       )
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square)
              (can-hands? #t)
-             (begin self (can-exit-duck?))
-             (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-jump)))
+             (can-exit-duck? self)
+             (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-jump)))
              (zero? (logand (-> self state-flags) (state-flags sf7)))
              )
         (go
@@ -1083,8 +1064,6 @@
   :post target-post
   )
 
-;; definition for function target-jump-top-anim
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-jump-top-anim target ()
   (let ((gp-0 (top-anim-joint-control-method-11 (-> self skel top-anim) 0)))
     (when gp-0
@@ -1106,7 +1085,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 surface))
@@ -1169,7 +1147,7 @@
                 (* 12288.0 (-> self darkjak-giant-interp) (-> self darkjak-giant-interp))
                 )
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                  (zero? (logand (water-flags touch-water) (-> self water flags)))
+                  (not (logtest? (water-flags touch-water) (-> self water flags)))
                   (zero? (logand (state-flags sf7 sf23) (-> self state-flags)))
                   )
              )
@@ -1183,8 +1161,8 @@
                   (and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame14))
                            (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                            )
-                       (zero? (logand (-> self state-flags) (state-flags sf8)))
-                       (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
+                       (not (logtest? (-> self state-flags) (state-flags sf8)))
+                       (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
                        (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
                        )
                   )
@@ -1336,7 +1314,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-jump-forward (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
@@ -1398,7 +1375,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-double-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
@@ -1439,8 +1415,8 @@
              (and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame14))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) (state-flags sf8)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
+                  (not (logtest? (-> self state-flags) (state-flags sf8)))
+                  (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
                   (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
                   )
              )
@@ -1535,7 +1511,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-high-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 object))
@@ -1599,8 +1574,8 @@
              (and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame14))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) (state-flags sf8)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
+                  (not (logtest? (-> self state-flags) (state-flags sf8)))
+                  (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
                   (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
                   )
              )
@@ -1627,7 +1602,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-high-jump (target)
   :event target-standard-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1679,7 +1653,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-duck-high-jump-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1827,7 +1800,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-falling (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 symbol))
@@ -1885,7 +1857,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-hit-ground (target)
   :event target-walk-event-handler
   :enter (behavior ((arg0 symbol))
@@ -1894,11 +1865,12 @@
       ((or (= arg0 'stuck) (logtest? (focus-status indax) (-> self focus-status)))
        )
       (else
-        (let ((f0-2 (vector-dot
-                      (-> self control dynam gravity-normal)
-                      (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector21) (-> self control trans))
-                      )
-                    )
+        (let ((f0-2
+                (vector-dot
+                  (-> self control dynam gravity-normal)
+                  (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector21) (-> self control trans))
+                  )
+                )
               )
           (if (and (< (-> *TARGET-bank* fall-far) f0-2)
                    (zero? (logand (-> self control status) (cshape-moving-flags on-water)))
@@ -1924,11 +1896,11 @@
         (delete-back-vel)
         )
     (set! (-> self control unknown-surface00) *walk-mods*)
-    (let ((s5-0 (method-of-object (-> self water) water-control-method-11)))
+    (start-bobbing!
+      (-> self water)
       (lerp-scale 0.0 4096.0 (-> self control ground-impact-vel) 40960.0 102400.0)
       600
       1500
-      (s5-0)
       )
     (if (and (logtest? (focus-status dark) (-> self focus-status))
              (nonzero? (-> self darkjak))
@@ -2002,7 +1974,7 @@
              )
         (target-jump-go)
         )
-    (if (and (or (cpad-hold? (-> self control unknown-cpad-info00 number) l1) (begin self (not (can-exit-duck?))))
+    (if (and (or (cpad-hold? (-> self control unknown-cpad-info00 number) l1) (not (can-exit-duck? self)))
              (can-duck?)
              )
         (go target-duck-stance #f)
@@ -2052,7 +2024,6 @@
   :post target-post
   )
 
-;; definition for symbol *attack-mods*, type surface
 (define *attack-mods* (new 'static 'surface
                         :name 'attack
                         :tiltv 65536.0
@@ -2096,7 +2067,6 @@
                         )
         )
 
-;; failed to figure out what this is:
 (let ((v1-25 (copy *attack-mods* 'global)))
   (set! (-> v1-25 flags) (surface-flag attack spin gun-turn-fast))
   (set! (-> v1-25 mult-hook) (lambda :behavior target
@@ -2115,40 +2085,38 @@
   (set! *attack-end-mods* v1-25)
   )
 
-;; failed to figure out what this is:
 (defstate target-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
-         (((method-of-type touching-shapes-entry touching-shapes-entry-method-12)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+         (((method-of-type touching-shapes-entry prims-touching?)
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 1920)
            )
-          (let ((t9-1 target-send-attack)
-                (a1-2 (-> self control unknown-symbol04))
-                (a2-2 (-> arg3 param 0))
-                (a3-1 (-> self control unknown-symbol05))
-                (t0-0 (-> self control unknown-dword05))
-                )
-            (-> self control penetrate-using)
-            (when (t9-1 arg0 (the-as uint a1-2) a2-2 (the-as int a3-1) (the-as int t0-0))
-              (set! (-> self gun combo-window-start) (-> self clock frame-counter))
-              (let ((v0-2 (the-as object (-> self state name))))
-                (set! (-> self gun combo-window-state) (the-as symbol v0-2))
-                v0-2
-                )
+          (when (target-send-attack
+                  proc
+                  (the-as uint (-> self control unknown-symbol04))
+                  (-> event param 0)
+                  (the-as int (-> self control unknown-symbol05))
+                  (the-as int (-> self control unknown-dword05))
+                  (the-as uint (-> self control penetrate-using))
+                  )
+            (set! (-> self gun combo-window-start) (-> self clock frame-counter))
+            (let ((v0-2 (the-as object (-> self state name))))
+              (set! (-> self gun combo-window-state) (the-as symbol v0-2))
+              v0-2
               )
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -2163,7 +2131,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2184,8 +2152,8 @@
         )
     (set-quaternion! (-> self control) (-> self control dir-targ))
     (quaternion-copy! (-> self control unknown-quaternion04) (-> self control dir-targ))
-    (set! (-> self control unknown-float40) 0.0)
     (set! (-> self control unknown-float41) 0.0)
+    (set! (-> self control unknown-float42) 0.0)
     (none)
     )
   :exit (behavior ()
@@ -2376,7 +2344,6 @@
   :post target-post
   )
 
-;; definition for symbol *run-attack-mods*, type surface
 (define *run-attack-mods* (new 'static 'surface
                             :name 'punch
                             :tiltv 32768.0
@@ -2403,76 +2370,75 @@
                             )
         )
 
-;; failed to figure out what this is:
 (defstate target-running-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
-         (((method-of-type touching-shapes-entry touching-shapes-entry-method-12)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+         (((method-of-type touching-shapes-entry prims-touching?)
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 1920)
            )
-          (let ((t9-1 target-send-attack)
-                (a0-3 arg0)
-                (a1-2 (-> self control unknown-symbol04))
-                (a2-2 (-> arg3 param 0))
-                (a3-1 (-> self control unknown-symbol05))
-                (t0-0 (-> self control unknown-dword05))
+          (let ((gp-1 (target-send-attack
+                        proc
+                        (the-as uint (-> self control unknown-symbol04))
+                        (-> event param 0)
+                        (the-as int (-> self control unknown-symbol05))
+                        (the-as int (-> self control unknown-dword05))
+                        (the-as uint (-> self control penetrate-using))
+                        )
+                      )
                 )
-            (-> self control penetrate-using)
-            (let ((gp-1 (t9-1 a0-3 (the-as uint a1-2) a2-2 (the-as int a3-1) (the-as int t0-0))))
-              (when gp-1
-                (set! (-> self control unknown-time-frame17) (-> self clock frame-counter))
-                (set! (-> self gun combo-window-start) (-> self clock frame-counter))
-                (set! (-> self gun combo-window-state) (-> self state name))
-                (let ((v1-13 (if (type? arg0 process-focusable)
-                                 arg0
-                                 )
-                             )
-                      )
-                  (when v1-13
-                    (let* ((s5-1 (-> (the-as target v1-13) control))
-                           (v1-14 (if (type? s5-1 collide-shape)
-                                      s5-1
-                                      )
-                                  )
-                           )
-                      (if (and v1-14 (or (logtest? (-> v1-14 root-prim prim-core collide-as) (collide-spec enemy))
-                                         (logtest? (-> v1-14 root-prim prim-core action) (collide-action no-smack))
-                                         )
+            (when gp-1
+              (set! (-> self control unknown-time-frame17) (-> self clock frame-counter))
+              (set! (-> self gun combo-window-start) (-> self clock frame-counter))
+              (set! (-> self gun combo-window-state) (-> self state name))
+              (let ((v1-13 (if (type? proc process-focusable)
+                               proc
                                )
-                          (set! (-> self control unknown-word04) (the-as uint (+ (-> self control unknown-word04) 1)))
-                          )
-                      )
+                           )
+                    )
+                (when v1-13
+                  (let* ((s5-1 (-> (the-as target v1-13) control))
+                         (v1-14 (if (type? s5-1 collide-shape)
+                                    s5-1
+                                    )
+                                )
+                         )
+                    (if (and v1-14 (or (logtest? (-> v1-14 root-prim prim-core collide-as) (collide-spec enemy))
+                                       (logtest? (-> v1-14 root-prim prim-core action) (collide-action no-smack))
+                                       )
+                             )
+                        (set! (-> self control unknown-word04) (the-as uint (+ (-> self control unknown-word04) 1)))
+                        )
                     )
                   )
-                (cond
-                  ((or (= gp-1 'die) (= gp-1 'push))
-                   (let ((v0-2 (the-as object (-> self clock frame-counter))))
-                     (set! (-> self control unknown-time-frame18) (the-as time-frame v0-2))
-                     v0-2
-                     )
+                )
+              (cond
+                ((or (= gp-1 'die) (= gp-1 'push))
+                 (let ((v0-2 (the-as object (-> self clock frame-counter))))
+                   (set! (-> self control unknown-time-frame18) (the-as time-frame v0-2))
+                   v0-2
                    )
-                  ((= gp-1 'back)
-                   (let ((f0-0 -122880.0))
-                     (set! (-> self control unknown-word04) (the-as uint f0-0))
-                     f0-0
-                     )
+                 )
+                ((= gp-1 'back)
+                 (let ((f0-0 -122880.0))
+                   (set! (-> self control unknown-word04) (the-as uint f0-0))
+                   f0-0
                    )
-                  )
+                 )
                 )
               )
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (('gun-combo)
-       (if (-> arg3 param 0)
+       (if (-> event param 0)
            (go target-stance)
            )
        #t
@@ -2481,7 +2447,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2581,11 +2547,11 @@
                                   )
                           )
                    )
-               (zero? (logand (-> self state-flags) (state-flags sf7 sf8)))
-               (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-attack)))
+               (not (logtest? (-> self state-flags) (state-flags sf7 sf8)))
+               (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack)))
                (let ((v1-48 (ja-group)))
                  (and (not (and v1-48 (= v1-48 (-> self draw art-group data 406))))
-                      (and (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-jump)))
+                      (and (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-jump)))
                            (zero? (logand (-> self state-flags) (state-flags sf7)))
                            )
                       )
@@ -2600,7 +2566,7 @@
       (if (and (logtest? (water-flags touch-water) (-> self water flags))
                (zero? (mod (- (-> self clock frame-counter) (-> self state-time)) 21))
                )
-          (water-control-method-13
+          (spawn-ripples
             (-> self water)
             0.6
             (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 8))
@@ -2697,7 +2663,7 @@
         (when (not (ja-min? 0))
           (cond
             ((and (>= (ja-aframe-num 0) 20.0)
-                  (and (and (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+                  (and (and (not (logtest? (-> self control status) (cshape-moving-flags on-surface)))
                             (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                                 (the-as time-frame (-> *TARGET-bank* ground-timeout))
                                 )
@@ -2718,10 +2684,7 @@
                   )
              (set-forward-vel 0.0)
              )
-            ((and (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                                 (pad-buttons square)
-                                 )
-                         )
+            ((and (not (cpad-hold? (-> self control unknown-cpad-info00 number) square))
                   (>= (- (-> self clock frame-counter) (-> self control unknown-combo-tracker00 move-start-time))
                       (seconds 0.05)
                       )
@@ -2848,12 +2811,12 @@
             (set! (-> *run-attack-mods* turnvv) 0.0)
             )
         (if (< 2 gp-2)
-            (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float43))))
+            (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float44))))
             )
         (+! gp-2 1)
         )
       )
-    (if (and (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+    (if (and (not (logtest? (-> self control status) (cshape-moving-flags on-surface)))
              (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                  (the-as time-frame (-> *TARGET-bank* ground-timeout))
                  )
@@ -2901,7 +2864,6 @@
   :post target-post
   )
 
-;; definition for symbol *jump-attack-mods*, type surface
 (define *jump-attack-mods*
   (new 'static 'surface
     :name 'attack
@@ -2952,17 +2914,16 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-attack-air (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -3105,13 +3066,11 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (let ((v1-32 (copy *turn-around-mods* 'global)))
   (set! (-> v1-32 flags) (surface-flag attack gun-inactive))
   (set! *uppercut-mods* v1-32)
   )
 
-;; definition for symbol *uppercut-jump-mods*, type surface
 (define *uppercut-jump-mods* (new 'static 'surface
                                :name 'uppercut
                                :turnvv 18204.445
@@ -3153,7 +3112,6 @@
                                )
         )
 
-;; failed to figure out what this is:
 (defstate target-attack-uppercut (target)
   :event target-dangerous-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
@@ -3255,7 +3213,7 @@
            (suspend)
            (ja :num! (seek! (ja-aframe 7.0 0)))
            )
-         (go target-darkjak-bomb1)
+         (go target-darkjak-bomb1 arg0 arg1)
          )
         (else
           (ja-no-eval :group! (-> self draw art-group data 51)
@@ -3275,12 +3233,11 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-attack-uppercut-jump (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3312,7 +3269,7 @@
        #t
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3346,8 +3303,8 @@
                (and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame14))
                         (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                         )
-                    (zero? (logand (-> self state-flags) (state-flags sf8)))
-                    (zero? (logand (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
+                    (not (logtest? (-> self state-flags) (state-flags sf8)))
+                    (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands)))
                     (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
                     )
                )
@@ -3468,24 +3425,23 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-flop (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v1-0 symbol))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((begin (set! v1-0 arg2) (= v1-0 'slide))
+        ((begin (set! v1-0 event-type) (= v1-0 'slide))
          #f
          )
         ((= v1-0 'swim)
          (cond
            ((< 6144.0 (target-height-above-ground))
             (sound-play "swim-flop")
-            (set! (-> self control unknown-float42) 0.0)
+            (set! (-> self control unknown-float43) 0.0)
             (go target-swim-down)
             )
            (else
@@ -3494,7 +3450,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -3570,7 +3526,7 @@
         (when (and (or (< (target-move-dist (seconds 0.1)) 1638.4)
                        (and (logtest? (-> self control status) (cshape-moving-flags t-wall)) (< 0.7 (-> self control poly-angle)))
                        )
-                   (zero? (logand (-> self control status) (cshape-moving-flags t-act)))
+                   (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
                    (>= (the-as uint (-> self control unknown-word04)) (the-as uint 2))
                    )
           (set! (-> self control unknown-time-frame14) (-> self clock frame-counter))
@@ -3731,7 +3687,7 @@
           (set! (-> gp-1 param 0) 0.0)
           (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-chan)
           )
-        (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float43))))
+        (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float44))))
         (let ((v1-77 (new-stack-vector0))
               (f0-33 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
               )
@@ -3773,22 +3729,21 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
       ((and (-> self next-state) (= (-> self next-state name) 'target-flop-hit-ground))
-       (case arg2
+       (case event-type
          (('swim 'slide)
           #f
           )
          (else
-           (target-standard-event-handler arg0 arg1 arg2 arg3)
+           (target-standard-event-handler proc arg1 event-type event)
            )
          )
        )
       (else
-        (target-jump-event-handler arg0 arg1 arg2 arg3)
+        (target-jump-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -3876,15 +3831,14 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-roll (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (= arg2 'touched)
-        (send-event arg0 'roll)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (= event-type 'touched)
+        (send-event proc 'roll)
         )
-    (case arg2
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3898,7 +3852,7 @@
        #t
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -4006,7 +3960,7 @@
             )
           (suspend)
           (ja :num! (seek!))
-          (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float43))))
+          (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float44))))
           )
         )
       (if (and (or (< (- (-> self clock frame-counter) (the-as time-frame gp-0))
@@ -4053,12 +4007,11 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-roll-flip (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('gun-combo)
-       (when (-> arg3 param 0)
+       (when (-> event param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -4070,7 +4023,7 @@
        #t
        )
       (else
-        (target-jump-event-handler arg0 arg1 arg2 arg3)
+        (target-jump-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -4157,7 +4110,7 @@
           )
         (suspend)
         (ja :num! (seek!))
-        (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float43))))
+        (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float44))))
         (set! v1-37
               (or (ja-max? 0)
                   (and (>= (ja-aframe-num 0) 4.0) (logtest? (-> self control status) (cshape-moving-flags on-surface)))
@@ -4166,7 +4119,7 @@
         )
       )
     (set! (-> self state-time) (-> self clock frame-counter))
-    (while (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+    (while (not (logtest? (-> self control status) (cshape-moving-flags on-surface)))
       (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.01))
         (let ((v1-50 (ja-group)))
           (when (not (and v1-50 (= v1-50 (-> self draw art-group data 27))))
@@ -4227,9 +4180,8 @@
             (none)
             )
           )
-    self
     (cond
-      ((not (can-exit-duck?))
+      ((not (can-exit-duck? self))
        (go target-duck-stance #f)
        )
       (else
