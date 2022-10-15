@@ -21,9 +21,11 @@
 
 using namespace iop;
 
-static RPC_Str_Cmd sSTRBuf;
+static RPC_Str_Cmd_Jak1 sSTRBufJak1;
+static RPC_Str_Cmd_Jak2 sSTRBufJak2;
 static RPC_Play_Cmd sPLAYBuf[2];  // todo type
-void* RPC_STR(unsigned int fno, void* _cmd, int y);
+void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y);
+void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
 
 static constexpr int PLAY_MSG_SIZE = 0x40;
@@ -48,7 +50,8 @@ constexpr int STR_INDEX_CACHE_SIZE = 4;
 CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd));
+  memset(&sSTRBufJak1, 0, sizeof(RPC_Str_Cmd_Jak1));
+  memset(&sSTRBufJak2, 0, sizeof(RPC_Str_Cmd_Jak2));
   memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
 }
 
@@ -62,7 +65,16 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
+  if (g_game_version == GameVersion::Jak1) {
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak1, &sSTRBufJak1, nullptr,
+                      nullptr, &dq);
+  } else if (g_game_version == GameVersion::Jak2) {
+    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr,
+                      nullptr, &dq);
+  } else {
+    ASSERT_MSG(false, "unsupported game version in STRThread initialization!");
+  }
+
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -84,10 +96,10 @@ u32 PLAYThread() {
 /*!
  * The STR RPC handler.
  */
-void* RPC_STR(unsigned int fno, void* _cmd, int y) {
+void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y) {
   (void)fno;
   (void)y;
-  auto* cmd = (RPC_Str_Cmd*)_cmd;
+  auto* cmd = (RPC_Str_Cmd_Jak1*)_cmd;
   if (cmd->chunk_id < 0) {
     // it's _not_ a stream file. So we just treat it like a normal load.
 
@@ -157,6 +169,42 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
         cmd->result = 0;
       }
     }
+  }
+
+  return cmd;
+}
+
+/*!
+ * The STR RPC handler.
+ */
+void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
+  (void)fno;
+  (void)y;
+  auto* cmd = (RPC_Str_Cmd_Jak2*)_cmd;
+  if (cmd->section < 0) {
+    // it's _not_ a stream file. So we just treat it like a normal load.
+
+    // find the file with the given name
+    auto file_record = isofs->find(cmd->basename);
+    if (file_record == nullptr) {
+      // file not found!
+      printf("[OVERLORD STR] Failed to find file %s for loading.\n", cmd->basename);
+      cmd->result = STR_RPC_RESULT_ERROR;
+    } else {
+      // load directly to the EE
+      cmd->maxlen = LoadISOFileToEE(file_record, cmd->address, cmd->maxlen);
+      if (cmd->maxlen) {
+        // successful load!
+        cmd->result = STR_RPC_RESULT_DONE;
+      } else {
+        // there was an error loading.
+        cmd->result = STR_RPC_RESULT_ERROR;
+      }
+    }
+  } else {
+    // TODO - not yet implemented
+    ASSERT_MSG(false, "this branch of RPC_STR has not yet been implemented!");
+    cmd->result = STR_RPC_RESULT_ERROR;
   }
 
   return cmd;

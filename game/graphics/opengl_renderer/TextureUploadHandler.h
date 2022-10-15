@@ -21,4 +21,5 @@ class TextureUploadHandler : public BucketRenderer {
   };
   void flush_uploads(std::vector<TextureUpload>& uploads, SharedRenderState* render_state);
   bool m_fake_uploads = false;
+  int m_upload_count = 0;
 };

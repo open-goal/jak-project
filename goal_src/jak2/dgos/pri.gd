@@ -16,5 +16,3 @@
   ("prsn-cell-door-ag.go" "prsn-cell-door")
   ("prison-vis.go" "prison-vis")
   )
-
-

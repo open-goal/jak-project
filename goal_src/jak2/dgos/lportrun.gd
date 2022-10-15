@@ -1,0 +1,10 @@
+("LPORTRUN.DGO"
+  ("portrun.o" "portrun")
+  ("tpage-2817.go" "tpage-2817")
+  ("tpage-2373.go" "tpage-2373")
+  ("ctyport-cargo-ag.go" "ctyport-cargo")
+  ("ctyport-spy-ag.go" "ctyport-spy")
+  ("mine-b-ag.go" "sew-mine-b")
+  ("ctyport-mine-ag.go" "ctyport-mine")
+  ("lportrun.go" "lportrun")
+  )
