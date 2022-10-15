@@ -454,7 +454,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // note, inlined functions will get a more specific type if possible
       // todo, is this right?
       auto type = eval_args.at(i)->type();
-      auto copy = env->make_ireg(type, m_ts.lookup_type(type)->get_preferred_reg_class());
+      auto copy =
+          env->make_ireg(type, m_ts.lookup_type_allow_partial_def(type)->get_preferred_reg_class());
       env->emit_ir<IR_RegSet>(form, copy, eval_args.at(i));
       copy->mark_as_settable();
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
