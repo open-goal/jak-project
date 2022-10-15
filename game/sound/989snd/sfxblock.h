@@ -72,7 +72,7 @@ struct LargestGrainParamStruct {
   /*   0 */ char blank[32];
 };
 
-struct SFXGrain {
+struct Grain {
   /*   0 */ u32 Type;
   /*   4 */ s32 Delay;
   union {
@@ -104,7 +104,7 @@ enum SFXFlags {
 
 struct SFX {
   SFXData d;
-  std::vector<SFXGrain> grains;
+  std::vector<Grain> grains;
 };
 
 class SFXBlock : public SoundBank {

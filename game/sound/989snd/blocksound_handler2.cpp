@@ -12,7 +12,7 @@ std::array<u8, 32> g_block_reg{};
 
 void blocksound_handler2::init() {
   m_next_grain = 0;
-  m_countdown = m_sfx.grains[0].Delay;
+  m_countdown = m_sfx.grains[0]->delay();
 
   // if (m_sfx.d.Flags & 2) {
   //   fmt::print("solo flag\n");
@@ -165,59 +165,10 @@ void blocksound_handler2::set_pbend(s32 bend) {
   update_pitch();
 }
 
-s32 blocksound_handler2::null(SFXGrain2& grain) {
-  return 0;
-}
-
-s32 blocksound_handler2::play_tone(SFXGrain2& grain) {
-  // auto voice = std::make_shared<vag_voice>(grain.GrainParams.tone);
-
-  // voice->basevol = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, grain.GrainParams.tone.Vol,
-  //                                   grain.GrainParams.tone.Pan);
-
-  // voice->start_note = m_note;
-  // voice->start_fine = m_fine;
-  // voice->group = m_group;
-
-  // m_vm.start_tone(voice);
-  // m_voices.emplace_front(voice);
-
-  return 0;
-}
-
-s32 blocksound_handler2::rand_play(SFXGrain2& grain) {
-  // int options = grain.GrainParams.control.param[0];
-  // int count = grain.GrainParams.control.param[1];
-  // int previous = grain.GrainParams.control.param[2];
-
-  // int rnd = rand() % options;
-  // if (rnd == previous) {
-  //   rnd++;
-  //   if (rnd >= options) {
-  //     rnd = 0;
-  //   }
-  // }
-
-  // grain.GrainParams.control.param[2] = rnd;
-  // m_next_grain += rnd * count;
-  // m_grains_to_play = count + 1;
-  // m_grains_to_skip = (options - 1 - rnd) * count;
-  // m_skip_grains = true;
-
-  return 0;
-}
-
 void blocksound_handler2::do_grain() {
   auto& grain = m_sfx.grains[m_next_grain];
 
-  auto handler = m_grain_handler.find((grain_type)grain.OpcodeData.type);
-  if (handler != m_grain_handler.end()) {
-    (this->*(handler->second))(grain);
-  } else {
-    lg::warn("{}: Ignoring grain {}, type {}({}, {}, {})", (void*)this, m_next_grain,
-             grain.OpcodeData.type, grain.OpcodeData.arg[0], grain.OpcodeData.arg[1],
-             grain.OpcodeData.arg[2]);
-  }
+  grain->execute(*this);
 
   if (m_skip_grains) {
     m_grains_to_play--;
@@ -233,7 +184,7 @@ void blocksound_handler2::do_grain() {
     return;
   }
 
-  m_countdown = m_sfx.grains[m_next_grain].Delay;
+  m_countdown = m_sfx.grains[m_next_grain]->delay();
 }
 
 }  // namespace snd

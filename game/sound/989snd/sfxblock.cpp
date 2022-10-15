@@ -18,9 +18,9 @@ SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
   }
 
   for (auto& sound : m_sounds) {
-    auto graindata = (SFXGrain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
+    auto graindata = (Grain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
     for (int i = 0; i < sound.d.NumGrains; i++) {
-      SFXGrain grain = graindata[i];
+      Grain grain = graindata[i];
       sound.grains.push_back(grain);
     }
   }

@@ -7,10 +7,10 @@
 
 #include "midi_handler.h"
 #include "sfxblock.h"
+#include "sfxblock2.h"
 
 #include "common/log/log.h"
 
-#include "sfxblock2.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -28,10 +28,13 @@ u32 loader::read_bank(std::fstream& in) {
     return -1;
   }
 
+  /*
+   * if there's midi data the pointer to the allocated memory is stored
+   * just before the sound bank data...
   if (attr.num_chunks > 2) {
-    // Fix for bugged tooling I assume?
     attr.where[chunk::bank].size += 4;
   }
+  */
 
   // auto pos = in.tellg();
   auto bank_buf = std::make_unique<u8[]>(attr.where[chunk::bank].size);

@@ -13,14 +13,14 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
   for (int i = 0; i < data->NumSounds; i++) {
     SFX2 sound;
     sound.d = sounddata[i];
-    m_sounds.push_back(sound);
+    m_sounds.push_back(std::move(sound));
   }
 
   for (auto& sound : m_sounds) {
     auto graindata = (SFXGrain2*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
     for (int i = 0; i < sound.d.NumGrains; i++) {
-      SFXGrain2 grain = graindata[i];
-      sound.grains.push_back(grain);
+      //SFXGrain2 grain = graindata[i];
+      //sound.grains.push_back(grain);
     }
   }
 

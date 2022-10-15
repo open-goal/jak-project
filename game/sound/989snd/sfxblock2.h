@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 
+#include "sfxgrain.h"
 #include "soundbank.h"
 
 namespace snd {
@@ -75,22 +76,9 @@ struct SFX2Data {
   /*   8 */ u32 FirstGrain;
 };
 
-struct SFXGrain2 {
-  union {
-    struct {
-      s8 arg[3];
-      u8 type;
-    };
-
-    u32 Opcode;
-  } OpcodeData;
-
-  s32 Delay;
-};
-
 struct SFX2 {
   SFX2Data d;
-  std::vector<SFXGrain2> grains;
+  std::vector<std::unique_ptr<Grain>> grains;
 };
 
 class SFXBlock2 : public SoundBank {
