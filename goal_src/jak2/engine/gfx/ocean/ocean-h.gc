@@ -599,248 +599,342 @@
 
 (define *ocean-map* (the-as ocean-map #f))
 
-(define *ocean* (new 'static 'ocean
-                  :sprite-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x508b400000008001 #x53531)
-                    )
-                  :sprite-tmpl2 (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x3023400000008001 #x551)
-                    )
-                  :sprite-tmpl3 (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
-                    )
-                  :adgif-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x1000000000008005 #xe)
-                    )
-                  :line-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x141 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x141 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x5008c00000008040 #x52521)
-                    )
-                  :sun-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x502b400000008001 #x52521)
-                    )
-                  :erase-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x3003400000008001 #x551)
-                    )
-                  :haze-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x45 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x45 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x4026400000008011 #x4141)
-                    )
-                  :cloud-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x25 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x25 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x602e400000008006 #x421421)
-                    )
-                  :clut-tmpl (new 'static 'dma-gif-packet
-                    :dma-vif (new 'static 'dma-packet
-                      :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                      :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                      )
-                    :gif (new 'static 'array uint64 2 #x800000000008040 #x0)
-                    )
-                  :constant (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
-                  :haze-verts (new 'static 'inline-array vector4w 32
-                    (new 'static 'vector4w :x #x400 :y #x5c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x400 :y #x600 :z #xffffff)
-                    (new 'static 'vector4w :x #x4a0 :y #x590 :z #xffffff)
-                    (new 'static 'vector4w :x #x4c0 :y #x5e0 :z #xffffff)
-                    (new 'static 'vector4w :x #x530 :y #x530 :z #xffffff)
-                    (new 'static 'vector4w :x #x560 :y #x560 :z #xffffff)
-                    (new 'static 'vector4w :x #x590 :y #x4a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x5e0 :y #x4c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x5c0 :y #x3f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x600 :y #x3f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x590 :y #x350 :z #xffffff)
-                    (new 'static 'vector4w :x #x5e0 :y #x330 :z #xffffff)
-                    (new 'static 'vector4w :x #x530 :y #x2c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x560 :y #x290 :z #xffffff)
-                    (new 'static 'vector4w :x #x4a0 :y #x260 :z #xffffff)
-                    (new 'static 'vector4w :x #x4c0 :y #x210 :z #xffffff)
-                    (new 'static 'vector4w :x #x3f0 :y #x240 :z #xffffff)
-                    (new 'static 'vector4w :x #x3f0 :y #x1f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x350 :y #x260 :z #xffffff)
-                    (new 'static 'vector4w :x #x330 :y #x210 :z #xffffff)
-                    (new 'static 'vector4w :x #x2c0 :y #x2c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x290 :y #x290 :z #xffffff)
-                    (new 'static 'vector4w :x #x260 :y #x350 :z #xffffff)
-                    (new 'static 'vector4w :x #x210 :y #x330 :z #xffffff)
-                    (new 'static 'vector4w :x #x240 :y #x400 :z #xffffff)
-                    (new 'static 'vector4w :x #x1f0 :y #x400 :z #xffffff)
-                    (new 'static 'vector4w :x #x260 :y #x4a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x210 :y #x4c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x2c0 :y #x530 :z #xffffff)
-                    (new 'static 'vector4w :x #x290 :y #x560 :z #xffffff)
-                    (new 'static 'vector4w :x #x350 :y #x590 :z #xffffff)
-                    (new 'static 'vector4w :x #x330 :y #x5e0 :z #xffffff)
-                    )
-                  :cloud-verts (new 'static 'inline-array vector4w 36
-                    (new 'static 'vector4w :x #x290 :y #x290 :z #xffffff)
-                    (new 'static 'vector4w :x #x310 :y #x230 :z #xffffff)
-                    (new 'static 'vector4w :x #x3a0 :y #x200 :z #xffffff)
-                    (new 'static 'vector4w :x #x450 :y #x200 :z #xffffff)
-                    (new 'static 'vector4w :x #x4e0 :y #x230 :z #xffffff)
-                    (new 'static 'vector4w :x #x560 :y #x290 :z #xffffff)
-                    (new 'static 'vector4w :x #x230 :y #x310 :z #xffffff)
-                    (new 'static 'vector4w :x #x300 :y #x300 :z #xffffff)
-                    (new 'static 'vector4w :x #x3a0 :y #x2b0 :z #xffffff)
-                    (new 'static 'vector4w :x #x450 :y #x2b0 :z #xffffff)
-                    (new 'static 'vector4w :x #x4f0 :y #x300 :z #xffffff)
-                    (new 'static 'vector4w :x #x5c0 :y #x310 :z #xffffff)
-                    (new 'static 'vector4w :x #x200 :y #x3a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x2b0 :y #x3a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x380 :y #x380 :z #xffffff)
-                    (new 'static 'vector4w :x #x470 :y #x380 :z #xffffff)
-                    (new 'static 'vector4w :x #x540 :y #x3a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x5f0 :y #x3a0 :z #xffffff)
-                    (new 'static 'vector4w :x #x200 :y #x450 :z #xffffff)
-                    (new 'static 'vector4w :x #x2b0 :y #x450 :z #xffffff)
-                    (new 'static 'vector4w :x #x380 :y #x470 :z #xffffff)
-                    (new 'static 'vector4w :x #x470 :y #x470 :z #xffffff)
-                    (new 'static 'vector4w :x #x540 :y #x450 :z #xffffff)
-                    (new 'static 'vector4w :x #x5f0 :y #x450 :z #xffffff)
-                    (new 'static 'vector4w :x #x230 :y #x4e0 :z #xffffff)
-                    (new 'static 'vector4w :x #x300 :y #x4f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x3a0 :y #x540 :z #xffffff)
-                    (new 'static 'vector4w :x #x450 :y #x540 :z #xffffff)
-                    (new 'static 'vector4w :x #x4f0 :y #x4f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x5c0 :y #x4e0 :z #xffffff)
-                    (new 'static 'vector4w :x #x290 :y #x560 :z #xffffff)
-                    (new 'static 'vector4w :x #x310 :y #x5c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x3a0 :y #x5f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x450 :y #x5f0 :z #xffffff)
-                    (new 'static 'vector4w :x #x4e0 :y #x5c0 :z #xffffff)
-                    (new 'static 'vector4w :x #x560 :y #x560 :z #xffffff)
-                    )
-                  :cloud-nrms (new 'static 'inline-array vector 36
-                    (new 'static 'vector :x -0.4999 :y 0.7071 :z -0.5)
-                    (new 'static 'vector :x -0.3209 :y 0.7071 :z -0.63)
-                    (new 'static 'vector :x -0.1105 :y 0.7071 :z -0.6984)
-                    (new 'static 'vector :x 0.1105 :y 0.7071 :z -0.6983)
-                    (new 'static 'vector :x 0.321 :y 0.7071 :z -0.63)
-                    (new 'static 'vector :x 0.5 :y 0.7071 :z -0.4999)
-                    (new 'static 'vector :x -0.63 :y 0.7071 :z -0.321)
-                    (new 'static 'vector :x -0.3921 :y 0.832 :z -0.3922)
-                    (new 'static 'vector :x -0.1434 :y 0.832 :z -0.5358)
-                    (new 'static 'vector :x 0.1435 :y 0.832 :z -0.5357)
-                    (new 'static 'vector :x 0.3922 :y 0.832 :z -0.3921)
-                    (new 'static 'vector :x 0.63 :y 0.7071 :z -0.3209)
-                    (new 'static 'vector :x -0.6983 :y 0.7071 :z -0.1106)
-                    (new 'static 'vector :x -0.5357 :y 0.832 :z -0.1435)
-                    (new 'static 'vector :x -0.334 :y 0.8814 :z -0.334)
-                    (new 'static 'vector :x 0.334 :y 0.8814 :z -0.334)
-                    (new 'static 'vector :x 0.5358 :y 0.832 :z -0.1434)
-                    (new 'static 'vector :x 0.6984 :y 0.7071 :z -0.1105)
-                    (new 'static 'vector :x -0.6984 :y 0.7071 :z 0.1105)
-                    (new 'static 'vector :x -0.5358 :y 0.832 :z 0.1435)
-                    (new 'static 'vector :x -0.334 :y 0.8814 :z 0.334)
-                    (new 'static 'vector :x 0.334 :y 0.8814 :z 0.334)
-                    (new 'static 'vector :x 0.5357 :y 0.832 :z 0.1435)
-                    (new 'static 'vector :x 0.6983 :y 0.7071 :z 0.1105)
-                    (new 'static 'vector :x -0.63 :y 0.7071 :z 0.321)
-                    (new 'static 'vector :x -0.3922 :y 0.832 :z 0.3921)
-                    (new 'static 'vector :x -0.1435 :y 0.832 :z 0.5357)
-                    (new 'static 'vector :x 0.1435 :y 0.832 :z 0.5358)
-                    (new 'static 'vector :x 0.3922 :y 0.832 :z 0.3922)
-                    (new 'static 'vector :x 0.63 :y 0.7071 :z 0.321)
-                    (new 'static 'vector :x -0.5 :y 0.7071 :z 0.4999)
-                    (new 'static 'vector :x -0.321 :y 0.7071 :z 0.63)
-                    (new 'static 'vector :x -0.1106 :y 0.7071 :z 0.6983)
-                    (new 'static 'vector :x 0.1105 :y 0.7071 :z 0.6984)
-                    (new 'static 'vector :x 0.321 :y 0.7071 :z 0.63)
-                    (new 'static 'vector :x 0.4999 :y 0.7071 :z 0.5)
-                    )
-                  :color80808080 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                  :color80808040 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w 64)
-                  :color80808000 (new 'static 'vector4w :x #x80 :y #x80 :z #x80)
-                  :st0000 (new 'static 'vector :z 1.0)
-                  :st0505 (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
-                  :st1010 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
-                  :uv44 (new 'static 'vector4w :x 64 :y 64)
-                  :uv88 (new 'static 'vector4w :x #x80 :y #x80)
-                  :uv1010 (new 'static 'vector4w :x #x100 :y #x100)
-                  :uv2020 (new 'static 'vector4w :x #x200 :y #x200)
-                  :uv4040 (new 'static 'vector4w :x #x400 :y #x400)
-                  :uv8080 (new 'static 'vector4w :x #x800 :y #x800)
-                  :xy00 (new 'static 'vector4w :z #xffffff)
-                  :xy88 (new 'static 'vector4w :x #x80 :y #x80 :z #xffffff)
-                  :xy1010 (new 'static 'vector4w :x #x100 :y #x100 :z #xffffff)
-                  :xy2020 (new 'static 'vector4w :x #x200 :y #x200 :z #xffffff)
-                  :xy4040 (new 'static 'vector4w :x #x400 :y #x400 :z #xffffff)
-                  :xy8080 (new 'static 'vector4w :x #x800 :y #x800 :z #xffffff)
-                  :cloud-alpha (new 'static 'array uint8 36
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    #x80
-                    )
-                  :tex1 #xeed00080178
-                  :tex1-near #xeed0008016c
-                  :scales (new 'static 'vector :x -0.00012207031 :y 255.0 :z -0.00012207031 :w 128.0)
-                  :mask-hi (new 'static 'vector4w :x -65536 :y -65536 :z -65536 :w -65536)
-                  :mask-lo (new 'static 'vector4w :x #xffff :y #xffff :z #xffff :w #xffff)
-                  )
+(define *ocean*
+  (new 'static 'ocean
+    :sprite-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :sprite-tmpl2 (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
+        :nreg #x3
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2))
+      )
+    :sprite-tmpl3 (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :adgif-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+      )
+    :line-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x141 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x141 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x40
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :tme #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id st)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :sun-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id st)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :erase-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite))
+        :nreg #x3
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2))
+      )
+    :haze-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x45 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x45 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x11
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
+        :nreg #x4
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id xyzf2)
+        :regs2 (gif-reg-id rgbaq)
+        :regs3 (gif-reg-id xyzf2)
+        )
+      )
+    :cloud-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x25 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x25 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x6
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #x6
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyzf2)
+        :regs3 (gif-reg-id rgbaq)
+        :regs4 (gif-reg-id st)
+        :regs5 (gif-reg-id xyzf2)
+        )
+      )
+    :clut-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64 :nloop #x40 :eop #x1 :flg (gif-flag image))
+      )
+    :constant (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+    :haze-verts (new 'static 'inline-array vector4w 32
+      (new 'static 'vector4w :x #x400 :y #x5c0 :z #xffffff)
+      (new 'static 'vector4w :x #x400 :y #x600 :z #xffffff)
+      (new 'static 'vector4w :x #x4a0 :y #x590 :z #xffffff)
+      (new 'static 'vector4w :x #x4c0 :y #x5e0 :z #xffffff)
+      (new 'static 'vector4w :x #x530 :y #x530 :z #xffffff)
+      (new 'static 'vector4w :x #x560 :y #x560 :z #xffffff)
+      (new 'static 'vector4w :x #x590 :y #x4a0 :z #xffffff)
+      (new 'static 'vector4w :x #x5e0 :y #x4c0 :z #xffffff)
+      (new 'static 'vector4w :x #x5c0 :y #x3f0 :z #xffffff)
+      (new 'static 'vector4w :x #x600 :y #x3f0 :z #xffffff)
+      (new 'static 'vector4w :x #x590 :y #x350 :z #xffffff)
+      (new 'static 'vector4w :x #x5e0 :y #x330 :z #xffffff)
+      (new 'static 'vector4w :x #x530 :y #x2c0 :z #xffffff)
+      (new 'static 'vector4w :x #x560 :y #x290 :z #xffffff)
+      (new 'static 'vector4w :x #x4a0 :y #x260 :z #xffffff)
+      (new 'static 'vector4w :x #x4c0 :y #x210 :z #xffffff)
+      (new 'static 'vector4w :x #x3f0 :y #x240 :z #xffffff)
+      (new 'static 'vector4w :x #x3f0 :y #x1f0 :z #xffffff)
+      (new 'static 'vector4w :x #x350 :y #x260 :z #xffffff)
+      (new 'static 'vector4w :x #x330 :y #x210 :z #xffffff)
+      (new 'static 'vector4w :x #x2c0 :y #x2c0 :z #xffffff)
+      (new 'static 'vector4w :x #x290 :y #x290 :z #xffffff)
+      (new 'static 'vector4w :x #x260 :y #x350 :z #xffffff)
+      (new 'static 'vector4w :x #x210 :y #x330 :z #xffffff)
+      (new 'static 'vector4w :x #x240 :y #x400 :z #xffffff)
+      (new 'static 'vector4w :x #x1f0 :y #x400 :z #xffffff)
+      (new 'static 'vector4w :x #x260 :y #x4a0 :z #xffffff)
+      (new 'static 'vector4w :x #x210 :y #x4c0 :z #xffffff)
+      (new 'static 'vector4w :x #x2c0 :y #x530 :z #xffffff)
+      (new 'static 'vector4w :x #x290 :y #x560 :z #xffffff)
+      (new 'static 'vector4w :x #x350 :y #x590 :z #xffffff)
+      (new 'static 'vector4w :x #x330 :y #x5e0 :z #xffffff)
+      )
+    :cloud-verts (new 'static 'inline-array vector4w 36
+      (new 'static 'vector4w :x #x290 :y #x290 :z #xffffff)
+      (new 'static 'vector4w :x #x310 :y #x230 :z #xffffff)
+      (new 'static 'vector4w :x #x3a0 :y #x200 :z #xffffff)
+      (new 'static 'vector4w :x #x450 :y #x200 :z #xffffff)
+      (new 'static 'vector4w :x #x4e0 :y #x230 :z #xffffff)
+      (new 'static 'vector4w :x #x560 :y #x290 :z #xffffff)
+      (new 'static 'vector4w :x #x230 :y #x310 :z #xffffff)
+      (new 'static 'vector4w :x #x300 :y #x300 :z #xffffff)
+      (new 'static 'vector4w :x #x3a0 :y #x2b0 :z #xffffff)
+      (new 'static 'vector4w :x #x450 :y #x2b0 :z #xffffff)
+      (new 'static 'vector4w :x #x4f0 :y #x300 :z #xffffff)
+      (new 'static 'vector4w :x #x5c0 :y #x310 :z #xffffff)
+      (new 'static 'vector4w :x #x200 :y #x3a0 :z #xffffff)
+      (new 'static 'vector4w :x #x2b0 :y #x3a0 :z #xffffff)
+      (new 'static 'vector4w :x #x380 :y #x380 :z #xffffff)
+      (new 'static 'vector4w :x #x470 :y #x380 :z #xffffff)
+      (new 'static 'vector4w :x #x540 :y #x3a0 :z #xffffff)
+      (new 'static 'vector4w :x #x5f0 :y #x3a0 :z #xffffff)
+      (new 'static 'vector4w :x #x200 :y #x450 :z #xffffff)
+      (new 'static 'vector4w :x #x2b0 :y #x450 :z #xffffff)
+      (new 'static 'vector4w :x #x380 :y #x470 :z #xffffff)
+      (new 'static 'vector4w :x #x470 :y #x470 :z #xffffff)
+      (new 'static 'vector4w :x #x540 :y #x450 :z #xffffff)
+      (new 'static 'vector4w :x #x5f0 :y #x450 :z #xffffff)
+      (new 'static 'vector4w :x #x230 :y #x4e0 :z #xffffff)
+      (new 'static 'vector4w :x #x300 :y #x4f0 :z #xffffff)
+      (new 'static 'vector4w :x #x3a0 :y #x540 :z #xffffff)
+      (new 'static 'vector4w :x #x450 :y #x540 :z #xffffff)
+      (new 'static 'vector4w :x #x4f0 :y #x4f0 :z #xffffff)
+      (new 'static 'vector4w :x #x5c0 :y #x4e0 :z #xffffff)
+      (new 'static 'vector4w :x #x290 :y #x560 :z #xffffff)
+      (new 'static 'vector4w :x #x310 :y #x5c0 :z #xffffff)
+      (new 'static 'vector4w :x #x3a0 :y #x5f0 :z #xffffff)
+      (new 'static 'vector4w :x #x450 :y #x5f0 :z #xffffff)
+      (new 'static 'vector4w :x #x4e0 :y #x5c0 :z #xffffff)
+      (new 'static 'vector4w :x #x560 :y #x560 :z #xffffff)
+      )
+    :cloud-nrms (new 'static 'inline-array vector 36
+      (new 'static 'vector :x -0.4999 :y 0.7071 :z -0.5)
+      (new 'static 'vector :x -0.3209 :y 0.7071 :z -0.63)
+      (new 'static 'vector :x -0.1105 :y 0.7071 :z -0.6984)
+      (new 'static 'vector :x 0.1105 :y 0.7071 :z -0.6983)
+      (new 'static 'vector :x 0.321 :y 0.7071 :z -0.63)
+      (new 'static 'vector :x 0.5 :y 0.7071 :z -0.4999)
+      (new 'static 'vector :x -0.63 :y 0.7071 :z -0.321)
+      (new 'static 'vector :x -0.3921 :y 0.832 :z -0.3922)
+      (new 'static 'vector :x -0.1434 :y 0.832 :z -0.5358)
+      (new 'static 'vector :x 0.1435 :y 0.832 :z -0.5357)
+      (new 'static 'vector :x 0.3922 :y 0.832 :z -0.3921)
+      (new 'static 'vector :x 0.63 :y 0.7071 :z -0.3209)
+      (new 'static 'vector :x -0.6983 :y 0.7071 :z -0.1106)
+      (new 'static 'vector :x -0.5357 :y 0.832 :z -0.1435)
+      (new 'static 'vector :x -0.334 :y 0.8814 :z -0.334)
+      (new 'static 'vector :x 0.334 :y 0.8814 :z -0.334)
+      (new 'static 'vector :x 0.5358 :y 0.832 :z -0.1434)
+      (new 'static 'vector :x 0.6984 :y 0.7071 :z -0.1105)
+      (new 'static 'vector :x -0.6984 :y 0.7071 :z 0.1105)
+      (new 'static 'vector :x -0.5358 :y 0.832 :z 0.1435)
+      (new 'static 'vector :x -0.334 :y 0.8814 :z 0.334)
+      (new 'static 'vector :x 0.334 :y 0.8814 :z 0.334)
+      (new 'static 'vector :x 0.5357 :y 0.832 :z 0.1435)
+      (new 'static 'vector :x 0.6983 :y 0.7071 :z 0.1105)
+      (new 'static 'vector :x -0.63 :y 0.7071 :z 0.321)
+      (new 'static 'vector :x -0.3922 :y 0.832 :z 0.3921)
+      (new 'static 'vector :x -0.1435 :y 0.832 :z 0.5357)
+      (new 'static 'vector :x 0.1435 :y 0.832 :z 0.5358)
+      (new 'static 'vector :x 0.3922 :y 0.832 :z 0.3922)
+      (new 'static 'vector :x 0.63 :y 0.7071 :z 0.321)
+      (new 'static 'vector :x -0.5 :y 0.7071 :z 0.4999)
+      (new 'static 'vector :x -0.321 :y 0.7071 :z 0.63)
+      (new 'static 'vector :x -0.1106 :y 0.7071 :z 0.6983)
+      (new 'static 'vector :x 0.1105 :y 0.7071 :z 0.6984)
+      (new 'static 'vector :x 0.321 :y 0.7071 :z 0.63)
+      (new 'static 'vector :x 0.4999 :y 0.7071 :z 0.5)
+      )
+    :color80808080 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    :color80808040 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w 64)
+    :color80808000 (new 'static 'vector4w :x #x80 :y #x80 :z #x80)
+    :st0000 (new 'static 'vector :z 1.0)
+    :st0505 (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
+    :st1010 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+    :uv44 (new 'static 'vector4w :x 64 :y 64)
+    :uv88 (new 'static 'vector4w :x #x80 :y #x80)
+    :uv1010 (new 'static 'vector4w :x #x100 :y #x100)
+    :uv2020 (new 'static 'vector4w :x #x200 :y #x200)
+    :uv4040 (new 'static 'vector4w :x #x400 :y #x400)
+    :uv8080 (new 'static 'vector4w :x #x800 :y #x800)
+    :xy00 (new 'static 'vector4w :z #xffffff)
+    :xy88 (new 'static 'vector4w :x #x80 :y #x80 :z #xffffff)
+    :xy1010 (new 'static 'vector4w :x #x100 :y #x100 :z #xffffff)
+    :xy2020 (new 'static 'vector4w :x #x200 :y #x200 :z #xffffff)
+    :xy4040 (new 'static 'vector4w :x #x400 :y #x400 :z #xffffff)
+    :xy8080 (new 'static 'vector4w :x #x800 :y #x800 :z #xffffff)
+    :cloud-alpha (new 'static 'array uint8 36
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      #x80
+      )
+    :tex1 #xeed00080178
+    :tex1-near #xeed0008016c
+    :scales (new 'static 'vector :x -0.00012207031 :y 255.0 :z -0.00012207031 :w 128.0)
+    :mask-hi (new 'static 'vector4w :x -65536 :y -65536 :z -65536 :w -65536)
+    :mask-lo (new 'static 'vector4w :x #xffff :y #xffff :z #xffff :w #xffff)
+    )
+  )
