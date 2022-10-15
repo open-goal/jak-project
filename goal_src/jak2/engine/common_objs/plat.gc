@@ -24,27 +24,10 @@
   )
 
 
-(let ((a0-2 (new 'static 'skeleton-group
-              :name "skel-plat"
-              :extra #f
-              :info #f
-              :art-group-name "plat"
-              :bounds (new 'static 'vector :y -2048.0 :w 12288.0)
-              :max-lod 2
-              :version #x7
+(defskelgroup skel-plat plat 0 4
+              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+              :bounds (static-spherem 0 -0.5 0 3)
               )
-            )
-      )
-  (set! (-> a0-2 jgeo) 0)
-  (set! (-> a0-2 janim) 4)
-  (set! (-> a0-2 mgeo 0) 1)
-  (set! (-> a0-2 lod-dist 0) 81920.0)
-  (set! (-> a0-2 mgeo 1) 2)
-  (set! (-> a0-2 lod-dist 1) 163840.0)
-  (set! (-> a0-2 mgeo 2) 3)
-  (set! (-> a0-2 lod-dist 2) 4095996000.0)
-  (add-to-loading-level a0-2)
-  )
 
 (defmethod get-art-group plat ((obj plat))
   "@returns The associated [[art-group]]"
@@ -243,11 +226,11 @@
   (if (nonzero? (-> obj break-anim-name))
       (&+! (-> obj break-anim-name) arg0)
       )
-  (let ((v1-5 (-> obj anim buffer)))
+  (let ((v1-5 (-> obj anim anim-name)))
     (if (and (>= (the-as int v1-5) (-> *kernel-context* relocating-min))
              (< (the-as int v1-5) (-> *kernel-context* relocating-max))
              )
-        (&+! (-> obj anim buffer) arg0)
+        (set! (-> obj anim anim-name) (&+ (the-as external-art-buffer (-> obj anim anim-name)) arg0))
         )
     )
   (the-as drop-plat ((method-of-type base-plat relocate) obj arg0))

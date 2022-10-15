@@ -6,7 +6,8 @@
 ;; dgos: ENGINE, GAME
 
 (define-extern *setting-control* setting-control)
-(define-extern can-exit-duck? (function symbol :behavior target))
+(define-extern can-exit-duck? (function target symbol))
+(define-extern target-collide-set! (function symbol float int :behavior target))
 
 ;; DECOMP BEGINS
 
@@ -114,7 +115,7 @@
    (charge-ammo            float                      :offset-assert 672)
    (charge-start-time      time-frame                 :offset-assert 680)
    (charge-inc-time        time-frame                 :offset-assert 688)
-   (charge-active?         uint64                     :offset-assert 696)
+   (charge-active?         handle                     :offset-assert 696)
    )
   :method-count-assert 10
   :size-assert         #x2c0
@@ -129,19 +130,19 @@
   (local-vars (v1-36 symbol))
   (and (logtest? (-> arg0 game features) (game-feature unk-game-feature-06))
        (>= (- (-> self clock frame-counter) (-> arg0 gun gun-time)) (seconds 0.1))
-       (zero? (logand (focus-status dead hit board mech dark teleporting) (-> arg0 focus-status)))
-       (zero? (logand (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control unknown-surface01 flags)))
-       (zero? (logand (state-flags sf18) (-> arg0 state-flags)))
+       (not (logtest? (focus-status dead hit board mech dark teleporting) (-> arg0 focus-status)))
+       (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control unknown-surface01 flags)))
+       (not (logtest? (state-flags sf18) (-> arg0 state-flags)))
        (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow gun-red gun-blue gun-dark))
                  (-> arg0 game features)
                  )
-       (or (zero? (logand (-> arg0 control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck?))
-       (or (zero? (logand (focus-status pilot) (-> arg0 focus-status))) (-> arg0 pilot gun?))
+       (or (not (logtest? (-> arg0 control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck? arg0))
+       (or (not (logtest? (focus-status pilot) (-> arg0 focus-status))) (-> arg0 pilot gun?))
        (or arg1
            (nonzero? (-> arg0 gun using-gun-type))
            (begin
              (set! v1-36 (and (cpad-hold? (-> arg0 control unknown-cpad-info00 number) r1)
-                              (zero? (logand (-> arg0 focus-status) (focus-status grabbed)))
+                              (not (logtest? (-> arg0 focus-status) (focus-status grabbed)))
                               (begin (set! v1-36 #t) (set! (-> arg0 gun latch?) v1-36) v1-36)
                               )
                    )
@@ -191,25 +192,13 @@
     )
   )
 
-(let ((a0-5 (new 'static 'skeleton-group
-              :name "skel-gun"
-              :extra #f
-              :info #f
-              :art-group-name "gun"
-              :bounds (new 'static 'vector :w 6144.0)
-              :version #x7
-              :shadow #xb
+(defskelgroup skel-gun gun gun-lod0-jg -1
+              ((gun-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :shadow gun-shadow-mg
               :sort 1
               :origin-joint-index 3
               )
-            )
-      )
-  (set! (-> a0-5 jgeo) 9)
-  (set! (-> a0-5 janim) -1)
-  (set! (-> a0-5 mgeo 0) 10)
-  (set! (-> a0-5 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-5)
-  )
 
 (define *gun-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -221,96 +210,36 @@
                                )
   )
 
-(let ((a0-6 (new 'static 'skeleton-group
-              :name "skel-ammo-yellow"
-              :extra #f
-              :info #f
-              :art-group-name "gun"
-              :bounds (new 'static 'vector :w 4096.0)
-              :texture-level #x6
-              :version #x7
+(defskelgroup skel-ammo-yellow gun gun-ammo-yellow-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-yellow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
               :sort 1
               )
-            )
-      )
-  (set! (-> a0-6 jgeo) 0)
-  (set! (-> a0-6 janim) 8)
-  (set! (-> a0-6 mgeo 0) 1)
-  (set! (-> a0-6 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-6)
-  )
 
-(let ((a0-7 (new 'static 'skeleton-group
-              :name "skel-ammo-red"
-              :extra #f
-              :info #f
-              :art-group-name "gun"
-              :bounds (new 'static 'vector :w 4096.0)
-              :texture-level #x6
-              :version #x7
+(defskelgroup skel-ammo-red gun gun-ammo-red-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-red-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
               :sort 1
               )
-            )
-      )
-  (set! (-> a0-7 jgeo) 2)
-  (set! (-> a0-7 janim) 8)
-  (set! (-> a0-7 mgeo 0) 3)
-  (set! (-> a0-7 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-7)
-  )
 
-(let ((a0-8 (new 'static 'skeleton-group
-              :name "skel-ammo-blue"
-              :extra #f
-              :info #f
-              :art-group-name "gun"
-              :bounds (new 'static 'vector :w 4096.0)
-              :texture-level #x6
-              :version #x7
+(defskelgroup skel-ammo-blue gun gun-ammo-blue-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-blue-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
               :sort 1
               )
-            )
-      )
-  (set! (-> a0-8 jgeo) 4)
-  (set! (-> a0-8 janim) 8)
-  (set! (-> a0-8 mgeo 0) 5)
-  (set! (-> a0-8 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-8)
-  )
 
-(let ((a0-9 (new 'static 'skeleton-group
-              :name "skel-ammo-dark"
-              :extra #f
-              :info #f
-              :art-group-name "gun"
-              :bounds (new 'static 'vector :w 4096.0)
-              :texture-level #x6
-              :version #x7
+(defskelgroup skel-ammo-dark gun gun-ammo-dark-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-dark-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
               :sort 1
               )
-            )
-      )
-  (set! (-> a0-9 jgeo) 6)
-  (set! (-> a0-9 janim) 8)
-  (set! (-> a0-9 mgeo 0) 7)
-  (set! (-> a0-9 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-9)
-  )
 
-(let ((a0-10 (new 'static 'skeleton-group
-               :name "skel-gun-red-cone"
-               :extra #f
-               :info #f
-               :art-group-name "gun"
-               :bounds (new 'static 'vector :w 4096.0)
-               :texture-level #x6
-               :version #x7
-               )
-             )
-      )
-  (set! (-> a0-10 jgeo) 40)
-  (set! (-> a0-10 janim) 42)
-  (set! (-> a0-10 mgeo 0) 41)
-  (set! (-> a0-10 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-10)
-  )
+(defskelgroup skel-gun-red-cone gun gun-red-cone-lod0-jg gun-red-cone-idle-ja
+              ((gun-red-cone-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              )
