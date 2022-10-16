@@ -67,6 +67,7 @@ struct LetRewriteStats {
   int case_with_else = 0;
   int set_vector = 0;
   int set_vector2 = 0;
+  int set_vector3 = 0;
   int send_event = 0;
   int font_context_meth = 0;
   int proc_new = 0;
@@ -91,6 +92,7 @@ struct LetRewriteStats {
     out += fmt::format("  ja: {}\n", ja);
     out += fmt::format("  set_vector: {}\n", set_vector);
     out += fmt::format("  set_vector2: {}\n", set_vector2);
+    out += fmt::format("  set_vector3: {}\n", set_vector3);
     out += fmt::format("  case_no_else: {}\n", case_no_else);
     out += fmt::format("  case_with_else: {}\n", case_with_else);
     out += fmt::format("  unused: {}\n", unused);

@@ -1656,6 +1656,7 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
       def.value = bitfield_value;
       def.field_name = field.name();
       def.is_signed = is_signed;
+      def.is_float = field.type().base_type() == "float";
       auto enum_info = ts.try_enum_lookup(field.type());
       if (enum_info && !enum_info->is_bitfield()) {
         auto name = decompile_int_enum_from_int(field.type(), ts, bitfield_value);

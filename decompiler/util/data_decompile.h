@@ -82,6 +82,7 @@ goos::Object decompile_bitfield(const TypeSpec& type,
 
 struct BitFieldConstantDef {
   bool is_signed = false;
+  bool is_float = false;
   u64 value = -1;
   std::optional<std::string> enum_constant;
   std::string field_name;
