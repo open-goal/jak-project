@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
   fs::path output_path;
   std::string game_name = "jak1";
   std::string parent_type = "";
+  int method_id_min = -1;
   int type_size = -1;
   std::string field_json = "";
 
@@ -30,6 +31,8 @@ int main(int argc, char** argv) {
   app.add_option("--output-path", output_path, "Where to output the search results file");
   app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_option("-s,--size", type_size, "The size of the type we are searching for");
+  app.add_option("-m,--method_id", method_id_min,
+                 "Require the provided method id to be supported by the type");
   app.add_option("-p,--parent", parent_type, "The type of which it is an descendent of");
   app.add_option("-f,--fields", field_json,
                  "JSON encoded string specifying which field types and their offsets are required "
@@ -63,6 +66,11 @@ int main(int argc, char** argv) {
   // First filter by parent type is available
   if (!parent_type.empty()) {
     potential_types = dts.ts.search_types_by_parent_type(parent_type);
+  }
+
+  // Filter by method count
+  if (method_id_min != -1) {
+    potential_types = dts.ts.search_types_by_minimum_method_id(method_id_min, potential_types);
   }
 
   // Filter out types by size next

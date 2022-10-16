@@ -1143,3 +1143,68 @@
 (defmacro static-bspherem (x y z r)
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
+
+;; art-h
+(desfun art-elt->index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+          (if (not (car ag-info))
+              -1
+              (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+                  (if (not (car elt-info))
+                      -1
+                      (cadr (cdr elt-info)))
+                  )
+              )
+          )
+      )
+  )
+
+(defmacro defskelgroup (name ag-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key (longest-edge 0.0)
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version 7) ;; do NOT use this!
+                        &key (origin-joint-index 0)
+                        &key (shadow-joint-index 0)
+                        &key (light-index 0)
+                        )
+  "define a new static skeleton group"
+
+  `(let ((skel (new 'static 'skeleton-group
+                        :name ,(symbol->string name)
+                        :info #f ;; all skeleton-groups seem to have these as #f
+                        :extra #f
+                        :art-group-name ,(symbol->string ag-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :version ,version
+                        :max-lod ,(- (length lods) 1)
+                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :texture-level ,texture-level
+                        :sort ,sort
+                        :origin-joint-index ,origin-joint-index
+                        :shadow-joint-index ,shadow-joint-index
+                        :light-index ,light-index
+                        )))
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) joint-anim))
+
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        ;; add to level
+        (add-to-loading-level ,name)
+        )
+  )

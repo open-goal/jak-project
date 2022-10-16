@@ -1000,7 +1000,20 @@ goos::Object decompile_structure(const TypeSpec& type,
             for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
               bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
             }
-            field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
+
+            // use more specific types for gif tags.
+            bool is_gif_type =
+                type.base_type() == "dma-gif-packet" || type.base_type() == "dma-gif";
+            if (is_gif_type && field.name() == "gif0") {
+              field_defs_out.emplace_back(field.name(),
+                                          decompile_value(TypeSpec("gif-tag64"), bytes_out, ts));
+            } else if (is_gif_type && field.name() == "gif1") {
+              field_defs_out.emplace_back(field.name(),
+                                          decompile_value(TypeSpec("gif-tag-regs"), bytes_out, ts));
+            } else {
+              field_defs_out.emplace_back(field.name(),
+                                          decompile_value(field.type(), bytes_out, ts));
+            }
           }
         }
       }
@@ -1647,6 +1660,7 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
       def.value = bitfield_value;
       def.field_name = field.name();
       def.is_signed = is_signed;
+      def.is_float = field.type().base_type() == "float";
       auto enum_info = ts.try_enum_lookup(field.type());
       if (enum_info && !enum_info->is_bitfield()) {
         auto name = decompile_int_enum_from_int(field.type(), ts, bitfield_value);

@@ -254,14 +254,13 @@
                 )
            (-> self board latch?)
            )
-       (zero? (logand (focus-status dead hit grabbed in-head edge-grab pole board pilot mech dark) (-> self focus-status)))
+       (not (logtest? (focus-status dead hit grabbed in-head edge-grab pole board pilot mech dark) (-> self focus-status))
+            )
        (or (zero? (-> self board)) (>= (- (-> self clock frame-counter) (-> self board board-time)) (seconds 0.5)))
-       (zero? (logand (state-flags sf17) (-> self state-flags)))
+       (not (logtest? (state-flags sf17) (-> self state-flags)))
        (< (-> self board board-time) (-> self control unknown-time-frame05))
-       (zero? (logand (surface-flag no-board) (-> self control unknown-surface01 flags)))
-       (or (zero? (logand (-> self control unknown-surface01 flags) (surface-flag duck)))
-           (begin self (can-exit-duck?))
-           )
+       (not (logtest? (surface-flag no-board) (-> self control unknown-surface01 flags)))
+       (or (not (logtest? (-> self control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck? self))
        (not (and (logtest? (-> self water flags) (water-flags under-water))
                  (zero? (logand (-> self water flags) (water-flags swim-ground)))
                  )
@@ -279,14 +278,14 @@
                  )
              (set! (-> s5-0 0 quad) (-> v1-51 quad))
              (set! (-> s5-0 0 y) (+ 8192.0 (-> s5-0 0 y)))
-             (set! (-> s5-0 0 w) 2867.2)
+             (set! (-> s5-0 0 r) 2867.2)
              (set! (-> s5-0 1 quad) (-> v1-51 quad))
              (set! (-> s5-0 1 y) (+ 12288.0 (-> s5-0 1 y)))
-             (set! (-> s5-0 1 w) 2867.2)
+             (set! (-> s5-0 1 r) 2867.2)
              (set! (-> s5-0 2 quad) (-> v1-51 quad))
              )
            (set! (-> s5-0 2 y) (+ 16384.0 (-> s5-0 2 y)))
-           (set! (-> s5-0 2 w) 2867.2)
+           (set! (-> s5-0 2 r) 2867.2)
            (let ((v1-55 gp-0))
              (set! (-> v1-55 spheres) s5-0)
              (set! (-> v1-55 num-spheres) (the-as uint 3))
@@ -298,7 +297,7 @@
              (set! (-> v1-55 ignore-process0) #f)
              (set! (-> v1-55 ignore-process1) #f)
              (set! (-> v1-55 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-             (set! (-> v1-55 solid-only) #t)
+             (set! (-> v1-55 best-my-prim) (the-as collide-shape-prim #t))
              (set! (-> v1-55 action-mask) (collide-action solid))
              )
            )
@@ -315,25 +314,13 @@
        )
   )
 
-(let ((a0-6 (new 'static 'skeleton-group
-              :name "skel-board"
-              :extra #f
-              :info #f
-              :art-group-name "board"
-              :bounds (new 'static 'vector :w 14336.0)
-              :version #x7
-              :shadow 2
+(defskelgroup skel-board board board-lod0-jg board-board-idle-ja
+              ((board-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow board-shadow-mg
               :sort 1
               :origin-joint-index 3
               )
-            )
-      )
-  (set! (-> a0-6 jgeo) 0)
-  (set! (-> a0-6 janim) 5)
-  (set! (-> a0-6 mgeo 0) 1)
-  (set! (-> a0-6 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-6)
-  )
 
 (define *board-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -344,7 +331,3 @@
                                            )
                                )
   )
-
-
-
-

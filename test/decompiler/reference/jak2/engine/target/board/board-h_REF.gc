@@ -423,9 +423,7 @@
        (not (logtest? (state-flags sf17) (-> self state-flags)))
        (< (-> self board board-time) (-> self control unknown-time-frame05))
        (not (logtest? (surface-flag no-board) (-> self control unknown-surface01 flags)))
-       (or (not (logtest? (-> self control unknown-surface01 flags) (surface-flag duck)))
-           (begin self (can-exit-duck?))
-           )
+       (or (not (logtest? (-> self control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck? self))
        (not (and (logtest? (-> self water flags) (water-flags under-water))
                  (zero? (logand (-> self water flags) (water-flags swim-ground)))
                  )
@@ -462,7 +460,7 @@
              (set! (-> v1-55 ignore-process0) #f)
              (set! (-> v1-55 ignore-process1) #f)
              (set! (-> v1-55 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-             (set! (-> v1-55 solid-only) #t)
+             (set! (-> v1-55 best-my-prim) (the-as collide-shape-prim #t))
              (set! (-> v1-55 action-mask) (collide-action solid))
              )
            )
@@ -480,25 +478,13 @@
   )
 
 ;; failed to figure out what this is:
-(let ((a0-6 (new 'static 'skeleton-group
-              :name "skel-board"
-              :extra #f
-              :info #f
-              :art-group-name "board"
-              :bounds (new 'static 'vector :w 14336.0)
-              :version #x7
+(defskelgroup skel-board board 0 5
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
               :shadow 2
               :sort 1
               :origin-joint-index 3
               )
-            )
-      )
-  (set! (-> a0-6 jgeo) 0)
-  (set! (-> a0-6 janim) 5)
-  (set! (-> a0-6 mgeo 0) 1)
-  (set! (-> a0-6 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-6)
-  )
 
 ;; definition for symbol *board-shadow-control*, type shadow-control
 (define *board-shadow-control*

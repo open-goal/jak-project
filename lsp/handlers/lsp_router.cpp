@@ -4,6 +4,7 @@
 
 #include "lsp/handlers/initialize.h"
 #include "lsp/protocol/error_codes.h"
+#include "text_document/completion.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
 #include "text_document/go_to.h"
@@ -37,6 +38,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
+  m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
 }
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
