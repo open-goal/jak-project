@@ -16035,7 +16035,7 @@
 (deftype collide-shape-prim-group (collide-shape-prim)
   ((num-children uint8 :offset 64)
    (num-alloc-children uint8 :offset 65)
-   (child (inline-array collide-shape) :offset 68) ;; total guess..
+   (child (inline-array collide-shape-prim) :offset 68) ;; total guess..
    )
   :method-count-assert 20
   :size-assert         #x50
@@ -16110,7 +16110,7 @@
     (collide-shape-method-47 () none 47) ;; (update-transforms! (_type_) symbol 47)
     (collide-shape-method-48 () none 48) ;; (clear-collide-with-as (_type_) none 48)
     (collide-shape-method-49 () none 49) ;; (restore-collide-with-as (_type_) none 49)
-    (collide-shape-method-50 () none 50) ;; (backup-collide-with-as (_type_) none 50)
+    (collide-shape-method-50 (_type_ process object float float float) none 50) ;; (backup-collide-with-as (_type_) none 50)
     (collide-shape-method-51 () none 51) ;; (set-root-prim-collide-with! (_type_ collide-kind) none 51)
     (collide-shape-method-52 () none 52) ;; (set-root-prim-collide-as! (_type_ collide-kind) none 52)
     (collide-shape-method-53 () none 53) ;; (set-collide-kinds (_type_ int collide-kind collide-kind) none 53)
@@ -17130,7 +17130,7 @@
 
 (deftype process-taskable (process-focusable)
   ((root-override     collide-shape           :offset 128 :score 100)
-   (task              basic                   :offset-assert 204)
+   (task              game-task-control                   :offset-assert 204)
    (ambient           ambient-control :inline :offset-assert 208)
    (neck-joint-index  int32                   :offset-assert 224)
    (talk-message      game-text-id            :offset-assert 228) ;; guessed by decompiler
@@ -17141,7 +17141,7 @@
    (talk-distance     meters                  :offset-assert 248)
    (talk-height       meters                  :offset-assert 252)
    (last-talk         time-frame              :offset-assert 256) ;; time-frame
-   (want-to-say       uint64                  :offset-assert 264)
+   (want-to-say       time-frame              :offset-assert 264)
    (birth-time        time-frame              :offset-assert 272)
    (slave             handle                  :offset-assert 280)
    )
@@ -17151,8 +17151,8 @@
   (:methods
     (hide () _type_ :state 27) ;; (play-anim () _type_ :state 27)
     (idle () _type_ :state 28) ;; (hidden () _type_ :state 28)
-    (active (process) _type_ :state 29) ;; (be-clone (handle) _type_ :state 29)
-    (play-game () _type_ :state 30) ;; (idle () _type_ :state 30)
+    (active (game-task-event) _type_ :state 29) ;; (be-clone (handle) _type_ :state 29)
+    (play-game (game-task-event) _type_ :state 30) ;; (idle () _type_ :state 30)
     (process-taskable-method-31 (_type_) none 31) ;; (get-art-elem (_type_) art-element 31)
     (process-taskable-method-32 (_type_) none 32) ;; (play-anim! (_type_ symbol) basic 32)
     (process-taskable-method-33 (_type_) none 33) ;; (dummy-33 (_type_) none 33)
@@ -27195,7 +27195,7 @@
 ;; ambient                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern can-display-query? (function symbol))
+(define-extern can-display-query? (function process-taskable symbol float symbol))
 (define-extern talker-surpress! (function none))
 (define-extern talker-displayed? (function symbol))
 (define-extern kill-current-talker (function symbol pair symbol none)) ;; see (exit play-anim scene-player)
@@ -29316,7 +29316,7 @@
 (define-extern *pid-string* string)
 (define-extern debug-actor (function string none))
 (define-extern draw-actor-marks (function process none))
-(define-extern init-entity (function process entity-actor none))
+(define-extern init-entity (function process entity-actor process none))
 ;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
 (define-extern check-for-rougue-process (function process int int level none))
 (define-extern process-drawable-scale-from-entity! (function process-drawable entity none))
@@ -33406,7 +33406,7 @@
 ;; process-taskable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern process-taskable-anim-loop (function none :behavior process-taskable)) ;; 
+(define-extern process-taskable-anim-loop (function (function symbol) none :behavior process-taskable)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-actor                    ;;
