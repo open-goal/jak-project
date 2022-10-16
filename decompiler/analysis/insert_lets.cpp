@@ -801,6 +801,50 @@ FormElement* rewrite_set_vector(LetElement* in, const Env& env, FormPool& pool) 
   return pool.alloc_element<GenericElement>(op, args);
 }
 
+FormElement* rewrite_set_vector_3(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto in_vec = env.get_variable_name(in->entries().at(0).dest);
+
+  auto& body_elts = in->body()->elts();
+  if (body_elts.size() != 4) {
+    return nullptr;
+  }
+
+  std::vector<Form*> sources;
+  for (int i = 0; i < 4; i++) {
+    auto elt_as_form_form = dynamic_cast<SetFormFormElement*>(body_elts.at(i));
+    if (!elt_as_form_form) {
+      return nullptr;
+    }
+    auto dst = elt_as_form_form->dst();
+    sources.push_back(elt_as_form_form->src());
+    Matcher dst_matcher = Matcher::deref(Matcher::any_reg(0), false,
+                                         {DerefTokenMatcher::string("vector4w"),
+                                          DerefTokenMatcher::string(std::string(1, "xyzw"[i]))});
+    auto mr = match(dst_matcher, dst);
+    if (!mr.matched) {
+      return nullptr;
+    }
+    if (in_vec != env.get_variable_name(*mr.maps.regs.at(0))) {
+      return nullptr;
+    }
+  }
+
+  std::vector<Form*> args;
+  args.push_back(pool.form<DerefElement>(in->entries().at(0).src, false,
+                                         DerefToken::make_field_name("vector4w")));
+  for (auto& src : sources) {
+    args.push_back(src);
+  }
+
+  auto op = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "set-vector!"));
+  return pool.alloc_element<GenericElement>(op, args);
+}
+
 FormElement* rewrite_set_vector_2(LetElement* in, const Env& env, FormPool& pool) {
   if (in->entries().size() != 1) {
     return nullptr;
@@ -1735,6 +1779,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_set_vector2) {
     stats.set_vector2++;
     return as_set_vector2;
+  }
+
+  auto as_set_vector3 = rewrite_set_vector_3(in, env, pool);
+  if (as_set_vector3) {
+    stats.set_vector3++;
+    return as_set_vector3;
   }
 
   auto as_abs_2 = fix_up_abs_2(in, env, pool);

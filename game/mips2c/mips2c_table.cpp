@@ -128,6 +128,7 @@ namespace init_boundary_regs { extern void link(); }
 namespace render_boundary_tri { extern void link(); }
 namespace render_boundary_quad { extern void link(); }
 namespace set_sky_vf27 { extern void link(); }
+namespace set_sky_vf23_value { extern void link(); }
 namespace draw_boundary_polygon { extern void link(); }
 namespace sp_init_fields { extern void link(); }
 namespace particle_adgif { extern void link(); }
@@ -135,6 +136,17 @@ namespace sp_launch_particles_var { extern void link(); }
 namespace sparticle_motion_blur { extern void link(); }
 namespace sp_process_block_2d { extern void link(); }
 namespace sp_process_block_3d { extern void link(); }
+namespace set_tex_offset { extern void link(); }
+namespace draw_large_polygon { extern void link(); }
+namespace render_sky_quad { extern void link(); }
+namespace render_sky_tri { extern void link(); }
+namespace method_16_sky_work { extern void link(); }
+namespace method_17_sky_work { extern void link(); }
+namespace method_32_sky_work { extern void link(); }
+namespace method_33_sky_work { extern void link(); }
+namespace method_28_sky_work { extern void link(); }
+namespace method_29_sky_work { extern void link(); }
+namespace method_30_sky_work { extern void link(); }
 }
 // clang-format on
 
@@ -223,7 +235,13 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"sparticle-launcher",
       {jak2::sp_init_fields::link, jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
        jak2::sparticle_motion_blur::link}},
-     {"sparticle", {jak2::sp_process_block_2d::link, jak2::sp_process_block_3d::link}}},
+     {"sparticle", {jak2::sp_process_block_2d::link, jak2::sp_process_block_3d::link}},
+     {"sky-tng",
+      {jak2::set_tex_offset::link, jak2::draw_large_polygon::link, jak2::render_sky_quad::link,
+       jak2::render_sky_tri::link, jak2::method_16_sky_work::link, jak2::method_17_sky_work::link,
+       jak2::method_32_sky_work::link, jak2::method_33_sky_work::link,
+       jak2::method_28_sky_work::link, jak2::method_29_sky_work::link,
+       jak2::method_30_sky_work::link, jak2::set_sky_vf23_value::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
