@@ -1193,6 +1193,17 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
     ASSERT(fixed);
   }
 
+  if (word.kind() == LinkedWord::SYM_VAL_OFFSET) {
+    bool fixed = false;
+    for (int j = 0; j < i.n_src; j++) {
+      if (i.src[j].kind == InstructionAtom::IMM) {
+        fixed = true;
+        i.src[j].set_sym_val_ptr(word.symbol_name());
+      }
+    }
+    ASSERT(fixed);
+  }
+
   if (word.kind() == LinkedWord::HI_PTR) {
     ASSERT(i.kind == InstructionKind::LUI);
     bool fixed = false;

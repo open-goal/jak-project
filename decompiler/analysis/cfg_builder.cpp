@@ -1249,69 +1249,57 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   // get the branch ir's
   auto b0_ptr = cfg_to_ir(pool, f, b0_c);  // should be begin.
   if (b0_ptr->size() <= 2) {
-    lg::print("fail1\n");
     return nullptr;
   }
   auto b1_ptr = cfg_to_ir(pool, f, b1_c);
   if (b1_ptr->size() <= 1) {
-    lg::print("fail2\n");
     return nullptr;
   }
   auto b2_ptr = cfg_to_ir(pool, f, b2_c);
   if (b2_ptr->size() <= 1) {
-    lg::print("fail3\n");
     return nullptr;
   }
   auto b3_ptr = cfg_to_ir(pool, f, b3_c);
   auto b3_ir = dynamic_cast<SetVarElement*>(b3_ptr->try_as_single_element());
   if (!b3_ir) {
-    lg::print("fail4\n");
     return nullptr;
   }
 
   // identify the left shift
   auto set_shift_left = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 3));
   if (!set_shift_left) {
-    lg::print("fail5\n");
     return nullptr;
   }
   auto temp_reg0 = set_shift_left->dst();
   auto shift_left =
       dynamic_cast<SimpleExpressionElement*>(set_shift_left->src()->try_as_single_element());
   if (!shift_left || shift_left->expr().kind() != SimpleExpression::Kind::LEFT_SHIFT) {
-    lg::print("fail6\n");
     return nullptr;
   }
   auto src_reg = shift_left->expr().get_arg(0).var();
   auto sa_left = shift_left->expr().get_arg(1);
   if (!sa_left.is_int() || sa_left.get_int() != 61) {
-    lg::print("fail7\n");
     return nullptr;
   }
 
   // identify the right shift
   auto set_shift_right = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 2));
   if (!set_shift_right) {
-    lg::print("fail8\n");
     return nullptr;
   }
   if (set_shift_right->dst().reg() != set_shift_left->dst().reg()) {
-    lg::print("fail9\n");
     return nullptr;
   }
   auto shift_right =
       dynamic_cast<SimpleExpressionElement*>(set_shift_right->src()->try_as_single_element());
   if (!shift_right || shift_right->expr().kind() != SimpleExpression::Kind::RIGHT_SHIFT_LOGIC) {
-    lg::print("fail10\n");
     return nullptr;
   }
   if (temp_reg0.reg() != shift_right->expr().get_arg(0).var().reg()) {
-    lg::print("fail11\n");
     return nullptr;
   }
   auto sa_right = shift_right->expr().get_arg(1);
   if (!sa_right.is_int() || sa_right.get_int() != 61) {
-    lg::print("fail12\n");
     return nullptr;
   }
 
@@ -1321,7 +1309,6 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   if (!first_branch || !is_set_symbol_value(b0_delay_op, "binteger") ||
       first_branch->op()->condition().kind() != IR2_Condition::Kind::ZERO ||
       !first_branch->op()->likely()) {
-    lg::print("fail13\n");
     return nullptr;
   }
   auto temp_reg = first_branch->op()->condition().src(0).var();
@@ -1330,19 +1317,16 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
 
   // branch 1
   if (b1_ptr->size() != 2) {
-    lg::print("fail14\n");
     return nullptr;
   }
   auto second_branch_pre_op = dynamic_cast<SetVarElement*>(b1_ptr->at(0));
   if (!second_branch_pre_op) {
-    lg::print("fail15\n");
     return nullptr;
   }
   {
     auto pos = second_branch_pre_op->src();
     auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
     if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(4)) {
-      lg::print("fail16\n");
       return nullptr;
     }
   }
@@ -1358,30 +1342,24 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
       second_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
       !second_branch->op()->condition().src(1).is_var() ||
       second_branch->op()->condition().src(1).var().reg() != temp_reg1.reg()) {
-    lg::print("fail17\n");
     return nullptr;
   }
 
   if (!b1_d) {
-    lg::print("fail18\n");
     return nullptr;
   }
   auto b1_delay_op = get_delay_load_op(f, b1_d);
   if (b1_delay_op.kind() != LoadVarOp::Kind::UNSIGNED || b1_delay_op.size() != 4) {
-    lg::print("fail19\n");
     return nullptr;
   }
   IR2_RegOffset ro;
   if (!get_as_reg_offset(b1_delay_op.src(), &ro)) {
-    lg::print("fail20\n");
     return nullptr;
   }
   if (ro.offset != -4) {
-    lg::print("fail21\n");
     return nullptr;
   }
   if (ro.reg != src_reg.reg() || b1_delay_op.get_set_destination().reg() != dst_reg.reg()) {
-    lg::print("fail22\n");
     return nullptr;
   }
 
@@ -1395,19 +1373,16 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
     lw a0, pair(s7)
    */
   if (b2_ptr->size() != 2) {
-    lg::print("fail23\n");
     return nullptr;
   }
   auto third_branch_pre_op = dynamic_cast<SetVarElement*>(b2_ptr->at(0));
   if (!third_branch_pre_op) {
-    lg::print("fail24\n");
     return nullptr;
   }
   {
     auto pos = third_branch_pre_op->src();
     auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
     if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(2)) {
-      lg::print("fail25\n");
       return nullptr;
     }
   }
@@ -1418,22 +1393,18 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
       third_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
       !third_branch->op()->condition().src(1).is_var() ||
       third_branch->op()->condition().src(1).var().reg() != temp_reg2.reg()) {
-    lg::print("fail26\n");
     return nullptr;
   }
 
   if (!b2_d) {
-    lg::print("fail27\n");
     return nullptr;
   }
   auto b2_delay_op = get_delay_op(f, b2_d);
   if (!is_set_symbol_value(b2_delay_op, "pair") || b2_delay_op.dst().reg() != dst_reg.reg()) {
-    lg::print("fail28\n");
     return nullptr;
   }
 
   if (!is_set_symbol_value(b3_ir, "symbol")) {
-    lg::print("fail29\n");
     return nullptr;
   }
 

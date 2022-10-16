@@ -753,7 +753,8 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       }
     }
 
-  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
+  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list() ||
+             arg.is_sym_val_ptr()) {
     result->push_back(this);
     return;
   } else {

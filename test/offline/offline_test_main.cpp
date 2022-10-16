@@ -174,12 +174,26 @@ int line_count(const std::string& str) {
 }
 
 struct CompareResult {
-  std::vector<std::string> failing_files;
+  struct Fail {
+    std::string filename;
+    std::string diff;
+  };
+  std::vector<Fail> failing_files;
   int total_files = 0;
   int ok_files = 0;
   int total_lines = 0;
-
   bool total_pass = true;
+
+  void add(const CompareResult& other) {
+    failing_files.insert(failing_files.end(), other.failing_files.begin(),
+                         other.failing_files.end());
+    total_files += other.total_files;
+    ok_files += other.ok_files;
+    total_lines += other.total_lines;
+    if (!other.total_pass) {
+      total_pass = false;
+    }
+  }
 };
 
 CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, bool dump_mode) {
@@ -192,11 +206,8 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
     compare_result.total_files++;
     compare_result.total_lines += line_count(result);
     if (result != ref) {
-      compare_result.failing_files.push_back(file.unique_name);
+      compare_result.failing_files.push_back({file.unique_name, diff_strings(ref, result)});
       compare_result.total_pass = false;
-      fmt::print("Reference test failure on {}:\n", file.unique_name);
-      fmt::print("{}\n", diff_strings(ref, result));
-
       if (dump_mode) {
         auto failure_dir = file_util::get_jak_project_dir() / "failures";
         file_util::create_dir_if_needed(failure_dir);
@@ -211,18 +222,35 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
   return compare_result;
 }
 
-bool compile(Decompiler& dc,
-             const std::vector<DecompilerFile>& refs,
-             const OfflineTestConfig& config,
-             const std::string& game_name) {
-  fmt::print("Setting up compiler...\n");
+struct CompileResult {
+  bool ok = true;
+  struct Fail {
+    std::string filename;
+    std::string error;
+  };
+  std::vector<Fail> failing_files;
+  int num_lines = 0;
+  void add(const CompileResult& other) {
+    failing_files.insert(failing_files.end(), other.failing_files.begin(),
+                         other.failing_files.end());
+    num_lines += other.num_lines;
+    if (!other.ok) {
+      ok = false;
+    }
+  }
+};
+
+CompileResult compile(Decompiler& dc,
+                      const std::vector<DecompilerFile>& refs,
+                      const OfflineTestConfig& config,
+                      const std::string& game_name) {
+  CompileResult result;
   Compiler compiler(game_name_to_version(game_name));
 
   compiler.run_front_end_on_file({"decompiler", "config", game_name_to_all_types[game_name]});
   compiler.run_front_end_on_file(
       {"test", "decompiler", "reference", game_name, "decompiler-macros.gc"});
 
-  Timer timer;
   int total_lines = 0;
   for (const auto& file : refs) {
     if (config.skip_compile_files.count(file.name_in_dgo)) {
@@ -239,15 +267,13 @@ bool compile(Decompiler& dc,
       total_lines += line_count(src);
       compiler.run_full_compiler_on_string_no_save(src, file.name_in_dgo);
     } catch (const std::exception& e) {
-      fmt::print("Compiler exception: {}\n", e.what());
-      return false;
+      result.ok = false;
+      result.failing_files.push_back({file.name_in_dgo, e.what()});
     }
   }
-  auto time = timer.getSeconds();
-  fmt::print("Total Lines Compiled: {}. Lines/second: {:.1f}\n", total_lines,
-             (float)total_lines / time);
 
-  return true;
+  result.num_lines = total_lines;
+  return result;
 }
 
 std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
@@ -411,10 +437,26 @@ std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name)
 
 /// @brief A simple struct to contain the reason for failure from a thread
 struct OfflineTestResult {
-  int exit_code;
+  int exit_code = 0;
   std::string reason;
 
-  OfflineTestResult(int _exit_code, std::string _reason) : exit_code(_exit_code), reason(_reason) {}
+  float time_spent_compiling = 0;
+  float time_spent_decompiling = 0;
+  float total_time = 0;
+
+  CompareResult compare;
+  CompileResult compile;
+
+  void add(const OfflineTestResult& other) {
+    if (other.exit_code) {
+      exit_code = other.exit_code;
+    }
+    time_spent_compiling += other.time_spent_compiling;
+    time_spent_decompiling += other.time_spent_decompiling;
+    total_time += other.total_time;
+    compare.add(other.compare);
+    compile.add(other.compile);
+  }
 };
 
 int main(int argc, char* argv[]) {
@@ -477,7 +519,7 @@ int main(int argc, char* argv[]) {
   }
   // First, prepare our batches of files to be processed
   std::vector<std::vector<DecompilerFile>> work_groups = {};
-  for (int i = 0; i < num_threads; i++) {
+  for (size_t i = 0; i < num_threads; i++) {
     work_groups.push_back({});
   }
   int total_added = 0;
@@ -493,75 +535,67 @@ int main(int argc, char* argv[]) {
   decompiler::init_opcode_info();
   for (const auto& work_group : work_groups) {
     threads.push_back(std::async(std::launch::async, [&]() {
-      std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-      lg::info("Setting up decompiler and loading files...");
+      OfflineTestResult result;
+      Timer total_timer;
+
+      Timer decompiler_timer;
       auto decompiler = setup_decompiler(work_group, art_files, fs::path(iso_data_path),
                                          config.value(), game_name);
-      lg::info("Took {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - begin)
-                                .count());
-
-      begin = std::chrono::steady_clock::now();
-      lg::info("Disassembling files...");
       disassemble(decompiler);
-      lg::info("Took {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - begin)
-                                .count());
-
-      begin = std::chrono::steady_clock::now();
-      lg::info("Decompiling...");
       decompile(decompiler, config.value());
       // It's about 100ms per file to decompile on average
       // meaning that when we have all 900 files, a full offline test will take 1.5 minutes
-      lg::info("Took {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - begin)
-                                .count());
+      result.time_spent_decompiling = decompiler_timer.getSeconds();
 
-      begin = std::chrono::steady_clock::now();
-      lg::info("Comparing...");
-      auto compare_result = compare(decompiler, work_group, dump_current_output);
-      lg::info("Took {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - begin)
-                                .count());
-
-      lg::info("Compared {} lines. {}/{} files passed.", compare_result.total_lines,
-               compare_result.ok_files, compare_result.total_files);
-      lg::info("Dump? {}\n", dump_current_output);
-
-      if (!compare_result.failing_files.empty()) {
-        lg::error("Failing files:");
-        for (auto& f : compare_result.failing_files) {
-          lg::error("- {}", f);
-        }
-        lg::error("Comparison failed.");
-        // No point continuing to compile if the comparison has failed
-        return OfflineTestResult(1, "Comparison Failed");
+      result.compare = compare(decompiler, work_group, dump_current_output);
+      if (!result.compare.total_pass) {
+        result.exit_code = 1;
       }
 
-      begin = std::chrono::steady_clock::now();
-      lg::info("Compiling...");
-      bool compile_result = compile(decompiler, work_group, config.value(), game_name);
-      // Compiling on the otherhand, is around 20ms per file
-      lg::info("Took {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - begin)
-                                .count());
-
-      if (!compile_result) {
-        return OfflineTestResult(1, "Compilation Failed");
+      Timer compile_timer;
+      result.compile = compile(decompiler, work_group, config.value(), game_name);
+      result.time_spent_compiling = compile_timer.getSeconds();
+      if (!result.compile.ok) {
+        result.exit_code = 1;
       }
+      result.total_time = total_timer.getSeconds();
 
-      return OfflineTestResult(0, "");
+      return result;
     }));
   }
 
-  // Fail fast over any thread tripping over
+  // summarize results:
+  OfflineTestResult total;
   for (auto& thread : threads) {
     auto ret = thread.get();
-    if (ret.exit_code != 0) {
-      lg::error(ret.reason);
-      return ret.exit_code;
+    total.add(ret);
+  }
+
+  if (!total.compare.total_pass) {
+    lg::error("Comparison failed.");
+    for (auto& f : total.compare.failing_files) {
+      fmt::print("{}\n", f.diff);
+    }
+    lg::error("Failing files:");
+    for (auto& f : total.compare.failing_files) {
+      lg::error("- {}", f.filename);
     }
   }
 
-  return 0;
+  if (!total.compile.ok) {
+    for (auto& f : total.compile.failing_files) {
+      lg::error("{}", f.filename);
+      fmt::print("{}\n", f.error);
+    }
+  }
+
+  fmt::print("Compiled {} lines in {:.3f}s ({} lines/sec)\n", total.compile.num_lines,
+             total.time_spent_compiling,
+             (int)(total.compile.num_lines / total.time_spent_compiling));
+
+  if (!total.exit_code) {
+    fmt::print("pass!\n");
+  }
+
+  return total.exit_code;
 }
