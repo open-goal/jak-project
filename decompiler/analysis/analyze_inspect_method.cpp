@@ -1496,13 +1496,10 @@ void inspect_top_level_for_metadata(Function& top_level,
       continue;
     }
 
-    lg::print("got 1\n");
-
     // lwu t9, 16(v1)            ;; [ 21] (set! t9-0 (l.wu (+ v1-10 16)))
     //                           ;; [v1: <the etype type> ] -> [t9: (function symbol type int type)
     const auto& aop_1 = top_level.ir2.atomic_ops->ops.at(i + 1);
     if (!is_set_reg_to_load(aop_1.get(), Register(Reg::GPR, Reg::T9), 16)) {
-      lg::print("fail1\n");
       continue;
     }
 
@@ -1510,7 +1507,6 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_2 = top_level.ir2.atomic_ops->ops.at(i + 2);
     auto type_name = get_set_reg_to_symbol_ptr(aop_2.get(), Register(Reg::GPR, Reg::A0));
     if (!type_name) {
-      lg::print("fail2\n");
       continue;
     }
 
@@ -1518,7 +1514,6 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_3 = top_level.ir2.atomic_ops->ops.at(i + 3);
     auto parent_name = get_set_reg_to_symbol_value(aop_3.get(), Register(Reg::GPR, Reg::A1));
     if (!parent_name) {
-      lg::print("fail3\n");
       continue;
     }
 
@@ -1526,14 +1521,12 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_4 = top_level.ir2.atomic_ops->ops.at(i + 4);
     auto flags = get_set_reg_to_u64_load(aop_4.get(), Register(Reg::GPR, Reg::A2), file);
     if (!flags) {
-      lg::print("fail3\n");
       continue;
     }
 
     // jalr ra, t9               ;; [ 25] (call! a0-0 a1-0 a2-0)
     const auto& aop_5 = top_level.ir2.atomic_ops->ops.at(i + 5);
     if (!dynamic_cast<CallOp*>(aop_5.get())) {
-      lg::print("fial4\n");
       continue;
     }
 
