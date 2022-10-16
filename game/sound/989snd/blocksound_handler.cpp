@@ -161,11 +161,11 @@ void blocksound_handler::set_pbend(s32 bend) {
   update_pitch();
 }
 
-s32 blocksound_handler::null(Grain& grain) {
+s32 blocksound_handler::null(SFXGrain& grain) {
   return 0;
 }
 
-s32 blocksound_handler::play_tone(Grain& grain) {
+s32 blocksound_handler::play_tone(SFXGrain& grain) {
   auto voice = std::make_shared<vag_voice>(grain.GrainParams.tone);
 
   voice->basevol = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, grain.GrainParams.tone.Vol,
@@ -181,7 +181,7 @@ s32 blocksound_handler::play_tone(Grain& grain) {
   return 0;
 }
 
-s32 blocksound_handler::rand_play(Grain& grain) {
+s32 blocksound_handler::rand_play(SFXGrain& grain) {
   int options = grain.GrainParams.control.param[0];
   int count = grain.GrainParams.control.param[1];
   int previous = grain.GrainParams.control.param[2];

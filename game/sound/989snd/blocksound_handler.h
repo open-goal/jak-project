@@ -79,12 +79,12 @@ class blocksound_handler : public sound_handler {
 
   void do_grain();
 
-  s32 null(Grain& grain);
-  s32 play_tone(Grain& grain);
-  s32 rand_play(Grain& grain);
+  s32 null(SFXGrain& grain);
+  s32 play_tone(SFXGrain& grain);
+  s32 rand_play(SFXGrain& grain);
   void update_pitch();
 
-  using grain_fp = int (blocksound_handler::*)(Grain& grain);
+  using grain_fp = int (blocksound_handler::*)(SFXGrain& grain);
   std::unordered_map<grain_type, grain_fp> m_grain_handler;
 
   bool m_paused{false};
