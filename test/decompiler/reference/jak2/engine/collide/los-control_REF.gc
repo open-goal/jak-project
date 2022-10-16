@@ -1,0 +1,118 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *los-time-offset*, type time-frame
+(define *los-time-offset* (the-as time-frame 0))
+
+;; definition for method 9 of type los-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch time-frame vs none.
+(defmethod los-control-method-9 los-control ((obj los-control) (arg0 process-focusable) (arg1 vector) (arg2 float))
+  (with-pp
+    (when (and (>= (- (-> pp clock frame-counter) (-> obj last-check-time)) (the-as time-frame (-> obj check-interval)))
+               (-> obj src-proc)
+               (or arg0 (-> obj dst-proc))
+               )
+      (let* ((s1-0 (handle->process (-> obj src-proc)))
+             (s2-0 (if (type? s1-0 process-focusable)
+                       (the-as process-focusable s1-0)
+                       )
+                   )
+             )
+        (when s2-0
+          (when (not arg0)
+            (let ((s1-1 (handle->process (-> obj dst-proc))))
+              (set! arg0 (if (type? s1-1 process-focusable)
+                             (the-as process-focusable s1-1)
+                             )
+                    )
+              )
+            )
+          (when arg0
+            (let ((s1-2 (new 'stack-no-clear 'vector)))
+              (set! (-> s1-2 quad) (-> (get-trans s2-0 3) quad))
+              (if (not arg1)
+                  (set! arg1 (get-trans arg0 3))
+                  )
+              (let ((v1-20 (vector-! (new 'stack-no-clear 'vector) arg1 s1-2))
+                    (s3-1 (new 'stack-no-clear 'collide-query))
+                    )
+                (set! (-> s3-1 start-pos quad) (-> s1-2 quad))
+                (set! (-> s3-1 move-dist quad) (-> v1-20 quad))
+                (let ((v1-22 s3-1))
+                  (set! (-> v1-22 radius) arg2)
+                  (set! (-> v1-22 collide-with) (-> obj collide-with))
+                  (set! (-> v1-22 ignore-process0) s2-0)
+                  (set! (-> v1-22 ignore-process1) arg0)
+                  (set! (-> v1-22 ignore-pat) (-> s2-0 root-override pat-ignore-mask))
+                  (set! (-> v1-22 action-mask) (collide-action solid))
+                  )
+                (fill-using-line-sphere *collide-cache* s3-1)
+                (let ((f30-0 (collide-cache-method-16 *collide-cache* s3-1)))
+                  (quad-copy! (the-as pointer (-> obj last-collide-result)) (the-as pointer (-> s3-1 best-other-tri)) 6)
+                  (if (>= 0.0 f30-0)
+                      (set! (-> obj have-no-los) (the-as uint (-> pp clock frame-counter)))
+                      (set! (-> obj have-los) (the-as uint (-> pp clock frame-counter)))
+                      )
+                  )
+                )
+              )
+            (set! (-> obj last-check-time) (-> pp clock frame-counter))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 10 of type los-control
+(defmethod los-control-method-10 los-control ((obj los-control) (arg0 int))
+  (with-pp
+    (and (>= (- (-> pp clock frame-counter) (the-as int (-> obj have-los)))
+             (the-as time-frame (+ (-> obj check-interval) arg0))
+             )
+         (< (- (-> pp clock frame-counter) (the-as int (-> obj have-no-los)))
+            (the-as time-frame (-> obj check-interval))
+            )
+         )
+    )
+  )
+
+;; definition for method 11 of type los-control
+(defmethod los-control-method-11 los-control ((obj los-control) (arg0 int))
+  (with-pp
+    (and (>= (- (-> pp clock frame-counter) (the-as int (-> obj have-no-los)))
+             (the-as time-frame (+ (-> obj check-interval) arg0))
+             )
+         (< (- (-> pp clock frame-counter) (the-as int (-> obj have-los))) (the-as time-frame (-> obj check-interval)))
+         )
+    )
+  )
+
+;; definition for method 12 of type los-control
+;; WARN: Return type mismatch int vs none.
+(defmethod los-control-method-12 los-control ((obj los-control) (arg0 handle))
+  (set! (-> obj dst-proc) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 13 of type los-control
+;; WARN: Return type mismatch int vs none.
+(defmethod los-control-method-13 los-control ((obj los-control) (arg0 process) (arg1 uint) (arg2 collide-spec))
+  (set! (-> obj src-proc) (process->handle arg0))
+  (set! (-> obj dst-proc) (the-as handle #f))
+  (set! (-> obj have-los) (the-as uint 0))
+  (set! (-> obj have-no-los) (the-as uint 0))
+  (set! (-> obj last-check-time) *los-time-offset*)
+  (set! (-> obj check-interval) arg1)
+  (set! (-> obj collide-with) arg2)
+  (set! *los-time-offset* (+ *los-time-offset* 1))
+  0
+  (none)
+  )
+
+
+
+
