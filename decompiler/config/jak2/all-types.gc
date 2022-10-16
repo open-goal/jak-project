@@ -1646,7 +1646,7 @@
 (define-extern matrix-rotate-yzx! (function matrix vector matrix))
 (define-extern matrix-rotate-yxy! (function matrix vector matrix))
 (define-extern matrix-rotate-yx! (function matrix float float matrix))
-(define-extern matrix-axis-sin-cos-vu! (function matrix vector float float none))
+(define-extern matrix-axis-sin-cos-vu! "@unused" (function matrix vector float float none))
 (define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
 (define-extern matrix-axis-angle! (function matrix vector float matrix))
 (define-extern matrix-lerp! (function matrix matrix matrix float matrix))
@@ -7483,27 +7483,27 @@
   )
 
 (deftype bigmap-compressed-layers (structure)
-  ((data    uint32 20  :offset-assert 0 :score -1)
-   (layer0  uint32     :offset 0)
-   (layer1  uint32     :offset 4)
-   (layer2  uint32     :offset 8)
-   (layer3  uint32     :offset 12)
-   (layer4  uint32     :offset 16)
-   (layer5  uint32     :offset 20)
-   (layer6  uint32     :offset 24)
-   (layer7  uint32     :offset 28)
-   (layer8  uint32     :offset 32)
-   (layer9  uint32     :offset 36)
-   (layer10 uint32     :offset 40)
-   (layer11 uint32     :offset 44)
-   (layer12 uint32     :offset 48)
-   (layer13 uint32     :offset 52)
-   (layer14 uint32     :offset 56)
-   (layer15 uint32     :offset 60)
-   (layer16 uint32     :offset 64)
-   (layer17 uint32     :offset 68)
-   (layer18 uint32     :offset 72)
-   (layer19 uint32     :offset 76)
+  ((data    (pointer uint32) 20  :offset-assert 0 :score -1)
+   (layer0  (pointer uint32)     :offset 0)
+   (layer1  (pointer uint32)     :offset 4)
+   (layer2  (pointer uint32)     :offset 8)
+   (layer3  (pointer uint32)     :offset 12)
+   (layer4  (pointer uint32)     :offset 16)
+   (layer5  (pointer uint32)     :offset 20)
+   (layer6  (pointer uint32)     :offset 24)
+   (layer7  (pointer uint32)     :offset 28)
+   (layer8  (pointer uint32)     :offset 32)
+   (layer9  (pointer uint32)     :offset 36)
+   (layer10 (pointer uint32)     :offset 40)
+   (layer11 (pointer uint32)     :offset 44)
+   (layer12 (pointer uint32)     :offset 48)
+   (layer13 (pointer uint32)     :offset 52)
+   (layer14 (pointer uint32)     :offset 56)
+   (layer15 (pointer uint32)     :offset 60)
+   (layer16 (pointer uint32)     :offset 64)
+   (layer17 (pointer uint32)     :offset 68)
+   (layer18 (pointer uint32)     :offset 72)
+   (layer19 (pointer uint32)     :offset 76)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -7585,6 +7585,18 @@
 ;; settings-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (korean)
+  (uk-english)
+  )
+
 (defenum game-feature
   :type uint64
   :bitfield #t
@@ -7615,18 +7627,6 @@
   (darkjak-invinc)
   (darkjak-giant)
   (board-training))
-
-(defenum language-enum
-  :type int64
-  (english)
-  (french)
-  (german)
-  (spanish)
-  (italian)
-  (japanese)
-  (korean)
-  (uk-english)
-  )
 
 (deftype user-setting-data (structure)
   ((border-mode symbol)
@@ -8278,7 +8278,9 @@
   (actor-marks)
   (special-fma-spheres)
   (scene-controls-7)
-  (scene-controls-8))
+  (scene-controls-8)
+  (display-controls)
+  )
 ;; ---main-h:scene-controls
 
 (define-extern *display-scene-control* scene-controls)
@@ -8668,8 +8670,6 @@
       (_type_ region-prim-area) symbol 19)
     )
   )
-
-(declare-type drawable-inline-array-region-prim drawable)
 
 (deftype drawable-tree-region-prim (drawable-tree)
   ((name basic :offset 8)
@@ -11313,7 +11313,7 @@
 (deftype gcf-control (structure)
   ((matrix      matrix          :inline  :offset-assert 0)
    (giftag      generic-gif-tag :inline  :offset-assert 64)
-   (adnops      uint32         2        :offset-assert 80) ;; guess
+   (adnops      gs-adcmd 2 :inline        :offset-assert 80)
    (num-strips  uint32                   :offset 76)
    (num-dps     uint32                   :offset 92)
    (kick-offset uint32                   :offset 108)
@@ -12619,9 +12619,6 @@
   )
 ;; ---memcard-h:mc-status-code
 
-(declare-type entity-perm-array inline-array-class)
-(declare-type continue-point basic)
-(declare-type game-save basic)
 
 ;; +++game-info-h:game-secrets
 (defenum game-secrets
@@ -12670,6 +12667,10 @@
   (reverse-race-3)
   )
 
+(declare-type entity-perm-array inline-array-class)
+(declare-type continue-point basic)
+(declare-type game-save basic)
+(declare-type talker-speech-class structure)
 (declare-type entity-perm structure)
 (deftype game-info (basic)
   ((mode                   symbol               :offset-assert   4)
@@ -12714,7 +12715,7 @@
    (sub-task-list          (array game-task-node-info) :offset-assert 252)
    (mission-list           (array game-task-node-info) :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
-   (unknown-pad6           (array uint16)       :offset-assert 264)
+   (unknown-pad6           (array uint16)               :offset-assert 264)
    (level-opened           uint8             32 :offset-assert 268)
    (total-deaths           int32                :offset-assert 300)
    (continue-deaths        int32                :offset-assert 304)
@@ -12953,38 +12954,37 @@
   :method-count-assert 14
   :size-assert         #x18
   :flag-assert         #xe00000018
-  ;; field on-close uses ~A with a signed load
   (:methods
-    (talker-speech-class-method-9 () none 9)
+    (talker-speech-class-method-9 (_type_) symbol 9)
     (talker-speech-class-method-10 (_type_) none 10)
-    (talker-speech-class-method-11 () none 11)
+    (talker-speech-class-method-11 (_type_) none 11)
     (talker-speech-class-method-12 (_type_ int) none 12)
     (talker-speech-class-method-13 (_type_ int) none 13)
     )
   )
 
 (deftype talker (process)
-  ((trans          vector              :inline :offset-assert 128)
+  ((trans          vector              :inline :offset-assert 128 :score 999)
    (message        talker-speech-class         :offset-assert 144)
    (total-time     time-frame                      :offset-assert 152)
    (total-off-time time-frame                      :offset-assert 160)
    (start-time     time-frame                      :offset-assert 168)
    (state-time     time-frame                      :offset-assert 176)
-   (voicebox       uint64                      :offset-assert 184)
-   (voice-id       uint32                      :offset-assert 192)
-   (message-id     uint32                      :offset-assert 196)
+   (voicebox       handle                      :offset-assert 184)
+   (voice-id       sound-id                      :offset-assert 192)
+   (message-id     sound-id                      :offset-assert 196)
    (region         region                      :offset-assert 200)
    (interp         float                       :offset-assert 204)
-   (save?          basic                       :offset-assert 208)
+   (save?          symbol                      :offset-assert 208)
    )
   :method-count-assert 18
   :size-assert         #xd4
   :flag-assert         #x12006000d4
   (:methods
-    (talker-method-14 () _type_ :state 14)
-    (talker-method-15 () none 15)
-    (talker-method-16 () none 16)
-    (talker-method-17 () none 17)
+    (idle () _type_ :state 14)
+    (active () _type_ :state 15)
+    (exit () _type_ :state 16)
+    (talker-method-17 (_type_) none 17)
     )
   )
 
@@ -12994,34 +12994,46 @@
 ;; speech-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++speech-h:speech-type-flag
 (defenum speech-type-flag
   :type uint8
   :bitfield #t
   (random-order 0)
   )
+;; ---speech-h:speech-type-flag
 
 (deftype speech-type-info (structure)
-  ((channel uint8)
-   (flags speech-type-flag)
-   (priority int8)
-   (request-timeout uint16)
-   (min-delay uint16)
-   (max-delay uint16)
-   (delay uint16)
-   (play-index int16)
-   (list (array string))
+  ((channel         uint8             :offset-assert   0)
+   (flags           speech-type-flag  :offset-assert   1)
+   (priority        int8              :offset-assert   2)
+   (request-timeout uint16            :offset-assert   4)
+   (min-delay       uint16            :offset-assert   6)
+   (max-delay       uint16            :offset-assert   8)
+   (delay           uint16            :offset-assert  10)
+   (play-index      int16             :offset-assert  12)
+   (list            (array string)    :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; Failed to read fields.
   )
 
+;; +++speech-h:speech-type
+(defenum speech-type
+  :type int8
+  :bitfield #t
+  (speech-type-0 0)
+  (speech-type-1 1)
+  (speech-type-2 2)
+  (speech-type-3 3)
+  )
+;; ---speech-h:speech-type
+
 (deftype speech-request (structure)
-  ((handle      uint64  :offset-assert 0)
+  ((handle      handle  :offset-assert 0)
    (time        time-frame  :offset-assert 8)
    (priority    float   :offset-assert 16)
-   (speech-type int8    :offset-assert 20)
+   (speech-type speech-type    :offset-assert 20)
    )
   :pack-me
   :method-count-assert 9
@@ -13029,54 +13041,56 @@
   :flag-assert         #x900000015
   )
 
+;; +++speech-h:speech-channel-flag
 (defenum speech-channel-flag
   :type uint8
   :bitfield #t
   (disable 0)
   )
+;; ---speech-h:speech-channel-flag
 
 (deftype speech-channel (structure)
-  ((flags speech-channel-flag)
-   (gui-channel gui-channel)
-   (delay uint16)
-   (id uint32)
-   (update-time time-frame :offset-assert 8)
-   (start-time time-frame)
-   (end-time time-frame)
-   (request speech-request :inline)
-   (last-request speech-request :inline)
-   (target-pos vector :inline)
-   (speech-table uint32)
+  ((flags        speech-channel-flag         :offset-assert   0)
+   (gui-channel  gui-channel                 :offset-assert   1)
+   (delay        uint16                      :offset-assert   2)
+   (id           sound-id                      :offset-assert   4)
+   (update-time  time-frame                  :offset-assert   8)
+   (start-time   time-frame                  :offset-assert  16)
+   (end-time     time-frame                  :offset-assert  24)
+   (request      speech-request      :inline :offset-assert  32)
+   (last-request speech-request      :inline :offset-assert  56)
+   (target-pos   vector              :inline :offset-assert  80)
+   (speech-table (pointer speech-type-info)                      :offset-assert  96)
    )
   :method-count-assert 14
   :size-assert         #x64
   :flag-assert         #xe00000064
   (:methods
-    (speech-channel-method-9 () none 9)
-    (speech-channel-method-10 () none 10)
-    (speech-channel-method-11 () none 11)
-    (speech-channel-method-12 () none 12)
-    (speech-channel-method-13 () none 13)
+    (speech-channel-method-9 (_type_ process-drawable speech-type) none 9)
+    (speech-channel-method-10 (_type_ handle) none 10)
+    (speech-channel-method-11 (_type_) none 11)
+    (speech-channel-method-12 (_type_) none 12)
+    (speech-channel-method-13 (_type_) none 13)
     )
   )
 
 
 (deftype speech-control (structure)
   ((channel-array speech-channel 2  :inline :offset-assert 0)
-   (speech-table  speech-type-info 57 :offset-assert 224) ;; guess
+   (speech-table  speech-type-info 57 :offset-assert 224)
    )
   :method-count-assert 17
   :size-assert         #x1c4
   :flag-assert         #x11000001c4
   (:methods
-    (speech-control-method-9 () none 9)
+    (speech-control-method-9 (_type_) none 9)
     (speech-control-method-10 (_type_ int speech-type-info) none 10)
     (speech-control-method-11 (_type_) none 11)
-    (speech-control-method-12 () none 12)
-    (speech-control-method-13 () none 13)
-    (speech-control-method-14 () none 14)
-    (speech-control-method-15 () none 15)
-    (speech-control-method-16 () none 16)
+    (speech-control-method-12 (_type_ process-drawable speech-type) none 12)
+    (speech-control-method-13 (_type_ handle) none 13)
+    (speech-control-method-14 (_type_) none 14)
+    (speech-control-method-15 (_type_ process-drawable) none 15)
+    (speech-control-method-16 (_type_) none 16)
     )
   )
 
@@ -13795,9 +13809,9 @@
    (flags             lightning-spec-flags  :offset-assert 8)
    (rand-func         uint8   :offset-assert 10)
    (adjust-distance   uint8   :offset-assert 11)
-   (start-color       uint32  :offset-assert 12)
-   (end-color         uint32  :offset-assert 16)
-   (fade-to-color     uint32  :offset-assert 20)
+   (start-color       rgba    :offset-assert 12)
+   (end-color         rgba    :offset-assert 16)
+   (fade-to-color     rgba    :offset-assert 20)
    (fade-start-factor float   :offset-assert 24)
    (fade-time         float   :offset-assert 28)
    (texture           uint32  :offset-assert 32)
@@ -13838,8 +13852,8 @@
    (line           vector-array        :offset-assert 128)
    (meet           vector-array        :offset-assert 132)
    (path           vector-array        :offset-assert 136)
-   (start-color    uint32              :offset-assert 140)
-   (end-color      uint32              :offset-assert 144)
+   (start-color    rgba              :offset-assert 140)
+   (end-color      rgba              :offset-assert 144)
    )
   :method-count-assert 9
   :size-assert         #x94
@@ -13848,7 +13862,7 @@
 
 (deftype lightning-control (basic)
   ((spec    lightning-spec          :offset-assert 4)
-   (process process                 :offset-assert 8)
+   (process (pointer process)                 :offset-assert 8)
    (state   lightning-state :inline :offset-assert 16)
    )
   :method-count-assert 14
@@ -27221,7 +27235,7 @@
 ;; ambient                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern can-display-query? (function symbol))
+(define-extern can-display-query? (function process string float symbol))
 (define-extern talker-surpress! (function none))
 (define-extern talker-displayed? (function symbol))
 (define-extern kill-current-talker (function symbol pair symbol none)) ;; see (exit play-anim scene-player)
@@ -27248,6 +27262,7 @@
 ;; fma-sphere                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++fma-sphere:fma-sphere-mode
 (defenum fma-sphere-mode
   :type uint32
   :bitfield #t
@@ -27255,16 +27270,18 @@
   (kill-once 1)
   (danger 2)
   (deadly-overlap 3))
+;; ---fma-sphere:fma-sphere-mode
 
 (deftype fma-sphere (process-drawable)
-  ((first-time?  symbol                      :offset-assert 200)
-   (mode         fma-sphere-mode                      :offset-assert 204)
-   (track-handle handle                      :offset-assert 208)
-   (track-joint  int32                       :offset-assert 216)
-   (attack-id    uint32                      :offset-assert 220)
-   (duration     time-frame                      :offset-assert 224)
-   (sphere       sphere              :inline :offset-assert 240)
-   (danger       traffic-danger-info :inline :offset-assert 256)
+  ((root-override collide-shape               :offset 128 :score 999)
+   (first-time?   symbol                      :offset-assert 200)
+   (mode          fma-sphere-mode                      :offset-assert 204)
+   (track-handle  handle                      :offset-assert 208)
+   (track-joint   int32                       :offset-assert 216)
+   (attack-id     uint32                      :offset-assert 220)
+   (duration      time-frame                      :offset-assert 224)
+   (sphere        sphere              :inline :offset-assert 240)
+   (danger        traffic-danger-info :inline :offset-assert 256)
    )
   :method-count-assert 21
   :size-assert         #x136
@@ -27274,7 +27291,8 @@
     )
   )
 
-(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere))
+;; TODO - takes vectors, but hits an assertion!
+(define-extern fma-sphere-init-by-other (function fma-sphere-mode process-drawable int time-frame object object fma-sphere :behavior fma-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; script                         ;;
@@ -27395,7 +27413,6 @@
 ;; lightning                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lightning-globals (structure)
   ((gcf-buf uint16  :offset-assert 0)
    (vtx-buf uint16  :offset-assert 2)
@@ -27404,22 +27421,21 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
 (define-extern *lightning-spec-id-table* (array lightning-spec))
-;; (define-extern *lightning-gcf* object)
-;; (define-extern lightning-fractal-gen function)
-;; (define-extern lightning-uniform-gen function)
-;; (define-extern lightning-trail-uniform-gen function)
-;; (define-extern lightning-trail-fractal-gen function)
-;; (define-extern gs-packed-rgba-lerp! function)
-;; (define-extern rgba-lerp function)
-;; (define-extern lightning-fade function)
-;; (define-extern lightning-update function)
-;; (define-extern lightning-draw function)
-;; (define-extern lightning-start function)
-;; (define-extern *lightning-globals* object)
-;; (define-extern *lightning* object)
+(define-extern *lightning-gcf* gcf-control)
+(define-extern lightning-fractal-gen (function (inline-array vector) int int float lightning-spec none))
+(define-extern lightning-uniform-gen (function (inline-array vector) int int float lightning-spec none))
+(define-extern lightning-trail-uniform-gen (function (inline-array vector) (inline-array vector) float int symbol))
+(define-extern lightning-trail-fractal-gen (function (inline-array vector) (inline-array vector) int int float lightning-spec none))
+(define-extern gs-packed-rgba-lerp! (function gs-packed-rgba rgba rgba float gs-packed-rgba))
+(define-extern rgba-lerp (function rgba rgba rgba rgba))
+(define-extern lightning-fade (function lightning-control int :behavior process))
+(define-extern lightning-update (function lightning-control symbol))
+(define-extern lightning-draw (function dma-buffer lightning-control lightning-globals symbol))
+(define-extern lightning-start (function float float (pointer process)))
+(define-extern *lightning-globals* lightning-globals)
+(define-extern *lightning* symbol)
 (define-extern lightning-draw-all (function none))
 (define-extern unlink-lightning-spec-by-heap (function kheap none))
 
@@ -28227,7 +28243,7 @@
 ;; (define-extern remote-track function)
 ;; (define-extern cam-remote state)
 ;; (define-extern voicebox-init-by-other function) ;; (function vector handle none :behavior voicebox)
-;; (define-extern voicebox-spawn function) ;; (function process vector (pointer process))
+(define-extern voicebox-spawn (function process-drawable vector (pointer process))) ;; (function process vector (pointer process))
 ;; (define-extern judge-init-by-other function)
 ;; (define-extern judge-spawn function)
 
