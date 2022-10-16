@@ -172,6 +172,12 @@ class ObjectFileDB {
                          bool disassemble_code,
                          bool print_hex);
 
+  void process_object_file_data(
+      ObjectFileData& data,
+      const fs::path& output_dir,
+      const Config& config,
+      const std::unordered_set<std::string>& skip_functions,
+      const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states);
   void analyze_functions_ir2(
       const fs::path& output_dir,
       const Config& config,
