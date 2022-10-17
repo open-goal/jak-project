@@ -122,6 +122,13 @@ SimpleAtom SimpleAtom::make_sym_val(const std::string& name) {
   return result;
 }
 
+SimpleAtom SimpleAtom::make_sym_val_ptr(const std::string& name) {
+  SimpleAtom result;
+  result.m_kind = Kind::SYMBOL_VAL_PTR;
+  result.m_string = name;
+  return result;
+}
+
 SimpleAtom SimpleAtom::make_empty_list() {
   SimpleAtom result;
   result.m_kind = Kind::EMPTY_LIST;
@@ -206,6 +213,8 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
       return pretty_print::to_symbol("'()");
     case Kind::STATIC_ADDRESS:
       return pretty_print::to_symbol(labels.at(m_int).name);
+    case Kind::SYMBOL_VAL_PTR:
+      return pretty_print::to_symbol(fmt::format("(&-> '{} value)", m_string));
     default:
       ASSERT(false);
       return {};

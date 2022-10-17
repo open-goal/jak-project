@@ -131,6 +131,7 @@ class SimpleAtom {
     INTEGER_CONSTANT,
     SYMBOL_PTR,
     SYMBOL_VAL,
+    SYMBOL_VAL_PTR,
     EMPTY_LIST,
     STATIC_ADDRESS,
     INVALID
@@ -140,6 +141,7 @@ class SimpleAtom {
   static SimpleAtom make_var(const RegisterAccess& var);
   static SimpleAtom make_sym_ptr(const std::string& name);
   static SimpleAtom make_sym_val(const std::string& name);
+  static SimpleAtom make_sym_val_ptr(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
   static SimpleAtom make_static_address(int static_label_id);
@@ -174,6 +176,7 @@ class SimpleAtom {
   bool is_sym_val(const std::string& str) const {
     return m_kind == Kind::SYMBOL_VAL && m_string == str;
   }
+  bool is_sym_val_ptr() const { return m_kind == Kind::SYMBOL_VAL_PTR; };
   bool is_empty_list() const { return m_kind == Kind::EMPTY_LIST; };
   bool is_static_addr() const { return m_kind == Kind::STATIC_ADDRESS; };
   Kind get_kind() const { return m_kind; }
@@ -184,7 +187,7 @@ class SimpleAtom {
   SimpleExpression as_expr() const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
   const std::string& get_str() const {
-    ASSERT(is_sym_ptr() || is_sym_val());
+    ASSERT(is_sym_ptr() || is_sym_val() || is_sym_val_ptr());
     return m_string;
   }
   void mark_as_float();
