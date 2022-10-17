@@ -10,7 +10,7 @@
 namespace snd {
 std::array<u8, 32> g_block_reg{};
 
-void blocksound_handler2::init() {
+void blocksound_handler::init() {
   m_next_grain = 0;
   m_countdown = m_sfx.grains[0]->delay();
 
@@ -25,7 +25,7 @@ void blocksound_handler2::init() {
   }
 }
 
-bool blocksound_handler2::tick() {
+bool blocksound_handler::tick() {
   m_voices.remove_if([](std::weak_ptr<vag_voice>& p) { return p.expired(); });
 
   if (m_done) {
@@ -48,7 +48,7 @@ bool blocksound_handler2::tick() {
   return false;
 };
 
-void blocksound_handler2::pause() {
+void blocksound_handler::pause() {
   m_paused = true;
 
   for (auto& p : m_voices) {
@@ -61,7 +61,7 @@ void blocksound_handler2::pause() {
   }
 }
 
-void blocksound_handler2::unpause() {
+void blocksound_handler::unpause() {
   m_paused = false;
 
   for (auto& p : m_voices) {
@@ -74,7 +74,7 @@ void blocksound_handler2::unpause() {
   }
 }
 
-void blocksound_handler2::stop() {
+void blocksound_handler::stop() {
   m_done = true;
 
   for (auto& p : m_voices) {
@@ -87,7 +87,7 @@ void blocksound_handler2::stop() {
   }
 }
 
-void blocksound_handler2::set_vol_pan(s32 vol, s32 pan) {
+void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_app_volume = (vol * m_sfx.d.Vol) >> 10;
@@ -138,7 +138,7 @@ void blocksound_handler2::set_vol_pan(s32 vol, s32 pan) {
   }
 }
 
-void blocksound_handler2::update_pitch() {
+void blocksound_handler::update_pitch() {
   m_cur_pm = m_app_pm;
   m_cur_pb = m_app_pb;
 
@@ -155,17 +155,17 @@ void blocksound_handler2::update_pitch() {
   }
 }
 
-void blocksound_handler2::set_pmod(s32 mod) {
+void blocksound_handler::set_pmod(s32 mod) {
   m_app_pm = mod;
   update_pitch();
 }
 
-void blocksound_handler2::set_pbend(s32 bend) {
+void blocksound_handler::set_pbend(s32 bend) {
   m_app_pb = bend;
   update_pitch();
 }
 
-void blocksound_handler2::do_grain() {
+void blocksound_handler::do_grain() {
   auto& grain = m_sfx.grains[m_next_grain];
 
   grain->execute(*this);

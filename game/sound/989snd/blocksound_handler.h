@@ -7,9 +7,9 @@
 #include "sfxblock2.h"
 
 namespace snd {
-class blocksound_handler2 : public sound_handler {
+class blocksound_handler : public sound_handler {
  public:
-  blocksound_handler2(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
+  blocksound_handler(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
       : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
     vol = (vol * m_sfx.d.Vol) >> 10;
     if (vol >= 128) {
@@ -36,7 +36,7 @@ class blocksound_handler2 : public sound_handler {
     m_group = sfx.d.VolGroup;
   }
 
-  ~blocksound_handler2() override {
+  ~blocksound_handler() override {
     for (auto& p : m_voices) {
       auto v = p.lock();
       if (v != nullptr) {
