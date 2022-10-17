@@ -1,13 +1,71 @@
 #pragma once
 #include <map>
 
-#include "sfxblock.h"
-
 #include "common/common_types.h"
 
 #include "game/sound/989snd/vagvoice.h"
 
 namespace snd {
+
+struct XREFGrainParams {
+  /*   0 */ u32 BankID;
+  /*   4 */ u32 SoundIndex;
+  /*   8 */ s32 PitchMod;
+  /*   c */ u32 Flags;
+};
+
+struct RandDelayParams {
+  /*   0 */ s32 Amount;
+};
+
+struct ControlParams {
+  /*   0 */ s16 param[4];
+};
+
+struct LFOParams {
+  /*   0 */ u8 which_lfo;
+  /*   1 */ u8 target;
+  /*   2 */ u8 target_extra;
+  /*   3 */ u8 shape;
+  /*   4 */ u16 duty_cycle;
+  /*   6 */ u16 depth;
+  /*   8 */ u16 flags;
+  /*   a */ u16 start_offset;
+  /*   c */ u32 step_size;
+};
+
+struct PlaySoundParams {
+  /*   0 */ s32 vol;
+  /*   4 */ s32 pan;
+  /*   8 */ s8 reg_settings[4];
+  /*   c */ s32 sound_id;
+  /*  10 */ char snd_name[16];
+};
+
+struct PluginParams {
+  /*   0 */ u32 id;
+  /*   4 */ u32 index;
+  /*   8 */ u8 data[24];
+};
+
+struct LargestGrainParamStruct {
+  /*   0 */ char blank[32];
+};
+
+struct SFXGrain {
+  /*   0 */ u32 Type;
+  /*   4 */ s32 Delay;
+  union {
+    /*   8 */ Tone tone;
+    /*   8 */ XREFGrainParams xref;
+    /*   8 */ RandDelayParams delay;
+    /*   8 */ ControlParams control;
+    /*   8 */ LFOParams lfo;
+    /*   8 */ PlaySoundParams play_sound;
+    /*   8 */ PluginParams plugin_params;
+    /*   8 */ LargestGrainParamStruct junk;
+  } GrainParams;
+};
 
 struct SFXGrain2 {
   union {
@@ -64,6 +122,7 @@ class blocksound_handler2;
 
 class Grain {
  public:
+  Grain(u32 delay) : m_delay(delay) {}
   virtual void execute(blocksound_handler2& handler) = 0;
   s32 delay() { return m_delay; }
 
@@ -175,6 +234,11 @@ class SFXGrain_RandPlay : public Grain {
   SFXGrain_RandPlay(SFXGrain& grain);
   SFXGrain_RandPlay(SFXGrain2& grain, u8* data);
   void execute(blocksound_handler2& handler) override;
+
+ private:
+  int options{0};
+  int count{0};
+  int previous{0};
 };
 
 class SFXGrain_RandDelay : public Grain {

@@ -2,7 +2,7 @@
 
 #include "common/log/log.h"
 
-#include "blocksound_handler2.h"
+#include "blocksound_handler.h"
 
 namespace snd {
 SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
@@ -19,8 +19,8 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
   for (auto& sound : m_sounds) {
     auto graindata = (SFXGrain2*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
     for (int i = 0; i < sound.d.NumGrains; i++) {
-      sound.grains.push_back(new_grain((grain_type)graindata->OpcodeData.type, *graindata, (u8*)((uintptr_t)data + data->GrainData)));
-      lg::warn("adddid thing");
+      SFXGrain2& grain = graindata[i];
+      sound.grains.push_back(new_grain((grain_type)graindata->OpcodeData.type, grain, (u8*)((uintptr_t)data + data->GrainData)));
     }
   }
 

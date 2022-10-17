@@ -5,7 +5,6 @@ set(SOUND_SOURCES
   989snd/midi_handler.cpp
   989snd/ame_handler.cpp
   989snd/blocksound_handler.cpp
-  989snd/blocksound_handler2.cpp
   989snd/musicbank.cpp
   989snd/sfxblock.cpp
   989snd/sfxblock2.cpp

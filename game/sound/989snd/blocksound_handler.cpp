@@ -5,10 +5,14 @@
 
 #include "util.h"
 
+#include "common/log/log.h"
+
 namespace snd {
-void blocksound_handler::init() {
+std::array<u8, 32> g_block_reg{};
+
+void blocksound_handler2::init() {
   m_next_grain = 0;
-  m_countdown = m_sfx.grains[0].Delay;
+  m_countdown = m_sfx.grains[0]->delay();
 
   // if (m_sfx.d.Flags & 2) {
   //   fmt::print("solo flag\n");
@@ -21,7 +25,7 @@ void blocksound_handler::init() {
   }
 }
 
-bool blocksound_handler::tick() {
+bool blocksound_handler2::tick() {
   m_voices.remove_if([](std::weak_ptr<vag_voice>& p) { return p.expired(); });
 
   if (m_done) {
@@ -44,7 +48,7 @@ bool blocksound_handler::tick() {
   return false;
 };
 
-void blocksound_handler::pause() {
+void blocksound_handler2::pause() {
   m_paused = true;
 
   for (auto& p : m_voices) {
@@ -57,7 +61,7 @@ void blocksound_handler::pause() {
   }
 }
 
-void blocksound_handler::unpause() {
+void blocksound_handler2::unpause() {
   m_paused = false;
 
   for (auto& p : m_voices) {
@@ -70,7 +74,7 @@ void blocksound_handler::unpause() {
   }
 }
 
-void blocksound_handler::stop() {
+void blocksound_handler2::stop() {
   m_done = true;
 
   for (auto& p : m_voices) {
@@ -83,7 +87,7 @@ void blocksound_handler::stop() {
   }
 }
 
-void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
+void blocksound_handler2::set_vol_pan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
       m_app_volume = (vol * m_sfx.d.Vol) >> 10;
@@ -134,7 +138,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 }
 
-void blocksound_handler::update_pitch() {
+void blocksound_handler2::update_pitch() {
   m_cur_pm = m_app_pm;
   m_cur_pb = m_app_pb;
 
@@ -151,68 +155,20 @@ void blocksound_handler::update_pitch() {
   }
 }
 
-void blocksound_handler::set_pmod(s32 mod) {
+void blocksound_handler2::set_pmod(s32 mod) {
   m_app_pm = mod;
   update_pitch();
 }
 
-void blocksound_handler::set_pbend(s32 bend) {
+void blocksound_handler2::set_pbend(s32 bend) {
   m_app_pb = bend;
   update_pitch();
 }
 
-s32 blocksound_handler::null(SFXGrain& grain) {
-  return 0;
-}
-
-s32 blocksound_handler::play_tone(SFXGrain& grain) {
-  auto voice = std::make_shared<vag_voice>(grain.GrainParams.tone);
-
-  voice->basevol = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, grain.GrainParams.tone.Vol,
-                                    grain.GrainParams.tone.Pan);
-
-  voice->start_note = m_note;
-  voice->start_fine = m_fine;
-  voice->group = m_group;
-
-  m_vm.start_tone(voice, m_bank);
-  m_voices.emplace_front(voice);
-
-  return 0;
-}
-
-s32 blocksound_handler::rand_play(SFXGrain& grain) {
-  int options = grain.GrainParams.control.param[0];
-  int count = grain.GrainParams.control.param[1];
-  int previous = grain.GrainParams.control.param[2];
-
-  int rnd = rand() % options;
-  if (rnd == previous) {
-    rnd++;
-    if (rnd >= options) {
-      rnd = 0;
-    }
-  }
-
-  grain.GrainParams.control.param[2] = rnd;
-  m_next_grain += rnd * count;
-  m_grains_to_play = count + 1;
-  m_grains_to_skip = (options - 1 - rnd) * count;
-  m_skip_grains = true;
-
-  return 0;
-}
-
-void blocksound_handler::do_grain() {
+void blocksound_handler2::do_grain() {
   auto& grain = m_sfx.grains[m_next_grain];
 
-  auto handler = m_grain_handler.find((grain_type)grain.Type);
-  if (handler != m_grain_handler.end()) {
-    (this->*(handler->second))(grain);
-  } else {
-    throw std::runtime_error(
-        fmt::format("{}: Ignoring grain {}, type {}\n", (void*)this, m_next_grain, grain.Type));
-  }
+  grain->execute(*this);
 
   if (m_skip_grains) {
     m_grains_to_play--;
@@ -228,7 +184,7 @@ void blocksound_handler::do_grain() {
     return;
   }
 
-  m_countdown = m_sfx.grains[m_next_grain].Delay;
+  m_countdown = m_sfx.grains[m_next_grain]->delay();
 }
 
 }  // namespace snd

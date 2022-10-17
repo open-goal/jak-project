@@ -1,16 +1,15 @@
 #pragma once
-#include <unordered_map>
-
-#include "sfxblock.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 
 #include "common/common_types.h"
 
+#include "sfxblock2.h"
+
 namespace snd {
-class blocksound_handler : public sound_handler {
+class blocksound_handler2 : public sound_handler {
  public:
-  blocksound_handler(SFX& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
+  blocksound_handler2(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
       : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
     vol = (vol * m_sfx.d.Vol) >> 10;
     if (vol >= 128) {
@@ -35,13 +34,9 @@ class blocksound_handler : public sound_handler {
     m_orig_volume = m_sfx.d.Vol;
 
     m_group = sfx.d.VolGroup;
-
-    m_grain_handler.insert(std::make_pair(grain_type::null, &blocksound_handler::null));
-    m_grain_handler.insert(std::make_pair(grain_type::tone, &blocksound_handler::play_tone));
-    m_grain_handler.insert(std::make_pair(grain_type::rand_play, &blocksound_handler::rand_play));
   }
 
-  ~blocksound_handler() override {
+  ~blocksound_handler2() override {
     for (auto& p : m_voices) {
       auto v = p.lock();
       if (v != nullptr) {
@@ -63,29 +58,9 @@ class blocksound_handler : public sound_handler {
 
   void init();
 
- private:
-  enum class grain_type : u32 {
-    null = 0,
-    tone = 1,
-    xref_id = 2,
-    xref_num = 3,
-    lfo_settings = 4,
-    loop_start = 21,
-    loop_end = 22,
-    loop_continue = 23,
-    rand_play = 25,
-    rand_delay = 26,
-  };
-
   void do_grain();
 
-  s32 null(SFXGrain& grain);
-  s32 play_tone(SFXGrain& grain);
-  s32 rand_play(SFXGrain& grain);
   void update_pitch();
-
-  using grain_fp = int (blocksound_handler::*)(SFXGrain& grain);
-  std::unordered_map<grain_type, grain_fp> m_grain_handler;
 
   bool m_paused{false};
 
@@ -96,7 +71,7 @@ class blocksound_handler : public sound_handler {
   u32 m_grains_to_skip{0};
   bool m_skip_grains{false};
 
-  SFX& m_sfx;
+  SFX2& m_sfx;
   voice_manager& m_vm;
 
   std::list<std::weak_ptr<vag_voice>> m_voices;
