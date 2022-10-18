@@ -1,5 +1,5 @@
 (group-name "common")
-(language-id 3) ;; this file is for spanish
+(language-id 3)
 (text-version jak1-v2)
 
 ;; -----------------
@@ -72,7 +72,7 @@
 (#x1063 "150")
 
 (#x1070 "NIVEL DE DETALLE (FONDO)")
-(#x1071 "NIVEL DE DETALLE (PRIMER PLANO)"
+(#x1071 "NIVEL DE DETALLE (PRIMER PLANO)")
 (#x1072 "MAXIMO")
 (#x1073 "ALTO")
 (#x1074 "MEDIO")
@@ -144,7 +144,7 @@
 (#x10e1 "CAÑON LURKER")
 (#x10e2 "GRUTA")
 (#x10e3 "SIN USAR 1")
-(#x10e4 "BARCO LURKER"
+(#x10e4 "BARCO LURKER")
 (#x10e5 "SIN USAR 2")
 (#x10e6 "ZOOMER")
 (#x10e7 "FLUT FLUT")
@@ -195,5 +195,4 @@
 
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
-
 
