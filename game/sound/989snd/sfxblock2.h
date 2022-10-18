@@ -78,6 +78,7 @@ struct SFX2Data {
 
 struct SFX2 {
   SFX2Data d;
+  std::string name;
   std::vector<std::unique_ptr<Grain>> grains;
 };
 

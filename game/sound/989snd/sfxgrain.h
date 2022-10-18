@@ -2,6 +2,7 @@
 #include <map>
 
 #include "common/common_types.h"
+#include "common/log/log.h"
 
 #include "game/sound/989snd/vagvoice.h"
 
@@ -337,6 +338,11 @@ class SFXGrain_PlayCycle : public Grain {
   SFXGrain_PlayCycle(SFXGrain& grain);
   SFXGrain_PlayCycle(SFXGrain2& grain, u8* data);
   void execute(blocksound_handler& handler) override;
+
+ private:
+  int m_group_size;
+  int m_group_count;
+  int m_index;
 };
 
 class SFXGrain_AddRegister : public Grain {

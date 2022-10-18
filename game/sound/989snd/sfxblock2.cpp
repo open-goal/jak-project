@@ -1,8 +1,8 @@
 #include "sfxblock2.h"
 
-#include "common/log/log.h"
-
 #include "blocksound_handler.h"
+
+#include "common/log/log.h"
 
 namespace snd {
 SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
@@ -20,7 +20,8 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
     auto graindata = (SFXGrain2*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
     for (int i = 0; i < sound.d.NumGrains; i++) {
       SFXGrain2& grain = graindata[i];
-      sound.grains.push_back(new_grain((grain_type)graindata->OpcodeData.type, grain, (u8*)((uintptr_t)data + data->GrainData)));
+      sound.grains.push_back(new_grain((grain_type)grain.OpcodeData.type, grain,
+                                       (u8*)((uintptr_t)data + data->GrainData)));
     }
   }
 
@@ -39,8 +40,8 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
         strncpy(buf, (char*)name->Name, 16);
 
         std::string str(buf);
-        lg::warn("{}: {}", name->Index, str);
         m_names[str] = name->Index;
+        m_sounds.at(name->Index).name = str;
 
         name++;
       }
@@ -54,8 +55,19 @@ std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,
                                                        s32 pan,
                                                        s32 pm,
                                                        s32 pb) {
+  if (sound_id >= m_sounds.size()) {
+    lg::error("out of bounds sound_id");
+    return nullptr;
+  }
+
   auto& SFX = m_sounds[sound_id];
 
+  if (SFX.grains.empty()) {
+    // fmt::print("skipping empty sfx\n");
+    return nullptr;
+  }
+
+  lg::info("playing sound: {}", SFX.name);
   auto handler =
       std::make_unique<blocksound_handler>(m_sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
   handler->init();

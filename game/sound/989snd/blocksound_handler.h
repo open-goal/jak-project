@@ -7,6 +7,9 @@
 #include "sfxblock2.h"
 
 namespace snd {
+
+extern std::array<u8, 32> g_block_reg;
+
 class blocksound_handler : public sound_handler {
  public:
   blocksound_handler(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)

@@ -42,6 +42,19 @@ int main(int argc, char* argv[]) {
       }
     }
 
+    if (parts[0] == "playall") {
+      auto idx = 0;
+      auto id = player.play_sound(bankid, idx, 0x400, 0, 0, 0);
+      while (true) {
+        if (player.sound_still_active(id)) {
+          sleep(1);
+        } else {
+          idx++;
+          id = player.play_sound(bankid, idx, 0x400, 0, 0, 0);
+        }
+      }
+    }
+
     if (parts[0] == "stop") {
       printf("stopping all sounds\n");
       player.stop_all_sounds();

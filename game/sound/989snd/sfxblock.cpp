@@ -1,10 +1,9 @@
 #include "sfxblock.h"
 
+#include "blocksound_handler.h"
 #include "sfxgrain.h"
 
 #include "common/log/log.h"
-
-#include "blocksound_handler.h"
 
 namespace snd {
 

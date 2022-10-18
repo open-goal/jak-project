@@ -1,8 +1,8 @@
 #include "sfxgrain.h"
 
-#include "common/log/log.h"
-
 #include "blocksound_handler.h"
+
+#include "common/log/log.h"
 
 namespace snd {
 
@@ -17,10 +17,32 @@ SFXGrain_Tone::SFXGrain_Tone(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
 }
 
 void SFXGrain_Tone::execute(blocksound_handler& handler) {
+  handler.m_cur_volume =
+      ((handler.m_app_volume * handler.m_orig_volume) >> 7) + handler.m_lfo_volume;
+  handler.m_cur_volume = std::clamp(handler.m_cur_volume, 0, 127);
+
+  handler.m_cur_pan = handler.m_app_pan + handler.m_lfo_pan;
+  while (handler.m_cur_pan >= 360)
+    handler.m_cur_pan -= 360;
+  while (handler.m_cur_pan < 0)
+    handler.m_cur_pan += 360;
+
+  if ((m_tone.Flags & 8) != 0) {
+    // Noise unsupported
+    return;
+  }
+
   auto voice = std::make_shared<vag_voice>(m_tone);
 
-  voice->basevol = handler.m_vm.make_volume(127, 0, handler.m_cur_volume, handler.m_cur_pan,
-                                            m_tone.Vol, m_tone.Pan);
+  auto vol = m_tone.Vol;
+  auto pan = m_tone.Pan;
+
+  if (vol < 0) {
+  }
+
+  voice->basevol =
+      handler.m_vm.make_volume(127, 0, handler.m_cur_volume, handler.m_cur_pan, vol, pan);
+
 
   voice->start_note = handler.m_note;
   voice->start_fine = handler.m_fine;
@@ -162,9 +184,29 @@ SFXGrain_WaitForAllVoices::SFXGrain_WaitForAllVoices(SFXGrain2& grain, u8* data)
     : Grain(grain.Delay) {}
 void SFXGrain_WaitForAllVoices::execute(blocksound_handler& handler) {}
 
-SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-void SFXGrain_PlayCycle::execute(blocksound_handler& handler) {}
+SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain& grain) : Grain(grain.Delay) {
+  m_group_size = grain.GrainParams.control.param[0];
+  m_group_count = grain.GrainParams.control.param[1];
+  m_index = grain.GrainParams.control.param[2];
+}
+
+SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+  m_group_size = grain.OpcodeData.arg[0];
+  m_group_count = grain.OpcodeData.arg[1];
+  m_index = grain.OpcodeData.arg[2];
+}
+
+void SFXGrain_PlayCycle::execute(blocksound_handler& handler) {
+  auto a = m_index++;
+  if (m_index == m_group_size) {
+    m_index = 0;
+  }
+
+  handler.m_next_grain += m_group_count * a;
+  handler.m_grains_to_play = m_group_count + 1;
+  handler.m_grains_to_skip = (m_group_size - 1 - a) * m_group_count;
+  handler.m_skip_grains = true;
+}
 
 SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain& grain) : Grain(grain.Delay) {}
 SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
@@ -172,15 +214,35 @@ void SFXGrain_AddRegister::execute(blocksound_handler& handler) {}
 
 SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain& grain) : Grain(grain.Delay) {}
 SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-void SFXGrain_KeyOffVoices::execute(blocksound_handler& handler) {}
+void SFXGrain_KeyOffVoices::execute(blocksound_handler& handler) {
+  for (auto& p : handler.m_voices) {
+    auto v = p.lock();
+    if (v == nullptr) {
+      continue;
+    }
+
+    v->key_off();
+  }
+}
 
 SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain& grain) : Grain(grain.Delay) {}
 SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-void SFXGrain_KillVoices::execute(blocksound_handler& handler) {}
+void SFXGrain_KillVoices::execute(blocksound_handler& handler) {
+  for (auto& p : handler.m_voices) {
+    auto v = p.lock();
+    if (v == nullptr) {
+      continue;
+    }
+
+    v->key_off();
+  }
+}
 
 SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain& grain) : Grain(grain.Delay) {}
 SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-void SFXGrain_OnStopMarker::execute(blocksound_handler& handler) {}
+void SFXGrain_OnStopMarker::execute(blocksound_handler& handler) {
+  handler.m_next_grain = handler.m_sfx.grains.size() - 1;
+}
 
 SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain& grain) : Grain(grain.Delay) {}
 SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
