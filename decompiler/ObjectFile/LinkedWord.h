@@ -24,14 +24,15 @@ namespace decompiler {
 class LinkedWord {
  public:
   enum Kind : u8 {
-    PLAIN_DATA,  // just plain data
-    PTR,         // pointer to a location
-    HI_PTR,      // lower 16-bits of this data are the upper 16 bits of a pointer
-    LO_PTR,      // lower 16-bits of this data are the lower 16 bits of a pointer
-    SYM_PTR,     // this is a pointer to a symbol
-    EMPTY_PTR,   // this is a pointer to the empty list
-    SYM_OFFSET,  // this is an offset of a symbol in the symbol table
-    TYPE_PTR     // this is a pointer to a type
+    PLAIN_DATA,      // just plain data
+    PTR,             // pointer to a location
+    HI_PTR,          // lower 16-bits of this data are the upper 16 bits of a pointer
+    LO_PTR,          // lower 16-bits of this data are the lower 16 bits of a pointer
+    SYM_PTR,         // this is a pointer to a symbol
+    EMPTY_PTR,       // this is a pointer to the empty list
+    SYM_OFFSET,      // this is an offset of a symbol in the symbol table
+    SYM_VAL_OFFSET,  // offset to the value of the symbol (different in jak 2)
+    TYPE_PTR         // this is a pointer to a type
   };
 
  private:
@@ -46,7 +47,8 @@ class LinkedWord {
   explicit LinkedWord(uint32_t _data) : data(_data) {}
 
   bool holds_string() const {
-    return m_kind == SYM_PTR || m_kind == SYM_OFFSET || m_kind == TYPE_PTR;
+    return m_kind == SYM_PTR || m_kind == SYM_OFFSET || m_kind == TYPE_PTR ||
+           m_kind == SYM_VAL_OFFSET;
   }
 
   LinkedWord(const LinkedWord& other) {
@@ -68,7 +70,7 @@ class LinkedWord {
     if (&other != this) {
       data = other.data;
       if (holds_string()) {
-        delete[]((char*)m_data_ptr);
+        delete[] ((char*)m_data_ptr);
       }
       m_kind = other.m_kind;
 
@@ -86,20 +88,20 @@ class LinkedWord {
 
   ~LinkedWord() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
   }
 
   void set_to_empty_ptr() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = EMPTY_PTR;
   }
 
   void set_to_symbol(Kind kind, const std::string& name) {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = kind;
     char* str = new char[name.size() + 1];
@@ -109,7 +111,7 @@ class LinkedWord {
 
   void set_to_pointer(Kind kind, u32 label_id) {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_data_ptr = label_id;
     m_kind = kind;
@@ -117,7 +119,7 @@ class LinkedWord {
 
   void set_to_plain_data() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = PLAIN_DATA;
   }

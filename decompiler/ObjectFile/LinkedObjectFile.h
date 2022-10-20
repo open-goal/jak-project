@@ -41,7 +41,10 @@ class LinkedObjectFile {
                         int source_offset,
                         const char* name,
                         LinkedWord::Kind kind);
-  void symbol_link_offset(int source_segment, int source_offset, const char* name);
+  void symbol_link_offset(int source_segment,
+                          int source_offset,
+                          const char* name,
+                          bool subtract_one);
   Function& get_function_at_label(int label_id);
   Function* try_get_function_at_label(int label_id);
   Function* try_get_function_at_label(const DecompilerLabel& label);

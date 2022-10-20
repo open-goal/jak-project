@@ -33,6 +33,90 @@
 
 namespace decompiler {
 
+void ObjectFileDB::process_object_file_data(
+    ObjectFileData& data,
+    const fs::path& output_dir,
+    const Config& config,
+    const std::unordered_set<std::string>& skip_functions,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
+  Timer file_timer;
+  ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
+  ir2_setup_labels(config, data);
+  ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
+  if (data.linked_data.functions_by_seg.size() == 3) {
+    enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
+    try {
+      run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+      step = DEFSTATE;
+      run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
+      step = DEFSKELGROUP;
+      run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+
+    } catch (const std::exception& e) {
+      switch (step) {
+        case DEFPART:
+          lg::error("Failed to find defpartgroups: {}", e.what());
+          break;
+        case DEFSTATE:
+          lg::error("Failed to find defstates: {}", e.what());
+          break;
+        case DEFSKELGROUP:
+          lg::error("Failed to find defskelgroups: {}", e.what());
+          break;
+      }
+    }
+  }
+  ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
+
+  ir2_insert_anonymous_functions(DEBUG_SEGMENT, data);
+  ir2_insert_anonymous_functions(MAIN_SEGMENT, data);
+  ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
+
+  ir2_run_mips2c(config, data);
+
+  ir2_symbol_definition_map(data);
+
+  // TODO - insert the game_name into the import line automatically
+  // instead of `goal_src/jak1/import/something.gc`
+  // just `import/something.gc`
+  //
+  // Can be relative to the root of the source directory
+  const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
+  std::vector<std::string> imports;
+  if (imports_it != config.import_deps_by_file.end()) {
+    imports = imports_it->second;
+  }
+
+  if (!output_dir.string().empty()) {
+    ir2_write_results(output_dir, config, imports, data);
+  } else {
+    data.output_with_skips = ir2_final_out(data, imports, skip_functions);
+    data.full_output = ir2_final_out(data, imports, {});
+  }
+
+  if (!config.generate_all_types) {
+    // this frees ir2 memory, but means future passes can't look back on this function.
+    for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+  } else {
+    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
+      if (seg == TOP_LEVEL_SEGMENT) {
+        return;  // keep top-levels
+      }
+      if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
+          f.guessed_name.method_id == GOAL_INSPECT_METHOD) {
+        return;  // keep inspects
+      }
+      // otherwise free memory
+      f.ir2 = {};
+    });
+  }
+
+  lg::info("Done in {:.2f}ms", file_timer.getMs());
+}
+
 /*!
  * Main IR2 analysis pass.
  * At this point, we assume that the files are loaded and we've run find_code to locate all
@@ -49,83 +133,8 @@ void ObjectFileDB::analyze_functions_ir2(
   }
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
-    Timer file_timer;
     lg::info("[{:3d}/{}]------ {}", file_idx++, total_file_count, data.to_unique_name());
-    ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
-    ir2_setup_labels(config, data);
-    ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
-    if (data.linked_data.functions_by_seg.size() == 3) {
-      enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
-      try {
-        run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
-        step = DEFSTATE;
-        run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
-        step = DEFSKELGROUP;
-        run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
-
-      } catch (const std::exception& e) {
-        switch (step) {
-          case DEFPART:
-            lg::error("Failed to find defpartgroups: {}", e.what());
-            break;
-          case DEFSTATE:
-            lg::error("Failed to find defstates: {}", e.what());
-            break;
-          case DEFSKELGROUP:
-            lg::error("Failed to find defskelgroups: {}", e.what());
-            break;
-        }
-      }
-    }
-    ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
-
-    ir2_insert_anonymous_functions(DEBUG_SEGMENT, data);
-    ir2_insert_anonymous_functions(MAIN_SEGMENT, data);
-    ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
-
-    ir2_run_mips2c(config, data);
-
-    ir2_symbol_definition_map(data);
-
-    // TODO - insert the game_name into the import line automatically
-    // instead of `goal_src/jak1/import/something.gc`
-    // just `import/something.gc`
-    //
-    // Can be relative to the root of the source directory
-    const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
-    std::vector<std::string> imports;
-    if (imports_it != config.import_deps_by_file.end()) {
-      imports = imports_it->second;
-    }
-
-    if (!output_dir.string().empty()) {
-      ir2_write_results(output_dir, config, imports, data);
-    } else {
-      data.output_with_skips = ir2_final_out(data, imports, skip_functions);
-      data.full_output = ir2_final_out(data, imports, {});
-    }
-
-    if (!config.generate_all_types) {
-      // this frees ir2 memory, but means future passes can't look back on this function.
-      for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
-    } else {
-      for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-        if (seg == TOP_LEVEL_SEGMENT) {
-          return;  // keep top-levels
-        }
-        if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
-            f.guessed_name.method_id == GOAL_INSPECT_METHOD) {
-          return;  // keep inspects
-        }
-        // otherwise free memory
-        f.ir2 = {};
-      });
-    }
-
-    lg::info("Done in {:.2f}ms", file_timer.getMs());
+    process_object_file_data(data, output_dir, config, skip_functions, skip_states);
   });
 
   lg::info("{}", stats.let.print());

@@ -1,5 +1,7 @@
 #include "Printer.h"
 
+#include <mutex>
+
 #include "third-party/fmt/core.h"
 
 namespace pretty_print {
@@ -34,6 +36,7 @@ goos::Object float_representation(float value) {
 }
 
 std::unique_ptr<goos::Reader> pretty_printer_reader;
+std::mutex pretty_printer_reader_mutex;
 
 goos::Reader& get_pretty_printer_reader() {
   if (!pretty_printer_reader) {
@@ -43,6 +46,7 @@ goos::Reader& get_pretty_printer_reader() {
 }
 
 goos::Object to_symbol(const std::string& str) {
+  std::lock_guard<std::mutex> guard(pretty_printer_reader_mutex);
   return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
 }
 

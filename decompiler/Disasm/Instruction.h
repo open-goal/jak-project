@@ -20,13 +20,14 @@ constexpr int MAX_INTRUCTION_DEST = 1;
 // An "atom", representing a single register, immediate, etc... for use in an Instruction.
 struct InstructionAtom {
   enum AtomKind {
-    REGISTER,  // An EE Register
-    IMM,       // An immediate value (stored as int32)
-    IMM_SYM,   // An immediate value (a symbolic link)
-    LABEL,     // A label in a LinkedObjectFile
-    VU_ACC,    // The VU0 Accumulator
-    VU_Q,      // The VU0 Q Register
-    VF_FIELD,  // Field specifier
+    REGISTER,         // An EE Register
+    IMM,              // An immediate value (stored as int32)
+    IMM_SYM,          // An immediate value (a symbolic link)
+    IMM_SYM_VAL_PTR,  // pointer to value of a symbol
+    LABEL,            // A label in a LinkedObjectFile
+    VU_ACC,           // The VU0 Accumulator
+    VU_Q,             // The VU0 Q Register
+    VF_FIELD,         // Field specifier
     INVALID
   } kind = INVALID;
 
@@ -35,7 +36,8 @@ struct InstructionAtom {
   void set_label(int id);
   void set_vu_q();
   void set_vu_acc();
-  void set_sym(std::string _sym);
+  void set_sym(const std::string& _sym);
+  void set_sym_val_ptr(const std::string& _sym);
   void set_vf_field(uint32_t value);
 
   Register get_reg() const;
@@ -46,15 +48,14 @@ struct InstructionAtom {
 
   std::string to_string(const std::vector<DecompilerLabel>& labels) const;
 
-  bool is_link_or_label() const;
   bool is_reg() const { return kind == REGISTER; }
   bool is_imm() const { return kind == IMM; }
   bool is_label() const { return kind == LABEL; }
-  bool is_sym() const { return kind == IMM_SYM; }
+  bool is_sym() const { return kind == IMM_SYM || kind == IMM_SYM_VAL_PTR; }
 
   bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
   bool is_imm(int32_t i) const { return kind == IMM && imm == i; }
-  bool is_sym(const std::string& name) const { return kind == IMM_SYM && name == sym; }
+  bool is_sym(const std::string& name) const { return is_sym() && name == sym; }
 
   bool operator==(const InstructionAtom& other) const;
   bool operator!=(const InstructionAtom& other) const { return !((*this) == other); }

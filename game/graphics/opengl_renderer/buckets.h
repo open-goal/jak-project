@@ -83,6 +83,7 @@ namespace jak2 {
 enum class BucketId {
   SPECIAL_BUCKET_2 = 2,
   TEX_LCOM_SKY_PRE = 4,
+  SKY_DRAW = 5,
   TEX_L0_TFRAG = 7,
   TFRAG_L0_TFRAG = 8,
   TIE_L0_TFRAG = 9,
@@ -93,6 +94,7 @@ enum class BucketId {
   SHRUB_L0_SHRUB = 74,
   TEX_L1_SHRUB = 82,
   SHRUB_L1_SHRUB = 83,
+  TEX_L0_ALPHA = 127,
   TFRAG_T_L0_ALPHA = 128,
   TEX_LCOM_TFRAG = 187,
   TEX_LCOM_SHRUB = 191,

@@ -575,8 +575,14 @@ std::unique_ptr<AtomicOp> convert_lw_1(const Instruction& i0, int idx) {
 std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx, GameVersion version) {
   if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym()) {
     // get symbol pointer
-    return std::make_unique<SetVarOp>(
-        make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
+    if (i0.get_src(1).kind == InstructionAtom::IMM_SYM_VAL_PTR) {
+      return std::make_unique<SetVarOp>(
+          make_dst_var(i0, idx), SimpleAtom::make_sym_val_ptr(i0.get_src(1).get_sym()).as_expr(),
+          idx);
+    } else {
+      return std::make_unique<SetVarOp>(
+          make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
+    }
   } else if (i0.get_src(0).is_reg(rs7()) &&
              i0.get_src(1).is_imm(empty_pair_offset_from_s7(version))) {
     // get empty pair

@@ -226,11 +226,11 @@
 (define text-is-loading #f)
 
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
-(defun load-game-text-info ((arg0 string) (arg1 symbol) (arg2 kheap))
+(defun load-game-text-info ((arg0 string) (arg1 (pointer object)) (arg2 kheap))
   "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
    the game-text-info, and heap is the heap to load to. The heap will be cleared."
   (local-vars (v0-3 int) (sv-16 game-text-info) (sv-24 int) (sv-32 int) (sv-40 int))
-  (set! sv-16 (the-as game-text-info (-> arg1 value)))
+  (set! sv-16 (the-as game-text-info (-> arg1 0)))
   (set! sv-24 (the-as int (-> *setting-control* user-current language)))
   (set! sv-32 0)
   (set! sv-40 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
@@ -290,11 +290,11 @@
       (flush-cache 0)
       (let ((s3-1 link))
         (format (clear *temp-string*) "~D~S.TXT" sv-24 arg0)
-        (set! (-> arg1 value) (s3-1 s2-1 (-> *temp-string* data) sv-32 arg2 0))
+        (set! (-> arg1 0) (s3-1 s2-1 (-> *temp-string* data) sv-32 arg2 0))
         )
       )
-    (if (<= (the-as int (-> arg1 value)) 0)
-        (set! (-> arg1 value) (the-as object #f))
+    (if (<= (the-as int (-> arg1 0)) 0)
+        (set! (-> arg1 0) (the-as object #f))
         )
     )
   (set! v0-3 0)
@@ -307,7 +307,7 @@
    This function made more sense back when text files were split up, but in the end they put everything
    in a single text group and file."
   (if (or *level-text-file-load-flag* (>= arg0 0))
-      (load-game-text-info "common" '*common-text* *common-text-heap*)
+      (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
       )
   0
   (none)
