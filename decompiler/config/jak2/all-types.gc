@@ -22092,7 +22092,7 @@
 
 (deftype nav-callback-info (structure)
   ((callback-count int32      :offset-assert 0)
-   (callback-array uint32 10 :offset-assert 4)
+   (callback-array function 10 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2c
@@ -22122,7 +22122,7 @@
 
 (deftype nav-state (structure)
   ((flags                     nav-state-flag         :offset-assert   0)
-   (nav                       basic                  :offset-assert   4)
+   (nav                       nav-control                  :offset-assert   4)
    (user-poly                 nav-poly               :offset-assert   8)
    (mesh                      nav-mesh               :offset-assert  12)
    (current-poly              nav-poly               :offset-assert  16)
@@ -22246,7 +22246,7 @@
       "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius"
       (_type_ vector) symbol 10)
     (nav-control-method-11 "TODO" (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
-    (nav-control-method-12 () none 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
+    (nav-control-method-12 (_type_ vector vector) object 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
     (find-poly "TODO" (_type_ vector) nav-poly 13) ;; (dummy-13 (_type_ vector vector) vector 13)
     (nav-control-method-14 (_type_ nav-poly vector object vector) none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
     (nav-control-method-15 "TODO - same as 11" (_type_ vector) none 15) ;; (set-target-pos! (_type_ vector) none 15)
@@ -31948,6 +31948,13 @@
    (vulnerable-backup 33)
    (vulnerable 34)
    (recover 35)
+   (enemy-flag36 36)
+   (enemy-flag37 37)
+   (enemy-flag38 38)
+   (enemy-flag39 39)
+   (enemy-flag40 40)
+   (enemy-flag41 41)
+   (enemy-flag42 42)
    )
 ;; ---enemy-h:enemy-flag
 
@@ -32064,7 +32071,7 @@
   :size-assert         #x180
   :flag-assert         #xa00000180
   (:methods
-    (copy! "Copies the given [[enemy-info]] into the current [[enemy-info]]" (_type_ _type_) none 9)
+    (copy-enemy-info! "Copies the given [[enemy-info]] into the current [[enemy-info]]" (_type_ _type_) none 9)
     )
   )
 
@@ -32214,7 +32221,7 @@
     (enemy-method-53
       "TODO"
       (_type_ process-focusable) symbol 53)
-    (enemy-method-54 (_type_) none 54)
+    (enemy-method-54 (_type_) enemy-flag 54)
     (enemy-method-55 (_type_) none 55)
     (enemy-method-56 (_type_ object enemy-attack-info) none 56)
     (enemy-method-57 (_type_) none 57)
@@ -32236,7 +32243,7 @@
     (go-flee (_type_) none 71)
     (enemy-method-72 (_type_) none 72)
     (enemy-method-73 (_type_) none 73)
-    (enemy-method-74 (_type_) none 74)
+    (enemy-method-74 (_type_ object object symbol) none 74)
     (enemy-method-75 (_type_ process touching-shapes-entry) none 75)
     (enemy-method-76 (_type_) none 76)
     (enemy-method-77 (_type_) none 77)
@@ -32306,7 +32313,7 @@
     (enemy-method-123 "TODO" (_type_ float) symbol 123)
     (enemy-method-124 "TODO" (_type_) collide-spec 124)
     (enemy-method-125 (_type_) none 125)
-    (enemy-method-126 (_type_) none 126)
+    (enemy-method-126 (_type_ collide-query vector collide-spec float float float) none 126)
     (enemy-method-127 (_type_) none 127)
     (enemy-method-128 (_type_ vector) none 128)
     (enemy-method-129 (_type_) none 129)
@@ -32364,7 +32371,9 @@
   :size-assert         #x1ec
   :flag-assert         #xb000001ec
   (:methods
-    (nav-enemy-info-method-10 () none 10)
+    (copy-nav-enemy-info!
+      "Copies the provided [[nav-enemy-info]] into the current object"
+      (_type_ nav-enemy-info) none 10)
     )
   )
 
@@ -32381,16 +32390,16 @@
   :size-assert         #x25c
   :flag-assert         #xb201e0025c
   (:methods
-    (nav-enemy-method-137 () none 137)
-    (nav-enemy-method-138 () none 138)
-    (nav-enemy-method-139 () none 139)
-    (nav-enemy-method-140 () none 140)
-    (nav-enemy-method-141 () none 141)
+    (taunt () _type_ :state 137)
+    (pacing () _type_ :state 138)
+    (circling () _type_ :state 139)
+    (stop-chase () _type_ :state 140)
+    (debug-control () _type_ :state 141)
     (nav-enemy-method-142 () none 142)
     (nav-enemy-method-143 () none 143)
     (nav-enemy-method-144 () none 144)
-    (nav-enemy-method-145 () none 145)
-    (nav-enemy-method-146 () none 146)
+    (nav-enemy-method-145 (_type_ nav-control) none 145)
+    (nav-enemy-method-146 (_type_ nav-control) none 146)
     (nav-enemy-method-147 () none 147)
     (nav-enemy-method-148 () none 148)
     (nav-enemy-method-149 () none 149)
@@ -32400,28 +32409,28 @@
     (nav-enemy-method-153 () none 153)
     (nav-enemy-method-154 () none 154)
     (nav-enemy-method-155 () none 155)
-    (nav-enemy-method-156 () none 156)
+    (nav-enemy-method-156 (_type_) none 156)
     (nav-enemy-method-157 () none 157)
     (nav-enemy-method-158 () none 158)
     (nav-enemy-method-159 () none 159)
     (nav-enemy-method-160 () none 160)
-    (nav-enemy-method-161 () none 161)
-    (nav-enemy-method-162 () none 162)
-    (nav-enemy-method-163 () none 163)
-    (nav-enemy-method-164 () none 164)
-    (nav-enemy-method-165 () none 165)
-    (nav-enemy-method-166 () none 166)
-    (nav-enemy-method-167 () none 167)
-    (nav-enemy-method-168 () none 168)
-    (nav-enemy-method-169 () none 169)
-    (nav-enemy-method-170 () none 170)
-    (nav-enemy-method-171 () none 171)
-    (nav-enemy-method-172 () none 172)
-    (nav-enemy-method-173 () none 173)
-    (nav-enemy-method-174 () none 174)
-    (nav-enemy-method-175 () none 175)
-    (nav-enemy-method-176 () none 176)
-    (nav-enemy-method-177 () none 177)
+    (nav-enemy-method-161 (_type_) none 161)
+    (nav-enemy-method-162 (_type_) none 162)
+    (nav-enemy-method-163 (_type_) none 163)
+    (nav-enemy-method-164 (_type_) none 164)
+    (nav-enemy-method-165 (_type_) none 165)
+    (nav-enemy-method-166 (_type_) none 166)
+    (nav-enemy-method-167 (_type_) none 167)
+    (nav-enemy-method-168 (_type_) none 168)
+    (nav-enemy-method-169 (_type_) none 169)
+    (nav-enemy-method-170 (_type_) none 170)
+    (nav-enemy-method-171 (_type_) none 171)
+    (nav-enemy-method-172 (_type_) none 172)
+    (nav-enemy-method-173 (_type_) none 173)
+    (nav-enemy-method-174 (_type_) none 174)
+    (nav-enemy-method-175 (_type_) none 175)
+    (nav-enemy-method-176 (_type_) none :behavior nav-enemy 176)
+    (nav-enemy-method-177 (_type_) none 177)
     )
   )
 
@@ -32757,10 +32766,10 @@
 ;; nav-enemy                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *nav-enemy-dummy-shadow-control* shadow-control) ;; shadow-control
-;; (define-extern *nav-enemy-null-callback-info* object)
-;; (define-extern *nav-enemy-callback-info* object)
-;; (define-extern *nav-enemy-physics-callback-info* object)
+(define-extern *nav-enemy-dummy-shadow-control* shadow-control) ;; shadow-control
+(define-extern *nav-enemy-null-callback-info* nav-callback-info)
+(define-extern *nav-enemy-callback-info* nav-callback-info)
+(define-extern *nav-enemy-physics-callback-info* nav-callback-info)
 ;; (define-extern nav-enemy-simple-post function) ;; (function none :behavior nav-enemy)
 ;; (define-extern nav-enemy-die-falling-post function)
 ;; (define-extern nav-enemy-travel-post function) ;; (function none :behavior nav-enemy)
@@ -32772,7 +32781,7 @@
 ;; (define-extern nav-enemy-falling-post function) ;; (function none :behavior nav-enemy)
 ;; (define-extern nav-enemy-turn-to-face-dir function) ;; (function vector float none :behavior nav-enemy)
 ;; (define-extern nav-enemy-turn-to-face-point function) ;; (function vector float none :behavior nav-enemy)
-;; (define-extern *nav-enemy-debug-control-info* nav-enemy-debug-control-info)
+(define-extern *nav-enemy-debug-control-info* nav-enemy-debug-control-info)
 ;; (define-extern nav-enemy-debug-control-post function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

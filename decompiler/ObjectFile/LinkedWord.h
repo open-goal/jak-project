@@ -70,7 +70,7 @@ class LinkedWord {
     if (&other != this) {
       data = other.data;
       if (holds_string()) {
-        delete[]((char*)m_data_ptr);
+        delete[] ((char*)m_data_ptr);
       }
       m_kind = other.m_kind;
 
@@ -88,20 +88,20 @@ class LinkedWord {
 
   ~LinkedWord() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
   }
 
   void set_to_empty_ptr() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = EMPTY_PTR;
   }
 
   void set_to_symbol(Kind kind, const std::string& name) {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = kind;
     char* str = new char[name.size() + 1];
@@ -111,7 +111,7 @@ class LinkedWord {
 
   void set_to_pointer(Kind kind, u32 label_id) {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_data_ptr = label_id;
     m_kind = kind;
@@ -119,7 +119,7 @@ class LinkedWord {
 
   void set_to_plain_data() {
     if (holds_string()) {
-      delete[]((char*)m_data_ptr);
+      delete[] ((char*)m_data_ptr);
     }
     m_kind = PLAIN_DATA;
   }
