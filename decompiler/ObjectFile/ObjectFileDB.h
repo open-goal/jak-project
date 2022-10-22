@@ -67,6 +67,7 @@ struct LetRewriteStats {
   int case_with_else = 0;
   int set_vector = 0;
   int set_vector2 = 0;
+  int set_vector3 = 0;
   int send_event = 0;
   int font_context_meth = 0;
   int proc_new = 0;
@@ -91,6 +92,7 @@ struct LetRewriteStats {
     out += fmt::format("  ja: {}\n", ja);
     out += fmt::format("  set_vector: {}\n", set_vector);
     out += fmt::format("  set_vector2: {}\n", set_vector2);
+    out += fmt::format("  set_vector3: {}\n", set_vector3);
     out += fmt::format("  case_no_else: {}\n", case_no_else);
     out += fmt::format("  case_with_else: {}\n", case_with_else);
     out += fmt::format("  unused: {}\n", unused);
@@ -170,6 +172,12 @@ class ObjectFileDB {
                          bool disassemble_code,
                          bool print_hex);
 
+  void process_object_file_data(
+      ObjectFileData& data,
+      const fs::path& output_dir,
+      const Config& config,
+      const std::unordered_set<std::string>& skip_functions,
+      const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states);
   void analyze_functions_ir2(
       const fs::path& output_dir,
       const Config& config,

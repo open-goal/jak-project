@@ -799,6 +799,10 @@ std::string debug_print(const LinkedWord& word) {
       return fmt::format("offset '{}", word.symbol_name());
     case LinkedWord::SYM_PTR:
       return fmt::format("ptr '{}", word.symbol_name());
+    case LinkedWord::SYM_VAL_OFFSET:
+      return fmt::format("val-ptr '{}", word.symbol_name());
+    default:
+      ASSERT(false);
   }
 }
 
