@@ -15953,15 +15953,15 @@
 (deftype move-above-ground-params (structure)
   ((gnd-collide-with       collide-spec                   :offset-assert 0)
    (popup                  float                          :offset-assert 4)
-   (dont-move-if-overlaps? basic                          :offset-assert 8)
-   (hover-if-no-ground?    basic                          :offset-assert 12)
+   (dont-move-if-overlaps? symbol                          :offset-assert 8)
+   (hover-if-no-ground?    symbol                          :offset-assert 12)
    (overlaps-params        overlaps-others-params :inline :offset-assert 16)
    (new-pos                vector                 :inline :offset-assert 48)
    (old-gspot-pos          vector                 :inline :offset-assert 64)
    (old-gspot-normal       vector                 :inline :offset-assert 80)
    (pat                    pat-surface                    :offset-assert 96) ;; was u32
-   (on-ground?             basic                          :offset-assert 100)
-   (do-move?               basic                          :offset-assert 104)
+   (on-ground?             symbol                          :offset-assert 100)
+   (do-move?               symbol                          :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x6c
@@ -16221,43 +16221,44 @@
 (declare-type collide-query structure)
 (declare-type control-info basic)
 (deftype collide-shape-moving (collide-shape)
-  ((rider-time time-frame :offset-assert 200)
-   (rider-last-move vector :inline)
-   (trans-old vector :inline)
-   (poly-pat pat-surface :offset 272)
-   (cur-pat pat-surface)
-   (ground-pat pat-surface)
-   (status cshape-moving-flags)
-   (old-status cshape-moving-flags)
-   (prev-status cshape-moving-flags :offset-assert 304)
-   (reaction-flag cshape-reaction-flags)
-   (reaction (function control-info collide-query vector vector cshape-moving-flags)) ;; function types...
-   (no-reaction function)
-   (local-normal vector :inline)
-   (surface-normal vector :inline)
-   (poly-normal vector :inline)
-   (ground-poly-normal vector :inline)
-   (gspot-pos vector :inline)
-   (gspot-normal vector :inline)
-   (grount-touch-point vector :inline)
-   (ground-impact-vel meters)
-   (surface-angle float)
-   (poly-angle float)
-   (touch-angle float)
-   (coverage float)
-   (dynam dynamics)
-   (surf surface)
+  ((rider-time         time-frame                                                                      :offset-assert 200)
+   (rider-last-move    vector                                                                  :inline :offset-assert 208)
+   (trans-old          vector                                                                  :inline :offset-assert 224)
+   (csm-unk-vec-981i2u312 vector :inline :offset 240)
+   (csm-unk-vec-klj1n23 vector :inline :offset 256)
+   (poly-pat           pat-surface                                                                     :offset        272)
+   (cur-pat            pat-surface                                                                     :offset-assert 276)
+   (ground-pat         pat-surface                                                                     :offset-assert 280)
+   (status             cshape-moving-flags                                                             :offset-assert 288)
+   (old-status         cshape-moving-flags                                                             :offset-assert 296)
+   (prev-status        cshape-moving-flags                                                             :offset-assert 304)
+   (reaction-flag      cshape-reaction-flags                                                           :offset-assert 312)
+   (reaction           (function control-info collide-query vector vector cshape-moving-flags)         :offset-assert 316)
+   (no-reaction        function                                                                        :offset-assert 320)
+   (local-normal       vector                                                                  :inline :offset-assert 336)
+   (surface-normal     vector                                                                  :inline :offset-assert 352)
+   (poly-normal        vector                                                                  :inline :offset-assert 368)
+   (ground-poly-normal vector                                                                  :inline :offset-assert 384)
+   (gspot-pos          vector                                                                  :inline :offset-assert 400)
+   (gspot-normal       vector                                                                  :inline :offset-assert 416)
+   (grount-touch-point vector                                                                  :inline :offset-assert 432)
+   (ground-impact-vel  meters                                                                          :offset-assert 448)
+   (surface-angle      float                                                                           :offset-assert 452)
+   (poly-angle         float                                                                           :offset-assert 456)
+   (touch-angle        float                                                                           :offset-assert 460)
+   (coverage           float                                                                           :offset-assert 464)
+   (dynam              dynamics                                                                        :offset-assert 468)
+   (surf               surface                                                                         :offset-assert 472)
    )
   :method-count-assert 68
   :size-assert         #x1dc
   :flag-assert         #x44000001dc
-  ;; Failed to read fields.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_ 0)
     (collide-shape-moving-method-55 (_type_ collide-query collide-spec float float float) symbol 55)
     (collide-shape-moving-method-56 (_type_ pat-surface) none 56) ;; (set-and-handle-pat! (_type_ pat-surface) none 56)
     (collide-shape-moving-method-57 () none 57) ;; (integrate-no-collide! (_type_ vector) none 57)
-    (collide-shape-moving-method-58 () none 58) ;; (dummy-58 (_type_ vector) symbol 58)
+    (collide-shape-moving-method-58 (_type_ vector overlaps-others-params) symbol 58) ;; (dummy-58 (_type_ vector) symbol 58)
     (collide-shape-moving-method-59 () none 59) ;; (integrate-for-enemy-with-move-to-ground! (_type_ vector collide-kind float symbol symbol symbol) none 59)
     (collide-shape-moving-method-60 () none 60) ;; (move-to-ground (_type_ float float symbol collide-kind) symbol 60)
     (collide-shape-moving-method-61 () none 61) ;; (move-to-ground-point! (_type_ vector vector vector) none 61)
@@ -21851,7 +21852,7 @@
    (src-switch-poly-id  uint8   :offset-assert 9)
    (dest-link-poly-id   uint8   :offset-assert 10)
    (dest-switch-poly-id uint8   :offset-assert 11)
-   (dest-mesh           basic   :offset-assert 12)
+   (dest-mesh           nav-mesh   :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -22023,7 +22024,7 @@
     (nav-mesh-method-28 (_type_ object) none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
     (nav-mesh-method-29 (_type_ process-drawable symbol) nav-control 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
     (nav-mesh-method-30 (_type_ process-drawable) none 30)
-    (change-to (_type_ process-drawable int) none 31)
+    (change-to (_type_ process-drawable) none 31)
     (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) none 32)
     (nav-mesh-method-33 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) symbol 33)
     (nav-mesh-method-34 (_type_ object vector float) none 34)
@@ -22092,7 +22093,7 @@
 
 (deftype nav-callback-info (structure)
   ((callback-count int32      :offset-assert 0)
-   (callback-array function 10 :offset-assert 4)
+   (callback-array (function object nav-control none) 10 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2c
@@ -32189,7 +32190,7 @@
    (incoming                    enemy-attack-info :inline   :offset-assert 416)
    (actor-group                 actor-group                 :offset-assert 480)
    (actor-group-count           int32                       :offset-assert 484)
-   (neck                        basic                       :offset-assert 488)
+   (neck                        joint-mod                       :offset-assert 488)
    (on-notice                   symbol                      :offset-assert 492)
    (on-active                   symbol                      :offset-assert 496)
    (on-hostile                  symbol                      :offset-assert 500)
@@ -32233,13 +32234,13 @@
     (enemy-method-54 (_type_) enemy-flag 54)
     (enemy-method-55 (_type_) none 55)
     (enemy-method-56 (_type_ object enemy-attack-info) none 56)
-    (enemy-method-57 (_type_) none 57)
+    (enemy-method-57 (_type_ process-focusable enemy-attack-info) none 57)
     (enemy-method-58 (_type_) symbol 58)
     (enemy-method-59 (_type_) penetrate 59)
     (coin-flip?
       "@returns The result of a 50/50 RNG roll"
       (_type_) symbol 60)
-    (enemy-method-61 (_type_ int) none 61)
+    (enemy-method-61 (_type_ int) int :behavior enemy 61)
     (enemy-method-62 (_type_) none 62)
     (enemy-method-63 (_type_ process-focusable symbol) none 63)
     (enemy-method-64 (_type_) none 64)
@@ -32279,7 +32280,7 @@
     (enemy-method-95 (_type_ vector float) symbol 95)
     (enemy-method-96 (_type_ float symbol) symbol 96)
     (enemy-method-97 (_type_) none 97)
-    (enemy-method-98 (_type_) symbol 98)
+    (enemy-method-98 (_type_ process-focusable vector) symbol 98)
     (enemy-method-99 (_type_) symbol 99)
     (enemy-method-100 (_type_) symbol 100)
     (enemy-method-101 (_type_) none 101)
@@ -32325,9 +32326,9 @@
     (enemy-method-123 "TODO" (_type_ float) symbol 123)
     (enemy-method-124 "TODO" (_type_) collide-spec 124)
     (enemy-method-125 (_type_) none 125)
-    (enemy-method-126 (_type_ collide-query vector collide-spec float float float) none 126)
+    (enemy-method-126 (_type_ collide-query vector collide-spec float float float) symbol 126)
     (enemy-method-127 (_type_) none 127)
-    (enemy-method-128 (_type_ vector) none 128)
+    (enemy-method-128 (_type_ vector move-above-ground-params) none 128)
     (enemy-method-129 (_type_) none 129)
     (enemy-method-130 (_type_) none 130)
     (enemy-method-131 (_type_) none 131)
@@ -32403,6 +32404,7 @@
   :size-assert         #x25c
   :flag-assert         #xb201e0025c
   (:methods
+    (enemy-method-113 (_type_ nav-enemy-info) none :replace 113)
     (taunt () _type_ :state 137)
     (pacing () _type_ :state 138)
     (circling () _type_ :state 139)
@@ -32423,10 +32425,10 @@
     (nav-enemy-method-154 (_type_ nav-control) none 154)
     (nav-enemy-method-155 (_type_) none 155)
     (nav-enemy-method-156 (_type_) none 156)
-    (nav-enemy-method-157 () none 157)
-    (nav-enemy-method-158 () none 158)
-    (nav-enemy-method-159 () none 159)
-    (nav-enemy-method-160 () none 160)
+    (nav-enemy-method-157 (_type_ vector) nav-poly 157)
+    (nav-enemy-method-158 (_type_ vector) object 158)
+    (nav-enemy-method-159 (_type_ vector) symbol 159)
+    (nav-enemy-method-160 (_type_) none 160)
     (nav-enemy-method-161 (_type_) none 161)
     (nav-enemy-method-162 (_type_) none 162)
     (nav-enemy-method-163 (_type_) none 163)
@@ -32440,8 +32442,8 @@
     (nav-enemy-method-171 (_type_) none 171)
     (nav-enemy-method-172 (_type_) none 172)
     (nav-enemy-method-173 (_type_) none 173)
-    (nav-enemy-method-174 (_type_) none 174)
-    (nav-enemy-method-175 (_type_) none 175)
+    (nav-enemy-method-174 (_type_) symbol 174)
+    (nav-enemy-method-175 (_type_) symbol 175)
     (nav-enemy-method-176 (_type_) none :behavior nav-enemy 176)
     (nav-enemy-method-177 (_type_) none 177)
     )
@@ -36383,21 +36385,20 @@
   )
 |#
 
-#|
 (deftype predator (nav-enemy)
-  ((los               los-control :inline :offset-assert 604)
-   (want-stop         basic               :offset-assert 752)
-   (target-pos        vector      :inline :offset-assert 764)
-   (curr-node         int32               :offset-assert 780)
-   (hide-pos          vector      :inline :offset-assert 796)
-   (next-change       uint64              :offset-assert 812)
-   (shoot-angle       float               :offset-assert 820)
-   (miss-amount       float               :offset-assert 824)
-   (ambient-sound-id  uint32              :offset-assert 828)
-   (shock-effect-time time-frame              :offset-assert 836)
-   (shock-effect-end  uint64              :offset-assert 844)
-   (fade              float               :offset-assert 852)
-   (dest-fade         float               :offset-assert 856)
+  ((los               los-control :inline :offset-assert 608)
+   (want-stop         basic               :offset-assert 756)
+   (target-pos        vector      :inline :offset-assert 768)
+   (curr-node         int32               :offset-assert 784)
+   (hide-pos          vector      :inline :offset-assert 800)
+   (next-change       uint64              :offset-assert 816)
+   (shoot-angle       float               :offset-assert 824)
+   (miss-amount       float               :offset-assert 828)
+   (ambient-sound-id  uint32              :offset-assert 832)
+   (shock-effect-time time-frame              :offset-assert 840)
+   (shock-effect-end  uint64              :offset-assert 848)
+   (fade              float               :offset-assert 856)
+   (dest-fade         float               :offset-assert 860)
    )
   :method-count-assert 189
   :size-assert         #x360
@@ -36416,7 +36417,6 @@
     (predator-method-188 () none 188)
     )
   )
-|#
 
 #|
 (deftype predator-manager (process)
@@ -37027,7 +37027,6 @@
 ;; grenadier                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bank-info (structure)
   ((circle      sphere :inline :offset-assert 0)
    (tangent-pos vector :inline :offset-assert 16)
@@ -37038,19 +37037,17 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype grenadier (nav-enemy)
-  ((shot-trajectory           trajectory :inline :offset-assert 604)
-   (hostile-path              basic              :offset-assert 644)
-   (bank                      bank-info  :inline :offset-assert 652)
-   (joint                     basic              :offset-assert 716)
-   (heading                   basic              :offset-assert 720)
-   (move-pos                  vector     :inline :offset-assert 732)
-   (move-angle                float              :offset-assert 748)
-   (status-flags              uint64             :offset-assert 756)
-   (suppress-knockaside-timer uint64             :offset-assert 764)
+  ((shot-trajectory           trajectory :inline :offset-assert 608)
+   (hostile-path              path-control              :offset-assert 648)
+   (bank                      bank-info  :inline :offset-assert 656)
+   (joint                     joint-mod-blend-world              :offset-assert 720)
+   (heading                   basic              :offset-assert 724)
+   (move-pos                  vector     :inline :offset-assert 736)
+   (move-angle                float              :offset-assert 752)
+   (status-flags              uint64             :offset-assert 760)
+   (suppress-knockaside-timer uint64             :offset-assert 768)
    )
   :method-count-assert 184
   :size-assert         #x308
@@ -37064,7 +37061,6 @@
     (grenadier-method-183 () none 183)
     )
   )
-|#
 
 ;; (define-extern *grenadier-nav-enemy-info* nav-enemy-info)
 ;; (define-extern pos-rotate-y<-vector+vector function)
