@@ -488,8 +488,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-f,--file", single_file,
                  "Limit the offline test routine to a single file to decompile/compile -- useful "
                  "when you are just iterating on a single file");
-  app.add_flag("--fail-on-cmp", fail_on_cmp,
-                 "Fail the tests immediately if the comparison fails");
+  app.add_flag("--fail-on-cmp", fail_on_cmp, "Fail the tests immediately if the comparison fails");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
