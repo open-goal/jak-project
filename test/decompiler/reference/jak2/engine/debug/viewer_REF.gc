@@ -1,21 +1,14 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: viewer.gc
-;; name in dgo: viewer
-;; dgos: ENGINE, GAME
-
-(declare-type viewer process-drawable)
-(define-extern *viewer* viewer)
-
-;; DECOMP BEGINS
-
+;; definition for symbol *viewer-sg*, type skeleton-group
 (define *viewer-sg* (new 'static 'skeleton-group
                       :bounds (new 'static 'vector :w 16384.0)
                       :lod-dist (new 'static 'array float 6 4095996000.0 0.0 0.0 0.0 0.0 0.0)
                       )
         )
 
+;; definition of type viewer
 (deftype viewer (process-drawable)
   ((janim art-joint-anim  :offset-assert 200)
    )
@@ -25,7 +18,21 @@
   :flag-assert         #x14005000cc
   )
 
+;; definition for method 3 of type viewer
+(defmethod inspect viewer ((obj viewer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tjanim: ~A~%" (-> obj janim))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate viewer-process (viewer)
   :code (behavior ()
     (until #f
@@ -52,12 +59,16 @@
   :post (the-as (function none :behavior viewer) ja-post)
   )
 
+;; definition for symbol viewer-string, type string
 (define viewer-string (new 'global 'string 64 (the-as string #f)))
 
+;; definition for symbol viewer-ja-name, type string
 (define viewer-ja-name (new 'global 'string 64 (the-as string #f)))
 
+;; definition for symbol viewer-geo-name, type string
 (define viewer-geo-name (new 'global 'string 64 (the-as string #f)))
 
+;; definition for function actor-get-arg!
 (defun actor-get-arg! ((arg0 string) (arg1 string) (arg2 string))
   (let ((s5-0 (-> arg2 data))
         (gp-0 (-> arg0 data))
@@ -94,6 +105,7 @@
   #f
   )
 
+;; definition for function art-part-name
 (defun art-part-name ((arg0 string))
   (let ((gp-0 (-> arg0 data)))
     (while (nonzero? (-> gp-0 0))
@@ -111,6 +123,7 @@
   (clear viewer-string)
   )
 
+;; definition for function init-viewer
 ;; WARN: Return type mismatch object vs none.
 (defbehavior init-viewer viewer ((arg0 string) (arg1 string))
   (let* ((s5-0 *level*)
@@ -203,6 +216,7 @@
   (none)
   )
 
+;; definition for method 11 of type viewer
 (defmethod init-from-entity! viewer ((obj viewer) (arg0 entity-actor))
   (set! *viewer* obj)
   (set! (-> obj root) (new 'process 'trsqv))
@@ -216,6 +230,8 @@
   (none)
   )
 
+;; definition for function init-viewer-for-other
+;; INFO: Used lq/sq
 (defbehavior init-viewer-for-other viewer ((arg0 string) (arg1 vector) (arg2 entity-actor))
   (set! *viewer* self)
   (process-entity-set! self arg2)
@@ -227,6 +243,8 @@
   (none)
   )
 
+;; definition for function add-a-bunch
+;; INFO: Used lq/sq
 (defun add-a-bunch ((arg0 string) (arg1 int) (arg2 int) (arg3 float) (arg4 process-tree) (arg5 entity-actor))
   (local-vars (sv-32 int) (sv-48 process) (sv-64 vector))
   (dotimes (s0-0 arg1)
@@ -258,6 +276,7 @@
   #f
   )
 
+;; definition for function birth-viewer
 ;; WARN: Return type mismatch symbol vs object.
 (defun birth-viewer ((arg0 process) (arg1 entity-actor))
   (set! (-> arg0 type) viewer)
