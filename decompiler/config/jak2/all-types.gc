@@ -15029,7 +15029,7 @@
 (declare-type scene-player basic)
 (deftype scene-actor (basic)
   ((name                string   :offset-assert 4)
-   (level               basic   :offset-assert 8)
+   (level               symbol   :offset-assert 8)
    (art-group           string   :offset-assert 12)
    (prefix              string   :offset-assert 16)
    (draw-frames         pair   :offset-assert 20) ;; some form of pair?
@@ -15060,24 +15060,28 @@
    (art-group        string            :offset-assert 40)
    (anim             string            :offset-assert 44)
    (parts            int32            :offset-assert 48)
-   (command-list     basic            :offset-assert 52)
+   (command-list     pair            :offset-assert 52)
    (cut-list         pair            :offset-assert 56)
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
    (draw-target      level-load-info            :offset-assert 88)
-   (abort            basic            :offset-assert 92)
+   (abort            symbol            :offset-assert 92)
    (actor            (array scene-actor)            :offset-assert 96)
-   (load-point       string            :offset-assert 100)
-   (end-point        string            :offset-assert 104)
-   (borrow           basic            :offset-assert 108)
+   (load-point-obj   object :offset-assert 100 :score 100) ;; TODO - unfortunate requirement
+   (load-point       continue-point            :offset 100)
+   (load-point-name  string            :offset 100)
+   (end-point-obj   object :offset-assert 104 :score 100) ;; TODO - unfortunate requirement
+   (end-point        continue-point            :offset 104)
+   (end-point-name        string            :offset 104)
+   (borrow           pair            :offset-assert 108) ;; seen .empty-list
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
-  (music-volume     float            :offset-assert 120)
-   (blackout-end     basic            :offset-assert 124)
-   (peaceful         basic            :offset-assert 128)
+   (music-volume     float            :offset-assert 120)
+   (blackout-end     symbol            :offset-assert 124)
+   (peaceful         symbol            :offset-assert 128)
    (music-delay      float            :offset-assert 132)
-   (save             basic            :offset-assert 136)
+   (save             symbol            :offset-assert 136)
    (scene-task       uint16           :offset-assert 140)
    )
   :method-count-assert 17
@@ -33610,27 +33614,28 @@
 ;; scene-looper                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype scene-looper (process)
-  ((scene-name basic  :offset-assert 124)
+  ((scene-name symbol  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
   :flag-assert         #xf00100084
   (:methods
-    (scene-looper-method-9 () none 9)
-    (scene-looper-method-10 () none 10)
-    (scene-looper-method-11 () none 11)
-    (scene-looper-method-12 () none 12)
-    (scene-looper-method-13 () none 13)
     (idle () _type_ :state 14)
     )
   )
-|#
 
-;; (define-extern scene-looper-init-by-other function)
-;; (define-extern stop-loop-scene function)
-;; (define-extern loop-scene function)
+(define-extern scene-looper-init-by-other
+  "Sets the `scene-name` with the given [[symbol]], the [[scene-looper]] will then idle"
+  (function symbol none :behavior scene-looper))
+(define-extern stop-loop-scene
+  "Kills the current [[scene-looper]]
+   @see [[kill-by-type]]"
+  (function symbol))
+(define-extern loop-scene
+  "Stops looping the current scene, then spawns a new [[scene-looper]] for the given scene
+   @see [[stop-loop-scene]"
+  (function symbol (pointer scene-looper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warp-gate                      ;;
