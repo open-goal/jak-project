@@ -18,23 +18,11 @@
 
 ;; DECOMP BEGINS
 
-(let ((a0-0 (new 'static 'skeleton-group
-              :name "skel-task-arrow"
-              :extra #f
-              :info #f
-              :art-group-name "ctywide-arrow"
-              :bounds (new 'static 'vector :w 16384.0)
-              :texture-level #x6
-              :version #x7
+(defskelgroup skel-task-arrow ctywide-arrow 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 6
               )
-            )
-      )
-  (set! (-> a0-0 jgeo) 0)
-  (set! (-> a0-0 janim) 2)
-  (set! (-> a0-0 mgeo 0) 1)
-  (set! (-> a0-0 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-0)
-  )
 
 (deftype task-arrow-params (structure)
   ((flags    task-arrow-flags         :offset-assert   0)
@@ -319,23 +307,13 @@
   (the-as task-arrow (go-virtual idle))
   )
 
-;; WARN: Return type mismatch process vs none.
 (defun task-arrow-spawn ((arg0 task-arrow-params) (arg1 task-arrow))
-  (let* ((gp-0 (the-as process #f))
-         (s3-0 (get-process *default-dead-pool* task-arrow #x4000))
-         (v1-1
-           (when s3-0
-             (let ((t9-1 (method-of-type task-arrow activate)))
-               (t9-1 (the-as task-arrow s3-0) arg1 (symbol->string (-> task-arrow symbol)) (the-as pointer #x70004000))
-               )
-             (run-now-in-process s3-0 task-arrow-init-by-other arg0)
-             (-> s3-0 ppointer)
-             )
-           )
-         )
-    (if v1-1
-        (set! gp-0 (-> v1-1 0))
-        )
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn task-arrow arg0 :to arg1)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    gp-0
     )
-  (none)
   )

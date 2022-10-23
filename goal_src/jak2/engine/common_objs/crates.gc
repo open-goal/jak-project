@@ -33,7 +33,7 @@
   )
 
 (deftype crate (process-focusable)
-  ((root-override      collide-shape-moving         :offset        128)
+  ((root-override2     collide-shape-moving         :offset        128)
    (smush              smush-control        :inline :offset-assert 208)
    (base               vector               :inline :offset-assert 240)
    (look               symbol                       :offset-assert 256)
@@ -68,12 +68,12 @@
 
 (method-set! crate 12 (method-of-type process run-logic?))
 
-;; WARN: Return type mismatch none vs int.
 (defbehavior crate-post crate ()
   (rider-trans)
   (smush-update! self)
   (rider-post)
-  (the-as int (carry-info-method-9 (-> self carry)))
+  (carry-info-method-9 (-> self carry))
+  (none)
   )
 
 (defpart 565
@@ -483,7 +483,7 @@
              (go-virtual die #f (the-as int s5-0))
              )
             (else
-              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root-override trans y) (-> self base y)))
+              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root-override2 trans y) (-> self base y)))
                 (if (not (and (demo?) (= (-> *setting-control* user-current language) (language-enum japanese))))
                     (talker-spawn-func (-> *talker-speech* 313) *entity-pool* (target-pos 0) (the-as region #f))
                     )
@@ -512,7 +512,7 @@
              (go-virtual die #f (the-as int s5-0))
              )
             (else
-              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root-override trans y) (-> self base y)))
+              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root-override2 trans y) (-> self base y)))
                 (talker-spawn-func (-> *talker-speech* 318) *entity-pool* (target-pos 0) (the-as region #f))
                 (set! (-> self incoming-attack-id) s4-0)
                 (if (not (!= (-> self smush amp) 0.0))
@@ -588,7 +588,7 @@
        )
      )
     (('bonk)
-     (when (= (-> self root-override trans y) (-> self base y))
+     (when (= (-> self root-override2 trans y) (-> self base y))
        (activate! (-> self smush) -0.1 75 150 1.0 1.0 (-> self clock))
        (go-virtual bounce-on)
        )
@@ -608,7 +608,7 @@
                                               (or (= v1-131 'notice-blue) (= v1-131 'die))
                                               )
                        )
-                  (!= (-> self root-override trans y) (-> self base y))
+                  (!= (-> self root-override2 trans y) (-> self base y))
                   )
               )
          (go-virtual notice-blue (process->handle arg0))
@@ -616,7 +616,7 @@
      )
     (('fall)
      (when (not (and (-> self next-state) (= (-> self next-state name) 'fall)))
-       (set! (-> self root-override transv quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (set! (-> self root-override2 transv quad) (-> (the-as vector (-> arg3 param 0)) quad))
        (go-virtual fall)
        )
      )
@@ -628,10 +628,10 @@
   :code (behavior ()
     (process-entity-status! self (entity-perm-status dead) #f)
     (process-entity-status! self (entity-perm-status subtask-complete) #f)
-    (vector+! (-> self draw origin) (-> self root-override trans) (-> self draw bounds))
+    (vector+! (-> self draw origin) (-> self root-override2 trans) (-> self draw bounds))
     (set! (-> self draw origin w) (-> self draw bounds w))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (let ((v1-9 (-> self root-override root-prim)))
+    (let ((v1-9 (-> self root-override2 root-prim)))
       (set! (-> v1-9 prim-core collide-as) (collide-spec))
       (set! (-> v1-9 prim-core collide-with) (collide-spec))
       )
@@ -639,10 +639,10 @@
     (ja-post)
     (while (or (crate-method-40 self)
                (and (sphere-in-view-frustum? (the-as sphere (-> self draw origin)))
-                    (< (vector-vector-distance (camera-pos) (-> self root-override trans)) 327680.0)
+                    (< (vector-vector-distance (camera-pos) (-> self root-override2 trans)) 327680.0)
                     )
                (and *target*
-                    (and (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                    (and (>= 40960.0 (vector-vector-distance (-> self root-override2 trans) (-> *target* control trans)))
                          (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
                          )
                     )
@@ -650,9 +650,9 @@
       (suspend)
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (let ((v1-29 (-> self root-override root-prim)))
-      (set! (-> v1-29 prim-core collide-as) (-> self root-override backup-collide-as))
-      (set! (-> v1-29 prim-core collide-with) (-> self root-override backup-collide-with))
+    (let ((v1-29 (-> self root-override2 root-prim)))
+      (set! (-> v1-29 prim-core collide-as) (-> self root-override2 backup-collide-as))
+      (set! (-> v1-29 prim-core collide-with) (-> self root-override2 backup-collide-with))
       )
     (go-virtual idle)
     (none)
@@ -664,7 +664,7 @@
   :event crate-standard-event-handler
   :code (behavior ()
     (suspend)
-    (collide-shape-method-46 (-> self root-override))
+    (collide-shape-method-46 (-> self root-override2))
     (carry-info-method-9 (-> self carry))
     (logior! (-> self mask) (process-mask sleep))
     (until #f
@@ -684,7 +684,7 @@
        (-> self carry)
        )
       (('drop)
-       (set! (-> self root-override transv quad) (-> (the-as vector (-> event param 1)) quad))
+       (set! (-> self root-override2 transv quad) (-> (the-as vector (-> event param 1)) quad))
        (go-virtual fall)
        )
       )
@@ -694,7 +694,7 @@
     (ja-post)
     (carry-info-method-9 (-> self carry))
     (carry-info-method-13 (-> self carry))
-    (collide-shape-method-46 (-> self root-override))
+    (collide-shape-method-46 (-> self root-override2))
     (none)
     )
   )
@@ -721,26 +721,26 @@
           (-> self carry)
           )
         )
-    (set! (-> self root-override status) (cshape-moving-flags))
-    (set! (-> self root-override root-prim local-sphere w) (-> self carry carry-radius))
-    (set! (-> self root-override root-prim prim-core collide-with)
+    (set! (-> self root-override2 status) (cshape-moving-flags))
+    (set! (-> self root-override2 root-prim local-sphere w) (-> self carry carry-radius))
+    (set! (-> self root-override2 root-prim prim-core collide-with)
           (logior (collide-spec backgnd crate obstacle hit-by-others-list pusher)
-                  (-> self root-override root-prim prim-core collide-with)
+                  (-> self root-override2 root-prim prim-core collide-with)
                   )
           )
     (none)
     )
   :trans (behavior ()
-    (when (and (logtest? (-> self root-override status) (cshape-moving-flags on-surface))
-               (< 0.8 (-> self root-override surface-angle))
+    (when (and (logtest? (-> self root-override2 status) (cshape-moving-flags on-surface))
+               (< 0.8 (-> self root-override2 surface-angle))
                )
-      (vector-reset! (-> self root-override transv))
-      (when (= (vector-length (-> self root-override transv)) 0.0)
-        (set! (-> self root-override root-prim local-sphere w) (-> self carry backup-radius))
-        (set! (-> self base quad) (-> self root-override trans quad))
-        (let ((v1-16 (-> self root-override root-prim)))
-          (set! (-> v1-16 prim-core collide-as) (-> self root-override backup-collide-as))
-          (set! (-> v1-16 prim-core collide-with) (-> self root-override backup-collide-with))
+      (vector-reset! (-> self root-override2 transv))
+      (when (= (vector-length (-> self root-override2 transv)) 0.0)
+        (set! (-> self root-override2 root-prim local-sphere w) (-> self carry backup-radius))
+        (set! (-> self base quad) (-> self root-override2 trans quad))
+        (let ((v1-16 (-> self root-override2 root-prim)))
+          (set! (-> v1-16 prim-core collide-as) (-> self root-override2 backup-collide-as))
+          (set! (-> v1-16 prim-core collide-with) (-> self root-override2 backup-collide-with))
           )
         (go-virtual idle)
         )
@@ -750,13 +750,13 @@
   :code (the-as (function none :behavior crate) sleep-code)
   :post (behavior ()
     (vector-v++!
-      (-> self root-override transv)
-      (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
+      (-> self root-override2 transv)
+      (compute-acc-due-to-gravity (-> self root-override2) (new-stack-vector0) 0.0)
       )
-    (if (< (-> self root-override dynam gravity-max) (vector-length (-> self root-override transv)))
-        (vector-normalize! (-> self root-override transv) (-> self root-override dynam gravity-max))
+    (if (< (-> self root-override2 dynam gravity-max) (vector-length (-> self root-override2 transv)))
+        (vector-normalize! (-> self root-override2 transv) (-> self root-override2 dynam gravity-max))
         )
-    (let ((gp-1 (-> self root-override)))
+    (let ((gp-1 (-> self root-override2)))
       (let ((a2-1 (new 'stack-no-clear 'collide-query)))
         (set! (-> gp-1 root-prim type) collide-shape-prim-sphere)
         (set! (-> a2-1 collide-with) (collide-spec backgnd crate obstacle pusher))
@@ -783,7 +783,7 @@
     (go-virtual idle)
     (none)
     )
-  :post (the-as (function none :behavior crate) crate-post)
+  :post crate-post
   )
 
 (defstate notice-blue (crate)
@@ -820,7 +820,7 @@
                        )
                  )
             (when v1-4
-              (let* ((gp-2 (-> self root-override root-prim prim-core))
+              (let* ((gp-2 (-> self root-override2 root-prim prim-core))
                      (a1-3 (-> (the-as collide-shape-moving v1-4) root-prim prim-core))
                      (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3)))
                      )
@@ -863,7 +863,7 @@
     #f
     (none)
     )
-  :post (the-as (function none :behavior crate) crate-post)
+  :post crate-post
   )
 
 (defstate die (crate)
@@ -897,7 +897,7 @@
     )
   :code (behavior ((arg0 symbol) (arg1 int))
     (logior! (-> self focus-status) (focus-status dead))
-    (let ((v1-3 (-> (the-as collide-shape (-> self root-override)) root-prim)))
+    (let ((v1-3 (-> (the-as collide-shape (-> self root-override2)) root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
@@ -939,7 +939,7 @@
       (case (-> self defense)
         (('darkeco)
          (let ((f0-0
-                 (lerp-scale 1.0 0.0 (vector-vector-distance (-> self root-override trans) (target-pos 0)) 8192.0 40960.0)
+                 (lerp-scale 1.0 0.0 (vector-vector-distance (-> self root-override2 trans) (target-pos 0)) 8192.0 40960.0)
                  )
                )
            (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 f0-0)) (seconds 0.3))
@@ -947,7 +947,7 @@
          (process-spawn
            touch-tracker
            :init touch-tracker-init
-           (-> self root-override trans)
+           (-> self root-override2 trans)
            (-> *CRATE-bank* DARKECO_EXPLODE_RADIUS)
            30
            :to self
@@ -971,7 +971,7 @@
                    (t2-4 #f)
                    (t3-0 *launch-matrix*)
                    )
-               (set! (-> t3-0 trans quad) (-> self root-override trans quad))
+               (set! (-> t3-0 trans quad) (-> self root-override2 trans quad))
                ((the-as (function object object object object object object object object none) t9-18)
                 a0-34
                 a1-21
@@ -1003,7 +1003,7 @@
                    (t2-5 #f)
                    (t3-1 *launch-matrix*)
                    )
-               (set! (-> t3-1 trans quad) (-> self root-override trans quad))
+               (set! (-> t3-1 trans quad) (-> self root-override2 trans quad))
                ((the-as (function object object object object object object object object none) t9-21)
                 a0-39
                 a1-27
@@ -1035,7 +1035,7 @@
                     (t2-6 #f)
                     (t3-2 *launch-matrix*)
                     )
-                (set! (-> t3-2 trans quad) (-> self root-override trans quad))
+                (set! (-> t3-2 trans quad) (-> self root-override2 trans quad))
                 ((the-as (function object object object object object object object object none) t9-24)
                  a0-42
                  a1-32
@@ -1071,11 +1071,7 @@
            )
        )
       )
-    (let ((t9-29 (method-of-object (-> self fact) fact-info-method-9)))
-      #t
-      *entity-pool*
-      (t9-29)
-      )
+    (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) arg1)
     (process-entity-status! self (entity-perm-status dead) #t)
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (let ((gp-1 (-> self clock frame-counter)))
@@ -1146,18 +1142,13 @@
             )
         )
       )
-    (let ((v1-20 (-> self root-override root-prim)))
+    (let ((v1-20 (-> self root-override2 root-prim)))
       (set! (-> v1-20 prim-core collide-as) (collide-spec))
       (set! (-> v1-20 prim-core collide-with) (collide-spec))
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (let ((t9-0 (method-of-object (-> self fact) fact-info-method-9)))
-      #t
-      self
-      0
-      (t9-0)
-      )
+    (drop-pickup (-> self fact) #t self (the-as fact-info #f) 0)
     (set! (-> self child-count) (+ (process-count self) -1))
     (process-entity-status! self (entity-perm-status bit-4) #t)
     (when (-> self entity)
@@ -1179,7 +1170,7 @@
 
 (defbehavior crate-init-by-other crate ((arg0 entity) (arg1 vector) (arg2 symbol) (arg3 fact-info-crate))
   (crate-init! self (the-as entity-actor arg0))
-  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self root-override2 trans quad) (-> arg1 quad))
   (set! (-> self look) arg2)
   (set! (-> self defense) arg2)
   (skel-init! self)
@@ -1244,7 +1235,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override2) s4-0)
     )
   (set! (-> obj fact)
         (new 'process 'fact-info-crate obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
@@ -1293,7 +1284,7 @@
   "Initialize the [[crate]]'s skeleton and other parameters based on the crate type."
   (case (-> obj look)
     (('iron)
-     (set! (-> obj root-override penetrated-by)
+     (set! (-> obj root-override2 penetrated-by)
            (penetrate flop uppercut tube vehicle flut-attack board dark-skin explode)
            )
      (initialize-skeleton
@@ -1303,7 +1294,7 @@
        )
      )
     (('steel)
-     (set! (-> obj root-override penetrated-by) (penetrate tube vehicle flut-attack board dark-skin explode))
+     (set! (-> obj root-override2 penetrated-by) (penetrate tube vehicle flut-attack board dark-skin explode))
      (initialize-skeleton
        obj
        (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer uint32) #f)))
@@ -1339,7 +1330,7 @@
         )
       )
     )
-  (set! (-> obj base quad) (-> obj root-override trans quad))
+  (set! (-> obj base quad) (-> obj root-override2 trans quad))
   (crate-post)
   (nav-mesh-connect-from-ent (the-as entity-nav-mesh obj))
   (none)
@@ -1380,9 +1371,9 @@
 
 (defmethod smush-update! crate ((obj crate))
   (let ((f0-0 (update! (-> obj smush))))
-    (set! (-> obj root-override scale x) (+ 1.0 (* -0.5 f0-0)))
-    (set! (-> obj root-override scale y) (+ 1.0 f0-0))
-    (set! (-> obj root-override scale z) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> obj root-override2 scale x) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> obj root-override2 scale y) (+ 1.0 f0-0))
+    (set! (-> obj root-override2 scale z) (+ 1.0 (* -0.5 f0-0)))
     )
   0
   (none)
