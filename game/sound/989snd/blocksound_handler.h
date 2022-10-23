@@ -14,16 +14,20 @@ class blocksound_handler : public sound_handler {
  public:
   blocksound_handler(SFX2& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
       : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
-    vol = (vol * m_sfx.d.Vol) >> 10;
-    if (vol >= 128) {
-      vol = 127;
+    if (vol == 0x7FFFFFFF) {
+      vol = 1024;
+    }
+
+    s32 cvol = (m_sfx.d.Vol * vol) >> 10;
+    if (cvol >= 128) {
+      cvol = 127;
     }
 
     if (pan >= PAN_DONT_CHANGE) {
       pan = m_sfx.d.Pan;
     }
 
-    m_cur_volume = vol;
+    m_cur_volume = cvol;
     m_cur_pan = pan;
     m_cur_pm = pm;
     m_cur_pb = pb;

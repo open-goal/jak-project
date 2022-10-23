@@ -90,14 +90,10 @@ void blocksound_handler::stop() {
 void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   if (vol >= 0) {
     if (vol != VOLUME_DONT_CHANGE) {
-      m_app_volume = (vol * m_sfx.d.Vol) >> 10;
+      m_app_volume = vol;
     }
   } else {
-    m_app_volume = -vol;
-  }
-
-  if (m_app_volume >= 128) {
-    m_app_volume = 127;
+    m_app_volume = -1024 * vol / 127;
   }
 
   if (pan == PAN_RESET) {
@@ -106,20 +102,24 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
     m_app_pan = pan;
   }
 
-  vol = m_app_volume;  // + lfo vol
-  // TODO LFO logic here
+  s32 new_vol = ((m_app_volume * m_orig_volume) >> 10) + m_lfo_volume;
+  if (new_vol >= 128) {
+    new_vol = 127;
+  }
+  if (new_vol < 0) {
+    new_vol = 0;
+  }
 
-  pan = m_app_pan;  // + lfo pan
+  s32 new_pan = m_app_pan + m_lfo_pan;
   while (pan >= 360) {
     pan -= 360;
   }
-
   while (pan < 0) {
     pan += 360;
   }
 
-  if (pan != m_cur_pan || vol != m_cur_volume) {
-    m_cur_volume = vol;
+  if (pan != m_cur_pan || new_vol != m_cur_volume) {
+    m_cur_volume = new_vol;
     m_cur_pan = pan;
 
     for (auto& p : m_voices) {
@@ -168,7 +168,7 @@ void blocksound_handler::set_pbend(s32 bend) {
 void blocksound_handler::do_grain() {
   auto& grain = m_sfx.grains[m_next_grain];
 
-  grain->execute(*this);
+  s32 ret = grain->execute(*this);
 
   if (m_skip_grains) {
     m_grains_to_play--;
@@ -184,7 +184,7 @@ void blocksound_handler::do_grain() {
     return;
   }
 
-  m_countdown = m_sfx.grains[m_next_grain]->delay();
+  m_countdown = m_sfx.grains[m_next_grain]->delay() + ret;
 }
 
 }  // namespace snd

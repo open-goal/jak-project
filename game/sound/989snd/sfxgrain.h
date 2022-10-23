@@ -124,7 +124,7 @@ class blocksound_handler;
 class Grain {
  public:
   Grain(u32 delay) : m_delay(delay) {}
-  virtual void execute(blocksound_handler& handler) = 0;
+  virtual s32 execute(blocksound_handler& handler) = 0;
   s32 delay() { return m_delay; }
 
   s32 m_delay{0};
@@ -134,14 +134,14 @@ class SFXGrain_Null : public Grain {
  public:
   SFXGrain_Null(SFXGrain& grain);
   SFXGrain_Null(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_Tone : public Grain {
  public:
   SFXGrain_Tone(SFXGrain& grain);
   SFXGrain_Tone(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 
   Tone m_tone;
 };
@@ -150,91 +150,91 @@ class SFXGrain_XrefID : public Grain {
  public:
   SFXGrain_XrefID(SFXGrain& grain);
   SFXGrain_XrefID(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_XrefNum : public Grain {
  public:
   SFXGrain_XrefNum(SFXGrain& grain);
   SFXGrain_XrefNum(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_LfoSettings : public Grain {
  public:
   SFXGrain_LfoSettings(SFXGrain& grain);
   SFXGrain_LfoSettings(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_StartChildSound : public Grain {
  public:
   SFXGrain_StartChildSound(SFXGrain& grain);
   SFXGrain_StartChildSound(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_StopChildSound : public Grain {
  public:
   SFXGrain_StopChildSound(SFXGrain& grain);
   SFXGrain_StopChildSound(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_PluginMessage : public Grain {
  public:
   SFXGrain_PluginMessage(SFXGrain& grain);
   SFXGrain_PluginMessage(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_Branch : public Grain {
  public:
   SFXGrain_Branch(SFXGrain& grain);
   SFXGrain_Branch(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_ControlNull : public Grain {
  public:
   SFXGrain_ControlNull(SFXGrain& grain);
   SFXGrain_ControlNull(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_LoopStart : public Grain {
  public:
   SFXGrain_LoopStart(SFXGrain& grain);
   SFXGrain_LoopStart(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_LoopEnd : public Grain {
  public:
   SFXGrain_LoopEnd(SFXGrain& grain);
   SFXGrain_LoopEnd(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_LoopContinue : public Grain {
  public:
   SFXGrain_LoopContinue(SFXGrain& grain);
   SFXGrain_LoopContinue(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_Stop : public Grain {
  public:
   SFXGrain_Stop(SFXGrain& grain);
   SFXGrain_Stop(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_RandPlay : public Grain {
  public:
   SFXGrain_RandPlay(SFXGrain& grain);
   SFXGrain_RandPlay(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 
  private:
   int options{0};
@@ -246,98 +246,105 @@ class SFXGrain_RandDelay : public Grain {
  public:
   SFXGrain_RandDelay(SFXGrain& grain);
   SFXGrain_RandDelay(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_max{0};
 };
 
 class SFXGrain_RandPB : public Grain {
  public:
   SFXGrain_RandPB(SFXGrain& grain);
   SFXGrain_RandPB(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_PB : public Grain {
  public:
   SFXGrain_PB(SFXGrain& grain);
   SFXGrain_PB(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_AddPB : public Grain {
  public:
   SFXGrain_AddPB(SFXGrain& grain);
   SFXGrain_AddPB(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_SetRegister : public Grain {
  public:
   SFXGrain_SetRegister(SFXGrain& grain);
   SFXGrain_SetRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_reg{0};
+  int m_value{0};
 };
 
 class SFXGrain_SetRegisterRand : public Grain {
  public:
   SFXGrain_SetRegisterRand(SFXGrain& grain);
   SFXGrain_SetRegisterRand(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_IncRegister : public Grain {
  public:
   SFXGrain_IncRegister(SFXGrain& grain);
   SFXGrain_IncRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_DecRegister : public Grain {
  public:
   SFXGrain_DecRegister(SFXGrain& grain);
   SFXGrain_DecRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_TestRegister : public Grain {
  public:
   SFXGrain_TestRegister(SFXGrain& grain);
   SFXGrain_TestRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_Marker : public Grain {
  public:
   SFXGrain_Marker(SFXGrain& grain);
   SFXGrain_Marker(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_GotoMarker : public Grain {
  public:
   SFXGrain_GotoMarker(SFXGrain& grain);
   SFXGrain_GotoMarker(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_GotoRandomMarker : public Grain {
  public:
   SFXGrain_GotoRandomMarker(SFXGrain& grain);
   SFXGrain_GotoRandomMarker(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_WaitForAllVoices : public Grain {
  public:
   SFXGrain_WaitForAllVoices(SFXGrain& grain);
   SFXGrain_WaitForAllVoices(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_PlayCycle : public Grain {
  public:
   SFXGrain_PlayCycle(SFXGrain& grain);
   SFXGrain_PlayCycle(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 
  private:
   int m_group_size;
@@ -349,35 +356,35 @@ class SFXGrain_AddRegister : public Grain {
  public:
   SFXGrain_AddRegister(SFXGrain& grain);
   SFXGrain_AddRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_KeyOffVoices : public Grain {
  public:
   SFXGrain_KeyOffVoices(SFXGrain& grain);
   SFXGrain_KeyOffVoices(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_KillVoices : public Grain {
  public:
   SFXGrain_KillVoices(SFXGrain& grain);
   SFXGrain_KillVoices(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_OnStopMarker : public Grain {
  public:
   SFXGrain_OnStopMarker(SFXGrain& grain);
   SFXGrain_OnStopMarker(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 class SFXGrain_CopyRegister : public Grain {
  public:
   SFXGrain_CopyRegister(SFXGrain& grain);
   SFXGrain_CopyRegister(SFXGrain2& grain, u8* data);
-  void execute(blocksound_handler& handler) override;
+  s32 execute(blocksound_handler& handler) override;
 };
 
 template <typename... Args>
