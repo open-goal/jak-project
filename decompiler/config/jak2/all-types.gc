@@ -17196,9 +17196,14 @@
     (play-game (game-task-event) _type_ :state 30) ;; (idle () _type_ :state 30)
     (process-taskable-method-31 (_type_) none 31) ;; (get-art-elem (_type_) art-element 31)
     (process-taskable-method-32 (_type_) none 32) ;; (play-anim! (_type_ symbol) basic 32)
-    (process-taskable-method-33 (_type_) none 33) ;; (dummy-33 (_type_) none 33)
+    (init-skeleton!
+      "@see [[initialize-skeleton]]"
+      (_type_) none 33) ;; (dummy-33 (_type_) none 33)
     (process-taskable-method-34 (_type_) symbol 34) ;; (get-accept-anim (_type_ symbol) spool-anim 34)
-    (process-taskable-method-35 (_type_) art-joint-anim 35) ;; (push-accept-anim (_type_) none 35)
+    (get-art-elem
+      "Checks various things such the current actor, task status, etc to determine the right art-group data to use
+       @returns the appropriate [[art-element]] for the given NPC"
+      (_type_) art-element 35) ;; TODO - is it always an art-joint-anim?
     (process-taskable-method-36 (_type_) none 36) ;; (get-reject-anim (_type_ symbol) spool-anim 36)
     (process-taskable-method-37 (_type_) none 37) ;; (push-reject-anim (_type_) none 37)
     )
@@ -28309,9 +28314,19 @@
 ;; task-arrow                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++task-arrow:task-arrow-flags
+(defenum task-arrow-flags
+  :type uint32
+  :bitfield #t
+  (task-arrow-flag-00 0)
+  (task-arrow-flag-01 1)
+  (task-arrow-flag-02 2)
+  (task-arrow-flag-03 3)
+  )
+;; ---task-arrow:task-arrow-flags
+
 (deftype task-arrow-params (structure)
-  ((flags    uint32             :offset-assert 0)
+  ((flags    task-arrow-flags             :offset-assert 0)
    (map-icon uint16             :offset-assert 4)
    (pos      vector     :inline :offset-assert 16)
    (quat     quaternion :inline :offset-assert 32)
@@ -28320,23 +28335,21 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype task-arrow (process-drawable)
-  ((pos              vector             :inline :offset-assert 204)
-   (theta            float                      :offset-assert 220)
-   (phi              float                      :offset-assert 224)
-   (dist             float                      :offset-assert 228)
-   (smoothed-dist    float                      :offset-assert 232)
-   (max-dist         float                      :offset-assert 236)
-   (flags            uint32                     :offset-assert 240)
-   (map-icon         uint16                     :offset-assert 244)
-   (minimap          connection-minimap         :offset-assert 248)
-   (hud-dist         uint64                     :offset-assert 252)
-   (base-quat        quaternion         :inline :offset-assert 268)
-   (rod-of-god-scale float                      :offset-assert 284)
-   (moving           basic                      :offset-assert 288)
+  ((pos              vector             :inline :offset-assert 208)
+   (theta            float                      :offset-assert 224)
+   (phi              float                      :offset-assert 228)
+   (dist             float                      :offset-assert 232)
+   (smoothed-dist    float                      :offset-assert 236)
+   (max-dist         float                      :offset-assert 240)
+   (flags            task-arrow-flags                     :offset-assert 244)
+   (map-icon         uint16                     :offset-assert 248)
+   (minimap          connection-minimap         :offset-assert 252)
+   (hud-dist         handle                     :offset-assert 256)
+   (base-quat        quaternion         :inline :offset-assert 272)
+   (rod-of-god-scale float                      :offset-assert 288)
+   (moving           symbol                     :offset-assert 292)
    )
   :method-count-assert 25
   :size-assert         #x128
@@ -28345,14 +28358,13 @@
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
     (leave () _type_ :state 22)
-    (task-arrow-method-23 () none 23)
-    (task-arrow-method-24 () none 24)
+    (task-arrow-method-23 "Some weird debugging code left here, but checks for collisions on the arrow" (_type_ vector) none 23)
+    (draw-arrow (_type_) none :behavior task-arrow 24)
     )
   )
-|#
 
-;; (define-extern task-arrow-init-by-other function)
-;; (define-extern task-arrow-spawn function)
+(define-extern task-arrow-init-by-other (function task-arrow-params task-arrow :behavior task-arrow))
+(define-extern task-arrow-spawn (function task-arrow-params task-arrow process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; projectile                     ;;
@@ -33435,13 +33447,16 @@
 ;; process-taskable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern process-taskable-anim-loop (function (function symbol) none :behavior process-taskable)) ;; 
+(define-extern process-taskable-anim-loop
+  "Takes in a function and loops as long as it's return value is truthy
+   Seen take in - `true-func` which takes no args TODO - seems fishy
+                - a `(process-taskable process) lambda"
+  (function (function process-taskable object) none :behavior process-taskable))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-actor                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kor-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33450,9 +33465,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype metalkor-highres (process-drawable)
   ()
   :method-count-assert 21
@@ -33462,9 +33475,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype tess-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33473,9 +33484,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype keira-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33484,9 +33493,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype krew-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33495,9 +33502,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype kid-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33506,9 +33511,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype crocadog-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33517,9 +33520,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype torn-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33528,9 +33529,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype youngsamos-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33539,9 +33538,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype samos-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33550,9 +33547,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype onin-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33561,9 +33556,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype pecker-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33572,9 +33565,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype brutter-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33583,9 +33574,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype ashelin-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33594,9 +33583,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype daxter-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33605,10 +33592,19 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern intro-play function)
-;; (define-extern outro-play function)
+(define-extern intro-play
+  "A dedicated function for playing the intro cutscenes in the correct order
+   ```opengoal
+   \"intro-samos-hut\" \"intro-vortex\" \"intro-city-square\" \"intro-prison\"
+   ```"
+   (function none))
+(define-extern outro-play
+  "A dedicated function for playing the intro cutscenes in the correct order
+   ```opengoal
+   \"outro-nest\" \"outro-palace\" \"outro-hiphog\" \"outro-port\"
+   ```"
+   (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-looper                   ;;
@@ -45273,29 +45269,28 @@
   )
 |#
 
-#|
 (deftype onin-game (process-drawable)
-  ((wave            int32   :offset-assert 196)
-   (event           int32   :offset-assert 200)
-   (wave-time       time-frame  :offset-assert 204)
-   (wave-delay-time time-frame  :offset-assert 212)
-   (wave-length     uint64  :offset-assert 220)
-   (event-time      time-frame  :offset-assert 228)
-   (event-length    uint64  :offset-assert 236)
-   (hud-score       uint64  :offset-assert 244)
-   (hud-goal        uint64  :offset-assert 252)
-   (hud-miss        uint64  :offset-assert 260)
-   (score           float   :offset-assert 268)
-   (score-time      time-frame  :offset-assert 276)
-   (game            uint32  :offset-assert 284)
-   (miss-max        int32   :offset-assert 288)
-   (miss-count      int32   :offset-assert 292)
-   (point-win       float   :offset-assert 296)
-   (game-start-time time-frame  :offset-assert 300)
-   (last-type       int32   :offset-assert 308)
-   (current-bonus   float   :offset-assert 312)
-   (last-angle      float   :offset-assert 316)
-   (wave-start-miss int32   :offset-assert 320)
+  ((wave            int32   :offset-assert 200)
+   (event           int32   :offset-assert 204)
+   (wave-time       time-frame  :offset-assert 208)
+   (wave-delay-time time-frame  :offset-assert 216)
+   (wave-length     uint64  :offset-assert 224)
+   (event-time      time-frame  :offset-assert 232)
+   (event-length    uint64  :offset-assert 240)
+   (hud-score       uint64  :offset-assert 248)
+   (hud-goal        uint64  :offset-assert 256)
+   (hud-miss        uint64  :offset-assert 264)
+   (score           float   :offset-assert 272)
+   (score-time      time-frame  :offset-assert 280)
+   (game            uint32  :offset-assert 288)
+   (miss-max        int32   :offset-assert 292)
+   (miss-count      int32   :offset-assert 296)
+   (point-win       float   :offset-assert 300)
+   (game-start-time time-frame  :offset-assert 304)
+   (last-type       int32   :offset-assert 312)
+   (current-bonus   float   :offset-assert 316)
+   (last-angle      float   :offset-assert 320)
+   (wave-start-miss int32   :offset-assert 324)
    )
   :method-count-assert 28
   :size-assert         #x148
@@ -45311,13 +45306,12 @@
     (onin-game-method-27 () none 27)
     )
   )
-|#
 
 ;; (define-extern *onin-game-data* array)
 ;; (define-extern birth-func-onin-bubble-pop function)
 ;; (define-extern birth-func-onin-bubble-birth-pop function)
 ;; (define-extern onin-game-bubble-init function)
-;; (define-extern onin-game-init function)
+(define-extern onin-game-init (function entity none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-texture               ;;

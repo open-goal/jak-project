@@ -5,5 +5,61 @@
 ;; name in dgo: task-arrow
 ;; dgos: ENGINE, GAME
 
+;; +++task-arrow-flags
+(defenum task-arrow-flags
+  :type uint32
+  :bitfield #t
+  (task-arrow-flag-00 0)
+  (task-arrow-flag-01 1)
+  (task-arrow-flag-02 2)
+  (task-arrow-flag-03 3)
+  )
+;; ---task-arrow-flags
+
+(declare-type task-arrow-params structure)
+(declare-type task-arrow process-drawable)
+(define-extern task-arrow-init-by-other (function task-arrow-params task-arrow :behavior task-arrow))
+(define-extern task-arrow-spawn (function task-arrow-params task-arrow process))
+
 ;; DECOMP BEGINS
 
+
+(deftype task-arrow-params (structure)
+  ((flags    task-arrow-flags         :offset-assert   0)
+   (map-icon uint16                   :offset-assert   4)
+   (pos      vector           :inline :offset-assert  16)
+   (quat     quaternion       :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype task-arrow (process-drawable)
+  ((pos              vector             :inline :offset-assert 208)
+   (theta            float                      :offset-assert 224)
+   (phi              float                      :offset-assert 228)
+   (dist             float                      :offset-assert 232)
+   (smoothed-dist    float                      :offset-assert 236)
+   (max-dist         float                      :offset-assert 240)
+   (flags            task-arrow-flags           :offset-assert 244)
+   (map-icon         uint16                     :offset-assert 248)
+   (minimap          connection-minimap         :offset-assert 252)
+   (hud-dist         handle                     :offset-assert 256)
+   (base-quat        quaternion         :inline :offset-assert 272)
+   (rod-of-god-scale float                      :offset-assert 288)
+   (moving           symbol                     :offset-assert 292)
+   )
+  :heap-base #xb0
+  :method-count-assert 25
+  :size-assert         #x128
+  :flag-assert         #x1900b00128
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (leave () _type_ :state 22)
+    (task-arrow-method-23 (_type_ vector) none 23)
+    (draw-arrow (_type_) none :behavior task-arrow 24)
+    )
+  )
