@@ -139,8 +139,17 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
 }
 
 void blocksound_handler::update_pitch() {
-  m_cur_pm = m_app_pm;
-  m_cur_pb = m_app_pb;
+  m_cur_pm = m_app_pm + m_lfo_pm;
+  s32 new_pb = m_app_pb + m_lfo_pb;
+  if (new_pb <= 0x7fff) {
+    if (new_pb >= -0x8000) {
+      m_cur_pb = new_pb;
+    } else {
+      m_cur_pb = -0x8000;
+    }
+  } else {
+    new_pb = 0x7fff;
+  }
 
   for (auto& p : m_voices) {
     auto voice = p.lock();
@@ -151,16 +160,19 @@ void blocksound_handler::update_pitch() {
     auto note = pitchbend(voice->tone, m_cur_pb, m_cur_pm, m_note, m_fine);
     auto pitch =
         PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+
     voice->set_pitch(pitch);
   }
 }
 
 void blocksound_handler::set_pmod(s32 mod) {
+  // TODO update children
   m_app_pm = mod;
   update_pitch();
 }
 
 void blocksound_handler::set_pbend(s32 bend) {
+  // TODO update children
   m_app_pb = bend;
   update_pitch();
 }

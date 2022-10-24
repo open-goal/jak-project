@@ -83,6 +83,8 @@ class blocksound_handler : public sound_handler {
 
   std::list<std::weak_ptr<vag_voice>> m_voices;
 
+  std::list<std::unique_ptr<blocksound_handler>> m_children;
+
   s32 m_current_pb{0};
   s32 m_current_pm{0};
 
@@ -100,6 +102,7 @@ class blocksound_handler : public sound_handler {
   s32 m_lfo_volume{0};
   s32 m_lfo_pan{0};
   s32 m_lfo_pm{0};
+  s32 m_lfo_pb{0};
 
   u32 m_bank{0};
 

@@ -131,8 +131,10 @@ class Grain {
   virtual std::string_view inspect() { return magic_enum::enum_name(type()); };
   s32 delay() { return m_delay; }
   grain_type type() { return m_type; }
+  std::array<int, 4>& args() { return m_args; }
 
  private:
+  std::array<int, 4> m_args;
   grain_type m_type{0};
   s32 m_delay{0};
 };
@@ -259,6 +261,9 @@ class SFXGrain_RandPB : public Grain {
   SFXGrain_RandPB(SFXGrain& grain);
   SFXGrain_RandPB(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_pb{0};
 };
 
 class SFXGrain_PB : public Grain {
@@ -266,6 +271,9 @@ class SFXGrain_PB : public Grain {
   SFXGrain_PB(SFXGrain& grain);
   SFXGrain_PB(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_pb{0};
 };
 
 class SFXGrain_AddPB : public Grain {
@@ -273,6 +281,9 @@ class SFXGrain_AddPB : public Grain {
   SFXGrain_AddPB(SFXGrain& grain);
   SFXGrain_AddPB(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_pb{0};
 };
 
 class SFXGrain_SetRegister : public Grain {
@@ -332,9 +343,12 @@ class SFXGrain_TestRegister : public Grain {
 
 class SFXGrain_Marker : public Grain {
  public:
-  SFXGrain_Marker(SFXGrain& grain);
-  SFXGrain_Marker(SFXGrain2& grain, u8* data);
-  s32 execute(blocksound_handler& handler) override;
+  SFXGrain_Marker(SFXGrain& grain) : Grain(grain), m_mark(grain.GrainParams.control.param[0]) {}
+  SFXGrain_Marker(SFXGrain2& grain, u8* data) : Grain(grain), m_mark(grain.OpcodeData.arg[0]) {}
+  int marker() { return m_mark; }
+
+ private:
+  int m_mark{0};
 };
 
 class SFXGrain_GotoMarker : public Grain {
@@ -342,6 +356,9 @@ class SFXGrain_GotoMarker : public Grain {
   SFXGrain_GotoMarker(SFXGrain& grain);
   SFXGrain_GotoMarker(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_mark{0};
 };
 
 class SFXGrain_GotoRandomMarker : public Grain {
@@ -349,6 +366,10 @@ class SFXGrain_GotoRandomMarker : public Grain {
   SFXGrain_GotoRandomMarker(SFXGrain& grain);
   SFXGrain_GotoRandomMarker(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_upper_bound{0};
+  int m_lower_bound{0};
 };
 
 class SFXGrain_WaitForAllVoices : public Grain {
@@ -375,6 +396,10 @@ class SFXGrain_AddRegister : public Grain {
   SFXGrain_AddRegister(SFXGrain& grain);
   SFXGrain_AddRegister(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  int m_val{0};
+  int m_reg{0};
 };
 
 class SFXGrain_KeyOffVoices : public Grain {
