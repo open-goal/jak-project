@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: game-save.gc
-;; name in dgo: game-save
-;; dgos: ENGINE, GAME
-
-;; NOTE - for default-menu
-(define-extern auto-save-command (function symbol int int process-tree symbol none))
-
-;; DECOMP BEGINS
-
+;; definition (debug) for function game-save-elt->string
 (defun-debug game-save-elt->string ((arg0 game-save-elt))
   (case arg0
     (((game-save-elt task-deaths))
@@ -240,6 +232,7 @@
     )
   )
 
+;; definition of type game-save-tag
 (deftype game-save-tag (structure)
   ((user-object object        2 :offset          0)
    (user-uint64 uint64          :offset          0)
@@ -262,7 +255,33 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type game-save-tag
+(defmethod inspect game-save-tag ((obj game-save-tag))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'game-save-tag)
+  (format #t "~1Tuser-object[2] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-uint64: ~D~%" (-> obj user-uint64))
+  (format #t "~1Tuser-float0: ~f~%" (-> obj user-float0))
+  (format #t "~1Tuser-float[2] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-int32[2] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-uint32[2] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-int16[4] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-uint16[4] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-int8[8] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Tuser-int80: ~D~%" (-> obj user-int80))
+  (format #t "~1Tuser-int81: ~D~%" (-> obj user-int81))
+  (format #t "~1Tuser-uint8[8] @ #x~X~%" (-> obj user-object))
+  (format #t "~1Telt-count: ~D~%" (-> obj elt-count))
+  (format #t "~1Telt-size: ~D~%" (-> obj elt-size))
+  (format #t "~1Telt-type: ~D~%" (-> obj elt-type))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type game-save
 (deftype game-save (basic)
   ((version               int32                          :offset-assert   4)
    (allocated-length      int32                          :offset-assert   8)
@@ -296,12 +315,45 @@
     )
   )
 
+;; definition for method 3 of type game-save
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect game-save ((obj game-save))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tversion: ~D~%" (-> obj version))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tinfo-int32[16] @ #x~X~%" (-> obj info-int32))
+  (format #t "~1Tinfo-int8[64] @ #x~X~%" (-> obj info-int32))
+  (format #t "~1Tlevel-index: ~D~%" (-> obj level-index))
+  (format #t "~1Tgem-count: ~f~%" (-> obj gem-count))
+  (format #t "~1Tskill-count: ~f~%" (-> obj skill-count))
+  (format #t "~1Tcompletion-percentage: ~f~%" (-> obj completion-percentage))
+  (format #t "~1Tminute: #x~X~%" (-> obj minute))
+  (format #t "~1Thour: #x~X~%" (-> obj hour))
+  (format #t "~1Tweek: #x~X~%" (-> obj week))
+  (format #t "~1Tday: #x~X~%" (-> obj day))
+  (format #t "~1Tmonth: #x~X~%" (-> obj month))
+  (format #t "~1Tyear: #x~X~%" (-> obj year))
+  (format #t "~1Tnew-game: ~D~%" (-> obj new-game))
+  (format #t "~1Tgame-time: ~D~%" (-> obj game-time))
+  (format #t "~1Tsecrets: ~D~%" (-> obj secrets))
+  (format #t "~1Tfeatures: ~D~%" (-> obj features))
+  (format #t "~1Ttag[0] @ #x~X~%" (-> obj tag))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 5 of type game-save
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of game-save ((obj game-save))
   (the-as int (+ (-> game-save size) (-> obj allocated-length)))
   )
 
+;; definition for method 0 of type game-save
 (defmethod new game-save ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) arg0)))))
     (set! (-> v0-0 version) 3)
@@ -310,6 +362,8 @@
     )
   )
 
+;; definition for method 11 of type game-save
+;; INFO: Used lq/sq
 (defmethod debug-inspect game-save ((obj game-save) (arg0 symbol))
   (local-vars (sv-16 int) (sv-32 string) (sv-48 string))
   (format #t "[~8x] ~A~%" obj (-> obj type))
@@ -456,7 +510,13 @@
   obj
   )
 
+;; definition for method 3 of type game-save
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect game-save ((obj game-save))
+  (debug-inspect obj #f)
+  )
 
+;; definition for method 23 of type game-info
 (defmethod game-info-method-23 game-info ((obj game-info) (arg0 game-save) (arg1 string))
   (with-pp
     (dotimes (s4-0 (-> *level* length))
@@ -1247,6 +1307,7 @@
     )
   )
 
+;; definition for method 24 of type game-info
 (defmethod game-info-method-24 game-info ((obj game-info) (arg0 game-save))
   (let ((v1-0 (the-as object (-> arg0 tag))))
     (while (< (the-as int v1-0) (the-as int (&-> arg0 tag 0 user-int8 (-> arg0 length))))
@@ -1710,6 +1771,7 @@
   arg0
   )
 
+;; definition for method 9 of type game-save
 (defmethod save-to-file game-save ((obj game-save) (arg0 string))
   (let ((s5-0 (new 'stack 'file-stream arg0 'write)))
     (file-stream-write s5-0 (&-> obj type) (+ (-> obj type size) (-> obj length)))
@@ -1718,6 +1780,7 @@
   obj
   )
 
+;; definition for method 10 of type game-save
 (defmethod load-from-file game-save ((obj game-save) (arg0 string))
   (let ((s5-0 (new 'stack 'file-stream arg0 'read)))
     (let ((s3-0 (file-stream-length s5-0))
@@ -1752,8 +1815,10 @@
   obj
   )
 
+;; definition for symbol *auto-save-info*, type mc-slot-info
 (define *auto-save-info* (new 'global 'mc-slot-info))
 
+;; definition of type auto-save
 (deftype auto-save (process)
   ((card       int32                  :offset-assert 128)
    (slot       int32                  :offset-assert 132)
@@ -1785,7 +1850,32 @@
     )
   )
 
+;; definition for method 3 of type auto-save
+(defmethod inspect auto-save ((obj auto-save))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcard: ~D~%" (-> obj card))
+  (format #t "~2Tslot: ~D~%" (-> obj slot))
+  (format #t "~2Twhich: ~D~%" (-> obj which))
+  (format #t "~2Tbuffer: #<kheap @ #x~X>~%" (-> obj buffer))
+  (format #t "~2Tmode: ~A~%" (-> obj mode))
+  (format #t "~2Tresult: ~D~%" (-> obj result))
+  (format #t "~2Tsave: ~A~%" (-> obj save))
+  (format #t "~2Tinfo: #<mc-slot-info @ #x~X>~%" (-> obj info))
+  (format #t "~2Tnotify: ~D~%" (-> obj notify))
+  (format #t "~2Tforce: ~A~%" (-> obj force))
+  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~2Ticon: #<hud-sprite @ #x~X>~%" (-> obj icon))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for function auto-save-post
 ;; WARN: Failed store: (s.w! (+ v1-45 8) 0) at op 192
 ;; WARN: Failed store: (s.w! (+ v1-45 12) 0) at op 193
 (defbehavior auto-save-post auto-save ()
@@ -1862,8 +1952,10 @@
     )
   )
 
+;; failed to figure out what this is:
 auto-save-post
 
+;; definition for function auto-save-init-by-other
 (defbehavior auto-save-init-by-other auto-save ((arg0 symbol) (arg1 process) (arg2 int) (arg3 int) (arg4 symbol))
   (when (handle->process (-> *game-info* auto-save-proc))
     (send-event arg1 'notify 'error 16)
@@ -1912,6 +2004,7 @@ auto-save-post
   (go-virtual get-heap)
   )
 
+;; failed to figure out what this is:
 (defstate get-heap (auto-save)
   :virtual #t
   :code (behavior ()
@@ -1960,6 +2053,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate get-card (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2015,6 +2109,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate format-card (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2060,6 +2155,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate unformat-card (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2093,6 +2189,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate create-file (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2151,6 +2248,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate save (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2216,6 +2314,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate restore (auto-save)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2299,6 +2398,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate error (auto-save)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2413,6 +2513,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; failed to figure out what this is:
 (defstate done (auto-save)
   :virtual #t
   :code (behavior ()
@@ -2445,11 +2546,13 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; definition for function auto-save-command
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree) (arg4 symbol))
   (format #t "AUTO SAVE COMMAND ~S~%" arg0)
   (process-spawn auto-save arg0 arg3 arg1 arg2 arg4 :to *target-pool* :stack *kernel-dram-stack*)
   )
 
+;; definition for function auto-save-check
 (defun auto-save-check ()
   (when (and (-> *setting-control* user-current auto-save) (not (handle->process (-> *game-info* auto-save-proc))))
     (mc-get-slot-info 0 *auto-save-info*)
@@ -2462,6 +2565,7 @@ auto-save-post
   0
   )
 
+;; definition for function auto-save-user
 (defun auto-save-user ()
   (case *kernel-boot-message*
     (('play 'preview)
@@ -2469,3 +2573,7 @@ auto-save-post
      )
     )
   )
+
+
+
+

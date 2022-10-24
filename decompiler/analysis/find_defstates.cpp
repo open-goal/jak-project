@@ -134,6 +134,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
         lg::info("RENAME: {} to ", handler_func->name());
       }
 
+      handler_func->state_handler_as_anon_func = handler_func->name();
       if (virtual_child) {
         handler_func->guessed_name.set_as_v_state(*virtual_child, state_name, handler_kind);
       } else {
