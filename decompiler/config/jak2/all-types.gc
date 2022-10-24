@@ -14716,7 +14716,7 @@
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string) draw-control 15)
     (apply-alignment (_type_ align-opts transformq vector) object 16)
-    (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
+    (process-drawable-method-17 (_type_) none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
     (process-drawable-method-19 () none 19) ;; (evaluate-joint-control (_type_) none 19)
     )
@@ -17656,6 +17656,7 @@
 
 (deftype target (process-focusable)
   ((control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
+   (fact-info-override      fact-info-target                         :offset 160 :score 100)
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -20351,7 +20352,8 @@
     cam-bike
     cam-robotboss ;; TODO - state docstrings "A holdout from jak 1?"
     cam-point-watch
-    cam-free-floating))
+    cam-free-floating
+    cam-remote))
 
 (deftype camera-master (process)
   ((master-options      uint32                           :offset-assert 128)
@@ -28181,7 +28183,6 @@
 ;; voicebox                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype camera-remote (camera-slave)
   ()
   :method-count-assert 14
@@ -28190,17 +28191,16 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype remote (process-drawable)
-  ((base-trans    vector           :inline :offset-assert 204)
-   (focus         focus            :inline :offset-assert 220)
-   (seeker        cam-float-seeker :inline :offset-assert 232)
-   (start-time    time-frame                   :offset-assert 260)
-   (blend         float                    :offset-assert 268)
-   (twist         float                    :offset-assert 272)
-   (speak-effect? basic                    :offset-assert 276)
+  ((parent-override (pointer camera-slave) :offset 16 :score 100)
+   (base-trans    vector           :inline :offset-assert 208)
+   (focus         focus            :inline :offset-assert 224)
+   (seeker        cam-float-seeker :inline :offset-assert 236)
+   (start-time    time-frame                   :offset-assert 264)
+   (blend         float                    :offset-assert 272)
+   (twist         float                    :offset-assert 276)
+   (speak-effect? basic                    :offset-assert 280)
    )
   :method-count-assert 26
   :size-assert         #x11c
@@ -28209,16 +28209,14 @@
     (enter () _type_ :state 20)
     (idle () _type_ :state 21)
     (exit () _type_ :state 22)
-    (remote-method-23 () none 23)
-    (remote-method-24 () none 24)
-    (remote-method-25 () none 25)
+    (remote-method-23 (_type_) none 23)
+    (remote-method-24 (_type_ vector) float 24)
+    (remote-method-25 (_type_) none 25)
     )
   )
-|#
 
-#|
 (deftype voicebox (remote)
-  ((hint uint64  :offset-assert 284) ;; handle
+  ((hint handle  :offset-assert 288) ;; handle
    )
   :method-count-assert 26
   :size-assert         #x128
@@ -28226,31 +28224,27 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype judge (remote)
-  ((total-time time-frame  :offset-assert 284)
-   (beep-time  time-frame  :offset-assert 292)
-   (hud-timer  uint64  :offset-assert 300)
-   (score      uint8   :offset-assert 308)
+  ((total-time time-frame  :offset-assert 288)
+   (beep-time  time-frame  :offset-assert 296)
+   (hud-timer  handle  :offset-assert 304)
+   (score      uint8   :offset-assert 312)
    )
   :method-count-assert 28
   :size-assert         #x139
   :flag-assert         #x1c00c00139
   (:methods
     (wait () _type_ :state 26)
-    (judge-method-27 () none 27)
+    (judge-method-27 (_type_) none 27)
     )
   )
-|#
 
-;; (define-extern remote-track function)
-;; (define-extern cam-remote state)
-;; (define-extern voicebox-init-by-other function) ;; (function vector handle none :behavior voicebox)
+(define-extern remote-track (function none :behavior remote))
+(define-extern voicebox-init-by-other (function vector handle none :behavior voicebox)) ;; 
 (define-extern voicebox-spawn (function process-drawable vector (pointer process))) ;; (function process vector (pointer process))
-;; (define-extern judge-init-by-other function)
-;; (define-extern judge-spawn function)
+(define-extern judge-init-by-other (function vector uint none :behavior judge))
+(define-extern judge-spawn (function process-tree vector uint (pointer judge)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collectables-part              ;;

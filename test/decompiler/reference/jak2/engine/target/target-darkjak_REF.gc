@@ -1,8 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition for function target-darkjak-setup
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-darkjak-setup target ((arg0 symbol))
   (when (zero? (-> self darkjak))
     (set! (-> self darkjak) (new 'process 'darkjak-info))
@@ -21,7 +18,6 @@
   (none)
   )
 
-;; definition for function want-to-darkjak?
 (defbehavior want-to-darkjak? target ()
   (and (cpad-pressed? (-> self control unknown-cpad-info00 number) l2)
        (not *pause-lock*)
@@ -52,7 +48,9 @@
                  )
             )
        (or (and (not (and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak))))
-                (and (>= (- (-> self clock frame-counter) (-> (the-as fact-info-target (-> self fact)) darkjak-start-time))
+                (and (>= (- (-> self clock frame-counter)
+                            (-> (the-as fact-info-target (-> self fact-info-override)) darkjak-start-time)
+                            )
                          (seconds 0.05)
                          )
                      (>= (-> self game eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
@@ -70,15 +68,12 @@
        )
   )
 
-;; failed to figure out what this is:
 (let ((v1-3 (copy *walk-mods* 'global)))
   (set! (-> v1-3 name) 'darkjak)
   (set! (-> v1-3 flags) (surface-flag gun-off))
   (set! *darkjak-trans-mods* v1-3)
   )
 
-;; definition for function target-darkjak-end-mode
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-darkjak-end-mode target ()
   (when (and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak)))
     (logclear! (-> self focus-status) (focus-status dark))
@@ -97,9 +92,6 @@
   (none)
   )
 
-;; definition for function target-darkjak-process
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-darkjak-process target ((arg0 object) (arg1 object) (arg2 object) (arg3 object) (arg4 object) (arg5 object) (arg6 float))
   (local-vars (gp-0 vector))
   (cond
@@ -116,8 +108,10 @@
        )
      (target-danger-set! (-> self control unknown-symbol04) #f)
      (collide-shape-method-46 (-> self control))
-     (if (and (or (>= (- (-> self clock frame-counter) (-> (the-as fact-info-target (-> self fact)) darkjak-start-time))
-                      (-> (the-as fact-info-target (-> self fact)) darkjak-effect-time)
+     (if (and (or (>= (- (-> self clock frame-counter)
+                         (-> (the-as fact-info-target (-> self fact-info-override)) darkjak-start-time)
+                         )
+                      (-> (the-as fact-info-target (-> self fact-info-override)) darkjak-effect-time)
                       )
                   (not (-> *setting-control* user-current darkjak))
                   )
@@ -270,7 +264,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-get-on (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -295,7 +288,7 @@
     (persist-with-delay *setting-control* 'bg-a-speed (seconds 3) 'bg-a-speed 'abs 0.5 0)
     (if (not (and (-> self next-state) (= (-> self next-state name) 'target-darkjak-get-off)))
         (pickup-collectable!
-          (-> self fact)
+          (-> self fact-info-override)
           (pickup-type eco-pill-dark)
           (- (-> *FACT-bank* eco-pill-dark-max-default))
           (the-as handle #f)
@@ -326,8 +319,10 @@
     (set! (-> self darkjak-giant-interp) 1.0)
     (set-setting! 'sound-flava #f #x41f00000 4)
     (set! (-> self focus-status) (logior (focus-status dark) (-> self focus-status)))
-    (set! (-> (the-as fact-info-target (-> self fact)) darkjak-start-time) (-> self clock frame-counter))
-    (set! (-> (the-as fact-info-target (-> self fact)) darkjak-effect-time) (seconds 20))
+    (set! (-> (the-as fact-info-target (-> self fact-info-override)) darkjak-start-time)
+          (-> self clock frame-counter)
+          )
+    (set! (-> (the-as fact-info-target (-> self fact-info-override)) darkjak-effect-time) (seconds 20))
     (if (logtest? (-> self darkjak stage) 16)
         (logior! (-> self state-flags) (state-flags sf4))
         (logclear! (-> self state-flags) (state-flags sf4))
@@ -408,7 +403,6 @@
   :post (-> target-grab post)
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-get-off (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -612,7 +606,6 @@
   :post (-> target-grab post)
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-running-attack (target)
   :event (-> target-running-attack event)
   :enter (-> target-running-attack enter)
@@ -1008,8 +1001,6 @@
   :post target-post
   )
 
-;; definition for method 9 of type darkjak-info
-;; WARN: Return type mismatch int vs none.
 (defmethod update-clock! darkjak-info ((obj darkjak-info) (arg0 int))
   (when (-> obj clock-on)
     (+! (-> obj clock-pos) (* (-> obj clock-vel) (-> self clock seconds-per-frame)))
@@ -1043,8 +1034,6 @@
   (none)
   )
 
-;; definition for function target-darkjak-bomb-collide
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-darkjak-bomb-collide target ((arg0 float) (arg1 float))
   (seek! (-> (the-as (pointer float) arg0) 0) arg1 (* 4.0 (-> self clock seconds-per-frame)))
   (set! (-> self control unknown-float40) (-> (the-as (pointer float) arg0) 0))
@@ -1063,7 +1052,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-bomb0 (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -1510,7 +1498,6 @@
   :post target-no-stick-post
   )
 
-;; failed to figure out what this is:
 (set! (-> *lightning-spec-id-table* 10) (new 'static 'lightning-spec
                                           :name "lightning-darkjak-bomb1"
                                           :flags (lightning-spec-flags lsf0 size-from-adjust-dist)
@@ -1532,9 +1519,6 @@
                                           )
       )
 
-;; definition for function target-bomb1-fire-shot
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch object vs none.
 (defbehavior target-bomb1-fire-shot target ((arg0 (pointer handle)) (arg1 int) (arg2 int) (arg3 int))
   (local-vars (sv-128 target) (sv-144 int) (sv-160 vector) (sv-176 vector) (sv-192 vector))
   (rlet ((vf0 :class vf)
@@ -1636,7 +1620,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-bomb1 (target)
   :event (-> target-darkjak-bomb0 event)
   :enter (-> target-attack-uppercut-jump enter)
@@ -1971,7 +1954,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-darkjak-giant (target)
   :event target-standard-event-handler
   :exit (behavior ()
