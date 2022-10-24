@@ -1823,6 +1823,7 @@ class WithDmaBufferAddBucketElement : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
 
  private:
   RegisterAccess m_dma_buf;

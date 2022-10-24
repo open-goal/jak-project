@@ -1,7 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition of type mc-handle
 (deftype mc-handle (int32)
   ()
   :method-count-assert 9
@@ -9,7 +7,6 @@
   :flag-assert         #x900000004
   )
 
-;; definition of type mc-file-info
 (deftype mc-file-info (structure)
   ((present               int32     :offset-assert   0)
    (blind-data            float  16 :offset          4)
@@ -35,7 +32,6 @@
   :flag-assert         #x900000044
   )
 
-;; definition for method 3 of type mc-file-info
 (defmethod inspect mc-file-info ((obj mc-file-info))
   (when (not obj)
     (set! obj obj)
@@ -63,7 +59,6 @@
   obj
   )
 
-;; definition of type mc-slot-info
 (deftype mc-slot-info (structure)
   ((handle       int32                  :offset-assert   0)
    (known        int32                  :offset-assert   4)
@@ -80,7 +75,6 @@
   :flag-assert         #x90000012c
   )
 
-;; definition for method 3 of type mc-slot-info
 (defmethod inspect mc-slot-info ((obj mc-slot-info))
   (when (not obj)
     (set! obj obj)
@@ -99,67 +93,15 @@
   obj
   )
 
-;; definition for function mc-sync
 (defun mc-sync ()
   (let ((v0-0 0))
     (while (zero? v0-0)
       (mc-run)
-      (set! v0-0 (mc-check-result))
+      (set! v0-0 (the-as int (mc-check-result)))
       )
     v0-0
     )
   )
 
-;; definition for function show-mc-info
-;; WARN: Return type mismatch int vs none.
-(defun show-mc-info ((arg0 dma-buffer))
-  (let ((s5-0 (new 'stack-no-clear 'mc-slot-info)))
-    (dotimes (s4-0 2)
-      (mc-get-slot-info s4-0 s5-0)
-      (cond
-        ((zero? (-> s5-0 known))
-         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" s4-0)
-         *temp-string*
-         )
-        ((zero? (-> s5-0 handle))
-         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" s4-0)
-         *temp-string*
-         )
-        ((zero? (-> s5-0 formatted))
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" s4-0 (-> s5-0 handle))
-         *temp-string*
-         )
-        ((zero? (-> s5-0 inited))
-         (format
-           (clear *temp-string*)
-           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
-           s4-0
-           (-> s5-0 handle)
-           (-> s5-0 mem-required)
-           (-> s5-0 mem-actual)
-           )
-         *temp-string*
-         )
-        (else
-          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " s4-0 (-> s5-0 handle))
-          *temp-string*
-          (format
-            *temp-string*
-            "SAVES ~D ~D ~D ~D : LAST ~D~%"
-            (-> s5-0 file 0 present)
-            (-> s5-0 file 1 present)
-            (-> s5-0 file 2 present)
-            (-> s5-0 file 3 present)
-            (-> s5-0 last-file)
-            )
-          )
-        )
-      (draw-string-xy *temp-string* arg0 32 (+ (* 12 s4-0) 8) (font-color precursor-#ec3b00) (font-flags shadow))
-      )
-    )
-  0
-  (none)
-  )
 
-;; failed to figure out what this is:
 0
