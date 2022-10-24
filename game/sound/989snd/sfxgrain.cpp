@@ -6,15 +6,8 @@
 
 namespace snd {
 
-SFXGrain_Null::SFXGrain_Null(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_Null::SFXGrain_Null(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-s32 SFXGrain_Null::execute(blocksound_handler& handler) {
-  return 0;
-}
-
-SFXGrain_Tone::SFXGrain_Tone(SFXGrain& grain)
-    : Grain(grain.Delay), m_tone(grain.GrainParams.tone) {}
-SFXGrain_Tone::SFXGrain_Tone(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+SFXGrain_Tone::SFXGrain_Tone(SFXGrain& grain) : Grain(grain), m_tone(grain.GrainParams.tone) {}
+SFXGrain_Tone::SFXGrain_Tone(SFXGrain2& grain, u8* data) : Grain(grain) {
   m_tone = *(Tone*)(data + (grain.OpcodeData.Opcode & 0xFFFFFF));
 }
 
@@ -80,91 +73,89 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_XrefID::SFXGrain_XrefID(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_XrefID::SFXGrain_XrefID(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-s32 SFXGrain_XrefID::execute(blocksound_handler& handler) {
-  return 0;
-}
-
-SFXGrain_XrefNum::SFXGrain_XrefNum(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_XrefNum::SFXGrain_XrefNum(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-s32 SFXGrain_XrefNum::execute(blocksound_handler& handler) {
-  return 0;
-}
-
-SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_LfoSettings::execute(blocksound_handler& handler) {
+  // TODO lfo
   return 0;
 }
 
-SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain2& grain, u8* data)
-    : Grain(grain.Delay) {}
+SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
+  // TODO if we must.....
   return 0;
 }
 
-SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_StopChildSound::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_PluginMessage::execute(blocksound_handler& handler) {
+  // TODO probably used
   return 0;
 }
 
-SFXGrain_Branch::SFXGrain_Branch(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_Branch::SFXGrain_Branch(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_Branch::SFXGrain_Branch(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_Branch::SFXGrain_Branch(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_Branch::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_ControlNull::SFXGrain_ControlNull(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_ControlNull::SFXGrain_ControlNull(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-s32 SFXGrain_ControlNull::execute(blocksound_handler& handler) {
-  return 0;
-}
-
-SFXGrain_LoopStart::SFXGrain_LoopStart(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_LoopStart::SFXGrain_LoopStart(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
-s32 SFXGrain_LoopStart::execute(blocksound_handler& handler) {
-  return 0;
-}
-
-SFXGrain_LoopEnd::SFXGrain_LoopEnd(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_LoopEnd::SFXGrain_LoopEnd(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_LoopEnd::SFXGrain_LoopEnd(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_LoopEnd::SFXGrain_LoopEnd(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_LoopEnd::execute(blocksound_handler& handler) {
+  bool found = false;
   for (int i = handler.m_next_grain - 1; i >= 0; i--) {
+    if (handler.m_sfx.grains[i]->type() == grain_type::LOOP_START) {
+      handler.m_next_grain = i - 1;
+      found = true;
+    }
+  }
+
+  if (!found) {
+    lg::error("LOOP_END could not find LOOP_START");
   }
 
   return 0;
 }
 
-SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_LoopContinue::execute(blocksound_handler& handler) {
+  bool found = false;
+  for (int i = handler.m_next_grain + 1; i < handler.m_sfx.grains.size(); i++) {
+    if (handler.m_sfx.grains[i]->type() == grain_type::LOOP_END) {
+      handler.m_next_grain = i;
+    }
+  }
+
+  if (!found) {
+    lg::error("LOOP_CONTINUE could not find LOOP_END");
+  }
+
   return 0;
 }
 
-SFXGrain_Stop::SFXGrain_Stop(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_Stop::SFXGrain_Stop(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_Stop::SFXGrain_Stop(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_Stop::SFXGrain_Stop(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_Stop::execute(blocksound_handler& handler) {
   handler.m_done = true;
 
   return 0;
 }
 
-SFXGrain_RandPlay::SFXGrain_RandPlay(SFXGrain& grain) : Grain(grain.Delay) {
+SFXGrain_RandPlay::SFXGrain_RandPlay(SFXGrain& grain) : Grain(grain) {
   options = grain.GrainParams.control.param[0];
   count = grain.GrainParams.control.param[1];
   previous = grain.GrainParams.control.param[2];
 }
 
-SFXGrain_RandPlay::SFXGrain_RandPlay(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+SFXGrain_RandPlay::SFXGrain_RandPlay(SFXGrain2& grain, u8* data) : Grain(grain) {
   options = grain.OpcodeData.arg[0];
   count = grain.OpcodeData.arg[1];
   previous = grain.OpcodeData.arg[2];
@@ -187,40 +178,40 @@ s32 SFXGrain_RandPlay::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_RandDelay::SFXGrain_RandDelay(SFXGrain& grain) : Grain(grain.Delay) {
+SFXGrain_RandDelay::SFXGrain_RandDelay(SFXGrain& grain) : Grain(grain) {
   m_max = grain.GrainParams.delay.Amount;
 }
 
-SFXGrain_RandDelay::SFXGrain_RandDelay(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+SFXGrain_RandDelay::SFXGrain_RandDelay(SFXGrain2& grain, u8* data) : Grain(grain) {
   m_max = (grain.OpcodeData.Opcode & 0xFFFFFF) + 1;
 }
 s32 SFXGrain_RandDelay::execute(blocksound_handler& handler) {
   return rand() % m_max;
 }
 
-SFXGrain_RandPB::SFXGrain_RandPB(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_RandPB::SFXGrain_RandPB(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_RandPB::SFXGrain_RandPB(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_RandPB::SFXGrain_RandPB(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_RandPB::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_PB::SFXGrain_PB(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_PB::SFXGrain_PB(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_PB::SFXGrain_PB(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_PB::SFXGrain_PB(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_PB::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_AddPB::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_SetRegister::SFXGrain_SetRegister(SFXGrain& grain) : Grain(grain.Delay) {
+SFXGrain_SetRegister::SFXGrain_SetRegister(SFXGrain& grain) : Grain(grain) {
   m_reg = grain.GrainParams.control.param[0];
   m_value = grain.GrainParams.control.param[1];
 }
-SFXGrain_SetRegister::SFXGrain_SetRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+SFXGrain_SetRegister::SFXGrain_SetRegister(SFXGrain2& grain, u8* data) : Grain(grain) {
   m_reg = grain.OpcodeData.arg[0];
   m_value = grain.OpcodeData.arg[1];
 }
@@ -234,64 +225,146 @@ s32 SFXGrain_SetRegister::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_SetRegisterRand::SFXGrain_SetRegisterRand(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_SetRegisterRand::SFXGrain_SetRegisterRand(SFXGrain2& grain, u8* data)
-    : Grain(grain.Delay) {}
+SFXGrain_SetRegisterRand::SFXGrain_SetRegisterRand(SFXGrain& grain) : Grain(grain) {
+  m_reg = grain.GrainParams.control.param[0];
+  m_lower_bound = grain.GrainParams.control.param[1];
+  m_upper_bound = grain.GrainParams.control.param[2];
+}
+SFXGrain_SetRegisterRand::SFXGrain_SetRegisterRand(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_reg = grain.OpcodeData.arg[0];
+  m_lower_bound = grain.OpcodeData.arg[1];
+  m_upper_bound = grain.OpcodeData.arg[2];
+}
 s32 SFXGrain_SetRegisterRand::execute(blocksound_handler& handler) {
+  s32 range = m_upper_bound - m_lower_bound + 1;
+  s32 rnd = (rand() % range) + m_lower_bound;
+  if (m_reg < 0) {
+    g_block_reg.at(-m_reg - 1) = rnd;
+  } else {
+    handler.m_registers.at(m_reg) = rnd;
+  }
+
   return 0;
 }
 
-SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain& grain) : Grain(grain) {
+  m_reg = grain.GrainParams.control.param[0];
+}
+SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_reg = grain.OpcodeData.arg[0];
+}
 s32 SFXGrain_IncRegister::execute(blocksound_handler& handler) {
+  if (m_reg < 0) {
+    s32 new_val = g_block_reg.at(-m_reg - 1) + 1;
+    if (new_val >= 128) {
+      new_val = 127;
+    }
+    g_block_reg.at(-m_reg - 1) = new_val;
+
+  } else {
+    s32 new_val = handler.m_registers.at(m_reg) + 1;
+    if (new_val >= 128) {
+      new_val = 127;
+    }
+    handler.m_registers.at(m_reg) = new_val;
+  }
   return 0;
 }
 
-SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain& grain) : Grain(grain) {
+  m_reg = grain.GrainParams.control.param[0];
+}
+SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_reg = grain.OpcodeData.arg[0];
+}
 s32 SFXGrain_DecRegister::execute(blocksound_handler& handler) {
+  if (m_reg < 0) {
+    s32 new_val = g_block_reg.at(-m_reg - 1) - 1;
+    if (new_val < -128) {
+      new_val = 128;
+    }
+    g_block_reg.at(-m_reg - 1) = new_val;
+
+  } else {
+    s32 new_val = handler.m_registers.at(m_reg) - 1;
+    if (new_val < -128) {
+      new_val = 128;
+    }
+    handler.m_registers.at(m_reg) = new_val;
+  }
+
   return 0;
 }
 
-SFXGrain_TestRegister::SFXGrain_TestRegister(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_TestRegister::SFXGrain_TestRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_TestRegister::SFXGrain_TestRegister(SFXGrain& grain) : Grain(grain) {
+  m_reg = grain.GrainParams.control.param[0];
+  m_action = grain.GrainParams.control.param[1];
+  m_cmp = grain.GrainParams.control.param[2];
+}
+SFXGrain_TestRegister::SFXGrain_TestRegister(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_reg = grain.OpcodeData.arg[0];
+  m_action = grain.OpcodeData.arg[1];
+  m_cmp = grain.OpcodeData.arg[2];
+}
 s32 SFXGrain_TestRegister::execute(blocksound_handler& handler) {
+  s32 value;
+  if (m_reg < 0) {
+    value = g_block_reg[m_reg - 1];
+  } else {
+    value = handler.m_registers.at(m_reg);
+  }
+
+  if (m_action == 0) {
+    if (value >= m_cmp) {
+      handler.m_next_grain++;
+    }
+  } else if (m_action == 1) {
+    if (value != m_cmp) {
+      handler.m_next_grain++;
+    }
+  } else if (m_action == 2) {
+    if (m_cmp >= value)
+      handler.m_next_grain++;
+  }
+
   return 0;
 }
 
-SFXGrain_Marker::SFXGrain_Marker(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_Marker::SFXGrain_Marker(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_Marker::SFXGrain_Marker(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_Marker::SFXGrain_Marker(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_Marker::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_GotoMarker::SFXGrain_GotoMarker(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_GotoMarker::SFXGrain_GotoMarker(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_GotoMarker::SFXGrain_GotoMarker(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_GotoMarker::SFXGrain_GotoMarker(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_GotoMarker::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_GotoRandomMarker::SFXGrain_GotoRandomMarker(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_GotoRandomMarker::SFXGrain_GotoRandomMarker(SFXGrain2& grain, u8* data)
-    : Grain(grain.Delay) {}
+SFXGrain_GotoRandomMarker::SFXGrain_GotoRandomMarker(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_GotoRandomMarker::SFXGrain_GotoRandomMarker(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_GotoRandomMarker::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_WaitForAllVoices::SFXGrain_WaitForAllVoices(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_WaitForAllVoices::SFXGrain_WaitForAllVoices(SFXGrain2& grain, u8* data)
-    : Grain(grain.Delay) {}
+SFXGrain_WaitForAllVoices::SFXGrain_WaitForAllVoices(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_WaitForAllVoices::SFXGrain_WaitForAllVoices(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_WaitForAllVoices::execute(blocksound_handler& handler) {
-  return 0;
+  if (!handler.m_voices.empty()) {
+    handler.m_next_grain--;
+  }
+
+  return 1;
 }
 
-SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain& grain) : Grain(grain.Delay) {
+SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain& grain) : Grain(grain) {
   m_group_size = grain.GrainParams.control.param[0];
   m_group_count = grain.GrainParams.control.param[1];
   m_index = grain.GrainParams.control.param[2];
 }
 
-SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {
+SFXGrain_PlayCycle::SFXGrain_PlayCycle(SFXGrain2& grain, u8* data) : Grain(grain) {
   m_group_size = grain.OpcodeData.arg[0];
   m_group_count = grain.OpcodeData.arg[1];
   m_index = grain.OpcodeData.arg[2];
@@ -310,14 +383,14 @@ s32 SFXGrain_PlayCycle::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_AddRegister::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_KeyOffVoices::SFXGrain_KeyOffVoices(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_KeyOffVoices::execute(blocksound_handler& handler) {
   for (auto& p : handler.m_voices) {
     auto v = p.lock();
@@ -330,8 +403,8 @@ s32 SFXGrain_KeyOffVoices::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_KillVoices::SFXGrain_KillVoices(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_KillVoices::execute(blocksound_handler& handler) {
   for (auto& p : handler.m_voices) {
     auto v = p.lock();
@@ -345,16 +418,36 @@ s32 SFXGrain_KillVoices::execute(blocksound_handler& handler) {
   return 0;
 }
 
-SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain& grain) : Grain(grain) {}
+SFXGrain_OnStopMarker::SFXGrain_OnStopMarker(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_OnStopMarker::execute(blocksound_handler& handler) {
   handler.m_next_grain = handler.m_sfx.grains.size() - 1;
   return 0;
 }
 
-SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain& grain) : Grain(grain.Delay) {}
-SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain2& grain, u8* data) : Grain(grain.Delay) {}
+SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain& grain) : Grain(grain) {
+  m_src = grain.GrainParams.control.param[0];
+  m_dst = grain.GrainParams.control.param[1];
+}
+SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_src = grain.OpcodeData.arg[0];
+  m_dst = grain.OpcodeData.arg[1];
+}
 s32 SFXGrain_CopyRegister::execute(blocksound_handler& handler) {
+  s32 value = 0;
+  if (m_src < 0) {
+    value = g_block_reg.at(-m_src - 1);
+
+  } else {
+    value = handler.m_registers.at(m_src);
+  }
+
+  if (m_dst < 0) {
+    g_block_reg.at(-m_dst - 1) = value;
+  } else {
+    handler.m_registers.at(m_dst) = value;
+  }
+
   return 0;
 }
 
