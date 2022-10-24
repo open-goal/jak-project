@@ -1,13 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; name: process-taskable.gc
-;; name in dgo: process-taskable
-;; dgos: GAME, COMMON
-
-;; DECOMP BEGINS
-
-;; WARN: Return type mismatch process-focusable vs process-taskable.
 (defmethod relocate process-taskable ((obj process-taskable) (arg0 int))
   (if (nonzero? (-> obj task))
       (&+! (-> obj task) arg0)
@@ -114,44 +106,6 @@
 
 (defstate idle (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (when (-> self bounce-away)
-             (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-3 from) (process->ppointer self))
-               (set! (-> a1-3 num-params) 2)
-               (set! (-> a1-3 message) 'shove)
-               (set! (-> a1-3 param 0) (the-as uint #f))
-               (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-                 (let* ((a2-2 *game-info*)
-                        (a3-2 (+ (-> a2-2 attack-id) 1))
-                        )
-                   (set! (-> a2-2 attack-id) a3-2)
-                   (set! (-> v1-5 id) a3-2)
-                   )
-                 (set! (-> v1-5 shove-back) 12288.0)
-                 (set! (-> v1-5 shove-up) 4096.0)
-                 (set! (-> a1-3 param 1) (the-as uint v1-5))
-                 )
-               (send-event-function proc a1-3)
-               )
-             )
-           )
-          ((= v1-0 'touch)
-           (collide-shape-method-50 (-> self root-override) proc (-> event param 0) 0.7 6144.0 16384.0)
-           )
-          ;; TODO - manually fixed!
-          ((= v1-0 'say)
-           (set! (-> self want-to-say) (-> self clock frame-counter))
-           )
-          )
-        )
-      )
-    )
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
     (none)
@@ -443,7 +397,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! process-taskable ((obj process-taskable) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (process-taskable-method-31 obj)

@@ -11,7 +11,7 @@ args = parser.parse_args()
 throw_error = False
 
 # TODO - if more code is added here overtime, be smarter about this / group errors
-method_split_pattern = re.compile('method-of-type')
+method_split_pattern = re.compile('method-of-(?:type|object)')
 function_split_pattern = re.compile('\(t9-\d+(?:\s+[^\s]+\s*)?\)')
 missing_res_tag_pattern = re.compile('.pcpyud')
 decompiler_error_pattern = re.compile(';; ERROR')
