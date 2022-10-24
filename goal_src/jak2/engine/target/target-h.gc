@@ -138,7 +138,8 @@
 ;; DECOMP BEGINS
 
 (deftype target (process-focusable)
-  ((control                 control-info                               :offset        128)
+  ((self-override           target                                     :offset         32)
+   (control                 control-info                               :offset        128)
    (skel2                   joint-control                              :offset-assert 204)
    (shadow-backup           shadow-geo                                 :offset-assert 208)
    (target-flags            uint32                                     :offset        188)
@@ -213,23 +214,29 @@
     )
   )
 
+
 (define-perm *target* target #f)
 
 (deftype sidekick (process-drawable)
-  ((control             control-info         :offset        128)
-   (anim-seed           uint64               :offset        208)
-   (shadow-in-movie?    symbol               :offset-assert 216)
-   (special-anim-time   time-frame           :offset-assert 224)
-   (special-anim-interp float                :offset-assert 232)
-   (special-anim-frame  float                :offset-assert 236)
-   (offset              transformq   :inline :offset-assert 240)
-   (mirror              uint32               :offset-assert 288)
+  ((parent-override     (pointer target)                   :offset         16)
+   (control             control-info                       :offset        128)
+   (anim-seed           uint64                             :offset        208)
+   (shadow-in-movie?    symbol                             :offset-assert 216)
+   (special-anim-time   time-frame                         :offset-assert 224)
+   (special-anim-interp float                              :offset-assert 232)
+   (special-anim-frame  float                              :offset-assert 236)
+   (offset              transformq                 :inline :offset-assert 240)
+   (mirror              (pointer process-drawable)         :offset-assert 288)
    )
   :heap-base #xb0
   :method-count-assert 20
   :size-assert         #x124
   :flag-assert         #x1400b00124
+  (:states
+    sidekick-clone
+    )
   )
+
 
 (define-perm *sidekick* sidekick #f)
 

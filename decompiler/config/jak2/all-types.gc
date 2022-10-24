@@ -14393,7 +14393,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process pickup-type float) _type_ 0)
-    (fact-info-method-9 () none 9) ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
+    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
     (reset! (_type_ symbol) none 10)
     (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
@@ -16259,7 +16259,7 @@
     (collide-shape-moving-method-59 () none 59) ;; (integrate-for-enemy-with-move-to-ground! (_type_ vector collide-kind float symbol symbol symbol) none 59)
     (collide-shape-moving-method-60 () none 60) ;; (move-to-ground (_type_ float float symbol collide-kind) symbol 60)
     (collide-shape-moving-method-61 () none 61) ;; (move-to-ground-point! (_type_ vector vector vector) none 61)
-    (collide-shape-moving-method-62 (_type_) none 62) ;; (compute-acc-due-to-gravity (_type_ vector float) vector 62)
+    (collide-shape-moving-method-62 (_type_ vector float) vector 62) ;; (compute-acc-due-to-gravity (_type_ vector float) vector 62)
     (collide-shape-moving-method-63 () none 63) ;; (step-collison! (_type_ vector vector float) float 63)
     (collide-shape-moving-method-64 () none 64) ;; (move-to-tri! (_type_ collide-tri-result vector) none 64)
     (collide-shape-moving-method-65 () none 65)
@@ -16731,8 +16731,8 @@
    (unknown-vector29            vector                       :inline :offset 5168) ;; logic-target::joint-points
    (unknown-vector30            vector                       :inline :offset 5184) ;; logic-target::joint-points
    (unknown-vector31            vector                       :inline :offset 5200) ;; logic-target::joint-points
-   (unknown-vector32            vector                       :inline :offset 5216) ;; logic-target::joint-points
-   (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
+   (unknown-cspacei1un23i1            cspace                       :inline :offset 5216) ;; logic-target::joint-points
+  ;;  (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
    (unknown-symbol00            symbol                               :offset 5248) ;; (exit target-duck-stance)
    (unknown-float000            float                                :offset 5252) ;; target-gun::target-gun-end-mode
    (unknown-float31             float                                :offset 5256) ;; logic-target::joint-points
@@ -17284,7 +17284,7 @@
   :flag-assert         #xf00000024
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (effect-control-method-9 () none 9) ;; (TODO-RENAME-9 (_type_) none 9)
+    (effect-control-method-9 (_type_) none 9) ;; (TODO-RENAME-9 (_type_) none 9)
     (effect-control-method-10 () none 10) ;; (dummy-10 (_type_ symbol float int) object 10)
     (effect-control-method-11 () none 11) ;; (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
     (effect-control-method-12 (_type_ symbol float int basic sound-name) int 12) ;; (dummy-12 (_type_ symbol float int basic sound-name) int 12)
@@ -17646,7 +17646,8 @@
 (declare-type darkjak-info basic)
 
 (deftype target (process-focusable)
-  ((control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
+  ((self-override           target                                   :offset 32 :score 100)
+   (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -17668,7 +17669,7 @@
    (cam-user-mode           symbol                                   :offset-assert 300) ;; guessed by decompiler
    (sidekick                (pointer sidekick)                       :offset-assert 304) ;; guessed by decompiler
    (manipy                  (pointer manipy)                         :offset-assert 308) ;; guessed by decompiler
-   (mirror                  (pointer process-drawable)               :offset-assert 312)
+   (mirror                  (pointer process-drawable)               :offset-assert 312) ;; hip-mirror?
    (attack-info             attack-info                      :inline :offset-assert 320)
    (attack-info-rec         attack-info                      :inline :offset-assert 480)
    (attack-info-old         attack-info                  8   :inline :offset-assert 640)
@@ -17722,20 +17723,23 @@
   )
 
 (deftype sidekick (process-drawable)
-  ((control             control-info         :offset 128) ;; guessed by decompiler
+  ((parent-override     (pointer target) :offset 16 :score 100 )
+   (control             control-info         :offset 128) ;; guessed by decompiler
    (anim-seed           uint64               :offset 208) ;; ??
    (shadow-in-movie?    symbol               :offset-assert 216) ;; guessed by decompiler
    (special-anim-time   time-frame           :offset-assert 224)
    (special-anim-interp float                :offset-assert 232)
    (special-anim-frame  float                :offset-assert 236)
    (offset              transformq   :inline :offset-assert 240)
-   (mirror              uint32               :offset-assert 288)
+   (mirror              (pointer process-drawable)               :offset-assert 288) ;; hip-mirror?
    )
   :method-count-assert 20
   :size-assert         #x124
   :flag-assert         #x1400b00124
   (:methods
     )
+  (:states
+    sidekick-clone)
   )
 
 (define-extern *target* target)
@@ -26556,7 +26560,7 @@
   (function symbol matrix))
 (define-extern matrix-world->local
   "Returns [[*math-camera*]]'s `camera-rot`"
-  (function matrix))
+  (function symbol object matrix))
 (define-extern *camera-dummy-vector* vector)
 (define-extern camera-pos
   "Returns the `trans` vector from whatever is first determined to exist:
@@ -27483,7 +27487,7 @@
     (carry-info-method-9 (_type_) int 9)
     (carry-info-method-10 () none 10)
     (carry-info-method-11 () none 11)
-    (carry-info-method-12 (_type_) none 12)
+    (carry-info-method-12 (_type_ carry-info) none 12)
     (carry-info-method-13 (_type_) none 13)
     (carry-info-method-14 () none 14)
     (carry-info-method-15 (_type_) none 15)
@@ -28162,8 +28166,8 @@
 ;; sidekick                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sidekick-remap* object) ;; pair
-;; (define-extern cspace<-cspace+transformq! function)
+(define-extern *sidekick-remap* pair)
+(define-extern cspace<-cspace+transformq! (function cspace cspace transformq matrix))
 (define-extern target-sidekick-setup (function symbol none :behavior target))
 ;; (define-extern sidekick-clone state) ;; (state sidekick)
 (define-extern init-sidekick (function none :behavior sidekick))
