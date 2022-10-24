@@ -30,6 +30,34 @@ std::string get_expected(const std::string& name) {
 }
 }  // namespace
 
+TEST(VuDisasm, OceanTexture_Jak2) {
+  auto data = get_test_data("jak2/ocean-texture");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-texture"));
+}
+
+TEST(VuDisasm, OceanMid_Jak2) {
+  auto data = get_test_data("jak2/ocean-mid");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-mid"));
+}
+
+TEST(VuDisasm, OceanNear_Jak2) {
+  auto data = get_test_data("jak2/ocean-near");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-near"));
+}
+
+TEST(VuDisasm, OceanVu0_Jak2) {
+  auto data = get_test_data("jak2/ocean-vu0");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU0);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/ocean-vu0"));
+}
+
 TEST(VuDisasm, Merc_Jak2) {
   auto data = get_test_data("jak2/merc-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
