@@ -20,6 +20,12 @@ void blocksound_handler::init() {
   //   return;
   // }
 
+  int idx = 0;
+  for (auto& g : m_sfx.grains) {
+    lg::info("grain {}: {}", idx, g->inspect());
+    idx++;
+  }
+
   while (m_countdown <= 0 && !m_done) {
     do_grain();
   }

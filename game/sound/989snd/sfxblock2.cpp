@@ -47,6 +47,12 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
       }
     }
   }
+
+  auto idx = 0;
+  for (auto& s : m_sounds) {
+    lg::warn("sound {} : {}", idx, s.name);
+    idx++;
+  }
 }
 
 std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,

@@ -6,6 +6,8 @@
 
 #include "game/sound/989snd/vagvoice.h"
 
+#include "third-party/magic_enum.hpp"
+
 namespace snd {
 
 struct XREFGrainParams {
