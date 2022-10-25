@@ -12572,17 +12572,17 @@
   )
 
 (deftype continue-point (basic)
-  ((name string) ;; ?
-   (level symbol) ;; ?
-   (flags continue-flags)
-   (trans vector :inline)
-   (quat vector :inline)
-   (camera-trans vector :inline)
-   (camera-rot vector3s 3 :inline)
-   (on-goto pair)
-   (vis-nick symbol)
-   (want level-buffer-state 6 :inline)
-   (want-sound symbol 3)
+  ((name         string                       :offset-assert   4) ;; ?
+   (level        symbol                       :offset-assert   8) ;; ?
+   (flags        continue-flags               :offset-assert  12)
+   (trans        vector             :inline   :offset-assert  16)
+   (quat         vector             :inline   :offset-assert  32)
+   (camera-trans vector             :inline   :offset-assert  48)
+   (camera-rot   vector3s           3 :inline :offset-assert  64)
+   (on-goto      pair                         :offset-assert 100)
+   (vis-nick     symbol                       :offset-assert 104)
+   (want         level-buffer-state 6 :inline :offset-assert 108)
+   (want-sound   symbol             3         :offset-assert 204)
    )
   :method-count-assert 12
   :size-assert         #xd8
@@ -15029,7 +15029,7 @@
 (declare-type scene-player basic)
 (deftype scene-actor (basic)
   ((name                string   :offset-assert 4)
-   (level               basic   :offset-assert 8)
+   (level               symbol   :offset-assert 8)
    (art-group           string   :offset-assert 12)
    (prefix              string   :offset-assert 16)
    (draw-frames         pair   :offset-assert 20) ;; some form of pair?
@@ -15054,30 +15054,35 @@
     )
   )
 
+
 (deftype scene (art-group)
   ((mask-to-clear    uint32           :offset-assert 32)
    (entity           string            :offset-assert 36)
    (art-group        string            :offset-assert 40)
    (anim             string            :offset-assert 44)
    (parts            int32            :offset-assert 48)
-   (command-list     basic            :offset-assert 52)
+   (command-list     pair            :offset-assert 52)
    (cut-list         pair            :offset-assert 56)
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
    (draw-target      level-load-info            :offset-assert 88)
-   (abort            basic            :offset-assert 92)
+   (abort            symbol            :offset-assert 92)
    (actor            (array scene-actor)            :offset-assert 96)
-   (load-point       string            :offset-assert 100)
-   (end-point        string            :offset-assert 104)
-   (borrow           basic            :offset-assert 108)
+   (load-point-obj   object :offset-assert 100 :score 100) ;; TODO - unfortunate requirement
+   (load-point       continue-point            :offset 100)
+   (load-point-name  string            :offset 100)
+   (end-point-obj   object :offset-assert 104 :score 100) ;; TODO - unfortunate requirement
+   (end-point        continue-point            :offset 104)
+   (end-point-name        string            :offset 104)
+   (borrow           pair            :offset-assert 108) ;; seen .empty-list
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
-  (music-volume     float            :offset-assert 120)
-   (blackout-end     basic            :offset-assert 124)
-   (peaceful         basic            :offset-assert 128)
+   (music-volume     float            :offset-assert 120)
+   (blackout-end     symbol            :offset-assert 124)
+   (peaceful         symbol            :offset-assert 128)
    (music-delay      float            :offset-assert 132)
-   (save             basic            :offset-assert 136)
+   (save             symbol            :offset-assert 136)
    (scene-task       uint16           :offset-assert 140)
    )
   :method-count-assert 17
@@ -16676,6 +16681,7 @@
    (unknown-dword02             int64                                :offset 4416) ;; logic-target::read-pad
    (unknown-vector16            vector                       :inline :offset 4432) ;; logic-target::target-real-post
    (unknown-float14             float                                :offset 4448) ;; logic-target::target-real-post
+   (unknown-floatiujh1bnb2n3i1  float                                :offset 4452) ;; target-death::velocity-set-to-target!
    (unknown-float15             float                                :offset 4456) ;; logic-target::target-real-post
    (unknown-word01              int32                                :offset 4460) ;; logic-target::joint-points
    (unknown-vector17            vector                       :inline :offset 4464) ;; logic-target::pre-collide-setup
@@ -16765,7 +16771,7 @@
    (unknown-time-frame17        time-frame                           :offset 5712) ;; (trans target-board-halfpipe)
    (unknown-time-frame18        time-frame                           :offset 5720) ;; (code target-running-attack)
    (unknown-sound-id00          sound-id                             :offset 5776) ;; (enter target-board-flip)
-   (unknown-handle02            handle                               :offset 5792) ;; (event target-board-grenade)
+   (unknown-handle02            handle                               :offset 5792) ;; (event target-board-grenade) ;; TODO - make sure this is a handle
    (unknown-impact-control00    impact-control               :inline :offset 5824) ;; logic-target::joint-points
    (unknown-word06              int32                                :offset 5832) ;; (code target-running-attack)
    (unknown-vector41            vector                       :inline :offset 5888) ;; (code target-running-attack)
@@ -17648,6 +17654,7 @@
 (deftype target (process-focusable)
   ((self-override           target                                   :offset 32 :score 100)
    (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
+   (fact-override           fact-info-target                         :offset 160 :score 100)
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -17692,7 +17699,7 @@
    (pre-joint-hook          (function none :behavior target)         :offset-assert 2112)
    (notify                  handle                                   :offset-assert 2120)
    (mode-cache              basic                                    :offset-assert 2128)
-   (mode-param1             uint64                                   :offset-assert 2136)
+   (mode-param1             handle                                   :offset-assert 2136)
    (mode-param2             uint64                                   :offset-assert 2144)
    (mode-param3             uint64                                   :offset-assert 2152)
    (tobot-state             state                                    :offset-assert 2160)
@@ -17727,7 +17734,11 @@
     target-carry-falling
     (target-carry-hit-ground symbol)
     (target-carry-jump float float)
-    target-carry-throw)
+    target-carry-throw
+    (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
+    (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
+    target-indax-start
+    )
   )
 
 (deftype sidekick (process-drawable)
@@ -24791,8 +24802,8 @@
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern *auto-save-info* mc-slot-info)
 ;; (define-extern auto-save-post function) ;; (function none :behavior auto-save)
-;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
-(define-extern auto-save-command (function symbol int int process-tree symbol none))
+(define-extern auto-save-init-by-other (function symbol process-tree int int none :behavior auto-save)) ;; 
+(define-extern auto-save-command (function symbol int int process-tree symbol (pointer process)))
 (define-extern auto-save-check (function none))
 (define-extern auto-save-user (function none))
 
@@ -27216,7 +27227,7 @@
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 (define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
+(define-extern ja-step (function int float :behavior process-drawable)) ;; 
 (define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
@@ -28085,7 +28096,7 @@
 ;; (define-extern birth-func-vector-orient function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-set-alpha-from-userdata function)
 ;; (define-extern part-tracker-track-target-joint function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern process-drawable-burn-effect function) ;; (function time-frame none :behavior target)
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;; 
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
 (define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
@@ -28536,37 +28547,35 @@
 ;; target-death                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype kill-nearby-enemies-info (UNKNOWN)
+(deftype kill-nearby-enemies-info (basic)
   ((dist float          :offset-assert 4)
    (pos  vector :inline :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *auto-continue* object) ;; symbol
-;; (define-extern next-continue function)
+(define-extern *auto-continue* symbol) ;; 
+(define-extern next-continue (function continue-point continue-point))
 (define-extern target-continue (state continue-point target))
 (define-extern *smack-mods* surface)
 (define-extern *smack-up-mods* surface)
-;; (define-extern velocity-set-to-target! function) ;; (function vector float attack-info vector :behavior target)
+(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;; 
 (define-extern target-hit-effect (function attack-info none :behavior target))
-;; (define-extern target-hit-push function) ;; (function vector matrix float float attack-info object :behavior target)
+(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;; 
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-;; (define-extern target-hit-setup-anim function) ;; (function attack-info object :behavior target)
+(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;; 
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit (state symbol attack-info target))
-;; (define-extern *death-spool-array* array) ;; (array spool-anim)
-;; (define-extern death-movie-remap function) ;; (function int int int)
-;; (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
-;; (define-extern kill-nearby-enemies function)
-;; (define-extern target-death-anim-trans function)
-;; (define-extern target-death-anim function) ;; (function spool-anim none :behavior target)
-;; (define-extern target-death-main function)
-;; (define-extern target-death-reset function)
+(define-extern *death-spool-array* (array spool-anim)) ;; 
+(define-extern death-movie-remap (function int int int)) ;; 
+(define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
+(define-extern kill-nearby-enemies (function vector float object))
+(define-extern target-death-anim-trans (function none :behavior target))
+(define-extern target-death-anim (function spool-anim none :behavior target)) ;; 
+(define-extern target-death-main (function symbol none :behavior target))
+(define-extern target-death-reset (function symbol symbol none :behavior target))
 (define-extern target-death (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33611,7 +33620,7 @@
   )
 |#
 
-;; (define-extern intro-play function)
+(define-extern intro-play (function none))
 ;; (define-extern outro-play function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33644,31 +33653,53 @@
 ;; warp-gate                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype warp-gate (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
 
-#|
-(deftype air-train (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype warp-gate (process-drawable)
+  (
+    (root-override collide-shape :offset 128 :score 100)
+    (level-name uint32 :offset-assert 200)
+    (on-notice int32 :offset-assert 204)
+    (on-activate int32 :offset-assert 208)
+    (on-close int32 :offset-assert 212)
+    (wait-for pair :offset-assert 216)
+    (continue continue-point :offset-assert 220)
+    (distance meters :offset-assert 224)
+    (anim-speed float :offset-assert 228)
+    (test-time time-frame :offset-assert 232)
+    (center vector :inline :offset-assert 240)
   )
-|#
+  :method-count-assert 26
+  :size-assert         #x100
+  :flag-assert         #x1a00800100
+  (:methods
+    (idle () _type_ :state 20)
+    (use (continue-point) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (warp-gate-method-23 (_type_) none 23)
+    (warp-gate-method-24 () none 24)
+    (warp-gate-method-25 (_type_) continue-point 25)
+    )
+  )
+
+(deftype air-train (warp-gate)
+  "NOTE - I guess this is why sometimes the air-train makes the warp-gate sound"
+  (
+    (part-exhaust-left sparticle-launch-control :offset-assert 256)
+    (part-exhaust-right sparticle-launch-control :offset-assert 260)
+    (part-dust sparticle-launch-control :offset-assert 264)
+    (dust-y float :offset-assert 268)
+    (hover-sound sound-id :offset-assert 272)
+    (base-pos vector :inline :offset-assert 288)
+  )
+  :method-count-assert 26
+  :size-assert         #x130
+  :flag-assert         #x1a00b00130
+  )
 
 ;; (define-extern *kernel-packages* object) ;; pair
-;; (define-extern warp-gate-init function)
-;; (define-extern *warp-jump-mods* surface) ;; surface
-;; (define-extern target-warp-out state) ;; (state vector vector target)
-;; (define-extern target-warp-in state) ;; (state vector vector target)
+(define-extern warp-gate-init (function entity-actor vector none :behavior warp-gate))
+(define-extern *warp-jump-mods* surface) ;; surface
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; guard-projectile               ;;
@@ -44176,7 +44207,6 @@
 ;; (define-extern target-indax-exit function)
 ;; (define-extern target-indax-real-post function)
 ;; (define-extern target-indax-post function)
-;; (define-extern target-indax-start state)
 ;; (define-extern target-indax-stance state)
 ;; (define-extern target-indax-walk state)
 ;; (define-extern target-indax-falling state)
@@ -48640,7 +48670,7 @@
 ;; (define-extern *sig-recorder* object)
 ;; (define-extern *sigrec-out* object)
 ;; (define-extern sig-recorder-init-by-other function)
-;; (define-extern start-sig-recorder function)
+(define-extern start-sig-recorder (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyport-part                   ;;
