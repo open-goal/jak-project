@@ -32706,7 +32706,7 @@
 
 ;; (define-extern *enemy-dummy-shadow-control* shadow-control)
 (define-extern get-penetrate-using-from-attack-event (function process-drawable event-message-block penetrate))
-;; (define-extern enemy-init-by-other function)
+(define-extern enemy-init-by-other (function process-drawable transformq none :behavior enemy))
 ;; (define-extern enemy-event-handler function)
 ;; (define-extern enemy-simple-post function)
 ;; (define-extern enemy-falling-post function)
@@ -33891,14 +33891,13 @@
 ;; battle                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype battle-info (basic)
   ((id                                int8    :offset-assert 4)
    (notice-spec                       uint64  :offset-assert 8)
    (pick-logic                        int8    :offset-assert 16)
    (notice-distance                   float   :offset-assert 20)
-   (dont-spawn-initial-until-notice?  basic   :offset-assert 24)
-   (play-battle-music                 basic   :offset-assert 28)
+   (dont-spawn-initial-until-notice?  symbol   :offset-assert 24)
+   (play-battle-music                 symbol   :offset-assert 28)
    (min-battle-spawn-delay            uint32  :offset-assert 32)
    (max-battle-spawn-delay            uint32  :offset-assert 36)
    (min-spawner-notice-attack-delay   uint32  :offset-assert 40)
@@ -33914,65 +33913,49 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype battle-ally (structure)
-  ((entity basic  :offset-assert 0)
+  ((entity entity-actor  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype battle-ally-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-ally :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle-breed (structure)
-  ((breed-type basic  :offset-assert 0)
+  ((breed-type type  :offset-assert 0)
    (percent    float  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype battle-breed-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-breed :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle-spawner (structure)
   ((flags               uint64         :offset-assert 0)
-   (entity              basic          :offset-assert 8)
-   (breeds              basic          :offset-assert 12)
+   (entity              entity-actor          :offset-assert 8)
+   (breeds              battle-breed-array          :offset-assert 12)
    (creature-index      int8           :offset-assert 16)
    (ready-index         int8           :offset-assert 17)
    (attack-index        int8           :offset-assert 18)
    (mode                uint8          :offset-assert 19)
-   (intro-path          basic          :offset-assert 20)
+   (intro-path          path-control          :offset-assert 20) ;; a guess
    (notice-attack-delay uint32         :offset-assert 24)
-   (creature            uint64         :offset-assert 32)
+   (creature            handle         :offset-assert 32)
    (last-spawn-time     time-frame         :offset-assert 40)
    (noticed-attack-time time-frame         :offset-assert 48)
    (attack-pos          vector :inline :offset-assert 64)
@@ -33981,37 +33964,30 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype battle-spawner-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-spawner :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle (process-drawable)
-  ((info                     basic   :offset-assert 196)
-   (flags                    uint8   :offset-assert 200)
-   (spawn-initial-creatures? basic   :offset-assert 204)
-   (next-spawn-delay         uint32  :offset-assert 208)
-   (on-notice                basic   :offset-assert 212)
-   (on-hostile               basic   :offset-assert 216)
-   (on-beaten                basic   :offset-assert 220)
-   (max-count                uint32  :offset-assert 224)
-   (count                    uint32  :offset-assert 228)
-   (die-count                uint32  :offset-assert 232)
-   (stat-child-count         uint16  :offset-assert 236)
-   (cant-spawn-time          time-frame  :offset-assert 244)
-   (jammed-starting-time     time-frame  :offset-assert 252)
-   (spawners                 basic   :offset-assert 260)
-   (allies                   basic   :offset-assert 264)
+  ((info                     battle-info   :offset-assert 200)
+   (flags                    uint8   :offset-assert 204)
+   (spawn-initial-creatures? symbol   :offset-assert 208)
+   (next-spawn-delay         uint32  :offset-assert 212)
+   (on-notice                basic   :offset-assert 216)
+   (on-hostile               basic   :offset-assert 220)
+   (on-beaten                basic   :offset-assert 224)
+   (max-count                uint32  :offset-assert 228)
+   (count                    uint32  :offset-assert 232)
+   (die-count                uint32  :offset-assert 236)
+   (stat-child-count         uint16  :offset-assert 240)
+   (cant-spawn-time          time-frame  :offset-assert 248)
+   (jammed-starting-time     time-frame  :offset-assert 256)
+   (spawners                 battle-spawner-array   :offset-assert 264)
+   (allies                   battle-ally-array   :offset-assert 268)
    )
   :method-count-assert 53
   :size-assert         #x110
@@ -34023,40 +33999,39 @@
     (notice () _type_ :state 22)
     (hostile () _type_ :state 23)
     (beaten () _type_ :state 24)
-    (battle-method-25 () none 25)
-    (battle-method-26 () none 26)
-    (battle-method-27 () none 27)
-    (battle-method-28 () none 28)
-    (battle-method-29 () none 29)
-    (battle-method-30 () none 30)
-    (battle-method-31 () none 31)
-    (battle-method-32 () none 32)
-    (battle-method-33 () none 33)
-    (battle-method-34 () none 34)
-    (battle-method-35 () none 35)
-    (battle-method-36 () none 36)
-    (battle-method-37 () none 37)
-    (battle-method-38 () none 38)
-    (battle-method-39 () none 39)
-    (battle-method-40 () none 40)
-    (battle-method-41 () none 41)
-    (battle-method-42 () none 42)
-    (battle-method-43 () none 43)
-    (battle-method-44 () none 44)
-    (battle-method-45 () none 45)
-    (battle-method-46 () none 46)
-    (battle-method-47 () none 47)
-    (battle-method-48 () none 48)
-    (battle-method-49 () none 49)
-    (battle-method-50 () none 50)
-    (battle-method-51 () none 51)
-    (battle-method-52 () none 52)
+    (battle-method-25 (_type_ battle-spawner) symbol 25)
+    (battle-method-26 (_type_ battle-spawner) symbol 26)
+    (battle-method-27 (_type_) none 27)
+    (battle-method-28 (_type_) none 28)
+    (battle-method-29 (_type_ battle-spawner entity-actor) none 29)
+    (battle-method-30 (_type_ process) battle-spawner 30)
+    (battle-method-31 (_type_ battle-ally entity-actor) none 31)
+    (battle-method-32 (_type_ battle-spawner entity-actor) object 32) ;; TODO - gross return value...
+    (battle-method-33 (_type_) none 33)
+    (battle-method-34 (_type_) none 34)
+    (battle-method-35 (_type_) none 35)
+    (battle-method-36 (_type_) battle-spawner 36)
+    (battle-method-37 (_type_ battle-spawner) symbol 37)
+    (battle-method-38 (_type_ battle-breed transformq) handle 38)
+    (battle-method-39 (_type_ battle-spawner symbol) handle 39)
+    (battle-method-40 (_type_) none 40)
+    (battle-method-41 (_type_ battle-spawner) battle-breed 41)
+    (battle-method-42 (_type_ battle-spawner touch-tracker) symbol 42) ;; fma-sphere or touch-tracker?
+    (battle-method-43 (_type_ battle-spawner touch-tracker) symbol 43) ;; fma-sphere or touch-tracker?
+    (battle-method-44 (_type_ battle-spawner) none 44)
+    (battle-method-45 (_type_ battle-spawner touch-tracker) symbol 45) ;; fma-sphere or touch-tracker?
+    (battle-method-46 (_type_ battle-spawner) symbol 46)
+    (battle-method-47 (_type_) none 47)
+    (battle-method-48 (_type_) none 48)
+    (battle-method-49 (_type_) int :behavior battle 49)
+    (battle-method-50 (_type_) symbol 50)
+    (battle-method-51 (_type_ battle-spawner symbol) symbol :behavior battle 51)
+    (battle-method-52 (_type_) int 52)
     )
   )
-|#
 
-;; (define-extern *battles* array)
-;; (define-extern battle-event-handler function)
+(define-extern *battles* (array battle-info))
+(define-extern battle-event-handler (function process int symbol event-message-block object :behavior battle)) ;; TODO - none required else state handling fails expression pass
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elec-gate                      ;;
