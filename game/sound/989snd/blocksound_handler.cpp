@@ -121,12 +121,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 
   s32 new_vol = ((m_app_volume * m_orig_volume) >> 10) + m_lfo_volume;
-  if (new_vol >= 128) {
-    new_vol = 127;
-  }
-  if (new_vol < 0) {
-    new_vol = 0;
-  }
+  new_vol = std::clamp(new_vol, 0, 127);
 
   s32 new_pan = m_app_pan + m_lfo_pan;
   while (new_pan >= 360) {
@@ -162,16 +157,9 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
 
 void blocksound_handler::update_pitch() {
   m_cur_pm = m_app_pm + m_lfo_pm;
-  s32 new_pb = m_app_pb + m_lfo_pb;
-  if (new_pb <= 0x7fff) {
-    if (new_pb >= -0x8000) {
-      m_cur_pb = new_pb;
-    } else {
-      m_cur_pb = -0x8000;
-    }
-  } else {
-    new_pb = 0x7fff;
-  }
+  s32 new_pb = std::clamp(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
+
+  m_cur_pb = new_pb;
 
   for (auto& p : m_voices) {
     auto voice = p.lock();

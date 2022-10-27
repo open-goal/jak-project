@@ -138,9 +138,7 @@ s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
   if (vol < 0) {
     vol = -vol;
   }
-  if (vol >= 128) {
-    vol = 127;
-  }
+  vol = std::clamp(vol, 0, 127);
 
   if (m_psp.pan >= 0) {
     pan = m_psp.pan;
