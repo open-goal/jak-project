@@ -80,6 +80,7 @@ struct SFX2 {
   SFX2Data d;
   std::string name;
   std::vector<std::unique_ptr<Grain>> grains;
+  int index;
 };
 
 class SFXBlock2 : public SoundBank {
@@ -89,8 +90,7 @@ class SFXBlock2 : public SoundBank {
                                               u32 sound_id,
                                               s32 vol,
                                               s32 pan,
-                                              s32 pm,
-                                              s32 pb) override;
+                                              SndPlayParams& params) override;
 
  private:
   locator& m_locator;

@@ -1,8 +1,9 @@
 #pragma once
 #include <vector>
 
-#include "soundbank.h"
 #include "sfxgrain.h"
+#include "soundbank.h"
+
 #include "sfxblock2.h"
 
 namespace snd {
@@ -56,8 +57,7 @@ class SFXBlock : public SoundBank {
                                               u32 sound_id,
                                               s32 vol,
                                               s32 pan,
-                                              s32 pm,
-                                              s32 pb) override;
+                                              SndPlayParams& params) override;
 
  private:
   locator& m_locator;

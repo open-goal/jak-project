@@ -45,7 +45,7 @@ class midi_handler : public sound_handler {
                s32 vol,
                s32 pan,
                locator& loc,
-               u32 bank);
+               SoundBank& bank);
 
   midi_handler(MIDIBlockHeader* block,
                voice_manager& vm,
@@ -53,7 +53,7 @@ class midi_handler : public sound_handler {
                s32 vol,
                s32 pan,
                locator& loc,
-               u32 bank,
+               SoundBank& bank,
                std::optional<ame_handler*> parent);
 
   ~midi_handler() override {
@@ -69,7 +69,7 @@ class midi_handler : public sound_handler {
   bool tick() override;
   void mute_channel(u8 channel);
   void unmute_channel(u8 channel);
-  u32 bank() override { return m_bank; };
+  SoundBank& bank() override { return m_bank; };
 
   void pause() override;
   void stop() override;
@@ -99,7 +99,7 @@ class midi_handler : public sound_handler {
   s32 m_vol{0x7f};
   s32 m_pan{0};
   s8 m_repeats{0};
-  u32 m_bank;
+  SoundBank& m_bank;
 
   bool m_paused{false};
 

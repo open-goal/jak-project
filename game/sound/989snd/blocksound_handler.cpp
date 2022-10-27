@@ -20,11 +20,11 @@ void blocksound_handler::init() {
   //   return;
   // }
 
-  int idx = 0;
-  for (auto& g : m_sfx.grains) {
-    lg::info("grain {}: {}", idx, g->inspect());
-    idx++;
-  }
+  // int idx = 0;
+  // for (auto& g : m_sfx.grains) {
+  //   lg::info("grain {}: {}", idx, g->inspect());
+  //   idx++;
+  // }
 
   while (m_countdown <= 0 && !m_done) {
     do_grain();
@@ -34,9 +34,21 @@ void blocksound_handler::init() {
 bool blocksound_handler::tick() {
   m_voices.remove_if([](std::weak_ptr<vag_voice>& p) { return p.expired(); });
 
-  if (m_done) {
+  for (auto& lfo : m_lfo) {
+    lfo.tick();
+  }
+
+  for (auto it = m_children.begin(); it != m_children.end();) {
+    bool done = it->get()->tick();
+    if (done) {
+      it = m_children.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  if (m_done && m_children.empty()) {
     if (m_voices.empty()) {
-      // fmt::print("{}: voices empty\n", (void*)this);
       return m_done;
     } else {
       return false;
@@ -117,16 +129,20 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
   }
 
   s32 new_pan = m_app_pan + m_lfo_pan;
-  while (pan >= 360) {
-    pan -= 360;
+  while (new_pan >= 360) {
+    new_pan -= 360;
   }
-  while (pan < 0) {
-    pan += 360;
+  while (new_pan < 0) {
+    new_pan += 360;
   }
 
-  if (pan != m_cur_pan || new_vol != m_cur_volume) {
+  if (new_pan != m_cur_pan || new_vol != m_cur_volume) {
     m_cur_volume = new_vol;
-    m_cur_pan = pan;
+    m_cur_pan = new_pan;
+
+    for (auto& c : m_children) {
+      c->set_vol_pan(m_app_volume * m_orig_volume / 127, pan);
+    }
 
     for (auto& p : m_voices) {
       auto voice = p.lock();

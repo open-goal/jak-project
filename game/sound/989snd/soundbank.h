@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 
 #include "locator.h"
 #include "sound_handler.h"
@@ -10,6 +11,15 @@
 #include "../common/synth.h"
 
 namespace snd {
+
+struct SndPlayParams {
+  std::optional<s32> vol;
+  std::optional<s32> pan;
+  std::optional<s32> pitch_mod;
+  std::optional<s32> pitch_bend;
+  std::optional<std::array<u8, 4>> registers;
+};
+
 struct BankTag {
   /*   0 */ u32 DataID;
   /*   4 */ u32 Version;
@@ -32,7 +42,21 @@ class SoundBank {
                                                       s32 vol,
                                                       s32 pan,
                                                       s32 pm,
-                                                      s32 pb) = 0;
+                                                      s32 pb) {
+    SndPlayParams params{};
+    params.vol = vol;
+    params.pan = pan;
+    params.pitch_mod = pm;
+    params.pitch_bend = pb;
+
+    return make_handler(vm, sound_id, -1, -1, params);
+  };
+
+  virtual std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
+                                                      u32 sound_id,
+                                                      s32 vol,
+                                                      s32 pan,
+                                                      SndPlayParams& params) = 0;
 
   BankType type;
   u32 bank_id;

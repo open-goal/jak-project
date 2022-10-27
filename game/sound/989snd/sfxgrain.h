@@ -173,6 +173,9 @@ class SFXGrain_LfoSettings : public Grain {
   SFXGrain_LfoSettings(SFXGrain& grain);
   SFXGrain_LfoSettings(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  LFOParams m_lfop{};
 };
 
 class SFXGrain_StartChildSound : public Grain {
@@ -180,6 +183,9 @@ class SFXGrain_StartChildSound : public Grain {
   SFXGrain_StartChildSound(SFXGrain& grain);
   SFXGrain_StartChildSound(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  PlaySoundParams m_psp{};
 };
 
 class SFXGrain_StopChildSound : public Grain {
@@ -187,6 +193,9 @@ class SFXGrain_StopChildSound : public Grain {
   SFXGrain_StopChildSound(SFXGrain& grain);
   SFXGrain_StopChildSound(SFXGrain2& grain, u8* data);
   s32 execute(blocksound_handler& handler) override;
+
+ private:
+  PlaySoundParams m_psp{};
 };
 
 class SFXGrain_PluginMessage : public Grain {

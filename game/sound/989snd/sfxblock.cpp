@@ -14,6 +14,7 @@ SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
   auto sounddata = (SFX2Data*)((uintptr_t)data + data->FirstSound);
   for (int i = 0; i < data->NumSounds; i++) {
     SFX2 sound;
+    sound.index = i;
     sound.d = sounddata[i];
     m_sounds.push_back(std::move(sound));
   }
@@ -31,8 +32,7 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
                                                       u32 sound_id,
                                                       s32 vol,
                                                       s32 pan,
-                                                      s32 pm,
-                                                      s32 pb) {
+                                                      SndPlayParams& params) {
   auto& SFX = m_sounds[sound_id];
 
   if (SFX.grains.empty()) {
@@ -41,7 +41,7 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
   }
 
   auto handler =
-      std::make_unique<blocksound_handler>(m_sounds[sound_id], vm, vol, pan, pm, pb, bank_id);
+      std::make_unique<blocksound_handler>(*this, m_sounds[sound_id], vm, vol, pan, params);
   handler->init();
   return handler;
 }

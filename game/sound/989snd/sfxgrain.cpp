@@ -1,6 +1,7 @@
 #include "sfxgrain.h"
 
 #include "blocksound_handler.h"
+#include "lfo.h"
 
 #include "common/log/log.h"
 
@@ -32,11 +33,11 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
   s8 vol = m_tone.Vol;
   if (m_tone.Vol < 0) {
     if (m_tone.Vol >= -4) {
-      vol = g_block_reg.at(-m_tone.Vol - 1);
+      vol = handler.m_registers.at(-m_tone.Vol - 1);
     } else if (m_tone.Vol == -5) {
       vol = rand() & 0x7f;
     } else {
-      vol = handler.m_registers.at(-m_tone.Vol - 6);
+      vol = g_block_reg.at(-m_tone.Vol - 6);
     }
   }
 
@@ -47,11 +48,11 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
   s16 pan = m_tone.Pan;
   if (m_tone.Pan < 0) {
     if (m_tone.Pan >= -4) {
-      pan = g_block_reg.at(-m_tone.Pan - 1);
+      pan = 360 * handler.m_registers.at(-m_tone.Pan - 1) / 127;
     } else if (m_tone.Pan == -5) {
       pan = rand() % 360;
     } else {
-      pan = 360 * handler.m_registers.at(-m_tone.Pan - 6) / 127;
+      pan = 360 * g_block_reg.at(-m_tone.Pan - 6) / 127;
     }
   }
 
@@ -67,36 +68,158 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
   voice->basevol =
       handler.m_vm.make_volume(127, 0, handler.m_cur_volume, handler.m_cur_pan, vol, pan);
 
-  handler.m_vm.start_tone(voice, handler.m_bank);
+  handler.m_vm.start_tone(voice, handler.m_bank.bank_id);
   handler.m_voices.emplace_front(voice);
 
   return 0;
 }
 
-SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain& grain) : Grain(grain) {}
-SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain2& grain, u8* data) : Grain(grain) {}
+SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain& grain) : Grain(grain) {
+  m_lfop = grain.GrainParams.lfo;
+}
+SFXGrain_LfoSettings::SFXGrain_LfoSettings(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_lfop = *(LFOParams*)(data + (grain.OpcodeData.Opcode & 0xFFFFFF));
+}
 s32 SFXGrain_LfoSettings::execute(blocksound_handler& handler) {
-  // TODO lfo
+  auto& lfo = handler.m_lfo.at(m_lfop.which_lfo);
+  lfo.m_target = static_cast<lfo_target>(m_lfop.target);
+  if (lfo.m_target != lfo_target::NONE) {
+    lfo.m_type = static_cast<lfo_type>(m_lfop.shape);
+    lfo.m_target_extra = m_lfop.target_extra;
+    lfo.m_setup_flags = m_lfop.flags;
+    lfo.m_depth = m_lfop.depth;
+    lfo.m_orig_depth = m_lfop.depth;
+    lfo.m_step_size = m_lfop.step_size;
+    lfo.m_orig_step_size = m_lfop.step_size;
+    lfo.m_state_hold1 = 0;
+    lfo.m_last_lfo = 0;
+    if (lfo.m_type == lfo_type::SQUARE) {
+      lfo.m_state_hold1 = m_lfop.duty_cycle;
+    }
+    lfo.m_state_hold2 = 0;
+    if ((lfo.m_setup_flags & 2) != 0) {
+      lfo.m_next_step = (rand() & 0x7ff) << 16;
+    } else {
+      lfo.m_next_step = m_lfop.start_offset << 16;
+    }
+
+    lg::info("starting LFO type {} for {}", magic_enum::enum_name(lfo.m_type),
+             magic_enum::enum_name(lfo.m_target));
+    lfo.init();
+  } else {
+    lfo.m_type = lfo_type::OFF;
+  }
+
   return 0;
 }
 
-SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain& grain) : Grain(grain) {}
-SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {}
+SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain& grain) : Grain(grain) {
+  m_psp = grain.GrainParams.play_sound;
+}
+SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_psp = *(PlaySoundParams*)(data + (grain.OpcodeData.Opcode & 0xFFFFFF));
+}
 s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
-  // TODO if we must.....
+  s32 vol, pan;
+  if (m_psp.vol >= 0) {
+    vol = m_psp.vol;
+  } else {
+    if (m_psp.vol < -4) {
+      if (m_psp.vol == -5) {
+        vol = rand() % 0x7f;
+      } else {
+        vol = g_block_reg.at(-m_psp.vol - 6);
+      }
+    } else {
+      vol = handler.m_registers.at(-m_psp.vol - 1);
+    }
+  }
+
+  if (vol < 0) {
+    vol = -vol;
+  }
+  if (vol >= 128) {
+    vol = 127;
+  }
+
+  if (m_psp.pan >= 0) {
+    pan = m_psp.pan;
+  } else {
+    if (m_psp.pan < -4) {
+      if (m_psp.pan == -4) {
+        pan = rand() % 360;
+      } else {
+        pan = g_block_reg.at(-m_psp.pan - 1);
+        if (pan < 0) {
+          pan = -pan;
+        }
+        if (pan >= 128) {
+          pan = 127;
+        }
+        pan = 360 * pan / 127;
+      }
+    } else {
+      pan = handler.m_registers.at(-m_psp.pan - 1);
+      if (pan < 0) {
+        pan = -pan;
+      }
+      if (pan >= 128) {
+        pan = 127;
+      }
+      pan = 360 * pan / 127;
+    }
+  }
+
+  SndPlayParams params{};
+  params.vol = handler.m_app_volume * handler.m_orig_volume / 127;
+  params.pan = handler.m_app_pan;
+  params.pitch_mod = handler.m_app_pm;
+  params.pitch_bend = handler.m_app_pb;
+  params.registers = handler.m_registers;
+
+  auto& block = static_cast<SoundBank&>(handler.bank());
+  s32 index = m_psp.sound_id;
+
+  if (index >= 0) {
+    handler.m_children.emplace_front(block.make_handler(handler.m_vm, index, vol, pan, params));
+
+    return 0;
+  }
+
+  lg::error("indirect createchildsound");
+
   return 0;
 }
 
-SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain& grain) : Grain(grain) {}
-SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {}
+SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain& grain) : Grain(grain) {
+  m_psp = grain.GrainParams.play_sound;
+}
+SFXGrain_StopChildSound::SFXGrain_StopChildSound(SFXGrain2& grain, u8* data) : Grain(grain) {
+  m_psp = *(PlaySoundParams*)(data + (grain.OpcodeData.Opcode & 0xFFFFFF));
+}
 s32 SFXGrain_StopChildSound::execute(blocksound_handler& handler) {
+  if (m_psp.sound_id >= 0) {
+    for (auto it = handler.m_children.begin(); it != handler.m_children.end();) {
+      auto* sound = static_cast<blocksound_handler*>(it->get());
+      if (sound->m_sfx.index == m_psp.sound_id) {
+        it = handler.m_children.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    return 0;
+  }
+
+  lg::error("indirect createchildsound");
   return 0;
 }
 
 SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain& grain) : Grain(grain) {}
 SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_PluginMessage::execute(blocksound_handler& handler) {
-  // TODO probably used
+  // lg::warn("plugin message");
+  //  TODO probably used
   return 0;
 }
 

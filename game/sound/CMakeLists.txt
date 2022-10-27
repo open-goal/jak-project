@@ -11,6 +11,7 @@ set(SOUND_SOURCES
   989snd/sfxgrain.cpp
   989snd/loader.cpp
   989snd/vagvoice.cpp
+  989snd/lfo.cpp
   989snd/util.cpp
   common/synth.cpp
   common/voice.cpp

@@ -210,7 +210,7 @@ void player::unload_bank(u32 bank_handle) {
     return;
 
   for (auto it = m_handlers.begin(); it != m_handlers.end();) {
-    if (it->second->bank() == bank_handle) {
+    if (it->second->bank().bank_id == bank_handle) {
       m_handle_allocator.free_id(it->first);
       it = m_handlers.erase(it);
     } else {

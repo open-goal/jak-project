@@ -26,7 +26,7 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
                            s32 vol,
                            s32 pan,
                            locator& loc,
-                           u32 bank)
+                           SoundBank& bank)
     : m_sound(sound),
       m_locator(loc),
       m_repeats(sound.Repeats),
@@ -57,7 +57,7 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
                            s32 vol,
                            s32 pan,
                            locator& loc,
-                           u32 bank,
+                           SoundBank& bank,
                            std::optional<ame_handler*> parent)
     : m_parent(parent),
       m_sound(sound),
@@ -197,7 +197,7 @@ void midi_handler::note_on() {
       // voice->current_pb = 0;
 
       voice->group = m_sound.VolGroup;
-      m_vm.start_tone(voice, m_bank);
+      m_vm.start_tone(voice, m_bank.bank_id);
       m_voices.emplace_front(voice);
     }
   }
@@ -264,6 +264,8 @@ void midi_handler::channel_pitch() {
   (void)pitch;
   (void)channel;
   // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
+
+  throw std::runtime_error("midi pitch change");
   m_seq_ptr += 2;
 }
 
@@ -289,6 +291,7 @@ void midi_handler::meta_event() {
 
   if (*m_seq_ptr == 0x51) {
     m_tempo = (m_seq_ptr[2] << 16) | (m_seq_ptr[3] << 8) | (m_seq_ptr[4]);
+    m_ppt = 100 * mics_per_tick / (m_tempo / m_ppq);
   }
 
   m_seq_ptr += len + 2;

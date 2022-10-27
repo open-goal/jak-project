@@ -17,7 +17,7 @@ ame_handler::ame_handler(MultiMIDIBlockHeader* block,
                          s32 vol,
                          s32 pan,
                          locator& loc,
-                         u32 bank)
+                         SoundBank& bank)
     : m_sound(sound),
       m_bank(bank),
       m_header(block),

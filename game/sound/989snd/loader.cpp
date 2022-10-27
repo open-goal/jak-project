@@ -7,10 +7,10 @@
 
 #include "midi_handler.h"
 #include "sfxblock.h"
-#include "sfxblock2.h"
 
 #include "common/log/log.h"
 
+#include "sfxblock2.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {

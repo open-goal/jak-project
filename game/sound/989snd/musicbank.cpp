@@ -9,7 +9,6 @@ namespace snd {
 
 MusicBank::MusicBank(locator& loc, u32 id, BankTag* tag)
     : SoundBank(id, BankType::Music), m_locator(loc) {
-
   auto data = (SoundBankData*)tag;
 
   auto sound = (MIDISound*)((uintptr_t)data + data->FirstSound);
@@ -45,15 +44,23 @@ std::unique_ptr<sound_handler> MusicBank::make_handler(voice_manager& vm,
 
   if (sound.Type == 4) {  // midi
     auto midi = static_cast<MIDIBlockHeader*>(m_locator.get_midi(sound.MIDIID));
-    handler = std::make_unique<midi_handler>(midi, vm, sound, vol, pan, m_locator, bank_id);
+    handler = std::make_unique<midi_handler>(midi, vm, sound, vol, pan, m_locator, *this);
   } else if (sound.Type == 5) {  // ame
     auto midi = static_cast<MultiMIDIBlockHeader*>(m_locator.get_midi(sound.MIDIID));
-    handler = std::make_unique<ame_handler>(midi, vm, sound, vol, pan, m_locator, bank_id);
+    handler = std::make_unique<ame_handler>(midi, vm, sound, vol, pan, m_locator, *this);
   } else {
     // error
   }
 
   return handler;
+}
+
+std::unique_ptr<sound_handler> MusicBank::make_handler(voice_manager& vm,
+                                                       u32 sound_id,
+                                                       s32 vol,
+                                                       s32 pan,
+                                                       SndPlayParams& params) {
+  return nullptr;
 }
 
 }  // namespace snd
