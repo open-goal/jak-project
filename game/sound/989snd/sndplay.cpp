@@ -1,5 +1,11 @@
 #include <filesystem>
 #include <iostream>
+#include <sstream>
+
+#ifdef _WIN32
+#include <windows.h>
+#define sleep(n) Sleep(n * 1000)
+#endif
 
 #include "player.h"
 
