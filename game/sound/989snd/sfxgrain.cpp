@@ -146,7 +146,7 @@ s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
     pan = m_psp.pan;
   } else {
     if (m_psp.pan < -4) {
-      if (m_psp.pan == -4) {
+      if (m_psp.pan == -5) {
         pan = rand() % 360;
       } else {
         pan = g_block_reg.at(-m_psp.pan - 1);
@@ -254,6 +254,7 @@ s32 SFXGrain_LoopContinue::execute(blocksound_handler& handler) {
   for (int i = handler.m_next_grain + 1; i < handler.m_sfx.grains.size() && !found; i++) {
     if (handler.m_sfx.grains[i]->type() == grain_type::LOOP_END) {
       handler.m_next_grain = i;
+      found = true;
     }
   }
 
