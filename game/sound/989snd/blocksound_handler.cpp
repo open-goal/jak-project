@@ -20,11 +20,11 @@ void blocksound_handler::init() {
   //   return;
   // }
 
-  // int idx = 0;
-  // for (auto& g : m_sfx.grains) {
-  //   lg::info("grain {}: {}", idx, g->inspect());
-  //   idx++;
-  // }
+  int idx = 0;
+  for (auto& g : m_sfx.grains) {
+    lg::info("grain {}: {}", idx, g->inspect());
+    idx++;
+  }
 
   while (m_countdown <= 0 && !m_done) {
     do_grain();
@@ -157,7 +157,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
 
 void blocksound_handler::update_pitch() {
   m_cur_pm = m_app_pm + m_lfo_pm;
-  s32 new_pb = std::clamp(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
+  s32 new_pb = std::clamp<s32>(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
 
   m_cur_pb = new_pb;
 
