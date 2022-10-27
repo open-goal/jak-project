@@ -9,7 +9,7 @@
 
 namespace snd {
 
-extern std::array<u8, 32> g_block_reg;
+extern std::array<s8, 32> g_block_reg;
 
 class blocksound_handler : public sound_handler {
  public:
@@ -153,7 +153,7 @@ class blocksound_handler : public sound_handler {
   u8 m_note{60};
   u8 m_fine{0};
 
-  std::array<u8, 4> m_registers{};
+  std::array<s8, 4> m_registers{};
   std::array<LFOTracker, 4> m_lfo{{*this, *this, *this, *this}};
 
   // TODO LFO

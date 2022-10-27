@@ -8,7 +8,7 @@
 #include "common/log/log.h"
 
 namespace snd {
-std::array<u8, 32> g_block_reg{};
+std::array<s8, 32> g_block_reg{};
 
 void blocksound_handler::init() {
   m_next_grain = 0;

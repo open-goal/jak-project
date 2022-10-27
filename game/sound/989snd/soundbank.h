@@ -17,7 +17,7 @@ struct SndPlayParams {
   std::optional<s32> pan;
   std::optional<s32> pitch_mod;
   std::optional<s32> pitch_bend;
-  std::optional<std::array<u8, 4>> registers;
+  std::optional<std::array<s8, 4>> registers;
 };
 
 struct BankTag {

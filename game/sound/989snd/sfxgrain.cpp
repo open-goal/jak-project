@@ -30,29 +30,27 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
 
   auto voice = std::make_shared<vag_voice>(m_tone);
 
-  s8 vol = m_tone.Vol;
-  if (m_tone.Vol < 0) {
-    if (m_tone.Vol >= -4) {
-      vol = handler.m_registers.at(-m_tone.Vol - 1);
-    } else if (m_tone.Vol == -5) {
-      vol = rand() & 0x7f;
+  s32 vol = m_tone.Vol;
+  if (vol < 0) {
+    if (vol >= -4) {
+      vol = handler.m_registers.at(-vol - 1);
+    } else if (vol == -5) {
+      vol = rand() % 0x7f;
     } else {
-      vol = g_block_reg.at(-m_tone.Vol - 6);
+      vol = g_block_reg.at(-vol - 6);
     }
   }
 
-  if (vol < 0) {
-    vol = 0;
-  }
+  vol = std::max(vol, 0);
 
-  s16 pan = m_tone.Pan;
-  if (m_tone.Pan < 0) {
-    if (m_tone.Pan >= -4) {
-      pan = 360 * handler.m_registers.at(-m_tone.Pan - 1) / 127;
-    } else if (m_tone.Pan == -5) {
+  s32 pan = m_tone.Pan;
+  if (pan < 0) {
+    if (pan >= -4) {
+      pan = 360 * handler.m_registers.at(-pan - 1) / 127;
+    } else if (pan == -5) {
       pan = rand() % 360;
     } else {
-      pan = 360 * g_block_reg.at(-m_tone.Pan - 6) / 127;
+      pan = 360 * g_block_reg.at(-pan - 6) / 127;
     }
   }
 
@@ -120,51 +118,27 @@ SFXGrain_StartChildSound::SFXGrain_StartChildSound(SFXGrain2& grain, u8* data) :
   m_psp = *(PlaySoundParams*)(data + (grain.OpcodeData.Opcode & 0xFFFFFF));
 }
 s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
-  s32 vol, pan;
-  if (m_psp.vol >= 0) {
-    vol = m_psp.vol;
-  } else {
-    if (m_psp.vol < -4) {
-      if (m_psp.vol == -5) {
-        vol = rand() % 0x7f;
-      } else {
-        vol = g_block_reg.at(-m_psp.vol - 6);
-      }
+  s32 vol = m_psp.vol;
+  if (vol < 0) {
+    if (vol >= -4) {
+      vol = handler.m_registers.at(-vol - 1);
+    } else if (vol == -5) {
+      vol = rand() % 0x7f;
     } else {
-      vol = handler.m_registers.at(-m_psp.vol - 1);
+      vol = g_block_reg.at(-vol - 6);
     }
   }
 
-  if (vol < 0) {
-    vol = -vol;
-  }
-  vol = std::clamp(vol, 0, 127);
+  vol = std::clamp(std::abs(vol), 0, 127);
 
-  if (m_psp.pan >= 0) {
-    pan = m_psp.pan;
-  } else {
-    if (m_psp.pan < -4) {
-      if (m_psp.pan == -5) {
-        pan = rand() % 360;
-      } else {
-        pan = g_block_reg.at(-m_psp.pan - 1);
-        if (pan < 0) {
-          pan = -pan;
-        }
-        if (pan >= 128) {
-          pan = 127;
-        }
-        pan = 360 * pan / 127;
-      }
+  s32 pan = m_psp.pan;
+  if (pan < 0) {
+    if (pan >= -4) {
+      pan = 360 * std::min(std::abs(handler.m_registers.at(-pan - 1)), 127) / 127;
+    } else if (pan == -5) {
+      pan = rand() % 360;
     } else {
-      pan = handler.m_registers.at(-m_psp.pan - 1);
-      if (pan < 0) {
-        pan = -pan;
-      }
-      if (pan >= 128) {
-        pan = 127;
-      }
-      pan = 360 * pan / 127;
+      pan = 360 * std::min(std::abs(g_block_reg.at(-pan - 6)), 127) / 127;
     }
   }
 
@@ -348,12 +322,7 @@ SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain2& grain, u8* data) : Grain(grain) {
 }
 s32 SFXGrain_AddPB::execute(blocksound_handler& handler) {
   s32 new_pb = handler.m_cur_pb + 0x7fff * m_pb / 127;
-  if (new_pb > 0x7fff) {
-    new_pb = 0x7fff;
-  }
-  if (new_pb < -0x8000) {
-    new_pb = 0x8000;
-  }
+  std::clamp(new_pb, INT16_MIN, INT16_MAX);
 
   handler.set_pbend(new_pb);
 
@@ -409,17 +378,11 @@ SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_IncRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) + 1;
-    if (new_val >= 128) {
-      new_val = 127;
-    }
-    g_block_reg.at(-m_reg - 1) = new_val;
+    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
 
   } else {
     s32 new_val = handler.m_registers.at(m_reg) + 1;
-    if (new_val >= 128) {
-      new_val = 127;
-    }
-    handler.m_registers.at(m_reg) = new_val;
+    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
   }
   return 0;
 }
@@ -433,17 +396,11 @@ SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_DecRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) - 1;
-    if (new_val < -128) {
-      new_val = 128;
-    }
-    g_block_reg.at(-m_reg - 1) = new_val;
+    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
 
   } else {
     s32 new_val = handler.m_registers.at(m_reg) - 1;
-    if (new_val < -128) {
-      new_val = 128;
-    }
-    handler.m_registers.at(m_reg) = new_val;
+    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
   }
 
   return 0;
@@ -475,7 +432,7 @@ s32 SFXGrain_TestRegister::execute(blocksound_handler& handler) {
     if (value != m_cmp) {
       handler.m_next_grain++;
     }
-  } else if (m_action == 2) {
+  } else if (m_action >= 2) {
     if (m_cmp >= value)
       handler.m_next_grain++;
   }
@@ -530,7 +487,7 @@ s32 SFXGrain_GotoRandomMarker::execute(blocksound_handler& handler) {
   }
 
   if (!found) {
-    lg::error("GOTO_MARKER to non-existing marker");
+    lg::error("GOTO_RANDOM_MARKER to non-existing marker");
   }
 
   return 0;
@@ -583,22 +540,10 @@ SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_AddRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) + m_val;
-    if (new_val >= 128) {
-      new_val = 127;
-    }
-    if (new_val < -128) {
-      new_val = 128;
-    }
-    g_block_reg.at(-m_reg - 1) = new_val;
+    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
   } else {
     s32 new_val = handler.m_registers.at(m_reg) + m_val;
-    if (new_val >= 128) {
-      new_val = 127;
-    }
-    if (new_val < -128) {
-      new_val = 128;
-    }
-    handler.m_registers.at(m_reg) = new_val;
+    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
   }
   return 0;
 }
@@ -650,10 +595,9 @@ SFXGrain_CopyRegister::SFXGrain_CopyRegister(SFXGrain2& grain, u8* data) : Grain
   m_dst = grain.OpcodeData.arg[1];
 }
 s32 SFXGrain_CopyRegister::execute(blocksound_handler& handler) {
-  s32 value = 0;
+  s8 value = 0;
   if (m_src < 0) {
     value = g_block_reg.at(-m_src - 1);
-
   } else {
     value = handler.m_registers.at(m_src);
   }
