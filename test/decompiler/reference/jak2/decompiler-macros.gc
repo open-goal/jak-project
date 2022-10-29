@@ -1215,3 +1215,56 @@
         (add-to-loading-level ,name)
         )
   )
+
+(defmacro with-dma-bucket (bindings &rest body)
+  "Start a new dma-bucket in body that will be finished at the end.
+   The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
+
+  (let ((buf (first bindings))
+        (bucket (second bindings))
+        (bucket-id (third bindings))
+        )
+
+      (with-gensyms (buf-start bucket-edge pkt)
+        `(let ((,buf-start (-> ,buf base)))
+
+            ,@body
+
+            ;; we end the chain with a next.  The bucket system will patch the next chain to this,
+            ;; and then patch all the buckets togehter before sending the DMA.
+            (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
+                (let ((,pkt (the-as dma-packet (-> ,buf base))))
+
+                  (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+                  (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+                  (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
+
+                  )
+                (dma-bucket-insert-tag ,bucket ,bucket-id
+                      ,buf-start ;; the first thing in this chain, bucket will patch previous to this
+                      ,bucket-edge ;; end of this chain (ptr to next tag)
+                      )
+                )
+            )
+        )
+
+      )
+  )
+
+(defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
+  "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
+   example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf)) ...)"
+
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
+      ,@body
+      )
+    )
+  )
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen))
+  )

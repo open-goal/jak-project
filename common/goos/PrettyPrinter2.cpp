@@ -267,7 +267,8 @@ void break_list(Node* node) {
                name == "when" || name == "behavior" || name == "lambda" || name == "defpart" ||
                name == "define") {
       node->top_line_count = 2;
-    } else if (name == "let" || name == "let*" || name == "rlet") {
+    } else if (name == "let" || name == "let*" || name == "rlet" ||
+               name == "with-dma-buffer-add-bucket") {
       // special case for things like let.
       node->top_line_count = 2;  // (let <defs>
       if (node->child_nodes.size() > 1 && node->child_nodes[1].child_nodes.size() > 1 &&
