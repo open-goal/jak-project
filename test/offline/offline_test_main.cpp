@@ -130,22 +130,25 @@ void decompile(Decompiler& dc, const OfflineTestConfig& config) {
 }
 
 /// @brief Removes trailing new-lines and comment lines
-std::string clean_decompilation_code(const std::string& in) {
-  std::vector<std::string> lines = split_string(in);
-  // Remove all lines that are comments
-  // comments are added only by us, meaning this _should_ be consistent
-  std::vector<std::string>::iterator line_itr = lines.begin();
-  while (line_itr != lines.end()) {
-    if (line_itr->rfind(";", 0) == 0) {
-      // remove comment line
-      line_itr = lines.erase(line_itr);
-    } else {
-      // iterate
-      line_itr++;
+std::string clean_decompilation_code(const std::string& in, const bool leave_comments = false) {
+  std::string out = in;
+  if (!leave_comments) {
+    std::vector<std::string> lines = split_string(in);
+    // Remove all lines that are comments
+    // comments are added only by us, meaning this _should_ be consistent
+    std::vector<std::string>::iterator line_itr = lines.begin();
+    while (line_itr != lines.end()) {
+      if (line_itr->rfind(";", 0) == 0) {
+        // remove comment line
+        line_itr = lines.erase(line_itr);
+      } else {
+        // iterate
+        line_itr++;
+      }
     }
+    out = fmt::format("{}", fmt::join(lines, "\n"));
   }
 
-  std::string out = fmt::format("{}", fmt::join(lines, "\n"));
   while (!out.empty() && out.back() == '\n') {
     out.pop_back();
   }
@@ -212,7 +215,7 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
         auto failure_dir = file_util::get_jak_project_dir() / "failures";
         file_util::create_dir_if_needed(failure_dir);
         file_util::write_text_file(failure_dir / fmt::format("{}_REF.gc", file.unique_name),
-                                   result);
+                                   clean_decompilation_code(data.full_output, true));
       }
     } else {
       compare_result.ok_files++;
