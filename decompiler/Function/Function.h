@@ -118,6 +118,7 @@ class Function {
   int end_word = -1;  // not inclusive, but does include padding.
 
   FunctionName guessed_name;
+  std::string state_handler_as_anon_func;
 
   bool suspected_asm = false;
   bool is_inspect_method = false;

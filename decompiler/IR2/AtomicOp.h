@@ -516,6 +516,8 @@ class StoreOp : public AtomicOp {
   void collect_vars(RegAccessSet& vars) const override;
   const SimpleExpression& addr() const { return m_addr; }
   const SimpleAtom& value() const { return m_value; }
+  Kind kind() const { return m_kind; }
+  int store_size() const { return m_size; }
 
  private:
   int m_size;

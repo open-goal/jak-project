@@ -6777,6 +6777,7 @@
   (progress-memcard-insert-card-with-jak2 #x19c)
   (progress-memcard-insert-card-with-space-to-save #x19d)
   (progress-memcard-formatting-required-notice #x19e)
+  (text-x19f #x19f)
   (progress-memcard-loading-data #x1a0)
   (text-x1a1 #x01a1)
   (text-x1a2 #x01a2)
@@ -12439,13 +12440,42 @@
   :pack-me ;; agh
   )
 
-(define-extern mc-sync (function int))
-(define-extern show-mc-info (function dma-buffer none))
+;; +++memcard-h:mc-status-code
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+;; ---memcard-h:mc-status-code
 
 (define-extern mc-run (function none))
-(define-extern mc-check-result (function int))
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
+(declare-type mc-slot-info structure)
+(define-extern mc-sync (function int))
 (define-extern mc-get-slot-info (function int mc-slot-info none))
 
+(define-extern mc-check-result (function mc-status-code))
+;; mc-makefile
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-info-h                    ;;
@@ -12594,31 +12624,6 @@
     (move-camera! (_type_) none 11)
     )
   )
-
-;; +++memcard-h:mc-status-code
-(defenum mc-status-code
-  :type uint32
-  (busy 0)
-  (ok 1)
-  (bad-handle 2)
-  (format-failed 3)
-  (internal-error 4)
-  (write-error 5)
-  (read-error 6)
-  (new-game 7)
-  (no-memory 8)
-  (no-card 9)
-  (no-last 10)
-  (no-format 11)
-  (no-file 12)
-  (no-save 13)
-  (no-space 14)
-  (bad-version 15)
-  (no-process 16)
-  (no-auto-save 17)
-  )
-;; ---memcard-h:mc-status-code
-
 
 ;; +++game-info-h:game-secrets
 (defenum game-secrets
@@ -12783,13 +12788,13 @@
     (task-perm-by-index (_type_ int) entity-perm 15)
     (copy-perms-from-level! (_type_ level) int 16)
     (copy-perms-to-level! (_type_ level) int 17)
-    (game-info-method-18 (_type_ symbol) _type_ 18)
+    (debug-inspect (_type_ symbol) _type_ 18)
     (get-current-continue-forced (_type_) continue-point 19)
     (get-continue-by-name (_type_ string) continue-point 20)
     (set-continue! (_type_ basic symbol) continue-point 21)
     (game-info-method-22 (_type_) int 22)
-    (game-info-method-23 (_type_ game-save string) int 23)
-    (game-info-method-24 (_type_ game-save) none 24)
+    (save-game (_type_ game-save string) game-save 23)
+    (load-game (_type_ game-save) game-save 24)
     (you-suck-stage (_type_ symbol) int 25)
     (you-suck-scale (_type_ object) float 26)
     (get-next-attack-id (_type_) uint 27)
@@ -24781,16 +24786,16 @@
    (game-time             time-frame             :offset 48)
    (secrets               uint32                 :offset 56)
    (features              uint32                 :offset 60)
-   (tag                   game-save-tag :dynamic :offset-assert 80) ;; guessed by decompiler
+   (tag                   game-save-tag :inline :dynamic :offset-assert 80) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x50
   :flag-assert         #xc00000050
   (:methods
     (new (symbol type int) _type_ 0)
-    (game-save-method-9 (_type_ string) none 9) ;; (save-to-file (_type_ string) _type_ 9)
-    (game-save-method-10 (_type_ string) none 10) ;; (load-from-file! (_type_ string) _type_ 10)
-    (game-save-method-11 (_type_ symbol) none 11) ;; (debug-print (_type_ symbol) _type_ 11)
+    (save-to-file (_type_ string) _type_ 9)
+    (load-from-file (_type_ string) _type_ 10)
+    (debug-inspect (_type_ symbol) _type_ 11)
     )
   )
 
@@ -24799,12 +24804,12 @@
    (slot       int32                  :offset-assert 132)
    (which      int32                  :offset-assert 136)
    (buffer     kheap                  :offset-assert 140)
-   (mode       basic                  :offset-assert 144)
+   (mode       symbol                 :offset-assert 144)
    (result     mc-status-code         :offset-assert 148) ;; guessed by decompiler
    (save       game-save              :offset-assert 152) ;; guessed by decompiler
    (info       mc-slot-info   :inline :offset-assert 156)
    (notify     handle                 :offset-assert 456)
-   (force      basic                  :offset-assert 464)
+   (force      symbol                 :offset-assert 464)
    (state-time time-frame             :offset-assert 472)
    (icon       hud-sprite     :inline :offset-assert 480)
    )
@@ -24819,18 +24824,18 @@
     (create-file () _type_ :state 18) ;; (save () _type_ :state 18)
     (save () _type_ :state 19) ;; (restore () _type_ :state 19)
     (restore () _type_ :state 20) ;; (error (mc-status-code) _type_ :state 20)
-    (error () _type_ :state 21) ;; (done () _type_ :state 21)
+    (error (mc-status-code) _type_ :state 21) ;; (done () _type_ :state 21)
     (done () _type_ :state 22) ;; (unformat-card () _type_ :state 22)
     )
   )
 
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern *auto-save-info* mc-slot-info)
-;; (define-extern auto-save-post function) ;; (function none :behavior auto-save)
-;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
-(define-extern auto-save-command (function symbol int int process-tree symbol none))
-(define-extern auto-save-check (function none))
-(define-extern auto-save-user (function none))
+(define-extern auto-save-post (function pointer :behavior auto-save))
+(define-extern auto-save-init-by-other (function symbol process int int symbol object :behavior auto-save))
+(define-extern auto-save-command (function symbol int int process-tree symbol (pointer auto-save)))
+(define-extern auto-save-check (function int))
+(define-extern auto-save-user (function (pointer auto-save)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings                       ;;
