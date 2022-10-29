@@ -1,27 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: carry-h.gc
-;; name in dgo: carry-h
-;; dgos: ENGINE, GAME
-
-;; +++carry-mode
-(defenum carry-mode
-  :type uint8
-  :bitfield #t
-  (carry 0)
-  (mech-carry 1)
-  (mech-drag 2)
-  (cm3)
-  (cm4)
-  (cm5)
-  (cm6)
-  (cm7)
-  )
-;; ---carry-mode
-
-;; DECOMP BEGINS
-
+;; definition of type carry-info
 (deftype carry-info (basic)
   ((process          (pointer target)         :offset-assert   4)
    (pickup-time      time-frame               :offset-assert   8)
@@ -61,7 +41,52 @@
     )
   )
 
+;; definition for method 3 of type carry-info
+(defmethod inspect carry-info ((obj carry-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-10)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: #x~X~%" (-> obj process))
+  (format #t "~1Tpickup-time: ~D~%" (-> obj pickup-time))
+  (format #t "~1Tother-value: ~f~%" (-> obj other-value))
+  (format #t "~1Tother: ~D~%" (-> obj other))
+  (format #t "~1Tpoint: ~`vector`P~%" (-> obj point))
+  (format #t "~1Tnormal: ~`vector`P~%" (-> obj normal))
+  (format #t "~1Tmax-angle: (deg ~r)~%" (-> obj max-angle))
+  (format #t "~1Tmax-distance: (meters ~m)~%" (-> obj max-distance))
+  (format #t "~1Tmax-pull: (meters ~m)~%" (-> obj max-pull))
+  (format #t "~1Tmin-pull: (meters ~m)~%" (-> obj min-pull))
+  (format #t "~1Tgrab-trans-blend: ~f~%" (-> obj grab-trans-blend))
+  (format #t "~1Tcarry-radius: (meters ~m)~%" (-> obj carry-radius))
+  (format #t "~1Tbackup-radius: (meters ~m)~%" (-> obj backup-radius))
+  (format #t "~1Tjoint: ~D~%" (-> obj joint))
+  (format #t "~1Tmode: #x~X : (carry-mode " (-> obj mode))
+  (let ((s5-0 (-> obj mode)))
+    (if (= (logand s5-0 (carry-mode mech-carry)) (carry-mode mech-carry))
+        (format #t "mech-carry ")
+        )
+    (if (= (logand s5-0 (carry-mode mech-drag)) (carry-mode mech-drag))
+        (format #t "mech-drag ")
+        )
+    (if (= (logand s5-0 (carry-mode carry)) (carry-mode carry))
+        (format #t "carry ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tface-dir: ~D~%" (-> obj face-dir))
+  (format #t "~1Tlocal-point: ~`vector`P~%" (-> obj local-point))
+  (format #t "~1Tlocal-normal: ~`vector`P~%" (-> obj local-normal))
+  (format #t "~1Tgrab-quat: ~`vector`P~%" (-> obj grab-quat))
+  (format #t "~1Tgrab-trans: ~`vector`P~%" (-> obj grab-trans))
+  (format #t "~1Thold-trans: ~`vector`P~%" (-> obj hold-trans))
+  (label cfg-10)
+  obj
+  )
 
+;; definition for method 0 of type carry-info
+;; INFO: Used lq/sq
 (defmethod new carry-info ((allocation symbol)
                          (type-to-make type)
                          (arg0 process-drawable)
@@ -104,6 +129,8 @@
     )
   )
 
+;; definition for method 9 of type carry-info
+;; WARN: Return type mismatch int vs none.
 (defmethod carry-info-method-9 carry-info ((obj carry-info))
   (let ((s5-0 (-> obj process 0 node-list data (-> obj joint) bone transform)))
     (vector-rotate*! (-> obj normal) (-> obj local-normal) s5-0)
@@ -113,6 +140,7 @@
   (none)
   )
 
+;; definition for method 10 of type carry-info
 (defmethod distance-from-destination carry-info ((obj carry-info) (arg0 carry-info))
   "Returns the distance from the current `point` and the provided [[carry-info]]'s `point`.
        Returns `-1.0` if it exceeds the maximum allowed"
@@ -186,6 +214,9 @@
     )
   )
 
+;; definition for method 11 of type carry-info
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod drag! carry-info ((obj carry-info) (arg0 carry-info))
   (let ((v1-0 (-> arg0 process)))
     (set! (-> obj other) (the-as handle (logior (if v1-0
@@ -321,6 +352,8 @@
   (none)
   )
 
+;; definition for method 12 of type carry-info
+;; WARN: Return type mismatch int vs none.
 (defmethod drop-impl! carry-info ((obj carry-info) (arg0 carry-info))
   (let ((a1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 process 0 control quat))))
     (set! (-> a1-2 y) 0.0)
@@ -383,6 +416,8 @@
   (none)
   )
 
+;; definition for method 13 of type carry-info
+;; INFO: Used lq/sq
 (defmethod carry-info-method-13 carry-info ((obj carry-info))
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 from) (process->ppointer self))
@@ -449,6 +484,8 @@
     )
   )
 
+;; definition for method 14 of type carry-info
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod carry! carry-info ((obj carry-info) (arg0 carry-info) (arg1 vector) (arg2 vector))
   (let ((v1-0 (-> arg0 process)))
@@ -565,6 +602,7 @@
   (none)
   )
 
+;; definition for method 16 of type carry-info
 (defmethod translate! carry-info ((obj carry-info))
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 from) (process->ppointer self))
@@ -581,6 +619,7 @@
     )
   )
 
+;; definition for method 15 of type carry-info
 (defmethod drop! carry-info ((obj carry-info) (arg0 carry-info))
   (drop-impl! obj arg0)
   (none)

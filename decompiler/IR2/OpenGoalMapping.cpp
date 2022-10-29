@@ -11,13 +11,13 @@ typedef OpenGOALAsm::InstructionModifiers MOD;
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // ----- EE -------
     // Instructions that are nopped
-    //    {InstructionKind::MTC0,
-    //     {".nop", {MOD::SKIP_IT}}},  // they only use this for performance counters / Count /
-    //     Debug
-    //    {InstructionKind::MTPC, {".nop", {MOD::SKIP_IT}}},
-    //    {InstructionKind::MFPC, {".nop", {MOD::SKIP_IT}}},
-    //    {InstructionKind::SYNCP, {".nop", {MOD::SKIP_IT}}},
-    //    {InstructionKind::SYNCL, {".nop", {MOD::SKIP_IT}}},
+    // they only use this for performance counters / Count / Debug
+    // These depend on a `fake-asm` macro being defined
+    {InstructionKind::MTC0, {".mtc0", {}}},
+    {InstructionKind::MTPC, {".mtpc", {}}},
+    {InstructionKind::MFPC, {".mfpc", {}}},
+    {InstructionKind::SYNCP, {".sync.p", {}}},
+    {InstructionKind::SYNCL, {".sync.l", {}}},
 
     // Shifts and such
     {InstructionKind::PSLLW, {".pw.sll", {}}},
