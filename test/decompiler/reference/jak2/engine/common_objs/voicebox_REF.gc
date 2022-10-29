@@ -1,11 +1,4 @@
-;;-*-Lisp-*-
 (in-package goal)
-
-;; name: voicebox.gc
-;; name in dgo: voicebox
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
 
 (defpartgroup group-talkbox-speak
   :id 77
@@ -56,6 +49,17 @@
   :flag-assert         #xe0a200a94
   )
 
+(defmethod inspect camera-remote ((obj camera-remote))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type camera-slave inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
 (deftype remote (process-drawable)
   ((parent-override (pointer camera-slave)         :offset         16)
@@ -81,6 +85,24 @@
     )
   )
 
+(defmethod inspect remote ((obj remote))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tbase-trans: ~`vector`P~%" (-> obj base-trans))
+  (format #t "~2Tfocus: #<focus @ #x~X>~%" (-> obj focus))
+  (format #t "~2Tseeker: #<cam-float-seeker @ #x~X>~%" (-> obj seeker))
+  (format #t "~2Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~2Tblend: ~f~%" (-> obj blend))
+  (format #t "~2Ttwist: ~f~%" (-> obj twist))
+  (format #t "~2Tspeak-effect?: ~A~%" (-> obj speak-effect?))
+  (label cfg-4)
+  obj
+  )
 
 (defskelgroup skel-voicebox talk-box 0 2
               ((1 (meters 999999)))
@@ -328,7 +350,6 @@
   :post (-> (method-of-type remote enter) post)
   )
 
-;; WARN: Return type mismatch remote vs none.
 (defmethod remote-method-23 remote ((obj remote))
   (reset-to-collide-spec (-> obj focus) (collide-spec jak player-list))
   (initialize-skeleton
@@ -364,6 +385,18 @@
   :flag-assert         #x1a00b00128
   )
 
+(defmethod inspect voicebox ((obj voicebox))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type remote inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Thint: ~D~%" (-> obj hint))
+  (label cfg-4)
+  obj
+  )
 
 (defstate exit (voicebox)
   :virtual #t
@@ -390,7 +423,6 @@
     )
   )
 
-;; WARN: Return type mismatch object vs none.
 (defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
   (set! (-> self hint) arg1)
   (set! (-> self root) (new 'process 'trsqv))
@@ -430,6 +462,21 @@
     )
   )
 
+(defmethod inspect judge ((obj judge))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type remote inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttotal-time: ~D~%" (-> obj total-time))
+  (format #t "~2Tbeep-time: ~D~%" (-> obj beep-time))
+  (format #t "~2Thud-timer: ~D~%" (-> obj hud-timer))
+  (format #t "~2Tscore: ~D~%" (-> obj score))
+  (label cfg-4)
+  obj
+  )
 
 (defmethod remote-method-24 judge ((obj judge) (arg0 vector))
   (set! (-> arg0 quad) (-> obj base-trans quad))
@@ -551,7 +598,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! judge ((obj judge) (arg0 entity-actor))
   (judge-method-27 obj)
   (remote-method-23 obj)
@@ -563,7 +609,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defbehavior judge-init-by-other judge ((arg0 vector) (arg1 uint))
   (process-entity-set! self (the-as entity-actor #f))
   (set! (-> self score) arg1)
@@ -578,7 +623,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch (pointer process) vs (pointer judge).
 (defun judge-spawn ((arg0 process-tree) (arg1 vector) (arg2 uint))
   (process-spawn judge arg1 arg2 :to arg0)
   )

@@ -1,13 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; name: scene-looper.gc
-;; name in dgo: scene-looper
-;; dgos: GAME, COMMON
-
-;; DECOMP BEGINS
-
-;; this file is debug only
 (declare-file (debug))
 (when *debug-segment*
 (deftype scene-looper (process)
@@ -22,6 +14,18 @@
     )
   )
 
+(defmethod inspect scene-looper ((obj scene-looper))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tscene-name: ~A~%" (-> obj scene-name))
+  (label cfg-4)
+  obj
+  )
 
 (defstate idle (scene-looper)
   :virtual #t
@@ -46,7 +50,6 @@
     )
   )
 
-;; WARN: Return type mismatch object vs none.
 (defbehavior scene-looper-init-by-other scene-looper ((scene-name symbol))
   "Sets the `scene-name` with the given [[symbol]], the [[scene-looper]] will then idle"
   (set! (-> self scene-name) scene-name)
@@ -60,7 +63,6 @@
   (kill-by-type scene-looper *active-pool*)
   )
 
-;; WARN: Return type mismatch (pointer process) vs (pointer scene-looper).
 (defun loop-scene ((scene-name symbol))
   "Stops looping the current scene, then spawns a new [[scene-looper]] for the given scene
    @see [[stop-loop-scene]"

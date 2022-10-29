@@ -10646,7 +10646,7 @@
   :size-assert         #x206c
   :flag-assert         #x5c0000206c
   (:methods
-    (ocean-method-11 (_type_ (inline-array vector) symbol) float 11)
+    (ocean-method-11 (_type_ vector symbol) float 11)
     (draw! (_type_) none 12)
     (update-map (_type_) none 13)
     (ocean-method-14 () none 14)
@@ -10656,7 +10656,7 @@
     (ocean-method-18 () none 18)
     (ocean-method-19 () none 19)
     (ocean-method-20 () none 20)
-    (ocean-method-21 () none 21)
+    (ocean-method-21 (_type_ float float) float 21)
     (ocean-method-22 () none 22)
     (ocean-method-23 () none 23)
     (ocean-method-24 () none 24)
@@ -15034,7 +15034,7 @@
 (declare-type scene-player basic)
 (deftype scene-actor (basic)
   ((name                string   :offset-assert 4)
-   (level               basic   :offset-assert 8)
+   (level               symbol   :offset-assert 8)
    (art-group           string   :offset-assert 12)
    (prefix              string   :offset-assert 16)
    (draw-frames         pair   :offset-assert 20) ;; some form of pair?
@@ -15065,24 +15065,28 @@
    (art-group        string            :offset-assert 40)
    (anim             string            :offset-assert 44)
    (parts            int32            :offset-assert 48)
-   (command-list     basic            :offset-assert 52)
+   (command-list     pair            :offset-assert 52)
    (cut-list         pair            :offset-assert 56)
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
    (draw-target      level-load-info            :offset-assert 88)
-   (abort            basic            :offset-assert 92)
+   (abort            symbol            :offset-assert 92)
    (actor            (array scene-actor)            :offset-assert 96)
-   (load-point       string            :offset-assert 100)
-   (end-point        string            :offset-assert 104)
-   (borrow           basic            :offset-assert 108)
+   (load-point-obj   object :offset-assert 100 :score 100) ;; TODO - unfortunate requirement
+   (load-point       continue-point            :offset 100)
+   (load-point-name  string            :offset 100)
+   (end-point-obj   object :offset-assert 104 :score 100) ;; TODO - unfortunate requirement
+   (end-point        continue-point            :offset 104)
+   (end-point-name        string            :offset 104)
+   (borrow           pair            :offset-assert 108) ;; seen .empty-list
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
-  (music-volume     float            :offset-assert 120)
-   (blackout-end     basic            :offset-assert 124)
-   (peaceful         basic            :offset-assert 128)
+   (music-volume     float            :offset-assert 120)
+   (blackout-end     symbol            :offset-assert 124)
+   (peaceful         symbol            :offset-assert 128)
    (music-delay      float            :offset-assert 132)
-   (save             basic            :offset-assert 136)
+   (save             symbol            :offset-assert 136)
    (scene-task       uint16           :offset-assert 140)
    )
   :method-count-assert 17
@@ -15898,7 +15902,7 @@
   )
 
 (deftype collide-rider (structure)
-  ((rider-handle    uint64         :offset-assert 0)
+  ((rider-handle    handle         :offset-assert 0)
    (sticky-prim     basic          :offset-assert 8)
    (prim-ry         float          :offset-assert 12)
    (rider-local-pos vector :inline :offset-assert 16)
@@ -17204,9 +17208,14 @@
     (play-game (game-task-event) _type_ :state 30) ;; (idle () _type_ :state 30)
     (process-taskable-method-31 (_type_) none 31) ;; (get-art-elem (_type_) art-element 31)
     (process-taskable-method-32 (_type_) none 32) ;; (play-anim! (_type_ symbol) basic 32)
-    (process-taskable-method-33 (_type_) none 33) ;; (dummy-33 (_type_) none 33)
+    (init-skeleton!
+      "@see [[initialize-skeleton]]"
+      (_type_) none 33) ;; (dummy-33 (_type_) none 33)
     (process-taskable-method-34 (_type_) symbol 34) ;; (get-accept-anim (_type_ symbol) spool-anim 34)
-    (process-taskable-method-35 (_type_) art-joint-anim 35) ;; (push-accept-anim (_type_) none 35)
+    (get-art-elem
+      "Checks various things such the current actor, task status, etc to determine the right art-group data to use
+       @returns the appropriate [[art-element]] for the given NPC"
+      (_type_) art-element 35) ;; TODO - is it always an art-joint-anim?
     (process-taskable-method-36 (_type_) none 36) ;; (get-reject-anim (_type_ symbol) spool-anim 36)
     (process-taskable-method-37 (_type_) none 37) ;; (push-reject-anim (_type_) none 37)
     )
@@ -17696,6 +17705,7 @@
 
 (deftype target (process-focusable)
   ((control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
+   (fact-info-override      fact-info-target                         :offset 160 :score 100)
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -20397,7 +20407,8 @@
     cam-bike
     cam-robotboss ;; TODO - state docstrings "A holdout from jak 1?"
     cam-point-watch
-    cam-free-floating))
+    cam-free-floating
+    cam-remote))
 
 (deftype camera-master (process)
   ((master-options      uint32                           :offset-assert 128)
@@ -28238,7 +28249,6 @@
 ;; voicebox                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype camera-remote (camera-slave)
   ()
   :method-count-assert 14
@@ -28247,17 +28257,16 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype remote (process-drawable)
-  ((base-trans    vector           :inline :offset-assert 204)
-   (focus         focus            :inline :offset-assert 220)
-   (seeker        cam-float-seeker :inline :offset-assert 232)
-   (start-time    time-frame                   :offset-assert 260)
-   (blend         float                    :offset-assert 268)
-   (twist         float                    :offset-assert 272)
-   (speak-effect? basic                    :offset-assert 276)
+  ((parent-override (pointer camera-slave) :offset 16 :score 100)
+   (base-trans    vector           :inline :offset-assert 208)
+   (focus         focus            :inline :offset-assert 224)
+   (seeker        cam-float-seeker :inline :offset-assert 236)
+   (start-time    time-frame                   :offset-assert 264)
+   (blend         float                    :offset-assert 272)
+   (twist         float                    :offset-assert 276)
+   (speak-effect? basic                    :offset-assert 280)
    )
   :method-count-assert 26
   :size-assert         #x11c
@@ -28266,16 +28275,14 @@
     (enter () _type_ :state 20)
     (idle () _type_ :state 21)
     (exit () _type_ :state 22)
-    (remote-method-23 () none 23)
-    (remote-method-24 () none 24)
-    (remote-method-25 () none 25)
+    (remote-method-23 (_type_) none 23)
+    (remote-method-24 (_type_ vector) float 24)
+    (remote-method-25 (_type_) none 25)
     )
   )
-|#
 
-#|
 (deftype voicebox (remote)
-  ((hint uint64  :offset-assert 284) ;; handle
+  ((hint handle  :offset-assert 288) ;; handle
    )
   :method-count-assert 26
   :size-assert         #x128
@@ -28283,31 +28290,27 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype judge (remote)
-  ((total-time time-frame  :offset-assert 284)
-   (beep-time  time-frame  :offset-assert 292)
-   (hud-timer  uint64  :offset-assert 300)
-   (score      uint8   :offset-assert 308)
+  ((total-time time-frame  :offset-assert 288)
+   (beep-time  time-frame  :offset-assert 296)
+   (hud-timer  handle  :offset-assert 304)
+   (score      uint8   :offset-assert 312)
    )
   :method-count-assert 28
   :size-assert         #x139
   :flag-assert         #x1c00c00139
   (:methods
     (wait () _type_ :state 26)
-    (judge-method-27 () none 27)
+    (judge-method-27 (_type_) none 27)
     )
   )
-|#
 
-;; (define-extern remote-track function)
-;; (define-extern cam-remote state)
-;; (define-extern voicebox-init-by-other function) ;; (function vector handle none :behavior voicebox)
+(define-extern remote-track (function none :behavior remote))
+(define-extern voicebox-init-by-other (function vector handle none :behavior voicebox)) ;; 
 (define-extern voicebox-spawn (function process-drawable vector (pointer process))) ;; (function process vector (pointer process))
-;; (define-extern judge-init-by-other function)
-;; (define-extern judge-spawn function)
+(define-extern judge-init-by-other (function vector uint none :behavior judge))
+(define-extern judge-spawn (function process-tree vector uint (pointer judge)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collectables-part              ;;
@@ -28320,7 +28323,9 @@
 ;; debug-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sparticle-track-root-money function) ;; (function sparticle-system sparticle-cpuinfo vector none)
+(define-extern sparticle-track-root-money
+  "Hopefully unused, it still uses a jak 1 symbol -- [[hud-money]] which no longer exists!"
+  (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; find-nearest                   ;;
@@ -32773,7 +32778,7 @@
   (:methods
     (idle () _type_ :state 27)
     (active () _type_ :state 28)
-    (rigid-body-object-method-29 (_type_) none 29)
+    (rigid-body-object-method-29 (_type_ float) none 29)
     (rigid-body-object-method-30 (_type_) none 30)
     (rigid-body-object-method-31 (_type_ rigid-body-object-constants) none 31)
     (rigid-body-object-method-32 (_type_) none 32)
@@ -33370,16 +33375,17 @@
   )
 
 (deftype rigid-body-control-point-inline-array (inline-array-class)
-  ((data             rigid-body-control-point :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data             rigid-body-control-point :inline :dynamic :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-(declare-type water-anim process-drawable) ;; TODO - not decompiled yet
+(declare-type water-anim process-drawable)
 (deftype rigid-body-platform (rigid-body-object)
-  ((control-point-array   rigid-body-control-point-inline-array         :offset-assert 272) ;; guessed by decompiler
+  ((info-override         rigid-body-platform-constants :offset 204 :score 100)
+   (control-point-array   rigid-body-control-point-inline-array         :offset-assert 272) ;; guessed by decompiler
    (player-velocity       vector                                :inline :offset-assert 288)
    (player-velocity-prev  vector                                :inline :offset-assert 304)
    (unknown-pad uint32 8 :offset-assert 320)
@@ -33391,10 +33397,10 @@
   :size-assert         #x174
   :flag-assert         #x3901000174
   (:methods
-    (rigid-body-platform-method-53 (_type_) none 53)
-    (rigid-body-platform-method-54 () none 54)
-    (rigid-body-platform-method-55 () none 55)
-    (rigid-body-platform-method-56 () none 56)
+    (rigid-body-platform-method-53 (_type_ vector) float 53)
+    (rigid-body-platform-method-54 (_type_ rigid-body-control-point) none 54)
+    (rigid-body-platform-method-55 (_type_) none 55)
+    (rigid-body-platform-method-56 (_type_ vector) none 56)
     )
   )
 
@@ -33568,13 +33574,16 @@
 ;; process-taskable               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern process-taskable-anim-loop (function (function symbol) none :behavior process-taskable)) ;; 
+(define-extern process-taskable-anim-loop
+  "Takes in a function and loops as long as it's return value is truthy
+   Seen take in - `true-func` which takes no args TODO - seems fishy
+                - a `(process-taskable process) lambda"
+  (function (function process-taskable object) none :behavior process-taskable))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-actor                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kor-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33583,9 +33592,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype metalkor-highres (process-drawable)
   ()
   :method-count-assert 21
@@ -33595,9 +33602,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype tess-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33606,9 +33611,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype keira-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33617,9 +33620,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype krew-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33628,9 +33629,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype kid-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33639,9 +33638,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype crocadog-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33650,9 +33647,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype torn-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33661,9 +33656,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype youngsamos-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33672,9 +33665,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype samos-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33683,9 +33674,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype onin-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33694,9 +33683,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype pecker-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33705,9 +33692,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype brutter-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33716,9 +33701,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype ashelin-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33727,9 +33710,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype daxter-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -33738,36 +33719,46 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern intro-play function)
-;; (define-extern outro-play function)
+(define-extern intro-play
+  "A dedicated function for playing the intro cutscenes in the correct order
+   ```opengoal
+   \"intro-samos-hut\" \"intro-vortex\" \"intro-city-square\" \"intro-prison\"
+   ```"
+   (function none))
+(define-extern outro-play
+  "A dedicated function for playing the intro cutscenes in the correct order
+   ```opengoal
+   \"outro-nest\" \"outro-palace\" \"outro-hiphog\" \"outro-port\"
+   ```"
+   (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scene-looper                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype scene-looper (process)
-  ((scene-name basic  :offset-assert 124)
+  ((scene-name symbol  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
   :flag-assert         #xf00100084
   (:methods
-    (scene-looper-method-9 () none 9)
-    (scene-looper-method-10 () none 10)
-    (scene-looper-method-11 () none 11)
-    (scene-looper-method-12 () none 12)
-    (scene-looper-method-13 () none 13)
     (idle () _type_ :state 14)
     )
   )
-|#
 
-;; (define-extern scene-looper-init-by-other function)
-;; (define-extern stop-loop-scene function)
-;; (define-extern loop-scene function)
+(define-extern scene-looper-init-by-other
+  "Sets the `scene-name` with the given [[symbol]], the [[scene-looper]] will then idle"
+  (function symbol none :behavior scene-looper))
+(define-extern stop-loop-scene
+  "Kills the current [[scene-looper]]
+   @see [[kill-by-type]]"
+  (function symbol))
+(define-extern loop-scene
+  "Stops looping the current scene, then spawns a new [[scene-looper]] for the given scene
+   @see [[stop-loop-scene]"
+  (function symbol (pointer scene-looper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warp-gate                      ;;
@@ -45404,29 +45395,28 @@
   )
 |#
 
-#|
 (deftype onin-game (process-drawable)
-  ((wave            int32   :offset-assert 196)
-   (event           int32   :offset-assert 200)
-   (wave-time       time-frame  :offset-assert 204)
-   (wave-delay-time time-frame  :offset-assert 212)
-   (wave-length     uint64  :offset-assert 220)
-   (event-time      time-frame  :offset-assert 228)
-   (event-length    uint64  :offset-assert 236)
-   (hud-score       uint64  :offset-assert 244)
-   (hud-goal        uint64  :offset-assert 252)
-   (hud-miss        uint64  :offset-assert 260)
-   (score           float   :offset-assert 268)
-   (score-time      time-frame  :offset-assert 276)
-   (game            uint32  :offset-assert 284)
-   (miss-max        int32   :offset-assert 288)
-   (miss-count      int32   :offset-assert 292)
-   (point-win       float   :offset-assert 296)
-   (game-start-time time-frame  :offset-assert 300)
-   (last-type       int32   :offset-assert 308)
-   (current-bonus   float   :offset-assert 312)
-   (last-angle      float   :offset-assert 316)
-   (wave-start-miss int32   :offset-assert 320)
+  ((wave            int32   :offset-assert 200)
+   (event           int32   :offset-assert 204)
+   (wave-time       time-frame  :offset-assert 208)
+   (wave-delay-time time-frame  :offset-assert 216)
+   (wave-length     uint64  :offset-assert 224)
+   (event-time      time-frame  :offset-assert 232)
+   (event-length    uint64  :offset-assert 240)
+   (hud-score       uint64  :offset-assert 248)
+   (hud-goal        uint64  :offset-assert 256)
+   (hud-miss        uint64  :offset-assert 264)
+   (score           float   :offset-assert 272)
+   (score-time      time-frame  :offset-assert 280)
+   (game            uint32  :offset-assert 288)
+   (miss-max        int32   :offset-assert 292)
+   (miss-count      int32   :offset-assert 296)
+   (point-win       float   :offset-assert 300)
+   (game-start-time time-frame  :offset-assert 304)
+   (last-type       int32   :offset-assert 312)
+   (current-bonus   float   :offset-assert 316)
+   (last-angle      float   :offset-assert 320)
+   (wave-start-miss int32   :offset-assert 324)
    )
   :method-count-assert 28
   :size-assert         #x148
@@ -45442,13 +45432,12 @@
     (onin-game-method-27 () none 27)
     )
   )
-|#
 
 ;; (define-extern *onin-game-data* array)
 ;; (define-extern birth-func-onin-bubble-pop function)
 ;; (define-extern birth-func-onin-bubble-birth-pop function)
 ;; (define-extern onin-game-bubble-init function)
-;; (define-extern onin-game-init function)
+(define-extern onin-game-init (function entity none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-texture               ;;
