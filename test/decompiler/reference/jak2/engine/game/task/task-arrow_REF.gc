@@ -1,22 +1,4 @@
-;;-*-Lisp-*-
 (in-package goal)
-
-;; name: task-arrow.gc
-;; name in dgo: task-arrow
-;; dgos: ENGINE, GAME
-
-;; +++task-arrow-flags
-(defenum task-arrow-flags
-  :type uint32
-  :bitfield #t
-  (task-arrow-flag-00 0)
-  (task-arrow-flag-01 1)
-  (task-arrow-flag-02 2)
-  (task-arrow-flag-03 3)
-  )
-;; ---task-arrow-flags
-
-;; DECOMP BEGINS
 
 (defskelgroup skel-task-arrow ctywide-arrow 0 2
               ((1 (meters 999999)))
@@ -35,6 +17,19 @@
   :flag-assert         #x900000030
   )
 
+(defmethod inspect task-arrow-params ((obj task-arrow-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'task-arrow-params)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tmap-icon: ~D~%" (-> obj map-icon))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
+  (label cfg-4)
+  obj
+  )
 
 (deftype task-arrow (process-drawable)
   ((pos              vector             :inline :offset-assert 208)
@@ -64,6 +59,30 @@
     )
   )
 
+(defmethod inspect task-arrow ((obj task-arrow))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~2Ttheta: ~f~%" (-> obj theta))
+  (format #t "~2Tphi: ~f~%" (-> obj phi))
+  (format #t "~2Tdist: ~f~%" (-> obj dist))
+  (format #t "~2Tsmoothed-dist: ~f~%" (-> obj smoothed-dist))
+  (format #t "~2Tmax-dist: ~f~%" (-> obj max-dist))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tmap-icon: ~D~%" (-> obj map-icon))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (format #t "~2Thud-dist: ~D~%" (-> obj hud-dist))
+  (format #t "~2Tbase-quat: #<quaternion @ #x~X>~%" (-> obj base-quat))
+  (format #t "~2Trod-of-god-scale: ~f~%" (-> obj rod-of-god-scale))
+  (format #t "~2Tmoving: ~A~%" (-> obj moving))
+  (label cfg-4)
+  obj
+  )
 
 (defmethod deactivate task-arrow ((obj task-arrow))
   (send-event (handle->process (-> obj hud-dist)) 'hide-and-die)
@@ -264,7 +283,6 @@
     )
   )
 
-;; WARN: Return type mismatch object vs task-arrow.
 (defbehavior task-arrow-init-by-other task-arrow ((arg0 task-arrow-params))
   (set! (-> self flags) (-> arg0 flags))
   (set! (-> self map-icon) (-> arg0 map-icon))

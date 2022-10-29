@@ -24,9 +24,13 @@ tasks:
     cmds:
       - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
   set-decomp-pal:
-    - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+    desc: "PAL region version"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config pal'
   set-decomp-ntscjp:
-    - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+    desc: "NTSC-J region version"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
   # GENERAL
   extract:
     desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
@@ -120,7 +124,7 @@ tasks:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
   offline-tests-fast:
     cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output --num_threads 10'
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output --num_threads 32'
   offline-test-file:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
@@ -128,7 +132,7 @@ tasks:
   update-ref-tests:
     cmds:
       - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
-      - task: offline-tests-fast
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output --num_threads 32'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-tests-fast
@@ -141,4 +145,4 @@ tasks:
       - task: offline-test-file
   type-test:
     cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_break_on_failure --gtest_filter="*Jak2TypeConsistency*"'
