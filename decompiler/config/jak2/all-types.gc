@@ -12602,17 +12602,17 @@
   )
 
 (deftype continue-point (basic)
-  ((name string) ;; ?
-   (level symbol) ;; ?
-   (flags continue-flags)
-   (trans vector :inline)
-   (quat vector :inline)
-   (camera-trans vector :inline)
-   (camera-rot vector3s 3 :inline)
-   (on-goto pair)
-   (vis-nick symbol)
-   (want level-buffer-state 6 :inline)
-   (want-sound symbol 3)
+  ((name         string                       :offset-assert   4) ;; ?
+   (level        symbol                       :offset-assert   8) ;; ?
+   (flags        continue-flags               :offset-assert  12)
+   (trans        vector             :inline   :offset-assert  16)
+   (quat         vector             :inline   :offset-assert  32)
+   (camera-trans vector             :inline   :offset-assert  48)
+   (camera-rot   vector3s           3 :inline :offset-assert  64)
+   (on-goto      pair                         :offset-assert 100)
+   (vis-nick     symbol                       :offset-assert 104)
+   (want         level-buffer-state 6 :inline :offset-assert 108)
+   (want-sound   symbol             3         :offset-assert 204)
    )
   :method-count-assert 12
   :size-assert         #xd8
@@ -14398,7 +14398,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process pickup-type float) _type_ 0)
-    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9) ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
+    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
     (reset! (_type_ symbol) none 10)
     (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
@@ -15058,6 +15058,7 @@
     (scene-actor-method-9 (_type_ scene-player) (pointer process) 9)
     )
   )
+
 
 (deftype scene (art-group)
   ((mask-to-clear    uint32           :offset-assert 32)
@@ -16688,6 +16689,7 @@
    (unknown-dword02             int64                                :offset 4416) ;; logic-target::read-pad
    (unknown-vector16            vector                       :inline :offset 4432) ;; logic-target::target-real-post
    (unknown-float14             float                                :offset 4448) ;; logic-target::target-real-post
+   (unknown-floatiujh1bnb2n3i1  float                                :offset 4452) ;; target-death::velocity-set-to-target!
    (unknown-float15             float                                :offset 4456) ;; logic-target::target-real-post
    (unknown-word01              int32                                :offset 4460) ;; logic-target::joint-points
    (unknown-vector17            vector                       :inline :offset 4464) ;; logic-target::pre-collide-setup
@@ -16743,8 +16745,8 @@
    (unknown-vector29            vector                       :inline :offset 5168) ;; logic-target::joint-points
    (unknown-vector30            vector                       :inline :offset 5184) ;; logic-target::joint-points
    (unknown-vector31            vector                       :inline :offset 5200) ;; logic-target::joint-points
-   (unknown-vector32            vector                       :inline :offset 5216) ;; logic-target::joint-points
-   (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
+   (unknown-cspacei1un23i1            cspace                       :inline :offset 5216) ;; logic-target::joint-points
+  ;;  (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
    (unknown-symbol00            symbol                               :offset 5248) ;; (exit target-duck-stance)
    (unknown-float000            float                                :offset 5252) ;; target-gun::target-gun-end-mode
    (unknown-float31             float                                :offset 5256) ;; logic-target::joint-points
@@ -16777,7 +16779,7 @@
    (unknown-time-frame17        time-frame                           :offset 5712) ;; (trans target-board-halfpipe)
    (unknown-time-frame18        time-frame                           :offset 5720) ;; (code target-running-attack)
    (unknown-sound-id00          sound-id                             :offset 5776) ;; (enter target-board-flip)
-   (unknown-handle02            handle                               :offset 5792) ;; (event target-board-grenade)
+   (unknown-handle02            handle                               :offset 5792) ;; (event target-board-grenade) ;; TODO - make sure this is a handle
    (unknown-impact-control00    impact-control               :inline :offset 5824) ;; logic-target::joint-points
    (unknown-word06              int32                                :offset 5832) ;; (code target-running-attack)
    (unknown-vector41            vector                       :inline :offset 5888) ;; (code target-running-attack)
@@ -17301,7 +17303,7 @@
   :flag-assert         #xf00000024
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (effect-control-method-9 () none 9) ;; (TODO-RENAME-9 (_type_) none 9)
+    (effect-control-method-9 (_type_) none 9) ;; (TODO-RENAME-9 (_type_) none 9)
     (effect-control-method-10 () none 10) ;; (dummy-10 (_type_ symbol float int) object 10)
     (effect-control-method-11 () none 11) ;; (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
     (effect-control-method-12 (_type_ symbol float int basic sound-name) int 12) ;; (dummy-12 (_type_ symbol float int basic sound-name) int 12)
@@ -17704,8 +17706,9 @@
 (declare-type darkjak-info basic)
 
 (deftype target (process-focusable)
-  ((control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
-   (fact-info-override      fact-info-target                         :offset 160 :score 100)
+  ((self-override           target                                   :offset 32 :score 100)
+   (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
+   (fact-override           fact-info-target                         :offset 160 :score 100)
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -17727,7 +17730,7 @@
    (cam-user-mode           symbol                                   :offset-assert 300) ;; guessed by decompiler
    (sidekick                (pointer sidekick)                       :offset-assert 304) ;; guessed by decompiler
    (manipy                  (pointer manipy)                         :offset-assert 308) ;; guessed by decompiler
-   (mirror                  (pointer process-drawable)               :offset-assert 312)
+   (mirror                  (pointer process-drawable)               :offset-assert 312) ;; hip-mirror?
    (attack-info             attack-info                      :inline :offset-assert 320)
    (attack-info-rec         attack-info                      :inline :offset-assert 480)
    (attack-info-old         attack-info                  8   :inline :offset-assert 640)
@@ -17750,7 +17753,7 @@
    (pre-joint-hook          (function none :behavior target)         :offset-assert 2112)
    (notify                  handle                                   :offset-assert 2120)
    (mode-cache              basic                                    :offset-assert 2128)
-   (mode-param1             uint64                                   :offset-assert 2136)
+   (mode-param1             handle                                   :offset-assert 2136)
    (mode-param2             uint64                                   :offset-assert 2144)
    (mode-param3             uint64                                   :offset-assert 2152)
    (tobot-state             state                                    :offset-assert 2160)
@@ -17778,23 +17781,38 @@
     (target-method-27 (_type_ collide-cache collide-edge-spec) none 27)
     (init-target (_type_ continue-point symbol) none :behavior target 28)
     )
+  (:states
+    target-carry-drop
+    target-carry-stance
+    target-carry-walk
+    target-carry-falling
+    (target-carry-hit-ground symbol)
+    (target-carry-jump float float)
+    target-carry-throw
+    (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
+    (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
+    target-indax-start
+    )
   )
 
 (deftype sidekick (process-drawable)
-  ((control             control-info         :offset 128) ;; guessed by decompiler
+  ((parent-override     (pointer target) :offset 16 :score 100 )
+   (control             control-info         :offset 128) ;; guessed by decompiler
    (anim-seed           uint64               :offset 208) ;; ??
    (shadow-in-movie?    symbol               :offset-assert 216) ;; guessed by decompiler
    (special-anim-time   time-frame           :offset-assert 224)
    (special-anim-interp float                :offset-assert 232)
    (special-anim-frame  float                :offset-assert 236)
    (offset              transformq   :inline :offset-assert 240)
-   (mirror              uint32               :offset-assert 288)
+   (mirror              (pointer process-drawable)               :offset-assert 288) ;; hip-mirror?
    )
   :method-count-assert 20
   :size-assert         #x124
   :flag-assert         #x1400b00124
   (:methods
     )
+  (:states
+    sidekick-clone)
   )
 
 (define-extern *target* target)
@@ -26628,7 +26646,7 @@
   (function symbol matrix))
 (define-extern matrix-world->local
   "Returns [[*math-camera*]]'s `camera-rot`"
-  (function matrix))
+  (function symbol object matrix))
 (define-extern *camera-dummy-vector* vector)
 (define-extern camera-pos
   "Returns the `trans` vector from whatever is first determined to exist:
@@ -27276,7 +27294,7 @@
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 (define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
+(define-extern ja-step (function int float :behavior process-drawable)) ;; 
 (define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
@@ -28150,7 +28168,7 @@
 ;; (define-extern birth-func-vector-orient function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-set-alpha-from-userdata function)
 ;; (define-extern part-tracker-track-target-joint function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern process-drawable-burn-effect function) ;; (function time-frame none :behavior target)
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;; 
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
 (define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
@@ -28239,10 +28257,9 @@
 ;; sidekick                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sidekick-remap* object) ;; pair
-;; (define-extern cspace<-cspace+transformq! function)
+(define-extern *sidekick-remap* pair)
+(define-extern cspace<-cspace+transformq! (function cspace cspace transformq matrix))
 (define-extern target-sidekick-setup (function symbol none :behavior target))
-;; (define-extern sidekick-clone state) ;; (state sidekick)
 (define-extern init-sidekick (function none :behavior sidekick))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28577,18 +28594,11 @@
 ;; target-carry                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *carry-walk-mods* surface)
-;; (define-extern *carry-jump-mods* surface)
-;; (define-extern target-carry-update function)
-;; (define-extern target-carry-post function)
+(define-extern *carry-walk-mods* surface)
+(define-extern *carry-jump-mods* surface)
+(define-extern target-carry-update (function none :behavior target))
+(define-extern target-carry-post (function none :behavior target))
 (define-extern target-carry-pickup (state target))
-;; (define-extern target-carry-drop state)
-;; (define-extern target-carry-stance state)
-;; (define-extern target-carry-walk state)
-;; (define-extern target-carry-falling state)
-;; (define-extern target-carry-hit-ground state)
-;; (define-extern target-carry-jump state)
-;; (define-extern target-carry-throw state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-darkjak                 ;;
@@ -28612,37 +28622,35 @@
 ;; target-death                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype kill-nearby-enemies-info (UNKNOWN)
+(deftype kill-nearby-enemies-info (basic)
   ((dist float          :offset-assert 4)
    (pos  vector :inline :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *auto-continue* object) ;; symbol
-;; (define-extern next-continue function)
+(define-extern *auto-continue* symbol) ;; 
+(define-extern next-continue (function continue-point continue-point))
 (define-extern target-continue (state continue-point target))
 (define-extern *smack-mods* surface)
 (define-extern *smack-up-mods* surface)
-;; (define-extern velocity-set-to-target! function) ;; (function vector float attack-info vector :behavior target)
+(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;; 
 (define-extern target-hit-effect (function attack-info none :behavior target))
-;; (define-extern target-hit-push function) ;; (function vector matrix float float attack-info object :behavior target)
+(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;; 
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-;; (define-extern target-hit-setup-anim function) ;; (function attack-info object :behavior target)
+(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;; 
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit (state symbol attack-info target))
-;; (define-extern *death-spool-array* array) ;; (array spool-anim)
-;; (define-extern death-movie-remap function) ;; (function int int int)
-;; (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
-;; (define-extern kill-nearby-enemies function)
-;; (define-extern target-death-anim-trans function)
-;; (define-extern target-death-anim function) ;; (function spool-anim none :behavior target)
-;; (define-extern target-death-main function)
-;; (define-extern target-death-reset function)
+(define-extern *death-spool-array* (array spool-anim)) ;; 
+(define-extern death-movie-remap (function int int int)) ;; 
+(define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
+(define-extern kill-nearby-enemies (function vector float object))
+(define-extern target-death-anim-trans (function none :behavior target))
+(define-extern target-death-anim (function spool-anim none :behavior target)) ;; 
+(define-extern target-death-main (function symbol none :behavior target))
+(define-extern target-death-reset (function symbol symbol none :behavior target))
 (define-extern target-death (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32831,7 +32839,7 @@
 
 (define-extern *enemy-dummy-shadow-control* shadow-control)
 (define-extern get-penetrate-using-from-attack-event (function process-drawable event-message-block penetrate))
-(define-extern enemy-init-by-other (function none :behavior enemy))
+(define-extern enemy-init-by-other (function process-drawable transformq none :behavior enemy))
 (define-extern enemy-event-handler (function process int symbol event-message-block object :behavior enemy))
 (define-extern enemy-simple-post (function none :behavior enemy))
 (define-extern enemy-falling-post (function none :behavior enemy))
@@ -33764,31 +33772,53 @@
 ;; warp-gate                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype warp-gate (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
 
-#|
-(deftype air-train (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype warp-gate (process-drawable)
+  (
+    (root-override collide-shape :offset 128 :score 100)
+    (level-name uint32 :offset-assert 200)
+    (on-notice int32 :offset-assert 204)
+    (on-activate int32 :offset-assert 208)
+    (on-close int32 :offset-assert 212)
+    (wait-for pair :offset-assert 216)
+    (continue continue-point :offset-assert 220)
+    (distance meters :offset-assert 224)
+    (anim-speed float :offset-assert 228)
+    (test-time time-frame :offset-assert 232)
+    (center vector :inline :offset-assert 240)
   )
-|#
+  :method-count-assert 26
+  :size-assert         #x100
+  :flag-assert         #x1a00800100
+  (:methods
+    (idle () _type_ :state 20)
+    (use (continue-point) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (warp-gate-method-23 (_type_) none 23)
+    (warp-gate-method-24 () none 24)
+    (warp-gate-method-25 (_type_) continue-point 25)
+    )
+  )
+
+(deftype air-train (warp-gate)
+  "NOTE - I guess this is why sometimes the air-train makes the warp-gate sound"
+  (
+    (part-exhaust-left sparticle-launch-control :offset-assert 256)
+    (part-exhaust-right sparticle-launch-control :offset-assert 260)
+    (part-dust sparticle-launch-control :offset-assert 264)
+    (dust-y float :offset-assert 268)
+    (hover-sound sound-id :offset-assert 272)
+    (base-pos vector :inline :offset-assert 288)
+  )
+  :method-count-assert 26
+  :size-assert         #x130
+  :flag-assert         #x1a00b00130
+  )
 
 ;; (define-extern *kernel-packages* object) ;; pair
-;; (define-extern warp-gate-init function)
-;; (define-extern *warp-jump-mods* surface) ;; surface
-;; (define-extern target-warp-out state) ;; (state vector vector target)
-;; (define-extern target-warp-in state) ;; (state vector vector target)
+(define-extern warp-gate-init (function entity-actor vector none :behavior warp-gate))
+(define-extern *warp-jump-mods* surface) ;; surface
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; guard-projectile               ;;
@@ -33980,14 +34010,13 @@
 ;; battle                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype battle-info (basic)
   ((id                                int8    :offset-assert 4)
    (notice-spec                       uint64  :offset-assert 8)
    (pick-logic                        int8    :offset-assert 16)
    (notice-distance                   float   :offset-assert 20)
-   (dont-spawn-initial-until-notice?  basic   :offset-assert 24)
-   (play-battle-music                 basic   :offset-assert 28)
+   (dont-spawn-initial-until-notice?  symbol   :offset-assert 24)
+   (play-battle-music                 symbol   :offset-assert 28)
    (min-battle-spawn-delay            uint32  :offset-assert 32)
    (max-battle-spawn-delay            uint32  :offset-assert 36)
    (min-spawner-notice-attack-delay   uint32  :offset-assert 40)
@@ -34003,65 +34032,49 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype battle-ally (structure)
-  ((entity basic  :offset-assert 0)
+  ((entity entity-actor  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype battle-ally-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-ally :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle-breed (structure)
-  ((breed-type basic  :offset-assert 0)
+  ((breed-type type  :offset-assert 0)
    (percent    float  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype battle-breed-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-breed :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle-spawner (structure)
   ((flags               uint64         :offset-assert 0)
-   (entity              basic          :offset-assert 8)
-   (breeds              basic          :offset-assert 12)
+   (entity              entity-actor          :offset-assert 8)
+   (breeds              battle-breed-array          :offset-assert 12)
    (creature-index      int8           :offset-assert 16)
    (ready-index         int8           :offset-assert 17)
    (attack-index        int8           :offset-assert 18)
    (mode                uint8          :offset-assert 19)
-   (intro-path          basic          :offset-assert 20)
+   (intro-path          path-control          :offset-assert 20) ;; a guess
    (notice-attack-delay uint32         :offset-assert 24)
-   (creature            uint64         :offset-assert 32)
+   (creature            handle         :offset-assert 32)
    (last-spawn-time     time-frame         :offset-assert 40)
    (noticed-attack-time time-frame         :offset-assert 48)
    (attack-pos          vector :inline :offset-assert 64)
@@ -34070,37 +34083,30 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype battle-spawner-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             battle-spawner :dynamic :inline :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype battle (process-drawable)
-  ((info                     basic   :offset-assert 196)
-   (flags                    uint8   :offset-assert 200)
-   (spawn-initial-creatures? basic   :offset-assert 204)
-   (next-spawn-delay         uint32  :offset-assert 208)
-   (on-notice                basic   :offset-assert 212)
-   (on-hostile               basic   :offset-assert 216)
-   (on-beaten                basic   :offset-assert 220)
-   (max-count                uint32  :offset-assert 224)
-   (count                    uint32  :offset-assert 228)
-   (die-count                uint32  :offset-assert 232)
-   (stat-child-count         uint16  :offset-assert 236)
-   (cant-spawn-time          time-frame  :offset-assert 244)
-   (jammed-starting-time     time-frame  :offset-assert 252)
-   (spawners                 basic   :offset-assert 260)
-   (allies                   basic   :offset-assert 264)
+  ((info                     battle-info   :offset-assert 200)
+   (flags                    uint8   :offset-assert 204)
+   (spawn-initial-creatures? symbol   :offset-assert 208)
+   (next-spawn-delay         uint32  :offset-assert 212)
+   (on-notice                basic   :offset-assert 216)
+   (on-hostile               basic   :offset-assert 220)
+   (on-beaten                basic   :offset-assert 224)
+   (max-count                uint32  :offset-assert 228)
+   (count                    uint32  :offset-assert 232)
+   (die-count                uint32  :offset-assert 236)
+   (stat-child-count         uint16  :offset-assert 240)
+   (cant-spawn-time          time-frame  :offset-assert 248)
+   (jammed-starting-time     time-frame  :offset-assert 256)
+   (spawners                 battle-spawner-array   :offset-assert 264)
+   (allies                   battle-ally-array   :offset-assert 268)
    )
   :method-count-assert 53
   :size-assert         #x110
@@ -34112,40 +34118,39 @@
     (notice () _type_ :state 22)
     (hostile () _type_ :state 23)
     (beaten () _type_ :state 24)
-    (battle-method-25 () none 25)
-    (battle-method-26 () none 26)
-    (battle-method-27 () none 27)
-    (battle-method-28 () none 28)
-    (battle-method-29 () none 29)
-    (battle-method-30 () none 30)
-    (battle-method-31 () none 31)
-    (battle-method-32 () none 32)
-    (battle-method-33 () none 33)
-    (battle-method-34 () none 34)
-    (battle-method-35 () none 35)
-    (battle-method-36 () none 36)
-    (battle-method-37 () none 37)
-    (battle-method-38 () none 38)
-    (battle-method-39 () none 39)
-    (battle-method-40 () none 40)
-    (battle-method-41 () none 41)
-    (battle-method-42 () none 42)
-    (battle-method-43 () none 43)
-    (battle-method-44 () none 44)
-    (battle-method-45 () none 45)
-    (battle-method-46 () none 46)
-    (battle-method-47 () none 47)
-    (battle-method-48 () none 48)
-    (battle-method-49 () none 49)
-    (battle-method-50 () none 50)
-    (battle-method-51 () none 51)
-    (battle-method-52 () none 52)
+    (battle-method-25 (_type_ battle-spawner) symbol 25)
+    (battle-method-26 (_type_ battle-spawner) symbol 26)
+    (battle-method-27 (_type_) none 27)
+    (battle-method-28 (_type_) none 28)
+    (battle-method-29 (_type_ battle-spawner entity-actor) none 29)
+    (battle-method-30 (_type_ process) battle-spawner 30)
+    (battle-method-31 (_type_ battle-ally entity-actor) none 31)
+    (battle-method-32 (_type_ battle-spawner entity-actor) object 32) ;; TODO - gross return value...
+    (battle-method-33 (_type_) none 33)
+    (battle-method-34 (_type_) none 34)
+    (battle-method-35 (_type_) none 35)
+    (battle-method-36 (_type_) battle-spawner 36)
+    (battle-method-37 (_type_ battle-spawner) symbol 37)
+    (battle-method-38 (_type_ battle-breed transformq) handle 38)
+    (battle-method-39 (_type_ battle-spawner symbol) handle 39)
+    (battle-method-40 (_type_) none 40)
+    (battle-method-41 (_type_ battle-spawner) battle-breed 41)
+    (battle-method-42 (_type_ battle-spawner touch-tracker) symbol 42) ;; fma-sphere or touch-tracker?
+    (battle-method-43 (_type_ battle-spawner touch-tracker) symbol 43) ;; fma-sphere or touch-tracker?
+    (battle-method-44 (_type_ battle-spawner) none 44)
+    (battle-method-45 (_type_ battle-spawner touch-tracker) symbol 45) ;; fma-sphere or touch-tracker?
+    (battle-method-46 (_type_ battle-spawner) symbol 46)
+    (battle-method-47 (_type_) none 47)
+    (battle-method-48 (_type_) none 48)
+    (battle-method-49 (_type_) int :behavior battle 49)
+    (battle-method-50 (_type_) symbol 50)
+    (battle-method-51 (_type_ battle-spawner symbol) symbol :behavior battle 51)
+    (battle-method-52 (_type_) int 52)
     )
   )
-|#
 
-;; (define-extern *battles* array)
-;; (define-extern battle-event-handler function)
+(define-extern *battles* (array battle-info))
+(define-extern battle-event-handler (function process int symbol event-message-block object :behavior battle)) ;; TODO - none required else state handling fails expression pass
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elec-gate                      ;;
@@ -44294,7 +44299,6 @@
 ;; (define-extern target-indax-exit function)
 ;; (define-extern target-indax-real-post function)
 ;; (define-extern target-indax-post function)
-;; (define-extern target-indax-start state)
 ;; (define-extern target-indax-stance state)
 ;; (define-extern target-indax-walk state)
 ;; (define-extern target-indax-falling state)
@@ -48756,7 +48760,7 @@
 ;; (define-extern *sig-recorder* object)
 ;; (define-extern *sigrec-out* object)
 ;; (define-extern sig-recorder-init-by-other function)
-;; (define-extern start-sig-recorder function)
+(define-extern start-sig-recorder (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyport-part                   ;;
