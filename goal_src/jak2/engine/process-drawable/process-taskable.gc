@@ -15,12 +15,15 @@
   (the-as process-taskable ((method-of-type process-focusable relocate) obj arg0))
   )
 
-(defbehavior process-taskable-anim-loop process-taskable ((arg0 (function symbol)))
-  (while (begin self (arg0))
-    (let ((s5-0 (process-taskable-method-35 self)))
+(defbehavior process-taskable-anim-loop process-taskable ((arg0 (function process-taskable object)))
+  "Takes in a function and loops as long as it's return value is truthy
+   Seen take in - `true-func` which takes no args TODO - seems fishy
+                - a `(process-taskable process) lambda"
+  (while (arg0 self)
+    (let ((s5-0 (get-art-elem self)))
       (when (!= (ja-group) s5-0)
         (ja-channel-push! 1 0)
-        (set! (-> self skel root-channel 0 frame-group) s5-0)
+        (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim s5-0))
         )
       )
     (suspend)
@@ -37,10 +40,14 @@
   #t
   )
 
-(defmethod process-taskable-method-35 process-taskable ((obj process-taskable))
-  (if (> (-> obj skel active-channels) 0)
-      (-> obj skel root-channel 0 frame-group)
-      )
+;; WARN: Return type mismatch art-joint-anim vs art-element.
+(defmethod get-art-elem process-taskable ((obj process-taskable))
+  "Checks various things such the current actor, task status, etc to determine the right art-group data to use
+       @returns the appropriate [[art-element]] for the given NPC"
+  (the-as art-element (if (> (-> obj skel active-channels) 0)
+                          (-> obj skel root-channel 0 frame-group)
+                          )
+          )
   )
 
 (defmethod process-taskable-method-36 process-taskable ((obj process-taskable))
@@ -144,7 +151,6 @@
           ((= v1-0 'touch)
            (collide-shape-method-50 (-> self root-override) proc (-> event param 0) 0.7 6144.0 16384.0)
            )
-          ;; TODO - manually fixed!
           ((= v1-0 'say)
            (set! (-> self want-to-say) (-> self clock frame-counter))
            )
@@ -288,7 +294,7 @@
     (none)
     )
   :code (behavior ()
-    (process-taskable-anim-loop true-func)
+    (process-taskable-anim-loop (the-as (function process-taskable object) true-func))
     (none)
     )
   :post (behavior ()
@@ -438,7 +444,8 @@
   (none)
   )
 
-(defmethod process-taskable-method-33 process-taskable ((obj process-taskable))
+(defmethod init-skeleton! process-taskable ((obj process-taskable))
+  "@see [[initialize-skeleton]]"
   0
   (none)
   )
@@ -451,7 +458,7 @@
   (set! (-> obj task)
         (new 'process 'game-task-control (res-lump-value arg0 'task-actor game-task-actor :time -1000000000.0))
         )
-  (process-taskable-method-33 obj)
+  (init-skeleton! obj)
   (process-taskable-method-32 obj)
   (when (logtest? #x1000000 (res-lump-value arg0 'options uint128 :time -1000000000.0))
     (let* ((s5-1 *level*)

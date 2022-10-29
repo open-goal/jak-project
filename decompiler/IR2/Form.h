@@ -261,6 +261,7 @@ class StoreElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  const StoreOp* op() const { return m_op; }
 
  private:
   // todo - we may eventually want to use a different representation for more
@@ -1802,6 +1803,33 @@ class DefpartElement : public FormElement {
  private:
   StaticInfo m_static_info;
   int m_id;
+};
+
+// for that macro
+class WithDmaBufferAddBucketElement : public FormElement {
+ public:
+  WithDmaBufferAddBucketElement(RegisterAccess dma_buf,
+                                Form* dma_buf_val,
+                                Form* bucket,
+                                const std::vector<FormElement*>& body);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
+
+ private:
+  RegisterAccess m_dma_buf;
+  Form* m_dma_buf_val;
+  Form* m_bucket;
+  std::vector<FormElement*> m_body;
 };
 
 class ResLumpMacroElement : public FormElement {

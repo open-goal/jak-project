@@ -1,7 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition of type progress-global-state
 (deftype progress-global-state (basic)
   ((aspect-ratio-choice                  symbol         :offset-assert   4)
    (video-mode-choice                    symbol         :offset-assert   8)
@@ -56,7 +54,6 @@
   :flag-assert         #x9000000e8
   )
 
-;; definition for method 3 of type progress-global-state
 (defmethod inspect progress-global-state ((obj progress-global-state))
   (when (not obj)
     (set! obj obj)
@@ -114,25 +111,18 @@
   obj
   )
 
-;; definition for symbol *progress-stack*, type (pointer uint8)
 (define *progress-stack* (the-as (pointer uint8) (malloc 'global #x3800)))
 
-;; definition for symbol *progress-process*, type (pointer progress)
 (define *progress-process* (the-as (pointer progress) #f))
 
-;; definition for symbol *progress-state*, type progress-global-state
 (define *progress-state* (new 'static 'progress-global-state :which-slot -1 :last-slot-saved -1))
 
-;; failed to figure out what this is:
 (kmemopen global "mc-slot-info")
 
-;; definition for symbol *progress-save-info*, type mc-slot-info
 (define *progress-save-info* (new 'global 'mc-slot-info))
 
-;; failed to figure out what this is:
 (kmemclose)
 
-;; definition for function min-max-wrap-around
 (defun min-max-wrap-around ((arg0 int) (arg1 int) (arg2 int))
   (let ((v1-2 (+ (- 1 arg1) arg2)))
     (while (< arg0 arg1)
@@ -145,7 +135,6 @@
   arg0
   )
 
-;; definition for function progress-intro-start
 (defun progress-intro-start ((arg0 symbol))
   (set! (-> *game-info* mode) 'play)
   (if arg0
@@ -156,7 +145,6 @@
   0
   )
 
-;; definition for method 24 of type progress
 (defmethod init-defaults progress ((obj progress))
   "Initialize default menu settings."
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -226,7 +214,6 @@
   (set-setting-by-param *setting-control* 'extra-bank '((force2 menu1)) 0 0)
   )
 
-;; definition of type hud-ring-cell
 (deftype hud-ring-cell (process-drawable)
   ((parent-override (pointer progress)  :offset         16)
    (joint-idx       int32               :offset-assert 200)
@@ -242,7 +229,6 @@
     )
   )
 
-;; definition for method 3 of type hud-ring-cell
 (defmethod inspect hud-ring-cell ((obj hud-ring-cell))
   (when (not obj)
     (set! obj obj)
@@ -258,8 +244,6 @@
   obj
   )
 
-;; definition for function hud-ring-cell-init-by-other
-;; INFO: Used lq/sq
 (defbehavior hud-ring-cell-init-by-other hud-ring-cell ((arg0 int) (arg1 float) (arg2 int))
   (set! (-> self root) (new 'process 'trsqv))
   (initialize-skeleton
@@ -328,7 +312,6 @@
   (go-virtual idle)
   )
 
-;; failed to figure out what this is:
 (defstate idle (hud-ring-cell)
   :virtual #t
   :code (behavior ()
@@ -419,7 +402,6 @@
     )
   )
 
-;; definition for function progress-init-by-other
 (defbehavior progress-init-by-other progress ((arg0 symbol))
   (hide-hud #f)
   (disable-level-text-file-loading)
@@ -480,8 +462,6 @@
   (go-virtual come-in)
   )
 
-;; definition for function set-ring-position
-;; INFO: Used lq/sq
 (defun set-ring-position ((arg0 progress))
   (let ((s3-0 (new-stack-vector0))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -505,8 +485,6 @@
     )
   )
 
-;; definition for function activate-progress
-;; WARN: Return type mismatch int vs none.
 (defun activate-progress ((arg0 process) (arg1 symbol))
   (when *target*
     (when (progress-allowed?)
@@ -539,7 +517,6 @@
   (none)
   )
 
-;; definition for method 10 of type progress
 (defmethod deactivate progress ((obj progress))
   (remove-setting-by-arg0 *setting-control* 'extra-bank)
   ((method-of-object *bigmap* bigmap-method-15))
@@ -552,8 +529,6 @@
   (none)
   )
 
-;; definition for function deactivate-progress
-;; WARN: Return type mismatch int vs none.
 (defun deactivate-progress ()
   (if *progress-process*
       (deactivate (-> *progress-process* 0))
@@ -562,8 +537,6 @@
   (none)
   )
 
-;; definition for function hide-progress-screen
-;; WARN: Return type mismatch int vs none.
 (defun hide-progress-screen ()
   (if (and *progress-process* *progress-state* (!= (-> *progress-state* starting-state) 'title))
       (set-next-state (-> *progress-process* 0) 'go-away 0)
@@ -572,7 +545,6 @@
   (none)
   )
 
-;; definition for method 26 of type progress
 (defmethod progress-method-26 progress ((obj progress))
   (and *progress-process*
        (-> *progress-process* 0 next-state)
@@ -580,7 +552,6 @@
        )
   )
 
-;; definition for function progress-allowed?
 (defun progress-allowed? ()
   (not (or (-> *setting-control* user-current talking)
            (-> *setting-control* user-current movie)
@@ -606,7 +577,6 @@
        )
   )
 
-;; definition for method 27 of type progress
 (defmethod can-go-back? progress ((obj progress))
   (and (= (-> obj menu-transition) 0.0)
        (not (-> obj selected-option))
@@ -631,8 +601,6 @@
        )
   )
 
-;; definition for function menu-update-purchase-secrets
-;; WARN: Return type mismatch symbol vs none.
 (defun menu-update-purchase-secrets ((arg0 menu-secret-option))
   (let* ((a1-1 (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
          (v1-3 (if (not a1-1)
@@ -666,7 +634,6 @@
   (none)
   )
 
-;; definition for method 28 of type progress
 (defmethod progress-method-28 progress ((obj progress) (arg0 symbol))
   (let ((v1-0 *progress-save-info*)
         (v0-0 arg0)
@@ -764,7 +731,6 @@
     )
   )
 
-;; definition for method 29 of type progress
 (defmethod progress-method-29 progress ((obj progress))
   (let ((v1-0 (-> obj state-pos)))
     (cond
@@ -781,7 +747,6 @@
   0
   )
 
-;; definition for method 30 of type progress
 (defmethod progress-method-30 progress ((obj progress))
   (let ((v1-0 (-> obj state-pos)))
     (cond
@@ -805,7 +770,6 @@
   0
   )
 
-;; definition for method 31 of type progress
 (defmethod set-next-state progress ((obj progress) (arg0 symbol) (arg1 int))
   "Set the next menu state specified by arg0 at the index specified by arg1."
   (set! (-> *progress-state* clear-screen) #f)
@@ -852,7 +816,6 @@
   0
   )
 
-;; definition for method 32 of type progress
 (defmethod set-menu-options progress ((obj progress) (arg0 symbol))
   "Set the menu options for the menu state specified by arg0."
   (set! (-> obj current-options) #f)
@@ -1060,8 +1023,6 @@
   0
   )
 
-;; definition for method 25 of type progress
-;; WARN: Return type mismatch int vs none.
 (defmethod progress-method-25 progress ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (when (-> obj current-options)
@@ -1157,8 +1118,6 @@
   (none)
   )
 
-;; definition for function progress-trans
-;; WARN: Return type mismatch int vs none.
 (defbehavior progress-trans progress ()
   (cond
     ((and (= (-> self next) 'none)
@@ -1342,7 +1301,6 @@
   (none)
   )
 
-;; definition for function begin-scan
 (defun begin-scan ((arg0 hud-box) (arg1 progress))
   (cond
     ((or (= (-> arg1 current) 'bigmap) (= (-> arg1 next) 'bigmap))
@@ -1377,48 +1335,15 @@
   0
   )
 
-;; definition for function end-scan
 (defun end-scan ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id bucket-320)
+                               )
     (hud-box-method-13 arg0 s5-0 arg1)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-8 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (the-as pointer (&+ (the-as dma-packet v1-8) 16)))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id bucket-320)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   )
 
-;; definition for function progress-post
-;; INFO: Used lq/sq
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Return type mismatch int vs none.
 (defbehavior progress-post progress ()
   (local-vars (sv-144 font-context) (sv-148 int) (sv-152 hud-box) (sv-156 symbol))
   (when (-> self current-options)
@@ -1527,7 +1452,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate come-in (progress)
   :virtual #t
   :enter (behavior ()
@@ -1572,7 +1496,6 @@
   :post (the-as (function none :behavior progress) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate idle (progress)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1795,7 +1718,6 @@
   :post progress-post
   )
 
-;; failed to figure out what this is:
 (defstate go-away (progress)
   :virtual #t
   :enter (behavior ()
@@ -1839,7 +1761,6 @@
   :post (the-as (function none :behavior progress) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate gone (progress)
   :virtual #t
   :code (behavior ()
@@ -1857,13 +1778,11 @@
     )
   )
 
-;; definition for method 9 of type menu-option
 (defmethod respond-progress menu-option ((obj menu-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   0
   )
 
-;; definition for method 9 of type menu-on-off-option
 (defmethod respond-progress menu-on-off-option ((obj menu-on-off-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* on-off-choice))
@@ -1914,7 +1833,6 @@
   0
   )
 
-;; definition for method 9 of type menu-yes-no-option
 (defmethod respond-progress menu-yes-no-option ((obj menu-yes-no-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -1956,7 +1874,6 @@
   0
   )
 
-;; definition for method 9 of type menu-slider-option
 (defmethod respond-progress menu-slider-option ((obj menu-slider-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (-> *bigmap* progress-minimap)
@@ -2039,7 +1956,6 @@
   0
   )
 
-;; definition for method 9 of type menu-stereo-mode-sound-option
 (defmethod respond-progress menu-stereo-mode-sound-option ((obj menu-stereo-mode-sound-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (-> *bigmap* progress-minimap)
@@ -2078,7 +1994,6 @@
   0
   )
 
-;; definition for method 9 of type menu-main-menu-option
 (defmethod respond-progress menu-main-menu-option ((obj menu-main-menu-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (cond
@@ -2174,7 +2089,6 @@
   0
   )
 
-;; definition for method 9 of type menu-sub-menu-option
 (defmethod respond-progress menu-sub-menu-option ((obj menu-sub-menu-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (and (-> *progress-state* secrets-unlocked)
@@ -2235,7 +2149,6 @@
   0
   )
 
-;; definition for method 9 of type menu-unlocked-menu-option
 (defmethod respond-progress menu-unlocked-menu-option ((obj menu-unlocked-menu-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((s4-0 (memcard-unlocked-secrets? #t)))
@@ -2377,7 +2290,6 @@
   0
   )
 
-;; definition for method 9 of type menu-memcard-slot-option
 (defmethod respond-progress menu-memcard-slot-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (memcard-unlocked-secrets? #t)
@@ -2423,7 +2335,6 @@
   0
   )
 
-;; definition for method 9 of type menu-already-exists-option
 (defmethod respond-progress menu-already-exists-option ((obj menu-already-exists-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((s4-0 (&-> *progress-state* yes-no-choice))
@@ -2466,7 +2377,6 @@
   0
   )
 
-;; definition for method 9 of type menu-create-game-option
 (defmethod respond-progress menu-create-game-option ((obj menu-create-game-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((s4-0 (&-> *progress-state* yes-no-choice))
@@ -2512,7 +2422,6 @@
   0
   )
 
-;; definition for method 9 of type menu-insufficient-space-option
 (defmethod respond-progress menu-insufficient-space-option ((obj menu-insufficient-space-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((s5-0 (&-> *progress-state* yes-no-choice))
@@ -2608,7 +2517,6 @@
   0
   )
 
-;; definition for method 9 of type menu-secrets-insufficient-space-option
 (defmethod respond-progress menu-secrets-insufficient-space-option ((obj menu-secrets-insufficient-space-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (&-> *progress-state* yes-no-choice)
@@ -2627,7 +2535,6 @@
   0
   )
 
-;; definition for method 9 of type menu-video-mode-warning-option
 (defmethod respond-progress menu-video-mode-warning-option ((obj menu-video-mode-warning-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -2666,7 +2573,6 @@
   0
   )
 
-;; definition for method 9 of type menu-video-mode-ok-option
 (defmethod respond-progress menu-video-mode-ok-option ((obj menu-video-mode-ok-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -2713,7 +2619,6 @@
   0
   )
 
-;; definition for method 9 of type menu-progressive-mode-warning-option
 (defmethod respond-progress menu-progressive-mode-warning-option ((obj menu-progressive-mode-warning-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -2759,7 +2664,6 @@
   0
   )
 
-;; definition for method 9 of type menu-progressive-mode-ok-option
 (defmethod respond-progress menu-progressive-mode-ok-option ((obj menu-progressive-mode-ok-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -2808,7 +2712,6 @@
   0
   )
 
-;; definition for method 9 of type menu-card-removed-option
 (defmethod respond-progress menu-card-removed-option ((obj menu-card-removed-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2820,7 +2723,6 @@
   0
   )
 
-;; definition for method 9 of type menu-insert-card-option
 (defmethod respond-progress menu-insert-card-option ((obj menu-insert-card-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   *progress-save-info*
@@ -2838,7 +2740,6 @@
   0
   )
 
-;; definition for method 9 of type menu-error-loading-option
 (defmethod respond-progress menu-error-loading-option ((obj menu-error-loading-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2850,7 +2751,6 @@
   0
   )
 
-;; definition for method 9 of type menu-error-auto-saving-option
 (defmethod respond-progress menu-error-auto-saving-option ((obj menu-error-auto-saving-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2862,7 +2762,6 @@
   0
   )
 
-;; definition for method 9 of type menu-error-disc-removed-option
 (defmethod respond-progress menu-error-disc-removed-option ((obj menu-error-disc-removed-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2876,7 +2775,6 @@
   0
   )
 
-;; definition for method 9 of type menu-error-reading-option
 (defmethod respond-progress menu-error-reading-option ((obj menu-error-reading-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2888,7 +2786,6 @@
   0
   )
 
-;; definition for method 9 of type menu-icon-info-option
 (defmethod respond-progress menu-icon-info-option ((obj menu-icon-info-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (when (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
@@ -2900,7 +2797,6 @@
   0
   )
 
-;; definition for method 9 of type menu-quit-option
 (defmethod respond-progress menu-quit-option ((obj menu-quit-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
@@ -2945,7 +2841,6 @@
   0
   )
 
-;; definition for method 9 of type menu-format-card-option
 (defmethod respond-progress menu-format-card-option ((obj menu-format-card-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let ((s4-0 (&-> *progress-state* yes-no-choice))
@@ -2990,8 +2885,6 @@
   0
   )
 
-;; definition for method 9 of type menu-select-start-option
-;; WARN: disable def twice: 110. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod respond-progress menu-select-start-option ((obj menu-select-start-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (set! (-> arg0 sliding-height) (seek-ease
@@ -3091,7 +2984,6 @@
   0
   )
 
-;; definition for method 9 of type menu-select-scene-option
 (defmethod respond-progress menu-select-scene-option ((obj menu-select-scene-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (set! (-> arg0 sliding-height) (seek-ease
@@ -3171,7 +3063,6 @@
   0
   )
 
-;; definition for method 9 of type menu-bigmap-option
 (defmethod respond-progress menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   ((method-of-object *bigmap* bigmap-method-12))
@@ -3180,7 +3071,6 @@
   0
   )
 
-;; definition for method 9 of type menu-missions-option
 (defmethod respond-progress menu-missions-option ((obj menu-missions-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (set! (-> arg0 sliding-height) (seek-ease
@@ -3234,7 +3124,6 @@
   0
   )
 
-;; definition for method 9 of type menu-highscores-option
 (defmethod respond-progress menu-highscores-option ((obj menu-highscores-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (set! (-> arg0 sliding) (seek-ease
@@ -3306,7 +3195,6 @@
   0
   )
 
-;; definition for method 9 of type menu-secret-option
 (defmethod respond-progress menu-secret-option ((obj menu-secret-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (let* ((s5-1 (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
@@ -3429,7 +3317,6 @@
   0
   )
 
-;; definition for method 9 of type menu-game-option
 (defmethod respond-progress menu-game-option ((obj menu-game-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (-> *progress-state* game-options-vibrations)
@@ -3615,7 +3502,6 @@
   0
   )
 
-;; definition for function update-center-screen
 (defun update-center-screen ()
   (with-pp
     (let ((v1-0 #f))
@@ -3670,7 +3556,6 @@
     )
   )
 
-;; definition for method 9 of type menu-graphic-option
 (defmethod respond-progress menu-graphic-option ((obj menu-graphic-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (-> *progress-state* graphic-options-aspect-ratio)
@@ -3867,7 +3752,6 @@
   0
   )
 
-;; definition for function update-restart-quit
 (defun update-restart-quit ((arg0 menu-option) (arg1 progress) (arg2 symbol))
   (let ((v1-1 (&-> *progress-state* yes-no-choice))
         (gp-0 #f)
@@ -3908,7 +3792,6 @@
   0
   )
 
-;; definition for method 9 of type menu-qr-option
 (defmethod respond-progress menu-qr-option ((obj menu-qr-option) (arg0 progress) (arg1 object))
   "Handle progress menu navigation logic."
   (-> *progress-state* qr-options-restart)
