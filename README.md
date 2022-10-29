@@ -244,11 +244,18 @@ Getting a running game involves 4 steps:
 
 #### Extract Assets
 
-First, setup your settings so the following scripts know which game you are using, and which version.  In a terminal, run the following:
+First, setup your settings so the following scripts know which game you are using, and which version. For the black label version of the game, run the following in a terminal:
 
 ```sh
 task set-game-jak1
 task set-decomp-ntscv1
+```
+
+For other versions of the game, you will need to use a different `-set-decomp-<VERSION>` command. An example for the PAL version:
+
+```sh
+task set-game-jak1
+task set-decomp-pal
 ```
 
 > Run `task --list` to see the other available options
@@ -291,6 +298,12 @@ Run the following to build the game:
 ```sh
 g > (mi)
 ```
+
+> IMPORTANT NOTE! If you're not using the black label version, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
+>
+> `Input file iso_data/jak1/MUS/TWEAKVAL.MUS does not exist.`
+>
+> This is because other version paths are not currently accounted for in the build. A quick workaround is to rename both your `decompiler_out` and `iso_data` folders to use the black label naming, for example changing `decompiler_out/jak1_pal` to `decompiler_out/jak1` and `iso_data/jak1_pal` to `iso_data/jak1`, then running `(mi)` again.
 
 #### Run the Game
 

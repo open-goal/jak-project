@@ -1,7 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition for method 9 of type border-plane
 (defmethod debug-draw border-plane ((obj border-plane))
   (let* ((v1-0 (-> obj action))
          (plane-color (if (= v1-0 'load)
@@ -30,17 +28,14 @@
   0
   )
 
-;; definition for method 10 of type border-plane
 (defmethod point-past-plane? border-plane ((obj border-plane) (arg0 vector))
   (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) (-> obj normal)) 0.0)
   )
 
-;; definition for method 11 of type game-info
 (defmethod task-complete? game-info ((obj game-info) (arg0 game-task))
   (logtest? (-> obj task-perm-list data arg0 status) (entity-perm-status complete))
   )
 
-;; definition for method 12 of type game-info
 (defmethod subtask-index-by-name game-info ((obj game-info) (arg0 string))
   (let ((subtasks (-> *game-info* sub-task-list)))
     (dotimes (i (-> subtasks length))
@@ -56,7 +51,6 @@
   0
   )
 
-;; definition for method 13 of type game-info
 (defmethod set-subtask-hook! game-info ((obj game-info) (arg0 int) (arg1 int) (arg2 function))
   (let ((subtask (-> obj sub-task-list arg0)))
     (if (and subtask (-> subtask info))
@@ -66,7 +60,6 @@
   arg2
   )
 
-;; definition for symbol *default-continue*, type continue-point
 (define *default-continue*
   (new 'static 'continue-point
     :name "default"
@@ -89,8 +82,6 @@
     )
   )
 
-;; definition for method 10 of type continue-point
-;; INFO: Used lq/sq
 (defmethod continue-point-method-10 continue-point ((obj continue-point) (arg0 load-state))
   (let ((v1-0 (lookup-level-info (-> obj vis-nick))))
     (set! (-> obj vis-nick) (if v1-0
@@ -124,9 +115,6 @@
   obj
   )
 
-;; definition for method 11 of type continue-point
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defmethod move-camera! continue-point ((obj continue-point))
   (set! (-> *camera-combiner* trans quad) (-> obj camera-trans quad))
   (let ((gp-0 (-> *camera-combiner* inv-camera-rot))
@@ -149,7 +137,6 @@
   (none)
   )
 
-;; definition for method 19 of type game-info
 (defmethod get-current-continue-forced game-info ((obj game-info))
   (cond
     ((and (= (-> obj mode) 'play) (-> obj current-continue))
@@ -166,7 +153,6 @@
     )
   )
 
-;; definition for method 20 of type game-info
 (defmethod get-continue-by-name game-info ((obj game-info) (arg0 string))
   (if (not arg0)
       (return (the-as continue-point #f))
@@ -189,8 +175,6 @@
   (the-as continue-point #f)
   )
 
-;; definition for method 21 of type game-info
-;; WARN: Using new Jak 2 rtype-of
 (defmethod set-continue! game-info ((obj game-info) (arg0 basic) (arg1 symbol))
   (let ((s5-0 (-> obj current-continue)))
     (if (null? arg0)
@@ -240,12 +224,10 @@
   (-> obj current-continue)
   )
 
-;; definition for method 15 of type game-info
 (defmethod task-perm-by-index game-info ((obj game-info) (arg0 int))
   (-> obj task-perm-list data arg0)
   )
 
-;; definition for method 30 of type game-info
 (defmethod calculate-percentage game-info ((obj game-info))
   (let ((story-total 0)
         (story-complete 0)
@@ -282,12 +264,10 @@
     )
   )
 
-;; definition for function task-level->string
 (defun task-level->string ((arg0 int))
   (symbol->string (-> *task-level* arg0))
   )
 
-;; definition for function level-name->task-level
 (defun level-name->task-level ((arg0 symbol))
   (let ((v1-0 (lookup-level-info arg0)))
     (if v1-0
@@ -297,10 +277,6 @@
     )
   )
 
-;; definition for method 9 of type game-info
-;; INFO: Used lq/sq
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 512]
-;; ERROR: Expression building failed: In (method 9 game-info): Expression pass could not find the set-to-run function. Found t9-31 instead. Make sure there are no casts on this function.
 (defmethod initialize! game-info ((obj game-info) (arg0 symbol) (arg1 game-save) (arg2 string))
   (local-vars
     (v0-17 none)
@@ -380,7 +356,7 @@
     ((= v1-135 'debug)
      (reset-actors arg0)
      (if arg1
-         (game-info-method-24 obj arg1)
+         (load-game obj arg1)
          )
      )
     ((= v1-135 'play)
@@ -410,7 +386,7 @@
                             (close! (-> *game-info* sub-task-list 1) 'event)
                             (set-continue! *game-info* arg2 #f)
                             (when arg3
-                              (game-info-method-24 *game-info* arg3)
+                              (load-game *game-info* arg3)
                               (set! arg2 (get-current-continue-forced *game-info*))
                               (reset-actors 'life)
                               (send-event (handle->process (-> *game-info* auto-save-proc)) 'done)
@@ -453,7 +429,6 @@
   (ret-value v0-32)
   )
 
-;; definition for method 10 of type game-info
 (defmethod give game-info ((obj game-info) (arg0 symbol) (arg1 float) (arg2 handle))
   (local-vars (ammo-max float))
   (with-pp
@@ -629,13 +604,10 @@
     )
   )
 
-;; definition for method 22 of type game-info
 (defmethod game-info-method-22 game-info ((obj game-info))
   0
   )
 
-;; definition for method 10 of type fact-info-target
-;; WARN: Return type mismatch float vs none.
 (defmethod reset! fact-info-target ((obj fact-info-target) (arg0 symbol))
   (when (or (not arg0) (= arg0 'eco))
     (set! (-> obj eco-timeout) 0)
@@ -667,7 +639,6 @@
   (none)
   )
 
-;; definition for method 11 of type fact-info-target
 (defmethod pickup-collectable! fact-info-target ((obj fact-info-target) (arg0 pickup-type) (arg1 float) (arg2 handle))
   (case arg0
     (((pickup-type health) (pickup-type eco-green))
@@ -1012,7 +983,6 @@
     )
   )
 
-;; definition for method 14 of type game-info
 (defmethod actor-perm game-info ((obj game-info) (arg0 actor-id))
   (let ((game-perms (-> obj perm-list)))
     (countdown (i (-> game-perms length))
@@ -1024,8 +994,6 @@
   (the-as entity-perm #f)
   )
 
-;; definition for method 16 of type game-info
-;; INFO: Used lq/sq
 (defmethod copy-perms-from-level! game-info ((obj game-info) (arg0 level))
   (let ((game-perms (-> obj perm-list))
         (level-entities (-> arg0 bsp level entity))
@@ -1051,8 +1019,6 @@
   0
   )
 
-;; definition for method 17 of type game-info
-;; INFO: Used lq/sq
 (defmethod copy-perms-to-level! game-info ((obj game-info) (arg0 level))
   (let ((level-entities (-> arg0 bsp level entity)))
     (dotimes (i (-> level-entities length))
@@ -1069,14 +1035,11 @@
   0
   )
 
-;; definition for method 2 of type continue-point
 (defmethod print continue-point ((obj continue-point))
   (format #t "#<~A ~S @ #x~X>" (-> obj type) (-> obj name) obj)
   obj
   )
 
-;; definition for method 9 of type continue-point
-;; INFO: Used lq/sq
 (defmethod debug-draw continue-point ((obj continue-point))
   (add-debug-x #t (bucket-id debug-no-zbuf1) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
@@ -1100,7 +1063,6 @@
   0
   )
 
-;; definition (debug) for function trsq->continue-point
 (defun-debug trsq->continue-point ((arg0 trsq))
   (let ((v1-1 (level-get-target-inside *level*)))
     (format #t "~%(static-continue-point ~A ()~%" (symbol->string (-> v1-1 name)))
@@ -1155,8 +1117,6 @@
   0
   )
 
-;; definition for function position->stream
-;; WARN: Return type mismatch int vs none.
 (defun position->stream ((arg0 string) (arg1 symbol) (arg2 symbol))
   (format
     arg0
@@ -1227,7 +1187,6 @@
   (none)
   )
 
-;; definition for function bug-report-display
 (defun bug-report-display ((arg0 symbol))
   (case *bug-report-output-mode*
     (('*stdcon*)
@@ -1269,7 +1228,6 @@
   0
   )
 
-;; definition (debug) for function print-continues
 (defun-debug print-continues ()
   (let ((levels *level-load-list*))
     (while (not (null? levels))
@@ -1289,15 +1247,12 @@
   0
   )
 
-;; definition for method 2 of type game-task-info
 (defmethod print game-task-info ((obj game-task-info))
   (format #t "#<game-task-info ~S @ #x~X>" (-> obj name) obj)
   obj
   )
 
-;; definition for method 18 of type game-info
-;; INFO: Used lq/sq
-(defmethod game-info-method-18 game-info ((obj game-info) (arg0 symbol))
+(defmethod debug-inspect game-info ((obj game-info) (arg0 symbol))
   (local-vars
     (sv-16 int)
     (sv-24 int)
@@ -1509,7 +1464,6 @@
   obj
   )
 
-;; definition for method 25 of type game-info
 (defmethod you-suck-stage game-info ((obj game-info) (arg0 symbol))
   (cond
     ((logtest? (-> *game-info* secrets) (game-secrets hero-mode))
@@ -1544,12 +1498,10 @@
     )
   )
 
-;; definition for method 26 of type game-info
 (defmethod you-suck-scale game-info ((obj game-info) (arg0 object))
   (* 0.25 (the float (you-suck-stage obj #f)))
   )
 
-;; definition for method 9 of type cpad-info
 (defmethod adjust-to-screen-flip cpad-info ((obj cpad-info))
   (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
     (set! (-> obj leftx) (- 255 (the-as int (-> obj leftx))))
@@ -1558,7 +1510,6 @@
   0
   )
 
-;; definition for method 28 of type game-info
 (defmethod game-info-method-28 game-info ((obj game-info) (arg0 game-score) (arg1 float))
   (when (!= arg1 0.0)
     (let ((v1-3 (&+ (-> obj game-score data) (* (* arg0 8) 4))))
@@ -1608,12 +1559,10 @@
   -1
   )
 
-;; definition for method 29 of type game-info
 (defmethod get-game-score-ref game-info ((obj game-info) (arg0 int))
   (&+ (-> obj game-score data) (* (* arg0 8) 4))
   )
 
-;; definition for method 9 of type highscore-info
 (defmethod get-rank highscore-info ((obj highscore-info) (arg0 float))
   (let ((v0-0 0))
     (cond
@@ -1650,10 +1599,8 @@
     )
   )
 
-;; failed to figure out what this is:
 (kmemopen global "game-info")
 
-;; failed to figure out what this is:
 (let ((gp-0 *game-info*))
   (set! (-> gp-0 task-counter) (the-as uint 1))
   (when (zero? (-> gp-0 perm-list))
@@ -1710,13 +1657,10 @@
   (set! (-> gp-0 distance) 0.0)
   )
 
-;; failed to figure out what this is:
 0
 
-;; failed to figure out what this is:
 (kmemclose)
 
-;; definition for symbol *highscore-info-array*, type (array highscore-info)
 (define *highscore-info-array*
   (new 'static 'boxed-array :type highscore-info
     (new 'static 'highscore-info)

@@ -67,13 +67,13 @@
 
 
 (deftype nav-mesh-link (structure)
-  ((id                  uint32  :offset-assert   0)
-   (dest-mesh-id        uint32  :offset-assert   4)
-   (src-link-poly-id    uint8   :offset-assert   8)
-   (src-switch-poly-id  uint8   :offset-assert   9)
-   (dest-link-poly-id   uint8   :offset-assert  10)
-   (dest-switch-poly-id uint8   :offset-assert  11)
-   (dest-mesh           basic   :offset-assert  12)
+  ((id                  uint32    :offset-assert   0)
+   (dest-mesh-id        uint32    :offset-assert   4)
+   (src-link-poly-id    uint8     :offset-assert   8)
+   (src-switch-poly-id  uint8     :offset-assert   9)
+   (dest-link-poly-id   uint8     :offset-assert  10)
+   (dest-switch-poly-id uint8     :offset-assert  11)
+   (dest-mesh           nav-mesh  :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -192,30 +192,30 @@
 
 
 (deftype nav-mesh (basic)
-  ((work                  nav-mesh-work                      :offset-assert   4)
-   (poly-array            (inline-array nav-poly)            :offset-assert   8)
-   (static-sphere-count   uint8                              :offset-assert  12)
-   (poly-count            uint8                              :offset-assert  13)
-   (nav-control-count     uint8                              :offset-assert  14)
-   (max-nav-control-count uint8                              :offset-assert  15)
-   (route                 uint32                             :offset-assert  16)
-   (poly-hash             grid-hash                          :offset-assert  20)
-   (nav-control-array     (inline-array nav-control)         :offset-assert  24)
-   (sphere-hash           sphere-hash                        :offset-assert  28)
-   (static-sphere         (inline-array sphere)              :offset-assert  32)
-   (user-list             engine                             :offset-assert  36)
-   (next-nav-mesh         surface                            :offset-assert  40)
-   (prev-nav-mesh         surface                            :offset-assert  44)
-   (bounds                vector                     :inline :offset-assert  48)
-   (origin                vector                     :inline :offset         48)
-   (entity                entity                             :offset-assert  64)
-   (link-array            (array nav-mesh-link)              :offset-assert  68)
-   (link-count            uint8                              :offset-assert  72)
-   (flags                 nav-mesh-flag                      :offset-assert  73)
-   (pad1                  uint8                      2       :offset-assert  74)
-   (nearest-y-threshold   meters                             :offset-assert  76)
-   (water-max-height      meters                             :offset-assert  80)
-   (pad2                  uint32                     7       :offset-assert  84)
+  ((work                  nav-mesh-work                        :offset-assert   4)
+   (poly-array            (inline-array nav-poly)              :offset-assert   8)
+   (static-sphere-count   uint8                                :offset-assert  12)
+   (poly-count            uint8                                :offset-assert  13)
+   (nav-control-count     uint8                                :offset-assert  14)
+   (max-nav-control-count uint8                                :offset-assert  15)
+   (route                 (pointer nav-poly)                   :offset-assert  16)
+   (poly-hash             grid-hash                            :offset-assert  20)
+   (nav-control-array     (inline-array nav-control)           :offset-assert  24)
+   (sphere-hash           sphere-hash                          :offset-assert  28)
+   (static-sphere         (inline-array sphere)                :offset-assert  32)
+   (user-list             engine                               :offset-assert  36)
+   (next-nav-mesh         surface                              :offset-assert  40)
+   (prev-nav-mesh         surface                              :offset-assert  44)
+   (bounds                vector                       :inline :offset-assert  48)
+   (origin                vector                       :inline :offset         48)
+   (entity                entity                               :offset-assert  64)
+   (link-array            (inline-array nav-mesh-link)         :offset-assert  68)
+   (link-count            uint8                                :offset-assert  72)
+   (flags                 nav-mesh-flag                        :offset-assert  73)
+   (pad1                  uint8                        2       :offset-assert  74)
+   (nearest-y-threshold   meters                               :offset-assert  76)
+   (water-max-height      meters                               :offset-assert  80)
+   (pad2                  uint32                       7       :offset-assert  84)
    )
   :method-count-assert 47
   :size-assert         #x70
@@ -225,23 +225,23 @@
     (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly 10)
     (nav-mesh-method-11 (_type_ nav-poly vector) vector 11)
     (nav-mesh-method-12 (_type_ nav-poly vector) none 12)
-    (nav-mesh-method-13 (_type_ symbol symbol) none 13)
-    (get-route-portal (_type_ object object nav-find-poly-parms) none 14)
+    (nav-mesh-method-13 (_type_ nav-poly nav-poly) nav-poly 13)
+    (get-route-portal (_type_ nav-poly nav-poly nav-route-portal) (inline-array nav-vertex) 14)
     (initialize-mesh! (_type_) none 15)
     (move-along-nav-ray! (_type_ nav-ray) none 16)
     (try-move-along-ray (_type_ nav-poly vector vector float) meters 17)
-    (nav-mesh-method-18 () none 18)
-    (nav-mesh-method-19 () none 19)
-    (nav-mesh-method-20 () none 20)
-    (nav-mesh-method-21 () none 21)
+    (nav-mesh-method-18 (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none 18)
+    (nav-mesh-method-19 (_type_) none 19)
+    (nav-mesh-method-20 (_type_ clamp-travel-vector-to-mesh-return-info) none 20)
+    (find-adjacent-bounds-one (_type_ vector nav-poly int int) none 21)
     (nav-mesh-method-22 (_type_ vector vector) none 22)
     (nav-mesh-method-23 (_type_ entity-nav-mesh) none 23)
     (nav-mesh-method-24 (_type_) none 24)
     (nav-mesh-method-25 (_type_) none 25)
     (nav-mesh-method-26 (_type_) none 26)
-    (new-nav-control (_type_ vector int) nav-control 27)
+    (new-nav-control (_type_ process-drawable int) nav-control 27)
     (nav-mesh-method-28 (_type_ object) none 28)
-    (nav-mesh-method-29 (_type_ object symbol) nav-control 29)
+    (nav-mesh-method-29 (_type_ process-drawable symbol) nav-control 29)
     (nav-mesh-method-30 (_type_ process-drawable) none 30)
     (change-to (_type_ process-drawable) none 31)
     (nav-mesh-method-32 (_type_ uint32) none 32)
@@ -254,7 +254,7 @@
     (closest-point-on-boundary (_type_ nav-poly vector vector) none 39)
     (nav-mesh-method-40 (_type_ nav-poly vector object vector) none 40)
     (project-point-into-poly-2d (_type_ nav-poly vector vector) none 41)
-    (nav-mesh-method-42 (_type_ nav-find-poly-parms) symbol 42)
+    (nav-mesh-method-42 (_type_ nav-find-poly-parms) nav-poly 42)
     (nav-mesh-method-43 (_type_ nav-find-poly-parms) none 43)
     (nav-mesh-method-44 (_type_ vector float float) symbol 44)
     (nav-mesh-method-45 (_type_ entity-perm) none 45)
@@ -401,7 +401,7 @@
   (let* ((a3-0 obj)
          (v1-0 arg1)
          (a0-1 (-> arg0 vertex-count))
-         (a1-1 (the-as (inline-array vector) (-> arg0 vertex0)))
+         (a1-1 (-> arg0 vertex))
          (a2-2 (-> a3-0 work vert0-table))
          (a3-2 (-> a3-0 work vert1-table))
          )
@@ -423,10 +423,6 @@
   #t
   )
 
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
 ;; WARN: Return type mismatch vector vs none.
 (defmethod closest-point-on-boundary nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
@@ -450,10 +446,6 @@
   (none)
   )
 
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
-;; WARN: Stack slot offset 56 signed mismatch
 ;; WARN: Return type mismatch vector vs none.
 (defmethod project-point-into-poly-2d nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
@@ -486,54 +478,6 @@
   (none)
   )
 
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 60 signed mismatch
-;; WARN: Stack slot offset 64 signed mismatch
-;; WARN: Stack slot offset 44 signed mismatch
-;; WARN: Stack slot offset 48 signed mismatch
 (defmethod move-along-nav-ray! nav-mesh ((obj nav-mesh) (ray nav-ray))
   (local-vars
     (next-poly-idx int)
@@ -597,7 +541,7 @@
       (+! (-> ray current-pos z) delta-z)
       (set! sv-68 (-> current-poly adj-poly next-poly-idx))
       (if (!= sv-68 255)
-          (set! (-> ray next-poly) (the-as nav-poly (-> obj poly-array sv-68 vertex0)))
+          (set! (-> ray next-poly) (-> obj poly-array sv-68))
           )
       (cond
         ((and (-> ray next-poly) (zero? (logand (-> ray next-poly pat) (-> ray ignore))))

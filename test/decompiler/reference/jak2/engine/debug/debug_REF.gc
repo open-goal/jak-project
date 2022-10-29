@@ -1,14 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition for function transform-float-point
-;; ERROR: Bad vector register dependency: vf1
-;; ERROR: Bad vector register dependency: vf2
-;; ERROR: Bad vector register dependency: vf3
-;; ERROR: Bad vector register dependency: vf4
-;; ERROR: Bad vector register dependency: vf6
-;; ERROR: Bad vector register dependency: vf8
-;; ERROR: Bad vector register dependency: vf9
 (defun transform-float-point ((in vector) (out vector4w))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -40,8 +31,6 @@
     )
   )
 
-;; definition (debug) for function add-debug-point
-;; INFO: Used lq/sq
 (defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
   (if (not enable-draw)
       (return #f)
@@ -52,9 +41,9 @@
     (set! (-> pt-copy quad) (-> pt quad))
     (set! (-> pt-copy w) 1.0)
     (when (transform-point-qword! (the-as vector4w (-> s5-0 vector)) pt-copy)
-      (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-             (tag-start (-> buf base))
-             )
+      (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                   bucket
+                                   )
         (let ((a0-5 (the-as (pointer uint64) (-> buf base))))
           (let* ((a1-3 buf)
                  (a3-0 (the-as dma-packet (-> a1-3 base)))
@@ -144,31 +133,13 @@
               )
             )
           )
-        (let ((tag-end (-> buf base)))
-          (let ((a0-6 (the-as dma-packet (-> buf base))))
-            (set! (-> a0-6 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> a0-6 vif0) (new 'static 'vif-tag))
-            (set! (-> a0-6 vif1) (new 'static 'vif-tag))
-            (set! (-> buf base) (&+ (the-as pointer a0-6) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            bucket
-            tag-start
-            (the-as (pointer dma-tag) tag-end)
-            )
-          )
         )
       )
     )
   #f
   )
 
-;; definition (debug) for function debug-line-clip?
-;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function internal-draw-debug-line
-;; INFO: Used lq/sq
 (defun-debug internal-draw-debug-line ((bucket bucket-id) (start vector) (end vector) (start-color rgba) (mode symbol) (end-color rgba))
   (local-vars (var-end vector) (sv-128 vector) (sv-144 vector))
   (set! var-end end)
@@ -206,9 +177,9 @@
         (when (and (transform-point-qword! (the-as vector4w (-> s4-0 vector)) sv-128)
                    (transform-point-qword! (-> s4-0 vector 1) sv-144)
                    )
-          (let* ((buf2 (-> *display* frames (-> *display* on-screen) debug-buf))
-                 (tag-start (-> buf2 base))
-                 )
+          (with-dma-buffer-add-bucket ((buf2 (-> *display* frames (-> *display* on-screen) debug-buf))
+                                       bucket
+                                       )
             (let ((a0-28 (the-as (pointer uint64) (-> buf2 base))))
               (let* ((a1-6 buf2)
                      (pkt1 (the-as dma-packet (-> a1-6 base)))
@@ -293,20 +264,6 @@
                   )
                 )
               )
-            (let ((tag-end (-> buf2 base)))
-              (let ((pkt2 (the-as dma-packet (-> buf2 base))))
-                (set! (-> pkt2 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> pkt2 vif0) (new 'static 'vif-tag))
-                (set! (-> pkt2 vif1) (new 'static 'vif-tag))
-                (set! (-> buf2 base) (&+ (the-as pointer pkt2) 16))
-                )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) bucket-group)
-                bucket
-                tag-start
-                (the-as (pointer dma-tag) tag-end)
-                )
-              )
             )
           )
         )
@@ -314,15 +271,13 @@
     )
   )
 
-;; definition (debug) for function internal-draw-debug-text-3d
-;; INFO: Used lq/sq
 (defun-debug internal-draw-debug-text-3d ((bucket bucket-id) (text string) (position vector) (color font-color) (screen-offset vector2h))
   (let ((screen-pos (new 'stack-no-clear 'vector4w)))
     (set! (-> screen-pos quad) (the-as uint128 0))
     (when (transform-point-qword! screen-pos position)
-      (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-             (tag-start (-> buf base))
-             )
+      (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                   bucket
+                                   )
         (let ((font-ctx (new
                           'stack
                           'font-context
@@ -340,26 +295,11 @@
             )
           (draw-string text buf font-ctx)
           )
-        (let ((tag-end (-> buf base)))
-          (let ((pkt (the-as dma-packet (-> buf base))))
-            (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> pkt vif0) (new 'static 'vif-tag))
-            (set! (-> pkt vif1) (new 'static 'vif-tag))
-            (set! (-> buf base) (&+ (the-as pointer pkt) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            bucket
-            tag-start
-            (the-as (pointer dma-tag) tag-end)
-            )
-          )
         )
       )
     )
   )
 
-;; definition (debug) for function add-debug-outline-triangle
 (defun-debug add-debug-outline-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (when enable
     (add-debug-line #t bucket p0 p1 color #f (the-as rgba -1))
@@ -369,7 +309,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-triangle-normal
 (defun-debug add-debug-triangle-normal ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (when enable
     (let ((s4-0 (new 'stack-no-clear 'vector))
@@ -386,8 +325,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-flat-triangle
-;; INFO: Used lq/sq
 (defun-debug add-debug-flat-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (local-vars (sv-160 vector) (sv-176 vector))
   (set! sv-160 p0)
@@ -414,9 +351,9 @@
                  (transform-point-qword! (-> s5-0 vector 1) s2-0)
                  (transform-point-qword! (-> s5-0 vector 2) s1-0)
                  )
-        (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-               (tag-start (-> buf base))
-               )
+        (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                     bucket
+                                     )
           (let ((a0-12 (the-as (pointer uint64) (-> buf base))))
             (let* ((a1-6 buf)
                    (pkt1 (the-as dma-packet (-> a1-6 base)))
@@ -478,20 +415,6 @@
                 )
               )
             )
-          (let ((tag-end (-> buf base)))
-            (let ((pkt2 (the-as dma-packet (-> buf base))))
-              (set! (-> pkt2 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> pkt2 vif0) (new 'static 'vif-tag))
-              (set! (-> pkt2 vif1) (new 'static 'vif-tag))
-              (set! (-> buf base) (&+ (the-as pointer pkt2) 16))
-              )
-            (dma-bucket-insert-tag
-              (-> *display* frames (-> *display* on-screen) bucket-group)
-              bucket
-              tag-start
-              (the-as (pointer dma-tag) tag-end)
-              )
-            )
           )
         )
       )
@@ -499,9 +422,7 @@
   #f
   )
 
-;; this part is debug only
 (when *debug-segment*
-;; definition of type debug-line
 (deftype debug-line (structure)
   ((flags  int32             :offset-assert   0)
    (bucket bucket-id         :offset-assert   4)
@@ -516,7 +437,6 @@
   :flag-assert         #x90000003c
   )
 
-;; definition for method 3 of type debug-line
 (defmethod inspect debug-line ((obj debug-line))
   (when (not obj)
     (set! obj obj)
@@ -534,7 +454,6 @@
   obj
   )
 
-;; definition of type debug-text-3d
 (deftype debug-text-3d (structure)
   ((flags  int32              :offset-assert   0)
    (bucket bucket-id          :offset-assert   4)
@@ -548,7 +467,6 @@
   :flag-assert         #x90000002c
   )
 
-;; definition for method 3 of type debug-text-3d
 (defmethod inspect debug-text-3d ((obj debug-text-3d))
   (when (not obj)
     (set! obj obj)
@@ -565,7 +483,6 @@
   obj
   )
 
-;; definition of type debug-tracking-thang
 (deftype debug-tracking-thang (basic)
   ((length           int32  :offset-assert   4)
    (allocated-length int32  :offset-assert   8)
@@ -575,7 +492,6 @@
   :flag-assert         #x90000000c
   )
 
-;; definition for method 3 of type debug-tracking-thang
 (defmethod inspect debug-tracking-thang ((obj debug-tracking-thang))
   (when (not obj)
     (set! obj obj)
@@ -588,31 +504,23 @@
   obj
   )
 
-;; definition for symbol *debug-lines*, type (inline-array debug-line)
 (define *debug-lines* (the-as (inline-array debug-line) (malloc 'debug #x100000)))
 
-;; definition for symbol *debug-lines-trk*, type debug-tracking-thang
 (define *debug-lines-trk* (new 'debug 'debug-tracking-thang))
 
-;; failed to figure out what this is:
 (set! (-> *debug-lines-trk* allocated-length) #x4000)
 
-;; definition for symbol *debug-text-3ds*, type (inline-array debug-text-3d)
 (define *debug-text-3ds* (the-as (inline-array debug-text-3d) (malloc 'debug #x6000)))
 
-;; definition for symbol *debug-text-3d-trk*, type debug-tracking-thang
 (define *debug-text-3d-trk* (new 'debug 'debug-tracking-thang))
 
-;; failed to figure out what this is:
 (set! (-> *debug-text-3d-trk* allocated-length) 512)
 
-;; failed to figure out what this is:
 (dotimes (gp-0 (-> *debug-text-3d-trk* allocated-length))
   (set! (-> *debug-text-3ds* gp-0 str) (new 'debug 'string 80 (the-as string #f)))
   )
 
 )
-;; definition (debug) for function get-debug-line
 (defun-debug get-debug-line ()
   (cond
     ((< (-> *debug-lines-trk* length) (-> *debug-lines-trk* allocated-length))
@@ -625,7 +533,6 @@
     )
   )
 
-;; definition (debug) for function get-debug-text-3d
 (defun-debug get-debug-text-3d ()
   (cond
     ((< (-> *debug-text-3d-trk* length) (-> *debug-text-3d-trk* allocated-length))
@@ -638,7 +545,6 @@
     )
   )
 
-;; definition (debug) for function debug-reset-buffers
 (defun-debug debug-reset-buffers ()
   (set! (-> *debug-lines-trk* length) 0)
   (set! (-> *debug-text-3d-trk* length) 0)
@@ -646,7 +552,6 @@
   #f
   )
 
-;; definition (debug) for function debug-draw-buffers
 (defun-debug debug-draw-buffers ()
   (dotimes (i (-> *debug-lines-trk* length))
     (let ((line (-> *debug-lines* i)))
@@ -674,8 +579,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-line
-;; INFO: Used lq/sq
 (defun-debug add-debug-line ((enable symbol)
                    (bucket bucket-id)
                    (start vector)
@@ -706,102 +609,84 @@
   #f
   )
 
-;; definition (debug) for function add-debug-line2d
-;; INFO: Used lq/sq
 (defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (start vector4w) (end vector4w) (color vector4w))
   (if (not enable)
       (return #f)
       )
-  (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-         (tag-start (-> buf base))
-         )
-    (let ((p0 (new 'stack 'vector4w))
-          (p1 (new 'stack 'vector4w))
-          )
-      (set! (-> p0 quad) (-> start quad))
-      (set! (-> p1 quad) (-> end quad))
-      (set! (-> p0 x) (the-as int (* (+ (-> p0 x) 2048) 16)))
-      (set! (-> p0 y) (* -16 (the-as int (- 2048 (the-as int (-> p0 y))))))
-      (set! (-> p0 z) #x7fffff)
-      (set! (-> p1 x) (the-as int (* (+ (-> p1 x) 2048) 16)))
-      (set! (-> p1 y) (* -16 (the-as int (- 2048 (the-as int (-> p1 y))))))
-      (set! (-> p1 z) #x7fffff)
-      (let ((a0-18 (the-as (pointer uint64) (-> buf base))))
-        (let* ((a1-7 buf)
-               (a2-3 (the-as dma-packet (-> a1-7 base)))
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                               bucket
+                               )
+    (let ((p0 (new 'stack 'vector4w)))
+      (let ((p1 (new 'stack 'vector4w)))
+        (set! (-> p0 quad) (-> start quad))
+        (set! (-> p1 quad) (-> end quad))
+        (set! (-> p0 x) (the-as int (* (+ (-> p0 x) 2048) 16)))
+        (set! (-> p0 y) (* -16 (the-as int (- 2048 (the-as int (-> p0 y))))))
+        (set! (-> p0 z) #x7fffff)
+        (set! (-> p1 x) (the-as int (* (+ (-> p1 x) 2048) 16)))
+        (set! (-> p1 y) (* -16 (the-as int (- 2048 (the-as int (-> p1 y))))))
+        (set! (-> p1 z) #x7fffff)
+        (let ((a0-18 (the-as (pointer uint64) (-> buf base))))
+          (let* ((a1-7 buf)
+                 (a2-3 (the-as dma-packet (-> a1-7 base)))
+                 )
+            (set! (-> a2-3 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+            (set! (-> a2-3 vif0) (new 'static 'vif-tag))
+            (set! (-> a2-3 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+            (set! (-> a1-7 base) (&+ (the-as pointer a2-3) 16))
+            )
+          (let* ((a1-8 buf)
+                 (giftag (the-as gs-gif-tag (-> a1-8 base)))
+                 )
+            (set! (-> giftag tag) (new 'static 'gif-tag64
+                                    :nloop #x1
+                                    :eop #x1
+                                    :pre #x1
+                                    :prim (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
+                                    :nreg #x4
+                                    )
+                  )
+            (set! (-> giftag regs) (new 'static 'gif-tag-regs
+                                     :regs0 (gif-reg-id rgbaq)
+                                     :regs1 (gif-reg-id xyzf2)
+                                     :regs2 (gif-reg-id rgbaq)
+                                     :regs3 (gif-reg-id xyzf2)
+                                     )
+                  )
+            (set! (-> a1-8 base) (&+ (the-as pointer giftag) 16))
+            )
+          (let* ((a1-9 buf)
+                 (v0 (the-as vector4w-2 (-> a1-9 base)))
+                 )
+            (set! (-> v0 vector 0 quad) (-> color quad))
+            (set! (-> v0 vector 1 quad) (-> p0 quad))
+            (set! (-> a1-9 base) (&+ (the-as pointer v0) 32))
+            )
+          (let* ((a1-10 buf)
+                 (v1 (the-as vector4w-2 (-> a1-10 base)))
+                 )
+            (set! (-> v1 vector 0 quad) (-> color quad))
+            (set! (-> v1 vector 1 quad) (-> p1 quad))
+            (set! (-> a1-10 base) (&+ (the-as pointer v1) 32))
+            )
+          (let ((a1-14 (/ (the-as int (+ (- -16 (the-as int a0-18)) (the-as int (-> buf base)))) 16)))
+            (cond
+              ((nonzero? a1-14)
+               (logior! (-> a0-18 0) (shr (shl a1-14 48) 48))
+               (logior! (-> a0-18 1) (shl (shr (shl a1-14 48) 48) 32))
                )
-          (set! (-> a2-3 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-          (set! (-> a2-3 vif0) (new 'static 'vif-tag))
-          (set! (-> a2-3 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
-          (set! (-> a1-7 base) (&+ (the-as pointer a2-3) 16))
-          )
-        (let* ((a1-8 buf)
-               (giftag (the-as gs-gif-tag (-> a1-8 base)))
-               )
-          (set! (-> giftag tag) (new 'static 'gif-tag64
-                                  :nloop #x1
-                                  :eop #x1
-                                  :pre #x1
-                                  :prim (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
-                                  :nreg #x4
-                                  )
+              (else
+                (set! (-> buf base) a0-18)
                 )
-          (set! (-> giftag regs) (new 'static 'gif-tag-regs
-                                   :regs0 (gif-reg-id rgbaq)
-                                   :regs1 (gif-reg-id xyzf2)
-                                   :regs2 (gif-reg-id rgbaq)
-                                   :regs3 (gif-reg-id xyzf2)
-                                   )
-                )
-          (set! (-> a1-8 base) (&+ (the-as pointer giftag) 16))
-          )
-        (let* ((a1-9 buf)
-               (v0 (the-as vector4w-2 (-> a1-9 base)))
-               )
-          (set! (-> v0 vector 0 quad) (-> color quad))
-          (set! (-> v0 vector 1 quad) (-> p0 quad))
-          (set! (-> a1-9 base) (&+ (the-as pointer v0) 32))
-          )
-        (let* ((a1-10 buf)
-               (v1 (the-as vector4w-2 (-> a1-10 base)))
-               )
-          (set! (-> v1 vector 0 quad) (-> color quad))
-          (set! (-> v1 vector 1 quad) (-> p1 quad))
-          (set! (-> a1-10 base) (&+ (the-as pointer v1) 32))
-          )
-        (let ((a1-14 (/ (the-as int (+ (- -16 (the-as int a0-18)) (the-as int (-> buf base)))) 16)))
-          (cond
-            ((nonzero? a1-14)
-             (logior! (-> a0-18 0) (shr (shl a1-14 48) 48))
-             (logior! (-> a0-18 1) (shl (shr (shl a1-14 48) 48) 32))
-             )
-            (else
-              (set! (-> buf base) a0-18)
               )
             )
           )
-        )
-      )
-    (let ((tag-end (-> buf base)))
-      (let ((v1-12 (the-as dma-packet (-> buf base))))
-        (set! (-> v1-12 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-12 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-12 vif1) (new 'static 'vif-tag))
-        (set! (-> buf base) (&+ (the-as pointer v1-12) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        bucket
-        tag-start
-        (the-as (pointer dma-tag) tag-end)
         )
       )
     )
   #f
   )
 
-;; definition (debug) for function add-debug-box
-;; INFO: Used lq/sq
 (defun-debug add-debug-box ((enable symbol) (bucket bucket-id) (c1 vector) (c2 vector) (color rgba))
   (let ((p0 (new-stack-vector0)))
     (set! (-> p0 quad) (-> c1 quad))
@@ -850,9 +735,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-box-with-transform
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs symbol.
 (defun-debug add-debug-box-with-transform ((enable symbol) (bucket bucket-id) (box bounding-box) (trans matrix) (color rgba))
   (b! (not enable) cfg-5 :delay (nop!))
   (let ((points (new 'stack-no-clear 'inline-array 'vector 8)))
@@ -888,8 +770,6 @@
   (the-as symbol 0)
   )
 
-;; definition (debug) for function add-debug-x
-;; INFO: Used lq/sq
 (defun-debug add-debug-x ((enable symbol) (bucket bucket-id) (position vector) (color rgba))
   (if (not enable)
       (return #f)
@@ -907,8 +787,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-cross
-;; INFO: Used lq/sq
 (defun-debug add-debug-cross ((enable symbol) (bucket bucket-id) (position vector) (radius float))
   (if (not enable)
       (return #f)
@@ -982,8 +860,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-text-3d
-;; INFO: Used lq/sq
 (defun-debug add-debug-text-3d ((enable symbol)
                       (bucket bucket-id)
                       (text string)
@@ -1044,7 +920,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-sphere-with-transform
 (defun-debug add-debug-sphere-with-transform ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (trans matrix) (color rgba))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1074,7 +949,6 @@
     )
   )
 
-;; definition (debug) for function add-debug-sphere
 (defun-debug add-debug-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (color rgba))
   (if enable
       (add-debug-sphere-from-table bucket position radius color 6)
@@ -1082,14 +956,12 @@
   #f
   )
 
-;; definition (debug) for function add-debug-text-sphere
 (defun-debug add-debug-text-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (text string) (color rgba))
   (add-debug-sphere enable bucket position radius color)
   (add-debug-text-3d enable bucket text position (font-color default-#cddbcd) (the-as vector2h #f))
   #f
   )
 
-;; definition (debug) for function add-debug-spheres
 (defun-debug add-debug-spheres ((enable symbol) (bucket bucket-id) (origins (inline-array vector)) (count int) (color rgba))
   (when enable
     (let ((origin (-> origins 0)))
@@ -1102,23 +974,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-line-sphere
-;; INFO: Used lq/sq
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-line-sphere ((enable symbol) (bucket bucket-id) (position vector) (forward vector) (arg4 float) (color rgba))
   (local-vars
     (var-bucket bucket-id)
@@ -1194,8 +1049,6 @@
   (none)
   )
 
-;; definition (debug) for function add-debug-circle
-;; INFO: Used lq/sq
 (defun-debug add-debug-circle ((enable symbol) (bucket bucket-id) (position vector) (radius float) (color rgba) (orientation matrix))
   "note: you may pass #f for orientation"
   (local-vars (i int) (sv-64 vector) (sv-80 vector))
@@ -1232,8 +1085,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-vector
-;; INFO: Used lq/sq
 (defun-debug add-debug-vector ((enable symbol) (bucket bucket-id) (position vector) (direction vector) (length meters) (color rgba))
   (if (not enable)
       (return #f)
@@ -1247,7 +1098,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-matrix
 (defun-debug add-debug-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (line-length meters))
   (add-debug-vector
     enable
@@ -1276,7 +1126,6 @@
   mat
   )
 
-;; definition (debug) for function add-debug-rot-matrix
 (defun-debug add-debug-rot-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (position vector))
   (add-debug-vector
     enable
@@ -1291,8 +1140,6 @@
   mat
   )
 
-;; definition (debug) for function add-debug-quaternion
-;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-quaternion ((enable symbol) (bucket bucket-id) (position vector) (quat quaternion))
   (when enable
     (let ((mat (quaternion->matrix (new 'stack-no-clear 'matrix) quat)))
@@ -1303,20 +1150,11 @@
   (none)
   )
 
-;; definition (debug) for function add-debug-cspace
 (defun-debug add-debug-cspace ((enable symbol) (bucket bucket-id) (csp cspace))
   (add-debug-matrix enable bucket (-> csp bone transform) (meters 2))
   csp
   )
 
-;; definition (debug) for function add-debug-yrot-vector
-;; INFO: Used lq/sq
-;; WARN: Stack slot offset 32 signed mismatch
-;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
-;; WARN: Stack slot offset 32 signed mismatch
-;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
-;; WARN: Stack slot offset 32 signed mismatch
-;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
 (defun-debug add-debug-yrot-vector ((enable symbol) (bucket bucket-id) (position vector) (angle float) (line-length float) (color rgba))
   (local-vars (var-angle float))
   (set! var-angle angle)
@@ -1340,8 +1178,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-arc
-;; INFO: Used lq/sq
 (defun-debug add-debug-arc ((enable symbol)
                   (bucket bucket-id)
                   (position vector)
@@ -1395,8 +1231,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-curve
-;; INFO: Used lq/sq
 (defun-debug add-debug-curve ((enable symbol)
                     (bucket bucket-id)
                     (cverts (inline-array vector))
@@ -1425,7 +1259,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-curve2
 (defun-debug add-debug-curve2 ((enable symbol) (bucket bucket-id) (curve curve) (color rgba) (arg4 symbol))
   (if enable
       (add-debug-curve
@@ -1441,8 +1274,6 @@
   #f
   )
 
-;; definition (debug) for function add-debug-points
-;; INFO: Used lq/sq
 (defun-debug add-debug-points ((enable symbol)
                      (bucket bucket-id)
                      (points (inline-array vector))
@@ -1499,10 +1330,6 @@
   #f
   )
 
-;; definition (debug) for function debug-percent-bar
-;; INFO: Used lq/sq
-;; WARN: Stack slot offset 32 signed mismatch
-;; WARN: Stack slot offset 32 signed mismatch
 (defun-debug debug-percent-bar ((enable symbol) (bucket bucket-id) (x int) (y int) (percentage float) (color rgba) (width int) (height int))
   (local-vars (sv-16 int) (sv-32 float))
   (set! sv-16 y)
@@ -1514,32 +1341,16 @@
     (if (not enable)
         (return #f)
         )
-    (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-           (tag-start (-> buf base))
-           )
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                 bucket
+                                 )
       (draw-sprite2d-xy buf x sv-16 s1-0 s3-0 (new 'static 'rgba :a #x40))
       (draw-sprite2d-xy buf x (+ sv-16 2) (the int (* sv-32 (the float s1-0))) (+ s3-0 -4) s2-0)
-      (let ((tag-end (-> buf base)))
-        (let ((pkt (the-as dma-packet (-> buf base))))
-          (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-          (set! (-> pkt vif0) (new 'static 'vif-tag))
-          (set! (-> pkt vif1) (new 'static 'vif-tag))
-          (set! (-> buf base) (&+ (the-as pointer pkt) 16))
-          )
-        (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) bucket-group)
-          bucket
-          tag-start
-          (the-as (pointer dma-tag) tag-end)
-          )
-        )
       )
     )
   #f
   )
 
-;; definition (debug) for function debug-pad-display
-;; INFO: Used lq/sq
 (defun-debug debug-pad-display ((pad cpad-info))
   (let ((stick-history (new 'static 'inline-array vector 32
                          (new 'static 'vector)
@@ -1585,9 +1396,9 @@
     (set! (-> stick-history 0 x) (* (sin (-> pad stick0-dir)) (-> pad stick0-speed)))
     (set! (-> stick-history 0 y) (* (cos (-> pad stick0-dir)) (-> pad stick0-speed)))
     (dotimes (j 32)
-      (let* ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
-             (tag-start (-> buf base))
-             )
+      (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                   (bucket-id debug2)
+                                   )
         (draw-sprite2d-xy
           buf
           (the int (* 120.0 (-> stick-history j x)))
@@ -1596,28 +1407,12 @@
           10
           (new 'static 'rgba :a #x80 :r (- 255 (* 7 j)))
           )
-        (let ((tag-end (-> buf base)))
-          (let ((pkt (the-as dma-packet (-> buf base))))
-            (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> pkt vif0) (new 'static 'vif-tag))
-            (set! (-> pkt vif1) (new 'static 'vif-tag))
-            (set! (-> buf base) (&+ (the-as pointer pkt) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id debug2)
-            tag-start
-            (the-as (pointer dma-tag) tag-end)
-            )
-          )
         )
       )
     )
   #f
   )
 
-;; definition (debug) for function add-debug-light
-;; INFO: Used lq/sq
 (defun-debug add-debug-light ((enable symbol) (bucket bucket-id) (light light) (position vector) (text string))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1671,7 +1466,6 @@
     )
   )
 
-;; definition (debug) for function add-debug-lights
 (defun-debug add-debug-lights ((enable symbol) (bucket bucket-id) (lights (inline-array light)) (position vector))
   (if (not enable)
       (return #f)
@@ -1683,7 +1477,6 @@
   #f
   )
 
-;; definition (debug) for function drawable-frag-count
 (defun-debug drawable-frag-count ((drbl drawable))
   (let ((count 0))
     (cond
@@ -1702,8 +1495,6 @@
     )
   )
 
-;; definition for method 3 of type debug-vertex-stats
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect debug-vertex-stats ((obj debug-vertex-stats))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -1734,15 +1525,12 @@
   obj
   )
 
-;; definition (debug) for function history-init
 (defun-debug history-init ((history pos-history) (num-points int))
   (set! (-> history num-points) num-points)
   (set! (-> history points) (the-as (inline-array vector) #f))
   history
   )
 
-;; definition (debug) for function history-draw-and-update
-;; INFO: Used lq/sq
 (defun-debug history-draw-and-update ((history pos-history) (draw symbol) (pos vector))
   (if (and draw (not (-> history points)))
       (set! (-> history points) (the-as (inline-array vector) (malloc 'debug (* (-> history num-points) 16))))
@@ -1773,8 +1561,6 @@
   #f
   )
 
-;; definition (debug) for function dma-timeout-cam
-;; INFO: Used lq/sq
 (defun-debug dma-timeout-cam ()
   (let ((pos (new-stack-vector0))
         (rot (new-stack-matrix0))
@@ -1803,7 +1589,6 @@
     )
   )
 
-;; definition (debug) for function display-file-info
 (defun-debug display-file-info ()
   (when (and *display-file-info* (!= *master-mode* 'menu))
     (dotimes (i (-> *level* length))
@@ -1823,14 +1608,11 @@
   0
   )
 
-;; definition (debug) for function add-debug-cursor
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-cursor ((enable symbol) (bucket bucket-id) (x int) (y int) (arg4 int))
   (when enable
-    (let* ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-           (tag-start (-> buf base))
-           )
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                 bucket
+                                 )
       (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
       (let ((v1-7 arg4))
         (draw-string-xy
@@ -1855,37 +1637,17 @@
           (font-flags shadow)
           )
         )
-      (let ((tag-end (-> buf base)))
-        (let ((pkt (the-as dma-packet (-> buf base))))
-          (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-          (set! (-> pkt vif0) (new 'static 'vif-tag))
-          (set! (-> pkt vif1) (new 'static 'vif-tag))
-          (set! (-> buf base) (&+ (the-as pointer pkt) 16))
-          )
-        (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) bucket-group)
-          bucket
-          tag-start
-          (the-as (pointer dma-tag) tag-end)
-          )
-        )
       )
     )
   0
   (none)
   )
 
-;; this part is debug only
 (when *debug-segment*
-;; definition for symbol *boundary-polygon*, type (inline-array sky-vertex)
 (define *boundary-polygon* (the-as (inline-array sky-vertex) (malloc 'debug 768)))
 
 )
-;; definition (debug) for function init-boundary-regs
-;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function add-boundary-shader
-;; WARN: Return type mismatch pointer vs none.
 (defun-debug add-boundary-shader ((tex-id texture-id) (buf dma-buffer))
   (let ((tex (lookup-texture-by-id tex-id)))
     (when tex
@@ -1917,18 +1679,9 @@
   (none)
   )
 
-;; definition (debug) for function draw-boundary-polygon
-;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function render-boundary-quad
-;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function render-boundary-tri
-;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function add-debug-bound-internal
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch symbol vs none.
 (defun-debug add-debug-bound-internal ((buf dma-buffer) (pts (inline-array vector)) (num-pts int) (color0 rgba) (color1 rgba) (flip-tex int))
   (rlet ((vf27 :class vf))
     (set-vector!
@@ -1991,10 +1744,6 @@
     )
   )
 
-;; definition (debug) for function add-debug-bound
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
-;; WARN: Function add-debug-bound has a return type of none, but the expression builder found a return statement.
 (defun-debug add-debug-bound ((buf bucket-id) (pts (inline-array vector)) (c0 int) (c1 rgba) (flash rgba) (arg5 int))
   (local-vars (sv-16 pointer) (sv-32 int))
   (set! sv-32 arg5)
@@ -2010,41 +1759,41 @@
      sv-32
      )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-0 (-> s4-0 base))
-         )
-    (let* ((v1-16 s4-0)
-           (a0-3 (the-as dma-packet (-> v1-16 base)))
-           )
-      (set! (-> a0-3 dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
-      (set! (-> a0-3 vif0) (new 'static 'vif-tag))
-      (set! (-> a0-3 vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-16 base) (the-as pointer (the-as dma-packet (&+ a0-3 16))))
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               buf
+                               )
+    (let ((v1-16 s4-0))
+      (let ((a0-3 (the-as dma-packet (-> v1-16 base))))
+        (set! (-> a0-3 dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+        (set! (-> a0-3 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-3 vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-16 base) (the-as pointer (the-as dma-packet (&+ a0-3 16))))
+        )
       )
-    (let* ((v1-17 s4-0)
-           (a0-5 (the-as gs-gif-tag (-> v1-17 base)))
-           )
-      (set! (-> a0-5 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
-      (set! (-> a0-5 regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-17 base) (the-as pointer (the-as gs-gif-tag (&+ a0-5 16))))
+    (let ((v1-17 s4-0))
+      (let ((a0-5 (the-as gs-gif-tag (-> v1-17 base))))
+        (set! (-> a0-5 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+        (set! (-> a0-5 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-17 base) (the-as pointer (the-as gs-gif-tag (&+ a0-5 16))))
+        )
       )
-    (let* ((v1-18 s4-0)
-           (a0-7 (-> v1-18 base))
-           )
-      (set! (-> (the-as (pointer gs-zbuf) a0-7) 0) (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
-      (set! (-> (the-as (pointer gs-reg64) a0-7) 1) (gs-reg64 zbuf-1))
-      (set! (-> (the-as (pointer gs-test) a0-7) 2) (new 'static 'gs-test
-                                                     :ate #x1
-                                                     :atst (gs-atest greater-equal)
-                                                     :aref #x26
-                                                     :zte #x1
-                                                     :ztst (gs-ztest greater-equal)
-                                                     )
-            )
-      (set! (-> (the-as (pointer gs-reg64) a0-7) 3) (gs-reg64 test-1))
-      (set! (-> (the-as (pointer gs-alpha) a0-7) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
-      (set! (-> (the-as (pointer gs-reg64) a0-7) 5) (gs-reg64 alpha-1))
-      (set! (-> v1-18 base) (&+ a0-7 48))
+    (let ((v1-18 s4-0))
+      (let ((a0-7 (-> v1-18 base)))
+        (set! (-> (the-as (pointer gs-zbuf) a0-7) 0) (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+        (set! (-> (the-as (pointer gs-reg64) a0-7) 1) (gs-reg64 zbuf-1))
+        (set! (-> (the-as (pointer gs-test) a0-7) 2) (new 'static 'gs-test
+                                                       :ate #x1
+                                                       :atst (gs-atest greater-equal)
+                                                       :aref #x26
+                                                       :zte #x1
+                                                       :ztst (gs-ztest greater-equal)
+                                                       )
+              )
+        (set! (-> (the-as (pointer gs-reg64) a0-7) 3) (gs-reg64 test-1))
+        (set! (-> (the-as (pointer gs-alpha) a0-7) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
+        (set! (-> (the-as (pointer gs-reg64) a0-7) 5) (gs-reg64 alpha-1))
+        (set! (-> v1-18 base) (&+ a0-7 48))
+        )
       )
     (set! sv-16 (-> s4-0 base))
     (&+! (-> s4-0 base) 16)
@@ -2056,30 +1805,7 @@
       (set! (-> (the-as dma-packet sv-16) vif0) (new 'static 'vif-tag))
       (set! (-> (the-as dma-packet sv-16) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-25))
       )
-    (let ((a3-2 (-> s4-0 base)))
-      (let ((v1-29 (the-as dma-packet (-> s4-0 base))))
-        (set! (-> v1-29 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-29 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-29 vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (the-as pointer (the-as dma-packet (&+ v1-29 16))))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        buf
-        s5-0
-        (the-as (pointer dma-tag) a3-2)
-        )
-      )
     )
   0
   (none)
   )
-
-;; definition (debug) for function cpu-delay
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; definition (debug) for function qword-read-time
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; definition (debug) for function bugfix?
-;; ERROR: function was not converted to expressions. Cannot decompile.

@@ -5,7 +5,7 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/system/newpad.h"
 #include "gtest/gtest.h"
-//#include "gmock/gmock.h"
+// #include "gmock/gmock.h"
 
 class PeripheralTest : public ::testing::Test {
  public:
