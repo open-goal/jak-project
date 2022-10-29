@@ -75,11 +75,12 @@ struct LetRewriteStats {
   int vector_dot = 0;
   int rand_float_gen = 0;
   int set_let = 0;
+  int with_dma_buf_add_bucket = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let;
+           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket;
   }
 
   std::string print() const {
@@ -103,6 +104,7 @@ struct LetRewriteStats {
     out += fmt::format("  vector_dot: {}\n", vector_dot);
     out += fmt::format("  rand_float_gen: {}\n", rand_float_gen);
     out += fmt::format("  set_let: {}\n", set_let);
+    out += fmt::format("  with_dma_buf_add_bucket: {}\n", with_dma_buf_add_bucket);
     return out;
   }
 
@@ -125,6 +127,7 @@ struct LetRewriteStats {
     result.vector_dot = vector_dot + other.vector_dot;
     result.rand_float_gen = rand_float_gen + other.rand_float_gen;
     result.set_let = rand_float_gen + other.set_let;
+    result.with_dma_buf_add_bucket = rand_float_gen + other.with_dma_buf_add_bucket;
     return result;
   }
 
@@ -146,6 +149,7 @@ struct LetRewriteStats {
     vector_dot += other.vector_dot;
     rand_float_gen += other.rand_float_gen;
     set_let += other.set_let;
+    with_dma_buf_add_bucket += other.with_dma_buf_add_bucket;
     return *this;
   }
 };

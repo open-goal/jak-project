@@ -1048,7 +1048,6 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   }
 
   return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, cond->else_ir);
-  return nullptr;
 }
 
 bool var_name_equal(const Env& env, const std::string& a, std::optional<RegisterAccess> b) {
@@ -1724,8 +1723,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
-  // these are ordered based on frequency. for best performance, you check the most likely rewrites
-  // first!
+  // ordered based on frequency. for best performance, you check the most likely rewrites first!
 
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
@@ -1994,11 +1992,161 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   return in;
 }
 
+FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 2) {
+    return nullptr;
+  }
+
+  static auto dma_buf_base_matcher =
+      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("base")});
+  // dma buffer part can be anything, really.
+  auto buf_reg = in->entries().at(0).dest;
+  auto buf_dst = env.get_variable_name(buf_reg);
+  auto bucket_dst = env.get_variable_name(in->entries().at(1).dest);
+  auto buf_src = in->entries().at(0).src;
+  // check for (-> buf_dst base) now
+  auto mr_buf_base = match(dma_buf_base_matcher, in->entries().at(1).src);
+  if (!mr_buf_base.matched) {
+    return nullptr;
+  }
+  if (!var_name_equal(env, buf_dst, mr_buf_base.maps.regs.at(0))) {
+    lg::print("dma buf bad name\n");
+    return nullptr;
+  }
+
+  auto last_part = in->body()->try_as_element<LetElement>();
+  bool empty = last_part != nullptr;
+
+  if (empty) {
+    lg::print("check this out!! empty thing unhandled for now\n");
+    return nullptr;
+  }
+
+  last_part = dynamic_cast<LetElement*>(in->body()->at(in->body()->size() - 1));
+  if (!last_part) {
+    lg::error("NO LAST PART AHH wtf!!");
+    return nullptr;
+  }
+
+  if (last_part->entries().size() != 1 || last_part->body()->size() != 2) {
+    return nullptr;
+  }
+  auto buf_end_dst = env.get_variable_name(last_part->entries().at(0).dest);
+
+  auto dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
+
+  if (!dmatag_let || dmatag_let->entries().size() != 1 || dmatag_let->body()->size() != 4) {
+    return nullptr;
+  }
+
+  auto dmatag_dst = env.get_variable_name(dmatag_let->entries().at(0).dest);
+
+  auto mr_last_part = match(dma_buf_base_matcher, last_part->entries().at(0).src);
+  auto mr_dmatag = match(dma_buf_base_matcher, dmatag_let->entries().at(0).src);
+  if (!mr_last_part.matched || !mr_dmatag.matched) {
+    lg::print("dma buf bad match 2\n");
+    return nullptr;
+  }
+  if (!var_name_equal(env, buf_dst, mr_last_part.maps.regs.at(0)) ||
+      !var_name_equal(env, buf_dst, mr_dmatag.maps.regs.at(0))) {
+    lg::print("dma buf bad name 2\n");
+    return nullptr;
+  }
+
+  auto set_dmatag_hdr = dynamic_cast<SetFormFormElement*>(dmatag_let->body()->at(0));
+  auto set_dmatag_w1 = dynamic_cast<StoreElement*>(dmatag_let->body()->at(1));
+  auto set_dmatag_w2 = dynamic_cast<StoreElement*>(dmatag_let->body()->at(2));
+  auto set_dmatag_push = dynamic_cast<SetFormFormElement*>(dmatag_let->body()->at(3));
+
+  if (!set_dmatag_hdr || !set_dmatag_w1 || !set_dmatag_w2 || !set_dmatag_push) {
+    lg::print("dma store bad\n");
+    return nullptr;
+  }
+
+  // check dmatag now
+  auto mr_dmatag_hdr = match(
+      Matcher::set(Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
+                   Matcher::integer(0x20000000)),
+      set_dmatag_hdr);
+  if (!mr_dmatag_hdr.matched || !var_name_equal(env, dmatag_dst, mr_dmatag_hdr.maps.regs.at(0))) {
+    return nullptr;
+  }
+
+  if (set_dmatag_w1->op()->kind() != StoreOp::Kind::INTEGER ||
+      set_dmatag_w1->op()->store_size() != 4 || !set_dmatag_w1->op()->value().is_int(0) ||
+      set_dmatag_w1->op()->addr().kind() != SimpleExpression::Kind::ADD ||
+      set_dmatag_w1->op()->addr().args() != 2 || !set_dmatag_w1->op()->addr().get_arg(0).is_var() ||
+      !var_name_equal(env, dmatag_dst, set_dmatag_w1->op()->addr().get_arg(0).var()) ||
+      !set_dmatag_w1->op()->addr().get_arg(1).is_int(8)) {
+    return nullptr;
+  }
+  if (set_dmatag_w2->op()->kind() != StoreOp::Kind::INTEGER ||
+      set_dmatag_w2->op()->store_size() != 4 || !set_dmatag_w2->op()->value().is_int(0) ||
+      set_dmatag_w2->op()->addr().kind() != SimpleExpression::Kind::ADD ||
+      set_dmatag_w2->op()->addr().args() != 2 || !set_dmatag_w2->op()->addr().get_arg(0).is_var() ||
+      !var_name_equal(env, dmatag_dst, set_dmatag_w2->op()->addr().get_arg(0).var()) ||
+      !set_dmatag_w2->op()->addr().get_arg(1).is_int(12)) {
+    return nullptr;
+  }
+
+  auto mr_dmatag_push = match(
+      Matcher::set(Matcher::deref(Matcher::any_reg(1), false, {DerefTokenMatcher::string("base")}),
+                   Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR,
+                                     {Matcher::any_reg(0), Matcher::integer(16)})),
+      set_dmatag_push);
+  if (!mr_dmatag_push.matched || !var_name_equal(env, dmatag_dst, mr_dmatag_push.maps.regs.at(0)) ||
+      !var_name_equal(env, buf_dst, mr_dmatag_push.maps.regs.at(1))) {
+    return nullptr;
+  }
+
+  auto mr_bucket_add_tag_func = match(
+      Matcher::func(
+          Matcher::symbol("dma-bucket-insert-tag"),
+          {Matcher::deref(Matcher::symbol("*display*"), false,
+                          {DerefTokenMatcher::string("frames"), DerefTokenMatcher::any_expr(0),
+                           DerefTokenMatcher::string("bucket-group")}),
+           Matcher::any(1), Matcher::any_reg(2),
+           Matcher::cast("(pointer dma-tag)", Matcher::any_reg(3))}),
+      last_part->body()->at(1));
+  if (!mr_bucket_add_tag_func.matched ||
+      !var_name_equal(env, bucket_dst, mr_bucket_add_tag_func.maps.regs.at(2)) ||
+      !var_name_equal(env, buf_end_dst, mr_bucket_add_tag_func.maps.regs.at(3))) {
+    return nullptr;
+  }
+  auto mr_submatch = match(
+      Matcher::deref(Matcher::symbol("*display*"), false, {DerefTokenMatcher::string("on-screen")}),
+      mr_bucket_add_tag_func.maps.forms.at(0));
+  if (!mr_submatch.matched) {
+    return nullptr;
+  }
+
+  std::vector<FormElement*> body;
+
+  for (int i = 0, m = in->body()->size() - 1; i < m; ++i) {
+    if (dynamic_cast<SetVarElement*>(in->body()->at(i))) {
+      // eliminate "(empty-form)"
+      continue;
+    }
+    body.push_back(in->body()->at(i));
+  }
+
+  auto elt = pool.alloc_element<WithDmaBufferAddBucketElement>(
+      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1), body);
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
 FormElement* rewrite_multi_let(LetElement* in,
                                const Env& env,
                                FormPool& pool,
                                LetRewriteStats& stats) {
   if (in->entries().size() >= 2) {
+    auto as_with_dma_buf_add_bucket = rewrite_with_dma_buf_add_bucket(in, env, pool);
+    if (as_with_dma_buf_add_bucket) {
+      stats.with_dma_buf_add_bucket++;
+      return as_with_dma_buf_add_bucket;
+    }
+
     auto as_rand_float_gen = rewrite_rand_float_gen(in, env, pool);
     if (as_rand_float_gen) {
       stats.rand_float_gen++;

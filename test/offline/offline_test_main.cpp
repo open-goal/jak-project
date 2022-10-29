@@ -471,6 +471,7 @@ int main(int argc, char* argv[]) {
   int max_files = -1;
   std::string single_file = "";
   uint32_t num_threads = 1;
+  bool fail_on_cmp = false;
 
   CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
   app.add_option("--iso_data_path", iso_data_path, "The path to the folder with the ISO data files")
@@ -487,6 +488,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-f,--file", single_file,
                  "Limit the offline test routine to a single file to decompile/compile -- useful "
                  "when you are just iterating on a single file");
+  app.add_flag("--fail-on-cmp", fail_on_cmp, "Fail the tests immediately if the comparison fails");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -550,7 +552,12 @@ int main(int argc, char* argv[]) {
       result.compare = compare(decompiler, work_group, dump_current_output);
       if (!result.compare.total_pass) {
         result.exit_code = 1;
+        if (fail_on_cmp) {
+          return result;
+        }
       }
+
+      // TODO - if anything has failed, skip compiling
 
       Timer compile_timer;
       result.compile = compile(decompiler, work_group, config.value(), game_name);

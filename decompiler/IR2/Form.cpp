@@ -2959,6 +2959,69 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
 // DefskelgroupElement
 ////////////////////////////////
 
+WithDmaBufferAddBucketElement::WithDmaBufferAddBucketElement(RegisterAccess dma_buf,
+                                                             Form* dma_buf_val,
+                                                             Form* bucket,
+                                                             const std::vector<FormElement*>& body)
+    : m_dma_buf(dma_buf), m_dma_buf_val(dma_buf_val), m_bucket(bucket), m_body(body) {
+  m_dma_buf_val->parent_element = this;
+  m_bucket->parent_element = this;
+  for (auto& e : m_body) {
+    e->parent_form = nullptr;
+  }
+}
+
+void WithDmaBufferAddBucketElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_dma_buf_val->apply(f);
+  m_bucket->apply(f);
+  for (auto& e : m_body) {
+    e->apply(f);
+  }
+}
+
+void WithDmaBufferAddBucketElement::apply_form(const std::function<void(Form*)>& f) {
+  m_dma_buf_val->apply_form(f);
+  m_bucket->apply_form(f);
+  for (auto& e : m_body) {
+    e->apply_form(f);
+  }
+}
+
+void WithDmaBufferAddBucketElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  m_dma_buf_val->collect_vars(vars, recursive);
+  m_bucket->collect_vars(vars, recursive);
+  for (auto& e : m_body) {
+    e->collect_vars(vars, recursive);
+  }
+}
+
+void WithDmaBufferAddBucketElement::get_modified_regs(RegSet& regs) const {
+  m_dma_buf_val->get_modified_regs(regs);
+  m_bucket->get_modified_regs(regs);
+  for (auto& e : m_body) {
+    e->get_modified_regs(regs);
+  }
+}
+
+goos::Object WithDmaBufferAddBucketElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("with-dma-buffer-add-bucket"));
+  forms.push_back(pretty_print::build_list(
+      {pretty_print::build_list({pretty_print::to_symbol(env.get_variable_name(m_dma_buf)),
+                                 m_dma_buf_val->to_form(env)}),
+       m_bucket->to_form(env)}));
+  for (auto& e : m_body) {
+    forms.push_back(e->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
+// DefskelgroupElement
+////////////////////////////////
+
 DefskelgroupElement::DefskelgroupElement(const std::string& name,
                                          const DefskelgroupElement::Info& info,
                                          const StaticInfo& data)
@@ -2991,14 +3054,12 @@ void DefskelgroupElement::apply_form(const std::function<void(Form*)>& f) {
 }
 
 void DefskelgroupElement::collect_vars(RegAccessSet& vars, bool recursive) const {
-  if (recursive) {
-    for (auto& e : m_info.lods) {
-      e.mgeo->collect_vars(vars, recursive);
-      e.lod_dist->collect_vars(vars, recursive);
-    }
-    m_info.janim->collect_vars(vars, recursive);
-    m_info.jgeo->collect_vars(vars, recursive);
+  for (auto& e : m_info.lods) {
+    e.mgeo->collect_vars(vars, recursive);
+    e.lod_dist->collect_vars(vars, recursive);
   }
+  m_info.janim->collect_vars(vars, recursive);
+  m_info.jgeo->collect_vars(vars, recursive);
 }
 
 void DefskelgroupElement::get_modified_regs(RegSet& regs) const {

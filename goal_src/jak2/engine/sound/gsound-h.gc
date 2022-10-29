@@ -130,6 +130,12 @@
     )
   )
 
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position))
+
 (defmacro sound-vol (vol)
   "convert to sound volume units"
   (if (number? vol)
@@ -164,6 +170,17 @@
           ))
   )
 
+(declare-type sound-name uint128)
+(define-extern string->sound-name  (function string sound-name))
+(define-extern get-sound-buffer-entry (function pointer))
+(define-extern sound-set-ear-trans (function vector vector vector float int))
+(define-extern ear-trans (function int vector))
+
+;; ghost function
+(define-extern *debug-effect-control* symbol)
+(declare-type sound-spec basic)
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
+
 ;; DECOMP BEGINS
 
 (deftype sound-stream-name (structure)
@@ -174,6 +191,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
+
 
 (deftype sound-id (uint32)
   ()
@@ -210,6 +228,7 @@
   :flag-assert         #x900000004
   )
 
+
 (deftype sound-play-params (structure)
   ((mask           uint16   :offset-assert   0)
    (pitch-mod      int16    :offset-assert   2)
@@ -230,6 +249,7 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
   ((bank-name sound-name  :offset-assert  16)
    )
@@ -237,6 +257,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
 
 (deftype sound-rpc-test-cmd (sound-rpc-cmd)
   ((ee-addr pointer  :offset-assert   4)
@@ -247,6 +268,7 @@
   :flag-assert         #x90000000a
   )
 
+
 (deftype sound-rpc-sound-cmd (sound-rpc-cmd)
   ((id sound-id  :offset-assert   4)
    )
@@ -254,6 +276,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
   ((group sound-group  :offset-assert   4)
@@ -263,6 +286,7 @@
   :flag-assert         #x900000005
   )
 
+
 (deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
   ((ee-addr pointer  :offset-assert  32)
    )
@@ -271,6 +295,7 @@
   :flag-assert         #x900000024
   )
 
+
 (deftype sound-rpc-load-music (sound-rpc-bank-cmd)
   ()
   :method-count-assert 9
@@ -278,12 +303,14 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
 
 (deftype sound-rpc-play (sound-rpc-sound-cmd)
   ((name   sound-name                :offset-assert  16)
@@ -294,12 +321,14 @@
   :flag-assert         #x900000040
   )
 
+
 (deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
   ()
@@ -308,12 +337,14 @@
   :flag-assert         #x900000008
   )
 
+
 (deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype sound-rpc-set-param (sound-rpc-sound-cmd)
   ((params    sound-play-params :inline :offset-assert   8)
@@ -325,6 +356,7 @@
   :flag-assert         #x900000030
   )
 
+
 (deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
   ((volume int32  :offset-assert   8)
    )
@@ -333,12 +365,14 @@
   :flag-assert         #x90000000c
   )
 
+
 (deftype sound-rpc-pause-group (sound-rpc-group-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x5
   :flag-assert         #x900000005
   )
+
 
 (deftype sound-rpc-stop-group (sound-rpc-group-cmd)
   ()
@@ -347,12 +381,14 @@
   :flag-assert         #x900000005
   )
 
+
 (deftype sound-rpc-continue-group (sound-rpc-group-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x5
   :flag-assert         #x900000005
   )
+
 
 (deftype sound-rpc-get-irx-version (sound-rpc-cmd)
   ((major   uint32   :offset-assert   4)
@@ -364,6 +400,7 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype sound-rpc-set-language (sound-rpc-cmd)
   ((lang uint32  :offset-assert   4)
    )
@@ -372,6 +409,7 @@
   :flag-assert         #x900000008
   )
 
+
 (deftype sound-rpc-set-stereo-mode (sound-rpc-cmd)
   ((mode int32  :offset-assert   4)
    )
@@ -379,6 +417,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype sound-rpc-set-reverb (sound-rpc-cmd)
   ((core   uint8   :offset-assert   4)
@@ -391,6 +430,7 @@
   :flag-assert         #x900000014
   )
 
+
 (deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
   ((ear-trans1 int32 3 :offset-assert   4)
    (ear-trans0 int32 3 :offset-assert  16)
@@ -402,6 +442,7 @@
   :flag-assert         #x90000002c
   )
 
+
 (deftype sound-rpc-set-flava (sound-rpc-cmd)
   ((flava      uint8  :offset-assert   4)
    (excitement uint8  :offset-assert   5)
@@ -410,6 +451,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
+
 
 (deftype sound-rpc-set-midi-reg (sound-rpc-cmd)
   ((reg   int32  :offset-assert   4)
@@ -420,12 +462,14 @@
   :flag-assert         #x90000000a
   )
 
+
 (deftype sound-rpc-shutdown (sound-rpc-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
+
 
 (deftype sound-rpc-set-fps (sound-rpc-cmd)
   ((fps uint8  :offset-assert   4)
@@ -435,6 +479,7 @@
   :flag-assert         #x900000005
   )
 
+
 (deftype sound-rpc-list-sounds (sound-rpc-cmd)
   ()
   :method-count-assert 9
@@ -442,12 +487,14 @@
   :flag-assert         #x900000004
   )
 
+
 (deftype sound-rpc-unload-music (sound-rpc-cmd)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
+
 
 (deftype sound-rpc-union (structure)
   ((data              uint32                      20 :offset-assert   0)
@@ -478,6 +525,7 @@
   :flag-assert         #x900000050
   )
 
+
 (deftype sound-spec (basic)
   ((mask            sound-mask     :offset-assert   4)
    (num             float          :offset-assert   8)
@@ -501,6 +549,8 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
+
+
 (define *current-sound-id* (the-as sound-id #x10000))
 
 (deftype ambient-sound (basic)
@@ -535,15 +585,3 @@
     (stop! (_type_) int 15)
     )
   )
-
-
-
-;; DECOMP ENDS
-(define-extern string->sound-name  (function string sound-name))
-(define-extern get-sound-buffer-entry (function pointer))
-(define-extern sound-set-ear-trans (function vector vector vector float int))
-(define-extern ear-trans (function int vector))
-
-;; ghost function
-(define-extern *debug-effect-control* symbol)
-(define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
