@@ -139,11 +139,14 @@
 (define-extern target-pos (function int vector))
 (define-extern stop (function symbol int))
 
+;; og:ignore-form:(new 'static 'boxed-array
+
 ;; DECOMP BEGINS
 
 (deftype target (process-focusable)
-  ((control                 control-info                               :offset        128)
-   (fact-info-override      fact-info-target                           :offset        160)
+  ((self-override           target                                     :offset         32)
+   (control                 control-info                               :offset        128)
+   (fact-override           fact-info-target                           :offset        160)
    (skel2                   joint-control                              :offset-assert 204)
    (shadow-backup           shadow-geo                                 :offset-assert 208)
    (target-flags            uint32                                     :offset        188)
@@ -188,7 +191,7 @@
    (pre-joint-hook          (function none :behavior target)           :offset-assert 2112)
    (notify                  handle                                     :offset-assert 2120)
    (mode-cache              basic                                      :offset-assert 2128)
-   (mode-param1             uint64                                     :offset-assert 2136)
+   (mode-param1             handle                                     :offset-assert 2136)
    (mode-param2             uint64                                     :offset-assert 2144)
    (mode-param3             uint64                                     :offset-assert 2152)
    (tobot-state             state                                      :offset-assert 2160)
@@ -216,29 +219,42 @@
     (target-method-27 (_type_ collide-cache collide-edge-spec) none 27)
     (init-target (_type_ continue-point symbol) none :behavior target 28)
     )
+  (:states
+    target-carry-drop
+    target-carry-falling
+    (target-carry-hit-ground symbol)
+    (target-carry-jump float float)
+    target-carry-stance
+    target-carry-throw
+    target-carry-walk
+    target-indax-start
+    (target-warp-in vector vector target)
+    (target-warp-out vector vector target)
+    )
   )
 
 
 (define-perm *target* target #f)
 
 (deftype sidekick (process-drawable)
-  ((control             control-info         :offset        128)
-   (anim-seed           uint64               :offset        208)
-   (shadow-in-movie?    symbol               :offset-assert 216)
-   (special-anim-time   time-frame           :offset-assert 224)
-   (special-anim-interp float                :offset-assert 232)
-   (special-anim-frame  float                :offset-assert 236)
-   (offset              transformq   :inline :offset-assert 240)
-   (mirror              uint32               :offset-assert 288)
+  ((parent-override     (pointer target)                   :offset         16)
+   (control             control-info                       :offset        128)
+   (anim-seed           uint64                             :offset        208)
+   (shadow-in-movie?    symbol                             :offset-assert 216)
+   (special-anim-time   time-frame                         :offset-assert 224)
+   (special-anim-interp float                              :offset-assert 232)
+   (special-anim-frame  float                              :offset-assert 236)
+   (offset              transformq                 :inline :offset-assert 240)
+   (mirror              (pointer process-drawable)         :offset-assert 288)
    )
   :heap-base #xb0
   :method-count-assert 20
   :size-assert         #x124
   :flag-assert         #x1400b00124
+  (:states
+    sidekick-clone
+    )
   )
 
 
 (define-perm *sidekick* sidekick #f)
-
-; what is this.
-;(new 'static 'boxed-array :type type pilot-info mech-info turret-info indax-info tube-info)
