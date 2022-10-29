@@ -750,7 +750,7 @@ end_type_pass:
 
       auto& type = instr.unknown_stack_structure_tag->selected_type.value();
       int offset = instr.unknown_stack_structure_tag->stack_offset;
-      if (type.base_type() == "pointer") {
+      if (type.base_type() != "pointer") {
         StackStructureHint hint;
         hint.stack_offset = offset;
         hint.container_type = StackStructureHint::ContainerType::NONE;

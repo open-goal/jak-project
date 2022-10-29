@@ -1,37 +1,23 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collide-hash.gc
-;; name in dgo: collide-hash
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
-;; collide-hash is the broad phase collision detector for background collisions.
-;; It esssentially answers the question "what collide fragments are near X"?
-;; and this answer is passed down to lower level collision checks.
-
-
-;; unlike jak 1, this uses a "spatial hash". The idea is to divide space into a grid, then map
-;; cells in this grid to a smaller number of buckets using a hash function.
-
-;; hash collisions are probably not too common, as most space is empty, and can be reject relatively quickly
-;; by doing a bounding sphere check with the collision fragments.
-
-;; in this file, boxes are commonly represented as a vector, with xyz being the origin, and w being half
-;; the side length.
-
+;; definition for function add-collide-debug-box
+;; WARN: Return type mismatch symbol vs none.
 (defun add-collide-debug-box ((arg0 vector) (arg1 rgba))
-  "Debug draw a box represented as (origin, half-side-length)."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          )
     (let ((a3-0 (new 'stack-no-clear 'bounding-box)))
+      (nop!)
       (.lvf vf1 (&-> arg0 quad))
       (.sub.w.vf vf2 vf1 vf1)
+      (nop!)
       (.add.w.vf vf3 vf1 vf1)
+      (nop!)
+      (nop!)
       (.svf (&-> a3-0 min quad) vf2)
+      (nop!)
       (.svf (&-> a3-0 max quad) vf3)
       (add-debug-box #t (bucket-id debug2) (-> a3-0 min) (-> a3-0 max) arg1)
       )
@@ -39,8 +25,9 @@
     )
   )
 
+;; definition (debug) for function print-collide-cache-tri-count
+;; WARN: Return type mismatch object vs none.
 (defun-debug print-collide-cache-tri-count ()
-  "Print the number of triangles in the collide cache."
   (let ((gp-0 0)
         (s4-0 0)
         (s5-0 0)
@@ -70,8 +57,9 @@
   (none)
   )
 
+;; definition (debug) for function print-exceeded-max-cache-tris
+;; WARN: Return type mismatch int vs none.
 (defun-debug print-exceeded-max-cache-tris ()
-  "Complain that the collide cache is full."
   (with-pp
     (when (not *already-printed-exeeded-max-cache-tris*)
       (set! *already-printed-exeeded-max-cache-tris* #t)
@@ -86,17 +74,32 @@
     )
   )
 
-;; these methods fill a collide list, given a collide query. This does the actual spatial hash.
-(defmethod-mips2c "(method 11 collide-hash)" 11 collide-hash)
-(defmethod-mips2c "(method 12 collide-hash)" 12 collide-hash)
+;; definition for method 11 of type collide-hash
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; these methods do the work of writing triangles into the collide cache.
-(def-mips2c fill-bg-using-box-new (function collide-cache object collide-query none))
-(def-mips2c fill-bg-using-line-sphere-new (function collide-cache object collide-query none))
+;; definition for method 12 of type collide-hash
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function fill-bg-using-box-new
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function fill-bg-using-line-sphere-new
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function collide-list-fill-bg-using-box
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Return type mismatch int vs none.
 (defun collide-list-fill-bg-using-box ((arg0 collide-cache) (arg1 collide-list) (arg2 collide-query))
-  "Given a list of collision meshes, fill the given collide collide with triangles which are
-   inside the box."
   (local-vars
     (v1-12 uint128)
     (v1-14 uint128)
@@ -132,41 +135,37 @@
     (init-vf0-vector)
     (set! sv-16 (-> arg1 num-items))
     (set! sv-20 arg1)
-
-    ;; loop over collision meshes.
     (dotimes (s4-0 sv-16)
       (let ((s3-0 (-> sv-20 items s4-0 mesh)))
         (cond
-          ((= (-> s3-0 type) instance-tie) ;; it's an instanced collision mesh.
+          ((= (-> s3-0 type) instance-tie)
            (let* ((v1-4 s3-0)
                   (s1-0 (-> v1-4 bucket-ptr))
                   )
-             ;; only both checking if collision is enabled on this geometry.
              (when (not (or (logtest? (-> s1-0 flags) (prototype-flags no-collide))
                             (logtest? (-> v1-4 flags) (instance-flags no-collide))
                             )
                         )
-               ;; debug draw.
                (if *collide-list-boxes*
                    (add-collide-debug-box (-> s3-0 bsphere) (new 'static 'rgba :r #xff :a #x80))
                    )
-
-               ;; we need to created a modified query to account for the transformation of the instanced mesh.
                (let ((s0-0 (new 'stack-no-clear 'matrix))
                      (s2-0 (new 'stack-no-clear 'collide-query))
                      )
-                 ;; start with the input query, copied.
                  (mem-copy! (the-as pointer s2-0) (the-as pointer arg2) 540)
-
-                 ;; unpack the instance matrix.
+                 (nop!)
+                 (nop!)
                  (let ((v1-11 (the-as uint128 (-> s3-0 origin vector4h 3 long))))
+                   (nop!)
                    (let ((a2-2 (the-as uint128 (-> s3-0 origin vector4h 0 long))))
                      (.pextlh v1-12 v1-11 0)
                      (let ((a0-9 (the-as uint128 (-> s3-0 origin vector4h 1 long))))
                        (.pw.sra a1-3 v1-12 10)
                        (let ((v1-13 (the-as uint128 (-> s3-0 origin vector4h 2 long))))
                          (.pextlh a2-3 a2-2 0)
+                         (nop!)
                          (.pw.sra a2-4 a2-3 16)
+                         (nop!)
                          (.pextlh a0-10 a0-9 0)
                          (.mov vf4 a1-3)
                          (.pw.sra a0-11 a0-10 16)
@@ -179,96 +178,153 @@
                  (.mov vf2 a0-11)
                  (.pw.sra v1-15 v1-14 16)
                  (.lvf vf5 (&-> s3-0 bsphere quad))
+                 (nop!)
                  (.mov vf3 v1-15)
                  (.itof.vf vf4 vf4)
+                 (nop!)
                  (vitof12.xyzw vf1 vf1)
+                 (nop!)
                  (vitof12.xyzw vf2 vf2)
+                 (nop!)
                  (vitof12.xyzw vf3 vf3)
+                 (nop!)
                  (.add.vf vf4 vf4 vf5 :mask #b111)
-
-                 ;; pass the instance mat down.
+                 (nop!)
+                 (nop!)
                  (.svf (&-> s2-0 instance-mat vector 0 quad) vf1)
+                 (nop!)
                  (.svf (&-> s2-0 instance-mat vector 1 quad) vf2)
+                 (nop!)
                  (.svf (&-> s2-0 instance-mat vector 2 quad) vf3)
+                 (nop!)
                  (.svf (&-> s2-0 instance-mat trans quad) vf4)
-
-                 ;; transform the bounding box to instance coordinates.
                  (matrix-4x4-inverse! s0-0 (-> s2-0 instance-mat))
+                 (nop!)
+                 (nop!)
                  (.lvf vf7 (&-> arg2 bbox min quad))
+                 (nop!)
                  (.lvf vf14 (&-> arg2 bbox max quad))
+                 (nop!)
                  (.lvf vf1 (&-> s0-0 vector 0 quad))
+                 (nop!)
                  (.lvf vf2 (&-> s0-0 vector 1 quad))
+                 (nop!)
                  (.lvf vf3 (&-> s0-0 vector 2 quad))
+                 (nop!)
                  (.lvf vf4 (&-> s0-0 trans quad))
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf7 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf7 acc)
+                 (nop!)
                  (.add.mul.z.vf vf8 vf3 vf14 acc)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf7 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf14 acc)
+                 (nop!)
                  (.add.mul.z.vf vf9 vf3 vf7 acc)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf7 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf14 acc)
+                 (nop!)
                  (.add.mul.z.vf vf10 vf3 vf14 acc)
+                 (nop!)
                  (.min.vf vf5 vf8 vf9)
+                 (nop!)
                  (.max.vf vf6 vf8 vf9)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf14 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf7 acc)
+                 (nop!)
                  (.add.mul.z.vf vf11 vf3 vf7 acc)
+                 (nop!)
                  (.min.vf vf5 vf5 vf10)
+                 (nop!)
                  (.max.vf vf6 vf6 vf10)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf14 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf7 acc)
+                 (nop!)
                  (.add.mul.z.vf vf12 vf3 vf14 acc)
+                 (nop!)
                  (.min.vf vf5 vf5 vf11)
+                 (nop!)
                  (.max.vf vf6 vf6 vf11)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf14 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf14 acc)
+                 (nop!)
                  (.add.mul.z.vf vf13 vf3 vf7 acc)
+                 (nop!)
                  (.min.vf vf5 vf5 vf12)
+                 (nop!)
                  (.max.vf vf6 vf6 vf12)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf14 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf14 acc)
+                 (nop!)
                  (.add.mul.z.vf vf14 vf3 vf14 acc)
+                 (nop!)
                  (.min.vf vf5 vf5 vf13)
+                 (nop!)
                  (.max.vf vf6 vf6 vf13)
+                 (nop!)
                  (.mul.w.vf acc vf4 vf0)
+                 (nop!)
                  (.add.mul.x.vf acc vf1 vf7 acc)
+                 (nop!)
                  (.add.mul.y.vf acc vf2 vf7 acc)
+                 (nop!)
                  (.add.mul.z.vf vf7 vf3 vf7 acc)
+                 (nop!)
                  (.min.vf vf5 vf5 vf14)
+                 (nop!)
                  (.max.vf vf6 vf6 vf14)
+                 (nop!)
                  (.min.vf vf5 vf5 vf7)
+                 (nop!)
                  (.max.vf vf6 vf6 vf7)
+                 (nop!)
                  (.ftoi.vf vf16 vf5)
+                 (nop!)
                  (.ftoi.vf vf17 vf6)
-
-                 ;; update collision query with transformed box
+                 (nop!)
+                 (nop!)
                  (.svf (&-> s2-0 bbox min quad) vf5)
+                 (nop!)
                  (.svf (&-> s2-0 bbox max quad) vf6)
+                 (nop!)
                  (.svf (&-> s2-0 bbox4w min quad) vf16)
+                 (nop!)
                  (.svf (&-> s2-0 bbox4w max quad) vf17)
-
-                 ;; loop over fragments in the mesh.
                  (let ((s1-1 (-> s1-0 collide-hash-fragment-array)))
                    (set! sv-640 (-> s1-1 length))
                    (set! (-> s2-0 instance-ptr) s3-0)
                    (dotimes (s3-1 sv-640)
-                     ;; not sure why we set this, maybe something used by the asm function
-                     (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 0) (the-as uint128 0))
-                     (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 1) (the-as uint128 0))
-                     ;; reset triangle count
-                     (set! (-> (scratchpad-object collide-hash-scratch) tris) (the-as uint 0))
-                     ;; unpack triangles, filter, and store in collide cache.
+                     (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 0) (the-as uint128 0))
+                     (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 1) (the-as uint128 0))
+                     (set! (-> (the-as collide-hash-scratch #x70000000) tris) (the-as uint 0))
                      (fill-bg-using-box-new arg0 (-> s1-1 fragments s3-1) s2-0)
-                     ;; update stats
-                     (+! (-> *collide-stats* tris) (-> (scratchpad-object collide-hash-scratch) tris))
+                     (+! (-> *collide-stats* tris) (-> (the-as collide-hash-scratch #x70000000) tris))
                      )
                    )
                  )
@@ -276,16 +332,15 @@
              )
            )
           (else
-            ;; colliding with non-instanced mesh. Don't need to update query.
             (if *collide-list-boxes*
                 (add-collide-debug-box (-> s3-0 bsphere) (new 'static 'rgba :r #xff :g #xff :a #x80))
                 )
-            (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 0) (the-as uint128 0))
-            (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 1) (the-as uint128 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 0) (the-as uint128 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 1) (the-as uint128 0))
             (set! (-> arg2 instance-ptr) #f)
-            (set! (-> (scratchpad-object collide-hash-scratch) tris) (the-as uint 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) tris) (the-as uint 0))
             (fill-bg-using-box-new arg0 s3-0 arg2)
-            (+! (-> *collide-stats* tris) (-> (scratchpad-object collide-hash-scratch) tris))
+            (+! (-> *collide-stats* tris) (-> (the-as collide-hash-scratch #x70000000) tris))
             )
           )
         )
@@ -295,13 +350,21 @@
     )
   )
 
-(defmacro .sll (result in sa)
-  `(set! ,result (sext32 (the-as int (shl (logand ,in #xffffffff) ,sa))))
-  )
-
+;; definition for function collide-list-fill-bg-using-line-sphere
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 640 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [sll v1, v1, 16]
 (defun collide-list-fill-bg-using-line-sphere ((arg0 collide-cache) (arg1 collide-list) (arg2 collide-query))
-  "line-sphere version of collide-list-fill-bg-using-box.
-   Logic is basically the same, but transforming the line-sphere query is a bit trickier."
   (local-vars
     (v1-12 uint128)
     (v1-14 uint128)
@@ -336,7 +399,6 @@
       (let ((s2-0 (-> arg1 items s3-0 mesh)))
         (cond
           ((= (-> s2-0 type) instance-tie)
-           ;; it's an instance, we'll need some fancy logic to transform the query to be in the instance coordinates.
            (let ((v1-4 s2-0))
              (when (not (or (logtest? (-> v1-4 bucket-ptr flags) (prototype-flags no-collide))
                             (logtest? (-> v1-4 flags) (instance-flags no-collide))
@@ -348,17 +410,19 @@
                (let ((s0-0 (new 'stack-no-clear 'matrix))
                      (s1-0 (new 'stack-no-clear 'collide-query))
                      )
-                 ;; copy original query
                  (mem-copy! (the-as pointer s1-0) (the-as pointer arg2) 540)
-                 ;; unpack instance matrix
+                 (nop!)
                  (let ((v1-11 (the-as uint128 (-> s2-0 origin vector4h 3 long))))
+                   (nop!)
                    (let ((a2-2 (the-as uint128 (-> s2-0 origin vector4h 0 long))))
                      (.pextlh v1-12 v1-11 0)
                      (let ((a0-9 (the-as uint128 (-> s2-0 origin vector4h 1 long))))
                        (.pw.sra a1-3 v1-12 10)
                        (let ((v1-13 (the-as uint128 (-> s2-0 origin vector4h 2 long))))
                          (.pextlh a2-3 a2-2 0)
+                         (nop!)
                          (.pw.sra a2-4 a2-3 16)
+                         (nop!)
                          (.pextlh a0-10 a0-9 0)
                          (.mov vf4 a1-3)
                          (.pw.sra a0-11 a0-10 16)
@@ -371,24 +435,39 @@
                  (.mov vf2 a0-11)
                  (.pw.sra v1-15 v1-14 16)
                  (.lvf vf5 (&-> s2-0 bsphere quad))
+                 (nop!)
                  (.mov vf3 v1-15)
                  (.itof.vf vf4 vf4)
+                 (nop!)
                  (vitof12.xyzw vf1 vf1)
+                 (nop!)
                  (vitof12.xyzw vf2 vf2)
+                 (nop!)
                  (vitof12.xyzw vf3 vf3)
+                 (nop!)
                  (.add.vf vf4 vf4 vf5 :mask #b111)
+                 (nop!)
+                 (nop!)
                  (.svf (&-> s1-0 instance-mat vector 0 quad) vf1)
+                 (nop!)
                  (.svf (&-> s1-0 instance-mat vector 1 quad) vf2)
+                 (nop!)
                  (.svf (&-> s1-0 instance-mat vector 2 quad) vf3)
+                 (nop!)
                  (.svf (&-> s1-0 instance-mat trans quad) vf4)
-
-                 ;; invert
                  (matrix-4x4-inverse! s0-0 (-> s1-0 instance-mat))
+                 (nop!)
+                 (nop!)
                  (.lvf vf7 (&-> arg2 start-pos quad))
+                 (nop!)
                  (.lvf vf8 (&-> arg2 move-dist quad))
+                 (nop!)
                  (.lvf vf1 (&-> s0-0 vector 0 quad))
+                 (nop!)
                  (.lvf vf2 (&-> s0-0 vector 1 quad))
+                 (nop!)
                  (.lvf vf3 (&-> s0-0 vector 2 quad))
+                 (nop!)
                  (.lvf vf4 (&-> s0-0 trans quad))
                  (.add.vf vf8 vf7 vf8)
                  (let ((v1-16 (-> s2-0 rmin-scale)))
@@ -399,11 +478,16 @@
                      (.add.mul.z.vf acc vf3 vf7 acc)
                      (let ((f1-0 (the-as float v1-17)))
                        (.add.mul.w.vf vf7 vf4 vf0 acc)
+                       (nop!)
                        (.mul.x.vf acc vf1 vf8)
                        (let ((f2-1 (* f2-0 f1-0)))
                          (.add.mul.y.vf acc vf2 vf8 acc)
+                         (nop!)
                          (.add.mul.z.vf acc vf3 vf8 acc)
+                         (nop!)
                          (.add.mul.w.vf vf8 vf4 vf0 acc)
+                         (nop!)
+                         (nop!)
                          (.svf (&-> s1-0 start-pos quad) vf7)
                          (.min.vf vf5 vf7 vf8)
                          (set! (-> s1-0 radius) f2-1)
@@ -412,16 +496,28 @@
                      )
                    )
                  (.max.vf vf6 vf7 vf8)
+                 (nop!)
+                 (nop!)
                  (.lvf vf9 (&-> s1-0 exit-planes 0 quad))
                  (.sub.vf vf8 vf8 vf7)
+                 (nop!)
                  (.sub.w.vf vf5 vf5 vf9)
+                 (nop!)
                  (.add.w.vf vf6 vf6 vf9)
+                 (nop!)
+                 (nop!)
                  (.svf (&-> s1-0 move-dist quad) vf8)
                  (.ftoi.vf vf10 vf5)
+                 (nop!)
                  (.ftoi.vf vf11 vf6)
+                 (nop!)
+                 (nop!)
                  (.svf (&-> s1-0 bbox min quad) vf5)
+                 (nop!)
                  (.svf (&-> s1-0 bbox max quad) vf6)
+                 (nop!)
                  (.svf (&-> s1-0 bbox4w min quad) vf10)
+                 (nop!)
                  (.svf (&-> s1-0 bbox4w max quad) vf11)
                  (set! (-> s1-0 rlength x) (if (= (-> s1-0 move-dist x) 0.0)
                                                0.0
@@ -482,11 +578,11 @@
                    (set! sv-640 (-> s0-1 length))
                    (set! (-> s1-0 instance-ptr) s2-0)
                    (dotimes (s2-1 sv-640)
-                     (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 0) (the-as uint128 0))
-                     (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 1) (the-as uint128 0))
-                     (set! (-> (scratchpad-object collide-hash-scratch) tris) (the-as uint 0))
+                     (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 0) (the-as uint128 0))
+                     (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 1) (the-as uint128 0))
+                     (set! (-> (the-as collide-hash-scratch #x70000000) tris) (the-as uint 0))
                      (fill-bg-using-line-sphere-new arg0 (-> s0-1 fragments s2-1) s1-0)
-                     (+! (-> *collide-stats* tris) (-> (scratchpad-object collide-hash-scratch) tris))
+                     (+! (-> *collide-stats* tris) (-> (the-as collide-hash-scratch #x70000000) tris))
                      )
                    )
                  )
@@ -497,12 +593,12 @@
             (if *collide-list-boxes*
                 (add-collide-debug-box (-> s2-0 bsphere) (new 'static 'rgba :r #xff :g #xff :a #x80))
                 )
-            (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 0) (the-as uint128 0))
-            (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits 1) (the-as uint128 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 0) (the-as uint128 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits 1) (the-as uint128 0))
             (set! (-> arg2 instance-ptr) #f)
-            (set! (-> (scratchpad-object collide-hash-scratch) tris) (the-as uint 0))
+            (set! (-> (the-as collide-hash-scratch #x70000000) tris) (the-as uint 0))
             (fill-bg-using-line-sphere-new arg0 s2-0 arg2)
-            (+! (-> *collide-stats* tris) (-> (scratchpad-object collide-hash-scratch) tris))
+            (+! (-> *collide-stats* tris) (-> (the-as collide-hash-scratch #x70000000) tris))
             )
           )
         )
@@ -512,9 +608,9 @@
     )
   )
 
+;; definition for method 8 of type collide-hash
+;; INFO: Used lq/sq
 (defmethod mem-usage collide-hash ((obj collide-hash) (arg0 memory-usage-block) (arg1 int))
-  "This one is a bit weird because it touches stuff in the scratchpad...
-   It's called from the bsp-header's mem-usage function, so it should be fine."
   (set! (-> arg0 length) (max 51 (-> arg0 length)))
   (set! (-> arg0 data 50 name) (symbol->string 'collision))
   (+! (-> arg0 data 50 count) 1)
@@ -523,14 +619,14 @@
     (+! (-> arg0 data 50 total) (logand -16 (+ v1-10 15)))
     )
   (dotimes (v1-14 (the-as int (-> obj qwc-id-bits)))
-    (set! (-> (scratchpad-object collide-hash-scratch) collidable-bits v1-14) (the-as uint128 0))
+    (set! (-> (the-as collide-hash-scratch #x70000000) collidable-bits v1-14) (the-as uint128 0))
     )
   (dotimes (s3-0 (the-as int (-> obj num-items)))
     (let* ((a0-12 (-> obj item-array s3-0 id))
            (v1-19 (shr a0-12 5))
            )
-      (when (not (logtest? (-> (scratchpad-object collide-hash-scratch) id-bits v1-19) (ash 1 (logand a0-12 31))))
-        (logior! (-> (scratchpad-object collide-hash-scratch) id-bits v1-19) (ash 1 (logand a0-12 31)))
+      (when (not (logtest? (-> (the-as collide-hash-scratch #x70000000) id-bits v1-19) (ash 1 (logand a0-12 31))))
+        (logior! (-> (the-as collide-hash-scratch #x70000000) id-bits v1-19) (ash 1 (logand a0-12 31)))
         (if (= (-> obj item-array s3-0 collidable type) collide-hash-fragment)
             (mem-usage (-> obj item-array s3-0 collidable) arg0 arg1)
             )
@@ -540,6 +636,7 @@
   obj
   )
 
+;; definition for method 8 of type collide-hash-fragment
 (defmethod mem-usage collide-hash-fragment ((obj collide-hash-fragment) (arg0 memory-usage-block) (arg1 int))
   (cond
     ((logtest? arg1 1)
@@ -586,6 +683,7 @@
   obj
   )
 
+;; definition for method 8 of type collide-hash-fragment-array
 (defmethod mem-usage collide-hash-fragment-array ((obj collide-hash-fragment-array) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 55 (-> arg0 length)))
   (set! (-> arg0 data 54 name) (symbol->string 'prototype-collision))
@@ -599,3 +697,7 @@
     )
   obj
   )
+
+
+
+

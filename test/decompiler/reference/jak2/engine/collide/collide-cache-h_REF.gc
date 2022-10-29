@@ -1,7 +1,5 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition of type collide-puss-sphere
 (deftype collide-puss-sphere (structure)
   ((bsphere sphere         :inline :offset-assert   0)
    (bbox4w  bounding-box4w :inline :offset-assert  16)
@@ -11,7 +9,6 @@
   :flag-assert         #x900000030
   )
 
-;; definition for method 3 of type collide-puss-sphere
 (defmethod inspect collide-puss-sphere ((obj collide-puss-sphere))
   (when (not obj)
     (set! obj obj)
@@ -24,7 +21,6 @@
   obj
   )
 
-;; definition of type collide-puss-work
 (deftype collide-puss-work (structure)
   ((closest-pt     vector              :inline    :offset-assert   0)
    (tri-normal     vector              :inline    :offset-assert  16)
@@ -41,7 +37,6 @@
     )
   )
 
-;; definition for method 3 of type collide-puss-work
 (defmethod inspect collide-puss-work ((obj collide-puss-work))
   (when (not obj)
     (set! obj obj)
@@ -57,7 +52,6 @@
   obj
   )
 
-;; definition of type collide-cache-tri
 (deftype collide-cache-tri (structure)
   ((vertex      vector      3 :inline :offset-assert   0)
    (extra-quad  uint8       16        :offset-assert  48)
@@ -72,7 +66,6 @@
   :flag-assert         #x900000040
   )
 
-;; definition for method 3 of type collide-cache-tri
 (defmethod inspect collide-cache-tri ((obj collide-cache-tri))
   (when (not obj)
     (set! obj obj)
@@ -90,7 +83,6 @@
   obj
   )
 
-;; definition of type collide-cache-prim
 (deftype collide-cache-prim (structure)
   ((prim-core    collide-prim-core  :inline :offset-assert   0)
    (extra-quad   uint8              16      :offset-assert  32)
@@ -113,7 +105,6 @@
     )
   )
 
-;; definition for method 3 of type collide-cache-prim
 (defmethod inspect collide-cache-prim ((obj collide-cache-prim))
   (when (not obj)
     (set! obj obj)
@@ -135,10 +126,11 @@
   obj
   )
 
-;; definition of type collide-cache
 (deftype collide-cache (basic)
   ((num-tris         int32                          :offset-assert   4)
+   (num-tris-u32     uint32                         :offset          4)
    (num-prims        int32                          :offset-assert   8)
+   (num-prims-u32    uint32                         :offset          8)
    (ignore-mask      pat-surface                    :offset-assert  12)
    (ignore-processes process            2           :offset-assert  16)
    (collide-box      bounding-box       :inline     :offset-assert  32)
@@ -155,16 +147,16 @@
     (collide-cache-method-9 () none 9)
     (fill-and-probe-using-line-sphere (_type_ collide-query) float 10)
     (fill-and-probe-using-spheres (_type_ collide-query) symbol 11)
-    (collide-cache-method-12 (_type_ collide-query) none 12)
+    (fill-using-bounding-box (_type_ collide-query) none 12)
     (fill-using-line-sphere (_type_ collide-query) none 13)
     (fill-using-spheres (_type_ collide-query) none 14)
-    (collide-cache-method-15 () none 15)
-    (collide-cache-method-16 (_type_ collide-query) float 16)
+    (reset (_type_) none 15)
+    (probe-using-line-sphere (_type_ collide-query) float 16)
     (probe-using-spheres (_type_ collide-query) symbol 17)
-    (collide-cache-method-18 () none 18)
-    (collide-cache-method-19 () none 19)
-    (collide-cache-method-20 () none 20)
-    (collide-cache-method-21 () none 21)
+    (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none 18)
+    (fill-from-fg-boxes (_type_) none 19)
+    (fill-from-fg-line-sphere (_type_) none 20)
+    (fill-from-water (_type_ water-control) none 21)
     (collide-cache-method-22 () none 22)
     (collide-cache-method-23 () none 23)
     (collide-cache-method-24 () none 24)
@@ -172,7 +164,6 @@
     )
   )
 
-;; definition for method 3 of type collide-cache
 (defmethod inspect collide-cache ((obj collide-cache))
   (when (not obj)
     (set! obj obj)
@@ -193,10 +184,9 @@
   obj
   )
 
-;; definition of type collide-list-item
 (deftype collide-list-item (structure)
-  ((mesh collide-frag-mesh  :offset-assert   0)
-   (inst basic              :offset-assert   4)
+  ((mesh instance-tie  :offset-assert   0)
+   (inst basic         :offset-assert   4)
    )
   :pack-me
   :method-count-assert 9
@@ -204,7 +194,6 @@
   :flag-assert         #x900000008
   )
 
-;; definition for method 3 of type collide-list-item
 (defmethod inspect collide-list-item ((obj collide-list-item))
   (when (not obj)
     (set! obj obj)
@@ -217,7 +206,6 @@
   obj
   )
 
-;; definition of type collide-list
 (deftype collide-list (structure)
   ((num-items int32                         :offset-assert   0)
    (items     collide-list-item 256 :inline :offset         16)
@@ -227,7 +215,6 @@
   :flag-assert         #x900000810
   )
 
-;; definition for method 3 of type collide-list
 (defmethod inspect collide-list ((obj collide-list))
   (when (not obj)
     (set! obj obj)
@@ -240,14 +227,10 @@
   obj
   )
 
-;; failed to figure out what this is:
 (kmemopen global "collide-cache")
 
-;; definition (perm) for symbol *collide-cache*, type collide-cache
 (define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
 
-;; definition (perm) for symbol *collide-list*, type collide-list
 (define-perm *collide-list* collide-list (new 'global 'collide-list))
 
-;; failed to figure out what this is:
 (kmemclose)
