@@ -110,6 +110,7 @@ tasks:
       - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
       - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
   watch-pcsx2:
+    # python -m pip install -U "watchdog[watchmedo]"
     cmds:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
     vars:
@@ -124,7 +125,7 @@ tasks:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
   offline-tests-fast:
     cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output --num_threads 32'
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
   offline-test-file:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
@@ -132,14 +133,14 @@ tasks:
   update-ref-tests:
     cmds:
       - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output --num_threads 32'
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-tests-fast
   update-ref-file:
     cmds:
       - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output'
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output --fail-on-cmp'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
