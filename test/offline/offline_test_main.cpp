@@ -584,6 +584,7 @@ int main(int argc, char* argv[]) {
   if (!total.compare.total_pass) {
     lg::error("Comparison failed.");
     for (auto& f : total.compare.failing_files) {
+      fmt::print("{}\n", f.filename);
       fmt::print("{}\n", f.diff);
     }
     lg::error("Failing files:");

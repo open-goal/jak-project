@@ -1,0 +1,87 @@
+
+
+(define *collide-hash-test-origin* (new 'global 'vector))
+(define *collide-hash-test-size* (new 'global 'vector))
+(set-vector! *collide-hash-test-size* (meters 2.0) (meters 2.0) (meters 2.0) 0.0)
+
+
+(defun test-collide-hash ((iter int))
+  ;; create a collide query
+  (let ((query (new 'stack 'collide-query)))
+    ;; set the min/max
+    (vector+! (-> query bbox max) *collide-hash-test-origin* *collide-hash-test-size*)
+    (vector-! (-> query bbox min) *collide-hash-test-origin* *collide-hash-test-size*)
+
+    (add-debug-box #t (bucket-id debug2) (-> query bbox min) (-> query bbox max) (new 'static 'rgba :g #xff :b #xff :a #x80))
+
+    (set! (-> query collide-with) (collide-spec backgnd))
+    (set! (-> query ignore-process0) #f)
+    (set! (-> query ignore-process1) #f)
+    (set! (-> query ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1))
+
+    ;; set integer box
+    (dotimes (i 4)
+      (set! (-> query bbox4w min data i) (the int (-> query bbox min data i)))
+      (set! (-> query bbox4w max data i) (the int (-> query bbox max data i)))
+      )
+
+    ;; first is fill-collide-list-from-box
+    ;; sec   is collide-list-fill-bg-using-box
+
+    (set! (-> *collide-list* num-items) 0)
+    (dotimes (i (-> *level* length))
+      (let ((lev (-> *level* level i)))
+        (when (= (-> lev status) 'active)
+          (fill-collide-list-from-box (-> lev bsp collide-hash) 0 *collide-list* query)
+          )
+        )
+      )
+
+    (format *stdcon* "got ~d things in the list~%" (-> *collide-list* num-items))
+    (dotimes (i (-> *collide-list* num-items))
+      (let ((item (-> *collide-list* items i)))
+        (cond
+          ((= (-> item mesh type) instance-tie)
+                       (add-debug-sphere
+             #t
+             (bucket-id debug2)
+             (-> (the instance-tie (-> item mesh)) bsphere)
+             (-> (the instance-tie (-> item mesh)) bsphere w)
+             (new 'static 'rgba :r #xff :g #xff :a #x80))
+           )
+          ((= (-> item mesh type) collide-hash-fragment)
+            (add-debug-sphere
+             #t
+             (bucket-id debug2)
+             (-> (the collide-hash-fragment (-> item mesh)) bsphere)
+             (-> (the collide-hash-fragment (-> item mesh)) bsphere w)
+             (new 'static 'rgba :r #xff :b #xff :a #x80))
+           )
+          )
+        )
+      (format *stdcon* "[~d] ~A~%" i (-> *collide-list* items i mesh))
+
+      )
+    )
+  )
+
+(defun move-box-to-cam ()
+  (vector-copy! *collide-hash-test-origin* (target-cam-pos))
+  )
+
+(defun launch-collide-hash-debug-process ()
+  (set! *stats-profile-bars* #f)
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *entity-pool* "test" *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda ()
+                                     (let ((iter 0))
+                                       (while #t
+                                         (test-collide-hash iter)
+                                         (suspend)
+                                         (+! iter 1)
+                                         )
+                                       )
+                                     )
+                              )
+    proc)
+  )

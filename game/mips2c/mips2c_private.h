@@ -894,6 +894,17 @@ struct ExecutionContext {
     }
   }
 
+  void vmsuba(DEST mask, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] -= s0.f[i] * s1.f[i];
+      }
+    }
+  }
+
   void vmsuba_bc(DEST mask, BC bc, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -1063,6 +1074,9 @@ struct ExecutionContext {
   }
   void dsllv(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] << (gpr_src(sa).du32[0] & 0b111111);
+  }
+  void sllv(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds32[0] << (gpr_src(sa).du32[0] & 0b11111);
   }
   void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
   void dsrl32(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa); }
