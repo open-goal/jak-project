@@ -160,6 +160,12 @@ namespace method_9_edge_grab_info { extern void link(); }
 namespace method_16_collide_edge_work { extern void link(); }
 namespace method_17_collide_edge_work { extern void link(); }
 namespace method_18_collide_edge_work { extern void link(); }
+namespace init_ocean_far_regs { extern void link(); }
+namespace draw_large_polygon_ocean { extern void link(); }
+namespace render_ocean_quad { extern void link(); }
+namespace method_16_ocean { extern void link(); }
+namespace method_15_ocean { extern void link(); }
+namespace method_14_ocean { extern void link(); }
 }
 // clang-format on
 
@@ -264,7 +270,12 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"collide-edge-grab",
       {jak2::method_10_collide_edge_hold_list::link, jak2::method_19_collide_edge_work::link,
        jak2::method_9_edge_grab_info::link, jak2::method_16_collide_edge_work::link,
-       jak2::method_17_collide_edge_work::link, jak2::method_18_collide_edge_work::link}}},
+       jak2::method_17_collide_edge_work::link, jak2::method_18_collide_edge_work::link}},
+     {"ocean-vu0",
+      {jak2::method_16_ocean::link, jak2::method_15_ocean::link, jak2::method_14_ocean::link}},
+     {"ocean",
+      {jak2::init_ocean_far_regs::link, jak2::draw_large_polygon_ocean::link,
+       jak2::render_ocean_quad::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

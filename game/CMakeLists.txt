@@ -93,6 +93,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/sparticle.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp
         mips2c/jak2_functions/texture.cpp
+        mips2c/jak2_functions/ocean.cpp
+        mips2c/jak2_functions/ocean_vu0.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp

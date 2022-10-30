@@ -1,5 +1,7 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition of type rigid-body-platform-constants
 (deftype rigid-body-platform-constants (rigid-body-object-constants)
   ((drag-factor           float   :offset-assert 208)
    (buoyancy-factor       float   :offset-assert 212)
@@ -20,6 +22,7 @@
   :flag-assert         #x900000108
   )
 
+;; definition for method 3 of type rigid-body-platform-constants
 (defmethod inspect rigid-body-platform-constants ((obj rigid-body-platform-constants))
   (when (not obj)
     (set! obj obj)
@@ -62,6 +65,7 @@
   obj
   )
 
+;; definition of type rigid-body-control-point
 (deftype rigid-body-control-point (structure)
   ((local-pos vector :inline :offset-assert   0)
    (world-pos vector :inline :offset-assert  16)
@@ -72,6 +76,7 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type rigid-body-control-point
 (defmethod inspect rigid-body-control-point ((obj rigid-body-control-point))
   (when (not obj)
     (set! obj obj)
@@ -85,6 +90,7 @@
   obj
   )
 
+;; definition of type rigid-body-control-point-inline-array
 (deftype rigid-body-control-point-inline-array (inline-array-class)
   ((data rigid-body-control-point :inline :dynamic :offset-assert  16)
    )
@@ -93,6 +99,7 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type rigid-body-control-point-inline-array
 (defmethod inspect rigid-body-control-point-inline-array ((obj rigid-body-control-point-inline-array))
   (when (not obj)
     (set! obj obj)
@@ -106,8 +113,10 @@
   obj
   )
 
+;; failed to figure out what this is:
 (set! (-> rigid-body-control-point-inline-array heap-base) (the-as uint 48))
 
+;; definition of type rigid-body-platform
 (deftype rigid-body-platform (rigid-body-object)
   ((info-override        rigid-body-platform-constants                 :offset        204)
    (control-point-array  rigid-body-control-point-inline-array         :offset-assert 272)
@@ -130,6 +139,7 @@
     )
   )
 
+;; definition for method 3 of type rigid-body-platform
 (defmethod inspect rigid-body-platform ((obj rigid-body-platform))
   (when (not obj)
     (set! obj obj)
@@ -150,6 +160,8 @@
   obj
   )
 
+;; definition for method 7 of type rigid-body-platform
+;; WARN: Return type mismatch rigid-body-object vs rigid-body-platform.
 (defmethod relocate rigid-body-platform ((obj rigid-body-platform) (new-addr int))
   (if (nonzero? (-> obj control-point-array))
       (&+! (-> obj control-point-array) new-addr)
@@ -163,6 +175,7 @@
     )
   )
 
+;; definition for method 53 of type rigid-body-platform
 (defmethod rigid-body-platform-method-53 rigid-body-platform ((obj rigid-body-platform) (arg0 vector))
   (local-vars (f0-1 object))
   (let ((v1-0 (-> obj water-anim)))
@@ -180,7 +193,7 @@
                    f0-1
                    )
                  (else
-                   (ocean-method-11 *ocean* arg0 #t)
+                   (get-height *ocean* arg0 #t)
                    )
                  )
           )
@@ -188,6 +201,8 @@
   (the-as float f0-1)
   )
 
+;; definition for method 54 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-platform-method-54 rigid-body-platform ((obj rigid-body-platform) (ctrl-point rigid-body-control-point))
   (set! (-> ctrl-point world-pos w)
         (+ (rigid-body-platform-method-53 obj (-> ctrl-point world-pos)) (-> obj float-height-offset))
@@ -225,6 +240,8 @@
   (none)
   )
 
+;; definition for method 50 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-50 rigid-body-platform ((obj rigid-body-platform) (arg0 float))
   (when (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force player-contact-force))
     (if (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force))
@@ -242,6 +259,8 @@
   (none)
   )
 
+;; definition for method 55 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-platform-method-55 rigid-body-platform ((obj rigid-body-platform))
   (let ((a1-0 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-0 *y-vector* (* -1.0 (-> obj info-override gravity) (-> obj rbody state info mass)))
@@ -251,6 +270,8 @@
   (none)
   )
 
+;; definition for method 56 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-platform-method-56 rigid-body-platform ((obj rigid-body-platform) (arg0 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg0 (-> obj rbody state position))
@@ -268,6 +289,8 @@
   (none)
   )
 
+;; definition for method 29 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-29 rigid-body-platform ((obj rigid-body-platform) (arg0 float))
   (let ((s4-0 (-> obj rbody state matrix)))
     (dotimes (s3-0 (-> obj info-override control-point-count))
@@ -289,6 +312,9 @@
   (none)
   )
 
+;; definition for method 30 of type rigid-body-platform
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-30 rigid-body-platform ((obj rigid-body-platform))
   (if (-> obj info-override platform)
       ((method-of-object (-> obj root-override-2) collide-shape-method-35))
@@ -306,11 +332,14 @@
   (none)
   )
 
+;; definition for method 47 of type rigid-body-platform
 (defmethod rigid-body-object-method-47 rigid-body-platform ((obj rigid-body-platform) (arg0 process-drawable) (arg1 attack-info) (arg2 object) (arg3 penetrate))
   ((method-of-type rigid-body-object rigid-body-object-method-47) obj arg0 arg1 arg2 arg3)
   #f
   )
 
+;; definition for method 46 of type rigid-body-platform
+;; INFO: Used lq/sq
 (defmethod rigid-body-object-method-46 rigid-body-platform ((obj rigid-body-platform) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('edge-grabbed)
@@ -394,6 +423,7 @@
   (none)
   )
 
+;; definition for method 37 of type rigid-body-platform
 (defmethod rigid-body-object-method-37 rigid-body-platform ((obj rigid-body-platform))
   (if (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force))
       (sound-play-by-name
@@ -417,6 +447,9 @@
   (none)
   )
 
+;; definition for method 31 of type rigid-body-platform
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-31 rigid-body-platform ((obj rigid-body-platform) (arg0 rigid-body-object-constants))
   (with-pp
     (set! (-> obj info-override) (the-as rigid-body-platform-constants arg0))
@@ -445,6 +478,8 @@
     )
   )
 
+;; definition for method 32 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-32 rigid-body-platform ((obj rigid-body-platform))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -471,6 +506,7 @@
   (none)
   )
 
+;; definition for symbol *rigid-body-platform-constants*, type rigid-body-platform-constants
 (define *rigid-body-platform-constants* (new 'static 'rigid-body-platform-constants
                                           :mass 2.0
                                           :inv-mass 0.5
@@ -503,6 +539,8 @@
                                           )
         )
 
+;; definition for method 33 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-33 rigid-body-platform ((obj rigid-body-platform))
   (set! (-> obj float-height-offset) 0.0)
   (rigid-body-object-method-31 obj *rigid-body-platform-constants*)
@@ -522,6 +560,8 @@
   (none)
   )
 
+;; definition for method 11 of type rigid-body-platform
+;; WARN: Return type mismatch int vs none.
 (defmethod init-from-entity! rigid-body-platform ((obj rigid-body-platform) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (rigid-body-object-method-32 obj)
