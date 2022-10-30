@@ -1,5 +1,8 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition for function build-conversions
+;; INFO: Used lq/sq
 (defbehavior build-conversions target ((arg0 vector))
   (when (!= (-> self control unknown-surface02) (-> self control surf))
     (set! (-> self control unknown-surface02) (-> self control surf))
@@ -38,7 +41,7 @@
     (set! (-> self control unknown-surface01 transv-max) (* (-> self control unknown-surface01 transv-max) f0-11))
     )
   (let ((s5-0 (new-stack-vector0)))
-    (vector-z-quaternion! s5-0 (-> self control unknown-quaternion00))
+    (vector-z-quaternion! s5-0 (-> self control quat-for-control))
     (when (logtest? (-> self control unknown-surface00 flags) (surface-flag xz-local))
       (vector-flatten! s5-0 s5-0 (-> self control dynam gravity-normal))
       (vector-normalize! s5-0 1.0)
@@ -54,6 +57,8 @@
     )
   )
 
+;; definition for function vector-turn-to
+;; INFO: Used lq/sq
 (defbehavior vector-turn-to target ((arg0 vector))
   (forward-up-nopitch->quaternion
     (-> self control dir-targ)
@@ -64,6 +69,8 @@
   (build-conversions (-> self control transv))
   )
 
+;; definition for function reverse-conversions
+;; WARN: Return type mismatch cshape-moving-flags vs none.
 (defbehavior reverse-conversions target ((arg0 vector))
   (let ((v1-1 (-> self control unknown-vector00)))
     (set! (-> self control unknown-float05) (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
@@ -73,6 +80,7 @@
   (none)
   )
 
+;; definition (debug) for function draw-history
 (defun-debug draw-history ((arg0 control-info))
   (when (nonzero? *display-collide-history*)
     (when (cpad-pressed? 0 l3)
@@ -111,7 +119,11 @@
   (none)
   )
 
+;; definition (debug) for function target-history-print
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function target-print-stats
+;; INFO: Used lq/sq
 (defun-debug target-print-stats ((arg0 target) (arg1 symbol))
   (local-vars
     (sv-64 int)
@@ -495,18 +507,20 @@
     )
   )
 
+;; definition for function read-pad
+;; INFO: Used lq/sq
 (defbehavior read-pad target ((arg0 vector))
   (when (!= (-> self control unknown-dword01) (-> *display* real-clock frame-counter))
     (set! (-> self control unknown-vector13 quad) (-> self control unknown-vector12 quad))
     (set! (-> self control unknown-float13) (-> self control unknown-float12))
     (set! (-> self control unknown-dword01) (the-as int (-> *display* real-clock frame-counter)))
     )
-  (set! (-> arg0 x) (sin (-> self control unknown-cpad-info00 stick0-dir)))
+  (set! (-> arg0 x) (sin (-> self control cpad stick0-dir)))
   (set! (-> arg0 y) 0.0)
-  (set! (-> arg0 z) (cos (-> self control unknown-cpad-info00 stick0-dir)))
+  (set! (-> arg0 z) (cos (-> self control cpad stick0-dir)))
   (set! (-> arg0 w) 0.0)
   (set! (-> self control unknown-vector12 quad) (-> arg0 quad))
-  (set! (-> self control unknown-float12) (-> self control unknown-cpad-info00 stick0-speed))
+  (set! (-> self control unknown-float12) (-> self control cpad stick0-speed))
   (when (< (-> self control unknown-dword02) (-> self clock frame-counter))
     (let ((s5-0 (-> self control unknown-matrix03))
           (t9-2 matrix-local->world)
@@ -528,18 +542,23 @@
   (vector-matrix*! arg0 arg0 (-> self control unknown-matrix03))
   )
 
+;; definition for function set-pad
 (defbehavior set-pad target ((arg0 vector))
   (set! (-> self control unknown-float12) (vector-length arg0))
   (vector-matrix*! (-> self control unknown-vector12) arg0 (matrix-world->local #t #f))
   arg0
   )
 
+;; definition for function warp-vector-into-surface!
+;; INFO: Used lq/sq
 (defun warp-vector-into-surface! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 matrix))
   (let ((a2-1 (matrix-from-two-vectors! (new-stack-matrix0) (-> arg3 vector 1) arg2)))
     (vector-matrix*! arg0 arg1 a2-1)
     )
   )
 
+;; definition for function vector<-pad-in-surface!
+;; INFO: Used lq/sq
 (defbehavior vector<-pad-in-surface! target ((arg0 vector) (arg1 symbol))
   (let ((a1-1 (read-pad (new-stack-vector0))))
     (warp-vector-into-surface! arg0 a1-1 (-> self control local-normal) (-> self control unknown-matrix03))
@@ -550,6 +569,8 @@
   arg0
   )
 
+;; definition for function vector<-pad-in-matrix!
+;; WARN: Return type mismatch vector vs none.
 (defun vector<-pad-in-matrix! ((arg0 vector) (arg1 cpad-info) (arg2 matrix))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (t9-0 matrix-local->world)
@@ -571,15 +592,19 @@
   (none)
   )
 
+;; definition for function local-pad-angle
+;; INFO: Used lq/sq
 (defbehavior local-pad-angle target ()
   (let ((a0-1 (vector<-pad-in-surface! (new-stack-vector0) #f)))
     (vector-dot
       (vector-normalize! a0-1 1.0)
-      (vector-z-quaternion! (new-stack-vector0) (-> self control unknown-quaternion00))
+      (vector-z-quaternion! (new-stack-vector0) (-> self control quat-for-control))
       )
     )
   )
 
+;; definition for function turn-around?
+;; INFO: Used lq/sq
 (defbehavior turn-around? target ()
   (let* ((a0-1 (vector<-pad-in-surface! (new-stack-vector0) #f))
          (gp-0 (vector-normalize! a0-1 1.0))
@@ -628,6 +653,8 @@
     )
   )
 
+;; definition for function wall-hide?
+;; INFO: Used lq/sq
 (defbehavior wall-hide? target ()
   (when (and (< 0.7 (-> self control unknown-float12))
              (< 0.7 (-> self control unknown-float27))
@@ -699,6 +726,9 @@
     )
   )
 
+;; definition for function target-log-trans
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-log-trans target ()
   (let ((v1-1 (-> self control unknown-word00)))
     (set! (-> self control unknown-time-frame-array00 v1-1) (-> self clock frame-counter))
@@ -709,6 +739,8 @@
   (none)
   )
 
+;; definition for function target-move-dist
+;; INFO: Used lq/sq
 (defbehavior target-move-dist target ((arg0 time-frame))
   (let ((s5-0 (new-stack-vector0))
         (f30-0 0.0)
@@ -739,17 +771,19 @@
     )
   )
 
+;; definition for function turn-to-vector
+;; INFO: Used lq/sq
 (defbehavior turn-to-vector target ((arg0 vector) (arg1 float))
   (let ((gp-0 (new-stack-vector0)))
     (warp-vector-into-surface! gp-0 arg0 (-> self control local-normal) (-> self control unknown-matrix03))
     (set! (-> self control unknown-float11) (-> self control unknown-float10))
     (set! (-> self control unknown-float09) (-> self control unknown-float08))
-    (set! (-> self control unknown-vector09 quad) (-> self control unknown-vector08 quad))
+    (set! (-> self control unknown-vector09 quad) (-> self control to-target-pt-xz quad))
     (set! (-> self control unknown-vector11 quad) (-> self control unknown-vector10 quad))
     (vector-float*! (-> self control unknown-vector10) gp-0 arg1)
     (if (< 0.0 arg1)
         (warp-vector-into-surface!
-          (-> self control unknown-vector08)
+          (-> self control to-target-pt-xz)
           arg0
           *up-vector*
           (-> self control unknown-matrix03)
@@ -786,6 +820,7 @@
     )
   )
 
+;; definition for function target-bend-vel-turn
 (defbehavior target-bend-vel-turn target ((arg0 vector))
   (cond
     ((= (-> self control unknown-surface01 vel-turn) 0.0)
@@ -813,6 +848,8 @@
   arg0
   )
 
+;; definition for function target-add-slide-factor
+;; INFO: Used lq/sq
 (defbehavior target-add-slide-factor target ((arg0 vector))
   (let* ((a1-2 (vector-flatten!
                  (new 'stack-no-clear 'vector)
@@ -872,6 +909,8 @@
   arg0
   )
 
+;; definition for function add-thrust
+;; INFO: Used lq/sq
 (defbehavior add-thrust target ()
   (let ((s5-0 (-> self control unknown-vector01))
         (gp-0 (-> self control unknown-vector00))
@@ -1031,6 +1070,8 @@
     )
   )
 
+;; definition for function add-gravity
+;; INFO: Used lq/sq
 (defbehavior add-gravity target ()
   (let ((s5-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
@@ -1068,9 +1109,10 @@
     )
   )
 
+;; definition for function target-compute-slopes
 (defbehavior target-compute-slopes target ((arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s4-0 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00)))
+        (s4-0 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control)))
         (s3-0 (new 'stack-no-clear 'matrix))
         (s5-0 (vector-flatten!
                 (new 'stack-no-clear 'vector)
@@ -1099,6 +1141,7 @@
   0
   )
 
+;; definition for function do-rotations1
 (defbehavior do-rotations1 target ()
   (rotate-toward-orientation!
     (-> self control)
@@ -1111,6 +1154,8 @@
     )
   )
 
+;; definition for function do-rotations2
+;; INFO: Used lq/sq
 (defbehavior do-rotations2 target ()
   (let ((gp-0 (vector-z-quaternion! (new-stack-vector0) (-> self control dir-targ)))
         (s5-0
@@ -1135,7 +1180,7 @@
                       )
                   (zero? (logand (-> self control unknown-surface01 flags) (surface-flag turn-to-vel)))
                   )
-             (-> self control unknown-vector08)
+             (-> self control to-target-pt-xz)
              )
             (else
               (-> self control transv)
@@ -1207,7 +1252,7 @@
   (if (and (!= (-> self control unknown-float06) 0.0)
            (< (fabs
                 (deg-diff
-                  (quaternion-y-angle (-> self control unknown-quaternion00))
+                  (quaternion-y-angle (-> self control quat-for-control))
                   (quaternion-y-angle (-> self control dir-targ))
                   )
                 )
@@ -1218,13 +1263,15 @@
       )
   (quaternion-slerp!
     (-> self control quat)
-    (-> self control unknown-quaternion00)
-    (-> self control unknown-quaternion01)
-    (-> self control unknown-float04)
+    (-> self control quat-for-control)
+    (-> self control override-quat)
+    (-> self control override-quat-alpha)
     )
   (target-compute-slopes (-> self control dynam gravity-normal))
   )
 
+;; definition for function leg-ik-callback
+;; INFO: Used lq/sq
 (defun leg-ik-callback ((arg0 joint-mod-ik) (arg1 object) (arg2 object) (arg3 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1323,6 +1370,9 @@
     )
   )
 
+;; definition for function target-update-ik
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-update-ik target ()
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1372,7 +1422,7 @@
           )
         (set! (-> self foot s5-0 twist-max quad) (-> self control unknown-vector22 quad))
         (set! (-> self foot s5-0 trans quad) (-> self control gspot-pos quad))
-        (vector-y-quaternion! (-> self foot s5-0 target) (-> self control unknown-quaternion00))
+        (vector-y-quaternion! (-> self foot s5-0 target) (-> self control quat-for-control))
         (set! (-> self foot s5-0 flex-blend) (if (if (zero? s5-0)
                                                      (logtest? (state-flags lleg-no-ik) (-> self state-flags))
                                                      (logtest? (state-flags rleg-no-ik) (-> self state-flags))
@@ -1495,6 +1545,9 @@
     )
   )
 
+;; definition for function pre-collide-setup
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior pre-collide-setup target ()
   (if (>= (-> self clock frame-counter) (-> self control unknown-time-frame04))
       (vector-normalize!
@@ -1529,6 +1582,8 @@
   (none)
   )
 
+;; definition for function level-setup
+;; WARN: Return type mismatch int vs none.
 (defbehavior level-setup target ()
   (let ((gp-0 (-> self current-level)))
     (set! (-> self current-level) (level-get-target-inside *level*))
@@ -1545,9 +1600,12 @@
   (none)
   )
 
+;; definition for function flag-setup
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior flag-setup target ()
   (cond
-    ((= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+    ((= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
      (if (zero? (-> self control unknown-dword12))
          (set! (-> self control unknown-dword12)
                (the-as int (- (-> self clock frame-counter) (-> self control unknown-time-frame28)))
@@ -1564,7 +1622,7 @@
     )
   (level-setup)
   (set! (-> self control unknown-quaternion02 vec quad) (-> self control transv quad))
-  (quaternion-copy! (-> self control unknown-quaternion03) (-> self control unknown-quaternion00))
+  (quaternion-copy! (-> self control unknown-quaternion03) (-> self control quat-for-control))
   ((-> self control unknown-surface01 active-hook))
   (cond
     ((logtest? (-> self control status) (cshape-moving-flags on-surface))
@@ -1597,7 +1655,7 @@
         )
       )
     )
-  (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) r3)
+  (when (and (cpad-pressed? (-> self control cpad number) r3)
              (zero? (-> self control unknown-word07))
              (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie)))
              (not *pause-lock*)
@@ -1662,8 +1720,8 @@
       )
     )
   (when (and (= *cheat-mode* 'debug)
-             (cpad-hold? (-> self control unknown-cpad-info00 number) r2)
-             (cpad-hold? (-> self control unknown-cpad-info00 number) l2)
+             (cpad-hold? (-> self control cpad number) r2)
+             (cpad-hold? (-> self control cpad number) l2)
              (not *pause-lock*)
              (not (logtest? (focus-status grabbed in-head pilot) (-> self focus-status)))
              (not (and (-> self next-state) (let ((v1-167 (-> self next-state name)))
@@ -1746,9 +1804,7 @@
                       )
                  )
              (and (< f0-17 0.0)
-                  (and (or (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
-                           *pause-lock*
-                           )
+                  (and (or (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control cpad number) r2))) *pause-lock*)
                        (not (logtest? (focus-status flut pilot mech indax) (-> self focus-status)))
                        (not (logtest? (-> self state-flags) (state-flags sf7)))
                        #t
@@ -1765,7 +1821,7 @@
                    )
                (and v1-229
                     (< (-> self control trans y) (-> v1-229 info buttom-height))
-                    (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
+                    (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control cpad number) r2)))
                     )
                )
       (let ((a1-45 (new 'stack-no-clear 'event-message-block)))
@@ -1811,6 +1867,8 @@
   (none)
   )
 
+;; definition for function post-flag-setup
+;; WARN: Return type mismatch int vs none.
 (defbehavior post-flag-setup target ()
   (if (logtest? (-> self control status) (cshape-moving-flags t-wall t-act))
       (set! (-> self control unknown-time-frame07) (-> self clock frame-counter))
@@ -1899,6 +1957,8 @@
   (none)
   )
 
+;; definition for function bend-gravity
+;; INFO: Used lq/sq
 (defbehavior bend-gravity target ()
   (if (and (logtest? (-> self control root-prim prim-core action) (collide-action no-normal-reset))
            (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
@@ -1996,12 +2056,14 @@
     *display-target-marks*
     (bucket-id debug-no-zbuf1)
     (-> self control trans)
-    (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))
+    (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))
     (meters 3)
     (new 'static 'rgba :r #xff :a #x80)
     )
   )
 
+;; definition for function target-compute-edge
+;; INFO: Used lq/sq
 (defbehavior target-compute-edge target ()
   (let ((s5-0 *edge-grab-info*))
     (cond
@@ -2057,7 +2119,7 @@
                   )
                 )
           )
-      (let ((s4-1 (vector-! (new-stack-vector0) (-> s5-0 center-hold) (-> self control unknown-vector30))))
+      (let ((s4-1 (vector-! (new-stack-vector0) (-> s5-0 center-hold) (-> self control midpoint-of-hands))))
         (set! (-> self control unknown-float33) (vector-length s4-1))
         (cond
           ((and (< 819.2 (-> self control unknown-float33))
@@ -2152,6 +2214,8 @@
   (none)
   )
 
+;; definition for function target-compute-edge-rider
+;; INFO: Used lq/sq
 (defbehavior target-compute-edge-rider target ()
   (let ((gp-0 *edge-grab-info*))
     (cond
@@ -2216,6 +2280,8 @@
   (none)
   )
 
+;; definition for function target-compute-pole
+;; INFO: Used lq/sq
 (defbehavior target-compute-pole target ()
   (let* ((s2-0 (handle->process (-> self control unknown-handle01)))
          (gp-0 (-> (the-as swingpole s2-0) dir))
@@ -2243,7 +2309,7 @@
           (set! (-> v1-10 y) (+ -6144.0 (-> v1-10 y)))
           (send-event *camera* 'ease-in #x3f000000 v1-10)
           )
-        (vector-segment-distance-point! (-> self control unknown-vector30) s4-1 s3-1 s5-0)
+        (vector-segment-distance-point! (-> self control midpoint-of-hands) s4-1 s3-1 s5-0)
         (if (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.05))
             (set! (-> self control unknown-float33)
                   (fmax 0.0 (fmin 1.0 (/ (vector-vector-distance s4-1 s5-0) (* 2.0 (-> (the-as swingpole s2-0) edge-length)))))
@@ -2262,7 +2328,7 @@
           (add-debug-sphere
             #t
             (bucket-id debug2)
-            (-> self control unknown-vector30)
+            (-> self control midpoint-of-hands)
             (meters 0.2)
             (new 'static 'rgba :r #xff :a #x80)
             )
@@ -2271,7 +2337,7 @@
           (add-debug-sphere #t (bucket-id debug-no-zbuf1) s5-0 (meters 0.2) (new 'static 'rgba :b #xff :a #x80))
           )
         )
-      (let ((a0-26 (vector-! (new-stack-vector0) s5-0 (-> self control unknown-vector30))))
+      (let ((a0-26 (vector-! (new-stack-vector0) s5-0 (-> self control midpoint-of-hands))))
         (cond
           ((and (< 2457.6 (vector-length a0-26)) (not (-> self control unknown-symbol02)))
            (move-by-vector! (-> self control) (vector-normalize! a0-26 2457.6))
@@ -2289,7 +2355,7 @@
       )
     (let ((s5-3 (vector-cross! (-> self control unknown-vector36) gp-0 (-> self control dynam gravity-normal))))
       (if (>= 0.0
-              (vector-dot s5-3 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00)))
+              (vector-dot s5-3 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control)))
               )
           (vector-negate! s5-3 s5-3)
           )
@@ -2303,6 +2369,9 @@
   (none)
   )
 
+;; definition for function target-calc-camera-pos
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-calc-camera-pos target ()
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (gp-0 (new 'stack-no-clear 'vector))
@@ -2393,6 +2462,9 @@
   (none)
   )
 
+;; definition for function joint-points
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior joint-points target ()
   (let ((f0-1 (* 0.00078125 (the float (-> self neck loock-at-count)))))
     (if (!= f0-1 0.0)
@@ -2462,11 +2534,11 @@
   (let ((gp-0 (new-stack-vector0))
         (s5-0 (new-stack-vector0))
         )
-    (vector<-cspace! gp-0 (the-as cspace (-> self control unknown-vector29 x)))
-    (vector<-cspace! s5-0 (the-as cspace (-> self control unknown-vector29 y)))
-    (vector-average! (-> self control unknown-vector30) gp-0 s5-0)
+    (vector<-cspace! gp-0 (-> self control lhand-cspace))
+    (vector<-cspace! s5-0 (-> self control rhand-cspace))
+    (vector-average! (-> self control midpoint-of-hands) gp-0 s5-0)
     )
-  (vector-! (-> self control unknown-vector31) (-> self control unknown-vector30) (-> self control trans))
+  (vector-! (-> self control unknown-vector31) (-> self control midpoint-of-hands) (-> self control trans))
   (update-from-cspace (-> self control unknown-impact-control00))
   (cond
     ((logtest? (-> self focus-status) (focus-status edge-grab))
@@ -2490,6 +2562,9 @@
   (none)
   )
 
+;; definition for function do-target-gspot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior do-target-gspot target ()
   (cond
     ((and (logtest? (-> self control status) (cshape-moving-flags on-surface))
@@ -2521,6 +2596,8 @@
   (none)
   )
 
+;; definition for function target-real-post
+;; INFO: Used lq/sq
 (defbehavior target-real-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -2530,7 +2607,7 @@
         (set! (-> self control unknown-word07) gp-1)
         (flag-setup)
         (if (< (-> self control unknown-float15) 0.0)
-            (set! (-> self control unknown-float15) (- 1.0 (-> self control unknown-cpad-info00 stick0-speed)))
+            (set! (-> self control unknown-float15) (- 1.0 (-> self control cpad stick0-speed)))
             )
         (build-conversions (-> self control transv))
         (do-rotations1)
@@ -2618,7 +2695,7 @@
                      (-> *TARGET-bank* edge-grab-height-off-ground)
                      )
                  )
-            (target-method-27 *target* *collide-cache* *collide-edge-spec*)
+            (do-edge-grabs *target* *collide-cache* *collide-edge-spec*)
             )
         (when *debug-segment*
           (let ((s5-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
@@ -2687,11 +2764,14 @@
   (none)
   )
 
+;; definition for function target-post
 (defbehavior target-post target ()
   (target-real-post)
   (none)
   )
 
+;; definition for function target-swim-post
+;; INFO: Used lq/sq
 (defbehavior target-swim-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -2751,7 +2831,7 @@
                      (-> *TARGET-bank* edge-grab-height-off-ground)
                      )
                  )
-            (target-method-27 *target* *collide-cache* *collide-edge-spec*)
+            (do-edge-grabs *target* *collide-cache* *collide-edge-spec*)
             )
         (when *debug-segment*
           (let ((s5-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
@@ -2819,6 +2899,8 @@
   (none)
   )
 
+;; definition for function target-no-stick-post
+;; INFO: Used lq/sq
 (defbehavior target-no-stick-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -2878,7 +2960,7 @@
                      (-> *TARGET-bank* edge-grab-height-off-ground)
                      )
                  )
-            (target-method-27 *target* *collide-cache* *collide-edge-spec*)
+            (do-edge-grabs *target* *collide-cache* *collide-edge-spec*)
             )
         (when *debug-segment*
           (let ((s5-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
@@ -2947,6 +3029,8 @@
   (none)
   )
 
+;; definition for function target-no-move-post
+;; INFO: Used lq/sq
 (defbehavior target-no-move-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -3044,6 +3128,7 @@
   (none)
   )
 
+;; definition for function target-no-ja-move-post
 (defbehavior target-no-ja-move-post target ()
   (vector-!
     (-> self control unknown-vector05)
@@ -3063,11 +3148,13 @@
   (none)
   )
 
+;; definition for function reset-target-state
+;; INFO: Used lq/sq
 (defbehavior reset-target-state target ((arg0 symbol))
   (when arg0
     (vector-identity! (-> self control scale))
     (quaternion-identity! (-> self control quat))
-    (quaternion-identity! (-> self control unknown-quaternion00))
+    (quaternion-identity! (-> self control quat-for-control))
     (quaternion-identity! (-> self control dir-targ))
     (set! (-> self control transv quad) (the-as uint128 0))
     (set! (-> self control unknown-vector15 quad) (-> self control trans quad))
@@ -3079,8 +3166,8 @@
   (set! (-> self control unknown-dynamics00) *standard-dynamics*)
   (set! (-> self control surf) *standard-ground-surface*)
   (set! (-> self control unknown-vector02 quad) (-> self control unknown-dynamics00 gravity-normal quad))
-  (quaternion-identity! (-> self control unknown-quaternion01))
-  (set! (-> self control unknown-float04) 0.0)
+  (quaternion-identity! (-> self control override-quat))
+  (set! (-> self control override-quat-alpha) 0.0)
   (set! (-> self control unknown-time-frame06) (-> self clock frame-counter))
   (set! (-> self control unknown-float28) 0.0)
   (set! (-> self control unknown-float30) 32.0)
@@ -3092,6 +3179,9 @@
   self
   )
 
+;; definition for method 28 of type target
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod init-target target ((obj target) (arg0 continue-point) (arg1 symbol))
   (local-vars (s1-0 int) (s2-0 int) (s3-0 int) (s4-0 int) (sv-16 collide-shape-prim-group))
   (set! (-> obj tobot?) arg1)
@@ -3211,7 +3301,7 @@
   (set! (-> obj control unknown-vector15 quad) (-> arg0 trans quad))
   (set! (-> obj focus-search) (new 'process 'boxed-array collide-shape 128))
   (set! (-> obj focus-search length) 0)
-  (set! (-> obj control unknown-cpad-info00) (-> *cpad-list* cpads 0))
+  (set! (-> obj control cpad) (-> *cpad-list* cpads 0))
   (set! (-> obj control unknown-surface01) (new 'process 'surface))
   (set! (-> obj control unknown-surface01 name) 'current)
   (set! (-> obj control unknown-surface01 active-hook) nothing)
@@ -3243,9 +3333,9 @@
   (set! (-> obj carry)
         (new 'process 'carry-info obj 41 (new 'static 'vector :w 1.0) (new 'static 'vector :z 1.0 :w 1.0) 12743.111)
         )
-  (set! (-> obj control unknown-vector29 x) (the-as float (-> obj node-list data 45)))
-  (set! (-> obj control unknown-vector29 y) (the-as float (-> obj node-list data 55)))
-  (set! (-> obj control unknown-vector29 y) (the-as float (-> obj node-list data 55)))
+  (set! (-> obj control lhand-cspace) (-> obj node-list data 45))
+  (set! (-> obj control rhand-cspace) (-> obj node-list data 55))
+  (set! (-> obj control rhand-cspace) (-> obj node-list data 55))
   (set! (-> obj control unknown-cspacei1un23i1 parent) (-> obj node-list data 23))
   (set! (-> obj neck) (new 'process 'joint-mod (joint-mod-mode look-at) obj 8))
   (set! (-> obj neck parented-scale?) #t)
@@ -3319,6 +3409,8 @@
   (none)
   )
 
+;; definition for function target-init
+;; WARN: Return type mismatch object vs none.
 (defbehavior target-init target ((arg0 continue-point))
   (init-target self arg0 #f)
   (set! (-> self event-hook) (-> target-continue event))
@@ -3327,6 +3419,8 @@
   (none)
   )
 
+;; definition for function tobot-init
+;; WARN: Return type mismatch object vs none.
 (defbehavior tobot-init target ((arg0 symbol))
   (init-target self (the-as continue-point #f) 'tobot)
   (set! (-> self name) "tobot")
@@ -3336,6 +3430,7 @@
   (none)
   )
 
+;; definition for method 10 of type target
 (defmethod deactivate target ((obj target))
   (kill-persister *setting-control* (the-as engine-pers 'bg-a-speed) 'bg-a-speed)
   (if (nonzero? (-> obj darkjak))
@@ -3347,6 +3442,7 @@
   (none)
   )
 
+;; definition for function stop
 (defun stop ((arg0 symbol))
   (when *target*
     (kill-by-name "target" *active-pool*)
@@ -3356,6 +3452,7 @@
   0
   )
 
+;; definition for function start
 (defun start ((arg0 symbol) (arg1 continue-point))
   (let ((v1-0 arg0))
     (set! (-> *level* play?) (if (= v1-0 'play)
@@ -3386,6 +3483,8 @@
   *target*
   )
 
+;; definition for function tobot-start
+;; WARN: Return type mismatch (pointer process) vs target.
 (defun tobot-start ((arg0 symbol))
   (the-as target (process-spawn
                    target
@@ -3398,6 +3497,7 @@
           )
   )
 
+;; definition for function tobot-stop
 (defun tobot-stop ()
   (kill-by-name "tobot" *active-pool*)
   0

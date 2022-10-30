@@ -32,7 +32,7 @@
    (local-vertex               vector               8 :inline :offset-assert 128)
    (status                     uint64                         :offset-assert 256)
    (actor-cshape-prim-offset   int32                          :offset-assert 264)
-   (actor-handle               uint64                         :offset-assert 272)
+   (actor-handle               handle                         :offset-assert 272)
    (hanging-matrix             matrix               :inline   :offset-assert 288)
    (edge-vertex                vector               2 :inline :offset          0)
    (center-hold                vector               :inline   :offset         32)
@@ -54,7 +54,7 @@
   :flag-assert         #xb000001e4
   (:methods
     (edge-grab-info-method-9 (_type_) symbol 9)
-    (debug-draw (_type_) symbol 10)
+    (debug-draw (_type_) none 10)
     )
   )
 
@@ -124,7 +124,7 @@
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (collide-edge-edge-method-9 () none 9)
+    (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol 9)
     )
   )
 
@@ -187,8 +187,8 @@
   :size-assert         #x810
   :flag-assert         #xb00000810
   (:methods
-    (collide-edge-hold-list-method-9 () none 9)
-    (collide-edge-hold-list-method-10 () none 10)
+    (debug-draw (_type_) object 9)
+    (add-to-list! (_type_ collide-edge-hold-item) none 10)
     )
   )
 
@@ -210,19 +210,19 @@
 
 ;; definition of type collide-edge-spec
 (deftype collide-edge-spec (structure)
-  ((split-dists                  float        2          :offset-assert   0)
-   (outward-offset               vector       :inline    :offset-assert  16)
-   (flags                        uint64                  :offset-assert  32)
-   (ignore-pat                   pat-surface             :offset-assert  40)
-   (max-dist-sqrd-to-outward-pt  float                   :offset-assert  44)
-   (max-dir-cosa-delta           float                   :offset-assert  48)
-   (max-dir-cosa-player          float                   :offset-assert  52)
-   (touching-segment             symbol                  :offset-assert  56)
-   (local-cache-fill-box         bounding-box :inline    :offset-assert  64)
-   (local-within-reach-box       bounding-box :inline    :offset-assert  96)
-   (local-player-spheres         sphere       12 :inline :offset        128)
-   (local-player-hanging-spheres sphere       6 :inline  :offset        128)
-   (local-player-leap-up-spheres sphere       6 :inline  :offset        224)
+  ((split-dists                  float                   2          :offset-assert   0)
+   (outward-offset               vector                  :inline    :offset-assert  16)
+   (flags                        collide-edge-spec-flags            :offset-assert  32)
+   (ignore-pat                   pat-surface                        :offset-assert  40)
+   (max-dist-sqrd-to-outward-pt  float                              :offset-assert  44)
+   (max-dir-cosa-delta           float                              :offset-assert  48)
+   (max-dir-cosa-player          float                              :offset-assert  52)
+   (touching-segment             symbol                             :offset-assert  56)
+   (local-cache-fill-box         bounding-box            :inline    :offset-assert  64)
+   (local-within-reach-box       bounding-box            :inline    :offset-assert  96)
+   (local-player-spheres         sphere                  12 :inline :offset        128)
+   (local-player-hanging-spheres sphere                  6 :inline  :offset        128)
+   (local-player-leap-up-spheres sphere                  6 :inline  :offset        224)
    )
   :method-count-assert 9
   :size-assert         #x140
@@ -255,42 +255,42 @@
 
 ;; definition of type collide-edge-work
 (deftype collide-edge-work (structure)
-  ((ccache                       collide-cache                     :offset-assert   0)
-   (cshape                       collide-shape                     :offset-assert   4)
-   (num-verts                    uint32                            :offset-assert   8)
-   (num-edges                    uint32                            :offset-assert  12)
-   (num-tris                     uint32                            :offset-assert  16)
-   (cache-fill-box               bounding-box           :inline    :offset-assert  32)
-   (within-reach-box             bounding-box           :inline    :offset-assert  64)
-   (within-reach-box4w           bounding-box4w         :inline    :offset-assert  96)
-   (search-pt                    vector                 :inline    :offset-assert 128)
-   (search-dir-vec               vector                 :inline    :offset-assert 144)
-   (world-player-spheres         sphere                 12 :inline :offset-assert 160)
-   (world-player-hanging-spheres sphere                 6 :inline  :offset        160)
-   (world-player-leap-up-spheres sphere                 6 :inline  :offset        256)
-   (spec                         collide-edge-spec      :inline    :offset-assert 352)
-   (process                      uint32                            :offset-assert 672)
-   (verts                        vector                 64 :inline :offset-assert 688)
-   (edges                        collide-edge-edge      96 :inline :offset-assert 1712)
-   (tris                         collide-edge-tri       48 :inline :offset-assert 6320)
-   (hold-list                    collide-edge-hold-list :inline    :offset-assert 7856)
+  ((ccache                       collide-cache                         :offset-assert   0)
+   (cshape                       collide-shape                         :offset-assert   4)
+   (num-verts                    uint32                                :offset-assert   8)
+   (num-edges                    uint32                                :offset-assert  12)
+   (num-tris                     uint32                                :offset-assert  16)
+   (cache-fill-box               bounding-box               :inline    :offset-assert  32)
+   (within-reach-box             bounding-box               :inline    :offset-assert  64)
+   (within-reach-box4w           bounding-box4w             :inline    :offset-assert  96)
+   (search-pt                    vector                     :inline    :offset-assert 128)
+   (search-dir-vec               vector                     :inline    :offset-assert 144)
+   (world-player-spheres         sphere                     12 :inline :offset-assert 160)
+   (world-player-hanging-spheres sphere                     6 :inline  :offset        160)
+   (world-player-leap-up-spheres sphere                     6 :inline  :offset        256)
+   (spec                         collide-edge-spec          :inline    :offset-assert 352)
+   (process                      (pointer process-drawable)            :offset-assert 672)
+   (verts                        vector                     64 :inline :offset-assert 688)
+   (edges                        collide-edge-edge          96 :inline :offset-assert 1712)
+   (tris                         collide-edge-tri           48 :inline :offset-assert 6320)
+   (hold-list                    collide-edge-hold-list     :inline    :offset-assert 7856)
    )
   :method-count-assert 21
   :size-assert         #x26c0
   :flag-assert         #x15000026c0
   (:methods
-    (collide-edge-work-method-9 () none 9)
-    (collide-edge-work-method-10 () none 10)
-    (collide-edge-work-method-11 () none 11)
-    (collide-edge-work-method-12 () none 12)
-    (collide-edge-work-method-13 () none 13)
-    (collide-edge-work-method-14 () none 14)
-    (collide-edge-work-method-15 () none 15)
-    (collide-edge-work-method-16 () none 16)
-    (collide-edge-work-method-17 () none 17)
-    (collide-edge-work-method-18 () none 18)
-    (collide-edge-work-method-19 () none 19)
-    (collide-edge-work-method-20 () none 20)
+    (search-for-edges (_type_ collide-edge-hold-list) none 9)
+    (debug-draw-edges (_type_) object 10)
+    (debug-draw-tris (_type_) none 11)
+    (debug-draw-sphere (_type_) none 12)
+    (find-adjacent-edge (_type_ collide-edge-hold-item edge-grab-info) none 13)
+    (compute-center-point! (_type_ collide-edge-edge vector) float 14)
+    (get-best-hand-point (_type_ vector vector int) float 15)
+    (find-grabbable-edges (_type_) none 16)
+    (find-grabbable-tris (_type_) none 17)
+    (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 18)
+    (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol 19)
+    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) none 20)
     )
   )
 
@@ -329,7 +329,7 @@
   (new 'static 'collide-edge-spec
     :split-dists (new 'static 'array float 2 1024.0 1433.6)
     :outward-offset (new 'static 'vector :x 708.608 :y 13312.0 :w 1.0)
-    :flags #x8
+    :flags (collide-edge-spec-flags send-event)
     :ignore-pat (new 'static 'pat-surface :noentity #x1 :noedge #x1 :nojak #x1 :probe #x1 :noendlessfall #x1)
     :max-dist-sqrd-to-outward-pt 37748736.0
     :max-dir-cosa-delta 0.6

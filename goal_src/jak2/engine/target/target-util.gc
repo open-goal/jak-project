@@ -7,11 +7,11 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-jchar jakb jakb-lod0-jg -1
-              ((jakb-lod0-mg (meters 999999)))
+(defskelgroup skel-jchar jakb 0 -1
+              ((1 (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
-              :shadow jakb-shadow-mg
+              :shadow 2
               :texture-level 6
               :sort 1
               :origin-joint-index 3
@@ -38,22 +38,22 @@
               :shadow-joint-index 3
               )
 
-(defskelgroup skel-generic-blast collectables collectables-generic-blast-lod0-jg collectables-generic-blast-idle-ja
-              ((collectables-generic-blast-lod0-mg (meters 999999)))
+(defskelgroup skel-generic-blast collectables 10 12
+              ((11 (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :texture-level 6
               :sort 4
               )
 
-(defskelgroup skel-generic-ripples collectables collectables-generic-ripples-lod0-jg collectables-generic-ripples-idle-ja
-              ((collectables-generic-ripples-lod0-mg (meters 999999)))
+(defskelgroup skel-generic-ripples collectables 13 15
+              ((14 (meters 999999)))
               :bounds (static-spherem 0 0 0 6)
               :texture-level 6
               :sort 4
               )
 
-(defskelgroup skel-bomb-blast collectables collectables-bomb-blast-lod0-jg collectables-bomb-blast-idle-ja
-              ((collectables-bomb-blast-lod0-mg (meters 999999)))
+(defskelgroup skel-bomb-blast collectables 0 2
+              ((1 (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :texture-level 6
               :sort 4
@@ -625,7 +625,7 @@
         )
       )
     )
-  (case (-> (the-as fact-info-target (-> self fact)) eco-type)
+  (case (-> (the-as fact-info-target (-> self fact-override)) eco-type)
     ((1)
      (set! (-> self control penetrate-using) (logior (penetrate eco-yellow) (-> self control penetrate-using)))
      )
@@ -994,7 +994,7 @@
   )
 
 (defmethod get-quaternion control-info ((obj control-info))
-  (-> obj unknown-quaternion00)
+  (-> obj quat-for-control)
   )
 
 (defbehavior debounce-speed target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector))
@@ -1072,7 +1072,7 @@
       )
     (if (logtest? arg0 (align-opts adjust-quat))
         (quaternion-normalize!
-          (quaternion*! (-> obj control unknown-quaternion00) (-> obj control unknown-quaternion00) (-> arg1 quat))
+          (quaternion*! (-> obj control quat-for-control) (-> obj control quat-for-control) (-> arg1 quat))
           )
         )
     (the-as object (-> obj control))
@@ -1098,9 +1098,7 @@
 (defbehavior can-play-stance-amibent? target ()
   (and (or (and (= *kernel-boot-message* 'kiosk)
                 (>= (+ -300000 (-> *display* real-clock frame-counter)) (seconds 60))
-                (>= (- (-> *display* base-clock frame-counter) (-> self control unknown-cpad-info00 change-time))
-                    (seconds 60)
-                    )
+                (>= (- (-> *display* base-clock frame-counter) (-> self control cpad change-time)) (seconds 60))
                 (>= (- (-> *display* game-clock frame-counter) (the-as int (-> self game kiosk-timeout))) (seconds 60))
                 )
            (and (>= (- (-> self clock frame-counter) (-> self ambient-time)) (seconds 30))
@@ -1118,9 +1116,7 @@
            )
        (not (paused?))
        (not (movie?))
-       (>= (- (-> *display* base-clock frame-counter) (-> self control unknown-cpad-info00 change-time))
-           (seconds 30)
-           )
+       (>= (- (-> *display* base-clock frame-counter) (-> self control cpad change-time)) (seconds 30))
        (!= (-> self tobot?) 'tobot)
        (not (-> *setting-control* user-current talking))
        (not (-> *setting-control* user-current spooling))
@@ -1130,7 +1126,7 @@
        (logtest? (-> self game features) (game-feature sidekick))
        (case *kernel-boot-message*
          (('kiosk)
-          (set! (-> self control unknown-cpad-info00 change-time) (-> *display* base-clock frame-counter))
+          (set! (-> self control cpad change-time) (-> *display* base-clock frame-counter))
           (auto-save-command 'restore 0 0 *default-pool* #f)
           #f
           )
@@ -1178,13 +1174,13 @@
   )
 
 (defbehavior move-legs? target ()
-  (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+  (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
   )
 
 (defbehavior jump-hit-ground-stuck? target ()
   (or (logtest? (-> self control status) (cshape-moving-flags on-surface))
       (when (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
-                 (not (and *cheat-mode* (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
+                 (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
                  )
         (set! (-> self control unknown-time-frame14) (-> self clock frame-counter))
         #t
@@ -1259,7 +1255,7 @@
            )
        (or (not (enabled-gun? self))
            (not (-> *TARGET-bank* strafe-duck-jump))
-           (and (< 0.3 (vector-dot (-> self control unknown-vector08) (-> self control unknown-matrix01 vector 2)))
+           (and (< 0.3 (vector-dot (-> self control to-target-pt-xz) (-> self control unknown-matrix01 vector 2)))
                 (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame28)) (seconds 0.3))
                 )
            )
@@ -1327,8 +1323,8 @@
                    )
               )
           (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame11))
-              (the-as time-frame (if (and (= (-> (the-as fact-info-target (-> self fact)) eco-type) 1)
-                                          (>= (-> (the-as fact-info-target (-> self fact)) eco-level) 1.0)
+              (the-as time-frame (if (and (= (-> (the-as fact-info-target (-> self fact-override)) eco-type) 1)
+                                          (>= (-> (the-as fact-info-target (-> self fact-override)) eco-level) 1.0)
                                           )
                                      (-> *TARGET-bank* yellow-attack-timeout)
                                      (-> *TARGET-bank* attack-timeout)
@@ -1365,7 +1361,7 @@
   )
 
 (defbehavior are-still? target ()
-  (or (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+  (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
       (< (-> self control unknown-float05) 61440.0)
       )
   )
@@ -1870,14 +1866,14 @@
 (defun target-rot ()
   (let ((v1-0 *target*))
     (if v1-0
-        (-> v1-0 control unknown-quaternion00)
+        (-> v1-0 control quat-for-control)
         *unity-quaternion*
         )
     )
   )
 
 (defmethod get-trans target ((obj target) (arg0 int))
-  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]]"
+  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (local-vars (v0-0 vector))
   (let ((v1-0 (-> obj control)))
     (cond
@@ -1980,7 +1976,7 @@
        (-> obj control quat)
        )
       ((= v1-0 1)
-       (-> obj control unknown-quaternion00)
+       (-> obj control quat-for-control)
        )
       ((= v1-0 2)
        (-> obj control dir-targ)
@@ -1990,7 +1986,7 @@
            (forward-up->quaternion
              (new 'static 'quaternion)
              (-> obj gun fire-dir-out)
-             (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> obj control unknown-quaternion00))
+             (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> obj control quat-for-control))
              )
            (-> obj control quat)
            )
@@ -2009,3 +2005,7 @@
 (defmethod process-focusable-method-25 target ((obj target))
   (-> obj neck notice-time)
   )
+
+
+
+
