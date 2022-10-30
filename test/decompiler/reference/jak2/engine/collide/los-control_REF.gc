@@ -1,12 +1,7 @@
-;;-*-Lisp-*-
 (in-package goal)
 
-;; definition for symbol *los-time-offset*, type time-frame
 (define *los-time-offset* (the-as time-frame 0))
 
-;; definition for method 9 of type los-control
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch time-frame vs none.
 (defmethod los-control-method-9 los-control ((obj los-control) (process process-focusable) (trans-vec vector) (radius float))
   (when (and (>= (- (-> self clock frame-counter) (-> obj last-check-time)) (-> obj check-interval))
              (-> obj src-proc)
@@ -47,7 +42,7 @@
                 (set! (-> query action-mask) (collide-action solid))
                 )
               (fill-using-line-sphere *collide-cache* cquery)
-              (let ((f30-0 (collide-cache-method-16 *collide-cache* cquery)))
+              (let ((f30-0 (probe-using-line-sphere *collide-cache* cquery)))
                 (quad-copy! (the-as pointer (-> obj last-collide-result)) (the-as pointer (-> cquery best-other-tri)) 6)
                 (if (>= 0.0 f30-0)
                     (set! (-> obj have-no-los) (-> self clock frame-counter))
@@ -64,30 +59,24 @@
   (none)
   )
 
-;; definition for method 10 of type los-control
 (defmethod check-los? los-control ((obj los-control) (arg0 time-frame))
   (and (>= (- (-> self clock frame-counter) (-> obj have-los)) (+ (-> obj check-interval) arg0))
        (< (- (-> self clock frame-counter) (-> obj have-no-los)) (-> obj check-interval))
        )
   )
 
-;; definition for method 11 of type los-control
 (defmethod skip-check-los? los-control ((obj los-control) (arg0 int))
   (and (>= (- (-> self clock frame-counter) (-> obj have-no-los)) (+ (-> obj check-interval) arg0))
        (< (- (-> self clock frame-counter) (-> obj have-los)) (-> obj check-interval))
        )
   )
 
-;; definition for method 12 of type los-control
-;; WARN: Return type mismatch int vs none.
 (defmethod set-dst-proc! los-control ((obj los-control) (dst handle))
   (set! (-> obj dst-proc) dst)
   0
   (none)
   )
 
-;; definition for method 13 of type los-control
-;; WARN: Return type mismatch int vs none.
 (defmethod new-source! los-control ((obj los-control) (proc process) (check-interval time-frame) (c-spec collide-spec))
   (set! (-> obj src-proc) (process->handle proc))
   (set! (-> obj dst-proc) (the-as handle #f))

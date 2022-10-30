@@ -102,6 +102,7 @@ const std::unordered_map<
         {".pw.sra", &Compiler::compile_asm_pw_sra},
 
         {".por", &Compiler::compile_asm_por},
+        {".pxor", &Compiler::compile_asm_pxor},
         {".pnor", &Compiler::compile_asm_pnor},
         {".pand", &Compiler::compile_asm_pand},
 

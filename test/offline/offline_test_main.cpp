@@ -130,22 +130,25 @@ void decompile(Decompiler& dc, const OfflineTestConfig& config) {
 }
 
 /// @brief Removes trailing new-lines and comment lines
-std::string clean_decompilation_code(const std::string& in) {
-  std::vector<std::string> lines = split_string(in);
-  // Remove all lines that are comments
-  // comments are added only by us, meaning this _should_ be consistent
-  std::vector<std::string>::iterator line_itr = lines.begin();
-  while (line_itr != lines.end()) {
-    if (line_itr->rfind(";", 0) == 0) {
-      // remove comment line
-      line_itr = lines.erase(line_itr);
-    } else {
-      // iterate
-      line_itr++;
+std::string clean_decompilation_code(const std::string& in, const bool leave_comments = false) {
+  std::string out = in;
+  if (!leave_comments) {
+    std::vector<std::string> lines = split_string(in);
+    // Remove all lines that are comments
+    // comments are added only by us, meaning this _should_ be consistent
+    std::vector<std::string>::iterator line_itr = lines.begin();
+    while (line_itr != lines.end()) {
+      if (line_itr->rfind(";", 0) == 0) {
+        // remove comment line
+        line_itr = lines.erase(line_itr);
+      } else {
+        // iterate
+        line_itr++;
+      }
     }
+    out = fmt::format("{}", fmt::join(lines, "\n"));
   }
 
-  std::string out = fmt::format("{}", fmt::join(lines, "\n"));
   while (!out.empty() && out.back() == '\n') {
     out.pop_back();
   }
@@ -212,7 +215,7 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
         auto failure_dir = file_util::get_jak_project_dir() / "failures";
         file_util::create_dir_if_needed(failure_dir);
         file_util::write_text_file(failure_dir / fmt::format("{}_REF.gc", file.unique_name),
-                                   result);
+                                   clean_decompilation_code(data.full_output, true));
       }
     } else {
       compare_result.ok_files++;
@@ -471,6 +474,7 @@ int main(int argc, char* argv[]) {
   int max_files = -1;
   std::string single_file = "";
   uint32_t num_threads = 1;
+  bool fail_on_cmp = false;
 
   CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
   app.add_option("--iso_data_path", iso_data_path, "The path to the folder with the ISO data files")
@@ -487,6 +491,7 @@ int main(int argc, char* argv[]) {
   app.add_option("-f,--file", single_file,
                  "Limit the offline test routine to a single file to decompile/compile -- useful "
                  "when you are just iterating on a single file");
+  app.add_flag("--fail-on-cmp", fail_on_cmp, "Fail the tests immediately if the comparison fails");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -550,7 +555,12 @@ int main(int argc, char* argv[]) {
       result.compare = compare(decompiler, work_group, dump_current_output);
       if (!result.compare.total_pass) {
         result.exit_code = 1;
+        if (fail_on_cmp) {
+          return result;
+        }
       }
+
+      // TODO - if anything has failed, skip compiling
 
       Timer compile_timer;
       result.compile = compile(decompiler, work_group, config.value(), game_name);
@@ -574,6 +584,7 @@ int main(int argc, char* argv[]) {
   if (!total.compare.total_pass) {
     lg::error("Comparison failed.");
     for (auto& f : total.compare.failing_files) {
+      fmt::print("{}\n", f.filename);
       fmt::print("{}\n", f.diff);
     }
     lg::error("Failing files:");

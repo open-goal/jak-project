@@ -636,6 +636,10 @@ Val* Compiler::compile_asm_por(const goos::Object& form, const goos::Object& res
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::POR, env);
 }
 
+Val* Compiler::compile_asm_pxor(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PXOR, env);
+}
+
 bool ireg_is_128_ok(const IRegister& ireg) {
   return ireg.reg_class == RegClass::VECTOR_FLOAT || ireg.reg_class == RegClass::INT_128;
 }

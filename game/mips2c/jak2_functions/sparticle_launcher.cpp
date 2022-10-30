@@ -13,7 +13,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   c->mov64(v1, a2);                                 // or v1, a2, r0
   c->mov64(v1, a3);                                 // or v1, a3, r0
@@ -34,7 +33,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_3:
   c->dsubu(a1, a2, a3);                             // dsubu a1, a2, a3
   // nop                                            // sll r0, r0, 0
   bc = ((s64)c->sgpr64(a1)) >= 0;                   // bgez a1, L292

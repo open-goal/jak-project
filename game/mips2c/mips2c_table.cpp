@@ -147,6 +147,19 @@ namespace method_33_sky_work { extern void link(); }
 namespace method_28_sky_work { extern void link(); }
 namespace method_29_sky_work { extern void link(); }
 namespace method_30_sky_work { extern void link(); }
+namespace method_11_collide_hash { extern void link(); }
+namespace method_12_collide_hash { extern void link(); }
+namespace fill_bg_using_box_new { extern void link(); }
+namespace fill_bg_using_line_sphere_new { extern void link(); }
+namespace method_12_collide_mesh { extern void link(); }
+namespace method_14_collide_mesh { extern void link(); }
+namespace method_15_collide_mesh { extern void link(); }
+namespace method_10_collide_edge_hold_list { extern void link(); }
+namespace method_19_collide_edge_work { extern void link(); }
+namespace method_9_edge_grab_info { extern void link(); }
+namespace method_16_collide_edge_work { extern void link(); }
+namespace method_17_collide_edge_work { extern void link(); }
+namespace method_18_collide_edge_work { extern void link(); }
 namespace draw_large_polygon_ocean { extern void link(); }
 namespace render_ocean_quad { extern void link(); }
 namespace method_16_ocean { extern void link(); }
@@ -247,6 +260,16 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_32_sky_work::link, jak2::method_33_sky_work::link,
        jak2::method_28_sky_work::link, jak2::method_29_sky_work::link,
        jak2::method_30_sky_work::link, jak2::set_sky_vf23_value::link}},
+     {"collide-hash",
+      {jak2::method_11_collide_hash::link, jak2::method_12_collide_hash::link,
+       jak2::fill_bg_using_box_new::link, jak2::fill_bg_using_line_sphere_new::link}},
+     {"collide-mesh",
+      {jak2::method_12_collide_mesh::link, jak2::method_14_collide_mesh::link,
+       jak2::method_15_collide_mesh::link}},
+     {"collide-edge-grab",
+      {jak2::method_10_collide_edge_hold_list::link, jak2::method_19_collide_edge_work::link,
+       jak2::method_9_edge_grab_info::link, jak2::method_16_collide_edge_work::link,
+       jak2::method_17_collide_edge_work::link, jak2::method_18_collide_edge_work::link}},
      {"ocean-vu0",
       {jak2::method_16_ocean::link, jak2::method_15_ocean::link, jak2::method_14_ocean::link}},
      {"ocean", {jak2::draw_large_polygon_ocean::link, jak2::render_ocean_quad::link}}},
