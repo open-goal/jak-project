@@ -1,35 +1,14 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collide-mesh.gc
-;; name in dgo: collide-mesh
-;; dgos: ENGINE, GAME
-
-;; note: this file has patched functions
-
-;; this file has functions for foreground mesh collision functions. This is for stuff like jak being on a platform, or a
-;; platform pushing jak away.
-
-;; DECOMP BEGINS
-
-;; The "collide-mesh" is the foreground collision mesh type. These can be used as part of a collide-shape.
-
-;; These can be added to the normal "collide-cache" and work with the most common collision queries.
-
-;; However, there are a few special case collision queries that use a separate collide-mesh-cache.
-;; The intented use is something like this:
-;;  - a mesh is unpacked to the collide-mesh-cache
-;;  - primitive vs. mesh tests are done using the unpacked data, reusing the data.
-
-;; This collide-mesh-cache is limited compared to the real collide cache - this can only hold
-;; a single mesh, so it's limited to tests like single foreground mesh vs. sphere.
-;; Another limitation is that triangles don't have per-tri pat info.
-
-
+;; definition for method 5 of type collide-mesh
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of collide-mesh ((obj collide-mesh))
   (the-as int (+ (-> collide-mesh size) (* (+ (-> obj num-tris) -1) 8)))
   )
 
+;; definition for method 8 of type collide-mesh
+;; WARN: Return type mismatch int vs collide-mesh.
 (defmethod mem-usage collide-mesh ((obj collide-mesh) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 82 (-> arg0 length)))
   (set! (-> arg0 data 81 name) "collide-mesh")
@@ -48,6 +27,8 @@
   (the-as collide-mesh 0)
   )
 
+;; definition for method 9 of type collide-mesh
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw-tris collide-mesh ((obj collide-mesh) (arg0 process-drawable) (arg1 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -102,11 +83,7 @@
     )
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;; sphere on platform
-;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition of type sopt-work
 (deftype sopt-work (structure)
   ((intersect     vector         :inline :offset-assert   0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
@@ -116,13 +93,23 @@
   :flag-assert         #x900000030
   )
 
-(defmethod-mips2c "(method 12 collide-mesh)" 12 collide-mesh)
+;; definition for method 3 of type sopt-work
+(defmethod inspect sopt-work ((obj sopt-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sopt-work)
+  (format #t "~1Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
+  (format #t "~1Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 12 of type collide-mesh
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;;;;;;;;;;;;;;;;;;;;;
-;; should push away
-;;;;;;;;;;;;;;;;;;;;;
-
+;; definition of type spat-work
 (deftype spat-work (structure)
   ((intersect     vector         :inline :offset-assert   0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
@@ -132,6 +119,21 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type spat-work
+(defmethod inspect spat-work ((obj spat-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'spat-work)
+  (format #t "~1Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
+  (format #t "~1Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type collide-mesh
+;; INFO: Used lq/sq
 (defmethod should-push-away-test collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 collide-tri-result) (arg2 vector) (arg3 float))
   (local-vars
     (v1-0 uint128)
@@ -142,7 +144,7 @@
     (a1-7 pat-surface)
     (a2-1 uint128)
     (a2-2 uint128)
-    (a2-4 int) ;; changed
+    (a2-4 float)
     (a2-5 float)
     (a2-7 float)
     (f0-0 float)
@@ -203,7 +205,7 @@
                 (nop!)
                 (let ((a1-5 (shl (the-as int a1-4) 16)))
                   (nop!)
-                  (b! (nonzero? a1-5) cfg-1 :likely-delay (set! s3-0 (&+ s3-0 96)))
+                  (b! (nonzero? a1-5) cfg-1 :likely-delay (set! s3-0 (+ s3-0 96)))
                   )
                 (closest-pt-in-triangle (-> s4-0 intersect) arg2 (the-as matrix (-> s3-0 vertex)) (-> s3-0 normal))
                 (.lvf vf2 (&-> s4-0 intersect quad))
@@ -264,18 +266,22 @@
     )
   )
 
-;; these two are unknown.
-(defmethod-mips2c "(method 14 collide-mesh)" 14 collide-mesh)
-(defmethod-mips2c "(method 15 collide-mesh)" 15 collide-mesh)
+;; definition for method 14 of type collide-mesh
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;;;;;;;;;;;;;;;;;;;;;;
-;; Collide Mesh Cache
-;;;;;;;;;;;;;;;;;;;;;;
+;; definition for method 15 of type collide-mesh
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for method 9 of type collide-mesh-cache
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch collide-mesh-cache-entry vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [pxor v1, v1, a0]
+;; ERROR: Unsupported inline assembly instruction kind - [pxor a0, a0, a1]
+;; ERROR: Unsupported inline assembly instruction kind - [pxor a0, a0, a1]
+;; ERROR: Unsupported inline assembly instruction kind - [pxor a0, a0, a1]
 (defmethod populate-for-prim-mesh collide-mesh-cache ((obj collide-mesh-cache) (arg0 collide-shape-prim-mesh))
-  "Populate the mesh cache for the given prim-mesh.
-   Will reuse existing data only if the transform and object are the same."
   (local-vars
+    (r0-0 uint128)
     (v1-7 uint128)
     (v1-8 uint128)
     (v1-9 uint128)
@@ -290,8 +296,7 @@
         (s4-0 (-> arg0 mesh-cache-entry))
         )
     (cond
-      ((= (-> arg0 mesh-cache-id) (-> obj id)) ;; check id first
-       ;; this weird pxor stuff is checking the transform for equality
+      ((= (-> arg0 mesh-cache-id) (-> obj id))
        (let ((v1-6 (-> s5-0 vector 0 quad))
              (a0-4 (-> s4-0 mat vector 0 quad))
              )
@@ -316,36 +321,29 @@
          )
        (.por a0-11 v1-9 a0-10)
        (let ((v1-10 a0-11))
-         (.pcpyud a0-12 a0-11 (the uint128 0))
+         (.pcpyud a0-12 a0-11 r0-0)
          (.por v1-11 a0-12 v1-10)
          )
        (when (nonzero? v1-11)
-         ;; the id is equal, but the transform isn't. update transform
          (set! (-> s4-0 mat vector 0 quad) (-> s5-0 vector 0 quad))
          (set! (-> s4-0 mat vector 1 quad) (-> s5-0 vector 1 quad))
          (set! (-> s4-0 mat vector 2 quad) (-> s5-0 vector 2 quad))
          (set! (-> s4-0 mat trans quad) (-> s5-0 trans quad))
-         ;; and unpack to cache again.
          (unpack-mesh-to-cache! (-> arg0 mesh) (-> s4-0 tris) s5-0)
          )
-       ;; otherwise, reuse.
        )
       (else
-        ;; id doesn't match.
         (let ((v1-19 (-> arg0 mesh)))
           (when v1-19
-            ;; allocate new mesh.
-            (set! s4-0 (allocate! obj (+ (* 96 (-> v1-19 num-tris)) 64)))
+            (set! s4-0 (allocate! obj (+ (* (the-as uint 96) (-> v1-19 num-tris)) 64)))
             (set! (-> arg0 mesh-cache-entry) s4-0)
             (cond
               (s4-0
-                ;; if allocation succeeds, set up:
                 (set! (-> arg0 mesh-cache-id) (-> obj id))
                 (set! (-> s4-0 mat vector 0 quad) (-> s5-0 vector 0 quad))
                 (set! (-> s4-0 mat vector 1 quad) (-> s5-0 vector 1 quad))
                 (set! (-> s4-0 mat vector 2 quad) (-> s5-0 vector 2 quad))
                 (set! (-> s4-0 mat trans quad) (-> s5-0 trans quad))
-                ;; and unpack.
                 (unpack-mesh-to-cache! (-> arg0 mesh) (-> s4-0 tris) s5-0)
                 )
               (else
@@ -361,8 +359,9 @@
   (none)
   )
 
+;; definition for method 12 of type collide-mesh-cache
+;; WARN: Return type mismatch (pointer uint8) vs collide-mesh-cache-entry.
 (defmethod allocate! collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
-  "Allocate room in the collide-mesh-cache for an unpacked mesh with arg0 tris."
   (local-vars (a1-2 int) (a2-2 int))
   (let* ((v1-0 (+ arg0 15))
          (a1-1 (-> obj used-size))
@@ -396,9 +395,15 @@
     )
   )
 
+;; definition for method 13 of type collide-mesh
+;; WARN: Return type mismatch int vs none.
+;; WARN: Failed load: (set! vf6 (l.vf (+ (the-as vector a3-0) 16))) at op 37
+;; WARN: Failed load: (set! vf7 (l.vf (+ (the-as vector a3-0) 32))) at op 45
+;; WARN: Failed load: (set! vf8 (l.vf (+ (the-as vector a3-0) 48))) at op 53
+;; WARN: Failed load: (set! vf1 (l.vf t0-4)) at op 77
+;; WARN: Failed load: (set! vf2 (l.vf t1-1)) at op 79
+;; WARN: Failed load: (set! vf3 (l.vf t2-2)) at op 81
 (defmethod unpack-mesh-to-cache! collide-mesh ((obj collide-mesh) (arg0 (inline-array collide-mesh-cache-tri)) (arg1 matrix))
-  "Unpack mesh and store in cache.
-   Transform triangles, computes normals and bbox."
   (local-vars (t0-2 uint))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -418,7 +423,7 @@
          )
     (init-vf0-vector)
     (nop!)
-    (let ((t0-0 (scratchpad-object int))
+    (let ((t0-0 #x70000000)
           (v1-0 (-> obj num-verts))
           )
       (nop!)
@@ -426,7 +431,6 @@
         (b! (zero? v1-0) cfg-3 :delay (.lvf vf1 (&-> arg1 vector 0 quad)))
         (nop!)
         (.lvf vf2 (&-> arg1 vector 1 quad))
-        ;; this first loop does the transformation.
         (let ((t0-1 (the-as object (+ t0-0 -64))))
           (.lvf vf3 (&-> arg1 vector 2 quad))
           (nop!)
@@ -457,7 +461,7 @@
           (.add.mul.z.vf vf10 vf3 vf6 acc)
           (nop!)
           (.mul.w.vf acc vf4 vf0)
-          (.lvf vf6 (&+ (the-as vector a3-0) 16))
+          (.lvf vf6 (+ (the-as vector a3-0) 16))
           (.add.mul.x.vf acc vf1 vf7 acc)
           (nop!)
           (.add.mul.y.vf acc vf2 vf7 acc)
@@ -465,7 +469,7 @@
           (.add.mul.z.vf vf11 vf3 vf7 acc)
           (nop!)
           (.mul.w.vf acc vf4 vf0)
-          (.lvf vf7 (&+ (the-as vector a3-0) 32))
+          (.lvf vf7 (+ (the-as vector a3-0) 32))
           (.add.mul.x.vf acc vf1 vf8 acc)
           (nop!)
           (.add.mul.y.vf acc vf2 vf8 acc)
@@ -473,7 +477,7 @@
           (.add.mul.z.vf vf12 vf3 vf8 acc)
           (nop!)
           (nop!)
-          (.lvf vf8 (&+ (the-as vector a3-0) 48))
+          (.lvf vf8 (+ (the-as vector a3-0) 48))
           (+! v1-0 -4)
           (.svf (&-> (the-as (inline-array vector) t0-1) 0 quad) vf9)
           (nop!)
@@ -487,7 +491,7 @@
     (label cfg-3)
     (let ((v1-1 (the-as object (-> obj tris))))
       (nop!)
-      (let ((a2-1 (scratchpad-object int))
+      (let ((a2-1 #x70000000)
             (a0-1 (-> obj num-tris))
             )
         (b! (zero? a0-1) cfg-6 :delay (set! t0-2 (-> (the-as (inline-array collide-mesh-tri) v1-1) 0 vertex-index 0)))
@@ -503,7 +507,6 @@
                  (t1-1 (+ t1-0 a2-1))
                  (t2-2 (+ t2-1 a2-1))
                  )
-            ;; this second loop does min/max for the bbox, and computes the normal.
             (label cfg-5)
             (+! a0-1 -1)
             (.lvf vf1 t0-4)
@@ -568,12 +571,7 @@
     )
   )
 
-;;;;;;;;;;;;;;;;;;;;
-;; overlaps others
-;;;;;;;;;;;;;;;;;;;;
-
-;; this checks to see if a point is inside the mesh or not.
-
+;; definition of type oot-work
 (deftype oot-work (structure)
   ((intersect     vector         :inline :offset-assert   0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
@@ -583,6 +581,21 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type oot-work
+(defmethod inspect oot-work ((obj oot-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'oot-work)
+  (format #t "~1Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
+  (format #t "~1Tsphere-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj sphere-bbox4w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 10 of type collide-mesh
+;; INFO: Used lq/sq
 (defmethod overlap-test collide-mesh ((obj collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
   (local-vars
     (v1-0 uint128)
@@ -590,7 +603,7 @@
     (a1-2 uint128)
     (a1-3 uint128)
     (a1-4 uint128)
-    (a1-7 int)
+    (a1-7 float)
     (a2-1 uint128)
     (a2-2 uint128)
     )
@@ -633,7 +646,7 @@
       (nop!)
       (let ((a1-5 (shl (the-as int a1-4) 16)))
         (nop!)
-        (b! (nonzero? a1-5) cfg-1 :likely-delay (set! s4-0 (&+ s4-0 96)))
+        (b! (nonzero? a1-5) cfg-1 :likely-delay (set! s4-0 (+ s4-0 96)))
         )
       (closest-pt-in-triangle (-> s5-0 intersect) arg1 (the-as matrix (-> s4-0 vertex)) (-> s4-0 normal))
       (.lvf vf1 (&-> s5-0 intersect quad))
@@ -649,10 +662,14 @@
       (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
       (.add.w.vf vf3 vf0 vf3 :mask #b10)
       (.mov a1-7 vf3)
-      (b! (>= (the-as int a1-7) 0) cfg-1 :delay (set! s4-0 (&+ s4-0 96)))
+      (b! (>= (the-as int a1-7) 0) cfg-1 :delay (set! s4-0 (+ s4-0 96)))
       )
     (return #t)
     (label cfg-7)
     #f
     )
   )
+
+
+
+

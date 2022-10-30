@@ -1,5 +1,7 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; failed to figure out what this is:
 (defstate target-wade-stance (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -27,16 +29,16 @@
           (go target-stance)
           )
       )
-    (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1) (can-duck?))
+    (if (and (cpad-hold? (-> self control cpad number) l1) (can-duck?))
         (go target-duck-stance #f)
         )
-    (if (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+    (if (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
         (go target-wade-walk)
         )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
-                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                )
                        (pad-buttons x)
                        )
@@ -44,12 +46,12 @@
              )
         (target-jump-go)
         )
-    (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet? #t))
+    (when (and (cpad-pressed? (-> self control cpad number) circle) (can-feet? #t))
       (sound-play "swim-stroke")
       (spawn-ripples (-> self water) 1.4 (-> self control trans) 0 (-> self control transv) #f)
       (go target-attack)
       )
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square) (can-hands? #t))
+    (if (and (cpad-pressed? (-> self control cpad number) square) (can-hands? #t))
         (go target-running-attack)
         )
     (if (and (using-gun? self) (let ((v1-79 (ja-group)))
@@ -64,6 +66,7 @@
   :post target-post
   )
 
+;; failed to figure out what this is:
 (defstate target-wade-walk (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -81,16 +84,16 @@
           (go target-stance)
           )
       )
-    (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+    (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
         (go target-wade-stance)
         )
-    (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1) (can-duck?))
+    (if (and (cpad-hold? (-> self control cpad number) l1) (can-duck?))
         (go target-duck-walk #f)
         )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
-                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                )
                        (pad-buttons x)
                        )
@@ -98,12 +101,12 @@
              )
         (target-jump-go)
         )
-    (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet? #t))
+    (when (and (cpad-pressed? (-> self control cpad number) circle) (can-feet? #t))
       (sound-play "swim-stroke")
       (spawn-ripples (-> self water) 1.4 (-> self control trans) 0 (-> self control transv) #f)
       (go target-attack)
       )
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) square) (can-hands? #t))
+    (if (and (cpad-pressed? (-> self control cpad number) square) (can-hands? #t))
         (go target-running-attack)
         )
     (none)
@@ -338,8 +341,9 @@
   :post target-post
   )
 
+;; definition for function target-swim-tilt
 (defbehavior target-swim-tilt target ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))))
+  (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
     (let ((v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ)))
           (f0-1
             (fmin 1.0 (* arg0 (/ (-> self control unknown-float05) (-> self control unknown-surface01 target-speed))))
@@ -351,19 +355,19 @@
         (* arg1 (-> self clock seconds-per-frame))
         )
       )
-    (let ((a2-2 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))))
-      (forward-up-nopitch->quaternion (-> self control unknown-quaternion01) gp-0 a2-2)
+    (let ((a2-2 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
+      (forward-up-nopitch->quaternion (-> self control override-quat) gp-0 a2-2)
       )
     )
   (quaternion-rotate-x!
-    (-> self control unknown-quaternion01)
-    (-> self control unknown-quaternion01)
+    (-> self control override-quat)
+    (-> self control override-quat)
     (if (>= (-> self control unknown-float43) 0.0)
         16384.0
         -16384.0
         )
     )
-  (set! (-> self control unknown-float04) (fabs (-> self control unknown-float43)))
+  (set! (-> self control override-quat-alpha) (fabs (-> self control unknown-float43)))
   (if (and (-> self next-state) (= (-> self next-state name) 'target-swim-down))
       (seek! (-> self control unknown-float001) -6144.0 (* 4096.0 (-> self clock seconds-per-frame)))
       (seek! (-> self control unknown-float001) 0.0 (* 2048.0 (-> self clock seconds-per-frame)))
@@ -371,6 +375,7 @@
   (set! (-> self control unknown-vector04 y) (-> self control unknown-float001))
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-stance (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -393,8 +398,8 @@
                                            )
                     )
                )
-      (quaternion-identity! (-> self control unknown-quaternion01))
-      (set! (-> self control unknown-float04) 0.0)
+      (quaternion-identity! (-> self control override-quat))
+      (set! (-> self control override-quat-alpha) 0.0)
       )
     (when (not (and (-> self next-state) (let ((v1-14 (-> self next-state name)))
                                            (or (= v1-14 'target-swim-stance) (= v1-14 'target-swim-walk))
@@ -428,10 +433,10 @@
           (go target-stance)
           )
       )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
-                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                )
                        (pad-buttons x)
                        )
@@ -440,10 +445,10 @@
              )
         (go target-swim-jump (-> *TARGET-bank* swim-jump-height-min) (-> *TARGET-bank* swim-jump-height-max))
         )
-    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                         (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                         (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                          )
-                                 (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                 (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                  )
                          (pad-buttons circle square)
                          )
@@ -453,7 +458,7 @@
       (set! (-> self control unknown-float43) 0.0)
       (go target-swim-down)
       )
-    (if (and (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+    (if (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
              (let ((gp-0 (ja-group)))
                (ja-aframe-num 0)
                (if (or (and (= gp-0 (-> self draw art-group data 101)) #t) (and (= gp-0 (-> self draw art-group data 100)) #t))
@@ -476,7 +481,7 @@
          (ja-no-eval :group! (-> self draw art-group data 102)
                      :num! (seek!
                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 102)) frames num-frames) -1))
-                       (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+                       (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                            1.0
                            2.0
                            )
@@ -487,7 +492,7 @@
            (suspend)
            (let ((a0-9 (-> self skel root-channel 0)))
              (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group frames num-frames) -1)))
-             (let ((v1-38 (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+             (let ((v1-38 (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                               1.0
                               2.0
                               )
@@ -525,6 +530,7 @@
   :post target-swim-post
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-walk (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -550,10 +556,10 @@
           (go target-stance)
           )
       )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                       (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
-                               (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                )
                        (pad-buttons x)
                        )
@@ -562,10 +568,10 @@
              )
         (go target-swim-jump (-> *TARGET-bank* swim-jump-height-min) (-> *TARGET-bank* swim-jump-height-max))
         )
-    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                         (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                         (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                          )
-                                 (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                 (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                  )
                          (pad-buttons circle square)
                          )
@@ -576,7 +582,7 @@
       (go target-swim-down)
       )
     (cond
-      ((= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+      ((= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
        (if (>= (the-as uint (- (-> self clock frame-counter) (the-as int (-> self control unknown-word04))))
                (the-as uint 15)
                )
@@ -647,6 +653,7 @@
   :post target-swim-post
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-down (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (t0-7 symbol))
@@ -716,8 +723,8 @@
                                            )
                     )
                )
-      (quaternion-identity! (-> self control unknown-quaternion01))
-      (set! (-> self control unknown-float04) 0.0)
+      (quaternion-identity! (-> self control override-quat))
+      (set! (-> self control override-quat-alpha) 0.0)
       )
     (when (not (and (-> self next-state) (let ((v1-19 (-> self next-state name)))
                                            (or (= v1-19 'target-swim-down) (= v1-19 'target-swim-up))
@@ -830,9 +837,7 @@
         )
       (until #f
         (when (and (!= (-> self tobot?) 'tobot) (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.05)))
-          (if (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) circle square))
-                       (-> self control unknown-spool-anim00)
-                       )
+          (if (and (or (not (cpad-hold? (-> self control cpad number) circle square)) (-> self control unknown-spool-anim00))
                    (>= (- (-> self clock frame-counter) (-> self state-time)) gp-0)
                    )
               (go target-swim-up)
@@ -875,6 +880,7 @@
   :post target-swim-post
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-up (target)
   :event (-> target-swim-down event)
   :enter (behavior ()
@@ -883,7 +889,7 @@
     )
   :exit (-> target-swim-down exit)
   :trans (behavior ()
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
+    (if (and (cpad-pressed? (-> self control cpad number) x)
              (not (logtest? (-> self state-flags) (state-flags sf7)))
              (zero? (logand (water-flags head-under-water bouncing) (-> self water flags)))
              )
@@ -915,7 +921,7 @@
         (send-event-function self a1-3)
         )
       )
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
+    (if (and (cpad-pressed? (-> self control cpad number) circle square)
              (or (< (- (-> self clock frame-counter) (-> self control unknown-time-frame27)) (seconds 10))
                  (logtest? (-> self control status) (cshape-moving-flags t-ceil))
                  )
@@ -958,9 +964,7 @@
             )
           (if (and (not (logtest? (-> self water flags) (water-flags under-water)))
                    (and (or (>= (ja-aframe-num 0) 222.0)
-                            (and (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
-                                 (>= (ja-aframe-num 0) 200.0)
-                                 )
+                            (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (>= (ja-aframe-num 0) 200.0))
                             )
                         (!= (-> self tobot?) 'tobot)
                         )
@@ -993,7 +997,7 @@
         (if (and (not (logtest? (-> self water flags) (water-flags under-water))) (!= (-> self tobot?) 'tobot))
             (goto cfg-51)
             )
-        (if (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
+        (if (cpad-pressed? (-> self control cpad number) x)
             (set! f30-0 2.0)
             )
         (compute-alignment! (-> self align))
@@ -1018,6 +1022,7 @@
   :post target-swim-post
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-jump-jump (target)
   :event (-> target-jump event)
   :enter (-> target-jump enter)
@@ -1039,6 +1044,7 @@
   :post target-post
   )
 
+;; failed to figure out what this is:
 (defstate target-swim-jump (target)
   :event target-standard-event-handler
   :enter (-> target-swim-stance enter)

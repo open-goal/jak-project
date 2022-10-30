@@ -1,9 +1,12 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; failed to figure out what this is:
 (if (not (nmember "gunp" *kernel-packages*))
     (set! *kernel-packages* (cons "gunp" *kernel-packages*))
     )
 
+;; definition for symbol *gun-walk-mods*, type surface
 (define *gun-walk-mods*
   (new 'static 'surface
     :name 'run
@@ -37,12 +40,12 @@
       ((arg0 surface) (arg1 object) (arg2 object) (arg3 int))
       (case arg3
         ((1)
-         (let* ((f0-0 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control unknown-vector08))))
+         (let* ((f0-0 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control to-target-pt-xz))))
                 (f30-0 (lerp-scale 0.0 1.0 (fabs f0-0) 1820.4445 6371.5557))
                 )
            (cond
              ((and (logtest? (-> self gun track?) 1)
-                   (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+                   (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                    (>= (-> self gun track-turnv-range)
                        (vector-vector-distance (-> self control trans) (-> self gun track-trans))
                        )
@@ -101,6 +104,7 @@
     )
   )
 
+;; definition for function target-gun-event-handler
 (defbehavior target-gun-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (cond
     ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
@@ -147,6 +151,8 @@
     )
   )
 
+;; definition for function target-gun-setup
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-setup target ((arg0 symbol))
   (when (zero? (-> self gun))
     (if (zero? (-> self game gun-type))
@@ -186,6 +192,8 @@
   (none)
   )
 
+;; definition for function target-gun-init
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-init target ((arg0 int))
   (let ((gp-0 (-> self gun)))
     (if (zero? (-> gp-0 hips))
@@ -230,14 +238,12 @@
   (set! (-> self gun charge-ammo) 0.0)
   (set! (-> self gun charge-start-time) 0)
   (set! (-> self gun top-anim-tilt-up) 0.0)
-  (let ((f0-9 (if (or (nonzero? (-> self gun fire-pending))
-                      (cpad-hold? (-> self control unknown-cpad-info00 number) r1)
-                      (-> self gun latch?)
-                      )
-                  2.0
-                  1.0
-                  )
+  (let ((f0-9
+          (if (or (nonzero? (-> self gun fire-pending)) (cpad-hold? (-> self control cpad number) r1) (-> self gun latch?))
+              2.0
+              1.0
               )
+          )
         )
     (cond
       ((logtest? (-> self focus-status) (focus-status pilot-riding))
@@ -354,10 +360,12 @@
   (none)
   )
 
+;; definition for function target-gun-exit
 (defun target-gun-exit ()
   #f
   )
 
+;; definition for function target-gun-end-mode
 (defbehavior target-gun-end-mode target ((arg0 symbol))
   (when (using-gun? self)
     (set! (-> self gun fire-pending) 0)
@@ -521,10 +529,12 @@
     )
   )
 
+;; definition for function quat<-gun!
 (defun quat<-gun! ((arg0 quaternion) (arg1 quaternion))
   (quaternion-copy! arg0 (the-as quaternion *null-vector*))
   )
 
+;; definition for function target-gun-ammo-out-pick
 (defbehavior target-gun-ammo-out-pick target ()
   (cond
     ((and (and (logtest? (-> self game features) (game-feature unk-game-feature-06))
@@ -573,6 +583,8 @@
     )
   )
 
+;; definition for function target-gun-type-set!
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-type-set! target ((arg0 int))
   (if (zero? arg0)
       (set! arg0 (-> self game gun-type))
@@ -1072,6 +1084,8 @@
   (none)
   )
 
+;; definition for function target-gun-marking-menu
+;; WARN: Return type mismatch int vs none.
 (defun target-gun-marking-menu ((arg0 target))
   (when (and (not (paused?))
              (not (and (logtest? (focus-status dark) (-> arg0 focus-status)) (nonzero? (-> arg0 darkjak))))
@@ -1079,16 +1093,16 @@
              )
     (let ((s5-0 (the-as int (-> arg0 gun using-gun-type))))
       (cond
-        ((cpad-pressed? (-> arg0 control unknown-cpad-info00 number) down)
+        ((cpad-pressed? (-> arg0 control cpad number) down)
          (set! s5-0 1)
          )
-        ((cpad-pressed? (-> arg0 control unknown-cpad-info00 number) up)
+        ((cpad-pressed? (-> arg0 control cpad number) up)
          (set! s5-0 2)
          )
-        ((cpad-pressed? (-> arg0 control unknown-cpad-info00 number) left)
+        ((cpad-pressed? (-> arg0 control cpad number) left)
          (set! s5-0 3)
          )
-        ((cpad-pressed? (-> arg0 control unknown-cpad-info00 number) right)
+        ((cpad-pressed? (-> arg0 control cpad number) right)
          (set! s5-0 4)
          )
         )
@@ -1132,6 +1146,9 @@
   (none)
   )
 
+;; definition for function target-gun-build-track-list
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-build-track-list target ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self control trans quad))
@@ -1140,13 +1157,13 @@
         (set! (-> s4-0 quad)
               (-> (the-as
                     vector
-                    (if (and (or (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+                    (if (and (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                                  (logtest? (surface-flag gun-strafe) (-> self control unknown-surface01 flags))
                                  )
                              (not (and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak))))
                              )
                         (-> self gun fire-dir)
-                        (-> self control unknown-vector08)
+                        (-> self control to-target-pt-xz)
                         )
                     )
                   quad
@@ -1172,6 +1189,9 @@
   (none)
   )
 
+;; definition for function target-gun-find-track
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-find-track target ()
   (if (logtest? (-> self gun upper-body track-mode) (track-mode lock-on))
       (logior! (-> self gun track?) 8)
@@ -1398,6 +1418,8 @@
   (none)
   )
 
+;; definition for function target-top-anim-base-mode
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-top-anim-base-mode target ((arg0 int))
   (cond
     ((logtest? (-> self focus-status) (focus-status pilot-riding))
@@ -1513,6 +1535,8 @@
   (none)
   )
 
+;; definition for function target-gun-combo-start
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-combo-start target ((arg0 int) (arg1 time-frame))
   (target-top-anim-base-mode arg0)
   (set! (-> self gun surpress-time) (+ (-> self clock frame-counter) arg0))
@@ -1521,6 +1545,9 @@
   (none)
   )
 
+;; definition for function target-gun-joint-pre0
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-joint-pre0 target ()
   (if (!= (zero? (logand (-> self game features) (game-feature unk-game-feature-06))) (not (-> self gun gun)))
       (target-gun-setup (logtest? (-> self game features) (game-feature unk-game-feature-06)))
@@ -1531,7 +1558,7 @@
       (set! (-> self gun combo-window-state) #f)
       )
   (cond
-    ((and (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
+    ((and (cpad-pressed? (-> self control cpad number) r1)
           (< (- (-> self clock frame-counter) (-> self gun combo-window-start)) (seconds 0.7))
           (not (logtest? (focus-status mech dark) (-> self focus-status)))
           (not (logtest? (surface-flag gun-off) (-> self control unknown-surface01 flags)))
@@ -1588,7 +1615,7 @@
          )
        )
      )
-    ((and (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
+    ((and (cpad-pressed? (-> self control cpad number) r1)
           (using-gun? self)
           (logtest? (surface-flag gun-turn-fast) (-> self control unknown-surface01 flags))
           (not (logtest? (state-flags sf18) (-> self state-flags)))
@@ -1610,7 +1637,7 @@
   (when (and (not (using-gun? self)) (want-to-gun? self #f))
     (let ((gp-2 (nonzero? (-> self gun using-gun-type))))
       (send-event self 'change-mode 'gun #f (-> self gun using-gun-type))
-      (when (and (not gp-2) (or (cpad-hold? (-> self control unknown-cpad-info00 number) r1) (-> self gun latch?)))
+      (when (and (not gp-2) (or (cpad-hold? (-> self control cpad number) r1) (-> self gun latch?)))
         (if (zero? (-> self gun fire-pending))
             (+! (-> self gun fire-pending) 1)
             )
@@ -1694,7 +1721,7 @@
                (* 5461.3335 (-> self clock seconds-per-frame))
                )
              )
-            ((!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+            ((!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
              (seek! (-> self gun top-anim-tilt-up) 0.0 (* 1820.4445 (-> self clock seconds-per-frame)))
              )
             )
@@ -1742,7 +1769,7 @@
        ((and (< 0.0 (-> self control unknown-float10))
              (zero? (logand (-> self control unknown-surface01 flags) (surface-flag duck)))
              )
-        (let* ((f0-28 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control unknown-vector08))))
+        (let* ((f0-28 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control to-target-pt-xz))))
                (f0-30 (fmax -5461.3335 (fmin 5461.3335 f0-28)))
                )
           (seek! (-> self upper-body twist z) f0-30 (fabs (* 0.2 f0-30)))
@@ -1828,7 +1855,7 @@
            (set! (-> self gun upper-body twist-speed-y) 0.2)
            (set! (-> self gun upper-body twist-speed-x) 0.1)
            )
-          ((or (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+          ((or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                (let ((f30-2 10922.667)
                      (gp-8 deg-diff)
                      (v1-417 (-> self control))
@@ -1837,7 +1864,7 @@
                  (>= f30-2
                      (gp-8
                        (vector-y-angle (vector-! (new 'stack-no-clear 'vector) a1-54 (-> v1-417 trans)))
-                       (vector-y-angle (-> self control unknown-vector08))
+                       (vector-y-angle (-> self control to-target-pt-xz))
                        )
                      )
                  )
@@ -1891,6 +1918,8 @@
   (none)
   )
 
+;; definition for function target-gun-joint-pre
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-joint-pre target ()
   (local-vars (gp-0 art-element))
   (target-gun-joint-pre0)
@@ -2076,6 +2105,8 @@
   (none)
   )
 
+;; definition for function target-gun-compute-pos
+;; INFO: Used lq/sq
 (defbehavior target-gun-compute-pos target ()
   (let ((a1-0 (-> self node-list data 24 bone transform))
         (a2-0 (if (-> self sidekick)
@@ -2119,6 +2150,8 @@
     )
   )
 
+;; definition for function target-gun-joint-points
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-joint-points target ()
   (when (-> self gun gun)
     (set! (-> self gun gun-daxter)
@@ -2256,43 +2289,43 @@
                     (let ((v1-75 (-> self gun gun-type)))
                       (or (and (cond
                                  ((= v1-75 (pickup-type eco-yellow))
-                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                                            (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                                            (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                                             )
-                                                    (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                                    (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                                     )
                                             (pad-buttons down)
                                             )
                                   )
                                  ((= v1-75 (pickup-type eco-red))
-                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                                            (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                                            (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                                             )
-                                                    (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                                    (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                                     )
                                             (pad-buttons up)
                                             )
                                   )
                                  ((= v1-75 (pickup-type eco-blue))
-                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                                            (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                  (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                                            (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                                             )
-                                                    (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                                    (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                                     )
                                             (pad-buttons left)
                                             )
                                   )
                                  (else
-                                   (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
-                                                             (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
+                                   (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                                             (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                                              )
-                                                     (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 2)
+                                                     (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
                                                      )
                                              (pad-buttons right)
                                              )
                                    )
                                  )
-                               (and (not (cpad-hold? (-> self control unknown-cpad-info00 number) r1))
+                               (and (not (cpad-hold? (-> self control cpad number) r1))
                                     (not (logtest? (surface-flag gun-inactive) (-> self control unknown-surface01 flags)))
                                     (zero? (logand (-> self focus-status) (focus-status grabbed)))
                                     )
@@ -2335,6 +2368,8 @@
   (none)
   )
 
+;; definition for function target-gun-fire
+;; WARN: Return type mismatch symbol vs none.
 (defbehavior target-gun-fire target ((arg0 pickup-type))
   (when (using-gun? self)
     (let* ((gp-0 (-> self gun))
@@ -2602,6 +2637,8 @@
   (none)
   )
 
+;; definition for function target-gun-check
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-check target ()
   (when (using-gun? self)
     (let ((gp-0 (-> self gun)))
@@ -2626,12 +2663,12 @@
                )
           (set! (-> gp-0 combo-window-state) 'target-attack-air)
           )
-      (if (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
+      (if (cpad-pressed? (-> self control cpad number) r1)
           (set! (-> gp-0 fire-start-time) (-> self clock frame-counter))
           )
       (case (-> gp-0 gun-control)
         ((1)
-         (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) r1)
+         (when (and (cpad-pressed? (-> self control cpad number) r1)
                     (< (the-as time-frame (+ (-> gp-0 fire-delay) -30)) (- (-> self clock frame-counter) (-> gp-0 fire-time)))
                     )
            (set! (-> gp-0 fire-pending-time) (-> self clock frame-counter))
@@ -2664,7 +2701,7 @@
            )
          )
         ((2)
-         (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) r1)
+         (when (and (cpad-hold? (-> self control cpad number) r1)
                     (and (not (handle->process (-> self gun charge-active?)))
                          (< (the-as time-frame (+ (-> gp-0 fire-delay) -30)) (- (-> self clock frame-counter) (-> gp-0 fire-time)))
                          )
@@ -2694,7 +2731,7 @@
          )
         ((4)
          (cond
-           ((cpad-hold? (-> self control unknown-cpad-info00 number) r1)
+           ((cpad-hold? (-> self control cpad number) r1)
             (seek! (-> gp-0 fire-spinv) 218453.33 (* 145635.56 (-> self clock seconds-per-frame)))
             (if (and (nonzero? (-> self gun track-target-hold-time))
                      (< (-> self clock frame-counter) (-> self gun track-target-hold-time))
@@ -2743,7 +2780,7 @@
                )
              )
            )
-         (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) r1)
+         (when (and (cpad-hold? (-> self control cpad number) r1)
                     (-> self gun active?)
                     (< (the-as time-frame (+ (-> gp-0 fire-delay) -30)) (- (-> self clock frame-counter) (-> gp-0 fire-time)))
                     )
@@ -2806,6 +2843,9 @@
   (none)
   )
 
+;; definition for function camera-rotate-to-vector
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defun camera-rotate-to-vector ((arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> arg0 quad))
@@ -2825,6 +2865,8 @@
   (none)
   )
 
+;; definition for function target-gun-real-post
+;; INFO: Used lq/sq
 (defbehavior target-gun-real-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -2890,7 +2932,7 @@
                      (-> *TARGET-bank* edge-grab-height-off-ground)
                      )
                  )
-            (target-method-27 *target* *collide-cache* *collide-edge-spec*)
+            (do-edge-grabs *target* *collide-cache* *collide-edge-spec*)
             )
         (when *debug-segment*
           (let ((s5-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
@@ -2959,6 +3001,7 @@
   (none)
   )
 
+;; definition for function target-gun-post
 (defbehavior target-gun-post target ()
   (target-gun-real-post)
   (none)

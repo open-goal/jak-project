@@ -359,6 +359,7 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::PCPYLD:
     case InstructionKind::PROT3W:
     case InstructionKind::PAND:
+    case InstructionKind::PXOR:
     case InstructionKind::PMADDH:
     case InstructionKind::PMULTH:
     case InstructionKind::PEXEW:

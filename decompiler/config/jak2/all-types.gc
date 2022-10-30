@@ -15726,6 +15726,8 @@
 ;; collide-mesh-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type collide-mesh-cache-tri structure)
+
 (deftype collide-tri-result (structure)
   ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect   vector      :inline :offset-assert 48)
@@ -15760,13 +15762,13 @@
   :size-assert         #x28
   :flag-assert         #x1000000028
   (:methods
-    (collide-mesh-method-9 () none 9) ;; (debug-draw-tris (_type_ process-drawable int) none 9)
-    (collide-mesh-method-10 () none 10) ;; (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
-    (collide-mesh-method-11 () none 11) ;; (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
-    (collide-mesh-method-12 () none 12) ;; (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
-    (collide-mesh-method-13 () none 13) ;; (populate-cache! (_type_ collide-mesh-cache-tri matrix) none 13)
-    (collide-mesh-method-14 () none 14) ;; (collide-mesh-math-1 (_type_ object object) none 14)
-    (collide-mesh-method-15 () none 15) ;; (collide-mesh-math-2 (_type_ object object object) none 15)
+    (debug-draw-tris (_type_ process-drawable int) none 9)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none 13)
+    (collide-mesh-math-1 (_type_ object object) none 14)
+    (collide-mesh-math-2 (_type_ object object object) none 15)
     )
   )
 
@@ -15774,7 +15776,7 @@
   ((vertex vector         3 :inline      :offset-assert 0) ;; guessed by decompiler
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    pat-surface            :offset 60) ;; guessed by decompiler
+   (pat    pat-surface            :offset 60 :score 1) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -15790,6 +15792,7 @@
   :flag-assert         #x900000040
   )
 
+(declare-type collide-shape-prim-mesh basic)
 (deftype collide-mesh-cache (basic)
   ((used-size uint32       :offset-assert 4)
    (max-size  uint32       :offset-assert 8)
@@ -15800,10 +15803,10 @@
   :size-assert         #xbb90
   :flag-assert         #xd0000bb90
   (:methods
-    (collide-mesh-cache-method-9 () none 9) ;; (allocate! (_type_ int) int 9)
-    (is-id? (_type_ int) symbol 10) ;; (is-id? (_type_ int) symbol 10)
-    (next-id! (_type_) uint 11) ;; (next-id! (_type_) uint 11)
-    (collide-mesh-cache-method-12 () none 12)
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) none 9)
+    (is-id? (_type_ int) symbol 10)
+    (next-id! (_type_) uint 11)
+    (allocate! (_type_ int) collide-mesh-cache-entry 12)
     )
   )
 
@@ -16649,9 +16652,18 @@
    (unknown-vector00            vector                       :inline :offset 480)  ;; logic-target::reverse-conversions
    (unknown-vector01            vector                       :inline :offset 496)  ;; logic-target::add-thrust
    (unknown-vector02            vector                       :inline :offset 512)  ;; logic-target::reset-target-state
-   (unknown-quaternion00        quaternion                   :inline :offset 528)  ;; (anon-function 82 default-menu)
-   (unknown-quaternion01        quaternion                   :inline :offset 544)  ;; logic-target::reset-target-state
-   (unknown-float04             float                                :offset 560)  ;; logic-target::reset-target-state
+
+   ;; the quaternion used for all the control code.
+   ;; there is an additional rotation offset applied for certain effects, like the pitch of
+   ;; jak's body when swimming underwater.
+   (quat-for-control            quaternion                   :inline :offset 528)  ;; (anon-function 82 default-menu)
+
+   ;; The final quat (used for drawing, and _maybe_ collision?) is separate from the quaternion used for the
+   ;; control math. The quat-for-control and override-quat are interpolated to get this final quaternion.
+   ;; At least in jak 1, this was only used for pitching jak's body when swimming.
+   (override-quat               quaternion                   :inline :offset 544)
+   (override-quat-alpha         float                                :offset 560) ;; 0 = use quat-for-control only
+
    (unknown-float05             float                                :offset 564)  ;; logic-target::target-print-stats
    (unknown-float003            float                                :offset 568)  ;; (anon-function 22 target-gun)
    (unknown-float06             float                                :offset 572)  ;; logic-target::do-rotations2
@@ -16673,12 +16685,15 @@
    (unknown-surface01           surface                              :offset 3832) ;; board-h::want-to-board?
    (unknown-surface02           surface                              :offset 3836) ;; logic-target::build-conversions
    (unknown-time-frame02        time-frame                           :offset 3840) ;; logic-target::build-conversions
-   (unknown-cpad-info00         cpad-info                            :offset 3848) ;; board-h::want-to-board?
+   (cpad                        cpad-info                            :offset 3848) ;; board-h::want-to-board?
    (unknown-float08             float                                :offset 3852) ;; logic-target::turn-to-vector
    (unknown-float09             float                                :offset 3856) ;; logic-target::turn-to-vector
    (unknown-float10             float                                :offset 3860) ;; logic-target::turn-to-vector
    (unknown-float11             float                                :offset 3864) ;; logic-target::turn-to-vector
-   (unknown-vector08            vector                       :inline :offset 3872) ;; logic-target::turn-to-vector
+
+   ;; unit vector in xz plane. Points from jak to the 'target' point.
+   ;; if the user's input is 0, will keep the last value.
+   (to-target-pt-xz             vector                       :inline :offset 3872) ;; logic-target::turn-to-vector
    (unknown-vector09            vector                       :inline :offset 3888) ;; logic-target::turn-to-vector
    (unknown-vector10            vector                       :inline :offset 3904) ;; logic-target::turn-to-vector
    (unknown-vector11            vector                       :inline :offset 3920) ;; logic-target::turn-to-vector
@@ -16750,8 +16765,10 @@
    (unknown-float29             float                                :offset 5136) ;; logic-target::target-print-stats
    (unknown-float30             float                                :offset 5140) ;; logic-target::target-print-stats
    (unknown-vector28            vector                       :inline :offset 5152) ;; logic-target::joint-points
-   (unknown-vector29            vector                       :inline :offset 5168) ;; logic-target::joint-points
-   (unknown-vector30            vector                       :inline :offset 5184) ;; logic-target::joint-points
+   ;(unknown-vector29            vector                       :inline :offset 5168) ;; logic-target::joint-points
+   (lhand-cspace                cspace                               :offset 5168)
+   (rhand-cspace                cspace                               :offset 5172)
+   (midpoint-of-hands           vector                       :inline :offset 5184) ;; logic-target::joint-points
    (unknown-vector31            vector                       :inline :offset 5200) ;; logic-target::joint-points
    (unknown-cspacei1un23i1            cspace                       :inline :offset 5216) ;; logic-target::joint-points
   ;;  (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
@@ -16877,9 +16894,9 @@
   :size-assert         #xe8
   :flag-assert         #xc000000e8
   (:methods
-    (touching-prims-entry-method-9 (_type_ vector) vector 9) ;; (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim 9)
-    (touching-prims-entry-method-10 (_type_  collide-shape touching-shapes-entry) collide-shape-prim 10) ;; (dummy-10 () none 10)
-    (touching-prims-entry-method-11 (_type_ collide-shape touching-shapes-entry) collide-tri-result 11) ;; (get-middle-of-bsphere-overlap (_type_ vector) vector 11)
+    (get-middle-of-bsphere-overlap (_type_ vector) vector 9)
+    (get-touched-prim (_type_  collide-shape touching-shapes-entry) collide-shape-prim 10)
+    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result 11)
     )
   )
 
@@ -16892,10 +16909,10 @@
   :flag-assert         #xd00003c10
   (:methods
     (new (symbol type) _type_ 0)
-    (touching-prims-entry-pool-method-9 () none 9) ;; (alloc-node (_type_) touching-prims-entry 9)
-    (touching-prims-entry-pool-method-10 () none 10) ;; (get-free-node-count (_type_) int 10)
+    (alloc-node (_type_) touching-prims-entry 9)
+    (get-free-node-count (_type_) int 10)
     (init-list! (_type_) none 11)
-    (touching-prims-entry-pool-method-12 () none 12) ;; (free-node (_type_ touching-prims-entry) touching-prims-entry 12)
+    (free-node (_type_ touching-prims-entry) touching-prims-entry 12)
     )
   )
 
@@ -16904,20 +16921,20 @@
    (cshape2   collide-shape         :offset-assert 4) ;; guessed by decompiler
    (resolve-u int8                  :offset-assert 8)
    (head      touching-prims-entry  :offset-assert 12)
-   (handle1   uint64                :offset-assert 16)
-   (handle2   uint64                :offset-assert 24)
+   (handle1   handle                :offset-assert 16)
+   (handle2   handle                :offset-assert 24)
    )
   :pack-me
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (get-head (_type_) touching-prims-entry 9) ;; (dummy-9 (_type_) none 9)
-    (get-next (_type_ touching-shapes-entry) touching-prims-entry 10) ;; (get-touched-shape (_type_ collide-shape) collide-shape 10)
-    (touching-shapes-entry-method-11 () none 11) ;; (dummy-11 () none 11)
-    (prims-touching? (_type_ collide-shape uint) touching-prims-entry 12) ;; (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12)
-    (touching-shapes-entry-method-13 (_type_ collide-shape uint uint) basic 13) ;; (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry 13)
-    (touching-shapes-entry-method-14 () none 14) ;; (dummy-14 () none 14)
+    (get-head (_type_) touching-prims-entry 9)
+    (get-next (_type_ touching-shapes-entry) touching-prims-entry 10)
+    (get-touched-shape (_type_ collide-shape) collide-shape 11)
+    (prims-touching? (_type_ collide-shape uint) touching-prims-entry 12)
+    (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic 13)
+    (free-touching-prims-list (_type_) none 14)
     )
   )
 
@@ -16931,11 +16948,11 @@
   :flag-assert         #xe00000408
   (:methods
     (new (symbol type) _type_ 0)
-    (touching-list-method-9 () none 9) ;; (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
-    (free-nodes (_type_) none 10) ;; (dummy-10 () none 10)
-    (touching-list-method-11 () none 11) ;; (update-from-step-size (_type_ float) none 11)
+    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
+    (free-nodes (_type_) none 10)
+    (update-from-step-size (_type_ float) none 11)
     (send-events-for-touching-shapes (_type_) none 12)
-    (touching-list-method-13 () none 13) ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry 13)
+    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry 13)
     )
   )
 
@@ -16961,7 +16978,7 @@
    (local-vertex               vector         8     :inline :offset-assert 128) ;; guessed by decompiler
    (status                     uint64                       :offset-assert 256)
    (actor-cshape-prim-offset   int32                        :offset-assert 264)
-   (actor-handle               uint64                       :offset-assert 272) ;; handle
+   (actor-handle               handle                       :offset-assert 272) ;; handle
    (hanging-matrix             matrix               :inline :offset-assert 288)
    (edge-vertex                vector         2     :inline :offset 0) ;; guessed by decompiler
    (center-hold                vector               :inline :offset 32)
@@ -16983,11 +17000,13 @@
   :flag-assert         #xb000001e4
   (:methods
     (edge-grab-info-method-9 (_type_) symbol 9) ;; (dummy-9 (_type_) symbol 9)
-    (debug-draw (_type_) symbol 10)
+    (debug-draw (_type_) none 10)
     )
   )
 
 (declare-type collide-cache-tri structure)
+(declare-type collide-edge-work structure)
+
 (deftype collide-edge-tri (structure)
   ((ctri   collide-cache-tri         :offset-assert 0) ;; guessed by decompiler
    (normal vector            :inline :offset-assert 16)
@@ -17008,7 +17027,7 @@
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (collide-edge-edge-method-9 () none 9)
+    (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol 9)
     )
   )
 
@@ -17036,15 +17055,24 @@
   :size-assert         #x810
   :flag-assert         #xb00000810
   (:methods
-    (collide-edge-hold-list-method-9 () none 9) ;; (debug-draw (_type_) object 9)
-    (collide-edge-hold-list-method-10 () none 10) ;; (add-to-list! (_type_ collide-edge-hold-item) none 10)
+    (debug-draw (_type_) object 9)
+    (add-to-list! (_type_ collide-edge-hold-item) none 10)
     )
+  )
+
+(defenum collide-edge-spec-flags
+  :bitfield #t
+  :type uint64
+  (find-adjacent-edge 0)
+  (one 1)
+  (two 2)
+  (send-event 3)
   )
 
 (deftype collide-edge-spec (structure)
   ((split-dists                  float        2       :offset-assert 0)
    (outward-offset               vector       :inline :offset-assert 16)
-   (flags                        uint64               :offset-assert 32)
+   (flags                        collide-edge-spec-flags :offset-assert 32)
    (ignore-pat                   pat-surface          :offset-assert 40)
    (max-dist-sqrd-to-outward-pt  float                :offset-assert 44)
    (max-dir-cosa-delta           float                :offset-assert 48)
@@ -17078,7 +17106,7 @@
    (world-player-hanging-spheres sphere                 6  :inline      :offset 160) ;; guessed by decompiler
    (world-player-leap-up-spheres sphere                 6  :inline      :offset 256) ;; guessed by decompiler
    (spec                         collide-edge-spec      :inline :offset-assert 352)
-   (process                      uint32                         :offset-assert 672)
+   (process                      (pointer process-drawable)                     :offset-assert 672)
    (verts                        vector                 64 :inline    :offset-assert 688) ;; guessed by decompiler
    (edges                        collide-edge-edge      96 :inline    :offset-assert 1712) ;; guessed by decompiler
    (tris                         collide-edge-tri       48 :inline    :offset-assert 6320) ;; guessed by decompiler
@@ -17088,18 +17116,18 @@
   :size-assert         #x26c0
   :flag-assert         #x15000026c0
   (:methods
-    (collide-edge-work-method-9 () none 9) ;; (search-for-edges (_type_ collide-edge-hold-list) symbol 9)
-    (collide-edge-work-method-10 () none 10) ;; (debug-draw-edges (_type_) object 10)
-    (collide-edge-work-method-11 () none 11) ;; (debug-draw-tris (_type_) none 11)
-    (collide-edge-work-method-12 () none 12) ;; (debug-draw-sphere (_type_) symbol 12)
-    (collide-edge-work-method-13 () none 13) ;; (compute-center-point! (_type_ collide-edge-edge vector) float 13)
-    (collide-edge-work-method-14 () none 14) ;; (dummy-14 (_type_ vector vector int) float 14)
-    (collide-edge-work-method-15 () none 15) ;; (find-grabbable-edges! (_type_) none 15)
-    (collide-edge-work-method-16 () none 16) ;; (find-grabbable-tris! (_type_) none 16)
-    (collide-edge-work-method-17 () none 17) ;; (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 17)
-    (collide-edge-work-method-18 () none 18) ;; (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol 18)
-    (collide-edge-work-method-19 () none 19) ;; (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol 19)
-    (collide-edge-work-method-20 () none 20)
+    (search-for-edges (_type_ collide-edge-hold-list) none 9)
+    (debug-draw-edges (_type_) object 10)
+    (debug-draw-tris (_type_) none 11)
+    (debug-draw-sphere (_type_) none 12)
+    (find-adjacent-edge (_type_ collide-edge-hold-item edge-grab-info) none 13)
+    (compute-center-point! (_type_ collide-edge-edge vector) float 14) ;; (dummy-14 (_type_ vector vector int) float 14)
+    (get-best-hand-point (_type_ vector vector int) float 15)
+    (find-grabbable-edges (_type_) none 16)
+    (find-grabbable-tris (_type_) none 17) ;; (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 17)
+    (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 18)
+    (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol 19)
+    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) none 20)
     )
   )
 
@@ -17787,7 +17815,7 @@
   :flag-assert         #x1d084008b8
   ;; field mode-param2 uses ~A with a 64-bit load field mode-param3 uses ~A with a 64-bit load
   (:methods
-    (target-method-27 (_type_ collide-cache collide-edge-spec) none 27)
+    (do-edge-grabs (_type_ collide-cache collide-edge-spec) none 27)
     (init-target (_type_ continue-point symbol) none :behavior target 28)
     )
   (:states
@@ -26224,7 +26252,6 @@
 ;; collide-mesh                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sopt-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26233,9 +26260,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype spat-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26244,9 +26269,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype oot-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26255,14 +26278,12 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-touch                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype add-prims-touching-work (structure)
   ((tri1 collide-tri-result  :offset-assert 0)
    (tri2 collide-tri-result  :offset-assert 4)
@@ -26271,7 +26292,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 (define-extern get-intersect-point (function vector touching-prims-entry collide-shape touching-shapes-entry vector))
 
@@ -26279,7 +26299,6 @@
 ;; collide-edge-grab              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pbhp-stack-vars (structure)
   ((edge        collide-edge-edge         :offset-assert 0)
    (allocated   basic                     :offset-assert 4)
@@ -26290,24 +26309,21 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype faei-stack-vars (structure)
   ((hold-edge-vec-norm vector :inline :offset-assert 0)
    (adj-edge-vec-norm  vector :inline :offset-assert 16)
-   (found-left?        basic          :offset-assert 32)
+   (found-left?        symbol         :offset-assert 32)
    (left-dot           float          :offset-assert 36)
-   (found-right?       basic          :offset-assert 40)
+   (found-right?       symbol         :offset-assert 40)
    (right-dot          float          :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern *no-walk-surface* surface) ;; surface
+(define-extern *no-walk-surface* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-shape                  ;;
@@ -27308,7 +27324,7 @@
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 (define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-(define-extern ja-step (function int float :behavior process-drawable)) ;; 
+(define-extern ja-step (function int float :behavior process-drawable)) ;;
 (define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
@@ -28182,7 +28198,7 @@
 ;; (define-extern birth-func-vector-orient function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-set-alpha-from-userdata function)
 ;; (define-extern part-tracker-track-target-joint function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;; 
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;;
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
 (define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
@@ -28645,24 +28661,24 @@
   :flag-assert         #x900000020
   )
 
-(define-extern *auto-continue* symbol) ;; 
+(define-extern *auto-continue* symbol) ;;
 (define-extern next-continue (function continue-point continue-point))
 (define-extern target-continue (state continue-point target))
 (define-extern *smack-mods* surface)
 (define-extern *smack-up-mods* surface)
-(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;; 
+(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;;
 (define-extern target-hit-effect (function attack-info none :behavior target))
-(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;; 
+(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;;
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;; 
+(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;;
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit (state symbol attack-info target))
-(define-extern *death-spool-array* (array spool-anim)) ;; 
-(define-extern death-movie-remap (function int int int)) ;; 
+(define-extern *death-spool-array* (array spool-anim)) ;;
+(define-extern death-movie-remap (function int int int)) ;;
 (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
 (define-extern kill-nearby-enemies (function vector float object))
 (define-extern target-death-anim-trans (function none :behavior target))
-(define-extern target-death-anim (function spool-anim none :behavior target)) ;; 
+(define-extern target-death-anim (function spool-anim none :behavior target)) ;;
 (define-extern target-death-main (function symbol none :behavior target))
 (define-extern target-death-reset (function symbol symbol none :behavior target))
 (define-extern target-death (state symbol target))
