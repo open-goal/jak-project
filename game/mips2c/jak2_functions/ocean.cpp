@@ -4,6 +4,94 @@
 #include "game/kernel/jak2/kscheme.h"
 using ::jak2::intern_from_c;
 namespace Mips2C::jak2 {
+ExecutionContext ocean_regs_vfs;
+
+namespace init_ocean_far_regs {
+struct Cache {
+  void* math_camera; // *math-camera*
+  void* sky_work; // *sky-work*
+  void* time_of_day_context; // *time-of-day-context*
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
+  c->load_symbol2(a0, cache.sky_work);              // lw a0, *sky-work*(s7)
+  c->daddiu(a0, a0, 1008);                          // daddiu a0, a0, 1008
+  c->lwc1(f0, 908, v1);                             // lwc1 f0, 908(v1)
+  c->swc1(f0, 0, a0);                               // swc1 f0, 0(a0)
+  c->lwc1(f0, 128, v1);                             // lwc1 f0, 128(v1)
+  c->swc1(f0, 4, a0);                               // swc1 f0, 4(a0)
+  c->lwc1(f0, 124, v1);                             // lwc1 f0, 124(v1)
+  c->swc1(f0, 8, a0);                               // swc1 f0, 8(a0)
+  c->lui(a1, 17727);                                // lui a1, 17727
+  c->ori(a1, a1, 61440);                            // ori a1, a1, 61440
+  c->mtc1(f0, a1);                                  // mtc1 f0, a1
+  c->swc1(f0, 12, a0);                              // swc1 f0, 12(a0)
+  c->load_symbol2(a0, cache.time_of_day_context);   // lw a0, *time-of-day-context*(s7)
+  c->lwu(a0, 2060, a0);                             // lwu a0, 2060(a0)
+  bc = c->sgpr64(s7) == c->sgpr64(a0);              // beq s7, a0, L126
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_2;}                           // branch non-likely
+
+  c->lqc2(vf31, 1228, v1);                          // lqc2 vf31, 1228(v1)
+  c->lqc2(vf30, 1244, v1);                          // lqc2 vf30, 1244(v1)
+  c->lqc2(vf29, 1260, v1);                          // lqc2 vf29, 1260(v1)
+  c->lqc2(vf28, 1276, v1);                          // lqc2 vf28, 1276(v1)
+  c->mov128_gpr_vf(a0, vf28);                       // qmfc2.i a0, vf28
+  //beq r0, r0, L127                                // beq r0, r0, L127
+  // nop                                            // sll r0, r0, 0
+  goto block_3;                                     // branch always
+
+
+block_2:
+  c->lqc2(vf31, 572, v1);                           // lqc2 vf31, 572(v1)
+  c->lqc2(vf30, 588, v1);                           // lqc2 vf30, 588(v1)
+  c->lqc2(vf29, 604, v1);                           // lqc2 vf29, 604(v1)
+  c->lqc2(vf28, 620, v1);                           // lqc2 vf28, 620(v1)
+  c->mov128_gpr_vf(a0, vf28);                       // qmfc2.i a0, vf28
+
+block_3:
+  c->lqc2(vf26, 796, v1);                           // lqc2 vf26, 796(v1)
+  c->lqc2(vf14, 780, v1);                           // lqc2 vf14, 780(v1)
+  c->lqc2(vf25, 812, v1);                           // lqc2 vf25, 812(v1)
+  c->load_symbol2(v1, cache.sky_work);              // lw v1, *sky-work*(s7)
+  c->lqc2(vf13, 1008, v1);                          // lqc2 vf13, 1008(v1)
+  c->load_symbol2(v1, cache.sky_work);              // lw v1, *sky-work*(s7)
+  c->lqc2(vf27, 992, v1);                           // lqc2 vf27, 992(v1)
+  c->mov128_gpr_vf(v1, vf27);                       // qmfc2.i v1, vf27
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  ocean_regs_vfs.copy_vfs_from_other(c);
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.math_camera = intern_from_c("*math-camera*").c();
+  cache.sky_work = intern_from_c("*sky-work*").c();
+  cache.time_of_day_context = intern_from_c("*time-of-day-context*").c();
+  gLinkedFunctionTable.reg("init-ocean-far-regs", execute, 128);
+}
+
+} // namespace init_ocean_far_regs
+} // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jak2/kscheme.h"
+#include "game/mips2c/jak2_functions/sky.h"
+using ::jak2::intern_from_c;
+namespace Mips2C::jak2 {
 namespace draw_large_polygon_ocean {
 struct Cache {
   void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
@@ -23,7 +111,8 @@ u64 execute(void* ctxt) {
   c->mov64(a3, t5);                                 // or a3, t5, r0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddu(t2, a2, r0);                             // daddu t2, a2, r0
-  c->jalr(call_addr);                               // jalr ra, t9
+  //c->jalr(call_addr);                               // jalr ra, t9
+  clip_polygon_against_positive_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L124
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_11;}                          // branch non-likely
@@ -41,7 +130,8 @@ u64 execute(void* ctxt) {
   c->mov64(a3, t5);                                 // or a3, t5, r0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddu(t2, a2, r0);                             // daddu t2, a2, r0
-  c->jalr(call_addr);                               // jalr ra, t9
+  //c->jalr(call_addr);                               // jalr ra, t9
+  clip_polygon_against_positive_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L124
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_11;}                          // branch non-likely
@@ -202,6 +292,7 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
+  c->copy_vfs_from_other(&ocean_regs_vfs);
   bool bc = false;
   u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
