@@ -86,7 +86,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_7:
   c->load_symbol2(t9, cache.closest_pt_in_triangle);// lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
   c->mov64(a1, s5);                                 // or a1, s5, r0
@@ -215,7 +214,6 @@ u64 execute(void* ctxt) {
   ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)
@@ -421,7 +419,6 @@ u64 execute(void* ctxt) {
   ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)
