@@ -15726,6 +15726,8 @@
 ;; collide-mesh-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type collide-mesh-cache-tri structure)
+
 (deftype collide-tri-result (structure)
   ((vertex      vector      3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect   vector      :inline :offset-assert 48)
@@ -15760,13 +15762,13 @@
   :size-assert         #x28
   :flag-assert         #x1000000028
   (:methods
-    (collide-mesh-method-9 () none 9) ;; (debug-draw-tris (_type_ process-drawable int) none 9)
-    (collide-mesh-method-10 () none 10) ;; (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
-    (collide-mesh-method-11 () none 11) ;; (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
-    (collide-mesh-method-12 () none 12) ;; (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
-    (collide-mesh-method-13 () none 13) ;; (populate-cache! (_type_ collide-mesh-cache-tri matrix) none 13)
-    (collide-mesh-method-14 () none 14) ;; (collide-mesh-math-1 (_type_ object object) none 14)
-    (collide-mesh-method-15 () none 15) ;; (collide-mesh-math-2 (_type_ object object object) none 15)
+    (debug-draw-tris (_type_ process-drawable int) none 9)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none 13)
+    (collide-mesh-math-1 (_type_ object object) none 14)
+    (collide-mesh-math-2 (_type_ object object object) none 15)
     )
   )
 
@@ -15774,7 +15776,7 @@
   ((vertex vector         3 :inline      :offset-assert 0) ;; guessed by decompiler
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    pat-surface            :offset 60) ;; guessed by decompiler
+   (pat    pat-surface            :offset 60 :score 1) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -15790,6 +15792,7 @@
   :flag-assert         #x900000040
   )
 
+(declare-type collide-shape-prim-mesh basic)
 (deftype collide-mesh-cache (basic)
   ((used-size uint32       :offset-assert 4)
    (max-size  uint32       :offset-assert 8)
@@ -15800,10 +15803,10 @@
   :size-assert         #xbb90
   :flag-assert         #xd0000bb90
   (:methods
-    (collide-mesh-cache-method-9 () none 9) ;; (allocate! (_type_ int) int 9)
-    (is-id? (_type_ int) symbol 10) ;; (is-id? (_type_ int) symbol 10)
-    (next-id! (_type_) uint 11) ;; (next-id! (_type_) uint 11)
-    (collide-mesh-cache-method-12 () none 12)
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) none 9)
+    (is-id? (_type_ int) symbol 10)
+    (next-id! (_type_) uint 11)
+    (allocate! (_type_ int) collide-mesh-cache-entry 12)
     )
   )
 
@@ -26224,7 +26227,6 @@
 ;; collide-mesh                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sopt-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26233,9 +26235,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype spat-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26244,9 +26244,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype oot-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -26255,7 +26253,6 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27308,7 +27305,7 @@
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 (define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
-(define-extern ja-step (function int float :behavior process-drawable)) ;; 
+(define-extern ja-step (function int float :behavior process-drawable)) ;;
 (define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
@@ -28182,7 +28179,7 @@
 ;; (define-extern birth-func-vector-orient function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-set-alpha-from-userdata function)
 ;; (define-extern part-tracker-track-target-joint function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;; 
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target)) ;;
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
 (define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
@@ -28645,24 +28642,24 @@
   :flag-assert         #x900000020
   )
 
-(define-extern *auto-continue* symbol) ;; 
+(define-extern *auto-continue* symbol) ;;
 (define-extern next-continue (function continue-point continue-point))
 (define-extern target-continue (state continue-point target))
 (define-extern *smack-mods* surface)
 (define-extern *smack-up-mods* surface)
-(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;; 
+(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;;
 (define-extern target-hit-effect (function attack-info none :behavior target))
-(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;; 
+(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target)) ;;
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
-(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;; 
+(define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;;
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit (state symbol attack-info target))
-(define-extern *death-spool-array* (array spool-anim)) ;; 
-(define-extern death-movie-remap (function int int int)) ;; 
+(define-extern *death-spool-array* (array spool-anim)) ;;
+(define-extern death-movie-remap (function int int int)) ;;
 (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
 (define-extern kill-nearby-enemies (function vector float object))
 (define-extern target-death-anim-trans (function none :behavior target))
-(define-extern target-death-anim (function spool-anim none :behavior target)) ;; 
+(define-extern target-death-anim (function spool-anim none :behavior target)) ;;
 (define-extern target-death-main (function symbol none :behavior target))
 (define-extern target-death-reset (function symbol symbol none :behavior target))
 (define-extern target-death (state symbol target))
