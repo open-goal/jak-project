@@ -149,7 +149,7 @@ string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CX
 
 # SQLite - Jak 2/3's built in editor
 include_directories(third-party/SQLiteCpp/include)
-add_subdirectory(third-party/SQLiteCpp EXCLUDE_FROM_ALL)
+add_subdirectory(third-party/SQLiteCpp)
 
 # build common library
 add_subdirectory(common)

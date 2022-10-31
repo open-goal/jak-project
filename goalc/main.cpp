@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
+#include "SQLiteCpp/SQLiteCpp.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
@@ -22,6 +23,8 @@ void setup_logging() {
 }
 
 int main(int argc, char** argv) {
+  SQLite::Database db("example.db3");
+
   bool auto_listen = false;
   bool auto_debug = false;
   bool auto_find_user = false;

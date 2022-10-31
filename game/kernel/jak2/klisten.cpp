@@ -4,6 +4,7 @@
 #include <cstdlib>
 
 #include "common/symbols.h"
+#include <common/goal_constants.h>
 
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
@@ -111,43 +112,63 @@ void ProcessListenerMessage(Ptr<char> msg) {
   SendAck();
 }
 
+struct sql_result {
+  uint32_t type;  // it's a basic so, what type do you use, Ptr<u32>?
+  int32_t len;
+  uint32_t allocated_length;
+  uint32_t error;  // a symbol value, how do i represent this?
+  // how do you represent a dynamic array of strings...i assume i can't use a vector?
+};
+
 int sql_query_sync(Ptr<String> string_in) {
   if (!MasterDebug) {
     // not debugging, no sql results.
     return s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
   } else {
+    //// output sql query to the compiler
+    // output_sql_query(string_in->data());
+    //// clear pending listener stuff, so we don't run it again.
+    // ListenerFunction->value() = s7.offset;
+    // ListenerStatus = 1;
+    // ClearPending();
+    // SendAck();
+
     // clear old result
     SqlResult->value() = s7.offset;
-    // output sql query to the compiler
-    output_sql_query(string_in->data());
-    // clear pending listener stuff, so we don't run it again.
-    ListenerFunction->value() = s7.offset;
-    ListenerStatus = 1;
-    ClearPending();
-    SendAck();
 
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
-    // didn't we just set these to false?
-    if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
-      do {
-        KernelDispatch(sync_dispatcher->value());
-        SendAck();
-        if (SqlResult->value() != s7.offset) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        /*
-        iVar2 = 99999;
-        do {
-          bVar1 = iVar2 != 0;
-          iVar2 = iVar2 + -1;
-        } while (bVar1);
-         */
-      } while (SqlResult->value() == s7.offset);
-    }
+    // TODO - query the database
+
+    auto new_result = call_method_of_type_arg2(
+        intern_from_c("debug").offset, Ptr<jak2::Type>(*((SqlResult - 4).cast<u32>())),
+        GOAL_NEW_METHOD, intern_from_c("sql-result").offset, 10);  // TODO - arbitrary 10 values
+
+    // TODO - how do i set the fields on the object i just hopefully created...cast it to a struct?
+
     kdebugheap->top.offset += 0x4000;
+
+    // TODO - how do i set my new `sql-result` to the global?
     return SqlResult->value();
+
+    //// didn't we just set these to false?
+    // if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
+    //   do {
+    //     KernelDispatch(sync_dispatcher->value());
+    //     SendAck();
+    //     if (SqlResult->value() != s7.offset) {
+    //       break;
+    //     }
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     /*
+    //     iVar2 = 99999;
+    //     do {
+    //       bVar1 = iVar2 != 0;
+    //       iVar2 = iVar2 + -1;
+    //     } while (bVar1);
+    //      */
+    //   } while (SqlResult->value() == s7.offset);
+    // }
   }
 }
 
