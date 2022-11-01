@@ -40,7 +40,7 @@ void snd_PauseSound(s32);
 void snd_ContinueSound(s32);
 void snd_AutoPitch(s32, s32, s32, s32);
 void snd_AutoPitchBend(s32, s32, s32, s32);
-s32 snd_BankLoadEx(const char* filepath, s32 data_offset, s32 unk1, s32 unk2);
+s32 snd_BankLoadEx(const char* filepath, s32 data_offset, u32 spu_mem_loc, u32 spu_mem_size);
 s32 snd_GetVoiceStatus(s32 voice);
 s32 snd_GetFreeSPUDMA();
 void snd_FreeSPUDMA(s32 channel);

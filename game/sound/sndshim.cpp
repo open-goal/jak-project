@@ -175,7 +175,7 @@ void snd_AutoPitchBend(s32, s32, s32, s32) {
   printf("snd_AutoPitchBend\n");
 }
 
-s32 snd_BankLoadEx(const char* filename, s32 offset, s32, s32) {
+s32 snd_BankLoadEx(const char* filename, s32 offset, u32 spu_mem_loc, u32 spu_mem_size) {
   // printf("snd_BankLoadEx\n");
   if (player) {
     fs::path path = filename;

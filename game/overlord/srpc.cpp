@@ -8,6 +8,7 @@
 #include "ramdisk.h"
 #include "sbank.h"
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/versions.h"
 
@@ -20,6 +21,7 @@
 #include "game/sound/sndshim.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/magic_enum.hpp"
 
 using namespace iop;
 
@@ -57,6 +59,8 @@ void srpc_init_globals() {
 }
 
 void* RPC_Player(unsigned int fno, void* data, int size);
+void* RPC_Player2(unsigned int fno, void* data, int size);
+PerGameVersion<void* (*)(unsigned int, void*, int)> RPC_Player_Func = {RPC_Player, RPC_Player2};
 
 u32 Thread_Player() {
   sceSifQueueData dq;
@@ -66,14 +70,17 @@ u32 Thread_Player() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf, nullptr, nullptr,
-                    &dq);
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player_Func[g_game_version],
+                    gPlayerBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
 }
 
 void* RPC_Loader(unsigned int fno, void* data, int size);
+void* RPC_Loader2(unsigned int fno, void* data, int size);
+
+PerGameVersion<void* (*)(unsigned int, void*, int)> RPC_Loader_Func = {RPC_Loader, RPC_Loader2};
 
 u32 Thread_Loader() {
   sceSifQueueData dq;
@@ -83,18 +90,14 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
-                    &dq);
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader_Func[g_game_version],
+                    gLoaderBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
 }
 
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
-  if (g_game_version == GameVersion::Jak2) {
-    printf("RPC_Player skip %d\n", (int)((SoundRpcCommand*)data)->command);
-    return nullptr;
-  }
   if (gSoundEnable) {
     gFreeMem = QueryTotalFreeMemSize();
     if (!PollSema(gSema)) {
@@ -124,8 +127,8 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     int n_messages = size / SRPC_MESSAGE_SIZE;
     SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
     while (n_messages > 0) {
-      switch (cmd->command) {
-        case SoundCommand::PLAY: {
+      switch (cmd->j1command) {
+        case Jak1SoundCommand::PLAY: {
           if (cmd->play.sound_id == 0) {
             break;
           }
@@ -217,7 +220,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             sound->id = cmd->play.sound_id;
           }
         } break;
-        case SoundCommand::PAUSE_SOUND: {
+        case Jak1SoundCommand::PAUSE_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_PauseSound(sound->sound_handle);
@@ -225,7 +228,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             PauseVAGStream();
           }
         } break;
-        case SoundCommand::STOP_SOUND: {
+        case Jak1SoundCommand::STOP_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_StopSound(sound->sound_handle);
@@ -233,7 +236,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             StopVAGStream(nullptr, 0);
           }
         } break;
-        case SoundCommand::CONTINUE_SOUND: {
+        case Jak1SoundCommand::CONTINUE_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_ContinueSound(sound->sound_handle);
@@ -241,7 +244,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             UnpauseVAGStream();
           }
         } break;
-        case SoundCommand::SET_PARAM: {
+        case Jak1SoundCommand::SET_PARAM: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           u32 mask = cmd->param.parms.mask;
           if (sound != nullptr) {
@@ -282,7 +285,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             SetVAGStreamVolume(cmd->param.parms.volume);
           }
         } break;
-        case SoundCommand::SET_MASTER_VOLUME: {
+        case Jak1SoundCommand::SET_MASTER_VOLUME: {
           u32 group = cmd->master_volume.group.group;
           for (int i = 0; i < 32; i++) {
             if (((group >> i) & 1) != 0) {
@@ -296,7 +299,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             }
           }
         } break;
-        case SoundCommand::PAUSE_GROUP: {
+        case Jak1SoundCommand::PAUSE_GROUP: {
           snd_PauseAllSoundsInGroup(cmd->group.group);
           if ((cmd->group.group & 4) != 0) {
             PauseVAGStream();
@@ -305,14 +308,14 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             gMusicPause = 1;
           }
         } break;
-        case SoundCommand::STOP_GROUP: {
+        case Jak1SoundCommand::STOP_GROUP: {
           u8 group = cmd->group.group;
           KillSoundsInGroup(group);
           if ((group & 4) != 0) {
             StopVAGStream(nullptr, 0);
           }
         } break;
-        case SoundCommand::CONTINUE_GROUP: {
+        case Jak1SoundCommand::CONTINUE_GROUP: {
           snd_ContinueAllSoundsInGroup(cmd->group.group);
           if (cmd->group.group & 4) {
             UnpauseVAGStream();
@@ -322,10 +325,10 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             gMusicPause = 0;
           }
         } break;
-        case SoundCommand::SET_FALLOFF_CURVE: {
+        case Jak1SoundCommand::SET_FALLOFF_CURVE: {
           SetCurve(cmd->fallof_curve.curve, cmd->fallof_curve.falloff, cmd->fallof_curve.ease);
         } break;
-        case SoundCommand::SET_SOUND_FALLOFF: {
+        case Jak1SoundCommand::SET_SOUND_FALLOFF: {
           SoundBank* bank;
           s32 idx = LookupSoundIndex(cmd->fallof.name, &bank);
           if (idx >= 0) {
@@ -333,20 +336,21 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
                 (cmd->fallof.curve << 28) | (cmd->fallof.max << 14) | cmd->fallof.min;
           }
         } break;
-        case SoundCommand::SET_FLAVA: {
+        case Jak1SoundCommand::SET_FLAVA: {
           gFlava = cmd->flava.flava;
         } break;
-        case SoundCommand::SET_EAR_TRANS: {
+        case Jak1SoundCommand::SET_EAR_TRANS: {
           SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.cam_trans,
                       cmd->ear_trans.cam_angle);
         } break;
-        case SoundCommand::SHUTDOWN: {
+        case Jak1SoundCommand::SHUTDOWN: {
           gSoundEnable = 0;
           snd_StopSoundSystem();
           // TODO ShutdownFilingSystem();
         } break;
         default: {
-          ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}", (int)cmd->command));
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
+                                        magic_enum::enum_name(cmd->j1command)));
         } break;
       }
       n_messages--;
@@ -356,27 +360,78 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
   return nullptr;
 }
 
+void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
+  if (!gSoundEnable) {
+    return nullptr;
+  }
+
+  gFreeMem = QueryTotalFreeMemSize();
+  if (!PollSema(gSema)) {
+    if (gMusic) {
+      if (!gMusicPause && !LookupSound(666)) {
+        Sound* music = AllocateSound();
+        if (music != nullptr) {
+          gMusicFade = 0;
+          gMusicFadeDir = 1;
+          SetMusicVol();
+          music->sound_handle = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
+          music->id = 666;
+          music->is_music = 1;
+        }
+      }
+    }
+
+    SignalSema(gSema);
+  }
+
+  SetMusicVol();
+  Sound* music = LookupSound(666);
+  if (music != nullptr) {
+    snd_SetSoundVolPan(music->sound_handle, 0x7FFFFFFF, 0);
+  }
+
+  int n_messages = size / SRPC_MESSAGE_SIZE;
+  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
+  if (!gSoundEnable) {
+    return nullptr;
+  }
+
+  while (n_messages > 0) {
+    switch (cmd->j2command) {
+      case Jak2SoundCommand::set_master_volume: {
+      } break;
+      case Jak2SoundCommand::set_reverb: {
+      } break;
+      case Jak2SoundCommand::set_ear_trans: {
+        // new struct
+        // SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.cam_trans,
+        // cmd->ear_trans.cam_angle)
+      } break;
+      case Jak2SoundCommand::set_fps: {
+      } break;
+      default:
+        ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
+                                      magic_enum::enum_name(cmd->j2command)));
+    }
+
+    n_messages--;
+    cmd++;
+  }
+
+  return nullptr;
+}
+
 void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   int n_messages = size / SRPC_MESSAGE_SIZE;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
-  if (g_game_version == GameVersion::Jak2) {
-    printf("RPC_Loader skip %d\n", (int)((SoundRpcCommand*)data)->command);
-    if (cmd->command == (SoundCommand)16) {
-      cmd->irx_version.major = 4;
-      cmd->irx_version.minor = 0;
-      gInfoEE = cmd->irx_version.ee_addr;
-      return data;
-    }
-    return nullptr;
-  }
   if (gSoundEnable) {
     // I don't think it should be possible to have > 1 message here - the buffer isn't big enough.
     if (n_messages > 1) {
       ASSERT(false);
     }
     while (n_messages > 0) {
-      switch (cmd->command) {
-        case SoundCommand::LOAD_BANK: {
+      switch (cmd->j1command) {
+        case Jak1SoundCommand::LOAD_BANK: {
           // see if it's already loaded
           auto bank = LookupBank(cmd->load_bank.bank_name);
           if (!bank) {
@@ -388,7 +443,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             }
           }
         } break;
-        case SoundCommand::UNLOAD_BANK: {
+        case Jak1SoundCommand::UNLOAD_BANK: {
           SoundBank* bank = LookupBank(cmd->load_bank.bank_name);
           if (bank != nullptr) {
             s32 id = bank->bank_handle;
@@ -397,20 +452,20 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             snd_ResolveBankXREFS();
           }
         } break;
-        case SoundCommand::GET_IRX_VERSION: {
+        case Jak1SoundCommand::GET_IRX_VERSION: {
           cmd->irx_version.major = IRX_VERSION_MAJOR;
           cmd->irx_version.minor = IRX_VERSION_MINOR;
           gInfoEE = cmd->irx_version.ee_addr;
           return cmd;
         } break;
-        case SoundCommand::RELOAD_INFO: {
+        case Jak1SoundCommand::RELOAD_INFO: {
           ReloadBankInfo();
         } break;
-        case SoundCommand::SET_LANGUAGE: {
+        case Jak1SoundCommand::SET_LANGUAGE: {
           gLanguage = languages[cmd->set_language.langauge_id];
           printf("IOP language: %s\n", gLanguage);  // added.
         } break;
-        case SoundCommand::LOAD_MUSIC: {
+        case Jak1SoundCommand::LOAD_MUSIC: {
           while (WaitSema(gSema))
             ;
           if (gMusic) {
@@ -425,10 +480,10 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           LoadMusic(cmd->load_bank.bank_name, &gMusic);
           SignalSema(gSema);
         } break;
-        case SoundCommand::LIST_SOUNDS: {
+        case Jak1SoundCommand::LIST_SOUNDS: {
           PrintActiveSounds();
         } break;
-        case SoundCommand::UNLOAD_MUSIC: {
+        case Jak1SoundCommand::UNLOAD_MUSIC: {
           while (WaitSema(gSema))
             ;
           if (gMusic) {
@@ -443,12 +498,108 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           SignalSema(gSema);
         } break;
         default:
-          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", (int)cmd->command));
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}",
+                                        magic_enum::enum_name(cmd->j1command)));
       }
       n_messages--;
       cmd++;
     }
   }
+  return nullptr;
+}
+
+static void UnLoadMusic(s32* handle) {
+  gMusicFadeDir = -1;
+  while (gMusicFade)
+    DelayThread(1000);
+  snd_UnloadBank(*handle);
+  snd_ResolveBankXREFS();
+  *handle = 0;
+}
+
+void* RPC_Loader2(unsigned int fno, void* data, int size) {
+  int n_messages = size / SRPC_MESSAGE_SIZE;
+  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
+  if (!gSoundEnable) {
+    return nullptr;
+  }
+
+  while (n_messages > 0) {
+    switch (cmd->j2command) {
+      case Jak2SoundCommand::load_bank: {
+        lg::error("loaded bank {}", cmd->load_bank.bank_name);
+        if (LookupBank(cmd->load_bank.bank_name)) {
+          break;
+        }
+
+        auto bank = AllocateBankName(cmd->load_bank.bank_name);
+        if (bank == nullptr) {
+          break;
+        }
+
+        strncpy(bank->name, cmd->load_bank.bank_name, 16);
+        bank->in_use = true;
+        bank->unk4 = 0;
+        LoadSoundBank(cmd->load_bank.bank_name, bank);
+      } break;
+      case Jak2SoundCommand::load_music: {
+        while (WaitSema(gSema))
+          ;
+        if (gMusic) {
+          UnLoadMusic(&gMusic);
+        }
+        LoadMusic(cmd->load_bank.bank_name, &gMusic);
+        SignalSema(gSema);
+      } break;
+      case Jak2SoundCommand::unload_bank: {
+        auto bank = LookupBank(cmd->load_bank.bank_name);
+        if (!bank) {
+          break;
+        }
+        auto handle = bank->bank_handle;
+        if (!bank->unk4) {
+          bank->in_use = false;
+        }
+        bank->in_use = 0;
+        snd_UnloadBank(handle);
+        snd_ResolveBankXREFS();
+      } break;
+      case Jak2SoundCommand::get_irx_version: {
+        cmd->irx_version.major = 4;
+        cmd->irx_version.minor = 0;
+        gInfoEE = cmd->irx_version.ee_addr;
+        return data;
+      } break;
+      case Jak2SoundCommand::set_language: {
+        gLanguage = languages[cmd->set_language.langauge_id];
+      } break;
+      case Jak2SoundCommand::unload_music: {
+        while (WaitSema(gSema))
+          ;
+        if (gMusic) {
+          UnLoadMusic(&gMusic);
+        }
+        SignalSema(gSema);
+      } break;
+      case Jak2SoundCommand::set_stereo_mode: {
+        s32 mode = cmd->stereo_mode.stereo_mode;
+        if (mode == 0) {
+          snd_SetPlayBackMode(1);
+        } else if (mode == 1) {
+          snd_SetPlayBackMode(2);
+        } else if (mode == 2) {
+          snd_SetPlayBackMode(0);
+        }
+      } break;
+      default:
+        ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}",
+                                      magic_enum::enum_name(cmd->j2command)));
+    }
+
+    n_messages--;
+    cmd++;
+  }
+
   return nullptr;
 }
 
