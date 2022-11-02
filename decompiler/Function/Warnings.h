@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -51,6 +52,12 @@ class DecompWarnings {
   }
 
   bool has_warnings() const { return !m_warnings.empty(); }
+
+  bool has_errors() const {
+    return !m_warnings.empty() &&
+           std::any_of(m_warnings.begin(), m_warnings.end(),
+                       [](const Warning& warn) { return warn.warning_kind == Warning::Kind::ERR; });
+  }
 
   std::string get_warning_text(bool as_comment) const {
     std::string result;

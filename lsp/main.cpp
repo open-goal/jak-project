@@ -34,7 +34,9 @@
 */
 
 void setup_logging(bool verbose, std::string log_file) {
-  lg::set_file(log_file);
+  if (!log_file.empty()) {
+    lg::set_file(log_file);
+  }
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_flush_level(lg::level::debug);
@@ -66,9 +68,7 @@ int main(int argc, char** argv) {
   AppState appstate;
   LSPRouter lsp_router;
   appstate.verbose = verbose;
-  if (!logfile.empty()) {
-    setup_logging(appstate.verbose, logfile);
-  }
+  setup_logging(appstate.verbose, logfile);
   lsp_router.init_routes();
 
   lg::info("OpenGOAL LSP Initialized, ready for requests");

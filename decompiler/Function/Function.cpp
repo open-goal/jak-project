@@ -504,8 +504,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
   for (const auto& instr : instructions) {
     // look for lw t9, method-set!(s7)
     if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::T9) &&
-        instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-        instr.get_src(0).get_sym() == "method-set!" &&
+        instr.get_src(0).is_sym() && instr.get_src(0).get_sym() == "method-set!" &&
         instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
       state = 1;
       continue;
@@ -514,8 +513,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
     if (state == 1) {
       // look for lw a0, type-name(s7)
       if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A0) &&
-          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+          instr.get_src(0).is_sym() && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
         type_name = instr.get_src(0).get_sym();
         state = 2;
         continue;
@@ -587,7 +585,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
 
   for (const auto& instr : instructions) {
     // look for lw xx, type(s7)
-    if (instr.kind == InstructionKind::LW && instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+    if (instr.kind == InstructionKind::LW && instr.get_src(0).is_sym() &&
         instr.get_src(0).get_sym() == "type" && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
       state = 1;
       temp_reg = instr.get_dst(0).get_reg();
@@ -621,8 +619,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
     if (state == 3) {
       // look for lw a1, parent-type(s7)
       if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A1) &&
-          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+          instr.get_src(0).is_sym() && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
         state = 4;
         parent_type = instr.get_src(0).get_sym();
         continue;

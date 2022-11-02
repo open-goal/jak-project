@@ -24,9 +24,13 @@ tasks:
     cmds:
       - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
   set-decomp-pal:
-    - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+    desc: "PAL region version"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config pal'
   set-decomp-ntscjp:
-    - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+    desc: "NTSC-J region version"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
   # GENERAL
   extract:
     desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
@@ -34,7 +38,7 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\":false,\\\"allowed_objects\\\":[]}"'
   boot-game:
     desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
@@ -89,6 +93,9 @@ tasks:
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+  lint-gsrc-file:
+    cmds:
+      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
@@ -96,12 +103,14 @@ tasks:
     cmds:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+      - task: lint-gsrc-file
   # TOOLS
   analyze-ee-memory:
     cmds:
       - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
       - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
   watch-pcsx2:
+    # python -m pip install -U "watchdog[watchmedo]"
     cmds:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
     vars:
@@ -111,30 +120,30 @@ tasks:
     cmds:
       - "{{.TYPESEARCH_BIN_RELEASE_DIR}}/type_searcher --output-path ./search-results.json --game {{.GAME}} --fields '[{\"type\":\"int16\",\"offset\":2},{\"type\":\"int16\",\"offset\":4}]'"
   # TESTS
-  offline-tests:
+  offline-tests: # ran by jenkins
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
+  offline-tests-fast:
+    cmds:
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
   offline-test-file:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
+  # TODO - amalgamate offline-tests and this task, run twice if the previous step fails
   update-ref-tests:
     cmds:
-      - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output'
+      - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
-      - task: offline-tests
+      - task: offline-tests-fast
   update-ref-file:
     cmds:
-      - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output'
+      - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output --fail-on-cmp'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
-  # check-gsrc-file:
-  #   cmds:
-  #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
   type-test:
     cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
-        ignore_error: true
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*" --gtest_break_on_failure'

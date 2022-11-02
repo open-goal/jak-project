@@ -131,7 +131,7 @@ EnumType* parse_defenum(const goos::Object& defenum,
 
       auto entry_val = value.integer_obj.value;
       if (!integer_fits(entry_val, type->get_load_size(), type->get_load_signed())) {
-        lg::warn("Integer {} does not fit inside a {}\n", entry_val, type->get_name());
+        lg::warn("Integer {} does not fit inside a {}", entry_val, type->get_name());
       }
 
       if (!entries.size()) {

@@ -29,7 +29,8 @@ bool hex_char(char c) {
 
 const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
     {"jak1-v1", GameTextVersion::JAK1_V1},
-    {"jak1-v2", GameTextVersion::JAK1_V2}};
+    {"jak1-v2", GameTextVersion::JAK1_V2},
+    {"jak2", GameTextVersion::JAK2}};
 
 const std::string& get_text_version_name(GameTextVersion version) {
   for (auto& [name, ver] : sTextVerEnumMap) {
@@ -119,6 +120,10 @@ std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
 }
 std::string GameTextFontBank::replace_to_game(std::string& str) const {
   for (auto& info : *m_replace_info) {
+    if (info.to.empty()) {
+      // Skip empty replacements, else it's an infinite loop
+      continue;
+    }
     auto pos = str.find(info.to);
     while (pos != std::string::npos) {
       str.replace(pos, info.to.size(), info.from);
@@ -155,6 +160,19 @@ std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
   replace_to_game(str);
   encode_utf8_to_game(str);
   return str;
+}
+
+bool GameTextFontBank::valid_char_range(const char in) const {
+  if (m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2) {
+    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') ||
+            m_passthrus->find(in) != m_passthrus->end()) &&
+           in != '\\';
+  } else if (m_version == GameTextVersion::JAK2) {
+    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') || (in >= 'a' && in <= 'z') ||
+            m_passthrus->find(in) != m_passthrus->end()) &&
+           in != '\\';
+  }
+  return false;
 }
 
 /*!
@@ -219,9 +237,7 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
     if (remap != nullptr) {
       result.append(remap->chars);
       in += remap->bytes.size() - 1;
-    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
-                m_passthrus->find(*in) != m_passthrus->end()) &&
-               *in != '\\') {
+    } else if (valid_char_range(*in)) {
       result.push_back(*in);
     } else if (*in == '\n') {
       result += "\\n";
@@ -250,9 +266,9 @@ static std::vector<ReplaceInfo> s_replace_info_null = {};
  * - Jak & Daxter: The Precursor Legacy (Black Label)
  */
 
-static std::unordered_set<char> s_passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')',
-                                               '!', ':', '?', '=', '%', '*', '/', '#',
-                                               ';', '<', '>', '@', '[', '_'};
+static std::unordered_set<char> s_passthrus_jak1 = {'~', ' ', ',', '.', '-', '+', '(', ')',
+                                                    '!', ':', '?', '=', '%', '*', '/', '#',
+                                                    ';', '<', '>', '@', '[', '_'};
 
 static std::vector<EncodeInfo> s_encode_info_jak1 = {
     // random
@@ -578,10 +594,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},  // custom
 };
 
-GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
-                                  &s_encode_info_jak1,
-                                  &s_replace_info_jak1,
-                                  &s_passthrus);
+GameTextFontBank g_font_bank_jak1_v1(GameTextVersion::JAK1_V1,
+                                     &s_encode_info_jak1,
+                                     &s_replace_info_jak1,
+                                     &s_passthrus_jak1);
 
 /*!
  * ================================
@@ -815,12 +831,281 @@ static std::vector<EncodeInfo> s_encode_info_jak1_v2 = {
 GameTextFontBank g_font_bank_jak1_v2(GameTextVersion::JAK1_V2,
                                      &s_encode_info_jak1_v2,
                                      &s_replace_info_jak1,
-                                     &s_passthrus);
+                                     &s_passthrus_jak1);
+
+/*!
+ * ================================
+ * GAME TEXT FONT BANK - JAK 2
+ * ================================
+ * This font is used in:
+ * - Jak 2 - NTSC - v1
+ */
+
+static std::unordered_set<char> s_passthrus_jak2 = {'~', ' ', ',', '.', '-', '+', '(', ')',
+                                                    '!', ':', '?', '=', '%', '*', '/', '#',
+                                                    ';', '<', '>', '@', '[', '_'};
+
+static std::vector<ReplaceInfo> s_replace_info_jak2 = {
+    // other
+    {"A~Y~-21H~-5Vº~Z", "Å"},
+    {"N~Y~-6Hº~Z~+10H", "Nº"},
+    {"~+4VÇ~-4V", "ç"},
+
+    // tildes
+    {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
+    {"n~Y~-24H~-4V<TIL>~Z", "ñ"},
+    {"A~Y~-21H~-5V<TIL>~Z", "Ã"},
+    {"O~Y~-22H~-4V<TIL>~Z", "Õ"},
+
+    // acute accents
+    {"A~Y~-21H~-5V'~Z", "Á"},
+    {"A~Y~-26H~-8V'~Z", "<Á_V2>"},  // unfortunate...
+    {"a~Y~-25H~-5V'~Z", "á"},
+    {"E~Y~-23H~-9V'~Z", "É"},
+    {"e~Y~-26H~-5V'~Z", "é"},
+    {"I~Y~-19H~-5V'~Z", "Í"},
+    {"i~Y~-19H~-8V'~Z", "í"},
+    {"O~Y~-22H~-4V'~Z", "Ó"},
+    {"o~Y~-26H~-4V'~Z", "ó"},
+    {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"u~Y~-24H~-3V'~Z", "ú"},
+
+    // circumflex
+    {"A~Y~-20H~-4V^~Z", "Â"},
+    {"a~Y~-24H~-5V^~Z", "â"},
+    {"E~Y~-20H~-5V^~Z", "Ê"},
+    {"e~Y~-25H~-4V^~Zt", "ê"},
+    {"I~Y~-19H~-5V^~Z", "Î"},
+    {"i~Y~-19H~-8V^~Z", "î"},
+    {"O~Y~-20H~-4V^~Z", "Ô"},
+    {"o~Y~-25H~-4V^~Z", "ô"},
+    {"U~Y~-24H~-3V^~Z", "Û"},
+    {"u~Y~-23H~-3V^~Z", "û"},
+
+    // grave accents
+    {"A~Y~-26H~-8V`~Z", "À"},
+    {"a~Y~-25H~-5V`~Z", "à"},
+    {"E~Y~-23H~-9V`~Z", "È"},
+    {"e~Y~-26H~-5V`~Z", "è"},
+    {"I~Y~-19H~-5V`~Z", "Ì"},
+    {"i~Y~-19H~-8V`~Z", "ì"},
+    {"O~Y~-22H~-4V`~Z", "Ò"},
+    {"o~Y~-26H~-4V`~Z", "ò"},
+    {"U~Y~-24H~-3V`~Z", "Ù"},
+    {"u~Y~-24H~-3V`~Z", "ù"},
+
+    // umlaut
+    {"A~Y~-26H~-8V¨~Z", "Ä"},
+    {"a~Y~-25H~-5V¨~Z", "ä"},
+    {"E~Y~-20H~-5V¨~Z", "Ë"},
+    {"I~Y~-19H~-5V¨~Z", "Ï"},
+    {"O~Y~-26H~-8V¨~Z", "Ö"},
+    {"o~Y~-26H~-4V¨~Z", "ö"},
+    {"U~Y~-25H~-8V¨~Z", "Ü"},
+    {"u~Y~-24H~-3V¨~Z", "ü"},
+
+    // dakuten katakana
+    {"~Yウ~Z゛", "ヴ"},
+    {"~Yカ~Z゛", "ガ"},
+    {"~Yキ~Z゛", "ギ"},
+    {"~Yク~Z゛", "グ"},
+    {"~Yケ~Z゛", "ゲ"},
+    {"~Yコ~Z゛", "ゴ"},
+    {"~Yサ~Z゛", "ザ"},
+    {"~Yシ~Z゛", "ジ"},
+    {"~Yス~Z゛", "ズ"},
+    {"~Yセ~Z゛", "ゼ"},
+    {"~Yソ~Z゛", "ゾ"},
+    {"~Yタ~Z゛", "ダ"},
+    {"~Yチ~Z゛", "ヂ"},
+    {"~Yツ~Z゛", "ヅ"},
+    {"~Yテ~Z゛", "デ"},
+    {"~Yト~Z゛", "ド"},
+    {"~Yハ~Z゛", "バ"},
+    {"~Yヒ~Z゛", "ビ"},
+    {"~Yフ~Z゛", "ブ"},
+    {"~Yヘ~Z゛", "ベ"},
+    {"~Yホ~Z゛", "ボ"},
+    // handakuten katakana
+    {"~Yハ~Z゜", "パ"},
+    {"~Yヒ~Z゜", "ピ"},
+    {"~Yフ~Z゜", "プ"},
+    {"~Yヘ~Z゜", "ペ"},
+    {"~Yホ~Z゜", "ポ"},
+    // dakuten hiragana
+    {"~Yか~Z゛", "が"},
+    {"~Yき~Z゛", "ぎ"},
+    {"~Yく~Z゛", "ぐ"},
+    {"~Yけ~Z゛", "げ"},
+    {"~Yこ~Z゛", "ご"},
+    {"~Yさ~Z゛", "ざ"},
+    {"~Yし~Z゛", "じ"},
+    {"~Yす~Z゛", "ず"},
+    {"~Yせ~Z゛", "ぜ"},
+    {"~Yそ~Z゛", "ぞ"},
+    {"~Yた~Z゛", "だ"},
+    {"~Yち~Z゛", "ぢ"},
+    {"~Yつ~Z゛", "づ"},
+    {"~Yて~Z゛", "で"},
+    {"~Yと~Z゛", "ど"},
+    {"~Yは~Z゛", "ば"},
+    {"~Yひ~Z゛", "び"},
+    {"~Yふ~Z゛", "ぶ"},
+    {"~Yへ~Z゛", "べ"},
+    {"~Yほ~Z゛", "ぼ"},
+    // handakuten hiragana
+    {"~Yは~Z゜", "ぱ"},
+    {"~Yひ~Z゜", "ぴ"},
+    {"~Yふ~Z゜", "ぷ"},
+    {"~Yへ~Z゜", "ぺ"},
+    {"~Yほ~Z゜", "ぽ"},
+    // japanese punctuation
+    {",~+8H", "、"},
+    {"~+8H ", "　"},
+
+    // (hack) special case kanji
+    {"~~", "世"},
+
+    // playstation buttons
+    // - face
+    {"~Y~22L<~Z~Y~27L*~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_X>"},
+    {"~Y~22L<~Z~Y~26L;~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_TRIANGLE>"},
+    {"~Y~22L<~Z~Y~25L@~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_CIRCLE>"},
+    {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},
+    // - dpad
+    {"~Y~22L<SYM7>~Z~3L~+17H~-13V<SYM8>~Z~22L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
+     "<PAD_DPAD_UP>"},
+    {"~Y~22L<SYM7>~Z~3L~+17H~-13V<SYM8>~Z~3L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
+     "<PAD_DPAD_DOWN>"},
+    {"~Y~22L<SYM7>~Z~22L~+17H~-13V<SYM8>~Z~22L~+17H~+14V<SYM9>~Z~22L~+32H<SYM10>~Z~+56H",
+     "<PAD_DPAD_ANY>"},
+    // - shoulder
+    {"~Y~22L~-2H~-12V<SYM1><SYM2>~Z~22L~-2H~+17V<SYM3><SYM4>~Z~1L~+4H~+3V<SYM5>~Z~+38H",
+     "<PAD_L1>"},
+    {"~Y~22L~-2H~-12V<SYM1><SYM2>~Z~22L~-2H~+17V<SYM3><SYM4>~Z~1L~+6H~+3V<SYM6>~Z~+38H",
+     "<PAD_R1>"},
+    {"~Y~22L~-2H~-6V<SYM11><SYM12>~Z~22L~-2H~+16V<SYM15><SYM14>~Z~1L~+5H~-2V<SYM13>~Z~+38H",
+     "<PAD_R2>"},
+    {"~Y~22L~-2H~-6V<SYM11><SYM12>~Z~22L~-2H~+16V<SYM15><SYM14>~Z~1L~+5H~-2V<SYM22>~Z~+38H",
+     "<PAD_L2>"},
+    // - analog
+    {"~1L~+8H~Y<SYM16>~Z~6L~-16H<SYM21>~Z~+16h~6L<SYM20>~Z~6L~-15V<SYM24>~Z~+13V~6L<SYM28>~Z~-10H~+"
+     "9V~"
+     "6L<SYM17>~Z~+10H~+9V~6L<SYM31>~Z~-10H~-11V~6L<SYM23>~Z~+10H~-11V~6L<SYM29>~Z~+32H",
+     "<PAD_ANALOG_ANY>"},
+    {"~Y~1L~+8H<SYM16>~Z~6L~-8H<SYM21>~Z~+24H~6L<SYM20>~Z~+40H", "<PAD_ANALOG_LEFT_RIGHT>"},
+    {"~Y~1L<SYM16>~Z~6L~-15V<SYM24>~Z~+13V~6L<SYM28>~Z~+26H", "<PAD_ANALOG_UP_DOWN>"},
+
+    // icons
+    {"~Y~6L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_COMPLETE>"},
+    {"~Y~3L<~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<ICON_MISSION_TODO>"},
+
+    // flags
+    {"~Y~6L<SYM18>~Z~+15H~1L<SYM18>~Z~+30H~3L<SYM18>~Z~+45H", "<FLAG_ITALIAN>"},
+    {"~Y~5L<SYM19>~Z~3L<SYM32>~<SYM26>~-1H~Y~5L<SYM19>~Z~3L<SYM32>~Z~+26H", "<FLAG_SPAIN>"},
+    {"~Y~39L~~~Z~3L<SYM33>~Z~5L<SYM25>~<SYM26>~-1H~Y~39L~~~Z~3L<SYM33>~Z~5L<SYM25>~Z~+26H",
+     "<FLAG_GERMAN>"},
+    {"~Y~7L<SYM18>~Z~+15H~1L<SYM18>~Z~+30H~3L<SYM18>~Z~+47H", "<FLAG_FRANCE>"},
+    {"~Y~1L<SYM19>~Z~3L<SYM34>~Z~7L<SYM37>~<SYM26>~-1H~Y~1L<SYM19>~Z~3L<SYM30>~Z~7L<SYM42>~Z~+26H",
+     "<FLAG_USA>"},
+    {"~Y~1L<SYM19>~Z~3L<SYM35>~Z~7L<SYM38>~<SYM26>~-1H~Y~1L<SYM19>~Z~3L<SYM40>~Z~+26H",
+     "<FLAG_UK>"},
+    {"~Y~1L<SYM19>~Z~39L<SYM36>~<SYM26>~-1H~Y~1L<SYM19>~Z~39L<SYM39>~Z~-11H~7L<SYM41>~Z~-11H~3L<"
+     "SYM43>~Z~+26H",
+     "<FLAG_JAPAN>"},
+    {"~Y~1L<SYM19>~<SYM26>~-1H~Y~1L<SYM19>~Z~-11H~3L<SYM27>~Z~+26H", "<FLAG_SOUTH_KOREA>"},
+
+    // weird stuff
+    // - descenders
+    {"~+7Vp~-7V", "p"},
+    {"~+7Vy~-7V", "y"},
+    {"~+7Vg~-7V", "g"},
+    {"~+7Vq~-7V", "q"},
+    {"~+1Vj~-1V", "j"},
+
+    {"\\\\\\\\", "\\n"},
+
+    // - symbols and ligatures
+    {"~-4H~-3V\\c19~+3V~-4H",
+     "<SUPERSCRIPT_QUOTE>"},  // used for the 4<__> place in spanish.  the 5th uses the same
+                              // character but looks different...?
+    {"~Y~-6Hº~Z~+10H", "°"},
+
+    // Color / Emphasis
+    {"~[~1L", "<COLOR_WHITE>"},
+    {"~[~32L", "<COLOR_DEFAULT>"}};
+
+static std::vector<EncodeInfo> s_encode_info_jak2 = {
+    {"_", {0x03}},      // large space
+    {"ˇ", {0x10}},      // caron
+    {"`", {0x11}},      // grave accent
+    {"'", {0x12}},      // apostrophe
+    {"^", {0x13}},      // circumflex
+    {"<TIL>", {0x14}},  // tilde
+    {"¨", {0x15}},      // umlaut
+    {"º", {0x16}},      // numero/overring
+    {"¡", {0x17}},      // inverted exclamation mark
+    {"¿", {0x18}},      // inverted question mark
+    {"Ç", {0x1d}},      // c-cedilla
+
+    {"ß", {0x1f}},  // eszett
+
+    {"œ", {0x5e}},  // ligature o+e
+    // Re-purposed japanese/korean symbols that are used as part of drawing icons/flags/pad buttons
+    // TODO - japanese and korean encodings
+    {"<SYM26>", {0x5d}},
+
+    {"<SYM33>", {0x7f}},
+    {"<SYM25>", {0x80}},
+    {"<SYM18>", {0x81}},
+
+    {"<SYM19>", {0x85}},
+    {"<SYM27>", {0x86}},
+    {"<SYM36>", {0x87}},
+    {"<SYM39>", {0x88}},
+    {"<SYM43>", {0x89}},
+    {"<SYM41>", {0x8a}},
+    {"<SYM32>", {0x8b}},
+    {"<SYM34>", {0x8c}},
+    {"<SYM30>", {0x8d}},
+    {"<SYM37>", {0x8e}},
+    {"<SYM42>", {0x8f}},
+    {"<SYM40>", {0x90}},
+    {"<SYM16>", {0x91}},
+
+    {"<SYM6>", {0x94}},
+    {"<SYM5>", {0x95}},
+    {"<SYM13>", {0x96}},
+    {"<SYM22>", {0x97}},
+    {"<SYM28>", {0x98}},
+    {"<SYM31>", {0x99}},
+    {"<SYM35>", {0x9a}},
+    {"<SYM38>", {0x9b}},
+    {"<SYM24>", {0x9c}},
+    {"<SYM23>", {0x9d}},
+    {"<SYM21>", {0x9e}},
+    {"<SYM17>", {0x9f}},
+    {"<SYM9>", {0xa0}},
+    {"<SYM7>", {0xa1}},
+    {"<SYM8>", {0xa2}},
+    {"<SYM10>", {0xa3}},
+    {"<SYM20>", {0xa4}},
+    {"<SYM29>", {0xa5}},
+    {"<SYM1>", {0xa6}},
+    {"<SYM2>", {0xa7}},
+    {"<SYM11>", {0xa8}},
+    {"<SYM12>", {0xa9}},
+    {"<SYM3>", {0xb0}},
+    {"<SYM4>", {0xb1}},
+    {"<SYM14>", {0xb3}},
+    {"<SYM15>", {0xb2}},
+};
 
 GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
-                                  &s_encode_info_null,
-                                  &s_replace_info_null,
-                                  &s_passthrus);
+                                  &s_encode_info_jak2,
+                                  //&s_replace_info_null,
+                                  &s_replace_info_jak2,
+                                  &s_passthrus_jak2);
 
 /*!
  * ========================
@@ -830,7 +1115,7 @@ GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
  */
 
 std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
-    {GameTextVersion::JAK1_V1, &g_font_bank_jak1},
+    {GameTextVersion::JAK1_V1, &g_font_bank_jak1_v1},
     {GameTextVersion::JAK1_V2, &g_font_bank_jak1_v2},
     {GameTextVersion::JAK2, &g_font_bank_jak2}};
 

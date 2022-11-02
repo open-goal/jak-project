@@ -67,6 +67,7 @@ struct LetRewriteStats {
   int case_with_else = 0;
   int set_vector = 0;
   int set_vector2 = 0;
+  int set_vector3 = 0;
   int send_event = 0;
   int font_context_meth = 0;
   int proc_new = 0;
@@ -74,11 +75,12 @@ struct LetRewriteStats {
   int vector_dot = 0;
   int rand_float_gen = 0;
   int set_let = 0;
+  int with_dma_buf_add_bucket = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let;
+           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket;
   }
 
   std::string print() const {
@@ -91,6 +93,7 @@ struct LetRewriteStats {
     out += fmt::format("  ja: {}\n", ja);
     out += fmt::format("  set_vector: {}\n", set_vector);
     out += fmt::format("  set_vector2: {}\n", set_vector2);
+    out += fmt::format("  set_vector3: {}\n", set_vector3);
     out += fmt::format("  case_no_else: {}\n", case_no_else);
     out += fmt::format("  case_with_else: {}\n", case_with_else);
     out += fmt::format("  unused: {}\n", unused);
@@ -101,6 +104,7 @@ struct LetRewriteStats {
     out += fmt::format("  vector_dot: {}\n", vector_dot);
     out += fmt::format("  rand_float_gen: {}\n", rand_float_gen);
     out += fmt::format("  set_let: {}\n", set_let);
+    out += fmt::format("  with_dma_buf_add_bucket: {}\n", with_dma_buf_add_bucket);
     return out;
   }
 
@@ -123,6 +127,7 @@ struct LetRewriteStats {
     result.vector_dot = vector_dot + other.vector_dot;
     result.rand_float_gen = rand_float_gen + other.rand_float_gen;
     result.set_let = rand_float_gen + other.set_let;
+    result.with_dma_buf_add_bucket = rand_float_gen + other.with_dma_buf_add_bucket;
     return result;
   }
 
@@ -144,6 +149,7 @@ struct LetRewriteStats {
     vector_dot += other.vector_dot;
     rand_float_gen += other.rand_float_gen;
     set_let += other.set_let;
+    with_dma_buf_add_bucket += other.with_dma_buf_add_bucket;
     return *this;
   }
 };
@@ -170,6 +176,12 @@ class ObjectFileDB {
                          bool disassemble_code,
                          bool print_hex);
 
+  void process_object_file_data(
+      ObjectFileData& data,
+      const fs::path& output_dir,
+      const Config& config,
+      const std::unordered_set<std::string>& skip_functions,
+      const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states);
   void analyze_functions_ir2(
       const fs::path& output_dir,
       const Config& config,

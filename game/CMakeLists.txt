@@ -82,7 +82,10 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/tfrag.cpp
         mips2c/jak1_functions/tie_methods.cpp
         mips2c/jak1_functions/time_of_day.cpp
+        mips2c/jak2_functions/collide_edge_grab.cpp
         mips2c/jak2_functions/collide_func.cpp
+        mips2c/jak2_functions/collide_hash.cpp
+        mips2c/jak2_functions/collide_mesh.cpp
         mips2c/jak2_functions/debug.cpp
         mips2c/jak2_functions/font.cpp
         mips2c/jak2_functions/joint.cpp
@@ -90,6 +93,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/sparticle.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp
         mips2c/jak2_functions/texture.cpp
+        mips2c/jak2_functions/ocean.cpp
+        mips2c/jak2_functions/ocean_vu0.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp
