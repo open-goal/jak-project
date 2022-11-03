@@ -5,6 +5,7 @@
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/iso.h"
 #include "game/overlord/srpc.h"
 #include "game/sound/sndshim.h"
 
@@ -456,7 +457,7 @@ void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
     }
   }
 
-  // TODO SetVAGVol();
+  SetVAGVol();
 }
 
 void PrintActiveSounds() {
