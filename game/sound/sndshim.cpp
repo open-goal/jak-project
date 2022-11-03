@@ -41,31 +41,32 @@ void snd_RegisterIOPMemAllocator(AllocFun, FreeFun) {
   // printf("snd_RegisterIOPMemAllocator\n");
 }
 
-void snd_LockVoiceAllocator(s32) {
+int snd_LockVoiceAllocator(bool block) {
   // printf("snd_LockVoiceAllocator\n");
+  return 0;
 }
 
 void snd_UnlockVoiceAllocator() {
   // printf("snd_UnlockVoiceAllocator\n");
 }
 
-s32 snd_ExternVoiceVoiceAlloc(s32, s32) {
+s32 snd_ExternVoiceAlloc(s32 vol_group, s32 priority) {
   // printf("snd_ExternVoiceVoiceAlloc\n");
   return 0;
 }
 
-u32 snd_SRAMMalloc(u32) {
+u32 snd_SRAMMalloc(u32 size) {
   // spu memory currently hardcoded
   return 0;
 }
 
-void snd_SetMixerMode(s32, s32) {}
+void snd_SetMixerMode(s32 channel_mode, s32 reverb_mode) {}
 
-void snd_SetGroupVoiceRange(s32, s32, s32) {}
+void snd_SetGroupVoiceRange(s32 group, s32 min, s32 max) {}
 
-void snd_SetReverbDepth(s32, s32, s32) {}
+void snd_SetReverbDepth(s32 core, s32 left, s32 right) {}
 
-void snd_SetReverbType(s32, s32) {}
+void snd_SetReverbType(s32 core, s32 type) {}
 
 void snd_SetPanTable(s16* table) {
   if (player) {
@@ -89,9 +90,9 @@ s32 snd_SoundIsStillPlaying(s32 sound_handle) {
   return 0;
 }
 
-void snd_StopSound(s32 handle) {
+void snd_StopSound(s32 sound_handle) {
   if (player) {
-    player->stop_sound(handle);
+    player->stop_sound(sound_handle);
   }
 }
 
@@ -101,9 +102,9 @@ void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan) {
   }
 }
 
-void snd_SetMasterVolume(s32 group, s32 volume) {
+void snd_SetMasterVolume(s32 which, s32 volume) {
   if (player) {
-    player->set_master_volume(group, volume);
+    player->set_master_volume(which, volume);
   }
 }
 
@@ -117,15 +118,15 @@ void snd_ResolveBankXREFS() {
   // Currently no-op, idk if we'd ever need it
 }
 
-void snd_ContinueAllSoundsInGroup(u8 group) {
+void snd_ContinueAllSoundsInGroup(u8 groups) {
   if (player) {
-    player->continue_all_sounds_in_group(group);
+    player->continue_all_sounds_in_group(groups);
   }
 }
 
-void snd_PauseAllSoundsInGroup(u8 group) {
+void snd_PauseAllSoundsInGroup(u8 groups) {
   if (player) {
-    player->pause_all_sounds_in_group(group);
+    player->pause_all_sounds_in_group(groups);
   }
 }
 
@@ -135,21 +136,22 @@ void snd_SetMIDIRegister(s32 sound_handle, u8 reg, u8 value) {
   }
 }
 
-s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pm, s32 pb) {
+s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pitch_mod, s32 pitch_bend) {
   if (player) {
-    return player->play_sound(bank, sound, vol, pan, pm, pb);
+    return player->play_sound(bank, sound, vol, pan, pitch_mod, pitch_bend);
   } else {
     return 0;
   }
 }
 
-void snd_SetSoundPitchModifier(s32 sound, s32 mod) {
+void snd_SetSoundPitchModifier(s32 sound_handle, s32 pitch_mod) {
   if (player) {
-    player->set_sound_pmod(sound, mod);
+    player->set_sound_pmod(sound_handle, pitch_mod);
   }
 }
 
-void snd_SetSoundPitchBend(s32 sound, s32 bend) {
+void snd_SetSoundPitchBend(s32 sound_handle, s32 bend) {
+  // TODO
   if (bend != 0) {
   }
 }
@@ -166,11 +168,11 @@ void snd_ContinueSound(s32 sound_handle) {
   }
 }
 
-void snd_AutoPitch(s32, s32, s32, s32) {
+void snd_AutoPitch(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_from) {
   // TODO
   printf("snd_AutoPitch\n");
 }
-void snd_AutoPitchBend(s32, s32, s32, s32) {
+void snd_AutoPitchBend(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_from) {
   // TODO
   printf("snd_AutoPitchBend\n");
 }
