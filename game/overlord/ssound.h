@@ -36,9 +36,11 @@ struct SoundParams {
   s32 volume;
   Vec3w trans;
   u8 group;
+  // TODO REG
 };
 
 struct Sound {
+  char name[16];
   s32 id;
   s32 sound_handle;
   s32 is_music;

@@ -1,6 +1,8 @@
 #include "soundcommon.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <string.h>
 #include <string>
 
 #include "common/util/Assert.h"
@@ -14,6 +16,13 @@ void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
   (void)unk;
   (void)unk2;
   ASSERT(false);
+}
+
+// I'm not bored enough to reimplement their strcpy
+void strcpy_toupper(char* dest, const char* source) {
+  std::string string(source);
+  std::transform(string.begin(), string.end(), string.begin(), ::toupper);
+  string.copy(dest, 16);
 }
 
 void PrintBankInfo(SoundBank* bank) {

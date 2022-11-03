@@ -5,6 +5,11 @@
 #include "soundbank.h"
 
 namespace snd {
+
+enum class SFX2BlockFlags : u32 {
+  HasBlockNames = 1 << 8,
+};
+
 struct SFXBlockData2 : BankTag {
   /*  10 */ s8 BlockNum;
   /*  11 */ s8 pad1;
@@ -92,8 +97,11 @@ class SFXBlock2 : public SoundBank {
                                               s32 pan,
                                               SndPlayParams& params) override;
 
+  std::optional<std::string_view> get_name() override { return m_name; };
+
  private:
   locator& m_locator;
+  std::string m_name;
   std::unordered_map<std::string, u32> m_names;
   std::vector<SFX2> m_sounds;
 };

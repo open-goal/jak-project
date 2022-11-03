@@ -37,7 +37,22 @@ void snd_ResolveBankXREFS();
 void snd_ContinueAllSoundsInGroup(u8 groups);
 void snd_PauseAllSoundsInGroup(u8 groups);
 void snd_SetMIDIRegister(s32 handle, u8 reg, u8 value);
-s32 snd_PlaySoundVolPanPMPB(s32 bank_handle, s32 sound_id, s32 vol, s32 pan, s32 pitch_mod, s32 pitch_bend);
+
+s32 snd_PlaySoundVolPanPMPB(s32 bank_handle,
+                            s32 sound_id,
+                            s32 vol,
+                            s32 pan,
+                            s32 pitch_mod,
+                            s32 pitch_bend);
+
+s32 snd_PlaySoundByNameVolPanPMPB(s32 bank_handle,
+                                  char* bank_name,
+                                  char* sound_name,
+                                  s32 vol,
+                                  s32 pan,
+                                  s32 pitch_mod,
+                                  s32 pitch_bend);
+
 void snd_SetSoundPitchModifier(s32 sound_handle, s32 pitch_mod);
 void snd_SetSoundPitchBend(s32 sound_handle, s32 pitch_bend);
 void snd_PauseSound(s32 sound_handle);
@@ -50,5 +65,11 @@ s32 snd_GetFreeSPUDMA();
 void snd_FreeSPUDMA(s32 channel);
 void snd_keyOnVoiceRaw(u32 core, u32 voice);
 void snd_keyOffVoiceRaw(u32 core, u32 voice);
+s32 snd_GetSoundUserData(s32 block_handle,
+                         char* block_name,
+                         s32 sound_id,
+                         char* sound_name,
+                         SFXUserData* dst);
+void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val);
 
 #endif  // SNDSHIM_H_

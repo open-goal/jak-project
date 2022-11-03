@@ -86,7 +86,7 @@ void InitSound_Overlord() {
   snd_StartSoundSystem();
   snd_RegisterIOPMemAllocator(SndMemAlloc, SndMemFree);
   snd_LockVoiceAllocator(1);
-  u32 voice = snd_ExternVoiceVoiceAlloc(2, 0x7f);
+  u32 voice = snd_ExternVoiceAlloc(2, 0x7f);
   snd_UnlockVoiceAllocator();
 
   // The voice allocator returns a number in the range 0-47 where voices

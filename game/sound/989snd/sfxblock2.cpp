@@ -27,6 +27,10 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
   }
 
   auto names = (SFXBlockNames*)((uintptr_t)data + data->BlockNames);
+  char buf[8];
+  strncpy(buf, (char*)names->BlockName, 8);
+  m_name = buf;
+
   if (names->SFXNameTableOffset != 0) {
     // The sound names are hashed and divided up into 32 buckets
     // to reduce the number of comparisons needed to search the list.

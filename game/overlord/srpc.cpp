@@ -16,6 +16,7 @@
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
 #include "game/graphics/gfx.h"
+#include "game/overlord/soundcommon.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
@@ -398,6 +399,65 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
 
   while (n_messages > 0) {
     switch (cmd->j2command) {
+      case Jak2SoundCommand::play: {
+        if (!cmd->play.sound_id) {
+          break;
+        }
+
+        auto sound = LookupSound(cmd->play.sound_id);
+        if (sound != nullptr) {
+          // update
+        } else {
+          // new sound
+          sound = AllocateSound();
+          if (sound == nullptr) {
+            // no free sounds
+            break;
+          }
+          strcpy_toupper(sound->name, cmd->play.name);
+          // TODO update params struct
+          sound->params = cmd->play.parms;
+          sound->is_music = false;
+          sound->bank_entry = nullptr;
+
+          SFXUserData data{};
+          s32 found = snd_GetSoundUserData(0, nullptr, -1, sound->name, &data);
+          if (sound->params.mask & 0x40) {
+            s16 fo_min = 5;
+            if (found && data.data[0])
+              fo_min = data.data[0];
+            sound->params.fo_min = fo_min;
+          }
+          if (sound->params.mask & 0x80) {
+            s16 fo_max = 30;
+            if (found && data.data[1])
+              fo_max = data.data[1];
+            sound->params.fo_min = fo_max;
+          }
+          if (sound->params.mask & 0x100) {
+            s16 fo_curve = 2;
+            if (found && data.data[2])
+              fo_curve = data.data[2];
+            sound->params.fo_min = fo_curve;
+          }
+          s32 handle = snd_PlaySoundByNameVolPanPMPB(0, nullptr, sound->name, GetVolume(sound),
+                                                     GetPan(sound), sound->params.pitch_mod,
+                                                     sound->params.bend);
+          sound->sound_handle = handle;
+          if (handle != 0) {
+            sound->id = cmd->play.sound_id;
+            if (sound->params.mask & 0x800) {
+              // snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
+            }
+            if (sound->params.mask & 0x1000) {
+              // snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
+            }
+            if (sound->params.mask & 0x2000) {
+              // snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
+            }
+          }
+        }
+      } break;
       case Jak2SoundCommand::set_master_volume: {
       } break;
       case Jak2SoundCommand::set_reverb: {

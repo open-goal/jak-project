@@ -45,5 +45,4 @@ std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
   handler->init();
   return handler;
 }
-
 }  // namespace snd

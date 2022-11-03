@@ -58,6 +58,8 @@ class SoundBank {
                                                       s32 pan,
                                                       SndPlayParams& params) = 0;
 
+  virtual std::optional<std::string_view> get_name() { return std::nullopt; };
+
   BankType type;
   u32 bank_id;
   u32 bank_name;
