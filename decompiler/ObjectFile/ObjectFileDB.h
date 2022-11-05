@@ -186,6 +186,7 @@ class ObjectFileDB {
       const fs::path& output_dir,
       const Config& config,
       const std::unordered_set<std::string>& skip_functions,
+      std::string& file_name_tracker,
       const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {});
   void ir2_top_level_pass(const Config& config);
   void ir2_stack_spill_slot_pass(int seg, ObjectFileData& data);

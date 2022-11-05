@@ -54,6 +54,31 @@ std::unordered_map<std::string, std::string> game_name_to_all_types = {
     {"jak1", "all-types.gc"},
     {"jak2", "jak2/all-types.gc"}};
 
+struct TestThreadStatus {
+  std::string stage;
+  int currentStep;
+  int totalSteps;
+  std::string currentStepDescription;
+};
+
+struct OverallJobStatus {
+  int foundFiles = 0;
+  int foundArtFiles = 0;
+};
+
+OverallJobStatus jobProgress;
+std::vector<TestThreadStatus> thread_statuses = {};
+std::mutex print_lock;
+
+void print_test_status() {
+  std::lock_guard<std::mutex> guard(print_lock);
+  fmt::print("\x1b[{}A", thread_statuses.size());  // move n lines up
+  for (int i = 0; i < thread_statuses.size(); i++) {
+    fmt::print("\33[2K\r[Thread {}]: {}:{}\n", i, thread_statuses.at(i).stage,
+               thread_statuses.at(i).currentStepDescription);
+  }
+}
+
 Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
                             const std::vector<DecompilerArtFile>& art_files,
                             const fs::path& iso_data_path,
@@ -122,10 +147,11 @@ void disassemble(Decompiler& dc) {
   dc.db->process_labels();
 }
 
-void decompile(Decompiler& dc, const OfflineTestConfig& config) {
+void decompile(Decompiler& dc, const OfflineTestConfig& config, int thread_id) {
   dc.db->extract_art_info();
   dc.db->ir2_top_level_pass(*dc.config);
   dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions,
+                               thread_statuses.at(thread_id).currentStepDescription,
                                config.skip_compile_states);
 }
 
@@ -246,7 +272,8 @@ struct CompileResult {
 CompileResult compile(Decompiler& dc,
                       const std::vector<DecompilerFile>& refs,
                       const OfflineTestConfig& config,
-                      const std::string& game_name) {
+                      const std::string& game_name,
+                      int thread_id) {
   CompileResult result;
   Compiler compiler(game_name_to_version(game_name));
 
@@ -261,7 +288,8 @@ CompileResult compile(Decompiler& dc,
       continue;
     }
 
-    fmt::print("Compiling {}...\n", file.unique_name);
+    thread_statuses.at(thread_id).currentStepDescription = file.unique_name;
+    lg::info("Compiling {}...\n", file.unique_name);
 
     auto& data = get_data(dc, file.unique_name, file.name_in_dgo);
 
@@ -331,6 +359,7 @@ std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
       file.unique_name = unique_name;
       file.name_in_dgo = x[1];
       result.push_back(file);
+      jobProgress.foundArtFiles++;
     }
   }
 
@@ -376,7 +405,6 @@ std::vector<DecompilerFile> find_files(const std::string& game_name,
       for (int i = 0; i < (int)dgoList.size(); i++) {
         std::string& dgo = dgoList.at(i);
         // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
-        // TODO - Jak 2 Folder structure will be different!
         if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
@@ -396,6 +424,7 @@ std::vector<DecompilerFile> find_files(const std::string& game_name,
       file.path = it->second;
       file.unique_name = it->first;
       file.name_in_dgo = x[1];
+      jobProgress.foundFiles++;
       result.push_back(file);
       matched_files.insert(unique_name);
     }
@@ -465,6 +494,7 @@ struct OfflineTestResult {
 int main(int argc, char* argv[]) {
   ArgumentGuard u8_guard(argc, argv);
 
+  lg::set_stdout_level(lg::level::off);
   lg::initialize();
 
   bool dump_current_output = false;
@@ -473,7 +503,7 @@ int main(int argc, char* argv[]) {
   // Useful for testing in debug mode (dont have to wait for everything to finish)
   int max_files = -1;
   std::string single_file = "";
-  uint32_t num_threads = 1;
+  uint32_t num_threads = 4;
   bool fail_on_cmp = false;
 
   CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
@@ -524,34 +554,44 @@ int main(int argc, char* argv[]) {
   }
   // First, prepare our batches of files to be processed
   std::vector<std::vector<DecompilerFile>> work_groups = {};
+
   for (size_t i = 0; i < num_threads; i++) {
     work_groups.push_back({});
+    thread_statuses.push_back(TestThreadStatus());
   }
+
   int total_added = 0;
   for (auto& file : files) {
     work_groups.at(total_added % num_threads).push_back(file);
     total_added++;
   }
 
-  // TODO - nicer printing, very messy with dozens of threads processing the job
-
   // Now we create a thread to process each group of work, and then await them
   std::vector<std::future<OfflineTestResult>> threads;
   decompiler::init_opcode_info();
-  for (const auto& work_group : work_groups) {
-    threads.push_back(std::async(std::launch::async, [&]() {
+  for (int i = 0; i < work_groups.size(); i++) {
+    const auto& work_group = work_groups.at(i);
+    threads.push_back(std::async(std::launch::async, [&, i]() {
       OfflineTestResult result;
       Timer total_timer;
 
       Timer decompiler_timer;
+      thread_statuses.at(i).stage = "Setting Up Decompiler";
+      print_test_status();
       auto decompiler = setup_decompiler(work_group, art_files, fs::path(iso_data_path),
                                          config.value(), game_name);
+      thread_statuses.at(i).stage = "Disassembling";
+      print_test_status();
       disassemble(decompiler);
-      decompile(decompiler, config.value());
+      thread_statuses.at(i).stage = "Decompiling";
+      print_test_status();
+      decompile(decompiler, config.value(), i);
       // It's about 100ms per file to decompile on average
       // meaning that when we have all 900 files, a full offline test will take 1.5 minutes
       result.time_spent_decompiling = decompiler_timer.getSeconds();
 
+      thread_statuses.at(i).stage = "Comparing";
+      print_test_status();
       result.compare = compare(decompiler, work_group, dump_current_output);
       if (!result.compare.total_pass) {
         result.exit_code = 1;
@@ -563,13 +603,16 @@ int main(int argc, char* argv[]) {
       // TODO - if anything has failed, skip compiling
 
       Timer compile_timer;
-      result.compile = compile(decompiler, work_group, config.value(), game_name);
+      thread_statuses.at(i).stage = "Compiling";
+      print_test_status();
+      result.compile = compile(decompiler, work_group, config.value(), game_name, i);
       result.time_spent_compiling = compile_timer.getSeconds();
       if (!result.compile.ok) {
         result.exit_code = 1;
       }
       result.total_time = total_timer.getSeconds();
-
+      thread_statuses.at(i).stage = fmt::format("Finished in {}s", result.total_time);
+      print_test_status();
       return result;
     }));
   }

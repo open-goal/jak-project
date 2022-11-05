@@ -126,7 +126,9 @@ void ObjectFileDB::analyze_functions_ir2(
     const fs::path& output_dir,
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
-    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
+    std::string& file_name_tracker,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states
+    ) {
   int total_file_count = 0;
   for (auto& f : obj_files_by_name) {
     total_file_count += f.second.size();
@@ -134,6 +136,7 @@ void ObjectFileDB::analyze_functions_ir2(
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
     lg::info("[{:3d}/{}]------ {}", file_idx++, total_file_count, data.to_unique_name());
+    file_name_tracker = data.to_unique_name();
     process_object_file_data(data, output_dir, config, skip_functions, skip_states);
   });
 
