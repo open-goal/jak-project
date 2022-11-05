@@ -180,7 +180,7 @@ if (SQLITECPP_INCLUDE_SCRIPT)
 endif()
 
 # add sources of the wrapper as a "SQLiteCpp" static library
-add_library(SQLiteCpp ${SQLITECPP_SRC} ${SQLITECPP_INC} ${SQLITECPP_DOC} ${SQLITECPP_SCRIPT})
+add_library(SQLiteCpp STATIC ${SQLITECPP_SRC} ${SQLITECPP_INC} ${SQLITECPP_DOC} ${SQLITECPP_SCRIPT})
 
 # Options relative to SQLite and SQLiteC++ functions
 
@@ -336,7 +336,7 @@ install(FILES
 
 # Optional additional targets:
 
-option(SQLITECPP_RUN_CPPLINT "Run cpplint.py tool for Google C++ StyleGuide." ON)
+option(SQLITECPP_RUN_CPPLINT "Run cpplint.py tool for Google C++ StyleGuide." OFF)
 if (SQLITECPP_RUN_CPPLINT)
     find_package(PythonInterp)
     if (PYTHONINTERP_FOUND)
@@ -350,7 +350,7 @@ else (SQLITECPP_RUN_CPPLINT)
     message(STATUS "SQLITECPP_RUN_CPPLINT OFF")
 endif (SQLITECPP_RUN_CPPLINT)
 
-option(SQLITECPP_RUN_CPPCHECK "Run cppcheck C++ static analysis tool." ON)
+option(SQLITECPP_RUN_CPPCHECK "Run cppcheck C++ static analysis tool." OFF)
 if (SQLITECPP_RUN_CPPCHECK)
     find_program(CPPCHECK_EXECUTABLE NAMES cppcheck)
     if (CPPCHECK_EXECUTABLE)
