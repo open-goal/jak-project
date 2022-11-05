@@ -1,4 +1,4 @@
-(language-id 0 6)
+(language-id 0)
 (text-version jak1-v2)
 
 ;; -----------------
@@ -1114,6 +1114,7 @@
   )
 
 ("sksp0064" :hint #x245 (0 "DAXTER" "WATCH YOUR BACK! YOU REMEMBER WHAT HAPPENED THE LAST TIME WE WERE HERE."))
+
 ("sksp0067" :hint #x249
   (0 "DAXTER" "DON'T FALL INTO THE MIST BELOW US!")
   (125 "DAXTER" "'CAUSE I DON'T THINK WE'LL MAKE IT BACK.")
