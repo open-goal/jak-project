@@ -355,8 +355,6 @@
         "DANSK")
 (#x1116 "NORSK"
         "NORSK")
-(#x115 "FRENCH"
-       "FRENCH")
 
 (#x1500 "SPEEDRUNNER MODE"
         "SPEEDRUNNER MODE")
