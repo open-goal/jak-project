@@ -477,7 +477,7 @@ GameSubtitleDB load_subtitle_project() {
     goos::Reader reader;
     std::vector<std::string> inputs;
     std::string subtitle_project =
-        (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
+        (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" / "game_subtitle.gp").string();
     open_text_project("subtitle", subtitle_project, inputs);
     for (auto& filename : inputs) {
       auto code = reader.read_from_file({filename});
