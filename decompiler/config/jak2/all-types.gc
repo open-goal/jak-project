@@ -17199,7 +17199,7 @@
   )
 
 (deftype process-focusable (process-drawable)
-  ((root-override collide-shape :offset 128 :score 100) ;; TODO - potentiall collide-shape-moving?
+  ((root-override collide-shape :offset 128 :score 100)
    (focus-status focus-status :offset-assert 200)
    )
   :method-count-assert 27
@@ -17249,7 +17249,7 @@
     (play-game (game-task-event) _type_ :state 30) ;; (idle () _type_ :state 30)
     (process-taskable-method-31 (_type_) none 31) ;; (get-art-elem (_type_) art-element 31)
     (process-taskable-method-32 (_type_) none 32) ;; (play-anim! (_type_ symbol) basic 32)
-    (init-skeleton!
+    (init-art!
       "@see [[initialize-skeleton]]"
       (_type_) none 33) ;; (dummy-33 (_type_) none 33)
     (process-taskable-method-34 (_type_) symbol 34) ;; (get-accept-anim (_type_ symbol) spool-anim 34)
@@ -27524,7 +27524,7 @@
 ;; (define-extern launcher-init-by-other function) ;; (function vector float int float none :behavior launcher)
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
 ;; (define-extern explosion-init-by-other function)
-;; (define-extern explosion-spawn function)
+(define-extern explosion-spawn (function process-drawable type explosion-init-params none))
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
 (define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
 
@@ -32259,7 +32259,8 @@
   )
 
 (deftype enemy (process-focusable)
-  ((fact-info-override          fact-info-enemy             :offset 160 :score 100)
+  ((root-override2              collide-shape-moving :offset 128 :score 200)
+   (fact-info-override          fact-info-enemy             :offset 160 :score 100)
    (enemy-flags                 enemy-flag                  :offset-assert 208)
    (enemy-info                  enemy-info                  :offset-assert 216)
    (hit-points                  int32                       :offset-assert 220)
@@ -32351,11 +32352,11 @@
     (go-flee (_type_) none 71)
     (enemy-method-72 (_type_) none 72)
     (enemy-method-73 (_type_) none 73)
-    (enemy-method-74 (_type_ object object symbol) none 74)
+    (enemy-method-74 (_type_ object object symbol event-message-block) none 74)
     (enemy-method-75 (_type_ process touching-shapes-entry) none 75)
     (enemy-method-76 (_type_) none 76)
-    (enemy-method-77 (_type_) none 77)
-    (enemy-method-78 (_type_) none 78)
+    (enemy-method-77 (_type_ (pointer float)) none 77)
+    (enemy-method-78 (_type_ (pointer float)) none 78)
     (enemy-method-79 (_type_) none 79)
     (enemy-method-80 (_type_) none 80)
     (enemy-method-81 (_type_) symbol 81)
@@ -33883,16 +33884,15 @@
     )
   )
 
-;; (define-extern guard-shot-move function)
-;; (define-extern guard-lazer-shot-move function)
+(define-extern guard-shot-move (function guard-shot none))
+(define-extern guard-lazer-shot-move (function guard-lazer-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; metalhead-projectile           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype metalhead-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 476)
+  ((tail-pos vector :inline :offset-assert 480)
    )
   :method-count-assert 40
   :size-assert         #x1f0
@@ -33900,12 +33900,10 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype metalhead-grenade-shot (projectile)
-  ((tumble-quat  quaternion :inline :offset-assert 476)
-   (blast-radius float              :offset-assert 492)
+  ((tumble-quat  quaternion :inline :offset-assert 480)
+   (blast-radius float              :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x1f4
@@ -33913,13 +33911,12 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern metalhead-shot-move function)
-;; (define-extern spawn-metalhead-projectile function)
-;; (define-extern gren-canister-move function)
-;; (define-extern gren-cshape-reaction-canister function)
-;; (define-extern spawn-metalhead-grenade function)
+(define-extern metalhead-shot-move (function metalhead-shot none))
+(define-extern spawn-metalhead-projectile (function metalhead-shot vector vector float (pointer metalhead-shot)))
+(define-extern gren-canister-move (function metalhead-grenade-shot none))
+(define-extern gren-cshape-reaction-canister (function collide-shape-moving metalhead-grenade-shot none))
+(define-extern spawn-metalhead-grenade (function metalhead-grenade-shot vector vector float (pointer metalhead-grenade-shot)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; los-control                    ;;
@@ -35235,90 +35232,143 @@
 ;; crimson-guard-level            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype guard-level-anim-info (UNKNOWN)
-  ((anim-index       UNKNOWN 2 :offset-assert 0)
-   (anim-index-front int32     :offset-assert 0)
-   (anim-index-back  int32     :offset-assert 4)
+(deftype guard-level-anim-info (structure)
+  ((anim-index       int32 2 :offset-assert 0)
+   (anim-index-front int32     :offset 0)
+   (anim-index-back  int32     :offset 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype guard-level-global-info (UNKNOWN)
+(deftype guard-level-global-info (basic)
   ((prev-yellow-hit         int8      :offset-assert 4)
    (prev-blue-hit           int8      :offset-assert 5)
-   (knocked                 UNKNOWN 2 :offset-assert 8)
-   (knocked-land            UNKNOWN 2 :offset-assert 16)
-   (anim-knocked-front      int32     :offset-assert 8)
-   (anim-knocked-back       int32     :offset-assert 12)
-   (anim-knocked-front-land int32     :offset-assert 16)
-   (anim-knocked-back-land  int32     :offset-assert 20)
-   (yellow-hit-anim         UNKNOWN 2 :offset-assert 24)
-   (yellow-land-anim        UNKNOWN 2 :offset-assert 40)
-   (blue-hit-anim           UNKNOWN 1 :offset-assert 56)
+   (knocked                 int32   2 :offset-assert 8)
+   (knocked-land            int32   2 :offset-assert 16)
+   (anim-knocked-front      int32     :offset 8)
+   (anim-knocked-back       int32     :offset 12)
+   (anim-knocked-front-land int32     :offset 16)
+   (anim-knocked-back-land  int32     :offset 20)
+   (yellow-hit-anim         handle 2 :offset-assert 24)
+   (yellow-land-anim        handle 2 :offset-assert 40)
+   (blue-hit-anim           handle 1 :offset-assert 56)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
   )
-|#
 
-#|
-(deftype guard-level-shoot-info (UNKNOWN)
+(deftype guard-level-shoot-info (structure)
   ((anim-index int32  :offset-assert 0)
    (start      float  :offset-assert 4)
    (end        float  :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype crimson-guard-level (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype crimson-guard-level (nav-enemy)
+  (
+    (info basic :offset-assert 604)
+    (hit-face uint32 :offset-assert 608)
+    (anim-get-up-front int32 :offset-assert 612)
+    (anim-get-up-back int32 :offset-assert 616)
+    (small-hit int32 :offset-assert 620)
+    (yellow-anim uint32 :offset-assert 624)
+    (pad-jh1b23 int32 :offset-assert 628)
+    (flags int64 :offset-assert 632)
+    (weapon int32 :offset-assert 640)
+    (pad-kjh1n23 int32 :offset-assert 644)
+    (last-time-see-target int64 :offset-assert 648)
+    (joint uint32 :offset-assert 656)
+    (joint-enable uint32 :offset-assert 660)
+    (l-control basic :offset-assert 664)
+    (already-shot uint32 :offset-assert 668)
+    (miss-amount float :offset-assert 672)
+    (pad-k1jh2n3 int32 :offset-assert 676)
+    (next-shot int64 :offset-assert 680)
+    (anim-shoot vector 3 :inline :offset-assert 688)
+    (target-pos vector :inline :offset-assert 736)
+    (target-pos-predict vector :inline :offset-assert 752)
+    (target-pos-predict-miss vector :inline :offset-assert 768)
+    (target-vel-vec vector :inline :offset-assert 784)
+    (target-vel float :offset-assert 800)
+    (target-self vector :inline :offset-assert 816)
+    (target-self-xz vector :inline :offset-assert 832)
+    (target-self-dist float :offset-assert 848)
+    (target-self-xz-dist float :offset-assert 852)
+    (target-y-angle float :offset-assert 856)
+    (lazer-sound sound-id :offset-assert 860)
+    (transport int64 :offset-assert 864)
+    (transport-side uint32 :offset-assert 872)
+    (other-side uint32 :offset-assert 876)
+    (start-target-pos vector :inline :offset-assert 880)
+    (start-target-vel vector :inline :offset-assert 896)
+    (trigger symbol :offset-assert 912)
+    (reachable-target-pos vector :inline :offset-assert 928)
   )
-|#
+  :method-count-assert 205
+  :size-assert         #x3b0
+  :flag-assert         #xcd033003b0
+  (:methods
+    (gun-shoot () _type_ :state 178)
+    (attack () _type_ :state 179)
+    (get-up-front () _type_ :state 180)
+    (get-up-back () _type_ :state 181)
+    (close-attack () _type_ :state 182)
+    (grenade-attack () _type_ :state 183)
+    (exit-transport () _type_ :state 184)
+    (blast-hostile () _type_ :state 185)
+    (grenade-hostile () _type_ :state 186)
+    (tazer-hostile () _type_ :state 187)
+    (roll-right () _type_ :state 188)
+    (roll-left () _type_ :state 189)
+    (arrest () _type_ :state 190)
+    (crimson-guard-level-method-191 (_type_) (pointer process) 191)
+    (crimson-guard-level-method-192 (_type_) none 192)
+    (crimson-guard-level-method-193 (_type_) none 193)
+    (crimson-guard-level-method-194 (_type_) none 194)
+    (crimson-guard-level-method-195 (_type_) none 195)
+    (crimson-guard-level-method-196 (_type_ vector) none 196)
+    (crimson-guard-level-method-197 (_type_) quaternion 197)
+    (crimson-guard-level-method-198 (_type_) none 198)
+    (crimson-guard-level-method-199 (_type_) none 199)
+    (crimson-guard-level-method-200 (_type_) float 200)
+    (crimson-guard-level-method-201 (_type_) none 201)
+    (crimson-guard-level-method-202 (_type_) none 202)
+    (crimson-guard-level-method-203 (_type_) none 203)
+    (crimson-guard-level-method-204 (_type_) none 204)))
 
-#|
-(deftype crimson-guard-level-params (UNKNOWN)
+(deftype crimson-guard-level-params (structure)
   ((pos            vector     :inline :offset-assert 0)
    (quat           quaternion :inline :offset-assert 16)
-   (nav-mesh       basic              :offset-assert 32)
+   (nav-mesh       nav-mesh              :offset-assert 32)
    (handle         uint64             :offset-assert 40)
    (transport-side uint32             :offset-assert 48)
    (weapon         int32              :offset-assert 52)
-   (proc           basic              :offset-assert 56)
+   (proc           process              :offset-assert 56)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
-;; (define-extern *crimson-guard-fact* fact-info-enemy-defaults)
-;; (define-extern *crimson-guard-level-global-info* guard-level-global-info)
-;; (define-extern *crimson-guard-level-info* nav-enemy-info)
-;; (define-extern *crimson-guard-level-blast-info* nav-enemy-info)
-;; (define-extern *crimson-guard-level-grenade-info* nav-enemy-info)
-;; (define-extern *crimson-guard-level-sniper-info* nav-enemy-info)
-;; (define-extern *crimson-guard-level-tazer-info* nav-enemy-info)
+(define-extern *crimson-guard-fact* fact-info-enemy-defaults)
+(define-extern *crimson-guard-level-global-info* guard-level-global-info)
+(define-extern *crimson-guard-level-info* nav-enemy-info)
+(define-extern *crimson-guard-level-blast-info* nav-enemy-info)
+(define-extern *crimson-guard-level-grenade-info* nav-enemy-info)
+(define-extern *crimson-guard-level-sniper-info* nav-enemy-info)
+(define-extern *crimson-guard-level-tazer-info* nav-enemy-info)
 ;; (define-extern crimson-guard-level-init-by-other function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; guard-conversation             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gconv-speech (basic)
   ((name0     basic   :offset-assert 4)
    (name1     basic   :offset-assert 8)
@@ -35328,36 +35378,30 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype gconv-dialogue (basic)
-  ((speeches basic  :offset-assert 4)
+  ((speeches (array gconv-speech)  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype gconv-dialogues (basic)
-  ((dialogues basic  :offset-assert 4)
+  ((dialogues (array gconv-dialogue) :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype guard-conversation (process-drawable)
-  ((triggered?        basic   :offset-assert 196)
-   (actor-group       basic   :offset-assert 200)
-   (actor-count       int8    :offset-assert 204)
-   (remaining         int8    :offset-assert 205)
-   (skip-mask         uint32  :offset-assert 208)
-   (last-playing-time time-frame  :offset-assert 212)
+  ((triggered?        symbol   :offset-assert 200)
+   (actor-group       actor-group   :offset-assert 204)
+   (actor-count       int8    :offset-assert 208)
+   (remaining         int8    :offset-assert 209)
+   (skip-mask         uint32  :offset-assert 212)
+   (last-playing-time time-frame  :offset-assert 216)
    )
   :method-count-assert 25
   :size-assert         #xe0
@@ -35367,32 +35411,30 @@
     (active () _type_ :state 21)
     (notice () _type_ :state 22)
     (die () _type_ :state 23)
-    (guard-conversation-method-24 () none 24)
+    (guard-conversation-method-24 (_type_) symbol 24)
     )
   )
-|#
 
-;; (define-extern *gconv-dialogues* gconv-dialogues)
+(define-extern *gconv-dialogues* gconv-dialogues)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transport-level                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype transport-level (process-focusable)
-  ((y-dest                float     :offset-assert 200)
-   (last-guard-spawn-time time-frame    :offset-assert 204)
-   (nav-mesh              basic     :offset-assert 212)
-   (spawn-side            uint32    :offset-assert 216)
-   (spawn?                basic     :offset-assert 220)
-   (leave-time            time-frame    :offset-assert 228)
-   (max-guard             uint32    :offset-assert 236)
-   (count-guard           uint32    :offset-assert 240)
-   (max-time              float     :offset-assert 244)
-   (spawn-time            time-frame    :offset-assert 252)
-   (ambient-sound-id      uint32    :offset-assert 260)
-   (num-wanted-guards     uint32    :offset-assert 264)
-   (guards                UNKNOWN 8 :offset-assert 268)
+  ((y-dest                float     :offset-assert 204)
+   (last-guard-spawn-time time-frame    :offset-assert 208)
+   (nav-mesh              nav-mesh     :offset-assert 216)
+   (spawn-side            uint32    :offset-assert 220)
+   (spawn?                symbol     :offset-assert 224)
+   (leave-time            time-frame    :offset-assert 232)
+   (max-guard             uint32    :offset-assert 240)
+   (count-guard           uint32    :offset-assert 244)
+   (max-time              float     :offset-assert 248)
+   (spawn-time            time-frame    :offset-assert 256)
+   (ambient-sound-id      uint32    :offset-assert 264)
+   (num-wanted-guards     uint32    :offset-assert 268)
+   (guards                handle 8 :offset-assert 272) ;; NOTE - probably 'guard'
    )
   :method-count-assert 35
   :size-assert         #x150
@@ -35402,15 +35444,14 @@
     (idle () _type_ :state 28)
     (leave () _type_ :state 29)
     (die-fast () _type_ :state 30)
-    (transport-level-method-31 () none 31)
-    (transport-level-method-32 () none 32)
-    (transport-level-method-33 () none 33)
-    (transport-level-method-34 () none 34)
+    (transport-level-method-31 (_type_) none 31)
+    (transport-level-method-32 (_type_) none 32)
+    (transport-level-method-33 (_type_) none 33)
+    (transport-level-method-34 (_type_) none 34)
     )
   )
-|#
 
-;; (define-extern transport-level-event-handler function)
+(define-extern transport-level-event-handler (function process int symbol event-message-block transport-level :behavior transport-level))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-formation-h              ;;

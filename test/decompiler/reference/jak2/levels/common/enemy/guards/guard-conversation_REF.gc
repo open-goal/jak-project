@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: guard-conversation.gc
-;; name in dgo: guard-conversation
-;; dgos: FOR, DG1, FRA, CAS, PAE, FEA, FDB
-
-;; DECOMP BEGINS
-
+;; definition of type gconv-speech
 (deftype gconv-speech (basic)
   ((name0     basic   :offset-assert   4)
    (name1     basic   :offset-assert   8)
@@ -17,7 +12,21 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type gconv-speech
+(defmethod inspect gconv-speech ((obj gconv-speech))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname0: ~A~%" (-> obj name0))
+  (format #t "~1Tname1: ~A~%" (-> obj name1))
+  (format #t "~1Thold-time: ~D~%" (-> obj hold-time))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type gconv-dialogue
 (deftype gconv-dialogue (basic)
   ((speeches (array gconv-speech)  :offset-assert   4)
    )
@@ -26,7 +35,19 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type gconv-dialogue
+(defmethod inspect gconv-dialogue ((obj gconv-dialogue))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tspeeches: ~A~%" (-> obj speeches))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type gconv-dialogues
 (deftype gconv-dialogues (basic)
   ((dialogues (array gconv-dialogue)  :offset-assert   4)
    )
@@ -35,7 +56,19 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type gconv-dialogues
+(defmethod inspect gconv-dialogues ((obj gconv-dialogues))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tdialogues: ~A~%" (-> obj dialogues))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *gconv-dialogues*, type gconv-dialogues
 (define *gconv-dialogues*
   (new 'static 'gconv-dialogues
     :dialogues (new 'static 'boxed-array :type gconv-dialogue
@@ -179,6 +212,7 @@
     )
   )
 
+;; definition of type guard-conversation
 (deftype guard-conversation (process-drawable)
   ((triggered?        symbol       :offset-assert 200)
    (actor-group       actor-group  :offset-assert 204)
@@ -200,7 +234,26 @@
     )
   )
 
+;; definition for method 3 of type guard-conversation
+(defmethod inspect guard-conversation ((obj guard-conversation))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttriggered?: ~A~%" (-> obj triggered?))
+  (format #t "~2Tactor-group: ~A~%" (-> obj actor-group))
+  (format #t "~2Tactor-count: ~D~%" (-> obj actor-count))
+  (format #t "~2Tremaining: ~D~%" (-> obj remaining))
+  (format #t "~2Tskip-mask: ~D~%" (-> obj skip-mask))
+  (format #t "~2Tlast-playing-time: ~D~%" (-> obj last-playing-time))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 24 of type guard-conversation
 (defmethod guard-conversation-method-24 guard-conversation ((obj guard-conversation))
   (let ((v1-0 (-> obj remaining)))
     (when (> v1-0 0)
@@ -236,6 +289,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate dormant (guard-conversation)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -253,6 +307,7 @@
   :code (the-as (function none :behavior guard-conversation) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate active (guard-conversation)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -314,6 +369,7 @@
   :code (the-as (function none :behavior guard-conversation) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate notice (guard-conversation)
   :virtual #t
   :code (behavior ()
@@ -364,6 +420,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (guard-conversation)
   :virtual #t
   :code (behavior ()
@@ -375,6 +432,8 @@
     )
   )
 
+;; definition for method 11 of type guard-conversation
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! guard-conversation ((obj guard-conversation) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
