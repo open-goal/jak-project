@@ -14,6 +14,8 @@
 #include "game/kernel/jak2/klink.h"
 #include "game/kernel/jak2/kprint.h"
 #include "game/kernel/jak2/kscheme.h"
+#include <common/log/log.h>
+#include "kmachine.h"
 
 namespace jak2 {
 using namespace jak2_symbols;
@@ -112,12 +114,17 @@ void ProcessListenerMessage(Ptr<char> msg) {
   SendAck();
 }
 
-struct sql_result {
-  uint32_t type;  // it's a basic so, what type do you use, Ptr<u32>?
-  int32_t len;
-  uint32_t allocated_length;
-  uint32_t error;  // a symbol value, how do i represent this?
-  // how do you represent a dynamic array of strings...i assume i can't use a vector?
+// (deftype sql-result (basic)
+struct SQLResult {
+  // (len int32 :offset-assert 4)
+  s32 len;
+  // (allocated-length  uint32 :offset-assert 8)
+  u32 allocated_length;
+  // (error  symbol :offset-assert 12)
+  u32 error;
+  // (data   string :dynamic :offset-assert 16)
+  // don't be fooled by the [1] here, it can hold as many as we allocate when calling `new`
+  Ptr<String> data[1];
 };
 
 int sql_query_sync(Ptr<String> string_in) {
@@ -125,50 +132,66 @@ int sql_query_sync(Ptr<String> string_in) {
     // not debugging, no sql results.
     return s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
   } else {
-    //// output sql query to the compiler
-    // output_sql_query(string_in->data());
-    //// clear pending listener stuff, so we don't run it again.
-    // ListenerFunction->value() = s7.offset;
-    // ListenerStatus = 1;
-    // ClearPending();
-    // SendAck();
+    /* Original code, disabled
+      // output sql query to the compiler
+      output_sql_query(string_in->data());
+      // clear pending listener stuff, so we don't run it again.
+      ListenerFunction->value() = s7.offset;
+      ListenerStatus = 1;
+      ClearPending();
+      SendAck();
+    */
 
-    // clear old result
+    const std::string query_str = string_in->data();
+    lg::debug("[SQL] Query '{}'", query_str);
+
+    // ensure the DB is initialized
+    initialize_sql_db();
+
+    // clear global
     SqlResult->value() = s7.offset;
 
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
-    // TODO - query the database
+    // TODO - query the databasex
+    auto sym = find_symbol_from_c("sql-result");
+    if (sym.offset) {
+      Ptr<Type> type = Ptr<Type>(sym->value());
+      auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
+                                                     GOAL_NEW_METHOD, type.offset, 1);
 
-    auto new_result = call_method_of_type_arg2(
-        intern_from_c("debug").offset, Ptr<jak2::Type>(*((SqlResult - 4).cast<u32>())),
-        GOAL_NEW_METHOD, intern_from_c("sql-result").offset, 10);  // TODO - arbitrary 10 values
+      SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
+      new_result->len = 1;
+      new_result->data[0] = Ptr<String>(make_debug_string_from_c("test"));
 
-    // TODO - how do i set the fields on the object i just hopefully created...cast it to a struct?
+      kdebugheap->top.offset += 0x4000;
 
-    kdebugheap->top.offset += 0x4000;
+      // Store the result in the convienant debugging global (stores last query resp)
+      SqlResult->value() = new_result_ptr;
+      return new_result_ptr;
+    }
 
-    // TODO - how do i set my new `sql-result` to the global?
-    return SqlResult->value();
+    return s7.offset;
 
-    //// didn't we just set these to false?
-    // if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
-    //   do {
-    //     KernelDispatch(sync_dispatcher->value());
-    //     SendAck();
-    //     if (SqlResult->value() != s7.offset) {
-    //       break;
-    //     }
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //     /*
-    //     iVar2 = 99999;
-    //     do {
-    //       bVar1 = iVar2 != 0;
-    //       iVar2 = iVar2 + -1;
-    //     } while (bVar1);
-    //      */
-    //   } while (SqlResult->value() == s7.offset);
-    // }
+    /* Original code, disabled
+      // didn't we just set these to false?
+      if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
+        do {
+          KernelDispatch(sync_dispatcher->value());
+          SendAck();
+          if (SqlResult->value() != s7.offset) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          /*
+          iVar2 = 99999;
+          do {
+            bVar1 = iVar2 != 0;
+            iVar2 = iVar2 + -1;
+          } while (bVar1);
+        } while (SqlResult->value() == s7.offset);
+      }
+    */
   }
 }
 

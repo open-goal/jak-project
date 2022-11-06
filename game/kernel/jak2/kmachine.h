@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SQLiteCpp/SQLiteCpp.h"
+#include <optional>
 #include "common/common_types.h"
 
 namespace jak2 {
@@ -8,6 +10,9 @@ void InitIOP();
 int InitMachine();
 int ShutdownMachine();
 void InitMachineScheme();
+
+extern std::optional<SQLite::Database> sql_db;
+void initialize_sql_db();
 
 struct MouseInfo {
   //  ((active symbol :offset-assert 4)
