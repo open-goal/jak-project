@@ -4439,6 +4439,28 @@ std::vector<Form*> cast_to_64_bit(const std::vector<Form*>& forms,
   return result;
 }
 
+std::vector<Form*> cast_for_64bit_equality_check(const std::vector<Form*>& forms,
+                                                 const std::vector<TypeSpec>& types,
+                                                 FormPool& pool,
+                                                 const Env& env) {
+  if (env.version == GameVersion::Jak1) {
+    return cast_to_64_bit(forms, types, pool, env);
+  }
+  std::vector<Form*> result;
+  for (size_t i = 0; i < forms.size(); i++) {
+    if (env.dts->ts.tc(TypeSpec("uint128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("uint"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("int128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("float"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else {
+      result.push_back(forms[i]);
+    }
+  }
+  return result;
+}
+
 FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   /*
  (defmacro logtest? (a b)
@@ -4661,7 +4683,7 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
       }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }
@@ -4692,7 +4714,7 @@ FormElement* ConditionElement::make_not_equal_check_generic(
     } else {
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }
