@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: water-flow.gc
-;; name in dgo: water-flow
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition for function ray-plane-equation-intersect
 (defun ray-plane-equation-intersect ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let* ((f0-1 (vector4-dot arg3 arg1))
          (f1-1 (vector-dot arg3 arg2))
@@ -17,6 +12,7 @@
     )
   )
 
+;; definition of type flow-section
 (deftype flow-section (structure)
   ((start      vector :inline :offset-assert   0)
    (trailing   plane  :inline :offset-assert  16)
@@ -28,6 +24,22 @@
   :flag-assert         #x900000040
   )
 
+;; definition for method 3 of type flow-section
+(defmethod inspect flow-section ((obj flow-section))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'flow-section)
+  (format #t "~1Tstart: #<vector @ #x~X>~%" (-> obj start))
+  (format #t "~1Ttrailing: #<plane @ #x~X>~%" (-> obj trailing))
+  (format #t "~1Tpull-dir: #<vector @ #x~X>~%" (-> obj pull-dir))
+  (format #t "~1Tradial-dir: #<vector @ #x~X>~%" (-> obj radial-dir))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type flow-section-array
 (deftype flow-section-array (inline-array-class)
   ((data flow-section :inline :dynamic :offset-assert  16)
    )
@@ -35,8 +47,25 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+;; definition for method 3 of type flow-section-array
+(defmethod inspect flow-section-array ((obj flow-section-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
 (set! (-> flow-section-array heap-base) (the-as uint 64))
 
+;; definition of type flow-control
 (deftype flow-control (basic)
   ((path           path-control               :offset-assert   4)
    (speed          float                      :offset-assert   8)
@@ -57,6 +86,24 @@
     )
   )
 
+;; definition for method 3 of type flow-control
+(defmethod inspect flow-control ((obj flow-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tpath: ~A~%" (-> obj path))
+  (format #t "~1Tspeed: ~f~%" (-> obj speed))
+  (format #t "~1Tbelt-radius: ~f~%" (-> obj belt-radius))
+  (format #t "~1Tsections: ~A~%" (-> obj sections))
+  (format #t "~1Tleading: #<plane @ #x~X>~%" (-> obj leading))
+  (format #t "~1Tcollide-bounds: #<sphere @ #x~X>~%" (-> obj collide-bounds))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 7 of type flow-control
 (defmethod relocate flow-control ((obj flow-control) (arg0 int))
   (if (nonzero? (-> obj sections))
       (&+! (-> obj sections) arg0)
@@ -67,6 +114,8 @@
   ((the-as (function flow-control int flow-control) (find-parent-method flow-control 7)) obj arg0)
   )
 
+;; definition for method 9 of type flow-control
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-path flow-control ((obj flow-control))
   (let ((a0-1 (-> obj path)))
     (if (nonzero? a0-1)
@@ -77,6 +126,10 @@
   (none)
   )
 
+;; definition for method 11 of type flow-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 11 flow-control) has a return type of none, but the expression builder found a return statement.
 (defmethod push-process flow-control ((obj flow-control) (arg0 process-focusable))
   (with-pp
     (rlet ((acc :class vf)
@@ -168,6 +221,8 @@
     )
   )
 
+;; definition for method 12 of type flow-control
+;; WARN: Return type mismatch int vs none.
 (defmethod find-and-push-things flow-control ((obj flow-control))
   (local-vars (a0-10 float) (a2-5 float) (a2-12 float))
   (rlet ((acc :class vf)
@@ -314,6 +369,9 @@
     )
   )
 
+;; definition for method 10 of type flow-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod setup flow-control ((obj flow-control))
   (local-vars (sv-32 flow-section) (sv-48 flow-section))
   (let* ((s5-0 (-> obj path))
@@ -378,6 +436,7 @@
   (none)
   )
 
+;; definition for method 0 of type flow-control
 (defmethod new flow-control ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 res-lump))
   (if (not arg1)
       (set! arg1 (-> arg0 entity))
