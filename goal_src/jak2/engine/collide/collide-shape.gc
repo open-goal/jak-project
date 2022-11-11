@@ -130,7 +130,7 @@
         (until (> f0-0 a0-3)
           (until (nonzero? a0-2)
             (label cfg-1)
-            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (+ s4-0 80)))
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
             (+! s3-0 -1)
             (let ((a1-1 (-> s4-0 prim-core collide-with)))
               (nop!)
@@ -187,7 +187,7 @@
         (until (> f0-0 a0-3)
           (until (nonzero? a0-2)
             (label cfg-1)
-            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (+ (the-as collide-shape-prim s4-0) 80)))
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ (the-as collide-shape-prim s4-0) 80)))
             (+! s3-0 -1)
             (let ((a1-1 (-> (the-as collide-shape-prim s4-0) prim-core collide-as)))
               (nop!)
@@ -228,7 +228,7 @@
     (cond
       ((= v1-0 (prim-type group))
        ;; iterate over group
-       (should-push-away-a-group-test obj other cquery)
+       (should-push-away-a-group-test obj (the-as collide-shape-prim-group other) cquery)
        )
       (else
         (b! (> (the-as int v1-0) 0) cfg-8 :delay (nop!))
@@ -293,7 +293,7 @@
       (cond
         ((= v1-0 (prim-type group))
          ;; test against a group
-         (should-push-away-a-group-test obj other cquery)
+         (should-push-away-a-group-test obj (the collide-shape-prim-group other) cquery)
          )
         (else
           (b! (> (the-as int v1-0) 0) cfg-5 :delay (nop!))
@@ -1095,7 +1095,8 @@
     )
   (logior! (-> arg0 status) sv-56)
   0
-  (no
+  (none)
+  )
 
 (defun cshape-reaction-default ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
   "Default collision reaction. Bounce off of wall, react to things, etc."
@@ -1693,6 +1694,7 @@
   )
 
 (defmethod integrate-no-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+  "Move, ignoring all collision."
   (local-vars (at-0 int))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -1750,20 +1752,19 @@
     )
   )
 
-;; definition for method 58 of type collide-shape-moving
 (defmethod integrate-for-enemy-no-mtg collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 overlaps-others-params))
+  "Simpler move for enemy, with no moving to ground. Will just stop if the move collides."
   (integrate-no-collide! obj arg0)
   (let ((s5-1 (find-overlapping-shapes obj arg1)))
-    (if s5-1
+    (if s5-1 ;; if we hit something, move back.
         (move-to-point! obj (-> obj trans-old))
         )
     s5-1
     )
   )
 
-;; definition for method 55 of type collide-shape-moving
-;; INFO: Used lq/sq
 (defmethod find-ground collide-shape-moving ((obj collide-shape-moving) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+  "Find the ground, return #t if we found it, and fill out gspot in the collide-query."
   (with-pp
     (set! (-> obj gspot-pos quad) (-> obj trans quad))
     (set! (-> arg0 start-pos quad) (-> obj trans quad))
@@ -1798,9 +1799,8 @@
     )
   )
 
-;; definition for method 51 of type collide-shape
-;; INFO: Used lq/sq
 (defmethod above-ground? collide-shape ((obj collide-shape) (arg0 collide-query) (arg1 vector) (arg2 object) (arg3 float) (arg4 float) (arg5 float))
+  "Check to see if we are above the ground."
   (set! (-> arg0 start-pos quad) (-> arg1 quad))
   (+! (-> arg0 start-pos y) arg3)
   (vector-reset! (-> arg0 move-dist))
@@ -1816,250 +1816,189 @@
   (>= (fill-and-probe-using-line-sphere *collide-cache* arg0) 0.0)
   )
 
-;; definition for method 59 of type collide-shape-moving
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defmethod move-above-ground collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 move-above-ground-params))
-  (when *debug-segment*
-    (let ((s3-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
-          (v1-7 'collide)
-          (s2-0 *profile-collide-color*)
-          )
-      (when (and *dproc* *debug-segment*)
-        (let ((s1-0 (-> s3-0 data (-> s3-0 count))))
-          (let ((s0-0 (-> s3-0 base-time)))
-            (set! (-> s1-0 name) v1-7)
-            (set! (-> s1-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-0))))
-            )
-          (set! (-> s1-0 depth) (the-as uint (-> s3-0 depth)))
-          (set! (-> s1-0 color) s2-0)
-          (set! (-> s3-0 segment (-> s3-0 depth)) s1-0)
-          )
-        (+! (-> s3-0 count) 1)
-        (+! (-> s3-0 depth) 1)
-        (set! (-> s3-0 max-depth) (max (-> s3-0 max-depth) (-> s3-0 depth)))
-        )
-      )
-    0
-    )
-  (set! (-> arg1 on-ground?) #f)
-  (set! (-> arg1 do-move?) #t)
-  (set! (-> arg1 old-gspot-pos quad) (-> obj gspot-pos quad))
-  (set! (-> arg1 old-gspot-normal quad) (-> obj gspot-normal quad))
-  (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
-  (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
-  (set! (-> obj trans-old quad) (-> obj trans quad))
-  (set! (-> obj prev-status) (-> obj status))
-  (vector-v+! (-> obj trans) (-> obj trans) arg0)
-  (set! (-> arg1 new-pos quad) (-> obj trans quad))
-  (let ((s3-1 (new 'stack-no-clear 'collide-query)))
-    (cond
-      ((find-ground obj s3-1 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
-       (when (>= (-> obj gspot-pos y) (-> arg1 new-pos y))
-         (set! (-> arg1 on-ground?) #t)
-         (set! (-> arg1 pat) (-> s3-1 best-other-tri pat))
-         (set! (-> arg1 new-pos y) (-> s3-1 best-other-tri intersect y))
-         (set! (-> obj ground-impact-vel) (- (vector-dot arg0 (-> obj dynam gravity-normal))))
-         (set! (-> arg0 y) 0.0)
+  "Move at the given velocity, while not going through the ground"
+  (with-profiler 'collide *profile-collide-color*
+    (set! (-> arg1 on-ground?) #f)
+    (set! (-> arg1 do-move?) #t)
+    (set! (-> arg1 old-gspot-pos quad) (-> obj gspot-pos quad))
+    (set! (-> arg1 old-gspot-normal quad) (-> obj gspot-normal quad))
+    (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
+    (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
+    (set! (-> obj trans-old quad) (-> obj trans quad))
+    (set! (-> obj prev-status) (-> obj status))
+
+    ;; move! note that we don't actually call move-to-point! yet - that's more
+    ;; expensive, and we save it for when we actually know the final position.
+    (vector-v+! (-> obj trans) (-> obj trans) arg0)
+    (set! (-> arg1 new-pos quad) (-> obj trans quad))
+
+    ;; find the ground.
+    (let ((s3-1 (new 'stack-no-clear 'collide-query)))
+      (cond
+        ((find-ground obj s3-1 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
+         (when (>= (-> obj gspot-pos y) (-> arg1 new-pos y)) ;; check if we are at/below the ground
+           ;; we are
+           (set! (-> arg1 on-ground?) #t)
+           (set! (-> arg1 pat) (-> s3-1 best-other-tri pat))
+           ;; move to ground
+           (set! (-> arg1 new-pos y) (-> s3-1 best-other-tri intersect y))
+           (set! (-> obj ground-impact-vel) (- (vector-dot arg0 (-> obj dynam gravity-normal))))
+           (set! (-> arg0 y) 0.0)
+           )
          )
-       )
-      (else
-        (if (-> arg1 hover-if-no-ground?)
-            (set! (-> arg1 new-pos y) (-> obj trans-old y))
-            )
-        )
-      )
-    )
-  (set! (-> obj trans quad) (-> obj trans-old quad))
-  (move-to-point! obj (-> arg1 new-pos))
-  (when (logtest? (logand (-> arg1 overlaps-params collide-with-filter)
-                          (collide-spec hit-by-player-list hit-by-others-list player-list)
-                          )
-                  (-> obj root-prim prim-core collide-with)
-                  )
-    (when (find-overlapping-shapes obj (-> arg1 overlaps-params))
-      (when (-> arg1 dont-move-if-overlaps?)
-        (set! (-> arg1 do-move?) #f)
-        (move-to-point! obj (-> obj trans-old))
-        (set! (-> obj gspot-pos quad) (-> arg1 old-gspot-pos quad))
-        (set! (-> obj gspot-normal quad) (-> arg1 old-gspot-normal quad))
-        )
-      )
-    )
-  (when (-> arg1 do-move?)
-    (cond
-      ((-> arg1 on-ground?)
-       (let ((a1-8 (-> obj gspot-pos))
-             (a0-29 (-> obj gspot-normal))
-             (v1-59 (-> arg1 pat))
-             )
-         (set! (-> obj grount-touch-point quad) (-> a1-8 quad))
-         (set! (-> obj poly-normal quad) (-> a0-29 quad))
-         (set! (-> obj surface-normal quad) (-> a0-29 quad))
-         (set! (-> obj local-normal quad) (-> a0-29 quad))
-         (set! (-> obj ground-poly-normal quad) (-> a0-29 quad))
-         (set! (-> obj poly-pat) v1-59)
-         (set! (-> obj cur-pat) v1-59)
-         (set! (-> obj ground-pat) v1-59)
-         )
-       (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
-       )
-      (else
-        (logclear! (-> obj status) (collide-status
-                                     on-surface
-                                     on-ground
-                                     touch-surface
-                                     touch-wall
-                                     touch-ceiling
-                                     touch-actor
-                                     on-special-surface
-                                     touch-edge
-                                     blocked
-                                     on-water
-                                     impact-surface
-                                     touch-background
-                                     stuck
-                                     glance
-                                     )
-                   )
-        (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
-          (let ((v1-69 (-> obj dynam gravity-normal)))
-            (set! (-> obj local-normal quad) (-> v1-69 quad))
-            (set! (-> obj surface-normal quad) (-> v1-69 quad))
-            (set! (-> obj poly-normal quad) (-> v1-69 quad))
-            )
-          (set! (-> obj coverage) 0.0)
-          (set! (-> obj touch-angle) 0.0)
+        (else
+          ;; no ground. if hover is enabled, disable falling.
+          (if (-> arg1 hover-if-no-ground?)
+              (set! (-> arg1 new-pos y) (-> obj trans-old y))
+              )
           )
         )
       )
-    )
-  (when *debug-segment*
-    (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
-      (when (and *dproc* *debug-segment*)
-        (let* ((v1-83 (+ (-> gp-1 depth) -1))
-               (s5-1 (-> gp-1 segment v1-83))
-               (s4-1 (-> gp-1 base-time))
+
+    ;; do the (slightly) more expensive move
+    (set! (-> obj trans quad) (-> obj trans-old quad))
+    (move-to-point! obj (-> arg1 new-pos))
+
+    ;; see if the object should collide with foreground objects
+    (when (logtest? (logand (-> arg1 overlaps-params collide-with-filter)
+                            (collide-spec hit-by-player-list hit-by-others-list player-list)
+                            )
+                    (-> obj root-prim prim-core collide-with)
+                    )
+      ;; if it does, see if we moved into overlap
+      (when (find-overlapping-shapes obj (-> arg1 overlaps-params))
+        (when (-> arg1 dont-move-if-overlaps?)
+          ;; and abort the move.
+          (set! (-> arg1 do-move?) #f)
+          (move-to-point! obj (-> obj trans-old))
+          (set! (-> obj gspot-pos quad) (-> arg1 old-gspot-pos quad))
+          (set! (-> obj gspot-normal quad) (-> arg1 old-gspot-normal quad))
+          )
+        )
+      )
+
+    ;; update flags.
+    (when (-> arg1 do-move?)
+      (cond
+        ((-> arg1 on-ground?)
+         (let ((a1-8 (-> obj gspot-pos))
+               (a0-29 (-> obj gspot-normal))
+               (v1-59 (-> arg1 pat))
                )
-          (when (>= v1-83 0)
-            (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
-            (+! (-> gp-1 depth) -1)
+           (set! (-> obj grount-touch-point quad) (-> a1-8 quad))
+           (set! (-> obj poly-normal quad) (-> a0-29 quad))
+           (set! (-> obj surface-normal quad) (-> a0-29 quad))
+           (set! (-> obj local-normal quad) (-> a0-29 quad))
+           (set! (-> obj ground-poly-normal quad) (-> a0-29 quad))
+           (set! (-> obj poly-pat) v1-59)
+           (set! (-> obj cur-pat) v1-59)
+           (set! (-> obj ground-pat) v1-59)
+           )
+         (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
+         )
+        (else
+          (logclear! (-> obj status) (collide-status
+                                       on-surface
+                                       on-ground
+                                       touch-surface
+                                       touch-wall
+                                       touch-ceiling
+                                       touch-actor
+                                       on-special-surface
+                                       touch-edge
+                                       blocked
+                                       on-water
+                                       impact-surface
+                                       touch-background
+                                       stuck
+                                       glance
+                                       )
+                     )
+          (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-69 (-> obj dynam gravity-normal)))
+              (set! (-> obj local-normal quad) (-> v1-69 quad))
+              (set! (-> obj surface-normal quad) (-> v1-69 quad))
+              (set! (-> obj poly-normal quad) (-> v1-69 quad))
+              )
+            (set! (-> obj coverage) 0.0)
+            (set! (-> obj touch-angle) 0.0)
             )
           )
         )
       )
-    0
     )
   0
   (none)
   )
 
-;; definition for method 60 of type collide-shape-moving
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defmethod move-to-ground collide-shape-moving ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-spec))
+  "Find the ground a move to it."
   (local-vars (sv-576 profile-segment) (sv-592 int))
-  (when *debug-segment*
-    (let ((s1-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
-          (v1-7 'collide)
-          (s0-0 *profile-collide-color*)
-          )
-      (when (and *dproc* *debug-segment*)
-        (set! sv-576 (-> s1-0 data (-> s1-0 count)))
-        (set! sv-592 (-> s1-0 base-time))
-        (set! (-> sv-576 name) v1-7)
-        (set! (-> sv-576 start-time)
-              (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint sv-592)))
-              )
-        (set! (-> sv-576 depth) (the-as uint (-> s1-0 depth)))
-        (set! (-> sv-576 color) s0-0)
-        (set! (-> s1-0 segment (-> s1-0 depth)) sv-576)
-        (+! (-> s1-0 count) 1)
-        (+! (-> s1-0 depth) 1)
-        (set! (-> s1-0 max-depth) (max (-> s1-0 max-depth) (-> s1-0 depth)))
-        )
-      )
-    0
-    )
-  (let ((s1-1 (new 'stack-no-clear 'collide-query)))
-    (cond
-      ((find-ground obj s1-1 arg3 arg0 arg1 1024.0)
-       (let ((a1-4 (new 'stack-no-clear 'vector)))
-         (set! (-> a1-4 quad) (-> obj trans quad))
-         (set! (-> a1-4 y) (-> s1-1 best-other-tri intersect y))
-         (move-to-point! obj a1-4)
-         )
-       (let ((a1-5 (-> s1-1 best-other-tri intersect))
-             (a0-19 (-> s1-1 best-other-tri normal))
-             (v1-25 (-> s1-1 best-other-tri pat))
-             )
-         (set! (-> obj grount-touch-point quad) (-> a1-5 quad))
-         (set! (-> obj poly-normal quad) (-> a0-19 quad))
-         (set! (-> obj surface-normal quad) (-> a0-19 quad))
-         (set! (-> obj local-normal quad) (-> a0-19 quad))
-         (set! (-> obj ground-poly-normal quad) (-> a0-19 quad))
-         (set! (-> obj poly-pat) v1-25)
-         (set! (-> obj cur-pat) v1-25)
-         (set! (-> obj ground-pat) v1-25)
-         )
-       (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
-       #t
-       )
-      (else
-        (logclear! (-> obj status) (collide-status
-                                     on-surface
-                                     on-ground
-                                     touch-surface
-                                     touch-wall
-                                     touch-ceiling
-                                     touch-actor
-                                     on-special-surface
-                                     touch-edge
-                                     blocked
-                                     on-water
-                                     impact-surface
-                                     touch-background
-                                     stuck
-                                     glance
-                                     )
-                   )
-        (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
-          (let ((v1-36 (-> obj dynam gravity-normal)))
-            (set! (-> obj local-normal quad) (-> v1-36 quad))
-            (set! (-> obj surface-normal quad) (-> v1-36 quad))
-            (set! (-> obj poly-normal quad) (-> v1-36 quad))
-            )
-          (set! (-> obj coverage) 0.0)
-          (set! (-> obj touch-angle) 0.0)
-          )
-        (if arg2
-            (format 0 "WARNING: move-to-ground: failed to locate ground for ~S!~%" (-> obj process name))
-            )
-        )
-      )
-    )
-  (when *debug-segment*
-    (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
-      (when (and *dproc* *debug-segment*)
-        (let* ((v1-52 (+ (-> gp-1 depth) -1))
-               (s5-1 (-> gp-1 segment v1-52))
-               (s4-1 (-> gp-1 base-time))
+  (with-profiler 'collide *profile-collide-color*
+    (let ((s1-1 (new 'stack-no-clear 'collide-query)))
+      (cond
+        ((find-ground obj s1-1 arg3 arg0 arg1 1024.0)
+         (let ((a1-4 (new 'stack-no-clear 'vector)))
+           (set! (-> a1-4 quad) (-> obj trans quad))
+           (set! (-> a1-4 y) (-> s1-1 best-other-tri intersect y))
+           (move-to-point! obj a1-4)
+           )
+         (let ((a1-5 (-> s1-1 best-other-tri intersect))
+               (a0-19 (-> s1-1 best-other-tri normal))
+               (v1-25 (-> s1-1 best-other-tri pat))
                )
-          (when (>= v1-52 0)
-            (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
-            (+! (-> gp-1 depth) -1)
+           (set! (-> obj grount-touch-point quad) (-> a1-5 quad))
+           (set! (-> obj poly-normal quad) (-> a0-19 quad))
+           (set! (-> obj surface-normal quad) (-> a0-19 quad))
+           (set! (-> obj local-normal quad) (-> a0-19 quad))
+           (set! (-> obj ground-poly-normal quad) (-> a0-19 quad))
+           (set! (-> obj poly-pat) v1-25)
+           (set! (-> obj cur-pat) v1-25)
+           (set! (-> obj ground-pat) v1-25)
+           )
+         (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
+         #t
+         )
+        (else
+          (logclear! (-> obj status) (collide-status
+                                       on-surface
+                                       on-ground
+                                       touch-surface
+                                       touch-wall
+                                       touch-ceiling
+                                       touch-actor
+                                       on-special-surface
+                                       touch-edge
+                                       blocked
+                                       on-water
+                                       impact-surface
+                                       touch-background
+                                       stuck
+                                       glance
+                                       )
+                     )
+          (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-36 (-> obj dynam gravity-normal)))
+              (set! (-> obj local-normal quad) (-> v1-36 quad))
+              (set! (-> obj surface-normal quad) (-> v1-36 quad))
+              (set! (-> obj poly-normal quad) (-> v1-36 quad))
+              )
+            (set! (-> obj coverage) 0.0)
+            (set! (-> obj touch-angle) 0.0)
             )
+          (if arg2
+              (format 0 "WARNING: move-to-ground: failed to locate ground for ~S!~%" (-> obj process name))
+              )
           )
         )
       )
-    0
     )
   (none)
   )
 
-;; definition for method 62 of type collide-shape-moving
-;; INFO: Used lq/sq
 (defmethod compute-acc-due-to-gravity collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 float))
+  "Adjust the velocity from the acceleration of gravity."
   (let* ((s4-0 (vector-negate! (new 'stack-no-clear 'vector) (-> obj dynam gravity)))
          (a2-1 (-> obj local-normal))
          (a2-2 (vector-reflect-flat! (new-stack-vector0) s4-0 a2-1))
@@ -2078,8 +2017,8 @@
   arg0
   )
 
-;; definition for method 32 of type collide-shape
 (defmethod fill-cache-integrate-and-collide collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-query) (arg2 meters))
+  "Helper to fill the collide cache and call integrate-and-collide."
   (local-vars (at-0 int))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -2087,6 +2026,7 @@
            (vf2 :class vf)
            )
       (init-vf0-vector)
+      ;; scale the cache fill volume by frame rate
       (let ((v1-0 (new 'stack-no-clear 'vector)))
         (let ((a0-1 v1-0))
           (.lvf vf1 (&-> arg0 quad))
@@ -2098,17 +2038,18 @@
           (.mul.x.vf vf1 vf1 vf2 :mask #b111)
           (.svf (&-> a0-1 quad) vf1)
           )
+        ;; fill the cache.
         (fill-cache-for-shape obj (+ (vector-length v1-0) arg2) arg1)
         )
+      ;; move.
       (integrate-and-collide! obj arg0)
       (none)
       )
     )
   )
 
-;; definition for method 31 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod fill-cache-for-shape collide-shape ((obj collide-shape) (arg0 float) (arg1 collide-query))
+  "Fill the collide cache for a collide-shape by buliding a bounding box and filling from that."
   (cond
     ((build-bounding-box-for-shape obj (-> arg1 bbox) arg0 (-> arg1 collide-with))
      (fill-using-bounding-box *collide-cache* arg1)
@@ -2124,7 +2065,6 @@
   (none)
   )
 
-;; definition for method 36 of type collide-shape
 (defmethod build-bounding-box-for-shape collide-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 collide-spec))
   (rlet ((vf0 :class vf)
          (vf24 :class vf)
@@ -2152,7 +2092,7 @@
           (.add.x.vf vf30 vf24 vf25 :mask #b111)
           (b! #t cfg-10 :delay (.sub.x.vf vf29 vf24 vf25 :mask #b111))
           (label cfg-3)
-          (b! (zero? a0-3) cfg-9 :delay (set! v1-0 (+ v1-0 80)))
+          (b! (zero? a0-3) cfg-9 :delay (set! v1-0 (&+ v1-0 80)))
           (+! a0-3 -1)
           (let ((a2-3 (logand (-> v1-0 prim-core collide-with) arg2)))
             (.lvf vf24 (&-> v1-0 prim-core world-sphere quad))
@@ -2161,7 +2101,7 @@
           (.add.x.vf vf30 vf24 vf25 :mask #b111)
           (.sub.x.vf vf29 vf24 vf25 :mask #b111)
           (label cfg-6)
-          (b! (zero? a0-3) cfg-10 :delay (set! v1-0 (+ v1-0 80)))
+          (b! (zero? a0-3) cfg-10 :delay (set! v1-0 (&+ v1-0 80)))
           (+! a0-3 -1)
           )
         )
@@ -2190,7 +2130,6 @@
     )
   )
 
-;; definition for method 33 of type collide-shape
 (defmethod find-prim-by-id collide-shape ((obj collide-shape) (arg0 uint))
   (let ((v1-0 (-> obj root-prim)))
     (countdown (a0-1 (-> obj total-prims))
@@ -2203,7 +2142,6 @@
   (the-as collide-shape-prim #f)
   )
 
-;; definition for method 34 of type collide-shape
 (defmethod find-prim-by-id-logtest collide-shape ((obj collide-shape) (arg0 uint))
   (let ((v1-0 (-> obj root-prim)))
     (countdown (a0-1 (-> obj total-prims))
@@ -2216,9 +2154,10 @@
   (the-as collide-shape-prim #f)
   )
 
-;; definition (debug) for function collide-shape-draw-debug-marks
-;; WARN: Return type mismatch int vs none.
 (defun-debug collide-shape-draw-debug-marks ()
+  "Draw geometry for all collide shapes."
+
+  ;; draw target separately
   (add-debug-sphere
     (or *display-collision-marks* *display-target-marks*)
     (bucket-id debug2)
@@ -2226,6 +2165,8 @@
     (meters 0.2)
     (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
     )
+
+  ;; loop over the 3 main lists.
   (when *display-collision-marks*
     (let ((v1-4 (-> *collide-player-list* alive-list next0)))
       *collide-player-list*
@@ -2251,7 +2192,7 @@
                     (= (-> (the-as collide-shape a0-11) process) *target*)
                     (= (-> (the-as collide-shape a0-11) process) *debug-actor*)
                     )
-                (debug-draw a0-11)
+                (debug-draw (the-as collide-shape a0-11))
                 )
             )
           (set! v1-15 gp-2)
@@ -2280,8 +2221,6 @@
   (none)
   )
 
-;; definition for method 30 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw collide-shape ((obj collide-shape))
   (if (sphere-in-view-frustum? (the-as sphere (-> obj root-prim prim-core)))
       (debug-draw (-> obj root-prim))
@@ -2290,16 +2229,12 @@
   (none)
   )
 
-;; definition for symbol *col-timer*, type stopwatch
 (define *col-timer* (new 'global 'stopwatch))
 
-;; definition for symbol *frame-timer*, type stopwatch
 (define *frame-timer* (new 'global 'stopwatch))
 
-;; definition for symbol *col-timer-enable*, type symbol
 (define *col-timer-enable* #t)
 
-;; definition for function debug-report-col-stats
 (defun debug-report-col-stats ()
   (when *col-timer-enable*
     (stopwatch-end *frame-timer*)
@@ -2312,9 +2247,8 @@
     )
   )
 
-;; definition for method 46 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod update-transforms collide-shape ((obj collide-shape))
+  "Update collisision transforms."
   (local-vars (v1-8 float) (a1-5 float) (a1-7 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -2330,11 +2264,12 @@
           (v1-1 (-> obj process node-list))
           )
       (cond
-        ((nonzero? v1-1)
+        ((nonzero? v1-1) ;; using cspace stuff
          (countdown (a0-1 (-> obj total-prims))
            (let ((a1-0 (-> s5-0 transform-index)))
              (cond
                ((>= a1-0 0)
+                ;; normal cspace stuff - just do a cspace transformation.
                 (let ((a1-4 (-> v1-1 data a1-0 bone transform)))
                   (.lvf vf5 (&-> a1-4 trans quad))
                   (.lvf vf1 (&-> s5-0 local-sphere quad))
@@ -2352,6 +2287,7 @@
                 (.mov a1-5 vf1)
                 )
                (else
+                 ;; -2 is magic and tied to the root trans, skip cspace math.
                  (when (= a1-0 -2)
                    (.lvf vf1 (&-> s5-0 local-sphere quad))
                    (.lvf vf2 (&-> obj trans quad))
@@ -2366,9 +2302,11 @@
            )
          )
         (else
+          ;; special cases for non-cspace users.
           (countdown (s4-0 (-> obj total-prims))
             (case (-> s5-0 transform-index)
               ((-3)
+               ;; rotate and translate from root pos/orientation
                (let ((s3-0 (new 'stack-no-clear 'vector)))
                  (vector-orient-by-quat! s3-0 (-> s5-0 local-sphere) (-> obj quat))
                  (vector+! (the-as vector (-> s5-0 prim-core)) s3-0 (-> obj trans))
@@ -2376,6 +2314,7 @@
                (set! (-> s5-0 prim-core world-sphere w) (-> s5-0 local-sphere w))
                )
               ((-2)
+               ;; just translate.
                (.lvf vf1 (&-> s5-0 local-sphere quad))
                (.lvf vf2 (&-> obj trans quad))
                (.add.vf vf1 vf1 vf2 :mask #b111)
@@ -2393,9 +2332,8 @@
     )
   )
 
-;; definition for method 28 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod move-by-vector! collide-shape ((obj collide-shape) (arg0 vector))
+  "Move everything by a vector."
   (vector+! (-> obj trans) (-> obj trans) arg0)
   (let ((v1-1 (-> obj root-prim)))
     (countdown (a0-1 (-> obj total-prims))
@@ -2408,10 +2346,8 @@
   (none)
   )
 
-;; definition for method 29 of type collide-shape
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defmethod move-to-point! collide-shape ((obj collide-shape) (arg0 vector))
+  "Move root to a point."
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg0 (-> obj trans))
     (set! (-> obj trans quad) (-> arg0 quad))
@@ -2427,9 +2363,8 @@
   (none)
   )
 
-;; definition for method 47 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod set-collide-with! collide-shape ((obj collide-shape) (arg0 collide-spec))
+  "Set the collide with field of everything."
   (let ((v1-0 (-> obj root-prim)))
     (countdown (a0-1 (-> obj total-prims))
       (set! (-> v1-0 prim-core collide-with) arg0)
@@ -2442,9 +2377,8 @@
   (none)
   )
 
-;; definition for method 48 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod set-collide-as! collide-shape ((obj collide-shape) (arg0 collide-spec))
+  "Set the collide as field of everything"
   (let ((v1-0 (-> obj root-prim)))
     (countdown (a0-1 (-> obj total-prims))
       (set! (-> v1-0 prim-core collide-as) arg0)
@@ -2457,9 +2391,8 @@
   (none)
   )
 
-;; definition for method 53 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod iterate-prims collide-shape ((obj collide-shape) (arg0 (function collide-shape-prim none)))
+  "Call the given function for each prim."
   (let ((s5-0 (-> obj root-prim)))
     (countdown (s4-0 (-> obj total-prims))
       (arg0 s5-0)
@@ -2470,9 +2403,10 @@
   (none)
   )
 
-;; definition for method 38 of type collide-shape
-;; WARN: Return type mismatch int vs none.
 (defmethod find-collision-meshes collide-shape ((obj collide-shape))
+  "Find collision meshes for our collide prims.
+   The collide shape system is built in code, so this function should be called
+   to actually find the matching meshes."
   (let ((s5-0 (-> obj root-prim))
         (s4-0 0)
         )
@@ -2533,8 +2467,6 @@
   (none)
   )
 
-;; definition for method 9 of type collide-shape-prim
-;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw collide-shape-prim ((obj collide-shape-prim))
   (add-debug-sphere
     #t
@@ -2547,8 +2479,6 @@
   (none)
   )
 
-;; definition for method 9 of type collide-shape-prim-sphere
-;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw collide-shape-prim-sphere ((obj collide-shape-prim-sphere))
   (add-debug-sphere
     #t
@@ -2571,8 +2501,6 @@
   (none)
   )
 
-;; definition for method 9 of type collide-shape-prim-mesh
-;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw collide-shape-prim-mesh ((obj collide-shape-prim-mesh))
   (add-debug-sphere
     #t
@@ -2585,8 +2513,6 @@
   (none)
   )
 
-;; definition for method 9 of type collide-shape-prim-group
-;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw collide-shape-prim-group ((obj collide-shape-prim-group))
   (add-debug-sphere
     #t
@@ -2602,10 +2528,18 @@
   (none)
   )
 
-;; definition for method 45 of type collide-shape
-;; INFO: Used lq/sq
+(deftype do-push-aways-work (structure)
+  "Added"
+  ((cquery collide-query :inline)
+   (push-vel   vector :inline)
+   (vec33    vector :inline :offset 560)
+   (cspec  collide-spec :offset 576)
+   )
+  )
+
 (defmethod do-push-aways collide-shape ((obj collide-shape))
-  (local-vars (at-0 int) (v1-55 float) (a2-5 float) (a2-12 float))
+  "Push away things."
+  (local-vars (at-0 int) (v1-55 int) (a2-5 float) (a2-12 float))
   (with-pp
     (rlet ((vf0 :class vf)
            (vf1 :class vf)
@@ -2618,12 +2552,16 @@
       (let ((gp-0 (new 'stack-no-clear 'do-push-aways-work)))
         (set! (-> gp-0 cspec) (collide-spec))
         (let ((s4-0 (-> obj root-prim prim-core collide-with)))
+
+          ;; first, we build the actor list. hit-by-others now uses spatial hash.
           (set! *actor-list-length* 0)
           (if (logtest? s4-0 (collide-spec hit-by-others-list))
               (set! *actor-list-length*
-                    (spatial-hash-method-36 *actor-hash* (the-as sphere (-> obj root-prim prim-core)) *actor-list* 256)
+                    (fill-actor-list-for-sphere *actor-hash* (the-as sphere (-> obj root-prim prim-core)) *actor-list* 256)
                     )
               )
+
+          ;; if we want to collide with the player, add it explicitly.
           (when (logtest? s4-0 (collide-spec player-list))
             (let ((a0-2 (-> *collide-player-list* alive-list next0)))
               *collide-player-list*
@@ -2665,6 +2603,8 @@
                 )
               )
             )
+
+          ;; same for hit-by-plyer list
           (when (logtest? s4-0 (collide-spec hit-by-player-list))
             (let ((a0-5 (-> *collide-hit-by-player-list* alive-list next0)))
               *collide-hit-by-player-list*
@@ -2706,12 +2646,15 @@
                 )
               )
             )
+
+          ;; now loop over all actors:
           (dotimes (s3-0 *actor-list-length*)
             (let* ((s1-0 (-> *actor-list* s3-0))
                    (s2-0 (-> s1-0 root-prim))
                    )
               (when (logtest? s4-0 (-> s2-0 prim-core collide-as))
                 (when (!= (-> obj process) (-> s1-0 process))
+                  ;; do the test
                   (when (and (should-push-away obj s1-0 (-> gp-0 cquery)) (>= -81.92 (-> gp-0 cquery best-dist)))
                     (set! (-> gp-0 cquery collide-with) (-> s1-0 root-prim prim-core collide-with))
                     (set! (-> gp-0 cquery ignore-process0) (-> s1-0 process))
@@ -2719,6 +2662,7 @@
                     (set! (-> gp-0 cquery ignore-pat) (-> s1-0 pat-ignore-mask))
                     (set! (-> gp-0 cquery action-mask) (collide-action solid))
                     (-> gp-0 cquery)
+                    ;; push away
                     (fill-cache-for-shape s1-0 8192.0 (-> gp-0 cquery))
                     (let ((s4-1 3))
                       (until (or (<= s4-1 0) (not (should-push-away obj s1-0 (-> gp-0 cquery))))
@@ -2803,7 +2747,7 @@
         (set! *actor-list-length* 0)
         (b! (not (logtest? (the-as collide-spec s2-0) 512)) cfg-2 :delay (empty-form))
         (set! *actor-list-length*
-              (spatial-hash-method-36 *actor-hash* (the-as sphere (-> s3-0 prim-core)) *actor-list* 256)
+              (fill-actor-list-for-sphere *actor-hash* (the-as sphere (-> s3-0 prim-core)) *actor-list* 256)
               )
         (label cfg-2)
         (b! (not (logtest? (the-as collide-spec s2-0) 1024)) cfg-11 :delay (empty-form))
@@ -2976,7 +2920,7 @@
           (nop!)
           (set! (-> arg0 filtered-other-collide-as) v1-1)
           (label cfg-1)
-          (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (+ s4-0 80)))
+          (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
           (+! s3-0 -1)
           (let ((a0-2 (logand (-> s4-0 prim-core collide-with) v1-1)))
             (.lvf vf2 (&-> s4-0 prim-core world-sphere quad))
@@ -3035,7 +2979,7 @@
           (let ((s2-0 (the-as object #f)))
             (set! (-> arg0 filtered-child-collide-with) v1-1)
             (label cfg-1)
-            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (+ s4-0 80)))
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
             (+! s3-0 -1)
             (let ((a0-3 (logand v1-1 (-> s4-0 prim-core collide-as))))
               (.lvf vf1 (&-> s4-0 prim-core world-sphere quad))
