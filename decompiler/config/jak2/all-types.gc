@@ -22541,7 +22541,7 @@
   ((work                grid-hash-work                 :offset-assert 4)
    (search-box          grid-hash-box :inline :offset-assert 8)
    (bucket-size         int16                 :offset-assert 14)
-   (axis-scale          uint32       3        :offset-assert 16)
+   (axis-scale          float      3        :offset-assert 16)
    (dimension-array     int8       3          :offset-assert 28)
    (vertical-cell-count int8                  :offset-assert 31)
    (bucket-array        (pointer grid-hash-word)                :offset-assert 32)
@@ -22560,24 +22560,24 @@
   :size-assert         #x58
   :flag-assert         #x1900000058
   (:methods
-    (new (symbol type process int) _type_ 0)
-    (grid-hash-method-9 (_type_ int (array float) int) none 9)
-    (grid-hash-method-10 (_type_) none 10)
-    (grid-hash-method-11 (_type_) none 11)
-    (grid-hash-method-12 (_type_ vector) grid-hash-box 12)
-    (grid-hash-method-13 (_type_ vector float) grid-hash-box 13)
-    (draw-grid "Draws the grid-hash" (_type_ rgba) none 14)
+    (new (symbol type int int) _type_ 0)
+    (update-grid-for-objects-in-box (_type_ int vector vector) none 9)
+    (clear-bucket-array (_type_) none 10)
+    (setup-search-box (_type_ int vector vector vector) none 11)
+    (search-for-point (_type_ vector) (pointer uint8) 12)
+    (search-for-sphere (_type_ vector float) (pointer uint8) 13)
+    (draw "Draws the grid-hash" (_type_ rgba) none 14)
     (dump-grid-info
       "Prints out info about the grid-hash, also draws via [[grid-hash::draw-grid]] if `debug-draw` is `#t`"
       (_type_) none 15)
-    (grid-hash-method-16 (_type_ grid-hash-box grid-hash-box) none 16)
-    (grid-hash-method-17 (_type_) none 17)
+    (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none 16)
+    (box-of-everything (_type_ object grid-hash-box) none 17)
     (grid-hash-method-18 (_type_ grid-hash-box int) none 18)
     (grid-hash-method-19 (_type_ grid-hash-box int) none 19)
-    (grid-hash-method-20 (_type_ grid-hash-box (pointer uint8)) none 20)
-    (grid-hash-method-21 (_type_ float int int) none 21)
-    (grid-hash-method-22 (_type_ grid-hash-box sphere) none 22)
-    (grid-hash-method-23 (_type_ grid-hash-box vector vector float) none 23)
+    (do-search! (_type_ grid-hash-box (pointer uint8)) none 20)
+    (set-up-box (_type_ grid-hash-box vector vector) none 21)
+    (sphere-to-grid-box (_type_ grid-hash-box sphere) none 22)
+    (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none 23)
     (update-grid (_type_) none 24)
     )
   )
@@ -22606,15 +22606,16 @@
   :size-assert         #x68
   :flag-assert         #x2200000068
   (:methods
+    (new (symbol type int int) _type_ 0)
     (clear-objects! (_type_) none 25)
-    (sphere-hash-method-26 (_type_ vector) none 26)
-    (sphere-hash-method-27 (_type_) none 27)
-    (sphere-hash-method-28 (_type_) none 28)
+    (add-a-sphere (_type_ vector) int 26)
+    (add-a-sphere-with-flag (_type_ vector int) int 27)
+    (update-from-spheres (_type_) none 28)
     (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none 29)
     (sphere-hash-method-30 (_type_ find-nav-sphere-ids-params) none 30)
     (sphere-hash-method-31 (_type_ vector int int) none 31)
     (sphere-hash-method-32 (_type_ vector vector float int) symbol 32)
-    (sphere-hash-method-33 (_type_ object int) none 33)
+    (sphere-hash-method-33 (_type_ sphere int) none 33)
     )
   )
 
@@ -22627,21 +22628,22 @@
   )
 
 (deftype spatial-hash (sphere-hash)
-  ((object-array     (pointer hash-object-info)  :offset-assert 104)
-   (mem-object-array (pointer hash-object-info)  :offset-assert 108)
-   (spr-object-array (pointer hash-object-info)  :offset-assert 112)
+  ((object-array     (inline-array hash-object-info)  :offset-assert 104)
+   (mem-object-array (inline-array hash-object-info)  :offset-assert 108)
+   (spr-object-array (inline-array hash-object-info)  :offset-assert 112)
    )
   :method-count-assert 41
   :size-assert         #x74
   :flag-assert         #x2900000074
   (:methods
-    (spatial-hash-method-34 (_type_ vector hash-object-info) int 34)
+    (new (symbol type int int) _type_ 0)
+    (add-an-object (_type_ vector hash-object-info) int 34)
     (spatial-hash-method-35 (_type_) none 35)
     (fill-actor-list-for-sphere (_type_ sphere (pointer collide-shape) int) int 36)
     (spatial-hash-method-37 (_type_) none 37)
-    (spatial-hash-method-38 (_type_) none 38)
+    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape) int) none 38)
     (spatial-hash-method-39 (_type_ object hash-object-info) none 39)
-    (spatial-hash-method-40 (_type_) none 40)
+    (validate-objects (_type_) none 40)
     )
   )
 
@@ -26462,7 +26464,7 @@
 (define-extern *grid-hash-work* grid-hash-work)
 (define-extern validate-bucket-bits (function grid-hash (pointer grid-hash-word) symbol))
 (define-extern draw-grid (function vector vector (pointer int8) rgba none))
-(define-extern draw-sphere-box (function sphere none))
+(define-extern draw-sphere-box (function sphere rgba none))
 (define-extern draw-line-sphere (function vector vector float rgba none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26480,20 +26482,20 @@
 (deftype actor-hash-bucket (structure)
   ((length     int16   :offset-assert 0)
    (max-length int16   :offset-assert 2)
-   (data       (pointer uint32)  :offset-assert 4) ;; an array of....something TODO
+   (data       (inline-array actor-cshape-ptr)  :offset-assert 4) ;; an array of....something TODO
    )
   :allow-misaligned
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
   (:methods
-    (actor-hash-bucket-method-9 () none 9)
+    (add-actor-cshape (_type_ collide-shape) none 9)
     )
   )
 
 (deftype actor-hash-buckets (structure)
-  ((hash basic           :offset-assert 0)
-   (list basic           :offset-assert 4)
+  ((hash spatial-hash    :offset-assert 0)
+   (list engine           :offset-assert 4)
    (data actor-hash-bucket 4       :inline :offset-assert 8)
    (tpos vector  :inline :offset-assert 80)
    )
@@ -26501,7 +26503,7 @@
   :size-assert         #x60
   :flag-assert         #xa00000060
   (:methods
-    (actor-hash-buckets-method-9 () none 9)
+    (hash-actors (_type_) none 9)
     )
   )
 
@@ -26513,7 +26515,6 @@
 ;; merc-death                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype death-info (basic)
   ((vertex-skip uint16  :offset-assert 4)
    (timer       uint8   :offset-assert 6)
@@ -26525,17 +26526,16 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *merc-death-globals* object) ;; vector
-;; (define-extern birth-func-death-sparks function) ;; (function none)
-;; (define-extern death-seed death-info)
-;; (define-extern start-seed-effect function)
-;; (define-extern death-default death-info) ;; death-info
-;; (define-extern death-warp-in death-info) ;; death-info
-;; (define-extern death-warp-out death-info) ;; death-info
-;; (define-extern sparticle-texture-glow-soft function)
-;; (define-extern merc-death-spawn function) ;; (function int vector vector none)
+(define-extern *merc-death-globals* vector)
+(define-extern birth-func-death-sparks (function none))
+(define-extern death-seed death-info)
+(define-extern start-seed-effect (function process-drawable vector cspace none))
+(define-extern death-default death-info)
+(define-extern death-warp-in death-info)
+(define-extern death-warp-out death-info)
+(define-extern sparticle-texture-glow-soft (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern merc-death-spawn (function int vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-flow                     ;;
@@ -26553,7 +26553,7 @@
   )
 
 (deftype flow-section-array (inline-array-class)
-  ((data             flow-section :dynamic :offset-assert 16)
+  ((data             flow-section :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -26574,9 +26574,9 @@
   (:methods
     (new (symbol type process-drawable res-lump) _type_ 0)
     (draw-path (_type_) none 9)
-    (flow-control-method-10 () none 10)
-    (flow-control-method-11 () none 11)
-    (flow-control-method-12 () none 12)
+    (setup (_type_) none 10)
+    (push-process (_type_ process-focusable) none 11)
+    (find-and-push-things (_type_) none 12)
     )
   )
 

@@ -290,6 +290,12 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
     for (int j = start; j < end; j++) {
       auto& word = obj_words.at(j / 4);
       if (word.kind() != LinkedWord::PLAIN_DATA) {
+        if (word.kind() == LinkedWord::TYPE_PTR) {
+          throw std::runtime_error(
+              fmt::format("Got bad word in kind in array of values: expecting array of {}'s, got a "
+                          "type pointer {}\n",
+                          elt_type.print(), word.symbol_name()));
+        }
         throw std::runtime_error(fmt::format(
             "Got bad word in kind in array of values: expecting array of {}'s, got a {}\n",
             elt_type.print(), (int)word.kind()));
@@ -424,6 +430,11 @@ goos::Object decomp_ref_to_integer_array_guess_size(
       default:
         ASSERT(false);
     }
+  }
+
+  // if we end exactly on a type_ptr, take off an element.
+  if (all_words.at(my_seg).at((end_offset - 1) / 4).kind() == LinkedWord::TYPE_PTR) {
+    size_elts--;
   }
 
   return decompile_value_array(array_elt_type, elt_type_info, size_elts, stride, start_label.offset,
@@ -726,9 +737,9 @@ const std::unordered_map<
             {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
             {"decision-point-array", ArrayFieldDecompMeta(TypeSpec("race-decision-point"), 16)}}},
           {"actor-hash-bucket",
-           {{"data", ArrayFieldDecompMeta(TypeSpec("uint32"),
-                                          4,
-                                          ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+           {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"),
+                                          16,
+                                          ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
           {"xz-height-map",
            {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
                                           1,

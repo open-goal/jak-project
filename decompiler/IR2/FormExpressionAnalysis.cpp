@@ -1092,7 +1092,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match for stride 1 address access with add.");
+          throw std::runtime_error(
+              fmt::format("Failed to match for stride 1 address access with add: {}",
+                          args.at(0)->to_string(env)));
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {

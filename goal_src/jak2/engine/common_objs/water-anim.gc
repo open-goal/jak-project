@@ -40,6 +40,7 @@
     )
   )
 
+
 (defmethod relocate water-anim ((obj water-anim) (arg0 int))
   (if (nonzero? (-> obj flow))
       (&+! (-> obj flow) arg0)
@@ -227,6 +228,7 @@
   :flag-assert         #x90000000c
   )
 
+
 (define *water-anim-look*
   (new 'static 'boxed-array :type water-anim-look
     (new 'static 'water-anim-look :skel-group "water-anim-nest-dark-eco-largepool" :anim 8 :ambient-sound-spec #f)
@@ -303,6 +305,8 @@
     )
   )
 
+;; WARN: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 210]
 (defbehavior water-anim-event-handler water-anim ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-1 none))
   (let ((v1-0 arg2))
@@ -326,60 +330,59 @@
          v0-1
          )
         ((= v1-0 'water)
-         (let ((s5-0 (the-as object (-> arg3 param 0))))
-           (let* ((s4-0 (the-as object (-> arg3 param 1)))
-                  (gp-0 (if (type? (the-as process s4-0) process-focusable)
-                            (the-as uint s4-0)
-                            )
-                        )
+         (let* ((s5-0 (the-as object (-> arg3 param 0)))
+                (s4-0 (the-as object (-> arg3 param 1)))
+                (gp-0 (if (type? (the-as process s4-0) process-focusable)
+                          (the-as uint s4-0)
+                          )
+                      )
+                )
+           (when (and (logtest? (-> self flags) (water-flags deadly))
+                      (logtest? (water-flags touch-water) (-> (the-as water-info s5-0) flags))
+                      (the-as uint gp-0)
+                      )
+             (let ((v1-15 (-> self attack-event)))
+               (case v1-15
+                 ((#f)
                   )
-             (when (and (logtest? (-> self flags) (water-flags deadly))
-                        (logtest? (water-flags touch-water) (-> (the-as water-info s5-0) flags))
-                        (the-as uint gp-0)
-                        )
-               (let ((v1-15 (-> self attack-event)))
-                 (case v1-15
-                   ((#f)
-                    )
-                   (('heat)
-                    (send-event (the-as process-tree gp-0) 'heat (* 10.0 (-> self clock seconds-per-frame)))
-                    )
-                   (('drown-death 'lava 'dark-eco-pool)
-                    (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
-                             (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-                               (set! (-> a1-10 from) (process->ppointer self))
-                               (set! (-> a1-10 num-params) 2)
-                               (set! (-> a1-10 message) 'attack-invinc)
-                               (set! (-> a1-10 param 0) (the-as uint #f))
-                               (let ((a2-4 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                                 (set! (-> a2-4 id) (-> self attack-id))
-                                 (set! (-> a2-4 mode) v1-15)
-                                 (set! (-> a1-10 param 1) (the-as uint a2-4))
-                                 )
-                               (send-event-function (the-as process-focusable gp-0) a1-10)
+                 (('heat)
+                  (send-event (the-as process-tree gp-0) 'heat (* 10.0 (-> self clock seconds-per-frame)))
+                  )
+                 (('drown-death 'lava 'dark-eco-pool)
+                  (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
+                           (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+                             (set! (-> a1-10 from) (process->ppointer self))
+                             (set! (-> a1-10 num-params) 2)
+                             (set! (-> a1-10 message) 'attack-invinc)
+                             (set! (-> a1-10 param 0) (the-as uint #f))
+                             (let ((a2-4 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                               (set! (-> a2-4 id) (-> self attack-id))
+                               (set! (-> a2-4 mode) v1-15)
+                               (set! (-> a1-10 param 1) (the-as uint a2-4))
                                )
+                             (send-event-function (the-as process-focusable gp-0) a1-10)
                              )
-                        (send-event self 'notify 'attack)
-                        )
-                    )
-                   (else
-                     (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
-                              (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-                                (set! (-> a1-13 from) (process->ppointer self))
-                                (set! (-> a1-13 num-params) 2)
-                                (set! (-> a1-13 message) 'attack)
-                                (set! (-> a1-13 param 0) (the-as uint #f))
-                                (let ((a2-6 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                                  (set! (-> a2-6 id) (-> self attack-id))
-                                  (set! (-> a2-6 mode) v1-15)
-                                  (set! (-> a1-13 param 1) (the-as uint a2-6))
-                                  )
-                                (send-event-function (the-as process-tree gp-0) a1-13)
+                           )
+                      (send-event self 'notify 'attack)
+                      )
+                  )
+                 (else
+                   (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
+                            (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+                              (set! (-> a1-13 from) (process->ppointer self))
+                              (set! (-> a1-13 num-params) 2)
+                              (set! (-> a1-13 message) 'attack)
+                              (set! (-> a1-13 param 0) (the-as uint #f))
+                              (let ((a2-6 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                                (set! (-> a2-6 id) (-> self attack-id))
+                                (set! (-> a2-6 mode) v1-15)
+                                (set! (-> a1-13 param 1) (the-as uint a2-6))
                                 )
+                              (send-event-function (the-as process-tree gp-0) a1-13)
                               )
-                         (send-event self 'notify 'attack)
-                         )
-                     )
+                            )
+                       (send-event self 'notify 'attack)
+                       )
                    )
                  )
                )
@@ -389,7 +392,7 @@
                       )
              (let ((a0-40 (-> self flow)))
                (if (nonzero? a0-40)
-                   ((method-of-object a0-40 flow-control-method-11))
+                   (push-process a0-40 (the-as process-focusable gp-0))
                    )
                )
              )
@@ -461,11 +464,13 @@
   (ripple-find-height obj 0 arg0)
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defmethod water-anim-method-27 water-anim ((obj water-anim))
   "Empty."
   (none)
   )
 
+;; WARN: Return type mismatch quaternion vs none.
 (defmethod offset! water-anim ((obj water-anim))
   "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
   (local-vars (sv-16 res-tag))
@@ -529,6 +534,7 @@
     )
   )
 
+;; WARN: Return type mismatch water-flags vs none.
 (defmethod water-anim-init! water-anim ((obj water-anim))
   "Initialize a [[water-anim]]."
   (local-vars (sv-16 res-tag))
@@ -599,6 +605,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior water-anim-init-by-other water-anim ((arg0 entity-actor))
   (process-entity-set! self arg0)
   (water-anim-method-27 self)
@@ -610,6 +617,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! water-anim ((obj water-anim) (arg0 entity-actor))
   (water-anim-method-27 obj)
   (reset-root! obj)

@@ -828,6 +828,25 @@ struct ExecutionContext {
     }
   }
 
+  void vmr32(DEST mask, int dest, int src) {
+    auto s = vf_src(src);
+    if ((u64)mask & 1) {
+      vfs[dest].f[0] = s.f[1];
+    }
+
+    if ((u64)mask & 2) {
+      vfs[dest].f[1] = s.f[2];
+    }
+
+    if ((u64)mask & 4) {
+      vfs[dest].f[2] = s.f[3];
+    }
+
+    if ((u64)mask & 8) {
+      vfs[dest].f[3] = s.f[0];
+    }
+  }
+
   void vsub(DEST mask, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -1107,6 +1126,7 @@ struct ExecutionContext {
   }
   void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
   void or_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1); }
+  void nor(int dst, int src0, int src1) { gprs[dst].du64[0] = ~(sgpr64(src0) | sgpr64(src1)); }
 
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
