@@ -15,7 +15,7 @@
 (define-extern target-gun-joint-points (function none :behavior target))
 (define-extern target-board-joint-points (function none :behavior target))
 (define-extern debounce-speed (function float float vector vector float :behavior target))
-(define-extern target-collision-reaction (function control-info collide-query vector vector cshape-moving-flags))
+(define-extern target-collision-reaction (function control-info collide-query vector vector collide-status))
 (define-extern ja-post (function none :behavior process-drawable))
 (define-extern target-powerup-process (function none :behavior target))
 (define-extern target-exit (function none :behavior target))
@@ -29,7 +29,6 @@
 (define-extern tobot-stance (state target))
 
 ;; DECOMP BEGINS
-
 
 (defbehavior build-conversions target ((arg0 vector))
   (when (!= (-> self control unknown-surface02) (-> self control surf))
@@ -95,6 +94,7 @@
   (build-conversions (-> self control transv))
   )
 
+;; WARN: Return type mismatch collide-status vs none.
 (defbehavior reverse-conversions target ((arg0 vector))
   (let ((v1-1 (-> self control unknown-vector00)))
     (set! (-> self control unknown-float05) (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
@@ -142,10 +142,8 @@
   (none)
   )
 
-;; definition (debug) for function target-history-print
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition (debug) for function target-print-stats
 (defun-debug target-print-stats ((arg0 target) (arg1 symbol))
   (local-vars
     (sv-64 int)
@@ -351,31 +349,31 @@
         (format
           arg1
           "~0k~9S ~9S ~9S ~9S ~9S ~9S~%"
-          (if (logtest? (-> arg0 control status) (cshape-moving-flags on-surface))
+          (if (logtest? (-> arg0 control status) (collide-status on-surface))
               "on-surface"
               ""
               )
-          (if (logtest? (-> arg0 control status) (cshape-moving-flags on-ground))
+          (if (logtest? (-> arg0 control status) (collide-status on-ground))
               "on-ground"
               ""
               )
-          (if (logtest? (-> arg0 control status) (cshape-moving-flags t-surface))
+          (if (logtest? (-> arg0 control status) (collide-status touch-surface))
               "t-surface"
               ""
               )
-          (if (logtest? (-> arg0 control status) (cshape-moving-flags t-wall))
+          (if (logtest? (-> arg0 control status) (collide-status touch-wall))
               "t-wall"
               ""
               )
-          (if (logtest? (-> arg0 control status) (cshape-moving-flags t-act))
+          (if (logtest? (-> arg0 control status) (collide-status touch-actor))
               "t-act"
               ""
               )
           (cond
-            ((logtest? (-> arg0 control status) (cshape-moving-flags t-ceil))
+            ((logtest? (-> arg0 control status) (collide-status touch-ceiling))
              "t-ceil"
              )
-            ((logtest? (-> arg0 control status) (cshape-moving-flags on-water))
+            ((logtest? (-> arg0 control status) (collide-status on-water))
              "on-water"
              )
             (else
@@ -584,6 +582,7 @@
   arg0
   )
 
+;; WARN: Return type mismatch vector vs none.
 (defun vector<-pad-in-matrix! ((arg0 vector) (arg1 cpad-info) (arg2 matrix))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (t9-0 matrix-local->world)
@@ -654,7 +653,7 @@
              (< 0.7 (-> self control unknown-float12))
              (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame07)) (seconds 0.3))
              (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame08)) (seconds 0.3))
-             (logtest? (-> self control status) (cshape-moving-flags on-surface))
+             (logtest? (-> self control status) (collide-status on-surface))
              (and (< 0.7 (-> self control surface-angle)) #t)
              )
         )
@@ -664,10 +663,10 @@
 
 (defbehavior wall-hide? target ()
   (when (and (< 0.7 (-> self control unknown-float12))
-             (< 0.7 (-> self control unknown-float27))
+             (< 0.7 (-> self control blocked-factor))
              (and (< (-> self control unknown-float05) 8192.0)
-                  (logtest? (-> self control status) (cshape-moving-flags t-wall))
-                  (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
+                  (logtest? (-> self control status) (collide-status touch-wall))
+                  (not (logtest? (-> self control status) (collide-status touch-actor)))
                   (or (= (-> self control unknown-pat-surface00 event) (pat-event hide))
                       (let ((a0-2 (level-get-target-inside *level*)))
                         (and a0-2 (logtest? (-> a0-2 info level-flags) 1))
@@ -802,11 +801,11 @@
       (set! (-> self control unknown-float08) f0-6)
       )
     (let ((f0-8 (* arg1 (-> self control unknown-surface01 target-speed))))
-      (set! (-> self control unknown-vector01 quad) (-> (vector-normalize! gp-0 f0-8) quad))
+      (set! (-> self control target-transv quad) (-> (vector-normalize! gp-0 f0-8) quad))
       )
     )
   (let ((gp-1 (new-stack-vector0)))
-    (vector-matrix*! gp-1 (-> self control unknown-vector01) (-> self control unknown-matrix01))
+    (vector-matrix*! gp-1 (-> self control target-transv) (-> self control unknown-matrix01))
     (vector-float*! gp-1 gp-1 0.5)
     (vector+! gp-1 gp-1 (-> self control trans))
     (add-debug-text-sphere
@@ -907,11 +906,11 @@
   )
 
 (defbehavior add-thrust target ()
-  (let ((s5-0 (-> self control unknown-vector01))
+  (let ((s5-0 (-> self control target-transv))
         (gp-0 (-> self control unknown-vector00))
         )
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> self control unknown-vector01 quad))
+      (set! (-> s4-0 quad) (-> self control target-transv quad))
       (target-bend-vel-turn gp-0)
       (target-add-slide-factor s5-0)
       (let ((t9-2 vector-xz-normalize!)
@@ -958,7 +957,7 @@
                           )
                         )
                  )
-            (let* ((s2-0 (-> self control unknwon-vector27))
+            (let* ((s2-0 (-> self control btransv))
                    (s3-1 (vector-matrix*! (new 'stack-no-clear 'vector) s2-0 (-> self control unknown-matrix00)))
                    )
               (if (< (-> s4-0 x) 0.0)
@@ -973,12 +972,12 @@
                   (set! (-> s3-1 z) (fmax (fmin 0.0 (-> s3-1 z)) (-> s4-0 z)))
                   (set! (-> s3-1 z) (fmax 0.0 (fmin (-> s3-1 z) (-> s4-0 z))))
                   )
-              (if (< 0.2 (-> self control unknown-float27))
+              (if (< 0.2 (-> self control blocked-factor))
                   (vector-seek! s3-1 s4-0 (* 122880.0 (-> self clock seconds-per-frame)))
                   )
               (vector-matrix*! s2-0 s3-1 (-> self control unknown-matrix01))
               (let ((f28-0 (vector-vector-xz-distance s3-1 s4-0)))
-                (when (and (not (logtest? (-> self control status) (cshape-moving-flags t-surface)))
+                (when (and (not (logtest? (-> self control status) (collide-status touch-surface)))
                            (let ((v1-51 gp-0))
                              (< (sqrtf (+ (* (-> v1-51 x) (-> v1-51 x)) (* (-> v1-51 z) (-> v1-51 z))))
                                 (sqrtf (+ (* (-> s3-1 x) (-> s3-1 x)) (* (-> s3-1 z) (-> s3-1 z))))
@@ -994,8 +993,8 @@
                   )
                 )
               )
-            (if (and (not (logtest? (-> self control status) (cshape-moving-flags t-wall)))
-                     (logtest? (-> self control old-status) (cshape-moving-flags t-wall))
+            (if (and (not (logtest? (-> self control status) (collide-status touch-wall)))
+                     (logtest? (-> self control old-status) (collide-status touch-wall))
                      (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
                      (< 0.0 (-> gp-0 y))
                      (< 0.0 (vector-dot
@@ -1013,8 +1012,8 @@
             (if (< (- (-> self clock frame-counter) (-> self control unknown-time-frame09)) (seconds 0.2))
                 (set! f30-0 (+ 204800.0 f30-0))
                 )
-            (if (and (not (logtest? (-> self control status) (cshape-moving-flags t-wall)))
-                     (and (logtest? (-> self control old-status) (cshape-moving-flags t-wall))
+            (if (and (not (logtest? (-> self control status) (collide-status touch-wall)))
+                     (and (logtest? (-> self control old-status) (collide-status touch-wall))
                           (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
                           (< 0.0 (-> gp-0 y))
                           (< (-> gp-0 z) 0.0)
@@ -1051,7 +1050,7 @@
       "ltransv"
       (new 'static 'rgba :g #xff :a #x80)
       )
-    (set! (-> gp-1 quad) (-> self control unknwon-vector27 quad))
+    (set! (-> gp-1 quad) (-> self control btransv quad))
     (vector-float*! gp-1 gp-1 0.5)
     (vector+! gp-1 gp-1 (-> self control trans))
     (add-debug-text-sphere
@@ -1153,7 +1152,7 @@
              (-> self control unknown-vector03)
              )
             ((and (or (not (logtest? (logior (-> self control status) (-> self control old-status))
-                                     (cshape-moving-flags on-surface t-surface)
+                                     (collide-status on-surface touch-surface)
                                      )
                            )
                       (< (- (-> self clock frame-counter) (-> self control unknown-time-frame07)) (seconds 0.5))
@@ -1395,7 +1394,7 @@
       (dotimes (s5-0 2)
         (let ((a1-4 (not (or (logtest? (state-flags lleg-no-ik rleg-no-ik) (-> self state-flags))
                              (and (logtest? (-> self control unknown-surface00 flags) (surface-flag air))
-                                  (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+                                  (zero? (logand (-> self control status) (collide-status on-surface)))
                                   )
                              (logtest? (focus-status edge-grab pole flut pilot mech) (-> self focus-status))
                              )
@@ -1537,7 +1536,7 @@
         )
       )
   (cond
-    ((logtest? (-> self control old-status) (cshape-moving-flags on-surface))
+    ((logtest? (-> self control old-status) (collide-status on-surface))
      (if (>= (+ (-> self clock frame-counter) (seconds -0.035)) (-> self control unknown-time-frame03))
          (vector-reset! (-> self control unknown-vector18))
          )
@@ -1557,7 +1556,7 @@
         )
       )
     )
-  (set! (-> self control unknown-vector17 quad) (-> self control unknown-vector18 quad))
+  (set! (-> self control collide-extra-velocity quad) (-> self control unknown-vector18 quad))
   (set! (-> self control unknown-vector14 quad) (-> self control local-normal quad))
   0
   (none)
@@ -1601,20 +1600,20 @@
   (quaternion-copy! (-> self control unknown-quaternion03) (-> self control quat-for-control))
   ((-> self control unknown-surface01 active-hook))
   (cond
-    ((logtest? (-> self control status) (cshape-moving-flags on-surface))
+    ((logtest? (-> self control status) (collide-status on-surface))
      (set! (-> self control unknown-time-frame06) (-> self clock frame-counter))
      (set! (-> self control unknown-vector21 quad) (-> self control trans quad))
      (if (and (>= (-> self control coverage) 1.0)
-              (not (logtest? (-> self control status) (cshape-moving-flags t-act on-water)))
-              (logtest? (-> self control status) (cshape-moving-flags on-ground))
+              (not (logtest? (-> self control status) (collide-status touch-actor on-water)))
+              (logtest? (-> self control status) (collide-status on-ground))
               )
-         (set! (-> self control unknown-vector23 quad) (-> self control trans quad))
+         (set! (-> self control last-trans-on-surf quad) (-> self control trans quad))
          )
      ((-> self control unknown-surface01 touch-hook))
      )
     (else
       (let ((v1-49 (-> self control trans)))
-        (when (logtest? (-> self control old-status) (cshape-moving-flags on-surface))
+        (when (logtest? (-> self control old-status) (collide-status on-surface))
           (set! (-> self control unknown-vector42 quad) (-> self control unknown-vector21 quad))
           (set! (-> self control unknown-vector43 quad) (-> self control unknown-vector21 quad))
           )
@@ -1710,17 +1709,16 @@
     (set! (-> self control unknown-time-frame20) (-> self clock frame-counter))
     (cond
       ((logtest? (focus-status mech indax) (-> self focus-status))
-       (if (not (and (-> self next-state)
-                     (let ((v1-179 (-> self next-state name)))
-                       (or (= v1-179 'target-falling)
-                           (= v1-179 'target-board-falling)
-                           (= v1-179 'target-gun-falling)
-                           (= v1-179 'target-mech-falling)
-                           (= v1-179 'target-mech-carry-falling)
-                           (= v1-179 'target-carry-falling)
-                           (= v1-179 'target-indax-falling)
-                           )
-                       )
+       (if (not (and (-> self next-state) (let ((v1-179 (-> self next-state name)))
+                                            (or (= v1-179 'target-falling)
+                                                (= v1-179 'target-board-falling)
+                                                (= v1-179 'target-gun-falling)
+                                                (= v1-179 'target-mech-falling)
+                                                (= v1-179 'target-mech-carry-falling)
+                                                (= v1-179 'target-carry-falling)
+                                                (= v1-179 'target-indax-falling)
+                                                )
+                                            )
                      )
                 )
            (send-event self 'change-mode 'falling)
@@ -1761,7 +1759,7 @@
                )
              )
            )
-         (collide-shape-method-29 (-> self control) a1-36)
+         (move-to-point! (-> self control) a1-36)
          )
        (set! (-> self control surf) *standard-ground-surface*)
        )
@@ -1776,7 +1774,7 @@
                                                   (or (= v1-211 'target-walk) (= v1-211 'target-gun-walk))
                                                   )
                            )
-                      (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+                      (zero? (logand (-> self control status) (collide-status on-surface)))
                       )
                  )
              (and (< f0-17 0.0)
@@ -1819,11 +1817,10 @@
         )
       )
     )
-  (set! (-> self control unknown-float30)
-        (if (logtest? (-> self control status) (cshape-moving-flags on-surface))
-            32.0
-            2.0
-            )
+  (set! (-> self control unknown-float30) (if (logtest? (-> self control status) (collide-status on-surface))
+                                              32.0
+                                              2.0
+                                              )
         )
   (let ((v1-248 (-> *setting-control* user-current beard)))
     (when (!= (-> self beard?) v1-248)
@@ -1843,9 +1840,8 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defbehavior post-flag-setup target ()
-  (if (logtest? (-> self control status) (cshape-moving-flags t-wall t-act))
+  (if (logtest? (-> self control status) (collide-status touch-wall touch-actor))
       (set! (-> self control unknown-time-frame07) (-> self clock frame-counter))
       )
   (when (logtest? (-> self state-flags) (state-flags tinvul1))
@@ -1934,13 +1930,13 @@
 
 (defbehavior bend-gravity target ()
   (if (and (logtest? (-> self control root-prim prim-core action) (collide-action no-normal-reset))
-           (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+           (zero? (logand (-> self control status) (collide-status on-surface)))
            )
       (return #f)
       )
   (let ((f0-1
-          (if (and (logtest? (-> self control status) (cshape-moving-flags t-wall))
-                   (zero? (logand (-> self control status) (cshape-moving-flags on-surface)))
+          (if (and (logtest? (-> self control status) (collide-status touch-wall))
+                   (zero? (logand (-> self control status) (collide-status on-surface)))
                    )
               0.0
               (-> self control unknown-float29)
@@ -2141,15 +2137,15 @@
                       )
                 (vector-float*! (-> self control rider-last-move) s4-1 (-> self clock frames-per-second))
                 (set! (-> self control rider-time) (-> self clock frame-counter))
-                (vector+! s3-1 s3-1 (-> self control unknown-vector05))
-                (collide-shape-method-29 (-> self control) s3-1)
+                (vector+! s3-1 s3-1 (-> self control cspace-offset))
+                (move-to-point! (-> self control) s3-1)
                 )
               (set! (-> self control unknown-float33) 0.0)
               (set! (-> self control unknown-vector21 quad) (-> self control trans quad))
               )
              (else
                (vector-normalize! s4-1 1228.8)
-               (let ((a1-20 (vector+! (new 'stack-no-clear 'vector) s4-1 (-> self control unknown-vector05))))
+               (let ((a1-20 (vector+! (new 'stack-no-clear 'vector) s4-1 (-> self control cspace-offset))))
                  (move-by-vector! (-> self control) a1-20)
                  )
                (vector-float*! (-> self control rider-last-move) s4-1 (-> self clock frames-per-second))
@@ -2167,8 +2163,8 @@
               (vector-! a1-23 (-> s5-0 center-hold) (-> self control unknown-vector31))
               (vector-float*! (-> self control rider-last-move) s4-1 (-> self clock frames-per-second))
               (set! (-> self control rider-time) (-> self clock frame-counter))
-              (vector+! a1-23 a1-23 (-> self control unknown-vector05))
-              (collide-shape-method-29 (-> self control) a1-23)
+              (vector+! a1-23 a1-23 (-> self control cspace-offset))
+              (move-to-point! (-> self control) a1-23)
               )
             (set! (-> self control unknown-float33) 0.0)
             (set! (-> self control unknown-vector21 quad) (-> self control trans quad))
@@ -2311,7 +2307,7 @@
            )
           (else
             (set! (-> self control unknown-symbol02) (the-as float #t))
-            (collide-shape-method-29
+            (move-to-point!
               (-> self control)
               (vector-! (new 'stack-no-clear 'vector) s5-0 (-> self control unknown-vector31))
               )
@@ -2332,7 +2328,7 @@
   (set-quaternion! (-> self control) (-> self control dir-targ))
   (joint-control-method-10 (-> self skel))
   (draw-control-method-14 (-> self draw) (-> self node-list) (-> self skel))
-  (collide-shape-method-46 (-> self control))
+  (update-transforms (-> self control))
   (none)
   )
 
@@ -2355,7 +2351,7 @@
       ((logtest? (focus-status board pilot mech indax) (-> self focus-status))
        (set! (-> self control unknown-vector15 quad) (-> self control trans quad))
        )
-      ((or (logtest? (-> self control status) (cshape-moving-flags on-water))
+      ((or (logtest? (-> self control status) (collide-status on-water))
            (let ((v1-23 (-> self water flags)))
              (and (logtest? (water-flags touch-water) v1-23)
                   (logtest? (water-flags under-water swimming) v1-23)
@@ -2404,7 +2400,7 @@
        (-> self control unknown-vector15)
        )
       ((and (or (logtest? (water-flags touch-water) (-> self water flags))
-                (logtest? (-> self control status) (cshape-moving-flags on-water))
+                (logtest? (-> self control status) (collide-status on-water))
                 )
             (logtest? (-> self water flags) (water-flags mud))
             )
@@ -2483,7 +2479,7 @@
      )
     )
   (let ((a2-5
-          (matrix<-no-trans-transformq! (-> self control unknown-matrix02) (the-as transformq (-> self control trans)))
+          (matrix<-no-trans-transformq! (-> self control ctrl-orientation) (the-as transformq (-> self control trans)))
           )
         )
     (vector-matrix*! (-> self control unknown-vector28) (-> *TARGET-bank* head-offset) a2-5)
@@ -2525,7 +2521,7 @@
 
 (defbehavior do-target-gspot target ()
   (cond
-    ((and (logtest? (-> self control status) (cshape-moving-flags on-surface))
+    ((and (logtest? (-> self control status) (collide-status on-surface))
           (!= (-> self control unknown-surface00 mode) 'swim)
           (!= (-> self control unknown-surface00 mode) 'dive)
           (not (and (-> self next-state) (= (-> self next-state name) 'target-flop)))
@@ -2537,7 +2533,7 @@
      )
     (else
       (let ((gp-0 (new 'stack-no-clear 'collide-query)))
-        (if (collide-shape-moving-method-55
+        (if (find-ground
               (-> self control)
               gp-0
               (logclear (-> self control root-prim prim-core collide-with) (collide-spec water))
@@ -2641,7 +2637,7 @@
             (set! (-> a2-3 ignore-pat) (-> v1-52 pat-ignore-mask))
             )
           (set! (-> a2-3 action-mask) (collide-action solid))
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-3 (meters 1))
+          (fill-cache-integrate-and-collide (-> self control) (-> self control transv) a2-3 (meters 1))
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -2774,7 +2770,7 @@
             (set! (-> a2-0 ignore-pat) (-> v1-30 pat-ignore-mask))
             )
           (set! (-> a2-0 action-mask) (collide-action solid))
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 (meters 1))
+          (fill-cache-integrate-and-collide (-> self control) (-> self control transv) a2-0 (meters 1))
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -2901,7 +2897,7 @@
             (set! (-> a2-0 ignore-pat) (-> v1-29 pat-ignore-mask))
             )
           (set! (-> a2-0 action-mask) (collide-action solid))
-          (collide-shape-method-32 (-> self control) (-> self control transv) a2-0 (meters 1))
+          (fill-cache-integrate-and-collide (-> self control) (-> self control transv) a2-0 (meters 1))
           )
         (if (and (logtest? (-> self control root-prim prim-core action) (collide-action check-edge))
                  (>= (vector-dot
@@ -2993,9 +2989,9 @@
         (do-rotations2)
         (reverse-conversions (-> self control transv))
         (vector-!
-          (-> self control unknown-vector05)
-          (-> self control unknown-vector04)
-          (-> self control unknown-vector07)
+          (-> self control cspace-offset)
+          (-> self control draw-offset)
+          (-> self control anim-collide-offset-world)
           )
         (let ((a1-3 (new 'stack-no-clear 'overlaps-others-params)))
           (set! (-> a1-3 options) (overlaps-others-options oo0))
@@ -3065,9 +3061,7 @@
               (clear-record-tags! *history* (history-channel collide-status) (-> gp-4 unknown-halfword00) (the-as uint 2))
               )
             )
-        (set! (-> v1-68 collide-status)
-              (the-as collide-status (logior (-> gp-4 status) (cshape-moving-flags csmf08)))
-              )
+        (set! (-> v1-68 collide-status) (logior (-> gp-4 status) (collide-status no-touch)))
         (set! (-> v1-68 vector z) (the-as float (-> gp-4 reaction-flag)))
         )
       )
@@ -3079,9 +3073,9 @@
 
 (defbehavior target-no-ja-move-post target ()
   (vector-!
-    (-> self control unknown-vector05)
-    (-> self control unknown-vector04)
-    (-> self control unknown-vector07)
+    (-> self control cspace-offset)
+    (-> self control draw-offset)
+    (-> self control anim-collide-offset-world)
     )
   (let ((a1-2 (new 'stack-no-clear 'overlaps-others-params)))
     (set! (-> a1-2 options) (overlaps-others-options oo0))
@@ -3108,7 +3102,7 @@
   (target-exit)
   (target-timed-invulnerable-off self 0)
   (target-timed-invulnerable-off self 2)
-  (set! (-> self control status) (cshape-moving-flags))
+  (set! (-> self control status) (collide-status))
   (set! (-> self control unknown-dynamics00) *standard-dynamics*)
   (set! (-> self control surf) *standard-ground-surface*)
   (set! (-> self control unknown-vector02 quad) (-> self control unknown-dynamics00 gravity-normal quad))
@@ -3159,7 +3153,9 @@
   (let ((s0-0 (new 'process 'control-info obj (collide-list-enum hit-by-others))))
     (set! (-> s0-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s0-0 reaction) target-collision-reaction)
-    (set! (-> s0-0 no-reaction) target-collision-no-reaction)
+    (set! (-> s0-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) target-collision-no-reaction)
+          )
     (set! sv-16 (new 'process 'collide-shape-prim-group s0-0 (the-as uint 9) 1))
     (set! (-> s0-0 total-prims) (the-as uint 10))
     (set! (-> sv-16 prim-core action) (collide-action solid can-ride))
@@ -3240,7 +3236,7 @@
     (set! (-> v1-69 event-self) 'touched)
     )
   (set! (-> obj game) *game-info*)
-  (collide-shape-method-29 (-> obj control) (-> arg0 trans))
+  (move-to-point! (-> obj control) (-> arg0 trans))
   (set! (-> obj control unknown-vector15 quad) (-> arg0 trans quad))
   (set! (-> obj focus-search) (new 'process 'boxed-array collide-shape 128))
   (set! (-> obj focus-search length) 0)
@@ -3264,7 +3260,7 @@
   (let ((v1-94 (-> obj node-list data)))
     (set! (-> v1-94 0 param0) cspace<-transformq+trans!)
     (set! (-> v1-94 0 param1) (the-as basic (-> obj control trans)))
-    (set! (-> v1-94 0 param2) (the-as basic (-> obj control unknown-vector05)))
+    (set! (-> v1-94 0 param2) (the-as basic (-> obj control cspace-offset)))
     )
   (set! (-> obj skel override) (new 'process 'boxed-array float 54))
   (set! (-> obj draw light-index) (the-as uint 30))
@@ -3352,6 +3348,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior target-init target ((arg0 continue-point))
   (init-target self arg0 #f)
   (set! (-> self event-hook) (-> target-continue event))
@@ -3360,6 +3357,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior tobot-init target ((arg0 symbol))
   (init-target self (the-as continue-point #f) 'tobot)
   (set! (-> self name) "tobot")
@@ -3419,6 +3417,7 @@
   *target*
   )
 
+;; WARN: Return type mismatch (pointer process) vs target.
 (defun tobot-start ((arg0 symbol))
   (the-as target (process-spawn
                    target

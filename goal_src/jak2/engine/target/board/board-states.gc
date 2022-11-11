@@ -29,7 +29,6 @@
 
 ;; DECOMP BEGINS
 
-;; definition for function vector-vector-angle
 (defun vector-vector-angle ((arg0 vector) (arg1 vector))
   (let ((s4-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'matrix))
@@ -42,7 +41,6 @@
     )
   )
 
-;; definition for function target-board-anim-trans
 ;; WARN: Return type mismatch float vs none.
 (defbehavior target-board-anim-trans target ()
   (let ((f26-0 (deg-
@@ -110,7 +108,7 @@
   (when (and (board-on-ground?)
              (>= (- (-> self clock frame-counter) (-> self board unknown-time-frame02)) (seconds 0.2))
              )
-    (if (logtest? (-> self control status) (cshape-moving-flags csmf11))
+    (if (logtest? (-> self control status) (collide-status impact-surface))
         (+! (-> self board turn-anim-duck-vel) (lerp-scale 0.0 15.0 (-> self control unknown-float21) 0.0 81920.0))
         )
     (let ((f0-38 (vector-dot (the-as vector (-> self board up-vector)) (-> self board up-vector 1))))
@@ -124,8 +122,6 @@
   (none)
   )
 
-;; definition for function target-board-spin-check
-;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior target-board-spin-check target ()
   (when (and (or (cpad-pressed? (-> self control cpad number) r1)
@@ -289,8 +285,6 @@
   (none)
   )
 
-;; definition for function target-board-halfpipe-trans
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-board-halfpipe-trans target ()
   (when (and (logtest? (focus-status halfpipe) (-> self focus-status)) *camera*)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -321,8 +315,6 @@
   (none)
   )
 
-;; definition for function target-board-resolve-points
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-board-resolve-points target ()
   (when (= (-> self board main mode) (joint-mod-mode rotate))
     (let ((f0-1 (fabs (-> self board troty-cum))))
@@ -348,8 +340,6 @@
   (none)
   )
 
-;; definition for function target-board-ground-check
-;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior target-board-ground-check target ()
   (when (board-on-ground?)
@@ -385,7 +375,7 @@
             (if (< (vector-length (-> self control transv)) 114688.0)
                 (vector-normalize! (-> self control transv) 114688.0)
                 )
-            (when (not (logtest? (-> self control old-status) (cshape-moving-flags on-surface)))
+            (when (not (logtest? (-> self control old-status) (collide-status on-surface)))
               (let ((gp-0 (new 'stack-no-clear 'vector)))
                 (set! (-> gp-0 quad) (-> self control trans quad))
                 (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
@@ -461,8 +451,6 @@
   (none)
   )
 
-;; definition for function target-board-halfpipe-check
-;; INFO: Used lq/sq
 (defbehavior target-board-halfpipe-check target ()
   (local-vars (v0-3 collide-action))
   (let ((gp-0 (vector-flatten!
@@ -502,7 +490,6 @@
     )
   )
 
-;; definition for function target-board-jump-trans
 (defbehavior target-board-jump-trans target ()
   (when (and (!= (-> self state-time) (-> self clock frame-counter)) (jump-hit-ground-stuck?))
     (set! (-> self board jump-land-time) (-> self clock frame-counter))
@@ -525,7 +512,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-board-start (target)
   :event target-board-handler
   :exit target-board-exit
@@ -538,7 +524,6 @@
   :post target-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-stance (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -791,7 +776,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-duck-stance (target)
   :event (-> target-board-stance event)
   :enter (behavior ()
@@ -900,7 +884,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-jump (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (if (and (= event-type 'edge-grab) (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1)))
@@ -1027,7 +1010,7 @@
             )
         )
       )
-    (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! arg2 (cond
                  ((the-as object arg2)
                   (empty)
@@ -1118,7 +1101,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-halfpipe (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -1383,7 +1365,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-falling (target)
   :event target-board-handler
   :enter (behavior ()
@@ -1465,7 +1446,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-jump-kick (target)
   :event target-board-handler
   :enter (behavior ()
@@ -1517,7 +1497,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-wall-kick (target)
   :event target-board-handler
   :enter (behavior ((arg0 vector) (arg1 float))
@@ -1567,7 +1546,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-flip (target)
   :event (-> target-board-jump event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1586,7 +1564,7 @@
        )
       (else
         (init-var-jump arg0 arg1 #t #f (-> self control transv) 1.0)
-        (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+        (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
         (set! (-> self control unknown-float36)
               (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
               )
@@ -1749,7 +1727,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-hold (target)
   :event (-> target-board-jump event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1769,7 +1746,7 @@
        )
       (else
         (init-var-jump arg0 arg1 #t #f (-> self control transv) 1.0)
-        (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+        (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
         (set! (-> self control unknown-float36)
               (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
               )
@@ -1953,7 +1930,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-trickx (target)
   :event (-> target-board-jump event)
   :enter (-> target-board-hold enter)
@@ -2062,7 +2038,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-hit-ground (target)
   :event target-board-handler
   :enter (behavior ()
@@ -2145,7 +2120,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-turn-to (target)
   :event target-board-handler
   :enter (behavior ((arg0 vector) (arg1 time-frame))
@@ -2214,7 +2188,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-ride-edge (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -2297,7 +2270,7 @@
     (none)
     )
   :exit (behavior ()
-    (logclear! (-> self control status) (cshape-moving-flags csmf16))
+    (logclear! (-> self control status) (collide-status probe-hit))
     (let ((v1-2 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> v1-2 command) (sound-command set-param))
       (set! (-> v1-2 id) (the-as sound-id (-> self board ride-sound-id)))
@@ -2315,7 +2288,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self control trans quad))
       (let ((s5-0 (new 'stack-no-clear 'collide-query)))
-        (if (collide-shape-moving-method-55
+        (if (find-ground
               (-> self control)
               s5-0
               (logclear (-> self control root-prim prim-core collide-with) (collide-spec water))
@@ -2329,7 +2302,7 @@
       (if (< (-> self control trans y) (-> self control gspot-pos y))
           (set! (-> gp-0 quad) (-> self control gspot-pos quad))
           )
-      (collide-shape-method-29
+      (move-to-point!
         (-> self control)
         (vector+! (new 'stack-no-clear 'vector) gp-0 (new 'static 'vector :y 204.8 :w 1.0))
         )
@@ -2488,7 +2461,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-board-grenade (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -2599,7 +2571,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-get-on (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -2620,7 +2591,7 @@
   :enter (behavior ()
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (-> self clock frame-counter))
-    (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control unknown-surface00) *board-jump-mods*)
     (set! (-> self board mods-backup) (-> self control unknown-surface00))
     (let ((a0-5 (target-time-to-ground)))
@@ -2736,7 +2707,7 @@
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (when (logtest? (-> self control status) (cshape-moving-flags on-surface))
+        (when (logtest? (-> self control status) (collide-status on-surface))
           (set! (-> self board turn-anim-duck-vel) 0.0)
           (goto cfg-19)
           )
@@ -2750,14 +2721,13 @@
       )
     (label cfg-19)
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
-    (logior! (-> self control status) (cshape-moving-flags on-surface))
+    (logior! (-> self control status) (collide-status on-surface))
     (go target-board-hit-ground)
     (none)
     )
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-pegasus (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -2773,7 +2743,7 @@
     (logclear! (-> self focus-status) (focus-status halfpipe))
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (-> self clock frame-counter))
-    (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (none)
     )
   :exit target-board-exit
@@ -2848,14 +2818,13 @@
   :post (behavior ()
     (set! (-> self control unknown-float30) 0.0)
     (set! (-> self control unknown-float29) 0.0)
-    (vector-seek! (-> self control unknown-vector04) *null-vector* (* 16384.0 (-> self clock seconds-per-frame)))
+    (vector-seek! (-> self control draw-offset) *null-vector* (* 16384.0 (-> self clock seconds-per-frame)))
     (target-no-move-post)
     (target-board-effect)
     (none)
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-board-get-off (target)
   :event (-> target-board-get-on event)
   :enter (behavior ((arg0 object) (arg1 symbol))
@@ -2867,7 +2836,7 @@
     (logclear! (-> self focus-status) (focus-status halfpipe))
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (-> self clock frame-counter))
-    (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control unknown-surface00) (new 'static 'surface
                                                 :name 'jump
                                                 :turnv 131072.0
@@ -3026,9 +2995,9 @@
                (not (or (logtest? v1-114 (the-as water-flags a0-35))
                         (begin
                           (let ((v1-117 #t))
-                            (set! a0-35 (the-as int (logand (-> self control status) (cshape-moving-flags on-water))))
+                            (set! a0-35 (the-as int (logand (-> self control status) (collide-status on-water))))
                             (set! a0-35 a0-35)
-                            (cmove-#f-zero v1-116 (the-as cshape-moving-flags a0-35) v1-117)
+                            (cmove-#f-zero v1-116 (the-as collide-status a0-35) v1-117)
                             )
                           v1-116
                           )
@@ -3047,14 +3016,13 @@
   :post (behavior ()
     (set! (-> self control unknown-float30) 0.0)
     (set! (-> self control unknown-float29) 0.0)
-    (vector-seek! (-> self control unknown-vector04) *null-vector* (* 16384.0 (-> self clock seconds-per-frame)))
+    (vector-seek! (-> self control draw-offset) *null-vector* (* 16384.0 (-> self clock seconds-per-frame)))
     (target-post)
     (target-board-effect)
     (none)
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-board-grab (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
@@ -3117,7 +3085,6 @@
   :post target-board-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-clone-anim (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
@@ -3127,8 +3094,8 @@
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()
-    (set! (-> self control unknown-vector04 y) (the-as float (-> self control unknown-word04)))
-    (set! (-> self control unknown-vector05 y) (-> self control unknown-vector04 y))
+    (set! (-> self control draw-offset y) (the-as float (-> self control unknown-word04)))
+    (set! (-> self control cspace-offset y) (-> self control draw-offset y))
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
     ((-> target-clone-anim exit))
     ((-> target-board-start exit))
@@ -3136,8 +3103,8 @@
     (none)
     )
   :code (behavior ((arg0 handle))
-    (set! (-> self control unknown-word04) (the-as uint (-> self control unknown-vector04 y)))
-    (set! (-> self control unknown-vector04 y) 0.0)
+    (set! (-> self control unknown-word04) (the-as uint (-> self control draw-offset y)))
+    (set! (-> self control draw-offset y) 0.0)
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
     (clone-anim arg0 #t "")
     (go target-board-stance)
@@ -3146,7 +3113,6 @@
   :post target-no-ja-move-post
   )
 
-;; failed to figure out what this is:
 (defstate target-board-hit (target)
   :event target-board-handler
   :exit (behavior ()
@@ -3236,14 +3202,14 @@
               (cond
                 ((= (-> self game mode) 'debug)
                  (let ((s4-1 (new-stack-vector0)))
-                   (set! (-> s4-1 quad) (-> self control unknown-vector23 quad))
+                   (set! (-> s4-1 quad) (-> self control last-trans-on-surf quad))
                    (ja-channel-set! 0)
                    (let ((s3-1 (-> self clock frame-counter)))
                      (until (>= (- (-> self clock frame-counter) s3-1) (seconds 1))
                        (suspend)
                        )
                      )
-                   (collide-shape-method-29 (-> self control) s4-1)
+                   (move-to-point! (-> self control) s4-1)
                    )
                  (set! (-> self control unknown-vector15 quad) (-> self control trans quad))
                  (send-event *camera* 'teleport)
@@ -3345,7 +3311,3 @@
     (none)
     )
   )
-
-
-
-

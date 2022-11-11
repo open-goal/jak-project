@@ -7,12 +7,11 @@
 
 (define-extern process-contact-action (function process none :behavior target))
 (define-extern eco-blue-glow (function vector none))
-(define-extern cshape-reaction-default (function control-info collide-query vector vector cshape-moving-flags))
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-crate-krimson crate 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-crate-krimson crate crate-krimson-lod0-jg crate-idle-ja
+              ((crate-krimson-lod0-mg (meters 20)) (crate-krimson-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 1 0 1.6)
               :texture-level 6
               )
@@ -668,7 +667,7 @@
   :event crate-standard-event-handler
   :code (behavior ()
     (suspend)
-    (collide-shape-method-46 (the-as collide-shape-moving (-> self root-override2)))
+    (update-transforms (the-as collide-shape-moving (-> self root-override2)))
     (carry-info-method-9 (-> self carry))
     (logior! (-> self mask) (process-mask sleep))
     (until #f
@@ -698,7 +697,7 @@
     (ja-post)
     (carry-info-method-9 (-> self carry))
     (carry-info-method-13 (-> self carry))
-    (collide-shape-method-46 (the-as collide-shape-moving (-> self root-override2)))
+    (update-transforms (the-as collide-shape-moving (-> self root-override2)))
     (none)
     )
   )
@@ -725,7 +724,7 @@
           (-> self carry)
           )
         )
-    (set! (-> self root-override2 status) (cshape-moving-flags))
+    (set! (-> self root-override2 status) (collide-status))
     (set! (-> self root-override2 root-prim local-sphere w) (-> self carry carry-radius))
     (set! (-> self root-override2 root-prim prim-core collide-with)
           (logior (collide-spec backgnd crate obstacle hit-by-others-list pusher)
@@ -735,7 +734,7 @@
     (none)
     )
   :trans (behavior ()
-    (when (and (logtest? (-> (the-as collide-shape-moving (-> self root-override2)) status) (cshape-moving-flags on-surface))
+    (when (and (logtest? (-> (the-as collide-shape-moving (-> self root-override2)) status) (collide-status on-surface))
                (< 0.8 (-> (the-as collide-shape-moving (-> self root-override2)) surface-angle))
                )
       (vector-reset! (-> self root-override2 transv))
@@ -779,7 +778,7 @@
         (set! (-> a2-1 ignore-process1) #f)
         (set! (-> a2-1 ignore-pat) (-> gp-1 pat-ignore-mask))
         (set! (-> a2-1 action-mask) (collide-action solid))
-        (collide-shape-method-32 gp-1 (-> gp-1 transv) a2-1 (meters 0))
+        (fill-cache-integrate-and-collide gp-1 (-> gp-1 transv) a2-1 (meters 0))
         )
       (set! (-> gp-1 root-prim type) collide-shape-prim-mesh)
       )
@@ -1213,7 +1212,9 @@
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
-    (set! (-> s4-0 no-reaction) nothing)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
     (let ((v1-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-10 prim-core collide-as) (collide-spec crate notice-blue-eco-powerup))
       (set! (-> v1-10 prim-core collide-with) (collide-spec jak player-list tobot))

@@ -816,7 +816,7 @@
        (logior! (-> self control penetrate-using) (penetrate touch board))
        )
       ((= arg0 'racer)
-       (set! (-> gp-0 unknown-vector04 y) 4096.0)
+       (set! (-> gp-0 draw-offset y) 4096.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
          (new 'static 'vector :y 8192.0 :w 1.0)
@@ -849,7 +849,7 @@
        (logior! (-> self control penetrate-using) (penetrate touch mech))
        )
       ((= arg0 'mech-carry)
-       (set! (-> gp-0 unknown-vector04 y) 0.0)
+       (set! (-> gp-0 draw-offset y) 0.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
          (new 'static 'vector :y 12288.0 :w 1.0)
@@ -868,7 +868,7 @@
       ((= arg0 'duck)
        (set! (-> self control unknown-float31) arg1)
        (let ((f30-1 (- 1.0 arg1)))
-         (set! (-> gp-0 unknown-vector04 y) 0.0)
+         (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 root-prim local-sphere))
            (-> *TARGET-bank* root-offset)
@@ -908,7 +908,7 @@
        )
       ((= arg0 'indax)
        (let ((f30-2 0.2))
-         (set! (-> gp-0 unknown-vector04 y) 0.0)
+         (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 root-prim local-sphere))
            (-> *TARGET-bank* root-offset)
@@ -943,7 +943,7 @@
       ((= arg0 'tube)
        (set! (-> self control unknown-float31) arg1)
        (let ((f30-3 (- 1.0 arg1)))
-         (set! (-> gp-0 unknown-vector04 y) 0.0)
+         (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 root-prim local-sphere))
            (-> *TARGET-bank* root-offset)
@@ -974,7 +974,7 @@
        (logior! (-> self control penetrate-using) (penetrate touch tube))
        )
       ((= arg0 'carry)
-       (set! (-> gp-0 unknown-vector04 y) 0.0)
+       (set! (-> gp-0 draw-offset y) 0.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
          (-> *TARGET-bank* root-offset)
@@ -1004,7 +1004,7 @@
        )
       ((= arg0 'gun)
        (set! (-> self control unknown-float31) arg1)
-       (set! (-> gp-0 unknown-vector04 y) 0.0)
+       (set! (-> gp-0 draw-offset y) 0.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
          (-> *TARGET-bank* root-offset)
@@ -1058,7 +1058,7 @@
        )
       (else
         (set! (-> self control unknown-float31) 0.0)
-        (set! (-> gp-0 unknown-vector04 y) 0.0)
+        (set! (-> gp-0 draw-offset y) 0.0)
         (sphere<-vector+r!
           (the-as sphere (-> gp-0 root-prim local-sphere))
           (-> *TARGET-bank* root-offset)
@@ -1233,10 +1233,10 @@
                 (>= (- (-> *display* game-clock frame-counter) (the-as int (-> self game kiosk-timeout))) (seconds 60))
                 )
            (and (>= (- (-> self clock frame-counter) (-> self ambient-time)) (seconds 30))
-                (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
-                (logtest? (-> self control status) (cshape-moving-flags on-surface))
+                (not (logtest? (-> self control status) (collide-status touch-actor)))
+                (logtest? (-> self control status) (collide-status on-surface))
                 (not (or (logtest? (water-flags touch-water) (-> self water flags))
-                         (logtest? (-> self control status) (cshape-moving-flags on-water))
+                         (logtest? (-> self control status) (collide-status on-water))
                          )
                      )
                 (zero? (logand (focus-status dead hit grabbed in-head edge-grab pole flut tube board mech dark indax teleporting)
@@ -1275,11 +1275,11 @@
 
 ;; definition for function can-jump?
 (defbehavior can-jump? target ((arg0 symbol))
-  (and (or (logtest? (-> self control status) (cshape-moving-flags on-surface))
+  (and (or (logtest? (-> self control status) (collide-status on-surface))
            (< (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
               (the-as time-frame (-> *TARGET-bank* ground-timeout))
               )
-           (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
+           (and (logtest? (-> self control status) (collide-status on-surface))
                 (< 0.866 (-> self control surface-angle))
                 )
            (and (= arg0 'board)
@@ -1315,7 +1315,7 @@
 
 ;; definition for function jump-hit-ground-stuck?
 (defbehavior jump-hit-ground-stuck? target ()
-  (or (logtest? (-> self control status) (cshape-moving-flags on-surface))
+  (or (logtest? (-> self control status) (collide-status on-surface))
       (when (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                  (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
                  )
@@ -1344,7 +1344,7 @@
 ;; definition for function fall-test
 ;; WARN: Return type mismatch object vs none.
 (defbehavior fall-test target ((arg0 (state symbol target)) (arg1 float))
-  (when (and (not (logtest? (-> self control status) (cshape-moving-flags on-surface)))
+  (when (and (not (logtest? (-> self control status) (collide-status on-surface)))
              (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                  (the-as time-frame (-> *TARGET-bank* ground-timeout))
                  )
@@ -1364,11 +1364,11 @@
 ;; definition for function slide-down-test
 ;; WARN: Return type mismatch object vs none.
 (defbehavior slide-down-test target ()
-  (if (and (not (logtest? (-> self control status) (cshape-moving-flags on-surface csmf07)))
+  (if (and (not (logtest? (-> self control status) (collide-status on-surface touch-edge)))
            (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
                (the-as time-frame (-> *TARGET-bank* ground-timeout))
                )
-           (logtest? (-> self control status) (cshape-moving-flags t-surface))
+           (logtest? (-> self control status) (collide-status touch-surface))
            (< 0.5 (-> self control surface-angle))
            )
       (go target-slide-down)
@@ -1380,16 +1380,16 @@
 (defbehavior smack-surface? target ((arg0 symbol))
   (and (< 0.7 (-> self control touch-angle))
        (and (< (-> self control surface-angle) 0.3)
-            (logtest? (-> self control status) (cshape-moving-flags t-wall))
-            (or arg0 (zero? (logand (-> self control status) (cshape-moving-flags t-act))))
+            (logtest? (-> self control status) (collide-status touch-wall))
+            (or arg0 (zero? (logand (-> self control status) (collide-status touch-actor))))
             )
        )
   )
 
 ;; definition for function can-roll?
 (defbehavior can-roll? target ()
-  (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
-       (or (not (logtest? (-> self control status) (cshape-moving-flags t-wall)))
+  (and (logtest? (-> self control status) (collide-status on-surface))
+       (or (not (logtest? (-> self control status) (collide-status touch-wall)))
            (>= 0.7 (-> self control touch-angle))
            )
        (< (-> self control unknown-float17) 0.7)
@@ -1410,7 +1410,7 @@
 
 ;; definition for function can-duck?
 (defbehavior can-duck? target ()
-  (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
+  (and (logtest? (-> self control status) (collide-status on-surface))
        (>= (-> self control unknown-float0000) 0.7)
        (not (logtest? (water-flags under-water swimming) (-> self water flags)))
        (not (logtest? (-> self state-flags) (state-flags sf9)))
@@ -1435,7 +1435,7 @@
       (set! (-> s4-0 1 y) (+ 2867.2 (-> *TARGET-bank* body-radius) (-> s4-0 1 y)))
       (set! (-> s4-0 1 r) (-> *TARGET-bank* body-radius))
       (let ((v1-12 gp-0))
-        (set! (-> v1-12 spheres) s4-0)
+        (set! (-> v1-12 best-dist) (the-as float s4-0))
         (set! (-> v1-12 num-spheres) (the-as uint 2))
         (set! (-> v1-12 collide-with) (logclear
                                         (-> arg0 control root-prim prim-core collide-with)
@@ -1605,7 +1605,7 @@
        (set! (-> arg1 control unknown-time-frame25) arg0)
        )
       )
-    (collide-shape-method-49 (-> arg1 control) 2 #x8000 0)
+    (modify-collide-as! (-> arg1 control) 2 (collide-spec jak-vulnerable) (collide-spec))
     (logior! (-> arg1 focus-status) (focus-status ignore))
     0
     (none)
@@ -1630,7 +1630,7 @@
     )
   (when (not (logtest? (state-flags tinvul1 tinvul2) (-> arg0 state-flags)))
     (logclear! (-> arg0 draw status) (draw-control-status no-draw-bounds))
-    (collide-shape-method-49 (-> arg0 control) 2 0 #x8000)
+    (modify-collide-as! (-> arg0 control) 2 (collide-spec) (collide-spec jak-vulnerable))
     )
   0
   (none)
@@ -2115,7 +2115,7 @@
          )
        )
       ((= arg0 7)
-       (-> v1-0 unknown-vector23)
+       (-> v1-0 last-trans-on-surf)
        )
       ((= arg0 8)
        (-> v1-0 unknown-vector42)
