@@ -904,7 +904,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += func.prologue.to_string(2) + "\n";
   if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
       func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
-    result += fmt::format("  ; function renamed from {}\n", func.state_handler_as_anon_func);
+    result += fmt::format("  ;internal_name: {}\n", func.state_handler_as_anon_func);
   }
   if (func.warnings.has_warnings()) {
     result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
