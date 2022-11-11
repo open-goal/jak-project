@@ -375,7 +375,7 @@
       (seek! (-> self control unknown-float001) -6144.0 (* 4096.0 (-> self clock seconds-per-frame)))
       (seek! (-> self control unknown-float001) 0.0 (* 2048.0 (-> self clock seconds-per-frame)))
       )
-  (set! (-> self control unknown-vector04 y) (-> self control unknown-float001))
+  (set! (-> self control draw-offset y) (-> self control unknown-float001))
   )
 
 (defstate target-swim-stance (target)
@@ -422,8 +422,8 @@
     )
   :trans (behavior ()
     ((-> self state-hook))
-    (if (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
-             (zero? (logand (-> self control status) (cshape-moving-flags on-water)))
+    (if (and (logtest? (-> self control status) (collide-status on-surface))
+             (zero? (logand (-> self control status) (collide-status on-water)))
              )
         (set-zero! (-> self water bob))
         )
@@ -544,8 +544,8 @@
   :exit (-> target-swim-stance exit)
   :trans (behavior ()
     ((-> self state-hook))
-    (if (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
-             (zero? (logand (-> self control status) (cshape-moving-flags on-water)))
+    (if (and (logtest? (-> self control status) (collide-status on-surface))
+             (zero? (logand (-> self control status) (collide-status on-water)))
              )
         (set-zero! (-> self water bob))
         )
@@ -843,7 +843,7 @@
               (go target-swim-up)
               )
           (if (or (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame27)) s5-0)
-                  (and (logtest? (-> self control status) (cshape-moving-flags on-surface))
+                  (and (logtest? (-> self control status) (collide-status on-surface))
                        (and (< (-> self water swim-depth) 8192.0) (>= (- (-> self clock frame-counter) (-> self state-time)) gp-0))
                        )
                   )
@@ -922,7 +922,7 @@
       )
     (if (and (cpad-pressed? (-> self control cpad number) circle square)
              (or (< (- (-> self clock frame-counter) (-> self control unknown-time-frame27)) (seconds 10))
-                 (logtest? (-> self control status) (cshape-moving-flags t-ceil))
+                 (logtest? (-> self control status) (collide-status touch-ceiling))
                  )
              (and (< (-> *TARGET-bank* min-dive-depth) (target-height-above-ground))
                   (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.05))
@@ -1029,7 +1029,7 @@
     (cond
       ((< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
        (set! (-> self water flags) (logior (water-flags jump-out) (-> self water flags)))
-       (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+       (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
        )
       (else
         (set! (-> self trans-hook) (-> target-jump trans))
@@ -1089,7 +1089,3 @@
     )
   :post target-swim-post
   )
-
-
-
-

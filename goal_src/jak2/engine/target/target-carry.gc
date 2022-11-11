@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-;; definition for symbol *carry-walk-mods*, type surface
 (define *carry-walk-mods* (new 'static 'surface
                             :name 'run
                             :turnv 524288.0
@@ -40,7 +39,6 @@
                             )
         )
 
-;; definition for symbol *carry-jump-mods*, type surface
 (define *carry-jump-mods* (new 'static 'surface
                             :name 'jump
                             :turnv 524288.0
@@ -74,8 +72,6 @@
                             )
         )
 
-;; definition for function target-carry-update
-;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior target-carry-update target ()
   (carry-info-method-9 (-> self carry))
@@ -90,7 +86,7 @@
         (set! (-> s5-0 0 quad) (-> self control unknown-sphere-array00 2 prim-core world-sphere quad))
         (set! (-> s5-0 0 r) (lerp-scale (-> *TARGET-bank* body-radius) 7372.8 f30-0 0.0 1.0))
         (let ((v1-17 gp-0))
-          (set! (-> v1-17 spheres) s5-0)
+          (set! (-> v1-17 best-dist) (the-as float s5-0))
           (set! (-> v1-17 num-spheres) (the-as uint 1))
           (set! (-> v1-17 collide-with) (-> self control root-prim prim-core collide-with))
           (set! (-> v1-17 ignore-process0) #f)
@@ -109,7 +105,6 @@
   (none)
   )
 
-;; definition for function target-carry-post
 ;; WARN: Return type mismatch focus-status vs none.
 (defbehavior target-carry-post target ()
   (target-post)
@@ -118,7 +113,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-pickup (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -297,7 +291,6 @@
     )
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-drop (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -374,7 +367,7 @@
                   )
                 (set! (-> s5-1 0 quad) (-> s4-0 root-prim prim-core world-sphere quad))
                 (let ((v1-64 gp-5))
-                  (set! (-> v1-64 spheres) s5-1)
+                  (set! (-> v1-64 best-dist) (the-as float s5-1))
                   (set! (-> v1-64 num-spheres) (the-as uint 1))
                   (set! (-> v1-64 collide-with) (-> self control root-prim prim-core collide-with))
                   (set! (-> v1-64 ignore-process0) #f)
@@ -424,7 +417,6 @@
   :post (-> target-carry-pickup post)
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-stance (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -487,7 +479,6 @@
   :post target-carry-post
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-walk (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -554,7 +545,6 @@
   :post target-carry-post
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-falling (target)
   :event target-jump-event-handler
   :enter (behavior ()
@@ -563,7 +553,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (logtest? (-> self control status) (cshape-moving-flags on-surface))
+    (if (logtest? (-> self control status) (collide-status on-surface))
         (go target-carry-hit-ground #f)
         )
     (let* ((f0-0 (target-move-dist (-> *TARGET-bank* stuck-time)))
@@ -582,7 +572,7 @@
                      )
                 #t
                 )
-        (logior! (-> self control status) (cshape-moving-flags on-surface))
+        (logior! (-> self control status) (collide-status on-surface))
         (go target-carry-hit-ground 'stuck)
         )
       )
@@ -613,7 +603,6 @@
   :post target-carry-post
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-hit-ground (target)
   :event target-walk-event-handler
   :enter (behavior ((arg0 symbol))
@@ -681,14 +670,13 @@
   :post target-carry-post
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
     (set! (-> self state-time) (-> self clock frame-counter))
     (sound-play "jump" :vol 70)
     (init-var-jump arg0 arg1 #t #f (-> self control transv) 2.0)
-    (logclear! (-> self control status) (cshape-moving-flags on-surface on-ground t-surface))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control unknown-surface00) *carry-jump-mods*)
     (set! (-> self control unknown-float36)
           (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
@@ -749,7 +737,6 @@
   :post target-carry-post
   )
 
-;; failed to figure out what this is:
 (defstate target-carry-throw (target)
   :event target-standard-event-handler
   :enter (behavior ()
@@ -790,7 +777,7 @@
                 )
               (set! (-> s5-0 0 quad) (-> s4-0 root-prim prim-core world-sphere quad))
               (let ((v1-38 gp-3))
-                (set! (-> v1-38 spheres) s5-0)
+                (set! (-> v1-38 best-dist) (the-as float s5-0))
                 (set! (-> v1-38 num-spheres) (the-as uint 1))
                 (set! (-> v1-38 collide-with) (-> self control root-prim prim-core collide-with))
                 (set! (-> v1-38 ignore-process0) #f)
@@ -837,7 +824,3 @@
     )
   :post (-> target-carry-pickup post)
   )
-
-
-
-

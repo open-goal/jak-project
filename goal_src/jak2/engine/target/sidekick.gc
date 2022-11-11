@@ -9,28 +9,30 @@
 (define-extern init-sidekick (function none :behavior sidekick))
 
 ;; DECOMP BEGINS
-
-(defskelgroup skel-sidekick daxter 0 -1
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-sidekick daxter daxter-lod0-jg -1
+              ((daxter-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               :longest-edge (meters 1)
-              :shadow 3
+              :shadow daxter-shadow-mg
               :texture-level 6
               :sort 1
               :origin-joint-index 6
               :shadow-joint-index 6
               )
 
-(defskelgroup skel-sidekick-highres daxter-highres 0 -1
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-sidekick-highres daxter-highres daxter-highres-lod0-jg -1
+              ((daxter-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               :longest-edge (meters 1)
-              :shadow 2
+              :shadow daxter-highres-shadow-mg
               :sort 1
               :origin-joint-index 6
               :shadow-joint-index 6
               )
 
+;; definition for symbol *sidekick-remap*, type pair
 (define *sidekick-remap*
   '(("run-to-stance-left" "run-to-stance")
     ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -114,6 +116,7 @@
     )
   )
 
+;; definition for function cspace<-cspace+transformq!
 (defun cspace<-cspace+transformq! ((arg0 cspace) (arg1 cspace) (arg2 transformq))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -154,6 +157,8 @@
     )
   )
 
+;; definition for function target-sidekick-setup
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-sidekick-setup target ((arg0 symbol))
   (if (zero? (-> self sidekick))
       (set! (-> self sidekick) (the-as (pointer sidekick) #f))
@@ -173,6 +178,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate sidekick-clone (sidekick)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
@@ -210,7 +216,7 @@
                 (the-as basic (-> self parent-override 0 control trans))
                 )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param2)
-                (the-as basic (-> self parent-override 0 control unknown-vector05))
+                (the-as basic (-> self parent-override 0 control cspace-offset))
                 )
           )
          (('board)
@@ -488,6 +494,7 @@
     )
   )
 
+;; definition for function init-sidekick
 ;; WARN: Return type mismatch object vs none.
 (defbehavior init-sidekick sidekick ()
   (set! (-> self mask) (logior (process-mask sidekick) (-> self mask)))
@@ -512,3 +519,7 @@
   (go sidekick-clone)
   (none)
   )
+
+
+
+
