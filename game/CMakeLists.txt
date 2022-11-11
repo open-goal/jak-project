@@ -92,6 +92,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/sky.cpp
         mips2c/jak2_functions/sparticle.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp
+        mips2c/jak2_functions/spatial_hash.cpp
         mips2c/jak2_functions/texture.cpp
         mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ocean_vu0.cpp
