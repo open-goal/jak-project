@@ -300,7 +300,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_31_sphere_hash::link, jak2::method_32_sphere_hash::link,
        jak2::method_33_spatial_hash::link, jak2::method_39_spatial_hash::link,
        jak2::method_36_spatial_hash::link, jak2::method_37_spatial_hash::link,
-       jak2::method_35_spatial_hash::link}}},
+       jak2::method_35_spatial_hash::link, jak2::method_33_sphere_hash::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
