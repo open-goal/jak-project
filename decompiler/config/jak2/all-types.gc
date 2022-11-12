@@ -8427,7 +8427,7 @@
   ((parent    cspace    :offset-assert 0)
    (joint     joint     :offset-assert 4) ;; guessed by decompiler
    (joint-num int16     :offset-assert 8)
-   (geo       basic     :offset-assert 12)
+   (geo       drawable     :offset-assert 12)
    (bone      bone      :offset-assert 16)
    (param0    (function cspace matrix none)  :offset-assert 20) ;; guessed by decompiler
    (param1    basic     :offset-assert 24)
@@ -8438,8 +8438,8 @@
   :flag-assert         #xa00000020
   ;; field param1 uses ~A with a signed load field param2 uses ~A with a signed load
   (:methods
-    (new (symbol type basic) _type_ 0)
-    (reset-and-assign-geo! (_type_ basic) _type_ 9)
+    (new (symbol type drawable) _type_ 0)
+    (reset-and-assign-geo! (_type_ drawable) _type_ 9)
     )
   )
 
@@ -13369,6 +13369,7 @@
 ;; joint-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++joint-h:joint-control-command
 (defenum joint-control-command
   :type int64
   (zero 0)
@@ -13382,6 +13383,7 @@
   (float 42)
   (stack1 52)
   )
+;; ---joint-h:joint-control-command
 
 (declare-type joint-control basic)
 (deftype joint-control-channel (structure)
@@ -23475,6 +23477,10 @@
 (define-extern add-debug-light (function symbol bucket-id light vector string symbol))
 (define-extern add-debug-lights (function symbol bucket-id (inline-array light) vector symbol))
 (define-extern drawable-frag-count (function drawable int))
+
+(define-extern drawable-tri-count (function drawable int)) ;; NOTE - defined in kernel?
+(define-extern drawable-vertex-ratio (function drawable debug-vertex-stats int)) ;; NOTE - defined in kernel?
+
 (define-extern history-init (function pos-history int pos-history))
 (define-extern history-draw-and-update (function pos-history symbol vector symbol))
 (define-extern dma-timeout-cam (function vector))
@@ -27406,7 +27412,7 @@
 (define-extern vector<-matrix! (function vector matrix vector))
 (define-extern vector<-cspace+vector! (function vector cspace vector vector))
 (define-extern cspace-children (function process-drawable int pair)) ;; 
-(define-extern cspace-inspect-tree (function process-drawable cspace int int object object))
+(define-extern cspace-inspect-tree (function process-drawable cspace int int object process-drawable))
 (define-extern execute-math-engine (function int))
 (define-extern draw-joint-axes (function process-drawable none))
 (define-extern draw-root (function process-drawable none))
@@ -27441,7 +27447,7 @@
 (define-extern process-drawable-delay-player (function time-frame int :behavior process-drawable))
 (define-extern process-drawable-fuel-cell-handler (function process int symbol event-message-block none :behavior process-drawable))
 (define-extern process-drawable-birth-fuel-cell (function entity vector symbol none :behavior process-drawable))
-(define-extern find-offending-process-focusable (function process-tree  process-focusable))
+(define-extern find-offending-process-focusable (function process-tree attack-info process-focusable :behavior process-drawable))
 (define-extern *valid-con* string)
 (define-extern process-drawable-valid? (function process-drawable symbol))
 
@@ -29340,7 +29346,7 @@
 ;; (define-extern set-shadow-by-name function)
 ;; (define-extern get-shadow-by-name function)
 ;; (define-extern teleport-camera-by-name function)
-(define-extern dma-add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
+(define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 (define-extern *hud-lights* vu-lights)
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control symbol dma-buffer none)
 (define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
@@ -32527,7 +32533,7 @@
     (enemy-method-131 (_type_) none 131)
     (enemy-method-132 (_type_) none 132)
     (enemy-method-133 (_type_) none 133)
-    (enemy-method-134 (_type_ process symbol) process-focusable 134)
+    (enemy-method-134 (_type_ process attack-info) process-focusable 134)
     (enemy-method-135 (_type_ int) sound-id 135)
     (enemy-method-136 (_type_) enemy-flag 136)
     )
