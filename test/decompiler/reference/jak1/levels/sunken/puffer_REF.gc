@@ -116,44 +116,44 @@
 ;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
 (defbehavior puffer-default-event-handler puffer ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (when (or (= v1-0 'touch) (= v1-0 'attack))
-        (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
-          (let* ((gp-0 arg0)
-                 (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-                           gp-0
-                           )
-                       )
-                 )
-            (when v1-7
-              (let ((f0-4 (atan
-                            (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
-                            (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
-                            )
+  (the-as
+    object
+    (case arg2
+      (('touch 'attack)
+       (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
+         (let* ((gp-0 arg0)
+                (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                          gp-0
                           )
-                    )
-                (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
+                      )
                 )
-              )
-            )
-          (go puffer-die)
-          (return (the-as object #t))
-          )
-        (when (= (-> arg0 type) target)
-          (when (send-event
-                  arg0
-                  'attack
-                  (-> arg3 param 0)
-                  (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
-                  )
-            (set! (-> self hit-player?) #t)
-            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-            )
-          )
-        )
+           (when v1-7
+             (let ((f0-4 (atan
+                           (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
+                           (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
+                           )
+                         )
+                   )
+               (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
+               )
+             )
+           )
+         (go puffer-die)
+         (return (the-as object #t))
+         )
+       (when (= (-> arg0 type) target)
+         (when (send-event
+                 arg0
+                 'attack
+                 (-> arg3 param 0)
+                 (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+                 )
+           (set! (-> self hit-player?) #t)
+           (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+           (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+           )
+         )
+       )
       )
     )
   )
@@ -711,20 +711,18 @@
 ;; failed to figure out what this is:
 (defstate puffer-die (puffer)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as
-        uint
-        (cond
-          ((= v1-0 'death-start)
-           (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
+    (the-as
+      uint
+      (case event-type
+        (('death-start)
+         (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
+         )
+        (('death-end)
+         (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
+           (set! (-> self draw status) (the-as draw-status v0-0))
+           v0-0
            )
-          ((= v1-0 'death-end)
-           (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
-             (set! (-> self draw status) (the-as draw-status v0-0))
-             v0-0
-             )
-           )
-          )
+         )
         )
       )
     )
