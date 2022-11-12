@@ -701,7 +701,7 @@
 
 (defmethod water-control-method-10 water-control ((obj water-control))
   (local-vars
-    (sv-272 (function vector entity-actor skeleton-group vector none :behavior manipy))
+    (sv-272 (function vector entity-actor skeleton-group vector object none :behavior manipy))
     (sv-288 vector)
     (sv-304 entity-actor)
     )
@@ -818,9 +818,17 @@
                              (set! sv-304 (-> obj process entity))
                              (let ((t0-0 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
                                    (t1-0 #f)
+                                   (t2-0 0)
                                    )
-                               0
-                               ((the-as (function object object object object object object none) s2-1) s0-0 sv-272 sv-288 sv-304 t0-0 t1-0)
+                               ((the-as (function object object object object object object object none) s2-1)
+                                s0-0
+                                sv-272
+                                sv-288
+                                sv-304
+                                t0-0
+                                t1-0
+                                t2-0
+                                )
                                )
                              )
                            (-> s1-0 ppointer)
@@ -1439,26 +1447,18 @@
             )
         (when (and arg4 (>= (- (-> pp clock frame-counter) (-> obj distort-time)) (seconds 0.3)))
           (set! (-> obj distort-time) (-> pp clock frame-counter))
-          (let* ((s2-0 (get-process *default-dead-pool* manipy #x4000))
-                 (s3-1
-                   (when s2-0
-                     (let ((t9-2 (method-of-type manipy activate)))
-                       (t9-2 (the-as manipy s2-0) (-> obj process) (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((s3-2 run-function-in-process)
-                           (s1-0 s2-0)
-                           (s0-0 manipy-init)
-                           (s5-1 (-> obj process entity))
-                           (t0-1 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
-                           (t1-1 #f)
-                           )
-                       0
-                       ((the-as (function object object object object object object none) s3-2) s1-0 s0-0 s4-1 s5-1 t0-1 t1-1)
-                       )
-                     (-> s2-0 ppointer)
-                     )
-                   )
-                 )
+          (let ((s3-1 (process-spawn
+                        manipy
+                        :init manipy-init
+                        s4-1
+                        (-> obj process entity)
+                        (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f))
+                        #f
+                        0
+                        :to (-> obj process)
+                        )
+                      )
+                )
             (when s3-1
               (send-event (ppointer->process s3-1) 'anim-mode 'play1)
               (send-event (ppointer->process s3-1) 'anim "idle")

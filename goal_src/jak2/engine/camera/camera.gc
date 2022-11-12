@@ -915,10 +915,10 @@
 (defbehavior cam-slave-init-vars camera-slave ()
   (cond
     (*camera*
-      (set! (-> self options) (-> *camera* slave-options))
+      (set! (-> self options) (the-as cam-slave-options-u32 (-> *camera* slave-options)))
       )
     (else
-      (set! (-> self options) (the-as uint 0))
+      (set! (-> self options) (cam-slave-options-u32))
       0
       )
     )
@@ -1036,7 +1036,7 @@
     (('teleport)
      (jump-to-target! (-> self tracking point-of-interest-blend) 0.0)
      (cam-calc-follow! (-> self tracking) (-> self trans) #f)
-     (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)
+     (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f)
      )
     )
   (none)
@@ -1085,7 +1085,7 @@
                         )
                     )
              )
-         (if (logtest? #x200000 (-> self options))
+         (if (logtest? (cam-slave-options-u32 EASE_SPLINE_IDX) (-> self options))
              (set! f0-18 (parameter-ease-sin-clamp f0-18))
              )
          (curve-get-pos! s5-0 f0-18 (-> self spline-curve))
@@ -1345,7 +1345,7 @@
   arg0
   )
 
-(defun slave-matrix-blend-2 ((arg0 matrix) (arg1 float) (arg2 vector) (arg3 matrix))
+(defun slave-matrix-blend-2 ((arg0 matrix) (arg1 cam-slave-options-u32) (arg2 vector) (arg3 matrix))
   (with-pp
     (let ((s1-0 (new-stack-vector0))
           (s4-0 (new-stack-quaternion0))
@@ -1355,7 +1355,7 @@
             )
         0.0
         (let* ((f0-1 (cond
-                       ((logtest? (the-as int arg1) 4)
+                       ((logtest? arg1 (cam-slave-options-u32 MOVE_SPHERICAL))
                         (vector-length arg2)
                         )
                        (else
@@ -1536,7 +1536,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defun slave-set-rotation! ((arg0 cam-rotation-tracker) (arg1 vector) (arg2 float) (arg3 float) (arg4 symbol))
+(defun slave-set-rotation! ((arg0 cam-rotation-tracker) (arg1 vector) (arg2 cam-slave-options-u32) (arg3 float) (arg4 symbol))
   (local-vars
     (f0-9 float)
     (sv-208 vector)

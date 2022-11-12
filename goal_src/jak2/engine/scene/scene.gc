@@ -92,27 +92,24 @@
                           )
                     )
                 (set! sv-96 (get-process *default-dead-pool* manipy #x4000))
-                (set! s4-0
-                      (when sv-96
-                        (let ((t9-7 (method-of-type manipy activate)))
-                          (t9-7 (the-as manipy sv-96) arg0 (-> obj name) (the-as pointer #x70004000))
-                          )
-                        (let ((t9-8 run-function-in-process)
-                              (a0-11 sv-96)
-                              (a1-9 manipy-init)
-                              (a2-3 (-> arg0 root trans))
-                              (a3-1 s1-1)
-                              (t0-0 s2-0)
-                              (t1-0 #f)
-                              )
-                          (if (and s3-0 (logtest? (game-secrets big-head little-head) (-> *game-info* secrets)))
-                              1
-                              0
-                              )
-                          ((the-as (function object object object object object object none) t9-8) a0-11 a1-9 a2-3 a3-1 t0-0 t1-0)
-                          )
-                        (-> sv-96 ppointer)
-                        )
+                (set! s4-0 (when sv-96
+                             (let ((t9-7 (method-of-type manipy activate)))
+                               (t9-7 (the-as manipy sv-96) arg0 (-> obj name) (the-as pointer #x70004000))
+                               )
+                             (run-now-in-process
+                               sv-96
+                               manipy-init
+                               (-> arg0 root trans)
+                               s1-1
+                               s2-0
+                               #f
+                               (if (and s3-0 (logtest? (game-secrets big-head little-head) (-> *game-info* secrets)))
+                                   1
+                                   0
+                                   )
+                               )
+                             (-> sv-96 ppointer)
+                             )
                       )
                 (set! (-> arg0 level) s0-0)
                 (send-event (ppointer->process s4-0) 'anim-mode 'clone-anim)
@@ -172,23 +169,14 @@
                   )
                 (when (and s4-0 (logtest? (-> obj flags) 2))
                   (set! sv-112 (get-process *default-dead-pool* manipy #x4000))
-                  (let ((s0-1
-                          (when sv-112
-                            (let ((t9-24 (method-of-type manipy activate)))
-                              (t9-24 (the-as manipy sv-112) (ppointer->process s4-0) (-> obj name) (the-as pointer #x70004000))
-                              )
-                            (let ((t9-25 run-function-in-process)
-                                  (a0-51 sv-112)
-                                  (a1-26 manipy-init)
-                                  (a2-8 (-> arg0 root trans))
-                                  (t1-1 #f)
+                  (let ((s0-1 (when sv-112
+                                (let ((t9-24 (method-of-type manipy activate)))
+                                  (t9-24 (the-as manipy sv-112) (ppointer->process s4-0) (-> obj name) (the-as pointer #x70004000))
                                   )
-                              0
-                              ((the-as (function object object object object object object none) t9-25) a0-51 a1-26 a2-8 s1-1 s2-0 t1-1)
+                                (run-now-in-process sv-112 manipy-init (-> arg0 root trans) s1-1 s2-0 #f 0)
+                                (-> sv-112 ppointer)
+                                )
                               )
-                            (-> sv-112 ppointer)
-                            )
-                          )
                         )
                     (send-event (ppointer->process s0-1) 'mirror #t)
                     (send-event (ppointer->process s0-1) 'anim-mode 'mirror)
@@ -346,42 +334,40 @@
 ;; WARN: Return type mismatch basic vs scene.
 (defun scene-lookup ((arg0 basic))
   "TODO - basic can be a string or a scene"
-  (let ((v1-0 (-> arg0 type)))
-    (the-as
-      scene
-      (cond
-        ((= v1-0 string)
-         (let ((s5-0 (art-group-get-by-name *level* (the-as string arg0) (the-as (pointer uint32) #f))))
-           (when (type? s5-0 scene)
-             (let ((gp-0 (get-level-by-heap-ptr-and-status *level* (the-as pointer s5-0) 'active)))
-               (when (and s5-0 gp-0)
-                 (let ((v1-5 (scene-decode-continue (-> s5-0 data 17))))
-                   (when v1-5
-                     (dotimes (a0-6 6)
-                       (if (= (-> gp-0 name) (-> v1-5 want a0-6 name))
-                           (goto cfg-15)
-                           )
-                       )
-                     (format
-                       0
-                       "WARNING: can not find scene level ~A in continue ~A, dropping scene until after load~%"
-                       (-> gp-0 name)
-                       (-> v1-5 name)
-                       )
-                     (return (the-as scene #f))
+  (the-as
+    scene
+    (case (-> arg0 type)
+      ((string)
+       (let ((s5-0 (art-group-get-by-name *level* (the-as string arg0) (the-as (pointer uint32) #f))))
+         (when (type? s5-0 scene)
+           (let ((gp-0 (get-level-by-heap-ptr-and-status *level* (the-as pointer s5-0) 'active)))
+             (when (and s5-0 gp-0)
+               (let ((v1-5 (scene-decode-continue (-> s5-0 data 17))))
+                 (when v1-5
+                   (dotimes (a0-6 6)
+                     (if (= (-> gp-0 name) (-> v1-5 want a0-6 name))
+                         (goto cfg-15)
+                         )
                      )
+                   (format
+                     0
+                     "WARNING: can not find scene level ~A in continue ~A, dropping scene until after load~%"
+                     (-> gp-0 name)
+                     (-> v1-5 name)
+                     )
+                   (return (the-as scene #f))
                    )
                  )
                )
-             (label cfg-15)
-             s5-0
              )
+           (label cfg-15)
+           s5-0
            )
          )
-        ((= v1-0 scene)
-         arg0
-         )
-        )
+       )
+      ((scene)
+       arg0
+       )
       )
     )
   )
