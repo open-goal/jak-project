@@ -1,11 +1,14 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; failed to figure out what this is:
 (defskelgroup skel-task-arrow ctywide-arrow 0 2
               ((1 (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               :texture-level 6
               )
 
+;; definition of type task-arrow-params
 (deftype task-arrow-params (structure)
   ((flags    task-arrow-flags         :offset-assert   0)
    (map-icon uint16                   :offset-assert   4)
@@ -17,6 +20,7 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type task-arrow-params
 (defmethod inspect task-arrow-params ((obj task-arrow-params))
   (when (not obj)
     (set! obj obj)
@@ -31,6 +35,7 @@
   obj
   )
 
+;; definition of type task-arrow
 (deftype task-arrow (process-drawable)
   ((pos              vector             :inline :offset-assert 208)
    (theta            float                      :offset-assert 224)
@@ -59,6 +64,7 @@
     )
   )
 
+;; definition for method 3 of type task-arrow
 (defmethod inspect task-arrow ((obj task-arrow))
   (when (not obj)
     (set! obj obj)
@@ -84,6 +90,8 @@
   obj
   )
 
+;; definition for method 10 of type task-arrow
+;; WARN: Return type mismatch int vs none.
 (defmethod deactivate task-arrow ((obj task-arrow))
   (send-event (handle->process (-> obj hud-dist)) 'hide-and-die)
   ((method-of-type process-drawable deactivate) obj)
@@ -91,6 +99,9 @@
   (none)
   )
 
+;; definition for method 23 of type task-arrow
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod task-arrow-method-23 task-arrow ((obj task-arrow) (arg0 vector))
   "Some weird debugging code left here, but checks for collisions on the arrow"
   (let ((s5-0 (new 'stack-no-clear 'collide-query-with-vec)))
@@ -117,6 +128,9 @@
   (none)
   )
 
+;; definition for method 24 of type task-arrow
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-arrow task-arrow ((obj task-arrow))
   (cond
     ((logtest? (-> obj flags) (task-arrow-flags task-arrow-flag-00))
@@ -203,6 +217,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (task-arrow)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -259,6 +274,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate leave (task-arrow)
   :virtual #t
   :code (behavior ()
@@ -266,7 +282,7 @@
     (while (-> self moving)
       (suspend)
       )
-    (process-drawable-method-17 self)
+    (cleanup-for-death self)
     (none)
     )
   :post (behavior ()
@@ -275,14 +291,18 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (task-arrow)
   :virtual #t
   :code (behavior ()
-    (process-drawable-method-17 self)
+    (cleanup-for-death self)
     (none)
     )
   )
 
+;; definition for function task-arrow-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs task-arrow.
 (defbehavior task-arrow-init-by-other task-arrow ((arg0 task-arrow-params))
   (set! (-> self flags) (-> arg0 flags))
   (set! (-> self map-icon) (-> arg0 map-icon))
@@ -325,6 +345,7 @@
   (the-as task-arrow (go-virtual idle))
   )
 
+;; definition for function task-arrow-spawn
 (defun task-arrow-spawn ((arg0 task-arrow-params) (arg1 task-arrow))
   (let ((gp-0 (the-as process #f)))
     (let ((v1-1 (process-spawn task-arrow arg0 :to arg1)))

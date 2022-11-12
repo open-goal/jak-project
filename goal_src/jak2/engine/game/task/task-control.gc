@@ -555,7 +555,7 @@
                   (let ((node (-> game-nodes i)))
                     (if (and (= (-> node level) (-> cur-lev info taskname))
                              (!= (-> node level) 'city)
-                             (zero? (logand (game-task-node-flag no-restart) (-> node flags)))
+                             (not (logtest? (game-task-node-flag no-restart) (-> node flags)))
                              (open? node)
                              )
                         (set! gp-1 (the-as int (-> node task)))
@@ -663,7 +663,7 @@
     (dotimes (i (-> game-nodes length))
       (when (nonzero? i)
         (let ((node (-> game-nodes i)))
-          (when (and (zero? (logand (-> node flags) (game-task-node-flag closed)))
+          (when (and (not (logtest? (-> node flags) (game-task-node-flag closed)))
                      (begin
                        (dotimes (a3-3 4)
                          (when (and (nonzero? (-> node parent-node a3-3))
@@ -710,7 +710,7 @@
   )
 
 (defmethod close! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
-  (when (zero? (logand (-> obj flags) (game-task-node-flag closed)))
+  (when (not (logtest? (-> obj flags) (game-task-node-flag closed)))
     (let ((task-node-close-func
             (lambda ((arg0 game-task-node-info))
               (with-pp
@@ -864,7 +864,7 @@
   (let ((game-nodes (-> *game-info* sub-task-list))
         (node-info obj)
         )
-    (and (zero? (logand (-> node-info flags) (game-task-node-flag closed)))
+    (and (not (logtest? (-> node-info flags) (game-task-node-flag closed)))
          (begin
            (dotimes (pi 4)
              (let ((t0-0 (-> node-info parent-node pi)))
@@ -994,7 +994,7 @@
                )
               (('try)
                (if (and (not (task-complete? *game-info* (-> node task)))
-                        (or (zero? (logand (-> node flags) (game-task-node-flag save-on-life save-on-try)))
+                        (or (not (logtest? (-> node flags) (game-task-node-flag save-on-life save-on-try)))
                             (logtest? (-> node flags) (game-task-node-flag reset-on-try))
                             )
                         )
@@ -1416,7 +1416,7 @@
   )
 
 (defmethod print-text fail-mission ((obj fail-mission))
-  (when (and (zero? (logand (-> obj flags) (fail-mission-flags famflags-6)))
+  (when (and (not (logtest? (-> obj flags) (fail-mission-flags famflags-6)))
              (= (gui-control-method-17 *gui-control* (the-as sound-id (-> obj message-id))) (gui-action playing))
              )
     (let ((gp-0 (new
@@ -1477,8 +1477,8 @@
 
 (defstate idle (fail-mission)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('reset)
        (cond
          ((logtest? (-> self flags) (fail-mission-flags famflags-1))
@@ -1493,7 +1493,7 @@
          )
        )
       (('query)
-       (case (-> arg3 param 0)
+       (case (-> event param 0)
          (('reset)
           (logtest? (-> self flags) (fail-mission-flags famflags-1))
           )
@@ -1548,20 +1548,15 @@
          )
        )
       (((fail-mission-message fammsg-1))
-       (while (let ((t9-3 process-grab?)
-                    (a0-17 *target*)
-                    )
-                'dead
-                (not (t9-3 a0-17))
-                )
+       (while (not (process-grab? *target* 'dead))
          (suspend)
          )
        )
       )
     (logior! (-> self flags) (fail-mission-flags famflags-1))
     (set! (-> self grabbed-time) (-> self clock frame-counter))
-    (when (zero? (logand (-> self flags) (fail-mission-flags famflags-3)))
-      (when (zero? (logand (-> self flags) (fail-mission-flags famflags-5)))
+    (when (not (logtest? (-> self flags) (fail-mission-flags famflags-3)))
+      (when (not (logtest? (-> self flags) (fail-mission-flags famflags-5)))
         (while (< (- (-> self clock frame-counter) (-> self grabbed-time)) (seconds 1.5))
           (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (-> self clock frame-counter) (-> self grabbed-time))) 0.0 450.0)))
             (set-filter-color!
@@ -1651,14 +1646,14 @@
 
 (defstate resetting (fail-mission)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'reset)
                         #t
                         )
                        ((= v1-0 'query)
-                        (case (-> arg3 param 0)
+                        (case (-> event param 0)
                           (('reset)
                            #t
                            )
@@ -1777,7 +1772,7 @@
     (the-as (function gui-connection symbol) #f)
     (the-as process #f)
     )
-  (when (zero? (logand (-> arg0 flags) (fail-mission-flags famflags-4)))
+  (when (not (logtest? (-> arg0 flags) (fail-mission-flags famflags-4)))
     (if (not (and *target* (logtest? (-> *target* focus-status) (focus-status dead)) (zero? (-> self message))))
         (set! (-> self stinger)
               (the-as
@@ -1792,7 +1787,7 @@
   (set-setting! 'speech-control #f 0 0)
   (set! (-> self clock) (-> *display* base-clock))
   (apply-settings *setting-control*)
-  (if (or (zero? (logand (-> self flags) (fail-mission-flags famflags-2)))
+  (if (or (not (logtest? (-> self flags) (fail-mission-flags famflags-2)))
           (nonzero? (-> self fail-message))
           (= (-> self message) (fail-mission-message fammsg-1))
           )
@@ -2065,7 +2060,7 @@
   (with-pp
     (the-as
       symbol
-      (and (or (zero? (logand (-> obj node-info flags) (game-task-node-flag city-wait)))
+      (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
                (let ((a0-2 (level-get-target-inside *level*)))
                  (cond
                    ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
@@ -2092,7 +2087,7 @@
   :event task-manager-event-handler
   :trans (behavior ()
     (if (or (and (nonzero? (-> self info final-node)) (task-node-closed? (-> self info final-node)))
-            (and (zero? (logand (-> self node-info flags) (game-task-node-flag closed)))
+            (and (not (logtest? (-> self node-info flags) (game-task-node-flag closed)))
                  (not (open? (-> self node-info)))
                  )
             )
