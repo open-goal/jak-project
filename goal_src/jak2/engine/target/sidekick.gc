@@ -9,7 +9,7 @@
 (define-extern init-sidekick (function none :behavior sidekick))
 
 ;; DECOMP BEGINS
-;; failed to figure out what this is:
+
 (defskelgroup skel-sidekick daxter daxter-lod0-jg -1
               ((daxter-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
@@ -21,7 +21,6 @@
               :shadow-joint-index 6
               )
 
-;; failed to figure out what this is:
 (defskelgroup skel-sidekick-highres daxter-highres daxter-highres-lod0-jg -1
               ((daxter-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
@@ -32,7 +31,6 @@
               :shadow-joint-index 6
               )
 
-;; definition for symbol *sidekick-remap*, type pair
 (define *sidekick-remap*
   '(("run-to-stance-left" "run-to-stance")
     ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -116,7 +114,6 @@
     )
   )
 
-;; definition for function cspace<-cspace+transformq!
 (defun cspace<-cspace+transformq! ((arg0 cspace) (arg1 cspace) (arg2 transformq))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -157,8 +154,6 @@
     )
   )
 
-;; definition for function target-sidekick-setup
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-sidekick-setup target ((arg0 symbol))
   (if (zero? (-> self sidekick))
       (set! (-> self sidekick) (the-as (pointer sidekick) #f))
@@ -178,7 +173,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate sidekick-clone (sidekick)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
@@ -187,7 +181,9 @@
        (case (-> event param 0)
          (('play-anim)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+transformq!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace+transformq!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -195,7 +191,9 @@
           )
          (('copy-parent)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -203,7 +201,9 @@
           )
          (('root)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace-normalized!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace-normalized!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -211,7 +211,9 @@
           )
          (('indax)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-transformq+trans!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-transformq+trans!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 control trans))
                 )
@@ -221,7 +223,9 @@
           )
          (('board)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace-normalized!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace-normalized!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data 25))
                 )
@@ -229,7 +233,9 @@
           )
          (else
            (set! v0-0 (-> self node-list data))
-           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+transformq!)
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                 (the-as (function cspace matrix none) cspace<-cspace+transformq!)
+                 )
            (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                  (the-as basic (-> self parent-override 0 control unknown-cspacei1un23i1 parent))
                  )
@@ -358,7 +364,7 @@
           (set! (-> self offset trans y) (* 204.8 f0-3))
           (set! (-> self offset trans z) (* 409.6 f0-3))
           )
-        (joint-control-method-10 (-> self skel))
+        (update-anim-data (-> self skel))
         (when *debug-segment*
           (let ((gp-2 (-> *display* frames (-> *display* on-screen) profile-array data 0))
                 (v1-132 'target-post)
@@ -381,7 +387,7 @@
             )
           0
           )
-        (draw-control-method-14 (-> self draw) (-> self node-list) (-> self skel))
+        (do-joint-math (-> self draw) (-> self node-list) (-> self skel))
         (when *debug-segment*
           (let ((gp-3 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
             (when (and *dproc* *debug-segment*)
@@ -482,7 +488,7 @@
             (send-event (ppointer->process gp-4) 'mirror #t)
             (set! (-> self mirror) gp-4)
             (let ((v0-29 (-> gp-4 0 node-list data)))
-              (set! (-> v0-29 0 param0) cspace<-cspace!)
+              (set! (-> v0-29 0 param0) (the-as (function cspace matrix none) cspace<-cspace!))
               (set! (-> v0-29 0 param1) (the-as basic (-> self node-list data)))
               (set! (-> v0-29 0 param2) #f)
               )
@@ -494,7 +500,6 @@
     )
   )
 
-;; definition for function init-sidekick
 ;; WARN: Return type mismatch object vs none.
 (defbehavior init-sidekick sidekick ()
   (set! (-> self mask) (logior (process-mask sidekick) (-> self mask)))
@@ -510,7 +515,7 @@
   (logior! (-> self skel status) (joint-control-status sync-math blend-shape eye-anim))
   (set! (-> self draw light-index) (the-as uint 30))
   (let ((v1-14 (-> self node-list data)))
-    (set! (-> v1-14 0 param0) cspace<-cspace+transformq!)
+    (set! (-> v1-14 0 param0) (the-as (function cspace matrix none) cspace<-cspace+transformq!))
     (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspacei1un23i1 parent)))
     (set! (-> v1-14 0 param2) (the-as basic (-> self offset)))
     )
@@ -519,7 +524,3 @@
   (go sidekick-clone)
   (none)
   )
-
-
-
-

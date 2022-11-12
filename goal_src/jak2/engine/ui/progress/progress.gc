@@ -208,11 +208,11 @@
   (set! (-> self draw color-mult z) 0.8)
   (logior! (-> self draw global-effect) (draw-control-global-effect title-light))
   (logior! (-> self draw status) (draw-control-status hud))
-  (draw-control-method-12 (-> self draw) (the-as uint 1) 0)
-  (draw-control-method-12 (-> self draw) (the-as uint 0) 2046)
+  (setup-masks (-> self draw) (the-as uint 1) 0)
+  (setup-masks (-> self draw) (the-as uint 0) 2046)
   (cond
     ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
-     (draw-control-method-12
+     (setup-masks
        (-> self draw)
        (-> *hud-ring-kiosk-graphic-remap*
            (mod
@@ -224,7 +224,7 @@
        )
      )
     ((and (= *cheat-mode* #f) (demo?))
-     (draw-control-method-12
+     (setup-masks
        (-> self draw)
        (-> *hud-ring-demo-graphic-remap*
            (mod
@@ -236,7 +236,7 @@
        )
      )
     (else
-      (draw-control-method-12
+      (setup-masks
         (-> self draw)
         (-> *hud-ring-graphic-remap*
             (mod
@@ -267,10 +267,10 @@
       (-> (the-as progress (-> self parent-override 0)) node-list data (-> self joint-idx))
       )
     (when (-> (the-as progress (-> self parent-override 0)) main-menu)
-      (draw-control-method-12 (-> self draw) (the-as uint 0) 2046)
+      (setup-masks (-> self draw) (the-as uint 0) 2046)
       (cond
         ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
-         (draw-control-method-12
+         (setup-masks
            (-> self draw)
            (-> *hud-ring-kiosk-graphic-remap*
                (mod
@@ -282,7 +282,7 @@
            )
          )
         ((and (= *cheat-mode* #f) (demo?))
-         (draw-control-method-12
+         (setup-masks
            (-> self draw)
            (-> *hud-ring-demo-graphic-remap*
                (mod
@@ -294,7 +294,7 @@
            )
          )
         (else
-          (draw-control-method-12
+          (setup-masks
             (-> self draw)
             (-> *hud-ring-graphic-remap*
                 (mod
@@ -1275,25 +1275,13 @@
   0
   )
 
+;; WARN: Failed store: (s.w! (+ v1-8 8) 0) at op 19
+;; WARN: Failed store: (s.w! (+ v1-8 12) 0) at op 20
 (defun end-scan ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id bucket-320)
+                               )
     (hud-box-method-13 arg0 s5-0 arg1)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-8 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (the-as pointer (&+ (the-as dma-packet v1-8) 16)))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id bucket-320)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   )
