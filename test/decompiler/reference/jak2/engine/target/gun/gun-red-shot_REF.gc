@@ -99,27 +99,18 @@
         (when (and (sphere-in-view-frustum? (the-as sphere s5-2))
                    (< 24576.0 (vector-vector-distance s5-2 (math-camera-pos)))
                    )
-          (let* ((s4-1 (get-process *default-dead-pool* manipy #x4000))
-                 (s5-3
-                   (when s4-1
-                     (let ((t9-8 (method-of-type manipy activate)))
-                       (t9-8 (the-as manipy s4-1) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((s5-4 run-function-in-process)
-                           (s3-0 s4-1)
-                           (s2-0 manipy-init)
-                           (s1-0 (-> gp-0 fire-point))
-                           (s0-0 (-> self entity))
-                           (t0-1 (art-group-get-by-name *level* "skel-gun-red-cone" (the-as (pointer uint32) #f)))
-                           (t1-1 #f)
-                           )
-                       0
-                       ((the-as (function object object object object object object none) s5-4) s3-0 s2-0 s1-0 s0-0 t0-1 t1-1)
-                       )
-                     (-> s4-1 ppointer)
-                     )
-                   )
-                 )
+          (let ((s5-3 (process-spawn
+                        manipy
+                        :init manipy-init
+                        (-> gp-0 fire-point)
+                        (-> self entity)
+                        (art-group-get-by-name *level* "skel-gun-red-cone" (the-as (pointer uint32) #f))
+                        #f
+                        0
+                        :to self
+                        )
+                      )
+                )
             (when s5-3
               (send-event (ppointer->process s5-3) 'anim-mode 'play1)
               (send-event (ppointer->process s5-3) 'anim "idle")
