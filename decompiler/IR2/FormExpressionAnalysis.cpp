@@ -1982,15 +1982,22 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     return;
   }
 
+  // (-> (the-as process-drawable (-> v1-32 0)) pid)
+  // (-> v1-61 0 pid)
+  auto just_deref_matcher = Matcher::match_or(
+      {Matcher::deref(Matcher::any_reg(0), false,
+                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+       Matcher::deref({Matcher::cast_to_any(4, Matcher::deref(Matcher::any_reg(0), false,
+                                                              {DerefTokenMatcher::integer(0)}))},
+                      false, {DerefTokenMatcher::string("pid")})});
+
   // jak 1:
   // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
   // jak 2:
   // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
-  auto pid_deref_matcher = Matcher::op_fixed(
-      FixedOperatorKind::SHL,
-      {Matcher::deref(Matcher::any_reg(0), false,
-                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
-       Matcher::integer(32)});
+  auto pid_deref_matcher =
+      Matcher::op_fixed(FixedOperatorKind::SHL, {just_deref_matcher, Matcher::integer(32)});
+
   auto make_handle_matcher = Matcher::op_fixed(
       FixedOperatorKind::LOGIOR,
       {env.version == GameVersion::Jak1
@@ -2002,6 +2009,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
   auto handle_mr = match(make_handle_matcher, element);
+
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
@@ -2009,7 +2017,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     if (var_name == env.get_variable_name(var_b) &&
         (env.version == GameVersion::Jak1 ||
          var_name == env.get_variable_name(handle_mr.maps.regs.at(2).value())) &&
-        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
+        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process-tree")}),
                        env.get_variable_type(var_a, true))) {
       auto* menv = const_cast<Env*>(&env);
       menv->disable_use(var_a);

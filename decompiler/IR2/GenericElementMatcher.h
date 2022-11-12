@@ -47,6 +47,7 @@ class Matcher {
   static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
+  static Matcher cast_to_any(int type_out, Matcher value);
   static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
   static Matcher any_integer(int match_id = -1);
@@ -74,6 +75,7 @@ class Matcher {
     GENERIC_OP_WITH_REST,
     OR,
     CAST,
+    CAST_TO_ANY,
     ANY,
     INT,
     ANY_INT,
