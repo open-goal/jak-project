@@ -172,10 +172,12 @@
     )
   )
 
+;; WARN: Failed store: (s.w! (+ a0-2 8) 0) at op 78
+;; WARN: Failed store: (s.w! (+ a0-2 12) 0) at op 79
 (defun cam-line-dma ()
-  (let* ((v1-5 (-> *display* frames (-> *display* on-screen) debug-buf))
-         (a2-0 (-> v1-5 base))
-         )
+  (with-dma-buffer-add-bucket ((v1-5 (-> *display* frames (-> *display* on-screen) debug-buf))
+                               (bucket-id debug-no-zbuf1)
+                               )
     (let ((a0-1 (the-as object (-> v1-5 base))))
       (let* ((a1-0 v1-5)
              (a3-0 (the-as object (-> a1-0 base)))
@@ -230,20 +232,6 @@
             (set! (-> v1-5 base) (the-as (pointer uint64) a0-1))
             )
           )
-        )
-      )
-    (let ((a3-16 (-> v1-5 base)))
-      (let ((a0-2 (the-as object (-> v1-5 base))))
-        (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag))
-        (set! (-> v1-5 base) (&+ (the-as pointer a0-2) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id debug-no-zbuf1)
-        a2-0
-        (the-as (pointer dma-tag) a3-16)
         )
       )
     )

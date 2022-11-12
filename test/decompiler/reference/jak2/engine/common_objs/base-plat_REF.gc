@@ -163,12 +163,12 @@
 (defbehavior plat-event base-plat ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
   "Handles platform related events.  Presently all this does is:
    - if `event-type` is [['bonk]], then call [[base-plat:29]]"
-  (let ((evt-type event-type))
-    (the-as object (if (= evt-type 'bonk)
-                       (start-bouncing! self)
-                       )
-            )
-    )
+  (the-as object (case event-type
+                   (('bonk)
+                    (start-bouncing! self)
+                    )
+                   )
+          )
   )
 
 ;; definition of type eco-door
@@ -234,23 +234,23 @@
    and play the respective sound
 
    @unused - likely a leftover from Jak 1"
-  (let ((evt-type event-type))
-    (the-as object (when (= evt-type 'trigger)
-                     (set! (-> self locked) (not (-> self locked)))
-                     (cond
-                       ((-> self locked)
-                        (if (and (-> self next-state) (= (-> self next-state name) 'door-closed))
-                            (sound-play "door-lock")
-                            )
-                        )
-                       (else
-                         (sound-play "door-unlock")
-                         )
+  (the-as object (case event-type
+                   (('trigger)
+                    (set! (-> self locked) (not (-> self locked)))
+                    (cond
+                      ((-> self locked)
+                       (if (and (-> self next-state) (= (-> self next-state name) 'door-closed))
+                           (sound-play "door-lock")
+                           )
                        )
-                     #t
-                     )
-            )
-    )
+                      (else
+                        (sound-play "door-unlock")
+                        )
+                      )
+                    #t
+                    )
+                   )
+          )
   )
 
 ;; failed to figure out what this is:

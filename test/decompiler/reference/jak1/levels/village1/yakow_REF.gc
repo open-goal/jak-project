@@ -193,46 +193,44 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 52]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 54]
 (defbehavior yakow-default-event-handler yakow ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (cond
-                     ((= v1-0 'touch)
-                      (let* ((s4-0 arg0)
-                             (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
-                                       s4-0
-                                       )
-                                   )
-                             )
-                        (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
-                          (do-push-aways! (-> self root-override))
-                          (send-shove-back
-                            (-> self root-override)
-                            arg0
-                            (the-as touching-shapes-entry (-> arg3 param 0))
-                            0.7
-                            6144.0
-                            16384.0
-                            )
-                          )
-                        )
-                      )
-                     ((= v1-0 'attack)
-                      (let ((v1-9 (-> arg3 param 2)))
-                        (cond
-                          ((!= v1-9 (-> self player-attack-id))
-                           (set! (-> self player-attack-id) (the-as int v1-9))
-                           (if (-> self vulnerable)
-                               (go yakow-kicked)
-                               )
+  (the-as object (case arg2
+                   (('touch)
+                    (let* ((s4-0 arg0)
+                           (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
+                                     s4-0
+                                     )
+                                 )
                            )
-                          (else
-                            'push
-                            )
+                      (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
+                        (do-push-aways! (-> self root-override))
+                        (send-shove-back
+                          (-> self root-override)
+                          arg0
+                          (the-as touching-shapes-entry (-> arg3 param 0))
+                          0.7
+                          6144.0
+                          16384.0
                           )
                         )
                       )
-                     )
-            )
-    )
+                    )
+                   (('attack)
+                    (let ((v1-9 (-> arg3 param 2)))
+                      (cond
+                        ((!= v1-9 (-> self player-attack-id))
+                         (set! (-> self player-attack-id) (the-as int v1-9))
+                         (if (-> self vulnerable)
+                             (go yakow-kicked)
+                             )
+                         )
+                        (else
+                          'push
+                          )
+                        )
+                      )
+                    )
+                   )
+          )
   )
 
 ;; failed to figure out what this is:

@@ -60,6 +60,19 @@
     (init-vf0-vector)
     (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+
+    ;; ADDED (also added in jak1)
+    ;; there's a bug in swamp-blimp where they vector<-cspace!
+    ;; on some default-initialized-to-zero bones
+    ;; we have to return 0s for this to avoid NaNs getting everywhere.
+    (let ((temp (new-stack-vector0)))
+      (.svf (&-> temp quad) vf2)
+      (when (= (-> temp w) 0.0)
+        (set-vector! arg0 0. 0. 0. 1.)
+        (return arg0)
+        )
+      )
+
     (.wait.vf)
     (.mul.vf vf2 vf2 Q :mask #b111)
     (.nop.vf)
@@ -198,7 +211,7 @@
       (set! (-> obj mgeo) (-> obj lod-set lod v1-1 geo))
       (set! (-> obj cur-lod) v1-1)
       (if (nonzero? (-> obj seg-mask))
-          (setup-masks obj (the-as uint 0) 0)
+          (setup-masks obj 0 0)
           )
       )
     )
@@ -216,7 +229,7 @@
   (none)
   )
 
-(defmethod setup-masks draw-control ((obj draw-control) (arg0 uint) (arg1 int))
+(defmethod setup-masks draw-control ((obj draw-control) (arg0 int) (arg1 int))
   (local-vars (v1-4 int) (a2-1 (array uint64)))
   (let ((a1-2 (logior (logclear (-> obj seg-mask) arg0) arg1)))
     (set! (-> obj seg-mask) a1-2)

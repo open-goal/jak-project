@@ -26,6 +26,7 @@
 (define-extern stack-frame type)
 (define-extern global kheap)
 (define-extern kheap type)
+(define-extern pointer type)
 
 (define-extern #t symbol)
 
@@ -7766,6 +7767,11 @@
   (VERTICAL_FOLLOW_MATCHES_CAMERA)
   (HAVE_BUTT_HANDLE))
 
+(defenum cam-slave-options-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries cam-slave-options)
+
 (defenum cam-master-options
   :type uint64
   :bitfield #t
@@ -7778,6 +7784,11 @@
   (READ_BUTTONS) ;; 40
   (IMMEDIATE_STRING_MIN_MAX) ;; 80
   )
+
+(defenum cam-master-options-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries cam-master-options)
 
 (deftype cam-setting-data (structure)
   ((fov degrees)
@@ -8756,6 +8767,22 @@
 ;; traffic-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum traffic-danger-flags
+  :type uint8
+  :bitfield #t
+  (tdf0 0)
+  )
+
+(defenum traffic-danger-type
+  :type uint8
+  (tdt0 0)
+  (tdt1 1)
+  (tdt2 2)
+  (tdt3 3)
+  (tdt4 4)
+  (tdt5 5)
+  )
+
 (deftype traffic-danger-info (structure)
   ((sphere        sphere :inline :offset-assert 0)
    (velocity      vector :inline :offset-assert 16)
@@ -8763,8 +8790,8 @@
    (notify-radius float          :offset-assert 40)
    (danger-level  float          :offset-assert 44)
    (decay-rate    float          :offset-assert 48)
-   (flags         uint8          :offset-assert 52)
-   (danger-type   uint8          :offset-assert 53)
+   (flags         traffic-danger-flags          :offset-assert 52)
+   (danger-type   traffic-danger-type          :offset-assert 53)
    )
   :method-count-assert 9
   :size-assert         #x36
@@ -11248,7 +11275,7 @@
     (get-skeleton-origin (_type_) vector 9)
     (lod-set! (_type_ int) none 10)
     (lods-assign! (_type_ lod-set) none 11)
-    (setup-masks (_type_ uint int) none 12)
+    (setup-masks (_type_ int int) none 12)
     (setup-cspace-and-add (_type_ art-joint-geo symbol) none 13)
     (do-joint-math (_type_ cspace-array joint-control) none 14)
     )
@@ -12216,7 +12243,7 @@
   :size-assert         #x60
   :flag-assert         #xf00000060
   (:methods
-    (new (symbol type float float float float float) _type_ 0)
+    (new (symbol type float float float shadow-flags float) _type_ 0)
     (clear-offset-bit (shadow-control) int 9)
     (set-offset-bit (shadow-control) int 10)
     (set-top-plane-offset (shadow-control float) int 11)
@@ -16369,10 +16396,12 @@
 (defenum manipy-options
   :bitfield #t
   :type uint32
+  (mo-0 0)
   )
 
 (deftype manipy (process-drawable)
-  ((new-trans-hook       (function none)        :offset-assert 200)
+  ((root-override        collide-shape          :offset 128 :score 1)
+   (new-trans-hook       (function none)        :offset-assert 200)
    (cur-trans-hook       (function none)        :offset-assert 204)
    (cur-event-hook       (function none)        :offset-assert 208)
    (new-joint-anim       art-joint-anim         :offset-assert 212)
@@ -16396,7 +16425,7 @@
    )
   :flag-assert #x1501000174
   (:methods
-    (manipy-method-20 () none 20)
+    (idle () _type_ :state 20)
     )
   )
 
@@ -16413,8 +16442,8 @@
   :size-assert         #xb0
   :flag-assert         #x10003000b0
   (:methods
-    (part-spawner-method-14 () none 14)
-    (part-spawner-method-15 () none 15)
+    (active () _type_ :state 14)
+    (is-in-view? (_type_) symbol 15)
     )
   )
 
@@ -16440,22 +16469,22 @@
   :flag-assert         #x1000f00168
   ;; field userdata uses ~A with a 64-bit load
   (:methods
-    (part-tracker-method-14 () none 14)
-    (part-tracker-method-15 () none 15)
+    (active () _type_ :state 14)
+    (notify-parent-of-death (_type_) none 15)
     )
   )
 
 (deftype lightning-tracker (process)
   ((ppointer-override (pointer lightning-tracker) :offset 28 :score 100)
    (root          trsqv           :offset-assert 128)
-   (lightning     lightning-spec  :offset-assert 132)
+   (lightning     lightning-control  :offset-assert 132)
    (callback      (function lightning-tracker none)           :offset-assert 136)
    (duration      uint64          :offset-assert 144)
    (start-time    time-frame          :offset-assert 152)
    (offset0       vector  :inline :offset-assert 160)
    (offset1       vector  :inline :offset-assert 176)
-   (target0       uint64          :offset-assert 192)
-   (target1       uint64          :offset-assert 200)
+   (target0       handle          :offset-assert 192)
+   (target1       handle          :offset-assert 200)
    (target-joint0 int32           :offset-assert 208)
    (target-joint1 int32           :offset-assert 212)
    (sound         uint32          :offset-assert 216)
@@ -16469,14 +16498,15 @@
   :flag-assert         #x1100b00130
   ;; field userdata uses ~A with a 64-bit load
   (:methods
-    (lightning-tracker-method-14 () none 14)
-    (lightning-tracker-method-15 () none 15)
-    (lightning-tracker-method-16 () none 16)
+    (active () _type_ :state 14)
+    (notify-parent-of-death (_type_) none 15)
+    (update (_type_) none 16)
     )
   )
 
 (deftype touch-tracker (process-drawable)
-  ((duration     time-frame                     :offset-assert 200)
+  ((root-override    collide-shape           :offset 128 :score 1)
+   (duration     time-frame                     :offset-assert 200)
    (target       handle                         :offset-assert 208)
    (event        symbol                         :offset-assert 216) ;; guessed by decompiler
    (run-function (function object)              :offset-assert 220) ;; guessed by decompiler
@@ -16487,12 +16517,13 @@
   :size-assert         #xe8
   :flag-assert         #x15007000e8
   (:methods
-    (touch-tracker-method-20 () none 20)
+    (active () _type_ :state 20)
     )
   )
 
 (deftype swingpole (process-drawable)
-  ((edge-length meters             :offset-assert 200)
+  ((root-override collide-shape    :offset 128 :score 1)
+   (edge-length meters             :offset-assert 200)
    (path-pos    float              :offset-assert 204)
    (joint-track int32              :offset-assert 208)
    (speed       meters             :offset-assert 212)
@@ -16503,9 +16534,9 @@
   :size-assert         #x11c
   :flag-assert         #x1700a0011c
   (:methods
-    (swingpole-method-20 () none 20)
-    (swingpole-method-21 () none 21)
-    (swingpole-method-22 () none 22)
+    (idle () _type_ :state 20)
+    (active (handle) _type_ :state 21)
+    (move-along-path (_type_) none 22)
     )
   )
 
@@ -16547,7 +16578,8 @@
   )
 
 (deftype explosion (process-drawable)
-  ((start-time      time-frame  :offset-assert 200)
+  ((root-override collide-shape    :offset 128 :score 1)
+   (start-time      time-frame  :offset-assert 200)
    (duration        uint32  :offset-assert 208)
    (linger-duration uint32  :offset-assert 212)
    (attack-id       uint32  :offset-assert 216)
@@ -16556,9 +16588,9 @@
   :size-assert         #xdc
   :flag-assert         #x17006000dc
   (:methods
-    (explosion-method-20 () none 20)
-    (explosion-method-21 () none 21)
-    (explosion-method-22 () none 22)
+    (explode () _type_ :state 20)
+    (setup-explosion-collision (_type_) none 21)
+    (explosion-method-22 (_type_) none 22)
     )
   )
 
@@ -16566,7 +16598,7 @@
   ((spawn-point     vector     :inline :offset-assert 0)
    (spawn-quat      quaternion :inline :offset-assert 16)
    (radius          float              :offset-assert 32)
-   (group           basic              :offset-assert 36)
+   (group           sparticle-launch-group  :offset-assert 36)
    (collide-with    collide-spec       :offset-assert 40)
    (penetrate-using penetrate          :offset-assert 48)
    )
@@ -16582,7 +16614,7 @@
   :flag-assert         #xf00000080
   ;; Failed to read fields.
   (:methods
-    (process-hidden-method-14 () none 14) ;; (die () _type_ :state 14)
+    (die () _type_ :state 14)
     )
   )
 
@@ -20016,6 +20048,7 @@
   (unk-5 5)
   (unk-6 6)
   (unk-7 7)
+  (unk-8 8)
   )
 ;; ---sparticle-launcher-h:sp-group-flag
 
@@ -20519,7 +20552,7 @@
    (fov0                          float                        :offset-assert 148)
    (fov1                          float                        :offset-assert 152)
    (fov-index                     cam-index            :inline :offset-assert 160)
-   (tracking                      cam-rotation-tracker :inline :offset-assert 208)
+   (tracking                      cam-rotation-tracker :inline :offset-assert 208 :score 1)
    (view-off-param                float                        :offset-assert 472)
    (view-off                      vector               :inline :offset-assert 480)
    (joystick-saved-view-off       vector               :inline :offset-assert 496)
@@ -20533,7 +20566,7 @@
    (circular-follow               vector               :inline :offset-assert 2256)
    (max-angle-offset              float                        :offset-assert 2272)
    (max-angle-curr                float                        :offset-assert 2276)
-   (options                       uint32                       :offset-assert 2280) ;; TODO - this is likely a cam-slave-options but the size is wrong?
+   (options                       cam-slave-options-u32        :offset-assert 2280)
    (cam-entity                    entity                       :offset-assert 2284) ;; guessed by decompiler
    (butt-timer                    uint64                       :offset-assert 2288)
    (butt-seek                     basic                        :offset-assert 2296)
@@ -20597,7 +20630,7 @@
     cam-remote))
 
 (deftype camera-master (process)
-  ((master-options      uint32                           :offset-assert 128)
+  ((master-options      cam-master-options-u32           :offset-assert 128)
    (settings            cam-setting-data                 :offset-assert 132)
    (slave               (pointer camera-slave)           :offset-assert 136) ;; guessed by decompiler
    (decel               (pointer camera-slave)           :offset-assert 140) ;; a total guess that is probably wrong!
@@ -23836,7 +23869,7 @@
 ;; foreground                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern foreground-vu0-block object)
+(define-extern foreground-vu0-block vu-function)
 ;; (define-extern *bucket-map* object)
 ;; (define-extern vu1-bucket-map function)
 ;; (define-extern generic-bucket-state-init function)
@@ -23847,7 +23880,7 @@
 (define-extern vu-lights<-light-group! (function vu-lights light-group none))
 ;; (define-extern foreground-add-mtx-calc function)
 (define-extern foreground-wrapup (function none))
-;; (define-extern *default-shadow-settings* object) ;; shadow-settings
+(define-extern *default-shadow-settings* shadow-settings)
 ;; (define-extern foreground-shadow function)
 ;; (define-extern foreground-generic-merc-death function)
 ;; (define-extern foreground-generic-merc-add-fragments function)
@@ -26764,9 +26797,9 @@
 (define-extern cam-curve-setup (function vector none :behavior camera-slave))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern mat-remove-z-rot (function matrix vector matrix))
-(define-extern slave-matrix-blend-2 (function matrix float vector matrix matrix))
+(define-extern slave-matrix-blend-2 (function matrix cam-slave-options-u32 vector matrix matrix))
 (define-extern vector-into-frustum-nosmooth! (function matrix vector float vector))
-(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector cam-slave-options-u32 float symbol none))
 (define-extern v-slrp2! (function vector vector vector float vector float vector))
 (define-extern v-slrp3! (function vector vector vector vector float vector))
 
@@ -27414,7 +27447,7 @@
 (define-extern vector<-cspace! (function vector cspace vector))
 (define-extern vector<-matrix! (function vector matrix vector))
 (define-extern vector<-cspace+vector! (function vector cspace vector vector))
-(define-extern cspace-children (function process-drawable int pair)) ;; 
+(define-extern cspace-children (function process-drawable int pair)) ;;
 (define-extern cspace-inspect-tree (function process-drawable cspace int int object process-drawable))
 (define-extern execute-math-engine (function int))
 (define-extern draw-joint-axes (function process-drawable none))
@@ -27543,7 +27576,6 @@
 ;; generic-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype target-start (process-hidden)
   ()
   :method-count-assert 15
@@ -27553,11 +27585,9 @@
   (:methods
     )
   )
-|#
 
 (declare-type camera-start basic)
 (define-extern camera-start type)
-#|
 (deftype camera-start (process-hidden)
   ()
   :method-count-assert 15
@@ -27567,13 +27597,11 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype med-res-level (process-drawable)
-  ((level-name basic  :offset-assert 196)
-   (part-mode  basic  :offset-assert 200)
-   (index      int32  :offset-assert 204)
+  ((level-name basic  :offset-assert 200)
+   (part-mode  basic  :offset-assert 204)
+   (index      int32  :offset-assert 208)
    )
   :method-count-assert 21
   :size-assert         #xd4
@@ -27582,16 +27610,15 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype launcher (process-drawable)
-  ((spring-height   meters           :offset-assert 196)
-   (camera          state            :offset-assert 200) ;; guessed by decompiler
-   (active-distance float            :offset-assert 204)
-   (seek-time       time-frame           :offset-assert 212) ;; time-frame
-   (dest            vector   :inline :offset-assert 220)
-   (sound-id        sound-id         :offset-assert 236) ;; guessed by decompiler
+  ((root-override   collide-shape    :offset 128 :score 1)
+   (spring-height   meters           :offset-assert 200)
+   (camera          state            :offset-assert 204) ;; guessed by decompiler
+   (active-distance float            :offset-assert 208)
+   (seek-time       time-frame           :offset-assert 216) ;; time-frame
+   (dest            vector   :inline :offset-assert 224)
+   (sound-id        sound-id         :offset-assert 240) ;; guessed by decompiler
    )
   :method-count-assert 23
   :size-assert         #xf4
@@ -27602,31 +27629,30 @@
     (deactivated () _type_ :state 22)
     )
   )
-|#
 
-;; (define-extern entity-lookup-part-group function)
+(define-extern entity-lookup-part-group (function entity-actor (pointer string) symbol none))
 (define-extern clone-anim-once (function handle symbol string none :behavior process-drawable))
 (define-extern clone-anim (function handle symbol string none :behavior process-drawable))
-;; (define-extern swingpole-init function)
-;; (define-extern manipy-post function)
-(define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; (function vector entity-actor skeleton-group vector none :behavior manipy)
-(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
-;; (define-extern part-tracker-track-root function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern part-tracker-move-to-target function) ;; (function part-tracker vector)
-;; (define-extern part-tracker-track-target function) ;; (function part-tracker vector)
-(define-extern lightning-tracker-init (function lightning-spec time-frame symbol process-drawable vector vector none))
+(define-extern swingpole-init (function int object :behavior swingpole))
+(define-extern manipy-post (function none :behavior manipy))
+(define-extern manipy-init (function vector entity-actor skeleton-group vector object none :behavior manipy)) ;; (function vector entity-actor skeleton-group vector none :behavior manipy)
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process matrix none :behavior part-tracker))
+(define-extern part-tracker-track-root (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-tracker-move-to-target (function part-tracker vector))
+(define-extern part-tracker-track-target (function part-tracker vector))
+(define-extern lightning-tracker-init (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker))
 (define-extern process-grab? (function process symbol symbol :behavior process))
 (define-extern process-release? (function process symbol :behavior process))
-;; (define-extern camera-look-at function) ;; (function pair uint process :behavior camera-tracker)
+(define-extern camera-look-at (function pair uint process))
 (define-extern ja-anim-done? (function process symbol)) ;;
-;; (define-extern camera-pov-from function) ;; (function pair uint process :behavior camera-tracker)
-;; (define-extern cam-launcher-joystick function) ;; (function vector :behavior camera-slave)
-;; (define-extern cam-launcher-shortfall state) ;; (state camera-slave)
-;; (define-extern cam-launcher-long-joystick function) ;; (function vector :behavior camera-slave)
-;; (define-extern cam-launcher-longfall state) ;; (state camera-slave)
-;; (define-extern launcher-init-by-other function) ;; (function vector float int float none :behavior launcher)
+(define-extern camera-pov-from (function pair uint process))
+(define-extern cam-launcher-joystick (function vector :behavior camera-slave))
+(define-extern cam-launcher-shortfall (state camera-slave))
+(define-extern cam-launcher-long-joystick(function vector :behavior camera-slave))
+(define-extern cam-launcher-longfall (state camera-slave))
+(define-extern launcher-init-by-other (function vector float int float none :behavior launcher))
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
-;; (define-extern explosion-init-by-other function)
+(define-extern explosion-init-by-other (function explosion-init-params object :behavior explosion))
 (define-extern explosion-spawn (function process-drawable type explosion-init-params none))
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
 (define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
@@ -28298,12 +28324,12 @@
 ;; target-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern birth-func-copy-target-y-rot (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 
+(define-extern birth-func-copy-target-y-rot (function int sparticle-cpuinfo sparticle-launchinfo none)) ;;
 (define-extern birth-func-ground-orient (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 (define-extern birth-func-target-orient (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 (define-extern birth-func-vector-orient (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 (define-extern birth-func-set-alpha-from-userdata (function int sparticle-cpuinfo sparticle-launchinfo float))
-(define-extern part-tracker-track-target-joint (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 
+(define-extern part-tracker-track-target-joint (function int sparticle-cpuinfo sparticle-launchinfo none)) ;;
 (define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target)) ;;
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
@@ -28326,7 +28352,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern poly-find-nearest-edge "TODO- Not 100% sure here, but unused" (function nav-poly (inline-array vector) vector vector nav-poly))
-(define-extern target-collision-low-coverage (function control-info collide-query vector (pointer uint32) (pointer int64) (pointer symbol) none)) ;; 
+(define-extern target-collision-low-coverage (function control-info collide-query vector (pointer uint32) (pointer int64) (pointer symbol) none)) ;;
 (define-extern target-collision-reaction (function control-info collide-query vector vector collide-status :behavior target)) ;; (function control-info collide-shape-intersect vector vector collide-status)
 (define-extern target-collision-no-reaction (function control-info collide-query vector vector none)) ;; (function control-info collide-shape-intersect vector vector none)
 (define-extern *collide-edge-board-spec* collide-edge-spec)

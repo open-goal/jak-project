@@ -285,42 +285,51 @@
   (set! (-> self draw color-mult z) 0.8)
   (logior! (-> self draw global-effect) (draw-control-global-effect title-light))
   (logior! (-> self draw status) (draw-control-status hud))
-  (setup-masks (-> self draw) (the-as uint 1) 0)
-  (setup-masks (-> self draw) (the-as uint 0) 2046)
+  (setup-masks (-> self draw) 1 0)
+  (setup-masks (-> self draw) 0 2046)
   (cond
     ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
      (setup-masks
        (-> self draw)
-       (-> *hud-ring-kiosk-graphic-remap*
-           (mod
-             (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-             (-> *hud-ring-kiosk-graphic-remap* length)
+       (the-as
+         int
+         (-> *hud-ring-kiosk-graphic-remap*
+             (mod
+               (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+               (-> *hud-ring-kiosk-graphic-remap* length)
+               )
              )
-           )
+         )
        0
        )
      )
     ((and (= *cheat-mode* #f) (demo?))
      (setup-masks
        (-> self draw)
-       (-> *hud-ring-demo-graphic-remap*
-           (mod
-             (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-             (-> *hud-ring-kiosk-graphic-remap* length)
+       (the-as
+         int
+         (-> *hud-ring-demo-graphic-remap*
+             (mod
+               (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+               (-> *hud-ring-kiosk-graphic-remap* length)
+               )
              )
-           )
+         )
        0
        )
      )
     (else
       (setup-masks
         (-> self draw)
-        (-> *hud-ring-graphic-remap*
-            (mod
-              (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-              (-> *hud-ring-graphic-remap* length)
+        (the-as
+          int
+          (-> *hud-ring-graphic-remap*
+              (mod
+                (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+                (-> *hud-ring-graphic-remap* length)
+                )
               )
-            )
+          )
         0
         )
       )
@@ -345,41 +354,50 @@
       (-> (the-as progress (-> self parent-override 0)) node-list data (-> self joint-idx))
       )
     (when (-> (the-as progress (-> self parent-override 0)) main-menu)
-      (setup-masks (-> self draw) (the-as uint 0) 2046)
+      (setup-masks (-> self draw) 0 2046)
       (cond
         ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
          (setup-masks
            (-> self draw)
-           (-> *hud-ring-kiosk-graphic-remap*
-               (mod
-                 (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                 (-> *hud-ring-kiosk-graphic-remap* length)
+           (the-as
+             int
+             (-> *hud-ring-kiosk-graphic-remap*
+                 (mod
+                   (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+                   (-> *hud-ring-kiosk-graphic-remap* length)
+                   )
                  )
-               )
+             )
            0
            )
          )
         ((and (= *cheat-mode* #f) (demo?))
          (setup-masks
            (-> self draw)
-           (-> *hud-ring-demo-graphic-remap*
-               (mod
-                 (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                 (-> *hud-ring-kiosk-graphic-remap* length)
+           (the-as
+             int
+             (-> *hud-ring-demo-graphic-remap*
+                 (mod
+                   (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+                   (-> *hud-ring-kiosk-graphic-remap* length)
+                   )
                  )
-               )
+             )
            0
            )
          )
         (else
           (setup-masks
             (-> self draw)
-            (-> *hud-ring-graphic-remap*
-                (mod
-                  (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                  (-> *hud-ring-graphic-remap* length)
+            (the-as
+              int
+              (-> *hud-ring-graphic-remap*
+                  (mod
+                    (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
+                    (-> *hud-ring-graphic-remap* length)
+                    )
                   )
-                )
+              )
             0
             )
           )
@@ -1564,206 +1582,206 @@
 (defstate idle (progress)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as
-        object
-        (when (= v1-0 'notify)
-          (cond
-            ((= (-> event param 0) 'done)
-             (let ((t9-0 format)
-                   (a0-3 #t)
-                   (a1-1 "DONE NOTIFY: ~S ~S~%")
-                   (v1-3 (the-as mc-status-code (-> event param 1)))
-                   )
-               (t9-0
-                 a0-3
-                 a1-1
-                 (cond
-                   ((= v1-3 (mc-status-code bad-version))
-                    "bad-version"
-                    )
-                   ((= v1-3 (mc-status-code no-save))
-                    "no-save"
-                    )
-                   ((= v1-3 (mc-status-code no-last))
-                    "no-last"
-                    )
-                   ((= v1-3 (mc-status-code no-space))
-                    "no-space"
-                    )
-                   ((= v1-3 (mc-status-code internal-error))
-                    "internal-error"
-                    )
-                   ((= v1-3 (mc-status-code no-memory))
-                    "no-memory"
-                    )
-                   ((= v1-3 (mc-status-code bad-handle))
-                    "bad-handle"
-                    )
-                   ((= v1-3 (mc-status-code busy))
-                    "busy"
-                    )
-                   ((= v1-3 (mc-status-code write-error))
-                    "write-error"
-                    )
-                   ((= v1-3 (mc-status-code read-error))
-                    "read-error"
-                    )
-                   ((= v1-3 (mc-status-code no-card))
-                    "no-card"
-                    )
-                   ((= v1-3 (mc-status-code no-format))
-                    "no-format"
-                    )
-                   ((= v1-3 (mc-status-code ok))
-                    "ok"
-                    )
-                   ((= v1-3 (mc-status-code no-process))
-                    "no-process"
-                    )
-                   ((= v1-3 (mc-status-code no-auto-save))
-                    "no-auto-save"
-                    )
-                   ((= v1-3 (mc-status-code no-file))
-                    "no-file"
-                    )
-                   ((= v1-3 (mc-status-code format-failed))
-                    "format-failed"
-                    )
-                   ((= v1-3 (mc-status-code new-game))
-                    "new-game"
-                    )
-                   (else
-                     "*unknown*"
-                     )
-                   )
-                 (symbol->string (-> self current))
-                 )
-               )
-             (case (-> self current)
-               (('saving)
+    (the-as
+      object
+      (case event-type
+        (('notify)
+         (cond
+           ((= (-> event param 0) 'done)
+            (let ((t9-0 format)
+                  (a0-3 #t)
+                  (a1-1 "DONE NOTIFY: ~S ~S~%")
+                  (v1-3 (the-as mc-status-code (-> event param 1)))
+                  )
+              (t9-0
+                a0-3
+                a1-1
                 (cond
-                  ((= (-> self state-stack 0) 'title)
-                   (let ((gp-1 (-> *setting-control* user-default auto-save)))
-                     (sound-volume-off)
-                     (let ((v0-0 (progress-intro-start (logtest? (-> *game-info* purchase-secrets) (game-secrets hero-mode)))))
-                       (set! (-> *setting-control* user-default auto-save) gp-1)
-                       v0-0
-                       )
-                     )
+                  ((= v1-3 (mc-status-code bad-version))
+                   "bad-version"
+                   )
+                  ((= v1-3 (mc-status-code no-save))
+                   "no-save"
+                   )
+                  ((= v1-3 (mc-status-code no-last))
+                   "no-last"
+                   )
+                  ((= v1-3 (mc-status-code no-space))
+                   "no-space"
+                   )
+                  ((= v1-3 (mc-status-code internal-error))
+                   "internal-error"
+                   )
+                  ((= v1-3 (mc-status-code no-memory))
+                   "no-memory"
+                   )
+                  ((= v1-3 (mc-status-code bad-handle))
+                   "bad-handle"
+                   )
+                  ((= v1-3 (mc-status-code busy))
+                   "busy"
+                   )
+                  ((= v1-3 (mc-status-code write-error))
+                   "write-error"
+                   )
+                  ((= v1-3 (mc-status-code read-error))
+                   "read-error"
+                   )
+                  ((= v1-3 (mc-status-code no-card))
+                   "no-card"
+                   )
+                  ((= v1-3 (mc-status-code no-format))
+                   "no-format"
+                   )
+                  ((= v1-3 (mc-status-code ok))
+                   "ok"
+                   )
+                  ((= v1-3 (mc-status-code no-process))
+                   "no-process"
+                   )
+                  ((= v1-3 (mc-status-code no-auto-save))
+                   "no-auto-save"
+                   )
+                  ((= v1-3 (mc-status-code no-file))
+                   "no-file"
+                   )
+                  ((= v1-3 (mc-status-code format-failed))
+                   "format-failed"
+                   )
+                  ((= v1-3 (mc-status-code new-game))
+                   "new-game"
                    )
                   (else
-                    (progress-method-30 self)
+                    "*unknown*"
                     )
                   )
+                (symbol->string (-> self current))
                 )
-               (('formatting)
-                (set-next-state self 'creating 0)
-                )
-               (('creating)
-                (if (= (-> self state-stack 0) 'title)
-                    (set-next-state self 'select-save-title 0)
-                    (set-next-state self 'select-save 0)
+              )
+            (case (-> self current)
+              (('saving)
+               (cond
+                 ((= (-> self state-stack 0) 'title)
+                  (let ((gp-1 (-> *setting-control* user-default auto-save)))
+                    (sound-volume-off)
+                    (let ((v0-0 (progress-intro-start (logtest? (-> *game-info* purchase-secrets) (game-secrets hero-mode)))))
+                      (set! (-> *setting-control* user-default auto-save) gp-1)
+                      v0-0
+                      )
                     )
-                )
-               )
-             )
-            ((= (-> event param 0) 'error)
-             (let ((t9-7 format)
-                   (a0-18 #t)
-                   (a1-5 "ERROR NOTIFY: ~S ~S ~S~%")
-                   (v1-19 (the-as mc-status-code (-> event param 1)))
-                   )
-               (t9-7
-                 a0-18
-                 a1-5
-                 (cond
-                   ((= v1-19 (mc-status-code bad-version))
-                    "bad-version"
-                    )
-                   ((= v1-19 (mc-status-code no-save))
-                    "no-save"
-                    )
-                   ((= v1-19 (mc-status-code no-last))
-                    "no-last"
-                    )
-                   ((= v1-19 (mc-status-code no-space))
-                    "no-space"
-                    )
-                   ((= v1-19 (mc-status-code internal-error))
-                    "internal-error"
-                    )
-                   ((= v1-19 (mc-status-code no-memory))
-                    "no-memory"
-                    )
-                   ((= v1-19 (mc-status-code bad-handle))
-                    "bad-handle"
-                    )
-                   ((= v1-19 (mc-status-code busy))
-                    "busy"
-                    )
-                   ((= v1-19 (mc-status-code write-error))
-                    "write-error"
-                    )
-                   ((= v1-19 (mc-status-code read-error))
-                    "read-error"
-                    )
-                   ((= v1-19 (mc-status-code no-card))
-                    "no-card"
-                    )
-                   ((= v1-19 (mc-status-code no-format))
-                    "no-format"
-                    )
-                   ((= v1-19 (mc-status-code ok))
-                    "ok"
-                    )
-                   ((= v1-19 (mc-status-code no-process))
-                    "no-process"
-                    )
-                   ((= v1-19 (mc-status-code no-auto-save))
-                    "no-auto-save"
-                    )
-                   ((= v1-19 (mc-status-code no-file))
-                    "no-file"
-                    )
-                   ((= v1-19 (mc-status-code format-failed))
-                    "format-failed"
-                    )
-                   ((= v1-19 (mc-status-code new-game))
-                    "new-game"
-                    )
-                   (else
-                     "*unknown*"
-                     )
-                   )
-                 (-> self current)
-                 (-> self next)
-                 )
-               )
-             (case (-> event param 1)
-               ((14)
-                (set-next-state self 'insufficient-space 0)
-                )
-               (else
-                 (case (-> self current)
-                   (('formatting 'format-card)
-                    (set-next-state self 'error-formatting 0)
-                    )
-                   (('creating)
-                    (set-next-state self 'error-creating 0)
-                    )
-                   (('saving 'select-save 'select-save-title 'select-save-title-hero)
-                    (set-next-state self 'error-saving 0)
-                    )
-                   (('loading 'select-load)
-                    (set-next-state self 'error-loading 0)
-                    )
+                  )
+                 (else
+                   (progress-method-30 self)
                    )
                  )
                )
-             )
+              (('formatting)
+               (set-next-state self 'creating 0)
+               )
+              (('creating)
+               (if (= (-> self state-stack 0) 'title)
+                   (set-next-state self 'select-save-title 0)
+                   (set-next-state self 'select-save 0)
+                   )
+               )
+              )
             )
-          )
+           ((= (-> event param 0) 'error)
+            (let ((t9-7 format)
+                  (a0-18 #t)
+                  (a1-5 "ERROR NOTIFY: ~S ~S ~S~%")
+                  (v1-19 (the-as mc-status-code (-> event param 1)))
+                  )
+              (t9-7
+                a0-18
+                a1-5
+                (cond
+                  ((= v1-19 (mc-status-code bad-version))
+                   "bad-version"
+                   )
+                  ((= v1-19 (mc-status-code no-save))
+                   "no-save"
+                   )
+                  ((= v1-19 (mc-status-code no-last))
+                   "no-last"
+                   )
+                  ((= v1-19 (mc-status-code no-space))
+                   "no-space"
+                   )
+                  ((= v1-19 (mc-status-code internal-error))
+                   "internal-error"
+                   )
+                  ((= v1-19 (mc-status-code no-memory))
+                   "no-memory"
+                   )
+                  ((= v1-19 (mc-status-code bad-handle))
+                   "bad-handle"
+                   )
+                  ((= v1-19 (mc-status-code busy))
+                   "busy"
+                   )
+                  ((= v1-19 (mc-status-code write-error))
+                   "write-error"
+                   )
+                  ((= v1-19 (mc-status-code read-error))
+                   "read-error"
+                   )
+                  ((= v1-19 (mc-status-code no-card))
+                   "no-card"
+                   )
+                  ((= v1-19 (mc-status-code no-format))
+                   "no-format"
+                   )
+                  ((= v1-19 (mc-status-code ok))
+                   "ok"
+                   )
+                  ((= v1-19 (mc-status-code no-process))
+                   "no-process"
+                   )
+                  ((= v1-19 (mc-status-code no-auto-save))
+                   "no-auto-save"
+                   )
+                  ((= v1-19 (mc-status-code no-file))
+                   "no-file"
+                   )
+                  ((= v1-19 (mc-status-code format-failed))
+                   "format-failed"
+                   )
+                  ((= v1-19 (mc-status-code new-game))
+                   "new-game"
+                   )
+                  (else
+                    "*unknown*"
+                    )
+                  )
+                (-> self current)
+                (-> self next)
+                )
+              )
+            (case (-> event param 1)
+              ((14)
+               (set-next-state self 'insufficient-space 0)
+               )
+              (else
+                (case (-> self current)
+                  (('formatting 'format-card)
+                   (set-next-state self 'error-formatting 0)
+                   )
+                  (('creating)
+                   (set-next-state self 'error-creating 0)
+                   )
+                  (('saving 'select-save 'select-save-title 'select-save-title-hero)
+                   (set-next-state self 'error-saving 0)
+                   )
+                  (('loading 'select-load)
+                   (set-next-state self 'error-loading 0)
+                   )
+                  )
+                )
+              )
+            )
+           )
+         )
         )
       )
     )

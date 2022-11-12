@@ -1,26 +1,15 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: generic-obs.gc
-;; name in dgo: generic-obs
-;; dgos: ENGINE, GAME
-
-(define-extern ja-post (function none :behavior process-drawable))
-(define-extern merc-blend-shape (function process-drawable object))
-(define-extern merc-eye-anim (function process-drawable none))
-(define-extern process-release? (function process symbol :behavior process))
-
-;; NOTE - for guard-projectile
-(define-extern explosion-spawn (function process-drawable type explosion-init-params none))
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-spotlight spotlight 0 -1
               ((1 (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 5
               )
 
+;; definition for function entity-lookup-part-group
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defun entity-lookup-part-group ((arg0 entity-actor) (arg1 (pointer string)) (arg2 symbol))
   (local-vars (sv-16 res-tag))
@@ -41,7 +30,7 @@
                )
            (set! gp-0 (lookup-part-group-pointer-by-name (the-as string s3-0)))
            (if (the-as (pointer object) gp-0)
-               (set! (-> (the-as (pointer int32) s4-0)) (the-as int gp-0))
+               (set! (-> (the-as (pointer int32) s4-0)) (the-as (pointer object) gp-0))
                )
            )
           (else
@@ -54,6 +43,9 @@
   (none)
   )
 
+;; definition for function clone-anim-once
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior clone-anim-once process-drawable ((arg0 handle) (arg1 symbol) (arg2 string))
   (logclear! (-> self skel status) (joint-control-status valid-spooled-frame))
   (let ((gp-0 (handle->process arg0)))
@@ -126,6 +118,8 @@
   (none)
   )
 
+;; definition for function clone-anim
+;; WARN: Return type mismatch int vs none.
 (defbehavior clone-anim process-drawable ((arg0 handle) (arg1 symbol) (arg2 string))
   (ja-post)
   (while (handle->process arg0)
@@ -137,6 +131,9 @@
   (none)
   )
 
+;; definition for method 22 of type swingpole
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod move-along-path swingpole ((obj swingpole))
   (with-pp
     (if (nonzero? (-> obj draw))
@@ -180,6 +177,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (swingpole)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -216,6 +214,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (swingpole)
   :virtual #t
   :code (behavior ((arg0 handle))
@@ -243,6 +242,8 @@
     )
   )
 
+;; definition for method 11 of type swingpole
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! swingpole ((obj swingpole) (arg0 entity-actor))
   "Copy defaults from the entity."
@@ -303,6 +304,8 @@
   (none)
   )
 
+;; definition for function swingpole-init
+;; INFO: Used lq/sq
 (defbehavior swingpole-init swingpole ((arg0 int))
   (stack-size-set! (-> self main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
@@ -329,11 +332,13 @@
   (go-virtual idle)
   )
 
+;; failed to figure out what this is:
 (defstate die (process-hidden)
   :virtual #t
   :code (the-as (function none :behavior process-hidden) nothing)
   )
 
+;; definition for method 11 of type process-hidden
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! process-hidden ((obj process-hidden) (arg0 entity-actor))
   "Copy defaults from the entity."
@@ -342,6 +347,7 @@
   (none)
   )
 
+;; definition of type target-start
 (deftype target-start (process-hidden)
   ()
   :method-count-assert 15
@@ -349,7 +355,145 @@
   :flag-assert         #xf00000080
   )
 
+;; definition for method 3 of type target-start
+(defmethod inspect target-start ((obj target-start))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> obj mask))
+  (let ((s5-0 (-> obj mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "attackable ")
+        )
+    (if (= (logand (process-mask bit18) s5-0) (process-mask bit18))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand (process-mask no-track) s5-0) (process-mask no-track))
+        (format #t "no-track ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (shl #x8000 16))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> obj clock))
+  (format #t "~1Tparent: #x~X~%" (-> obj parent))
+  (format #t "~1Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~1Tchild: #x~X~%" (-> obj child))
+  (format #t "~1Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~1Tself: ~A~%" (-> obj self))
+  (format #t "~1Tpool: ~A~%" (-> obj pool))
+  (format #t "~1Tstatus: ~A~%" (-> obj status))
+  (format #t "~1Tpid: ~D~%" (-> obj pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~1Tentity: ~A~%" (-> obj entity))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "~1Tstate: ~A~%" (-> obj state))
+  (format #t "~1Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~1Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> obj stack))
+  (label cfg-68)
+  obj
+  )
 
+;; definition of type camera-start
 (deftype camera-start (process-hidden)
   ()
   :method-count-assert 15
@@ -357,7 +501,146 @@
   :flag-assert         #xf00000080
   )
 
+;; definition for method 3 of type camera-start
+(defmethod inspect camera-start ((obj camera-start))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> obj mask))
+  (let ((s5-0 (-> obj mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "attackable ")
+        )
+    (if (= (logand (process-mask bit18) s5-0) (process-mask bit18))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand (process-mask no-track) s5-0) (process-mask no-track))
+        (format #t "no-track ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (shl #x8000 16))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> obj clock))
+  (format #t "~1Tparent: #x~X~%" (-> obj parent))
+  (format #t "~1Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~1Tchild: #x~X~%" (-> obj child))
+  (format #t "~1Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~1Tself: ~A~%" (-> obj self))
+  (format #t "~1Tpool: ~A~%" (-> obj pool))
+  (format #t "~1Tstatus: ~A~%" (-> obj status))
+  (format #t "~1Tpid: ~D~%" (-> obj pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~1Tentity: ~A~%" (-> obj entity))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "~1Tstate: ~A~%" (-> obj state))
+  (format #t "~1Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~1Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> obj stack))
+  (label cfg-68)
+  obj
+  )
 
+;; definition for function manipy-post
+;; WARN: Return type mismatch int vs none.
 (defbehavior manipy-post manipy ()
   ((-> self cur-post-hook))
   (when (and (>= (-> self shadow-volume-joint) 0) (-> self draw shadow-ctrl))
@@ -371,6 +654,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (manipy)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -547,7 +831,7 @@
            (let ((a1-44 (/ (the-as int (-> event param 0)) 8))
                  (a2-5 (/ (the-as int (-> event param 1)) 8))
                  )
-             (the-as object (setup-masks (-> self draw) a1-44 (the-as int a2-5)))
+             (the-as object (setup-masks (-> self draw) (the-as int a1-44) (the-as int a2-5)))
              )
            )
           ((= v1-0 'trans-hook)
@@ -619,11 +903,11 @@
            )
           ((= v1-0 'trans)
            (cond
-             ((type? (-> self root) collide-shape)
+             ((type? (-> self root-override) collide-shape)
               (the-as object (move-to-point! (-> self root-override) (the-as vector (-> event param 0))))
               )
              (else
-               (set! s4-0 (-> self root trans))
+               (set! s4-0 (-> self root-override trans))
                (set! (-> (the-as vector s4-0) quad) (-> (the-as vector (-> event param 0)) quad))
                s4-0
                )
@@ -632,11 +916,11 @@
           ((= v1-0 'rot)
            (let ((s5-3 (new 'stack-no-clear 'matrix)))
              (matrix-rotate-y! s5-3 (the-as float (-> event param 0)))
-             (matrix->quaternion (-> self root quat) s5-3)
+             (matrix->quaternion (-> self root-override quat) s5-3)
              )
            )
           ((= v1-0 'rot-quat)
-           (quaternion-copy! (-> self root quat) (the-as quaternion (-> event param 0)))
+           (quaternion-copy! (-> self root-override quat) (the-as quaternion (-> event param 0)))
            )
           ((= v1-0 'clone-copy-trans)
            (set! s4-0 (-> event param 0))
@@ -800,14 +1084,14 @@
     (let ((v1-20 (handle->process (-> self cur-grab-handle))))
       (when v1-20
         (let ((gp-1 (-> (the-as process-drawable v1-20) root trans)))
-          (if (type? (-> self root) collide-shape)
+          (if (type? (-> self root-override) collide-shape)
               (move-by-vector!
-                (the-as collide-shape (-> self root))
+                (the-as collide-shape (-> self root-override))
                 (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
                 )
               (vector+!
-                (-> self root trans)
-                (-> self root trans)
+                (-> self root-override trans)
+                (-> self root-override trans)
                 (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
                 )
               )
@@ -929,6 +1213,8 @@
     )
   )
 
+;; definition for function manipy-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior manipy-init manipy ((arg0 vector) (arg1 entity-actor) (arg2 skeleton-group) (arg3 vector) (arg4 object))
   (stack-size-set! (-> self main-thread) 128)
@@ -952,7 +1238,7 @@
          (set! (-> s3-1 backup-collide-as) (-> v1-14 prim-core collide-as))
          (set! (-> s3-1 backup-collide-with) (-> v1-14 prim-core collide-with))
          )
-       (set! (-> self root) s3-1)
+       (set! (-> self root-override) s3-1)
        )
      )
     (arg3
@@ -969,17 +1255,17 @@
           (set! (-> s3-2 backup-collide-as) (-> v1-21 prim-core collide-as))
           (set! (-> s3-2 backup-collide-with) (-> v1-21 prim-core collide-with))
           )
-        (set! (-> self root) s3-2)
+        (set! (-> self root-override) s3-2)
         )
       )
     (else
-      (set! (-> self root) (new 'process 'trsqv))
+      (set! (-> self root-override) (the-as collide-shape (new 'process 'trsqv)))
       )
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root-override trans quad) (-> arg0 quad))
   (initialize-skeleton self arg2 (the-as pair 0))
-  (if (type? (-> self root) collide-shape)
-      (update-transforms (the-as collide-shape (-> self root)))
+  (if (type? (-> self root-override) collide-shape)
+      (update-transforms (the-as collide-shape (-> self root-override)))
       )
   (set! (-> self shadow-backup) (-> self draw shadow))
   (set! (-> self shadow-volume-joint) -1)
@@ -1025,6 +1311,7 @@
   (none)
   )
 
+;; definition for method 10 of type part-tracker
 (defmethod deactivate part-tracker ((obj part-tracker))
   (if (nonzero? (-> obj part))
       (kill-and-free-particles (-> obj part))
@@ -1033,6 +1320,7 @@
   (none)
   )
 
+;; definition for method 15 of type part-tracker
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death part-tracker ((obj part-tracker))
   (with-pp
@@ -1056,6 +1344,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (part-tracker)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1132,6 +1421,8 @@
     )
   )
 
+;; definition for function part-tracker-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior part-tracker-init part-tracker ((arg0 sparticle-launch-group)
                                    (arg1 time-frame)
@@ -1209,6 +1500,8 @@
   (none)
   )
 
+;; definition for function part-tracker-track-root
+;; WARN: Return type mismatch int vs none.
 (defun part-tracker-track-root ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
   (let ((v1-3 (-> arg1 key proc root trans)))
     (set! (-> arg2 x) (-> v1-3 x))
@@ -1219,6 +1512,7 @@
   (none)
   )
 
+;; definition for function part-tracker-move-to-target
 (defun part-tracker-move-to-target ((arg0 part-tracker))
   (with-pp
     (let* ((a0-1 *target*)
@@ -1238,6 +1532,8 @@
     )
   )
 
+;; definition for function part-tracker-track-target
+;; INFO: Used lq/sq
 (defun part-tracker-track-target ((arg0 part-tracker))
   (set! (-> arg0 linger-callback) (-> arg0 callback))
   (let* ((a0-1 *target*)
@@ -1253,6 +1549,7 @@
     )
   )
 
+;; definition for method 15 of type lightning-tracker
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death lightning-tracker ((obj lightning-tracker))
   (with-pp
@@ -1276,6 +1573,9 @@
     )
   )
 
+;; definition for method 16 of type lightning-tracker
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod update lightning-tracker ((obj lightning-tracker))
   (if (-> obj callback)
       ((-> obj callback) obj)
@@ -1378,6 +1678,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate active (lightning-tracker)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1520,6 +1821,8 @@
     )
   )
 
+;; definition for function lightning-tracker-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior lightning-tracker-init lightning-tracker ((arg0 lightning-spec) (arg1 time-frame) (arg2 symbol) (arg3 process-drawable) (arg4 vector) (arg5 vector))
   (stack-size-set! (-> self main-thread) 128)
@@ -1595,6 +1898,7 @@
   (none)
   )
 
+;; definition for function process-grab?
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior process-grab? process ((arg0 process) (arg1 symbol))
   (let ((a0-1 (command-get-process arg0 *target*)))
@@ -1616,6 +1920,7 @@
     )
   )
 
+;; definition for function process-release?
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior process-release? process ((arg0 process))
   (let* ((gp-0 (command-get-process arg0 *target*))
@@ -1632,6 +1937,7 @@
     )
   )
 
+;; definition for function camera-look-at
 (defun camera-look-at ((arg0 pair) (arg1 uint))
   (let ((gp-0 (command-get-process arg0 *target*)))
     (if gp-0
@@ -1641,6 +1947,7 @@
     )
   )
 
+;; definition for function ja-anim-done?
 ;; WARN: Return type mismatch object vs symbol.
 (defun ja-anim-done? ((arg0 process))
   (with-pp
@@ -1671,6 +1978,7 @@
     )
   )
 
+;; definition for function camera-pov-from
 ;; WARN: Return type mismatch target vs process.
 (defun camera-pov-from ((arg0 pair) (arg1 uint))
   (let ((gp-0 (the-as target (command-get-process arg0 *target*))))
@@ -1693,6 +2001,7 @@
     )
   )
 
+;; definition of type med-res-level
 (deftype med-res-level (process-drawable)
   ((level-name basic  :offset-assert 200)
    (part-mode  basic  :offset-assert 204)
@@ -1707,7 +2016,23 @@
     )
   )
 
+;; definition for method 3 of type med-res-level
+(defmethod inspect med-res-level ((obj med-res-level))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tlevel-name: ~A~%" (-> obj level-name))
+  (format #t "~2Tpart-mode: ~A~%" (-> obj part-mode))
+  (format #t "~2Tindex: ~D~%" (-> obj index))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate idle (med-res-level)
   :virtual #t
   :code (behavior ()
@@ -1739,6 +2064,7 @@
   :post (the-as (function none :behavior med-res-level) ja-post)
   )
 
+;; definition for method 11 of type med-res-level
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! med-res-level ((obj med-res-level) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 128)
@@ -1762,6 +2088,7 @@
   (none)
   )
 
+;; definition for method 10 of type part-spawner
 (defmethod deactivate part-spawner ((obj part-spawner))
   (if (nonzero? (-> obj part))
       (kill-and-free-particles (-> obj part))
@@ -1773,11 +2100,13 @@
   (none)
   )
 
+;; definition for method 15 of type part-spawner
 (defmethod is-in-view? part-spawner ((obj part-spawner))
   (sphere<-vector+r! (-> obj world-sphere) (-> obj root trans) (-> obj radius))
   (sphere-in-view-frustum? (-> obj world-sphere))
   )
 
+;; failed to figure out what this is:
 (defstate active (part-spawner)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1815,6 +2144,9 @@
     )
   )
 
+;; definition for method 11 of type part-spawner
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! part-spawner ((obj part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 string))
   (stack-size-set! (-> obj main-thread) 128)
@@ -1872,6 +2204,7 @@
   (none)
   )
 
+;; definition of type launcher
 (deftype launcher (process-drawable)
   ((root-override   collide-shape         :offset        128)
    (spring-height   meters                :offset-assert 200)
@@ -1892,7 +2225,26 @@
     )
   )
 
+;; definition for method 3 of type launcher
+(defmethod inspect launcher ((obj launcher))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspring-height: (meters ~m)~%" (-> obj spring-height))
+  (format #t "~2Tcamera: ~A~%" (-> obj camera))
+  (format #t "~2Tactive-distance: ~f~%" (-> obj active-distance))
+  (format #t "~2Tseek-time: ~D~%" (-> obj seek-time))
+  (format #t "~2Tdest: ~`vector`P~%" (-> obj dest))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defpartgroup group-beach-launcher
   :id 6
   :bounds (static-bspherem 0 3 0 5)
@@ -1904,6 +2256,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 77
   :init-specs ((sp-flt spt-num 1.5)
     (sp-flt spt-x (meters 1.5))
@@ -1921,10 +2274,12 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 82
   :init-specs ((sp-flt spt-fade-b -4.551111))
   )
 
+;; failed to figure out what this is:
 (defpart 78
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 1.0)
@@ -1945,6 +2300,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 79
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 2.0)
@@ -1965,6 +2321,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 80
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2f :page #xc))
     (sp-flt spt-num 1.5)
@@ -1989,6 +2346,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 81
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
     (sp-flt spt-num 0.5)
@@ -2015,10 +2373,12 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 83
   :init-specs ((sp-flt spt-fade-a -0.18))
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-jungle-launcher
   :id 7
   :bounds (static-bspherem 0 3 0 5)
@@ -2029,6 +2389,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 84
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 1.0)
@@ -2049,6 +2410,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 85
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 2.0)
@@ -2069,6 +2431,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 86
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
     (sp-flt spt-num 0.5)
@@ -2095,6 +2458,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-swamp-launcher
   :id 8
   :bounds (static-bspherem 0 3 0 5)
@@ -2105,6 +2469,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 87
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
     (sp-flt spt-num 0.5)
@@ -2131,6 +2496,8 @@
     )
   )
 
+;; definition for function cam-launcher-joystick
+;; INFO: Used lq/sq
 (defbehavior cam-launcher-joystick camera-slave ()
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
     (let ((s5-0 (new-stack-matrix0))
@@ -2149,6 +2516,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate cam-launcher-shortfall (camera-slave)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (let ((v1-0 event-type))
@@ -2204,6 +2572,8 @@
     )
   )
 
+;; definition for function cam-launcher-long-joystick
+;; INFO: Used lq/sq
 (defbehavior cam-launcher-long-joystick camera-slave ()
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
     (let ((gp-0 (new-stack-matrix0)))
@@ -2219,6 +2589,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate cam-launcher-longfall (camera-slave)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (let ((v1-0 event-type))
@@ -2314,6 +2685,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (launcher)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2362,6 +2734,7 @@
   :code (the-as (function none :behavior launcher) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate active (launcher)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2424,11 +2797,13 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate deactivated (launcher)
   :virtual #t
   :code (the-as (function none :behavior launcher) sleep-code)
   )
 
+;; definition for method 11 of type launcher
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! launcher ((obj launcher) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 128)
@@ -2495,6 +2870,8 @@
   (none)
   )
 
+;; definition for function launcher-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior launcher-init-by-other launcher ((arg0 vector) (arg1 float) (arg2 int) (arg3 float))
   (stack-size-set! (-> self main-thread) 128)
@@ -2558,6 +2935,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate active (touch-tracker)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2680,6 +3058,8 @@
     )
   )
 
+;; definition for function touch-tracker-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 time-frame))
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
@@ -2729,6 +3109,8 @@
   (none)
   )
 
+;; definition for method 21 of type explosion
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-explosion-collision explosion ((obj explosion))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 penetrate-using) (penetrate explode))
@@ -2750,11 +3132,15 @@
   (none)
   )
 
+;; definition for method 22 of type explosion
+;; WARN: Return type mismatch int vs none.
 (defmethod explosion-method-22 explosion ((obj explosion))
   0
   (none)
   )
 
+;; definition for function explosion-init-by-other
+;; INFO: Used lq/sq
 (defbehavior explosion-init-by-other explosion ((arg0 explosion-init-params))
   (logclear! (-> self mask) (process-mask actor-pause movie))
   (setup-explosion-collision self)
@@ -2794,6 +3180,7 @@
   (go-virtual explode)
   )
 
+;; definition for function explosion-spawn
 ;; WARN: Return type mismatch (pointer process) vs none.
 (defun explosion-spawn ((arg0 process-drawable) (arg1 type) (arg2 explosion-init-params))
   (let ((s4-0 (get-process *default-dead-pool* arg1 #x4000)))
@@ -2808,6 +3195,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate explode (explosion)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2886,6 +3274,7 @@
     )
   )
 
+;; definition for function process-drawable-random-point!
 (defun process-drawable-random-point! ((arg0 process-drawable) (arg1 vector))
   (let ((v1-1 (-> arg0 node-list length))
         (s4-0 (-> arg0 root))
@@ -2911,6 +3300,8 @@
   arg1
   )
 
+;; definition for function process-drawable-pair-random-point!
+;; INFO: Used lq/sq
 (defun process-drawable-pair-random-point! ((arg0 process-drawable) (arg1 process-drawable) (arg2 vector) (arg3 float))
   (let ((s4-0 (new-stack-vector0))
         (s3-0 (new-stack-vector0))
@@ -2920,3 +3311,7 @@
     (vector-lerp! arg2 s4-0 s3-0 arg3)
     )
   )
+
+
+
+

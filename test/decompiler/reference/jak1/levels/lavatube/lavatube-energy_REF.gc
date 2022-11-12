@@ -426,12 +426,12 @@
 ;; definition for function energydoor-open-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior energydoor-open-handler energydoor ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'open?)
-                       #t
-                       )
-            )
-    )
+  (the-as object (case arg2
+                   (('open?)
+                    #t
+                    )
+                   )
+          )
   )
 
 ;; definition for function energydoor-closed-handler
@@ -862,28 +862,28 @@
 ;; failed to figure out what this is:
 (defstate energyball-idle (energyball)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'attack)
-                       (when (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
-                         (increment-success-for-hint (game-text-id lavatube-balls))
-                         (sound-play "dcrate-break")
-                         (process-spawn
-                           part-tracker
-                           :init part-tracker-init
-                           (-> *part-group-id-table* 546)
-                           600
-                           #f
-                           #f
-                           #f
-                           (-> self root-override trans)
-                           :to *entity-pool*
-                           )
-                         (cleanup-for-death self)
-                         (deactivate self)
-                         )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('attack)
+                      (when (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+                        (increment-success-for-hint (game-text-id lavatube-balls))
+                        (sound-play "dcrate-break")
+                        (process-spawn
+                          part-tracker
+                          :init part-tracker-init
+                          (-> *part-group-id-table* 546)
+                          600
+                          #f
+                          #f
+                          #f
+                          (-> self root-override trans)
+                          :to *entity-pool*
+                          )
+                        (cleanup-for-death self)
+                        (deactivate self)
+                        )
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (rider-trans)
@@ -1351,12 +1351,12 @@
 ;; failed to figure out what this is:
 (defstate energyhub-stop (energyhub)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'flash)
-                         (set! (-> self palette-val) 1.9921875)
-                         )
-              )
-      )
+    (the-as object (case event-type
+                     (('flash)
+                      (set! (-> self palette-val) 1.9921875)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self rotation-speed target) 0.0)
@@ -1433,12 +1433,12 @@
 ;; failed to figure out what this is:
 (defstate energyhub-idle (energyhub)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'flash)
-                         (set! (-> self palette-val) 1.9921875)
-                         )
-              )
-      )
+    (the-as object (case event-type
+                     (('flash)
+                      (set! (-> self palette-val) 1.9921875)
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (if (nonzero? (-> self sound))

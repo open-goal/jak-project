@@ -73,6 +73,14 @@ Matcher Matcher::cast(const std::string& type, Matcher value) {
   return m;
 }
 
+Matcher Matcher::cast_to_any(int type_out, Matcher value) {
+  Matcher m;
+  m.m_kind = Kind::CAST_TO_ANY;
+  m.m_string_out_id = type_out;
+  m.m_sub_matchers = {value};
+  return m;
+}
+
 Matcher Matcher::any(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY;
@@ -331,6 +339,15 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         if (as_cast->type().print() == m_str) {
           return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
         }
+      }
+      return false;
+    } break;
+
+    case Kind::CAST_TO_ANY: {
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
+      if (as_cast) {
+        maps_out->strings[m_string_out_id] = as_cast->type().print();
+        return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
       }
       return false;
     } break;

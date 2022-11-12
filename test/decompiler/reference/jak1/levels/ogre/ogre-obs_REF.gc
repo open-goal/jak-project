@@ -509,17 +509,17 @@
 (defstate rigid-body-platform-idle (ogre-plat)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'trigger)
-                       (set! (-> self triggered) (the-as entity-actor #t))
-                       (set! (-> self delay) (the-as time-frame (-> event param 0)))
-                       (let ((v0-0 (-> *display* base-frame-counter)))
-                         (set! (-> self state-time) v0-0)
-                         v0-0
-                         )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('trigger)
+                      (set! (-> self triggered) (the-as entity-actor #t))
+                      (set! (-> self delay) (the-as time-frame (-> event param 0)))
+                      (let ((v0-0 (-> *display* base-frame-counter)))
+                        (set! (-> self state-time) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (cond
@@ -1116,30 +1116,30 @@
 ;; failed to figure out what this is:
 (defstate ogre-bridge-break (ogre-bridge)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'effect)
-                       (when (= (-> event param 0) 'splash)
-                         (let ((gp-0 (new 'stack-no-clear 'vector)))
-                           (let ((a1-1 (-> event param 2)))
-                             (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
-                             )
-                           (set! (-> gp-0 y) 118784.0)
-                           (process-spawn
-                             part-tracker
-                             :init part-tracker-init
-                             (-> *part-group-id-table* 466)
-                             -1
-                             #f
-                             #f
-                             #f
-                             gp-0
-                             :to *entity-pool*
-                             )
-                           )
-                         )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('effect)
+                      (when (= (-> event param 0) 'splash)
+                        (let ((gp-0 (new 'stack-no-clear 'vector)))
+                          (let ((a1-1 (-> event param 2)))
+                            (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
+                            )
+                          (set! (-> gp-0 y) 118784.0)
+                          (process-spawn
+                            part-tracker
+                            :init part-tracker-init
+                            (-> *part-group-id-table* 466)
+                            -1
+                            #f
+                            #f
+                            #f
+                            gp-0
+                            :to *entity-pool*
+                            )
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)

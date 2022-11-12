@@ -8,7 +8,6 @@
 (define-extern history-draw (function history-iterator none))
 (define-extern target-sidekick-setup (function symbol none :behavior target))
 (define-extern target-board-setup (function symbol none :behavior target))
-(define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy))
 (define-extern target-float (state target))
 (define-extern target-timed-invulnerable-off (function target int none))
 (define-extern target-gun-joint-pre (function none :behavior target))
@@ -1665,27 +1664,18 @@
        (set! (-> self mirror) (the-as (pointer process-drawable) #f))
        )
       (else
-        (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-               (gp-1
-                 (when s5-0
-                   (let ((t9-12 (method-of-type manipy activate)))
-                     (t9-12 (the-as manipy s5-0) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                     )
-                   (let ((gp-2 run-function-in-process)
-                         (s4-0 s5-0)
-                         (s3-0 manipy-init)
-                         (s2-0 (-> self control trans))
-                         (s1-0 (-> self entity))
-                         (t0-0 (art-group-get-by-name *level* "skel-jchar" (the-as (pointer uint32) #f)))
-                         (t1-0 #f)
-                         )
-                     0
-                     ((the-as (function object object object object object object none) gp-2) s4-0 s3-0 s2-0 s1-0 t0-0 t1-0)
-                     )
-                   (-> s5-0 ppointer)
-                   )
-                 )
-               )
+        (let ((gp-1 (process-spawn
+                      manipy
+                      :init manipy-init
+                      (-> self control trans)
+                      (-> self entity)
+                      (art-group-get-by-name *level* "skel-jchar" (the-as (pointer uint32) #f))
+                      #f
+                      0
+                      :to self
+                      )
+                    )
+              )
           (send-event (ppointer->process gp-1) 'anim-mode 'mirror)
           (send-event (ppointer->process gp-1) 'mirror #t)
           (set! (-> self mirror) (the-as (pointer process-drawable) gp-1))
@@ -1825,11 +1815,11 @@
     (when (!= (-> self beard?) v1-248)
       (cond
         (v1-248
-          (setup-masks (-> self draw) (the-as uint 2) 0)
+          (setup-masks (-> self draw) 2 0)
           (set! (-> self beard?) #t)
           )
         (else
-          (setup-masks (-> self draw) (the-as uint 0) 2)
+          (setup-masks (-> self draw) 0 2)
           (set! (-> self beard?) #f)
           )
         )
@@ -2252,14 +2242,14 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (let ((s4-1 (vector+float*!
                     (new 'stack-no-clear 'vector)
-                    (-> (the-as swingpole s2-0) root trans)
+                    (-> (the-as swingpole s2-0) root-override trans)
                     gp-0
                     (the-as float (-> (the-as swingpole s2-0) edge-length))
                     )
                   )
             (s3-1 (vector+float*!
                     (new 'stack-no-clear 'vector)
-                    (-> (the-as swingpole s2-0) root trans)
+                    (-> (the-as swingpole s2-0) root-override trans)
                     gp-0
                     (- (-> (the-as swingpole s2-0) edge-length))
                     )
@@ -2282,7 +2272,7 @@
           (add-debug-vector
             #t
             (bucket-id debug-no-zbuf1)
-            (-> (the-as swingpole s2-0) root trans)
+            (-> (the-as swingpole s2-0) root-override trans)
             (-> (the-as swingpole s2-0) dir)
             (meters 3)
             (new 'static 'rgba :r #xff :b #xff :a #x80)

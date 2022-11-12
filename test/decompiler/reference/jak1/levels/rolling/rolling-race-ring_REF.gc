@@ -611,19 +611,36 @@
 (defstate race-ring-active (race-ring)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 symbol))
-    (let ((v1-0 event-type))
-      (the-as
-        object
-        (when (= v1-0 'notify)
-          (when (and (= (-> event param 0) 'die) (= proc (-> self part-track process 0)))
-            (cond
-              ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+    (the-as
+      object
+      (case event-type
+        (('notify)
+         (when (and (= (-> event param 0) 'die) (= proc (-> self part-track process 0)))
+           (cond
+             ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+              (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                             part-tracker
+                                                             :init part-tracker-init
+                                                             (-> *part-group-id-table* 460)
+                                                             -1
+                                                             race-ring-blue-set-particle-rotation-callback
+                                                             (-> self ppointer)
+                                                             #f
+                                                             (-> self root trans)
+                                                             :to self
+                                                             )
+                                                           )
+                    )
+              (set! v0-0 #t)
+              (set! (-> self keep-part-track-alive) v0-0)
+              )
+             (else
                (set! (-> self part-track) (ppointer->handle (process-spawn
                                                               part-tracker
                                                               :init part-tracker-init
-                                                              (-> *part-group-id-table* 460)
+                                                              (-> *part-group-id-table* 457)
                                                               -1
-                                                              race-ring-blue-set-particle-rotation-callback
+                                                              race-ring-set-particle-rotation-callback
                                                               (-> self ppointer)
                                                               #f
                                                               (-> self root trans)
@@ -634,27 +651,10 @@
                (set! v0-0 #t)
                (set! (-> self keep-part-track-alive) v0-0)
                )
-              (else
-                (set! (-> self part-track) (ppointer->handle (process-spawn
-                                                               part-tracker
-                                                               :init part-tracker-init
-                                                               (-> *part-group-id-table* 457)
-                                                               -1
-                                                               race-ring-set-particle-rotation-callback
-                                                               (-> self ppointer)
-                                                               #f
-                                                               (-> self root trans)
-                                                               :to self
-                                                               )
-                                                             )
-                      )
-                (set! v0-0 #t)
-                (set! (-> self keep-part-track-alive) v0-0)
-                )
-              )
-            v0-0
-            )
-          )
+             )
+           v0-0
+           )
+         )
         )
       )
     )
