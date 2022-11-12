@@ -1,26 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: fma-sphere.gc
-;; name in dgo: fma-sphere
-;; dgos: ENGINE, GAME
-
-;; og:ignore-form:(defbehavior fma-sphere-init-by-other
-
-;; +++fma-sphere-mode
-(defenum fma-sphere-mode
-  :type uint32
-  :bitfield #t
-  (nav 0)
-  (kill-once 1)
-  (danger 2)
-  (deadly-overlap 3))
-;; ---fma-sphere-mode
-
-(declare-type fma-sphere process-drawable)
-
-;; DECOMP BEGINS
-
+;; definition of type fma-sphere
 (deftype fma-sphere (process-drawable)
   ((root-override collide-shape               :offset        128)
    (first-time?   symbol                      :offset-assert 200)
@@ -41,7 +22,29 @@
     )
   )
 
+;; definition for method 3 of type fma-sphere
+(defmethod inspect fma-sphere ((obj fma-sphere))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tfirst-time?: ~A~%" (-> obj first-time?))
+  (format #t "~2Tmode: ~D~%" (-> obj mode))
+  (format #t "~2Ttrack-handle: ~D~%" (-> obj track-handle))
+  (format #t "~2Ttrack-joint: ~D~%" (-> obj track-joint))
+  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (format #t "~2Tduration: ~D~%" (-> obj duration))
+  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~2Tsphere: #<sphere @ #x~X>~%" (-> obj sphere))
+  (format #t "~2Tdanger: #<traffic-danger-info @ #x~X>~%" (-> obj danger))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 12 of type fma-sphere
 (defmethod run-logic? fma-sphere ((obj fma-sphere))
   (or (logtest? *display-scene-control* (scene-controls display-controls))
       (and *display-nav-marks* (logtest? (-> obj mode) (fma-sphere-mode nav)))
@@ -51,6 +54,7 @@
       )
   )
 
+;; failed to figure out what this is:
 (defstate idle (fma-sphere)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -156,6 +160,9 @@
   :code (the-as (function none :behavior fma-sphere) sleep-code)
   )
 
+;; definition for function fma-sphere-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defbehavior fma-sphere-init-by-other fma-sphere ((arg0 fma-sphere-mode) (arg1 process-drawable) (arg2 int) (arg3 time-frame) (arg4 vector) (arg5 vector))
   (set! (-> self mode) arg0)
   (set! (-> self first-time?) #t)
@@ -264,3 +271,7 @@
   (go-virtual idle)
   (none)
   )
+
+
+
+

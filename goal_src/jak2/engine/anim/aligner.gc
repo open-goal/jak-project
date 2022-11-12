@@ -19,7 +19,7 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (joint-control-method-10 (-> obj process skel))
+    (update-anim-data (-> obj process skel))
     (let ((s5-0 (-> obj process skel active-channels)))
       (dotimes (s4-0 (the-as int s5-0))
         (let* ((a0-4 (-> obj process skel channel s4-0))
@@ -29,23 +29,15 @@
             (((joint-control-command stack) (joint-control-command stack1))
              )
             (else
-                                        ; TODO - support decompiling the return-from-thread
-                                        ; TODO - properly decompile the `go`to
-                                        ; (when (!= (-> v1-5 type) art-joint-anim)
-                                        ;  (let
-                                        ;   ((t9-0 (the-as (function object object object object) enter-state))
-                                        ;    (a0-7 "align joint-anim")
-                                        ;    )
-                                        ;   (set! (-> pp next-state) process-drawable-art-error)
-                                        ;   (t9-0 a0-7 (the-as none a1-0) a2-0)
-                                        ;   )
-                                        ;  (.lw ra-0 return-from-thread s7-0)
-                                        ;  (.jr ra-0)
-                                        ;  (nop!)
-                                        ;  0
-                                        ;  )
-             0
-             )
+              (when (!= (-> v1-7 type) art-joint-anim)
+                (break!) ;; modified.
+                ; (go process-drawable-art-error "align joint-anim")
+                ; (.lw ra-0 return-from-thread s7-0)
+                ; (.jr ra-0)
+                ; (nop!)
+                0
+                )
+              )
             )
           )
         )
@@ -156,7 +148,7 @@
 
        @returns the `root` of the [[process-drawable]] after the method returns
        @see [[process-drawable::16]]"
-  (when (zero? (logand (-> obj flags) (align-flags disabled)))
+  (when (not (logtest? (-> obj flags) (align-flags disabled)))
     (let* ((process (-> obj process))
            (method-call (method-of-object process apply-alignment))
            (transform (-> obj delta))
@@ -194,7 +186,7 @@
   )
 
 (defmethod align-vel-and-quat-only! align-control ((obj align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
-  (when (zero? (logand (-> obj flags) (align-flags disabled)))
+  (when (not (logtest? (-> obj flags) (align-flags disabled)))
     (let ((s5-0 (-> obj delta)))
       (let ((a0-1 (-> obj process root transv)))
         (if (logtest? arg0 (align-opts adjust-y-vel))
@@ -224,7 +216,3 @@
     )
   (-> obj process root)
   )
-
-
-
-
