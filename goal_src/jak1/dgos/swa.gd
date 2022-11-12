@@ -2,9 +2,9 @@
 ("SWA.DGO"
   ("battlecontroller.o" "battlecontroller")
   ("blocking-plane.o" "blocking-plane")
-  ("flut-part.o" "flut-part")
-  ("flutflut.o" "flutflut")
-  ("target-flut.o" "target-flut")
+  ;; ("flut-part.o" "flut-part")
+  ;; ("flutflut.o" "flutflut")
+  ;; ("target-flut.o" "target-flut")
   ("eichar-flut+0-ag.go" "eichar-flut+0")
   ("swamp-obs.o" "swamp-obs")
   ("swamp-bat.o" "swamp-bat")

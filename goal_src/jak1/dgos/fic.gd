@@ -1,11 +1,11 @@
 
 ("FIC.DGO"
-  ("target-racer-h.o" "target-racer-h")
-  ("racer-part.o" "racer-part")
-  ("racer.o" "racer")
-  ("target-racer.o" "target-racer")
-  ("racer-states.o" "racer-states")
-  ("collide-reaction-racer.o" "collide-reaction-racer")
+  ;; ("target-racer-h.o" "target-racer-h")
+  ;; ("racer-part.o" "racer-part")
+  ;; ("racer.o" "racer")
+  ;; ("target-racer.o" "target-racer")
+  ;; ("racer-states.o" "racer-states")
+  ;; ("collide-reaction-racer.o" "collide-reaction-racer")
   ("eichar-racer+0-ag.go" "eichar-racer+0")
   ("tpage-1119.go" "tpage-1119")
   ("blocking-plane.o" "blocking-plane")

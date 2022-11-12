@@ -1,9 +1,9 @@
 
 ("SNO.DGO"
   ("blocking-plane.o" "blocking-plane")
-  ("flut-part.o" "flut-part")
-  ("flutflut.o" "flutflut")
-  ("target-flut.o" "target-flut")
+  ;; ("flut-part.o" "flut-part")
+  ;; ("flutflut.o" "flutflut")
+  ;; ("target-flut.o" "target-flut")
   ("eichar-flut+0-ag.go" "eichar-flut+0")
   ("target-snowball.o" "target-snowball")
   ("target-ice.o" "target-ice")
