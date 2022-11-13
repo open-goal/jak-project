@@ -1,5 +1,14 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition for function transform-float-point
+;; ERROR: Bad vector register dependency: vf1
+;; ERROR: Bad vector register dependency: vf2
+;; ERROR: Bad vector register dependency: vf3
+;; ERROR: Bad vector register dependency: vf4
+;; ERROR: Bad vector register dependency: vf6
+;; ERROR: Bad vector register dependency: vf8
+;; ERROR: Bad vector register dependency: vf9
 (defun transform-float-point ((in vector) (out vector4w))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -31,6 +40,10 @@
     )
   )
 
+;; definition (debug) for function add-debug-point
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ a0-6 8) 0) at op 152
+;; WARN: Failed store: (s.w! (+ a0-6 12) 0) at op 153
 (defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
   (if (not enable-draw)
       (return #f)
@@ -139,7 +152,13 @@
   #f
   )
 
+;; definition (debug) for function debug-line-clip?
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function internal-draw-debug-line
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ a0-29 8) 0) at op 271
+;; WARN: Failed store: (s.w! (+ a0-29 12) 0) at op 272
 (defun-debug internal-draw-debug-line ((bucket bucket-id) (start vector) (end vector) (start-color rgba) (mode symbol) (end-color rgba))
   (local-vars (var-end vector) (sv-128 vector) (sv-144 vector))
   (set! var-end end)
@@ -271,6 +290,10 @@
     )
   )
 
+;; definition (debug) for function internal-draw-debug-text-3d
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ v1-12 8) 0) at op 54
+;; WARN: Failed store: (s.w! (+ v1-12 12) 0) at op 55
 (defun-debug internal-draw-debug-text-3d ((bucket bucket-id) (text string) (position vector) (color font-color) (screen-offset vector2h))
   (let ((screen-pos (new 'stack-no-clear 'vector4w)))
     (set! (-> screen-pos quad) (the-as uint128 0))
@@ -300,6 +323,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-outline-triangle
 (defun-debug add-debug-outline-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (when enable
     (add-debug-line #t bucket p0 p1 color #f (the-as rgba -1))
@@ -309,6 +333,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-triangle-normal
 (defun-debug add-debug-triangle-normal ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (when enable
     (let ((s4-0 (new 'stack-no-clear 'vector))
@@ -325,6 +350,10 @@
   #f
   )
 
+;; definition (debug) for function add-debug-flat-triangle
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ a0-13 8) 0) at op 153
+;; WARN: Failed store: (s.w! (+ a0-13 12) 0) at op 154
 (defun-debug add-debug-flat-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   (local-vars (sv-160 vector) (sv-176 vector))
   (set! sv-160 p0)
@@ -422,7 +451,9 @@
   #f
   )
 
+;; this part is debug only
 (when *debug-segment*
+;; definition of type debug-line
 (deftype debug-line (structure)
   ((flags  int32             :offset-assert   0)
    (bucket bucket-id         :offset-assert   4)
@@ -437,6 +468,7 @@
   :flag-assert         #x90000003c
   )
 
+;; definition for method 3 of type debug-line
 (defmethod inspect debug-line ((obj debug-line))
   (when (not obj)
     (set! obj obj)
@@ -454,6 +486,7 @@
   obj
   )
 
+;; definition of type debug-text-3d
 (deftype debug-text-3d (structure)
   ((flags  int32              :offset-assert   0)
    (bucket bucket-id          :offset-assert   4)
@@ -467,6 +500,7 @@
   :flag-assert         #x90000002c
   )
 
+;; definition for method 3 of type debug-text-3d
 (defmethod inspect debug-text-3d ((obj debug-text-3d))
   (when (not obj)
     (set! obj obj)
@@ -483,6 +517,7 @@
   obj
   )
 
+;; definition of type debug-tracking-thang
 (deftype debug-tracking-thang (basic)
   ((length           int32  :offset-assert   4)
    (allocated-length int32  :offset-assert   8)
@@ -492,6 +527,7 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type debug-tracking-thang
 (defmethod inspect debug-tracking-thang ((obj debug-tracking-thang))
   (when (not obj)
     (set! obj obj)
@@ -504,23 +540,31 @@
   obj
   )
 
+;; definition for symbol *debug-lines*, type (inline-array debug-line)
 (define *debug-lines* (the-as (inline-array debug-line) (malloc 'debug #x100000)))
 
+;; definition for symbol *debug-lines-trk*, type debug-tracking-thang
 (define *debug-lines-trk* (new 'debug 'debug-tracking-thang))
 
+;; failed to figure out what this is:
 (set! (-> *debug-lines-trk* allocated-length) #x4000)
 
+;; definition for symbol *debug-text-3ds*, type (inline-array debug-text-3d)
 (define *debug-text-3ds* (the-as (inline-array debug-text-3d) (malloc 'debug #x6000)))
 
+;; definition for symbol *debug-text-3d-trk*, type debug-tracking-thang
 (define *debug-text-3d-trk* (new 'debug 'debug-tracking-thang))
 
+;; failed to figure out what this is:
 (set! (-> *debug-text-3d-trk* allocated-length) 512)
 
+;; failed to figure out what this is:
 (dotimes (gp-0 (-> *debug-text-3d-trk* allocated-length))
   (set! (-> *debug-text-3ds* gp-0 str) (new 'debug 'string 80 (the-as string #f)))
   )
 
 )
+;; definition (debug) for function get-debug-line
 (defun-debug get-debug-line ()
   (cond
     ((< (-> *debug-lines-trk* length) (-> *debug-lines-trk* allocated-length))
@@ -533,6 +577,7 @@
     )
   )
 
+;; definition (debug) for function get-debug-text-3d
 (defun-debug get-debug-text-3d ()
   (cond
     ((< (-> *debug-text-3d-trk* length) (-> *debug-text-3d-trk* allocated-length))
@@ -545,6 +590,7 @@
     )
   )
 
+;; definition (debug) for function debug-reset-buffers
 (defun-debug debug-reset-buffers ()
   (set! (-> *debug-lines-trk* length) 0)
   (set! (-> *debug-text-3d-trk* length) 0)
@@ -552,6 +598,7 @@
   #f
   )
 
+;; definition (debug) for function debug-draw-buffers
 (defun-debug debug-draw-buffers ()
   (dotimes (i (-> *debug-lines-trk* length))
     (let ((line (-> *debug-lines* i)))
@@ -579,6 +626,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line
+;; INFO: Used lq/sq
 (defun-debug add-debug-line ((enable symbol)
                    (bucket bucket-id)
                    (start vector)
@@ -609,6 +658,10 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line2d
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ v1-12 8) 0) at op 115
+;; WARN: Failed store: (s.w! (+ v1-12 12) 0) at op 116
 (defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (start vector4w) (end vector4w) (color vector4w))
   (if (not enable)
       (return #f)
@@ -687,6 +740,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-box
+;; INFO: Used lq/sq
 (defun-debug add-debug-box ((enable symbol) (bucket bucket-id) (c1 vector) (c2 vector) (color rgba))
   (let ((p0 (new-stack-vector0)))
     (set! (-> p0 quad) (-> c1 quad))
@@ -735,6 +790,9 @@
   #f
   )
 
+;; definition (debug) for function add-debug-box-with-transform
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs symbol.
 (defun-debug add-debug-box-with-transform ((enable symbol) (bucket bucket-id) (box bounding-box) (trans matrix) (color rgba))
   (b! (not enable) cfg-5 :delay (nop!))
   (let ((points (new 'stack-no-clear 'inline-array 'vector 8)))
@@ -770,6 +828,8 @@
   (the-as symbol 0)
   )
 
+;; definition (debug) for function add-debug-x
+;; INFO: Used lq/sq
 (defun-debug add-debug-x ((enable symbol) (bucket bucket-id) (position vector) (color rgba))
   (if (not enable)
       (return #f)
@@ -787,6 +847,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-cross
+;; INFO: Used lq/sq
 (defun-debug add-debug-cross ((enable symbol) (bucket bucket-id) (position vector) (radius float))
   (if (not enable)
       (return #f)
@@ -860,6 +922,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-text-3d
+;; INFO: Used lq/sq
 (defun-debug add-debug-text-3d ((enable symbol)
                       (bucket bucket-id)
                       (text string)
@@ -920,6 +984,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-sphere-with-transform
 (defun-debug add-debug-sphere-with-transform ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (trans matrix) (color rgba))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -932,9 +997,9 @@
     (init-vf0-vector)
     (when enable
       (.lvf vf5 (&-> position quad))
-      (.lvf vf1 (&-> trans vector 0 quad))
-      (.lvf vf2 (&-> trans vector 1 quad))
-      (.lvf vf3 (&-> trans vector 2 quad))
+      (.lvf vf1 (&-> trans quad 0))
+      (.lvf vf2 (&-> trans quad 1))
+      (.lvf vf3 (&-> trans quad 2))
       (.lvf vf4 (&-> trans trans quad))
       (.mul.w.vf acc vf4 vf0)
       (.add.mul.x.vf acc vf1 vf5 acc)
@@ -949,6 +1014,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-sphere
 (defun-debug add-debug-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (color rgba))
   (if enable
       (add-debug-sphere-from-table bucket position radius color 6)
@@ -956,12 +1022,14 @@
   #f
   )
 
+;; definition (debug) for function add-debug-text-sphere
 (defun-debug add-debug-text-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (text string) (color rgba))
   (add-debug-sphere enable bucket position radius color)
   (add-debug-text-3d enable bucket text position (font-color default-#cddbcd) (the-as vector2h #f))
   #f
   )
 
+;; definition (debug) for function add-debug-spheres
 (defun-debug add-debug-spheres ((enable symbol) (bucket bucket-id) (origins (inline-array vector)) (count int) (color rgba))
   (when enable
     (let ((origin (-> origins 0)))
@@ -974,6 +1042,23 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line-sphere
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-line-sphere ((enable symbol) (bucket bucket-id) (position vector) (forward vector) (arg4 float) (color rgba))
   (local-vars
     (var-bucket bucket-id)
@@ -1049,6 +1134,8 @@
   (none)
   )
 
+;; definition (debug) for function add-debug-circle
+;; INFO: Used lq/sq
 (defun-debug add-debug-circle ((enable symbol) (bucket bucket-id) (position vector) (radius float) (color rgba) (orientation matrix))
   "note: you may pass #f for orientation"
   (local-vars (i int) (sv-64 vector) (sv-80 vector))
@@ -1085,6 +1172,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-vector
+;; INFO: Used lq/sq
 (defun-debug add-debug-vector ((enable symbol) (bucket bucket-id) (position vector) (direction vector) (length meters) (color rgba))
   (if (not enable)
       (return #f)
@@ -1098,6 +1187,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-matrix
 (defun-debug add-debug-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (line-length meters))
   (add-debug-vector
     enable
@@ -1126,6 +1216,7 @@
   mat
   )
 
+;; definition (debug) for function add-debug-rot-matrix
 (defun-debug add-debug-rot-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (position vector))
   (add-debug-vector
     enable
@@ -1140,6 +1231,8 @@
   mat
   )
 
+;; definition (debug) for function add-debug-quaternion
+;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-quaternion ((enable symbol) (bucket bucket-id) (position vector) (quat quaternion))
   (when enable
     (let ((mat (quaternion->matrix (new 'stack-no-clear 'matrix) quat)))
@@ -1150,11 +1243,20 @@
   (none)
   )
 
+;; definition (debug) for function add-debug-cspace
 (defun-debug add-debug-cspace ((enable symbol) (bucket bucket-id) (csp cspace))
   (add-debug-matrix enable bucket (-> csp bone transform) (meters 2))
   csp
   )
 
+;; definition (debug) for function add-debug-yrot-vector
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 32 signed mismatch
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot offset 32 signed mismatch
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot offset 32 signed mismatch
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
 (defun-debug add-debug-yrot-vector ((enable symbol) (bucket bucket-id) (position vector) (angle float) (line-length float) (color rgba))
   (local-vars (var-angle float))
   (set! var-angle angle)
@@ -1178,6 +1280,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-arc
+;; INFO: Used lq/sq
 (defun-debug add-debug-arc ((enable symbol)
                   (bucket bucket-id)
                   (position vector)
@@ -1231,6 +1335,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-curve
+;; INFO: Used lq/sq
 (defun-debug add-debug-curve ((enable symbol)
                     (bucket bucket-id)
                     (cverts (inline-array vector))
@@ -1259,6 +1365,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-curve2
 (defun-debug add-debug-curve2 ((enable symbol) (bucket bucket-id) (curve curve) (color rgba) (arg4 symbol))
   (if enable
       (add-debug-curve
@@ -1274,6 +1381,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-points
+;; INFO: Used lq/sq
 (defun-debug add-debug-points ((enable symbol)
                      (bucket bucket-id)
                      (points (inline-array vector))
@@ -1330,6 +1439,12 @@
   #f
   )
 
+;; definition (debug) for function debug-percent-bar
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Failed store: (s.w! (+ v1-9 8) 0) at op 47
+;; WARN: Failed store: (s.w! (+ v1-9 12) 0) at op 48
 (defun-debug debug-percent-bar ((enable symbol) (bucket bucket-id) (x int) (y int) (percentage float) (color rgba) (width int) (height int))
   (local-vars (sv-16 int) (sv-32 float))
   (set! sv-16 y)
@@ -1351,6 +1466,10 @@
   #f
   )
 
+;; definition (debug) for function debug-pad-display
+;; INFO: Used lq/sq
+;; WARN: Failed store: (s.w! (+ v1-16 8) 0) at op 75
+;; WARN: Failed store: (s.w! (+ v1-16 12) 0) at op 76
 (defun-debug debug-pad-display ((pad cpad-info))
   (let ((stick-history (new 'static 'inline-array vector 32
                          (new 'static 'vector)
@@ -1413,6 +1532,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-light
+;; INFO: Used lq/sq
 (defun-debug add-debug-light ((enable symbol) (bucket bucket-id) (light light) (position vector) (text string))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1466,6 +1587,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-lights
 (defun-debug add-debug-lights ((enable symbol) (bucket bucket-id) (lights (inline-array light)) (position vector))
   (if (not enable)
       (return #f)
@@ -1477,6 +1599,7 @@
   #f
   )
 
+;; definition (debug) for function drawable-frag-count
 (defun-debug drawable-frag-count ((drbl drawable))
   (let ((count 0))
     (cond
@@ -1495,6 +1618,7 @@
     )
   )
 
+;; definition for method 3 of type debug-vertex-stats
 (defmethod inspect debug-vertex-stats ((obj debug-vertex-stats))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -1525,12 +1649,15 @@
   obj
   )
 
+;; definition (debug) for function history-init
 (defun-debug history-init ((history pos-history) (num-points int))
   (set! (-> history num-points) num-points)
   (set! (-> history points) (the-as (inline-array vector) #f))
   history
   )
 
+;; definition (debug) for function history-draw-and-update
+;; INFO: Used lq/sq
 (defun-debug history-draw-and-update ((history pos-history) (draw symbol) (pos vector))
   (if (and draw (not (-> history points)))
       (set! (-> history points) (the-as (inline-array vector) (malloc 'debug (* (-> history num-points) 16))))
@@ -1561,6 +1688,8 @@
   #f
   )
 
+;; definition (debug) for function dma-timeout-cam
+;; INFO: Used lq/sq
 (defun-debug dma-timeout-cam ()
   (let ((pos (new-stack-vector0))
         (rot (new-stack-matrix0))
@@ -1589,6 +1718,7 @@
     )
   )
 
+;; definition (debug) for function display-file-info
 (defun-debug display-file-info ()
   (when (and *display-file-info* (!= *master-mode* 'menu))
     (dotimes (i (-> *level* length))
@@ -1608,6 +1738,11 @@
   0
   )
 
+;; definition (debug) for function add-debug-cursor
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Failed store: (s.w! (+ v1-9 8) 0) at op 38
+;; WARN: Failed store: (s.w! (+ v1-9 12) 0) at op 39
 (defun-debug add-debug-cursor ((enable symbol) (bucket bucket-id) (x int) (y int) (arg4 int))
   (when enable
     (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
@@ -1643,11 +1778,17 @@
   (none)
   )
 
+;; this part is debug only
 (when *debug-segment*
+;; definition for symbol *boundary-polygon*, type (inline-array sky-vertex)
 (define *boundary-polygon* (the-as (inline-array sky-vertex) (malloc 'debug 768)))
 
 )
+;; definition (debug) for function init-boundary-regs
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function add-boundary-shader
+;; WARN: Return type mismatch pointer vs none.
 (defun-debug add-boundary-shader ((tex-id texture-id) (buf dma-buffer))
   (let ((tex (lookup-texture-by-id tex-id)))
     (when tex
@@ -1679,9 +1820,18 @@
   (none)
   )
 
+;; definition (debug) for function draw-boundary-polygon
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function render-boundary-quad
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function render-boundary-tri
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function add-debug-bound-internal
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
 (defun-debug add-debug-bound-internal ((buf dma-buffer) (pts (inline-array vector)) (num-pts int) (color0 rgba) (color1 rgba) (flip-tex int))
   (rlet ((vf27 :class vf))
     (set-vector!
@@ -1724,16 +1874,16 @@
           ((not (logtest? s3-0 1))
            (dotimes (v1-6 3)
              (set! (-> *boundary-polygon* v1-6 pos quad) (-> pts (+ s3-0 v1-6) quad))
-             (set! (-> *boundary-polygon* v1-6 stq quad) (-> s2-1 vector (+ s3-0 v1-6) quad))
+             (set! (-> *boundary-polygon* v1-6 stq quad) (-> s2-1 quad (+ s3-0 v1-6)))
              )
            )
           (else
             (set! (-> *boundary-polygon* 0 pos quad) (-> pts (+ s3-0 1) quad))
             (set! (-> *boundary-polygon* 1 pos quad) (-> pts s3-0 quad))
             (set! (-> *boundary-polygon* 2 pos quad) (-> pts (+ s3-0 2) quad))
-            (set! (-> *boundary-polygon* 0 stq quad) (-> s2-1 vector (+ s3-0 1) quad))
-            (set! (-> *boundary-polygon* 1 stq quad) (-> s2-1 vector s3-0 quad))
-            (set! (-> *boundary-polygon* 2 stq quad) (-> s2-1 vector (+ s3-0 2) quad))
+            (set! (-> *boundary-polygon* 0 stq quad) (-> s2-1 quad (+ s3-0 1)))
+            (set! (-> *boundary-polygon* 1 stq quad) (-> s2-1 quad s3-0))
+            (set! (-> *boundary-polygon* 2 stq quad) (-> s2-1 quad (+ s3-0 2)))
             )
           )
         (render-boundary-tri (-> *boundary-polygon* 0) buf)
@@ -1744,6 +1894,12 @@
     )
   )
 
+;; definition (debug) for function add-debug-bound
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Failed store: (s.w! (+ v1-29 8) 0) at op 110
+;; WARN: Failed store: (s.w! (+ v1-29 12) 0) at op 111
+;; WARN: Function add-debug-bound has a return type of none, but the expression builder found a return statement.
 (defun-debug add-debug-bound ((buf bucket-id) (pts (inline-array vector)) (c0 int) (c1 rgba) (flash rgba) (arg5 int))
   (local-vars (sv-16 pointer) (sv-32 int))
   (set! sv-32 arg5)
@@ -1809,3 +1965,12 @@
   0
   (none)
   )
+
+;; definition (debug) for function cpu-delay
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition (debug) for function qword-read-time
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition (debug) for function bugfix?
+;; ERROR: function was not converted to expressions. Cannot decompile.

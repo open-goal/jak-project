@@ -1,10 +1,13 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition for function get-current-language
 (defun get-current-language ()
   "Returns the current [[language-enum]]"
   (-> *setting-control* user-current language)
   )
 
+;; definition for method 9 of type user-setting-data
 (defmethod user-setting-data-method-9 user-setting-data ((obj user-setting-data) (arg0 engine) (arg1 engine-pers) (arg2 engine))
   (let ((s3-0 (-> arg1 alive-list)))
     (while s3-0
@@ -70,6 +73,7 @@
   obj
   )
 
+;; definition for method 10 of type user-setting-data
 (defmethod user-setting-data-method-10 user-setting-data ((obj user-setting-data) (arg0 object) (arg1 symbol) (arg2 float) (arg3 uint))
   "set-defaults! perhaps?"
   (case arg0
@@ -472,6 +476,7 @@
   obj
   )
 
+;; definition for method 9 of type cam-setting-data
 (defmethod cam-setting-data-method-9 cam-setting-data ((obj cam-setting-data) (arg0 engine) (arg1 engine-pers) (arg2 engine))
   (let ((s3-0 (-> arg1 alive-list)))
     (while s3-0
@@ -537,6 +542,9 @@
   obj
   )
 
+;; definition for method 10 of type cam-setting-data
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch cam-setting-data vs none.
 (defmethod cam-setting-data-method-10 cam-setting-data ((obj cam-setting-data) (arg0 object) (arg1 (pointer process)) (arg2 float) (arg3 int))
   (case arg0
     (('fov)
@@ -795,6 +803,8 @@
   (none)
   )
 
+;; definition for method 9 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod add-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   "Originally called `setting-set` see (anon-function 48 script)"
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
@@ -802,6 +812,8 @@
   (none)
   )
 
+;; definition for method 11 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod set-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   (remove-setting obj arg0 arg1)
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
@@ -809,6 +821,8 @@
   (none)
   )
 
+;; definition for method 10 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod persist-with-delay setting-control ((obj setting-control) (arg0 symbol) (arg1 time-frame) (arg2 symbol) (arg3 symbol) (arg4 float) (arg5 int))
   "Originally called `setting-pers` see (anon-function 46 script)"
   (let ((v1-1 (schedule-callback (-> obj engine-pers) arg0 arg1)))
@@ -823,6 +837,8 @@
   (none)
   )
 
+;; definition for method 12 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod remove-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
   (when arg0
     (let ((s5-0 (-> obj engine))
@@ -842,6 +858,8 @@
   (none)
   )
 
+;; definition for method 13 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod kill-persister setting-control ((obj setting-control) (arg0 engine-pers) (arg1 object))
   "Calls [[engine-pers::kill-matching]]"
   (kill-matching
@@ -856,6 +874,7 @@
   (none)
   )
 
+;; definition for method 14 of type setting-control
 (defmethod setting-control-method-14 setting-control ((obj setting-control) (arg0 object))
   (let ((v1-1 (-> obj engine-hi alive-list next0)))
     (-> obj engine-hi)
@@ -873,6 +892,8 @@
   (the-as connectable #f)
   )
 
+;; definition for method 15 of type setting-control
+;; WARN: Return type mismatch int vs none.
 (defmethod remove-setting-by-arg0 setting-control ((obj setting-control) (arg0 object))
   "Calls [[engine::remove-by-param0]] on `engine-hi`"
   (remove-by-param0 (-> obj engine-hi) arg0)
@@ -880,12 +901,14 @@
   (none)
   )
 
+;; definition for method 16 of type setting-control
 (defmethod set-setting-by-param setting-control ((obj setting-control) (arg0 symbol) (arg1 object) (arg2 object) (arg3 object))
   "Same as [[setting-control::set-setting]] but will [[engine::remove-by-param0]] using the symbol provided"
   (remove-by-param0 (-> obj engine-hi) arg0)
   (add-connection (-> obj engine-hi) *dproc* arg0 arg1 arg2 arg3)
   )
 
+;; definition for method 17 of type setting-control
 (defmethod apply-settings setting-control ((obj setting-control))
   (speech-control-method-11 *speech-control*)
   (let ((s5-0 (-> obj user-current)))
@@ -1011,28 +1034,28 @@
     (set! (-> *level* border?) (-> s5-0 border-mode))
     (when *target*
       (if (-> s5-0 duck)
-          (logclear! (-> *target* state-flags) (state-flags sf9))
-          (logior! (-> *target* state-flags) (state-flags sf9))
+          (logclear! (-> *target* state-flags) (state-flags prevent-duck))
+          (logior! (-> *target* state-flags) (state-flags prevent-duck))
           )
       (if (-> s5-0 jump)
-          (logclear! (-> *target* state-flags) (state-flags sf7))
-          (logior! (-> *target* state-flags) (state-flags sf7))
+          (logclear! (-> *target* state-flags) (state-flags prevent-jump))
+          (logior! (-> *target* state-flags) (state-flags prevent-jump))
           )
       (if (-> s5-0 double-jump)
-          (logclear! (-> *target* state-flags) (state-flags sf23))
-          (set! (-> *target* state-flags) (logior (state-flags sf23) (-> *target* state-flags)))
+          (logclear! (-> *target* state-flags) (state-flags prevent-double-jump))
+          (set! (-> *target* state-flags) (logior (state-flags prevent-double-jump) (-> *target* state-flags)))
           )
       (if (-> s5-0 attack)
-          (logclear! (-> *target* state-flags) (state-flags sf8))
-          (logior! (-> *target* state-flags) (state-flags sf8))
+          (logclear! (-> *target* state-flags) (state-flags prevent-attack))
+          (logior! (-> *target* state-flags) (state-flags prevent-attack))
           )
       (if (-> s5-0 board)
-          (logclear! (-> *target* state-flags) (state-flags sf17))
-          (set! (-> *target* state-flags) (logior (state-flags sf17) (-> *target* state-flags)))
+          (logclear! (-> *target* state-flags) (state-flags prevent-board))
+          (set! (-> *target* state-flags) (logior (state-flags prevent-board) (-> *target* state-flags)))
           )
       (if (-> s5-0 gun)
-          (logclear! (-> *target* state-flags) (state-flags sf18))
-          (set! (-> *target* state-flags) (logior (state-flags sf18) (-> *target* state-flags)))
+          (logclear! (-> *target* state-flags) (state-flags prevent-gun))
+          (set! (-> *target* state-flags) (logior (state-flags prevent-gun) (-> *target* state-flags)))
           )
       )
     )
@@ -1044,6 +1067,8 @@
   (-> obj user-current)
   )
 
+;; definition for method 18 of type setting-control
+;; INFO: Used lq/sq
 (defmethod update setting-control ((obj setting-control))
   (local-vars (v1-41 symbol))
   (with-pp
@@ -1371,6 +1396,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (when (zero? *setting-control*)
   (kmemopen global "settings")
   (set! *setting-control* (new 'global 'setting-control 64))
