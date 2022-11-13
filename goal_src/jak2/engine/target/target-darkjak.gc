@@ -108,7 +108,7 @@
   (cond
     ((and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak)))
      (let ((a1-1 'eco-red))
-       (target-danger-set! (-> self control unknown-symbol04) a1-1)
+       (target-danger-set! (-> self control danger-mode) a1-1)
        )
      (update-transforms (-> self control))
      (let ((a1-2 (new 'stack-no-clear 'overlaps-others-params)))
@@ -117,7 +117,7 @@
        (set! (-> a1-2 tlist) *touching-list*)
        (find-overlapping-shapes (-> self control) a1-2)
        )
-     (target-danger-set! (-> self control unknown-symbol04) #f)
+     (target-danger-set! (-> self control danger-mode) #f)
      (update-transforms (-> self control))
      (if (and (or (>= (- (-> self clock frame-counter) (-> (the-as fact-info-target (-> self fact-override)) darkjak-start-time))
                       (-> (the-as fact-info-target (-> self fact-override)) darkjak-effect-time)
@@ -687,8 +687,8 @@
     (set! sv-64 0)
     (until (ja-done? 0)
       (if (and (cpad-pressed? (-> self control cpad number) square)
-               (not (logtest? (-> self state-flags) (state-flags sf7 sf8)))
-               (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack)))
+               (not (logtest? (-> self state-flags) (state-flags prevent-jump prevent-attack)))
+               (not (logtest? (-> self control current-surface flags) (surface-flag no-attack)))
                (and (logtest? (focus-status dark) (-> self focus-status))
                     (nonzero? (-> self darkjak))
                     (logtest? (-> self darkjak stage) 2)
@@ -713,7 +713,7 @@
                                                      (-> self control unknown-dword06)
                                                      (-> self control trans)
                                                      24576.0
-                                                     (-> self control unknown-matrix01 vector 2)
+                                                     (-> self control c-R-w vector 2)
                                                      65536.0
                                                      )
                                  )
@@ -772,7 +772,7 @@
         (cond
           ((and (>= (ja-frame-num 0) 20.0)
                 (and (and (not (logtest? (-> self control status) (collide-status on-surface)))
-                          (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+                          (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                               (the-as time-frame (-> *TARGET-bank* ground-timeout))
                               )
                           (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -846,8 +846,8 @@
                 (>= (- (-> self clock frame-counter) (-> self control unknown-combo-tracker00 move-start-time)) (seconds 0.2))
                 )
            (if (= (-> self control ground-pat material) (pat-material ice))
-               (set-forward-vel (fmax 32768.0 (* 0.8 (-> self control unknown-float05))))
-               (set-forward-vel (* 0.8 (-> self control unknown-float05)))
+               (set-forward-vel (fmax 32768.0 (* 0.8 (-> self control ctrl-xz-vel))))
+               (set-forward-vel (* 0.8 (-> self control ctrl-xz-vel)))
                )
            )
           ((ja-done? 0)
@@ -862,9 +862,9 @@
           )
         )
       (let ((gp-1 (new-stack-vector0)))
-        (vector-matrix*! gp-1 (-> self control transv) (-> self control unknown-matrix00))
+        (vector-matrix*! gp-1 (-> self control transv) (-> self control w-R-c))
         (set! (-> gp-1 y) 0.0)
-        (vector-matrix*! (-> self control align-xz-vel) gp-1 (-> self control unknown-matrix01))
+        (vector-matrix*! (-> self control align-xz-vel) gp-1 (-> self control c-R-w))
         )
       (when (!= (the-as float (-> self control unknown-word04)) 0.0)
         (activate! *camera-smush-control* 819.2 15 75 1.0 0.9 (-> *display* camera-clock))
@@ -984,7 +984,7 @@
             )
         )
       (suspend)
-      (ja :num! (seek! max (* (-> self control unknown-surface01 align-speed) (the-as float sv-48))))
+      (ja :num! (seek! max (* (-> self control current-surface align-speed) (the-as float sv-48))))
       (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
           (set! (-> *run-attack-mods* turnvv) 0.0)
           )
@@ -994,7 +994,7 @@
       (set! sv-24 (+ sv-24 1))
       )
     (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
-             (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+             (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                  (the-as time-frame (-> *TARGET-bank* ground-timeout))
                  )
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -1043,7 +1043,7 @@
 
 (defbehavior target-darkjak-bomb-collide target ((arg0 float) (arg1 float))
   (seek! (-> (the-as (pointer float) arg0) 0) arg1 (* 4.0 (-> self clock seconds-per-frame)))
-  (set! (-> self control unknown-float40) (-> (the-as (pointer float) arg0) 0))
+  (set! (-> self control bomb-scale) (-> (the-as (pointer float) arg0) 0))
   (target-danger-set! 'bomb #f)
   (update-transforms (-> self control))
   (let ((a1-2 (new 'stack-no-clear 'overlaps-others-params)))
@@ -1052,7 +1052,7 @@
     (set! (-> a1-2 tlist) *touching-list*)
     (find-overlapping-shapes (-> self control) a1-2)
     )
-  (set! (-> self control unknown-float40) 0.0)
+  (set! (-> self control bomb-scale) 0.0)
   (target-danger-set! 'bomb #f)
   (update-transforms (-> self control))
   0
@@ -1142,7 +1142,7 @@
       )
     (set! (-> self darkjak stage) (-> self darkjak want-stage))
     (set! (-> self neck flex-blend) 0.0)
-    (set! (-> self control unknown-surface00) *roll-flip-mods*)
+    (set! (-> self control mod-surface) *roll-flip-mods*)
     (set! (-> self alt-cam-pos quad) (-> self control trans quad))
     (set! sv-16 (the-as float 0.0))
     (set! sv-20 1.0)
@@ -1155,7 +1155,7 @@
       (until (ja-done? 0)
         (set! (-> self alt-cam-pos x) (-> self control trans x))
         (set! (-> self alt-cam-pos z) (-> self control trans z))
-        (set-forward-vel (* 0.85 (-> self control unknown-float05)))
+        (set-forward-vel (* 0.85 (-> self control ctrl-xz-vel)))
         (suspend)
         (ja :num! (seek!))
         )
@@ -1172,7 +1172,7 @@
       (align! (-> self align) (align-opts adjust-y-vel) 1.0 1.0 1.0)
       (set! (-> self alt-cam-pos x) (-> self control trans x))
       (set! (-> self alt-cam-pos z) (-> self control trans z))
-      (set-forward-vel (* 0.98 (-> self control unknown-float05)))
+      (set-forward-vel (* 0.98 (-> self control ctrl-xz-vel)))
       (suspend)
       (ja :num! (seek!))
       )
@@ -1184,7 +1184,7 @@
       (until v1-100
         (set! (-> self alt-cam-pos x) (-> self control trans x))
         (set! (-> self alt-cam-pos z) (-> self control trans z))
-        (set-forward-vel (* 0.98 (-> self control unknown-float05)))
+        (set-forward-vel (* 0.98 (-> self control ctrl-xz-vel)))
         (let ((v1-92 (new-stack-vector0))
               (f0-35 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
               )
@@ -1326,27 +1326,18 @@
         (-> gp-4 ppointer)
         )
       )
-    (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-5
-             (when s5-0
-               (let ((t9-40 (method-of-type manipy activate)))
-                 (t9-40 (the-as manipy s5-0) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((gp-6 run-function-in-process)
-                     (s4-0 s5-0)
-                     (s3-0 manipy-init)
-                     (s2-0 sv-80)
-                     (s1-0 (-> self entity))
-                     (t0-8 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f)))
-                     (t1-6 #f)
-                     )
-                 0
-                 ((the-as (function object object object object object object none) gp-6) s4-0 s3-0 s2-0 s1-0 t0-8 t1-6)
-                 )
-               (-> s5-0 ppointer)
-               )
-             )
-           )
+    (let ((gp-5 (process-spawn
+                  manipy
+                  :init manipy-init
+                  sv-80
+                  (-> self entity)
+                  (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f))
+                  #f
+                  0
+                  :to self
+                  )
+                )
+          )
       (when gp-5
         (send-event (ppointer->process gp-5) 'anim-mode 'play1)
         (send-event (ppointer->process gp-5) 'anim "idle")
@@ -1354,27 +1345,18 @@
         (send-event (ppointer->process gp-5) 'trans-hook sv-84)
         )
       )
-    (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
-           (gp-7
-             (when s5-1
-               (let ((t9-47 (method-of-type manipy activate)))
-                 (t9-47 (the-as manipy s5-1) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((gp-8 run-function-in-process)
-                     (s4-1 s5-1)
-                     (s3-1 manipy-init)
-                     (s2-1 sv-80)
-                     (s1-1 (-> self entity))
-                     (t0-9 (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f)))
-                     (t1-7 #f)
-                     )
-                 0
-                 ((the-as (function object object object object object object none) gp-8) s4-1 s3-1 s2-1 s1-1 t0-9 t1-7)
-                 )
-               (-> s5-1 ppointer)
-               )
-             )
-           )
+    (let ((gp-7 (process-spawn
+                  manipy
+                  :init manipy-init
+                  sv-80
+                  (-> self entity)
+                  (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f))
+                  #f
+                  0
+                  :to self
+                  )
+                )
+          )
       (when gp-7
         (send-event (ppointer->process gp-7) 'anim-mode 'play1)
         (send-event (ppointer->process gp-7) 'anim "idle")
@@ -1391,27 +1373,18 @@
     (when (and (logtest? (focus-status dark) (-> self focus-status))
                (and (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
                )
-      (let* ((s5-2 (get-process *default-dead-pool* manipy #x4000))
-             (gp-10
-               (when s5-2
-                 (let ((t9-59 (method-of-type manipy activate)))
-                   (t9-59 (the-as manipy s5-2) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
+      (let ((gp-10 (process-spawn
+                     manipy
+                     :init manipy-init
+                     sv-80
+                     (-> self entity)
+                     (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f))
+                     #f
+                     0
+                     :to self
+                     )
                    )
-                 (let ((gp-11 run-function-in-process)
-                       (s4-2 s5-2)
-                       (s3-2 manipy-init)
-                       (s2-2 sv-80)
-                       (s1-2 (-> self entity))
-                       (t0-10 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f)))
-                       (t1-8 #f)
-                       )
-                   0
-                   ((the-as (function object object object object object object none) gp-11) s4-2 s3-2 s2-2 s1-2 t0-10 t1-8)
-                   )
-                 (-> s5-2 ppointer)
-                 )
-               )
-             )
+            )
         (when gp-10
           (send-event (ppointer->process gp-10) 'anim-mode 'play1)
           (send-event (ppointer->process gp-10) 'anim "idle")
@@ -1453,27 +1426,18 @@
             )
           )
         )
-      (let* ((s5-3 (get-process *default-dead-pool* manipy #x4000))
-             (gp-12
-               (when s5-3
-                 (let ((t9-66 (method-of-type manipy activate)))
-                   (t9-66 (the-as manipy s5-3) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
+      (let ((gp-12 (process-spawn
+                     manipy
+                     :init manipy-init
+                     sv-80
+                     (-> self entity)
+                     (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f))
+                     #f
+                     0
+                     :to self
+                     )
                    )
-                 (let ((gp-13 run-function-in-process)
-                       (s4-3 s5-3)
-                       (s3-3 manipy-init)
-                       (s2-3 sv-80)
-                       (s1-3 (-> self entity))
-                       (t0-11 (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f)))
-                       (t1-9 #f)
-                       )
-                   0
-                   ((the-as (function object object object object object object none) gp-13) s4-3 s3-3 s2-3 s1-3 t0-11 t1-9)
-                   )
-                 (-> s5-3 ppointer)
-                 )
-               )
-             )
+            )
         (when gp-12
           (send-event (ppointer->process gp-12) 'anim-mode 'play1)
           (send-event (ppointer->process gp-12) 'anim "idle")
@@ -1509,11 +1473,11 @@
                                           :name "lightning-darkjak-bomb1"
                                           :flags (lightning-spec-flags lsf0 size-from-adjust-dist)
                                           :adjust-distance #xa
-                                          :start-color #x80ffffff
-                                          :end-color #x80ffffff
-                                          :fade-to-color #x58f00bf
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                           :fade-start-factor 0.2
-                                          :texture #xc08400
+                                          :texture (new 'static 'texture-id :index #x84 :page #xc)
                                           :reduction 0.42
                                           :num-points 96
                                           :box-size 32768.0
@@ -1637,7 +1601,7 @@
         (go target-hit-ground #f)
         )
     (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
-    (if (and (= (-> self control unknown-symbol04) 'uppercut)
+    (if (and (= (-> self control danger-mode) 'uppercut)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) -8192.0)
              )
         (target-danger-set! 'harmless #f)
@@ -1854,7 +1818,7 @@
             )
           )
         )
-      (set! (-> self control unknown-surface00)
+      (set! (-> self control mod-surface)
             (new 'static 'surface
               :name 'uppercut
               :turnv 524288.0
@@ -1940,7 +1904,7 @@
       0
       (set! (-> self post-hook) gp-0)
       )
-    (set! (-> self control unknown-surface00) *double-jump-mods*)
+    (set! (-> self control mod-surface) *double-jump-mods*)
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data 421)
                 :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 421)) frames num-frames) -1)))
