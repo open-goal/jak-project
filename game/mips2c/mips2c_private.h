@@ -1549,9 +1549,13 @@ inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   memcpy(spad_addr_c, g_ee_main_mem + madr, qwc * 16);
 }
 
+inline void* align4_ptr(void* spad_sym_addr) {
+  return (void*)align4(((uintptr_t)spad_sym_addr - 3));
+}
+
 inline void spad_to_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
 
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
