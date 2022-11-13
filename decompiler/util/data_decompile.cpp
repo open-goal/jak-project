@@ -1084,6 +1084,11 @@ goos::Object decompile_structure(const TypeSpec& type,
               field_defs_out.emplace_back(field.name(),
                                           decompile_value(TypeSpec("gif-tag-regs"), bytes_out, ts));
             } else {
+              if (field.type() == TypeSpec("uint128")) {
+                throw std::runtime_error(
+                    fmt::format("Failed to decompile: looking at field {} (from {}) with type {}",
+                                field.name(), type_info->get_name(), field.type().print()));
+              }
               field_defs_out.emplace_back(field.name(),
                                           decompile_value(field.type(), bytes_out, ts));
             }
@@ -1244,7 +1249,8 @@ goos::Object decompile_structure(const TypeSpec& type,
       pretty_print::to_symbol(fmt::format("new 'static '{}", actual_type.print()))};
   for (auto& f : field_defs_out) {
     auto str = f.second.print();
-    if (str.length() < 40) {
+    bool hack = actual_type.base_type() == "sp-field-init-spec" && f.first == "object";
+    if (str.length() < 40 && !hack) {
       result_def.push_back(
           pretty_print::to_symbol(fmt::format(":{} {}", f.first, print_def(f.second))));
     } else {

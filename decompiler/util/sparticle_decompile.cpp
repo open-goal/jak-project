@@ -565,26 +565,31 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
 
 goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<LinkedWord>& words,
                                                               const std::string& field_name,
-                                                              const std::string& flag_name) {
+                                                              const std::string& flag_name,
+                                                              const goos::Object& original) {
   if (flag_name == "int-with-rand") {
     return pretty_print::to_symbol(
         fmt::format("(sp-rnd-int-flt {} (degrees {}) {} {})", field_name,
                     float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
                     word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
   }
-  ASSERT(flag_name == "float-with-rand");
-  float range = word_as_float(words.at(2));
-  float mult = word_as_float(words.at(3));
-  if (range == 0.f && mult == 1.f) {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-flt {} (degrees {}))", field_name,
-                    float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH)));
+
+  if (flag_name == "float-with-rand") {
+    float range = word_as_float(words.at(2));
+    float mult = word_as_float(words.at(3));
+    if (range == 0.f && mult == 1.f) {
+      return pretty_print::to_symbol(
+          fmt::format("(sp-flt {} (degrees {}))", field_name,
+                      float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH)));
+    } else {
+      return pretty_print::to_symbol(
+          fmt::format("(sp-rnd-flt {} (degrees {}) (degrees {}) {})", field_name,
+                      float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
+                      float_to_string(word_as_float(words.at(2)) / DEGREES_LENGTH),
+                      float_to_string(word_as_float(words.at(3)))));
+    }
   } else {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-rnd-flt {} (degrees {}) (degrees {}) {})", field_name,
-                    float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
-                    float_to_string(word_as_float(words.at(2)) / DEGREES_LENGTH),
-                    float_to_string(word_as_float(words.at(3)))));
+    return original;
   }
 }
 
@@ -695,7 +700,6 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                                             const LinkedObjectFile* file,
                                             GameVersion version) {
   auto normal = decompile_structure(type, label, labels, words, ts, file, false, version);
-  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -739,7 +743,8 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
         result = decompile_sparticle_float_meters_with_rand_init(obj_words, field_name, flag_name);
         break;
       case FieldKind::DEGREES_WITH_RAND:
-        result = decompile_sparticle_float_degrees_with_rand_init(obj_words, field_name, flag_name);
+        result = decompile_sparticle_float_degrees_with_rand_init(obj_words, field_name, flag_name,
+                                                                  normal);
         break;
         //      case FieldKind::INT_WITH_RAND:
         //        result = decompile_sparticle_int_with_rand_init(obj_words, field_name, flag_name);
@@ -822,7 +827,6 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
                                             GameVersion version) {
   auto field_id = field.field_id;
   auto flags = field.flags;
-
   ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
   const auto& field_info = field_kinds.at(version)[field_id];
@@ -847,8 +851,8 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_float_meters_with_rand_init(field.data, field_name, flag_name);
         break;
       case FieldKind::DEGREES_WITH_RAND:
-        result =
-            decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name);
+        result = decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name,
+                                                                  field.userdata);
         break;
         //      case FieldKind::INT_WITH_RAND:
         //        result = decompile_sparticle_int_with_rand_init(field.data, field_name,
