@@ -20846,6 +20846,13 @@
     )
   )
 
+(deftype hud-money (hud)
+  "Not actually defined in jak 2's code, but referenced."
+  ()
+  :method-count-assert 27
+  :size-assert         #xba4
+  :flag-assert         #x1b0b300ba4)
+
 (deftype hud-ashelin (hud)
   ()
   :method-count-assert 27
@@ -27908,7 +27915,7 @@
   :size-assert         #x2c0
   :flag-assert         #xa000002c0
   (:methods
-    (gun-info-method-9 (_type_) none 9)
+    (gun-info-method-9 (_type_) (inline-array vector) 9)
     )
   )
 
@@ -28495,8 +28502,8 @@
 ;; collectables-part              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern eco-fadeout function) ;; (function sparticle-system sparticle-cpuinfo none)
-;; (define-extern eco-track-root-prim-fadeout function) ;; (function sparticle-system sparticle-cpuinfo vector none)
+(define-extern eco-fadeout (function sparticle-system sparticle-cpuinfo none)) ;; 
+(define-extern eco-track-root-prim-fadeout (function sparticle-system sparticle-cpuinfo vector none)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-part                     ;;
@@ -28660,7 +28667,7 @@
 (define-extern target-hit-ground-flop-anim (function symbol symbol none :behavior target))
 (define-extern target-hit-ground-anim (function symbol symbol none :behavior target))
 (define-extern target-attack-air-anim (function none :behavior target))
-(define-extern target-edge-grab-anim (function none :behavior target))
+(define-extern target-edge-grab-anim (function float none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target                         ;;
@@ -28995,9 +29002,9 @@
    (core-position vector  :inline :offset-assert 480)
    (core-velocity vector  :inline :offset-assert 496)
    (spin-vector   vector  :inline :offset-assert 512)
-   (track-target  uint64          :offset-assert 528)
+   (track-target  handle          :offset-assert 528)
    (size-t        float           :offset-assert 536)
-   (result-array  uint64  16      :offset-assert 544)
+   (result-array  handle  16      :offset-assert 544)
    (charge-sound  uint32          :offset-assert 672)
    (fire-sound    uint32          :offset-assert 676)
    (trail-sound   uint32          :offset-assert 680)
@@ -29286,7 +29293,7 @@
    (fstart-inc       float                                            :offset-assert 76)
    (fstep            float                                            :offset-assert 80)
    (fprecision       int32                                            :offset-assert 84)
-   (factivate-func   (function int debug-menu-msg float float float)  :offset-assert 88) ;; guessed by decompiler
+   (factivate-func   (function int debug-menu-msg float float float)  :offset-assert 88) ;; NOTE - it's weird how the final 2 floats are loaded off the stack as quadwords
    (ival             int32                                            :offset 60)
    (iundo-val        int32                                            :offset 64)
    (irange-min       int32                                            :offset 68)
@@ -29423,9 +29430,9 @@
 ;; main-collide                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern drawable-sphere-box-intersect? (function drawable bounding-box4w symbol)) ;;
-(define-extern instance-sphere-box-intersect? (function drawable instance-tie bounding-box4w symbol)) ;;
-(define-extern instance-tfragment-add-debug-sphere (function drawable instance-tie symbol)) ;;
+(define-extern drawable-sphere-box-intersect? "TODO" (function drawable bounding-box4w symbol)) ;;
+(define-extern instance-sphere-box-intersect? "TODO" (function drawable instance-tie bounding-box4w symbol)) ;;
+(define-extern instance-tfragment-add-debug-sphere "TODO" (function drawable instance-tie symbol)) ;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; video                          ;;
@@ -45924,10 +45931,9 @@
 ;; ctymark-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype market-object (process-focusable)
-  ((part-explode   basic          :offset-assert 200)
-   (explode-matrix matrix :inline :offset-assert 204)
+  ((part-explode   basic          :offset-assert 204)
+   (explode-matrix matrix :inline :offset-assert 208)
    )
   :method-count-assert 29
   :size-assert         #x110
@@ -45937,65 +45943,44 @@
     (die () _type_ :state 28)
     )
   )
-|#
 
-#|
 (deftype market-basket-a (market-object)
   ()
   :method-count-assert 29
   :size-assert         #x110
   :flag-assert         #x1d00900110
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype market-basket-b (market-object)
   ()
   :method-count-assert 29
   :size-assert         #x110
   :flag-assert         #x1d00900110
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype market-crate (market-object)
   ()
   :method-count-assert 29
   :size-assert         #x110
   :flag-assert         #x1d00900110
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype market-sack-a (market-object)
   ()
   :method-count-assert 29
   :size-assert         #x110
   :flag-assert         #x1d00900110
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype market-sack-b (market-object)
   ()
   :method-count-assert 29
   :size-assert         #x110
   :flag-assert         #x1d00900110
-  (:methods
-    )
   )
-|#
 
-;; (define-extern check-market-piece-ground function)
-;; (define-extern market-activate function)
+(define-extern check-market-piece-ground (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern market-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctymarka-part                  ;;
@@ -51347,25 +51332,50 @@
 ;; ctywide-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype security-wall (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype security-wall (process-drawable)
+  (
+    (pass int32 :offset-assert 200)
+    (incoming-attack-id uint32 :offset-assert 204)
+    (next-message-time int64 :offset-assert 208)
+    (message int32 :offset-assert 216)
+    (plane plane :inline :offset-assert 224)
+    (color vector :inline :offset-assert 240)
+    (target-pos vector :inline :offset-assert 256)
+    (flash float  :offset-assert 272)
+    (touch-count int32 :offset-assert 276)
+    (breach symbol :offset-assert 280)
   )
-|#
+  :method-count-assert 25
+  :size-assert         #x11c
+  :flag-assert         #x1900a0011c
+  (:methods
+    (security-wall-method-20 () none 20)
+    (security-wall-method-21 () none 21)
+    (security-wall-method-22 () none 22)
+    (security-wall-method-23 () none 23)
+    (security-wall-method-24 () none 24)
+    )
+  )
 
-#|
-(deftype fruit-stand (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype fruit-stand (process-focusable)
+  (
+    (incoming-attack-id uint32 :offset-assert 204)
+    (hack-counter uint32 :offset-assert 208)
+    (count-sparts uint32 :offset-assert 212)
+    (first-sparts uint32 :offset-assert 216)
+    (num-sparts uint32 :offset-assert 220)
+    (sparts-index uint32 4 :offset-assert 224)
+    (sparts-pos vector 4 :inline :offset-assert 240)
   )
-|#
+  :method-count-assert 30
+  :size-assert         #x130
+  :flag-assert         #x1e00b00130
+  (:methods
+    (fruit-stand-method-27 () none 27)
+    (fruit-stand-method-28 () none 28)
+    (fruit-stand-method-29 () none 29)
+    )
+  )
 
 #|
 (deftype cty-fruit-stand (UNKNOWN)
