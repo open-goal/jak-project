@@ -261,8 +261,8 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (id != -1) {
       // method id assert!
       if (id != info.id) {
-        printf("WARNING - ID assert failed on method %s of type %s (wanted %d got %d)\n",
-               method_name.c_str(), type->get_name().c_str(), id, info.id);
+        lg::print("WARNING - ID assert failed on method %s of type %s (wanted %d got %d)\n",
+                  method_name.c_str(), type->get_name().c_str(), id, info.id);
         throw std::runtime_error("Method ID assert failed");
       }
     }

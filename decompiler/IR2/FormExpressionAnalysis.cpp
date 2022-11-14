@@ -1092,7 +1092,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match for stride 1 address access with add.");
+          throw std::runtime_error(
+              fmt::format("Failed to match for stride 1 address access with add: {}",
+                          args.at(0)->to_string(env)));
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
@@ -1980,15 +1982,22 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     return;
   }
 
+  // (-> (the-as process-drawable (-> v1-32 0)) pid)
+  // (-> v1-61 0 pid)
+  auto just_deref_matcher = Matcher::match_or(
+      {Matcher::deref(Matcher::any_reg(0), false,
+                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+       Matcher::deref({Matcher::cast_to_any(4, Matcher::deref(Matcher::any_reg(0), false,
+                                                              {DerefTokenMatcher::integer(0)}))},
+                      false, {DerefTokenMatcher::string("pid")})});
+
   // jak 1:
   // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
   // jak 2:
   // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
-  auto pid_deref_matcher = Matcher::op_fixed(
-      FixedOperatorKind::SHL,
-      {Matcher::deref(Matcher::any_reg(0), false,
-                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
-       Matcher::integer(32)});
+  auto pid_deref_matcher =
+      Matcher::op_fixed(FixedOperatorKind::SHL, {just_deref_matcher, Matcher::integer(32)});
+
   auto make_handle_matcher = Matcher::op_fixed(
       FixedOperatorKind::LOGIOR,
       {env.version == GameVersion::Jak1
@@ -2000,6 +2009,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
   auto handle_mr = match(make_handle_matcher, element);
+
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
@@ -2007,7 +2017,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     if (var_name == env.get_variable_name(var_b) &&
         (env.version == GameVersion::Jak1 ||
          var_name == env.get_variable_name(handle_mr.maps.regs.at(2).value())) &&
-        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
+        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process-tree")}),
                        env.get_variable_type(var_a, true))) {
       auto* menv = const_cast<Env*>(&env);
       menv->disable_use(var_a);
@@ -2794,6 +2804,10 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
       token_matchers = {DerefTokenMatcher::string("quad")};
     }
 
+    if (env.version == GameVersion::Jak2) {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
     auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
                                 Matcher::cast("uint128", Matcher::integer(0)));
 
@@ -2878,8 +2892,7 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
         } else {
           matcher = Matcher::set(
               Matcher::deref(Matcher::any_reg(0), false,
-                             {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                              DerefTokenMatcher::string("quad")}),
+                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
               Matcher::cast("uint128", Matcher::integer(0)));
         }
 
@@ -4437,6 +4450,28 @@ std::vector<Form*> cast_to_64_bit(const std::vector<Form*>& forms,
   return result;
 }
 
+std::vector<Form*> cast_for_64bit_equality_check(const std::vector<Form*>& forms,
+                                                 const std::vector<TypeSpec>& types,
+                                                 FormPool& pool,
+                                                 const Env& env) {
+  if (env.version == GameVersion::Jak1) {
+    return cast_to_64_bit(forms, types, pool, env);
+  }
+  std::vector<Form*> result;
+  for (size_t i = 0; i < forms.size(); i++) {
+    if (env.dts->ts.tc(TypeSpec("uint128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("uint"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("int128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("float"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else {
+      result.push_back(forms[i]);
+    }
+  }
+  return result;
+}
+
 FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   /*
  (defmacro logtest? (a b)
@@ -4659,7 +4694,7 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
       }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }
@@ -4690,7 +4725,7 @@ FormElement* ConditionElement::make_not_equal_check_generic(
     } else {
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }

@@ -39,61 +39,59 @@
 (defstate idle (blocking-plane)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((evt-type event-type))
-      (the-as object (cond
-                       ((= evt-type 'on)
-                        (cond
-                          ((nonzero? (-> self root-override))
-                           (let ((prim (-> self root-override root-prim)))
-                             (set! (-> prim prim-core collide-as) (-> self root-override backup-collide-as))
-                             (let ((v0-0 (the-as int (-> self root-override backup-collide-with))))
-                               (set! (-> prim prim-core collide-with) (the-as collide-spec v0-0))
-                               v0-0
-                               )
+    (the-as object (case event-type
+                     (('on)
+                      (cond
+                        ((nonzero? (-> self root-override))
+                         (let ((prim (-> self root-override root-prim)))
+                           (set! (-> prim prim-core collide-as) (-> self root-override backup-collide-as))
+                           (let ((v0-0 (the-as int (-> self root-override backup-collide-with))))
+                             (set! (-> prim prim-core collide-with) (the-as collide-spec v0-0))
+                             v0-0
                              )
                            )
-                          (else
-                            (let ((proc-child-ptr-0 (-> self child)))
-                              (while proc-child-ptr-0
-                                (let ((proc-child-0 (ppointer->process proc-child-ptr-0)))
-                                  (set! proc-child-ptr-0 (-> proc-child-ptr-0 0 brother))
-                                  (if (type? proc-child-0 blocking-plane)
-                                      (send-event proc-child-0 'on)
-                                      )
-                                  )
+                         )
+                        (else
+                          (let ((proc-child-ptr-0 (-> self child)))
+                            (while proc-child-ptr-0
+                              (let ((proc-child-0 (ppointer->process proc-child-ptr-0)))
+                                (set! proc-child-ptr-0 (-> proc-child-ptr-0 0 brother))
+                                (if (type? proc-child-0 blocking-plane)
+                                    (send-event proc-child-0 'on)
+                                    )
                                 )
                               )
-                            (the-as int #f)
                             )
+                          (the-as int #f)
                           )
                         )
-                       ((= evt-type 'off)
-                        (cond
-                          ((nonzero? (-> self root-override))
-                           (let ((v1-13 (-> self root-override root-prim)))
-                             (set! (-> v1-13 prim-core collide-as) (collide-spec))
-                             (set! (-> v1-13 prim-core collide-with) (collide-spec))
-                             )
-                           0
+                      )
+                     (('off)
+                      (cond
+                        ((nonzero? (-> self root-override))
+                         (let ((v1-13 (-> self root-override root-prim)))
+                           (set! (-> v1-13 prim-core collide-as) (collide-spec))
+                           (set! (-> v1-13 prim-core collide-with) (collide-spec))
                            )
-                          (else
-                            (let ((proc-child-ptr-1 (-> self child)))
-                              (while proc-child-ptr-1
-                                (let ((proc-child-1 (ppointer->process proc-child-ptr-1)))
-                                  (set! proc-child-ptr-1 (-> proc-child-ptr-1 0 brother))
-                                  (if (type? proc-child-1 blocking-plane)
-                                      (send-event proc-child-1 'off)
-                                      )
-                                  )
+                         0
+                         )
+                        (else
+                          (let ((proc-child-ptr-1 (-> self child)))
+                            (while proc-child-ptr-1
+                              (let ((proc-child-1 (ppointer->process proc-child-ptr-1)))
+                                (set! proc-child-ptr-1 (-> proc-child-ptr-1 0 brother))
+                                (if (type? proc-child-1 blocking-plane)
+                                    (send-event proc-child-1 'off)
+                                    )
                                 )
                               )
-                            (the-as int #f)
                             )
+                          (the-as int #f)
                           )
                         )
-                       )
-              )
-      )
+                      )
+                     )
+            )
     )
   :code (the-as (function none :behavior blocking-plane) sleep-code)
   )

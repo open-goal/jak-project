@@ -82,8 +82,8 @@
   )
 
 
-(defskelgroup skel-voicebox talk-box 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-voicebox talk-box talk-box-lod0-jg talk-box-idle-ja
+              ((talk-box-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               :texture-level 6
               :sort 1
@@ -113,7 +113,7 @@
       (init-vf0-vector)
       (ja-post)
       (if (type? (-> obj root) collide-shape)
-          (collide-shape-method-46 (the-as collide-shape (-> obj root)))
+          (update-transforms (the-as collide-shape (-> obj root)))
           )
       (when (and (nonzero? (-> obj part)) (and (or (and (-> obj next-state) (= (-> obj next-state name) 'idle))
                                                    (and (-> obj next-state) (= (-> obj next-state name) 'enter))
@@ -347,7 +347,10 @@
   :event (-> cam-string event)
   :enter (-> cam-string enter)
   :trans (behavior ()
-    (if (or (not *camera*) (not (logtest? (-> *camera* master-options) 1)) (not (-> self child)))
+    (if (or (not *camera*)
+            (not (logtest? (-> *camera* master-options) (cam-master-options-u32 HAVE_TARGET)))
+            (not (-> self child))
+            )
         (deactivate self)
         )
     (none)
@@ -385,7 +388,7 @@
     (set! (-> self blend) 1.0)
     (send-event (ppointer->process (-> self parent-override)) 'change-state empty-state)
     (suspend)
-    (process-drawable-method-17 self)
+    (cleanup-for-death self)
     (none)
     )
   )
@@ -439,7 +442,7 @@
 (defmethod remote-method-25 judge ((obj judge))
   (ja-post)
   (if (type? (-> obj root) collide-shape)
-      (collide-shape-method-46 (the-as collide-shape (-> obj root)))
+      (update-transforms (the-as collide-shape (-> obj root)))
       )
   (when (and (-> obj next-state) (let ((v1-6 (-> obj next-state name)))
                                    (or (= v1-6 'idle) (= v1-6 'enter))

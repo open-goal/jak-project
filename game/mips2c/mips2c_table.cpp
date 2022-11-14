@@ -166,6 +166,22 @@ namespace render_ocean_quad { extern void link(); }
 namespace method_16_ocean { extern void link(); }
 namespace method_15_ocean { extern void link(); }
 namespace method_14_ocean { extern void link(); }
+namespace method_18_grid_hash { extern void link(); }
+namespace method_19_grid_hash { extern void link(); }
+namespace method_20_grid_hash { extern void link(); }
+namespace method_22_grid_hash { extern void link(); }
+namespace method_28_sphere_hash { extern void link(); }
+namespace method_33_sphere_hash { extern void link(); }
+namespace method_29_sphere_hash { extern void link(); }
+namespace method_30_sphere_hash { extern void link(); }
+namespace method_31_sphere_hash { extern void link(); }
+namespace method_32_sphere_hash { extern void link(); }
+namespace method_33_spatial_hash { extern void link(); }
+namespace method_39_spatial_hash { extern void link(); }
+namespace method_36_spatial_hash { extern void link(); }
+namespace method_37_spatial_hash { extern void link(); }
+namespace method_35_spatial_hash { extern void link(); }
+
 }
 // clang-format on
 
@@ -275,7 +291,16 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
       {jak2::method_16_ocean::link, jak2::method_15_ocean::link, jak2::method_14_ocean::link}},
      {"ocean",
       {jak2::init_ocean_far_regs::link, jak2::draw_large_polygon_ocean::link,
-       jak2::render_ocean_quad::link}}},
+       jak2::render_ocean_quad::link}},
+     {"spatial-hash",
+      {jak2::method_18_grid_hash::link, jak2::method_19_grid_hash::link,
+       jak2::method_20_grid_hash::link, jak2::method_22_grid_hash::link,
+       jak2::method_28_sphere_hash::link, jak2::method_33_sky_work::link,
+       jak2::method_29_sphere_hash::link, jak2::method_30_sphere_hash::link,
+       jak2::method_31_sphere_hash::link, jak2::method_32_sphere_hash::link,
+       jak2::method_33_spatial_hash::link, jak2::method_39_spatial_hash::link,
+       jak2::method_36_spatial_hash::link, jak2::method_37_spatial_hash::link,
+       jak2::method_35_spatial_hash::link, jak2::method_33_sphere_hash::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

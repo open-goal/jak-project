@@ -93,24 +93,22 @@
 (defstate wait-for-start (flutflut)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'trans)
-           (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+    (the-as
+      object
+      (case event-type
+        (('trans)
+         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+         )
+        (('notify)
+         (let ((v0-1 (the-as structure #t)))
+           (set! (-> self auto-get-off) (the-as symbol v0-1))
+           v0-1
            )
-          ((= v1-0 'notify)
-           (let ((v0-1 (the-as structure #t)))
-             (set! (-> self auto-get-off) (the-as symbol v0-1))
-             v0-1
-             )
-           )
-          ((or (= v1-0 'touch) (= v1-0 'attack))
-           (set! (-> self touch-time) (-> *display* base-frame-counter))
-           #f
-           )
-          )
+         )
+        (('touch 'attack)
+         (set! (-> self touch-time) (-> *display* base-frame-counter))
+         #f
+         )
         )
       )
     )

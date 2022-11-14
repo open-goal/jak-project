@@ -291,52 +291,74 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 248]
 (defbehavior bully-default-event-handler bully ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 none))
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (when (or (= v1-0 'touch) (= v1-0 'touched) (= v1-0 'attack))
-        (cond
-          ((= (-> arg0 type) bully)
-           (let ((v1-3 (new 'stack-no-clear 'vector)))
-             (vector-! v1-3 (-> self root-override trans) (-> (the-as process-drawable arg0) root trans))
-             (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z)))
+  (the-as
+    object
+    (case arg2
+      (('touch 'touched 'attack)
+       (cond
+         ((= (-> arg0 type) bully)
+          (let ((v1-3 (new 'stack-no-clear 'vector)))
+            (vector-! v1-3 (-> self root-override trans) (-> (the-as process-drawable arg0) root trans))
+            (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z)))
+            )
+          (set! (-> self bounced?) #t)
+          (set! v0-0 (the-as none 100))
+          (set! (-> self bounce-volume) (the-as int v0-0))
+          v0-0
+          )
+         ((= (-> arg0 type) target)
+          (cond
+            ((= (-> arg3 param 1) 'flop)
+             (go bully-die)
+             (return (the-as object #t))
+             v0-0
              )
-           (set! (-> self bounced?) #t)
-           (set! v0-0 (the-as none 100))
-           (set! (-> self bounce-volume) (the-as int v0-0))
-           v0-0
-           )
-          ((= (-> arg0 type) target)
-           (cond
-             ((= (-> arg3 param 1) 'flop)
-              (go bully-die)
-              (return (the-as object #t))
-              v0-0
-              )
-             ((or (= arg2 'touch) (= arg2 'attack))
-              (cond
-                ((>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 6144.0)
-                 (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
-                        (f28-0 (* 8192.0 f0-6))
-                        (f30-0 (* 8192.0 f0-6))
-                        (s4-0 (new 'stack-no-clear 'vector))
-                        )
-                   (vector-! s4-0 (target-pos 0) (-> self root-override trans))
-                   (let ((f26-0 (atan (-> s4-0 x) (-> s4-0 z))))
-                     (when (< 0.0 (-> self travel-speed))
-                       (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
-                         (if (< (fabs f0-11) 8192.0)
-                             (set! f26-0 (if (>= f0-11 0.0)
-                                             (+ 8192.0 f26-0)
-                                             (+ -8192.0 f26-0)
-                                             )
-                                   )
-                             )
-                         )
+            ((or (= arg2 'touch) (= arg2 'attack))
+             (cond
+               ((>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 6144.0)
+                (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
+                       (f28-0 (* 8192.0 f0-6))
+                       (f30-0 (* 8192.0 f0-6))
+                       (s4-0 (new 'stack-no-clear 'vector))
                        )
-                     (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
-                     )
-                   (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
+                  (vector-! s4-0 (target-pos 0) (-> self root-override trans))
+                  (let ((f26-0 (atan (-> s4-0 x) (-> s4-0 z))))
+                    (when (< 0.0 (-> self travel-speed))
+                      (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
+                        (if (< (fabs f0-11) 8192.0)
+                            (set! f26-0 (if (>= f0-11 0.0)
+                                            (+ 8192.0 f26-0)
+                                            (+ -8192.0 f26-0)
+                                            )
+                                  )
+                            )
+                        )
+                      )
+                    (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
+                    )
+                  (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
+                    (level-hint-spawn
+                      (game-text-id sunken-bully-dive-hint)
+                      "sksp0131"
+                      (the-as entity #f)
+                      *entity-pool*
+                      (game-task none)
+                      )
+                    (set! (-> self bounced?) #t)
+                    (set! v0-0 (the-as none 100))
+                    (set! (-> self bounce-volume) (the-as int v0-0))
+                    v0-0
+                    )
+                  )
+                )
+               (else
+                 (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
+                   (when (send-event
+                           arg0
+                           'attack
+                           (-> arg3 param 0)
+                           (static-attack-info ((shove-up (* 12288.0 f0-21)) (shove-back (* 16384.0 f0-21))))
+                           )
                      (level-hint-spawn
                        (game-text-id sunken-bully-dive-hint)
                        "sksp0131"
@@ -344,66 +366,44 @@
                        *entity-pool*
                        (game-task none)
                        )
+                     (set! (-> self hit-player?) #t)
                      (set! (-> self bounced?) #t)
-                     (set! v0-0 (the-as none 100))
-                     (set! (-> self bounce-volume) (the-as int v0-0))
-                     v0-0
+                     (set! (-> self bounce-volume) 100)
+                     (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+                     (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
                      )
                    )
                  )
-                (else
-                  (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
-                    (when (send-event
-                            arg0
-                            'attack
-                            (-> arg3 param 0)
-                            (static-attack-info ((shove-up (* 12288.0 f0-21)) (shove-back (* 16384.0 f0-21))))
-                            )
-                      (level-hint-spawn
-                        (game-text-id sunken-bully-dive-hint)
-                        "sksp0131"
-                        (the-as entity #f)
-                        *entity-pool*
-                        (game-task none)
-                        )
-                      (set! (-> self hit-player?) #t)
-                      (set! (-> self bounced?) #t)
-                      (set! (-> self bounce-volume) 100)
-                      (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-                      (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-                      )
-                    )
-                  )
-                )
-              )
+               )
              )
-           )
-          (else
-            (when (= arg2 'touched)
-              (cond
-                ((= (-> arg0 type) target)
-                 (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
-                 )
-                (else
-                  (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
-                    (set! (-> a1-14 from) self)
-                    (set! (-> a1-14 num-params) 4)
-                    (set! (-> a1-14 message) 'attack)
-                    (set! (-> a1-14 param 0) (-> arg3 param 0))
-                    (set! (-> a1-14 param 1) (the-as uint 'explode))
-                    (let ((v1-48 (+ *global-attack-id* 1)))
-                      (set! *global-attack-id* v1-48)
-                      (set! (-> a1-14 param 2) (the-as uint v1-48))
-                      )
-                    (set! (-> a1-14 param 3) (the-as uint 0))
-                    (send-event-function arg0 a1-14)
-                    )
-                  )
-                )
-              )
             )
           )
-        )
+         (else
+           (when (= arg2 'touched)
+             (cond
+               ((= (-> arg0 type) target)
+                (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+                )
+               (else
+                 (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+                   (set! (-> a1-14 from) self)
+                   (set! (-> a1-14 num-params) 4)
+                   (set! (-> a1-14 message) 'attack)
+                   (set! (-> a1-14 param 0) (-> arg3 param 0))
+                   (set! (-> a1-14 param 1) (the-as uint 'explode))
+                   (let ((v1-48 (+ *global-attack-id* 1)))
+                     (set! *global-attack-id* v1-48)
+                     (set! (-> a1-14 param 2) (the-as uint v1-48))
+                     )
+                   (set! (-> a1-14 param 3) (the-as uint 0))
+                   (send-event-function arg0 a1-14)
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
       )
     )
   )
