@@ -145,7 +145,7 @@
    (y    float     :offset 4)
    (z    float     :offset 8)
    (w    float     :offset 12)
-   (quad uint128   :offset 0)
+   (quad uint128   :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -7607,7 +7607,7 @@
   (unk-game-feature-03)
   (unk-game-feature-04)
   (unk-game-feature-05)
-  (unk-game-feature-06)
+  (gun) ;; used for having any gun.
   (gun-yellow)
   (gun-red)
   (gun-blue)
@@ -11276,7 +11276,7 @@
     (lod-set! (_type_ int) none 10)
     (lods-assign! (_type_ lod-set) none 11)
     (setup-masks (_type_ int int) none 12)
-    (setup-cspace-and-add (_type_ art-joint-geo symbol) none 13)
+    (setup-cspace-and-add (_type_ art-joint-geo symbol) cspace-array 13)
     (do-joint-math (_type_ cspace-array joint-control) none 14)
     )
   )
@@ -12220,8 +12220,8 @@
   )
 
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0 :score -1)
-   (flags         shadow-flags   :offset 12) ;; shadow-flags
+  ((flags         shadow-flags   :offset 12) ;; shadow-flags
+   (center        vector :inline :offset 0 :score -1)
    (shadow-dir    vector :inline :offset-assert 16)
    (dist-to-locus float          :offset 28)
    (bot-plane     plane  :inline :offset-assert 32)
@@ -14711,9 +14711,9 @@
   (sf4 4)
   (sf5 5)
   (sf6 6)
-  (sf7 7)
-  (sf8 8)
-  (sf9 9)
+  (prevent-jump 7)
+  (prevent-attack 8)
+  (prevent-duck 9)
   (sf10 10)
   (sf11 11)
   (sf12 12)
@@ -14721,13 +14721,13 @@
   (sf14 14)
   (sf15 15)
   (sf16 16)
-  (sf17 17)
-  (sf18 18)
+  (prevent-board 17)
+  (prevent-gun 18)
   (lleg-still 19)
   (rleg-still 20)
   (lleg-no-ik 21)
   (rleg-no-ik 22)
-  (sf23 23)
+  (prevent-double-jump 23)
   (disable-attacks 24)
   (tinvul2 25)
   (sf26 26)
@@ -16745,7 +16745,9 @@
    (unknown-float01             float                                :offset 452)  ;; logic-target::target-print-stats
    (unknown-float02             float                                :offset 456)  ;; logic-target::target-print-stats
    (unknown-float03             float                                :offset 460)  ;; logic-target::target-print-stats
-   (unknown-vector00            vector                       :inline :offset 480)  ;; logic-target::reverse-conversions
+
+   ;; velocity in control frame
+   (transv-ctrl                 vector                       :inline :offset 480)  ;; logic-target::reverse-conversions
 
    ;; the desired velocity
    (target-transv               vector                       :inline :offset 496)  ;; logic-target::add-thrust
@@ -16762,7 +16764,9 @@
    (override-quat               quaternion                   :inline :offset 544)
    (override-quat-alpha         float                                :offset 560) ;; 0 = use quat-for-control only
 
-   (unknown-float05             float                                :offset 564)  ;; logic-target::target-print-stats
+   ;; velocity in xz plane of control frame
+   (ctrl-xz-vel                 float                                :offset 564)  ;; logic-target::target-print-stats
+
    (unknown-float003            float                                :offset 568)  ;; (anon-function 22 target-gun)
    (unknown-float06             float                                :offset 572)  ;; logic-target::do-rotations2
    (unknown-float07             float                                :offset 576)  ;; logic-target::add-thrust
@@ -16793,10 +16797,13 @@
    ;; how much this changed from frame to frame.
    (anim-collide-offset-delta-world  vector                       :inline :offset 3808)
    (unknown-dynamics00          dynamics                             :offset 3824) ;; logic-target::reset-target-state
-   (unknown-surface00           surface                              :offset 3828) ;; logic-target::target-print-stats
-   (unknown-surface01           surface                              :offset 3832) ;; board-h::want-to-board?
+   (mod-surface                surface                              :offset 3828) ;; logic-target::target-print-stats
+
+   ;; the "current" surface - interpolating between the surfaces we're standing on
+   ;; plus mods.
+   (current-surface             surface                              :offset 3832) ;; board-h::want-to-board?
    (unknown-surface02           surface                              :offset 3836) ;; logic-target::build-conversions
-   (unknown-time-frame02        time-frame                           :offset 3840) ;; logic-target::build-conversions
+   (time-of-last-surface-change time-frame                           :offset 3840) ;; logic-target::build-conversions
    (cpad                        cpad-info                            :offset 3848) ;; board-h::want-to-board?
    (unknown-float08             float                                :offset 3852) ;; logic-target::turn-to-vector
    (unknown-float09             float                                :offset 3856) ;; logic-target::turn-to-vector
@@ -16809,19 +16816,26 @@
    (unknown-vector09            vector                       :inline :offset 3888) ;; logic-target::turn-to-vector
    (unknown-vector10            vector                       :inline :offset 3904) ;; logic-target::turn-to-vector
    (unknown-vector11            vector                       :inline :offset 3920) ;; logic-target::turn-to-vector
-   (unknown-vector-array01      vector                   7   :inline :offset 3936) ;; logic-target::turn-to-vector
+
+   ;; last 7 (8?) turning directions, in control frame.
+   (turn-history-ctrl           vector                   7   :inline :offset 3936) ;; logic-target::turn-to-vector
    (unknown-vector12            vector                       :inline :offset 4064) ;; logic-target::read-pad
    (unknown-vector13            vector                       :inline :offset 4080) ;; logic-target::read-pad
    (unknown-float12             float                                :offset 4096) ;; logic-target::read-pad
    (unknown-float13             float                                :offset 4100) ;; logic-target::read-pad
    (unknown-dword01             int64                                :offset 4104) ;; logic-target::read-pad
-   (unknown-matrix00            matrix                       :inline :offset 4112) ;; logic-target::build-conversions
-   (unknown-matrix01            matrix                       :inline :offset 4176) ;; logic-target::reverse-conversions
+
+   ;; rotations from world to control frame and back.
+   (w-R-c                       matrix                       :inline :offset 4112) ;; logic-target::build-conversions
+   (c-R-w                       matrix                       :inline :offset 4176) ;; logic-target::reverse-conversions
 
    ;; rotate from "control frame" to world frame.
    (ctrl-orientation            matrix                       :inline :offset 4240) ;; logic-target::joint-points
    (unknown-vector14            vector                       :inline :offset 4320) ;; logic-target::pre-collide-setup
-   (unknown-vector15            vector                       :inline :offset 4336) ;; logic-target::reset-target-state
+
+   ;; position that the camera should track.
+   ;; note that there is an alt-cam-pos as well
+   (camera-pos                  vector                       :inline :offset 4336) ;; logic-target::reset-target-state
    (unknown-matrix03            matrix                       :inline :offset 4352) ;; logic-target::read-pad
    (unknown-dword02             int64                                :offset 4416) ;; logic-target::read-pad
    (unknown-vector16            vector                       :inline :offset 4432) ;; logic-target::target-real-post
@@ -16830,55 +16844,71 @@
    (unknown-float15             float                                :offset 4456) ;; logic-target::target-real-post
    (unknown-word01              int32                                :offset 4460) ;; logic-target::joint-points
    (collide-extra-velocity      vector                       :inline :offset 4464) ;; logic-target::pre-collide-setup
+
+   ;; likely board rail misalignment.
    (unknown-vector18            vector                       :inline :offset 4480) ;; logic-target::pre-collide-setup
    (unknown-time-frame03        time-frame                           :offset 4496) ;; logic-target::pre-collide-setup
    (unknown-time-frame04        time-frame                           :offset 4504) ;; logic-target::pre-collide-setup
    (unknown-vector19            vector                       :inline :offset 4512) ;; logic-target::build-conversions
    (unknown-vector20            vector                       :inline :offset 4528) ;; logic-target::build-conversions
-   (unknown-vector21            vector                       :inline :offset 4544) ;; logic-target::target-print-stats
+   (last-trans-any-surf         vector                       :inline :offset 4544) ;; logic-target::target-print-stats
    (unknown-float16             float                                :offset 4548) ;; logic-target::target-print-stats
-   (unknown-vector22            vector                       :inline :offset 4560) ;; logic-target::target-update-ik
+   (ground-contact-normal       vector                       :inline :offset 4560) ;; logic-target::target-update-ik
 
    ;; the last safe ground (got on-surf flag)
-   (last-trans-on-surf          vector                       :inline :offset 4576) ;; logic-target::flag-setup
-   (unknown-vector-kjh1n23k1 vector :inline :offset 4592)
-   (unknown-vector-kj1n231      vector                       :inline :offset 4608)
-   (unknown-time-frame05        time-frame                           :offset 4624) ;; board-h::want-to-board?
-   (unknown-float0000           float                                :offset 4632) ;; target-util::can-duck?
-   (unknown-float17             float                                :offset 4636) ;; logic-target::target-print-stats
-   (unknown-float18             float                                :offset 4640) ;; logic-target::target-print-stats
-   (unknown-float19             float                                :offset 4644) ;; logic-target::target-compute-slopes
-   (unknown-float20             float                                :offset 4648) ;; logic-target::target-compute-slopes
-   (unknown-time-frame06        time-frame                           :offset 4656) ;; board-h::want-to-board?
-   (unknown-float21             float                                :offset 4664) ;; target-board-anim-trans
+   (last-trans-on-ground        vector                       :inline :offset 4576) ;; logic-target::flag-setup
+   ;; center of the sphere that touches the ground.
+   (ground-contact-sphere-center vector :inline :offset 4592)
+   (transv-on-last-impact      vector                       :inline :offset 4608)
+   (list-time-on-ground        time-frame                           :offset 4624) ;; board-h::want-to-board?
+
+   ;; dot(grav, local normal), only updated during ground contact
+   (ground-local-norm-dot-grav  float                                :offset 4632) ;; target-util::can-duck?
+
+;  ;;
+   (local-slope-z               float                                :offset 4636) ;; logic-target::target-print-stats
+   (local-slope-x               float                                :offset 4640) ;; logic-target::target-print-stats
+   (surface-slope-z             float                                :offset 4644) ;; logic-target::target-compute-slopes
+   (surface-slope-x             float                                :offset 4648) ;; logic-target::target-compute-slopes
+   (last-time-on-surface        time-frame                           :offset 4656) ;; board-h::want-to-board?
+   (normal-impact-vel           float                                :offset 4664) ;; target-board-anim-trans
    (unknown-time-frame07        time-frame                           :offset 4672) ;; logic-target::turn-around?
-   (unknown-pat-surface00       pat-surface                          :offset 4680) ;; logic-target::target-print-stats
-   (unknown-vector24            vector                       :inline :offset 4688) ;; logic-target::add-thrust
-   (unknown-vector-kj1hj2b3     vector :inline :offset 4704)
-   (unknown-vector25            vector                       :inline :offset 4720) ;; logic-target::wall-hide?
-   (unknown-vector001           vector                       :inline :offset 4736) ;; target2::target-bonk-event-handler
-   (unknown-vector-kij1b231     vector :inline :offset 4752)
-   (unknown-handle00            handle                               :offset 4768) ;; logic-target::reset-target-state
+   (wall-contact-pat            pat-surface                          :offset 4680) ;; logic-target::target-print-stats
+   (wall-contact-pt             vector                       :inline :offset 4688) ;; logic-target::add-thrust
+   (wall-contact-poly-normal          vector :inline :offset 4704)
+   (wall-contact-normal            vector                       :inline :offset 4720) ;; logic-target::wall-hide?
+   (actor-contact-pt            vector                       :inline :offset 4736) ;; target2::target-bonk-event-handler
+   (actor-contact-normal        vector :inline :offset 4752)
+   (actor-contact-handle        handle                               :offset 4768) ;; logic-target::reset-target-state
    (unknown-pat-surface01       pat-surface                          :offset 4776) ;; logic-target::target-print-stats
-   (unknown-float22             float                                :offset 4780) ;; logic-target::target-compute-slopes
-   (unknown-float23             float                                :offset 4784) ;; logic-target::target-compute-slopes
-   (unknown-float24             float                                :offset 4788) ;; logic-target::target-compute-slopes
-   (unknown-float25             float                                :offset 4792) ;; logic-target::target-compute-slopes
-   (unknown-float26             float                                :offset 4796) ;; logic-target::target-compute-slopes
+   (gspot-slope-z               float                                :offset 4780) ;; logic-target::target-compute-slopes
+   (gspot-slope-x               float                                :offset 4784) ;; logic-target::target-compute-slopes
+   (ctrl-slope-heading          float                                :offset 4788) ;; logic-target::target-compute-slopes
+   (ctrl-slope-z                float                                :offset 4792) ;; logic-target::target-compute-slopes
+   (ctrl-slope-x                float                                :offset 4796) ;; logic-target::target-compute-slopes
    (unknown-word000             int32                                :offset 4800) ;; (anon-function 16 target-darkjak)
    (unknown-float002            float                                :offset 4804) ;; target-gun::target-gun-joint-pre
    (unknown-float-n12iuh3n1            float                                :offset 4808)
    (unknown-float-ki1jhbn23hj            float                                :offset 4812)
-   (unknown-time-frame08        time-frame                           :offset 4816) ;; logic-target::turn-around?
-   (unknown-float-kj1n23j float :offset 4828)
-   (unknown-float-n234n23 float :offset 4832)
-   (unknown-float-m32j45nhn float :offset 4836)
-   (unknown-float-kj1n23k1 float :offset 4824)
-   (unknown-vector-l1jn23j vector :inline :offset 4848)
-   (unknown-vector-kj1n23k vector :inline :offset 4864)
-   (unknown-vector-kjh1n23kj1n23 vector :inline :offset 4912)
-   (unknown-vector26            vector                       :inline :offset 4928) ;; logic-target::target-add-slide-factor
-   (unknown-vector-lkjk12nj3n vector :inline :offset 4944)
+   (time-of-last-lc        time-frame                           :offset 4816) ;; logic-target::turn-around?
+   (low-coverage-pat-next1 pat-surface :offset 4828)
+   (low-coverage-dist-to-next2 float :offset 4832)
+   (low-coverage-pat-next2 pat-surface :offset 4836)
+
+   ;; slope from current to the triangle we're going to fall on.
+   (low-coverage-slope-to-next1 float :offset 4824)
+   (low-coverage-norm-of-next1 vector :inline :offset 4848)
+   (low-coverage-norm-of-next2 vector :inline :offset 4864)
+
+   ;; normal of plane perpendicular to poly and containing origin of
+   ;; sphere.
+   (low-coverage-overhang-plane-normal vector :inline :offset 4912)
+
+   ;; tangent to sphere
+   (low-coverage-tangent            vector                       :inline :offset 4928) ;; logic-target::target-add-slide-factor
+
+   ;; above tangent, projected into the plane normal to gravity.
+   (low-coverage-tangent-xz         vector :inline :offset 4944)
 
    ;; this is a bit weird
    ;; I believe it's supposed to set the velocity of jak when he first becomes blocked.
@@ -16894,16 +16924,17 @@
    (blocked-in-air-factor       float                                :offset 4996)
 
    (unknown-time-frame09        time-frame                           :offset 5000) ;; logic-target::add-thrust
-   (unknown-time-frame-kjh1n23hkjn time-frame :offset 5008)
-   (unknown-sphere-array00      collide-shape-prim-sphere 10         :offset 5016) ;; (method 28 target)
+   (time-of-last-lc-touch-edge time-frame :offset 5008)
+   (collision-spheres           collide-shape-prim-sphere 10         :offset 5016) ;; (method 28 target)
    (unknown-word02              int32                                :offset 5064) ;; (enter target-roll)
-   (unknown-time-frame10        time-frame                           :offset 5072) ;; (exit target-roll)
-   (unknown-time-frame11        time-frame                           :offset 5080) ;; (trans target-slide-down-to-ground)
-   (unknown-time-frame001       time-frame                           :offset 5088) ;; target-util::target-danger-set!
-   (unknown-time-frame12        time-frame                           :offset 5096) ;; (exit target-attack)
-   (unknown-time-frame002       time-frame                           :offset 5104) ;; target-util::can-feet?
+   (last-roll-end-time          time-frame                           :offset 5072) ;; (exit target-roll)
+   (last-running-attack-end-time time-frame                           :offset 5080) ;; (trans target-slide-down-to-ground)
+   (last-hands-attempt-time     time-frame                           :offset 5088) ;; target-util::target-danger-set!
+   ;; attack or attack-air
+   (last-attack-end-time        time-frame                           :offset 5096) ;; (exit target-attack)
+   (last-feet-attempt-time      time-frame                           :offset 5104) ;; target-util::can-feet?
    (unknown-time-frame13        time-frame                           :offset 5112) ;; (exit target-slide-down)
-   (unknown-time-frame14        time-frame                           :offset 5120) ;; (trans target-stance)
+   (last-time-of-stuck          time-frame                           :offset 5120) ;; (trans target-stance)
    (unknown-float28             float                                :offset 5132) ;; logic-target::target-print-stats
    (unknown-float29             float                                :offset 5136) ;; logic-target::target-print-stats
    (unknown-float30             float                                :offset 5140) ;; logic-target::target-print-stats
@@ -16915,17 +16946,27 @@
    (unknown-vector31            vector                       :inline :offset 5200) ;; logic-target::joint-points
    (unknown-cspacei1un23i1            cspace                       :inline :offset 5216) ;; logic-target::joint-points
   ;;  (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
-   (unknown-symbol00            symbol                               :offset 5248) ;; (exit target-duck-stance)
-   (unknown-float000            float                                :offset 5252) ;; target-gun::target-gun-end-mode
-   (unknown-float31             float                                :offset 5256) ;; logic-target::joint-points
+
+   ;; 'duck 'normal 'gun
+   (collide-mode                symbol                               :offset 5248) ;; (exit target-duck-stance)
+
+   ;; number that goes from 0 to 1 as collide mode changes (kinda)
+   ;; it jumps to 1 when ducking (there's no transition, but maybe they tried it?)
+   ;; transitioning to carry does use this.
+   (collide-mode-transition     float                                :offset 5252) ;; target-gun::target-gun-end-mode
+
+   ;; similar to above, but only used for duck, gun, and tube transitions.
+   (duck-gun-tube-transision    float                                :offset 5256) ;; logic-target::joint-points
    (unknown-vector-array02      vector                    15 :inline :offset 5264) ;; logic-target::turn-around?
    (unknown-float32             float                                :offset 5520) ;; logic-target::turn-around?
    (unknown-word03              int32                                :offset 5524) ;; logic-target::turn-around?
    (unknown-float33             float                                :offset 5528) ;; logic-target::target-compute-pole
    (unknown-symbol000           symbol                               :offset 5532) ;; (code target-edge-grab)
-   (unknown-vector34            vector                       :inline :offset 5536) ;; logic-target::target-compute-pole
+   (edge-grab-edge-dir          vector                       :inline :offset 5536) ;; logic-target::target-compute-pole
    (unknown-vector35            vector                       :inline :offset 5552) ;; target-board::target-board-compute-edge
-   (unknown-vector36            vector                       :inline :offset 5568) ;; logic-target::target-compute-pole
+
+   ;; go along this direction to cross the edge. normal to gravity and edge dir.
+   (edge-grab-across-edge-dir   vector                       :inline :offset 5568) ;; logic-target::target-compute-pole
    (unknown-time-frame15        time-frame                           :offset 5584) ;; logic-target::target-compute-edge
    (unknown-time-frame16        time-frame                           :offset 5592) ;; logic-target::target-compute-edge
    (unknown-handle000           handle                               :offset 5600) ;; (code target-edge-grab)
@@ -16951,17 +16992,19 @@
    (unknown-impact-control00    impact-control               :inline :offset 5824) ;; logic-target::joint-points
    (unknown-word06              int32                                :offset 5832) ;; (code target-running-attack)
    (unknown-vector41            vector                       :inline :offset 5888) ;; (code target-running-attack)
-   (unknown-vector42            vector                       :inline :offset 5904) ;; logic-target::target-print-stats
+   (last-trans-leaving-surf     vector                       :inline :offset 5904) ;; logic-target::target-print-stats
    (unknown-float38             float                                :offset 5908) ;; logic-target::target-print-stats
    (unknown-vector43            vector                       :inline :offset 5920) ;; logic-target::target-print-stats
    (unknown-float39             float                                :offset 5924) ;; logic-target::target-print-stats
    (unknown-time-frame19        time-frame                           :offset 5936) ;; target::init-var-jump
-   (unknown-time-frame20        time-frame                           :offset 5944) ;; board-h::want-to-board?
-   (unknown-symbol04            symbol                               :offset 5984) ;; target-board-spin-check
-   (unknown-symbol05            symbol                               :offset 5988) ;; target-board::target-board-handler
+   (time-of-last-debug-float    time-frame                           :offset 5944) ;; board-h::want-to-board?
+   ;; eg: 'flop, 'punch
+   (danger-mode                 symbol                               :offset 5984) ;; target-board-spin-check
+   (target-attack-id            uint32                               :offset 5988) ;; target-board::target-board-handler
    (unknown-attack-id00         int32                                :offset 5992) ;; target-handler::target-attacked
-   (unknown-float40             float                                :offset 5996) ;; target-util::target-danger-set!
-   (unknown-dword05             uint64                               :offset 6000) ;; target-board::target-board-handler
+   ;; how big to make the darkjak bomb collision sphere.
+   (bomb-scale                  float                                :offset 5996) ;; target-util::target-danger-set!
+   (attack-count                uint64                               :offset 6000) ;; target-board::target-board-handler
    (unknown-dword06             handle                               :offset 6008) ;; (method 28 target)
    (unknown-time-frame000       time-frame                           :offset 6016) ;; target-handler::target-send-attack
    (unknown-combo-tracker00     combo-tracker                :inline :offset 6032) ;; (enter target-running-attack)
@@ -16975,13 +17018,13 @@
    (unknown-sound-id01          sound-id                             :offset 6176) ;; (code target-attack)
    (unknown-float41             float                                :offset 6180) ;; (enter target-attack)
    (unknown-float42             float                                :offset 6184) ;; (enter target-attack)
-   (unknown-halfword00          uint16                               :offset 6188) ;; logic-target::target-no-move-post
+   (history-idx                 uint16                               :offset 6188) ;; logic-target::target-no-move-post
    (history-length              uint16                               :offset 6190) ;; logic-target::draw-history
    (unknown-word07              int32                                :offset 6192) ;; logic-target::target-real-post
-   (unknown-time-frame22        time-frame                           :offset 6200) ;; logic-target::post-flag-setup
-   (unknown-time-frame23        time-frame                           :offset 6208) ;; logic-target::post-flag-setup
-   (unknown-time-frame24        time-frame                           :offset 6216) ;; logic-target::post-flag-setup
-   (unknown-time-frame25        time-frame                           :offset 6224) ;; logic-target::post-flag-setup
+   (invul1-on-time              time-frame                           :offset 6200) ;; logic-target::post-flag-setup
+   (invul1-off-time             time-frame                           :offset 6208) ;; logic-target::post-flag-setup
+   (invul2-on-time              time-frame                           :offset 6216) ;; logic-target::post-flag-setup
+   (invul2-off-time             time-frame                           :offset 6224) ;; logic-target::post-flag-setup
    (unknown-float43             float                                :offset 6232) ;; (event target-flop)
    (unknown-float001            float                                :offset 6236) ;; target-swim::target-swim-tilt
    (unknown-sound-id02          sound-id                             :offset 6240) ;; (method 28 target)
@@ -16996,13 +17039,16 @@
    (unknown-sound-id04          sound-id                             :offset 6292) ;; (method 28 target)
    (unknown-float45             float                                :offset 6296) ;; powerups::target-powerup-process
    (unknown-word08              int32                                :offset 6300) ;; (method 28 target)
-   (unknown-sphere000           sphere                               :offset 6304) ;; (method 28 target)
+   (default-collide-as          collide-spec                         :offset 6304) ;; (method 28 target)
    (unknown-word09              int32                                :offset 6308) ;; (method 28 target)
-   (unknown-word10              uint32                               :offset 6312) ;; (method 28 target)
-   (unknown-time-frame28        time-frame                           :offset 6320) ;; logic-target::flag-setup
+   (default-collide-with        collide-spec                         :offset 6312) ;; (method 28 target)
+   (time-of-last-zero-input     time-frame                           :offset 6320) ;; logic-target::flag-setup
    (unknown-time-frame29        time-frame                           :offset 6328) ;; logic-target::flag-setup
    (unknown-dword12             int64                                :offset 6336) ;; logic-target::flag-setup
-   (unknown-time-frame30        time-frame                           :offset 6368) ;; board-h::want-to-board?
+
+   ;; when r2 was pushed to cancel out damage.
+   ;; used to prevent this from getting mixed up with trying to get on/off jetboard.
+   (time-of-last-debug-heal     time-frame                           :offset 6368) ;; board-h::want-to-board?
    (unknown-quaternion05        quaternion                   :inline :offset 6384) ;; logic-target::flag-setup
    (unknown-time-frame31        time-frame                           :offset 6400) ;; logic-target::wall-hide?
    (unknown-time-frame32        time-frame                           :offset 6408) ;; logic-target::wall-hide?
@@ -17353,10 +17399,10 @@
       (_type_ int) vector 20)
     (get-quat (_type_ int) quaternion 21)
     (get-transv (_type_) vector 22)
-    (process-focusable-method-23 (_type_ int) int 23)
+    (time-to-apex-or-ground (_type_ int) int 23)
     (get-water-height (_type_) meters 24)
-    (process-focusable-method-25 (_type_) time-frame 25)
-    (process-focusable-method-26 (_type_) float 26)
+    (get-notice-time (_type_) time-frame 25)
+    (get-inv-mass (_type_) float 26)
     )
   )
 
@@ -20014,6 +20060,7 @@
   (plain-v2 4)
   (from-pointer 5)
   (part-by-id 6)
+  (spflag7 7)
   )
 
 (defenum sp-group-item-flag
@@ -26837,7 +26884,7 @@
   "Returns [[*math-camera*]]'s `inv-camera-rot`"
   (function matrix))
 (define-extern camera-angle (function float))
-(define-extern camera-teleport-to-entity (function entity-actor none :behavior process))
+(define-extern camera-teleport-to-entity (function entity-actor symbol :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-master                     ;;
@@ -27637,7 +27684,7 @@
     )
   )
 
-(define-extern entity-lookup-part-group (function entity-actor (pointer string) symbol none))
+(define-extern entity-lookup-part-group (function entity-actor (pointer string) symbol (pointer sparticle-launch-group)))
 (define-extern clone-anim-once (function handle symbol string none :behavior process-drawable))
 (define-extern clone-anim (function handle symbol string none :behavior process-drawable))
 (define-extern swingpole-init (function int object :behavior swingpole))
@@ -28342,7 +28389,7 @@
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
 (define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
 (define-extern process-drawable2-shock-effect (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none))
-;; (define-extern process-drawable-shock-skel-effect function)
+(define-extern process-drawable-shock-skel-effect  (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher float int int none))
 (define-extern *lightning-darkjak-pill* lightning-spec)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28359,7 +28406,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern poly-find-nearest-edge "TODO- Not 100% sure here, but unused" (function nav-poly (inline-array vector) vector vector nav-poly))
-(define-extern target-collision-low-coverage (function control-info collide-query vector (pointer uint32) (pointer int64) (pointer symbol) none)) ;;
+(define-extern target-collision-low-coverage (function control-info collide-query vector (pointer cshape-reaction-flags) (pointer collide-status) (pointer symbol) none)) ;;
 (define-extern target-collision-reaction (function control-info collide-query vector vector collide-status :behavior target)) ;; (function control-info collide-shape-intersect vector vector collide-status)
 (define-extern target-collision-no-reaction (function control-info collide-query vector vector none)) ;; (function control-info collide-shape-intersect vector vector none)
 (define-extern *collide-edge-board-spec* collide-edge-spec)

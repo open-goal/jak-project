@@ -132,15 +132,15 @@
 
 (defbehavior want-to-gun? process ((arg0 target) (arg1 symbol))
   (local-vars (v1-36 symbol))
-  (and (logtest? (-> arg0 game features) (game-feature unk-game-feature-06))
+  (and (logtest? (-> arg0 game features) (game-feature gun))
        (>= (- (-> self clock frame-counter) (-> arg0 gun gun-time)) (seconds 0.1))
        (not (logtest? (focus-status dead hit board mech dark teleporting) (-> arg0 focus-status)))
-       (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control unknown-surface01 flags)))
-       (not (logtest? (state-flags sf18) (-> arg0 state-flags)))
+       (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control current-surface flags)))
+       (not (logtest? (state-flags prevent-gun) (-> arg0 state-flags)))
        (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow gun-red gun-blue gun-dark))
                  (-> arg0 game features)
                  )
-       (or (not (logtest? (-> arg0 control unknown-surface01 flags) (surface-flag duck))) (can-exit-duck? arg0))
+       (or (not (logtest? (-> arg0 control current-surface flags) (surface-flag duck))) (can-exit-duck? arg0))
        (or (not (logtest? (focus-status pilot) (-> arg0 focus-status))) (-> arg0 pilot gun?))
        (or arg1
            (nonzero? (-> arg0 gun using-gun-type))
@@ -155,7 +155,7 @@
            (-> arg0 gun latch?)
            )
        (not (-> arg0 skel top-anim frame-group))
-       (>= (- (-> self clock frame-counter) (-> arg0 control unknown-time-frame20)) (seconds 0.1))
+       (>= (- (-> self clock frame-counter) (-> arg0 control time-of-last-debug-float)) (seconds 0.1))
        )
   )
 
@@ -196,17 +196,17 @@
     )
   )
 
-(defskelgroup skel-gun gun 9 -1
-              ((10 (meters 999999)))
+(defskelgroup skel-gun gun gun-lod0-jg -1
+              ((gun-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1.5)
-              :shadow 11
+              :shadow gun-shadow-mg
               :sort 1
               :origin-joint-index 3
               )
 
 (define *gun-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center (new 'static 'vector :w (the-as float #xa))
+                                           :flags (shadow-flags disable-fade shdf03)
                                            :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
@@ -214,36 +214,36 @@
                                )
   )
 
-(defskelgroup skel-ammo-yellow gun 0 8
-              ((1 (meters 999999)))
+(defskelgroup skel-ammo-yellow gun gun-ammo-yellow-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-yellow-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               :sort 1
               )
 
-(defskelgroup skel-ammo-red gun 2 8
-              ((3 (meters 999999)))
+(defskelgroup skel-ammo-red gun gun-ammo-red-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-red-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               :sort 1
               )
 
-(defskelgroup skel-ammo-blue gun 4 8
-              ((5 (meters 999999)))
+(defskelgroup skel-ammo-blue gun gun-ammo-blue-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-blue-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               :sort 1
               )
 
-(defskelgroup skel-ammo-dark gun 6 8
-              ((7 (meters 999999)))
+(defskelgroup skel-ammo-dark gun gun-ammo-dark-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-dark-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               :sort 1
               )
 
-(defskelgroup skel-gun-red-cone gun 40 42
-              ((41 (meters 999999)))
+(defskelgroup skel-gun-red-cone gun gun-red-cone-lod0-jg gun-red-cone-idle-ja
+              ((gun-red-cone-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               )

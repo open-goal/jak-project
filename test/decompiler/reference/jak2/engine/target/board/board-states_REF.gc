@@ -83,7 +83,7 @@
              (>= (- (-> self clock frame-counter) (-> self board unknown-time-frame02)) (seconds 0.2))
              )
     (if (logtest? (-> self control status) (collide-status impact-surface))
-        (+! (-> self board turn-anim-duck-vel) (lerp-scale 0.0 15.0 (-> self control unknown-float21) 0.0 81920.0))
+        (+! (-> self board turn-anim-duck-vel) (lerp-scale 0.0 15.0 (-> self control normal-impact-vel) 0.0 81920.0))
         )
     (let ((f0-38 (vector-dot (the-as vector (-> self board up-vector)) (-> self board up-vector 1))))
       (if (< f0-38 1.0)
@@ -116,14 +116,14 @@
              )
     (set! (-> self board spin-start-time) (-> self clock frame-counter))
     (set! (-> self board spin-start-dir quad) (-> self node-list data 3 bone transform vector 2 quad))
-    (vector-flatten! (-> self control unknown-vector03) (-> self control unknown-matrix01 vector 2) *up-vector*)
+    (vector-flatten! (-> self control unknown-vector03) (-> self control c-R-w vector 2) *up-vector*)
     (vector-normalize! (-> self control unknown-vector03) 1.0)
     (rot->dir-targ! (-> self control))
     (set! (-> self board trotyv-max)
           (lerp-scale
             218453.33
             91022.22
-            (the float (- (-> self clock frame-counter) (-> self control unknown-time-frame06)))
+            (the float (- (-> self clock frame-counter) (-> self control last-time-on-surface)))
             0.0
             300.0
             )
@@ -133,18 +133,18 @@
     (set! (-> self board troty-cum) 0.0)
     (set! (-> self board unknown-deg00) 0.0)
     (set! (-> self board spin-sound-id) (the-as uint 0))
-    (set! (-> self control unknown-surface00) *board-spin-mods*)
+    (set! (-> self control mod-surface) *board-spin-mods*)
     )
   (cond
     ((and (cpad-hold? (-> self control cpad number) r1)
-          (and (or (= (-> self control unknown-surface00 name) 'spin)
+          (and (or (= (-> self control mod-surface name) 'spin)
                    (< (- (-> self clock frame-counter) (-> self board spin-time)) (seconds 0.05))
                    )
                (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control cpad number) r2)))
                )
           )
      (set! (-> self board turn-anim-tilt?) #f)
-     (set! (-> self control unknown-surface00) *board-spin-mods*)
+     (set! (-> self control mod-surface) *board-spin-mods*)
      (set! (-> self board spin-time) (-> self clock frame-counter))
      (let ((gp-0 (new 'stack-no-clear 'vector)))
        (set! (-> gp-0 x) (* -0.0078125 (+ -128.0 (the float (-> self control cpad leftx)))))
@@ -162,7 +162,7 @@
                   )
              (set! (-> self board spin-control) f28-0)
              )
-         (if (not (-> self control unknown-symbol04))
+         (if (not (-> self control danger-mode))
              (target-danger-set! 'board-spin #f)
              )
          (+! (-> self board trotyv) (* (-> self board spin-control) (-> self clock seconds-per-frame)))
@@ -188,17 +188,17 @@
        )
      )
     (else
-      (set! (-> self control unknown-surface00) (the-as surface (-> self board mods-backup)))
+      (set! (-> self control mod-surface) (the-as surface (-> self board mods-backup)))
       )
     )
   (set! (-> self board spin-check-time) (-> self clock frame-counter))
   (when (and (or (cpad-pressed? (-> self control cpad number) l1)
-                 (< (-> self control unknown-time-frame06) (-> self board unknown-time-frame06))
+                 (< (-> self control last-time-on-surface) (-> self board unknown-time-frame06))
                  )
              (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control cpad number) r2)))
              )
     (set! (-> self board turn-anim-tilt?) #f)
-    (set! (-> self control unknown-surface00) *board-spin-mods*)
+    (set! (-> self control mod-surface) *board-spin-mods*)
     (set! (-> self board unknown-time-frame03) (-> self clock frame-counter))
     (let ((gp-2 (new 'stack-no-clear 'vector)))
       (set! (-> gp-2 x) (* -0.0078125 (+ -128.0 (the float (-> self control cpad leftx)))))
@@ -267,11 +267,11 @@
   (when (and (logtest? (focus-status halfpipe) (-> self focus-status)) *camera*)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (camera-master-method-15 *camera* (new 'stack-no-clear 'vector))))
-        (vector-flatten! gp-0 (-> self control unknown-vector36) (-> *camera* local-down))
+        (vector-flatten! gp-0 (-> self control edge-grab-across-edge-dir) (-> *camera* local-down))
         (when (< (vector-dot gp-0 s5-0) 0.0)
           (let* ((v1-11 (camera-master-method-14 *camera* (new 'stack-no-clear 'vector)))
-                 (f0-3 (vector-dot (-> self control unknown-vector34) v1-11))
-                 (s4-1 (vector-float*! (new 'stack-no-clear 'vector) (-> self control unknown-vector34) f0-3))
+                 (f0-3 (vector-dot (-> self control edge-grab-edge-dir) v1-11))
+                 (s4-1 (vector-float*! (new 'stack-no-clear 'vector) (-> self control edge-grab-edge-dir) f0-3))
                  )
             (vector-flatten! s4-1 s4-1 (-> *camera* local-down))
             (if (< 0.0 (vector-dot s4-1 s5-0))
@@ -347,12 +347,7 @@
                 )
               )
             (let ((f0-8 (lerp-scale 20480.0 40960.0 f30-0 49152.0 182044.44)))
-              (vector+float*!
-                (-> self control transv)
-                (-> self control transv)
-                (-> self control unknown-matrix01 vector 2)
-                f0-8
-                )
+              (vector+float*! (-> self control transv) (-> self control transv) (-> self control c-R-w vector 2) f0-8)
               )
             (if (< (vector-length (-> self control transv)) 114688.0)
                 (vector-normalize! (-> self control transv) 114688.0)
@@ -432,7 +427,7 @@
   (let ((gp-0 (vector-flatten!
                 (new-stack-vector0)
                 (-> self control dynam gravity-normal)
-                (-> self control unknown-vector22)
+                (-> self control ground-contact-normal)
                 )
               )
         )
@@ -479,7 +474,7 @@
            (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
            (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
            (and (not (logtest? (water-flags touch-water) (-> self water flags)))
-                (not (logtest? (-> self state-flags) (state-flags sf7)))
+                (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
                 (not (and (-> self next-state) (= (-> self next-state name) 'target-board-wall-kick)))
                 )
            )
@@ -512,7 +507,7 @@
                   (let ((s5-0 (vector-flatten!
                                 (new-stack-vector0)
                                 (-> self control dynam gravity-normal)
-                                (-> self control unknown-vector22)
+                                (-> self control ground-contact-normal)
                                 )
                               )
                         )
@@ -544,8 +539,8 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self control unknown-surface00) *board-walk-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-walk-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (none)
     )
   :exit (behavior ()
@@ -575,8 +570,8 @@
     )
   :trans (behavior ()
     (if (and (cpad-hold? (-> self control cpad number) l1)
-             (not (logtest? (-> self state-flags) (state-flags sf9)))
-             (< (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+             (not (logtest? (-> self state-flags) (state-flags prevent-duck)))
+             (< (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                 (the-as time-frame (-> *TARGET-bank* ground-timeout))
                 )
              )
@@ -594,7 +589,7 @@
       (let ((gp-0 (vector-flatten!
                     (new-stack-vector0)
                     (-> self control dynam gravity-normal)
-                    (-> self control unknown-vector22)
+                    (-> self control ground-contact-normal)
                     )
                   )
             )
@@ -636,19 +631,19 @@
     (cond
       ((board-on-ground?)
        (target-board-ground-check)
-       (set! (-> self control unknown-surface00) *board-walk-mods*)
-       (set! (-> self board mods-backup) (-> self control unknown-surface00))
+       (set! (-> self control mod-surface) *board-walk-mods*)
+       (set! (-> self board mods-backup) (-> self control mod-surface))
        )
-      ((and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06)) (seconds 0.1))
-            (or (= (-> self control unknown-surface00 name) 'spin) (< 4096.0 (target-height-above-ground)))
+      ((and (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface)) (seconds 0.1))
+            (or (= (-> self control mod-surface name) 'spin) (< 4096.0 (target-height-above-ground)))
             )
-       (set! (-> self control unknown-surface00) *board-jump-mods*)
-       (set! (-> self board mods-backup) (-> self control unknown-surface00))
+       (set! (-> self control mod-surface) *board-jump-mods*)
+       (set! (-> self board mods-backup) (-> self control mod-surface))
        (target-board-spin-check)
        )
       (else
-        (set! (-> self control unknown-surface00) *board-air-mods*)
-        (set! (-> self board mods-backup) (-> self control unknown-surface00))
+        (set! (-> self control mod-surface) *board-air-mods*)
+        (set! (-> self board mods-backup) (-> self control mod-surface))
         )
       )
     (none)
@@ -697,8 +692,8 @@
       (ja :chan 3 :group! (-> self draw art-group data 152))
       (until #f
         (target-board-turn-anim 0)
-        (let ((f0-10 (* 1.6 (-> self control unknown-float25)))
-              (f1-2 (* 1.6 (-> self control unknown-float26)))
+        (let ((f0-10 (* 1.6 (-> self control ctrl-slope-z)))
+              (f1-2 (* 1.6 (-> self control ctrl-slope-x)))
               )
           (cond
             ((not (-> self board turn-anim-tilt?))
@@ -759,8 +754,8 @@
 (defstate target-board-duck-stance (target)
   :event (-> target-board-stance event)
   :enter (behavior ()
-    (set! (-> self control unknown-surface00) *board-duck-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-duck-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (none)
     )
   :exit (behavior ()
@@ -770,8 +765,8 @@
     )
   :trans (behavior ()
     (if (and (or (not (cpad-hold? (-> self control cpad number) l1))
-                 (logtest? (-> self state-flags) (state-flags sf9))
-                 (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+                 (logtest? (-> self state-flags) (state-flags prevent-duck))
+                 (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                      (the-as time-frame (-> *TARGET-bank* ground-timeout))
                      )
                  )
@@ -791,7 +786,7 @@
       (let ((gp-0 (vector-flatten!
                     (new-stack-vector0)
                     (-> self control dynam gravity-normal)
-                    (-> self control unknown-vector22)
+                    (-> self control ground-contact-normal)
                     )
                   )
             )
@@ -811,7 +806,7 @@
           (else
             (flush-trick-list (-> self board))
             (deg-diff
-              (vector-y-angle (-> self control unknown-matrix01 vector 2))
+              (vector-y-angle (-> self control c-R-w vector 2))
               (vector-y-angle (-> self control to-target-pt-xz))
               )
             (go
@@ -843,19 +838,19 @@
     (cond
       ((board-on-ground?)
        (target-board-ground-check)
-       (set! (-> self control unknown-surface00) *board-duck-mods*)
-       (set! (-> self board mods-backup) (-> self control unknown-surface00))
+       (set! (-> self control mod-surface) *board-duck-mods*)
+       (set! (-> self board mods-backup) (-> self control mod-surface))
        )
-      ((and (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06)) (seconds 0.1))
-            (or (= (-> self control unknown-surface00 name) 'spin) (< 4096.0 (target-height-above-ground)))
+      ((and (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface)) (seconds 0.1))
+            (or (= (-> self control mod-surface name) 'spin) (< 4096.0 (target-height-above-ground)))
             )
-       (set! (-> self control unknown-surface00) *board-duck-jump-mods*)
-       (set! (-> self board mods-backup) (-> self control unknown-surface00))
+       (set! (-> self control mod-surface) *board-duck-jump-mods*)
+       (set! (-> self board mods-backup) (-> self control mod-surface))
        (target-board-spin-check)
        )
       (else
-        (set! (-> self control unknown-surface00) *board-air-mods*)
-        (set! (-> self board mods-backup) (-> self control unknown-surface00))
+        (set! (-> self control mod-surface) *board-air-mods*)
+        (set! (-> self board mods-backup) (-> self control mod-surface))
         )
       )
     (none)
@@ -890,7 +885,7 @@
           )
         (set! (-> self control unknown-time-frame00)
               (+ (-> self clock frame-counter)
-                 (the int (lerp-scale 225.0 0.0 (vector-dot s2-0 (-> self control unknown-matrix01 vector 2)) -1.0 1.0))
+                 (the int (lerp-scale 225.0 0.0 (vector-dot s2-0 (-> self control c-R-w vector 2)) -1.0 1.0))
                  )
               )
         )
@@ -1010,11 +1005,11 @@
                    )
                  )
           )
-    (set! (-> self control unknown-surface00) (the-as surface arg2))
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) (the-as surface arg2))
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self control unknown-float36)
-          (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
+          (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel)))))
           )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
     (none)
@@ -1103,19 +1098,27 @@
        (set! (-> self control unknown-word04) (the-as uint #t))
        (let ((v1-6 *edge-grab-info*))
          (vector-normalize!
-           (vector-! (-> self control unknown-vector34) (the-as vector (-> v1-6 world-vertex)) (-> v1-6 world-vertex 1))
+           (vector-!
+             (-> self control edge-grab-edge-dir)
+             (the-as vector (-> v1-6 world-vertex))
+             (-> v1-6 world-vertex 1)
+             )
            1.0
            )
          )
        (vector-cross!
-         (-> self control unknown-vector36)
-         (-> self control unknown-vector34)
+         (-> self control edge-grab-across-edge-dir)
+         (-> self control edge-grab-edge-dir)
          (-> self control dynam gravity-normal)
          )
        (let ((v1-11 (new-stack-vector0)))
-         (let ((f0-2 (vector-dot (-> self control unknown-vector36) (-> self control transv))))
+         (let ((f0-2 (vector-dot (-> self control edge-grab-across-edge-dir) (-> self control transv))))
            0.0
-           (vector-! v1-11 (-> self control transv) (vector-float*! v1-11 (-> self control unknown-vector36) f0-2))
+           (vector-!
+             v1-11
+             (-> self control transv)
+             (vector-float*! v1-11 (-> self control edge-grab-across-edge-dir) f0-2)
+             )
            )
          (let* ((f0-3 (vector-length v1-11))
                 (f1-1 f0-3)
@@ -1123,7 +1126,7 @@
                 )
            (vector+!
              (-> self control transv)
-             (vector-float*! (-> self control transv) (-> self control unknown-vector36) f2-0)
+             (vector-float*! (-> self control transv) (-> self control edge-grab-across-edge-dir) f2-0)
              (vector-float*! v1-11 v1-11 (/ f0-3 f1-1))
              )
            )
@@ -1153,36 +1156,28 @@
     (set! (-> self focus-status) (logior (focus-status halfpipe) (-> self focus-status)))
     (set! (-> self state-time) (-> self clock frame-counter))
     (logior! (-> self control root-prim prim-core action) (collide-action no-normal-reset))
-    (set! (-> self control unknown-surface00) *board-halfpipe-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-halfpipe-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self control unknown-time-frame17) 0)
-    (when (< (vector-dot (-> self control unknown-matrix01 vector 1) (-> self control dynam gravity-normal)) 0.7)
-      (vector-matrix*!
-        (-> self control unknown-vector00)
-        (-> self control transv)
-        (-> self control unknown-matrix00)
-        )
-      (set! (-> self control unknown-vector00 y) 0.0)
-      (vector-matrix*!
-        (-> self control transv)
-        (-> self control unknown-vector00)
-        (-> self control unknown-matrix01)
-        )
+    (when (< (vector-dot (-> self control c-R-w vector 1) (-> self control dynam gravity-normal)) 0.7)
+      (vector-matrix*! (-> self control transv-ctrl) (-> self control transv) (-> self control w-R-c))
+      (set! (-> self control transv-ctrl y) 0.0)
+      (vector-matrix*! (-> self control transv) (-> self control transv-ctrl) (-> self control c-R-w))
       )
     (set! (-> self control unknown-word04) (the-as uint #f))
     (set! (-> self control unknown-symbol02) (the-as float #f))
     (do-edge-grabs *target* *collide-cache* *collide-edge-board-halfpipe-spec*)
     (when (not (-> self control unknown-spool-anim00))
       (let ((gp-0 (vector-flatten!
-                    (-> self control unknown-vector36)
+                    (-> self control edge-grab-across-edge-dir)
                     (-> self control dynam gravity-normal)
-                    (-> self control unknown-vector22)
+                    (-> self control ground-contact-normal)
                     )
                   )
             )
         (set! (-> gp-0 y) 0.0)
         (vector-normalize! gp-0 1.0)
-        (vector-rotate-y! (-> self control unknown-vector34) (-> self control unknown-vector36) 16384.0)
+        (vector-rotate-y! (-> self control edge-grab-edge-dir) (-> self control edge-grab-across-edge-dir) 16384.0)
         (let ((v1-40 (new-stack-vector0)))
           (let ((f0-5 (vector-dot gp-0 (-> self control transv))))
             0.0
@@ -1285,7 +1280,7 @@
        (cond
          ((< 0.7 (-> self control unknown-float10))
           (let ((gp-0 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-0 quad) (-> self control unknown-vector36 quad))
+            (set! (-> gp-0 quad) (-> self control edge-grab-across-edge-dir quad))
             (set! (-> gp-0 y) 0.0)
             (vector-normalize! gp-0 1.0)
             (if (< 0.7 (vector-dot (-> self control to-target-pt-xz) gp-0))
@@ -1312,8 +1307,8 @@
                    (< (-> self board halfpipe-lip-time) (+ (-> self state-time) (seconds -0.2)))
                    )
               )
-      (+! (-> self control transv x) (* 20480.0 (-> self control unknown-vector36 x)))
-      (+! (-> self control transv z) (* 20480.0 (-> self control unknown-vector36 z)))
+      (+! (-> self control transv x) (* 20480.0 (-> self control edge-grab-across-edge-dir x)))
+      (+! (-> self control transv z) (* 20480.0 (-> self control edge-grab-across-edge-dir z)))
       (go target-board-stance)
       )
     (target-board-halfpipe-trans)
@@ -1360,10 +1355,10 @@
   :event target-board-handler
   :enter (behavior ()
     (if (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control cpad number) r2) (not *pause-lock*))
-        (set! (-> self control unknown-surface00) *board-air-mods*)
-        (set! (-> self control unknown-surface00) *board-jump-mods*)
+        (set! (-> self control mod-surface) *board-air-mods*)
+        (set! (-> self control mod-surface) *board-jump-mods*)
         )
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (none)
     )
   :exit (-> target-board-halfpipe exit)
@@ -1373,8 +1368,8 @@
         (target-board-halfpipe-trans)
         )
     (when (and (= *cheat-mode* 'debug) (and (cpad-hold? (-> self control cpad number) r2) (not *pause-lock*)))
-      (set! (-> self control unknown-surface00) *board-air-mods*)
-      (set! (-> self board mods-backup) (-> self control unknown-surface00))
+      (set! (-> self control mod-surface) *board-air-mods*)
+      (set! (-> self board mods-backup) (-> self control mod-surface))
       )
     (none)
     )
@@ -1442,8 +1437,8 @@
   :event target-board-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self control unknown-surface00) *board-jump-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-jump-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (sound-play "board-k-jump")
     (none)
     )
@@ -1505,8 +1500,8 @@
                                         )
           )
     (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self control unknown-surface00) *board-wall-kick-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-wall-kick-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self board smack-surface-time) 0)
     0
     (none)
@@ -1560,12 +1555,12 @@
         (init-var-jump arg0 arg1 #t #f (-> self control transv) 1.0)
         (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
         (set! (-> self control unknown-float36)
-              (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
+              (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel)))))
               )
         )
       )
-    (set! (-> self control unknown-surface00) *board-flip-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-flip-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (let ((v1-25 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> v1-25 command) (sound-command set-param))
       (set! (-> v1-25 id) (-> self board unknown-sound-id02))
@@ -1743,12 +1738,12 @@
         (init-var-jump arg0 arg1 #t #f (-> self control transv) 1.0)
         (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
         (set! (-> self control unknown-float36)
-              (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float05)))))
+              (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel)))))
               )
         )
       )
-    (set! (-> self control unknown-surface00) *board-flip-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-flip-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self control dynam gravity-length) 147456.0)
     (none)
     )
@@ -2058,7 +2053,9 @@
       (flush-trick-list (-> self board))
       (go target-board-jump (-> *TARGET_BOARD-bank* jump-height-min) (-> *TARGET_BOARD-bank* jump-height-max) #f)
       )
-    (if (and (cpad-hold? (-> self control cpad number) l1) (zero? (logand (-> self state-flags) (state-flags sf9))))
+    (if (and (cpad-hold? (-> self control cpad number) l1)
+             (zero? (logand (-> self state-flags) (state-flags prevent-duck)))
+             )
         (go target-board-duck-stance)
         )
     (if (target-board-smack-surface?)
@@ -2067,7 +2064,7 @@
     (none)
     )
   :code (behavior ()
-    (set! (-> self control unknown-surface00) *board-walk-mods*)
+    (set! (-> self control mod-surface) *board-walk-mods*)
     (let ((v1-3 (ja-group)))
       (cond
         ((and v1-3 (or (= v1-3 (-> self draw art-group data 184)) (= v1-3 (-> self draw art-group data 186))))
@@ -2143,8 +2140,8 @@
         )
       )
     (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self control unknown-surface00) *board-turn-to-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-turn-to-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self control unknown-time-frame17) arg1)
     (vector-normalize-copy! (-> self control unknown-vector38) arg0 1.0)
     (forward-up-nopitch->quaternion
@@ -2212,9 +2209,9 @@
     (set! (-> self state-time) (-> self clock frame-counter))
     (set! (-> self focus-status) (logior (focus-status rail) (-> self focus-status)))
     (logior! (-> self control root-prim prim-core action) (collide-action can-ride))
-    (set! (-> self control unknown-surface00) *board-ride-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
-    (let ((v1-12 (-> self control unknown-vector00)))
+    (set! (-> self control mod-surface) *board-ride-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
+    (let ((v1-12 (-> self control transv-ctrl)))
       (set! (-> self board ride-speed) (sqrtf (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z)))))
       )
     (set! (-> self board ride-lean-targ) 0.0)
@@ -2231,7 +2228,7 @@
     (set! (-> self board unknown-float01) 0.0)
     (set! (-> self control unknown-word04) (the-as uint #t))
     (target-board-compute-edge)
-    (let ((f0-17 (vector-dot (-> self control unknown-matrix01 vector 2) (-> self control unknown-vector34))))
+    (let ((f0-17 (vector-dot (-> self control c-R-w vector 2) (-> self control edge-grab-edge-dir))))
       (cond
         ((< 0.7 f0-17)
          (set! (-> self board ride-mode) (the-as uint 0))
@@ -2242,7 +2239,7 @@
          (set! (-> self board ride-rot) 32768.0)
          )
         (else
-          (let ((f0-21 (vector-dot (the-as vector (-> self control unknown-matrix01)) (-> self control unknown-vector34))))
+          (let ((f0-21 (vector-dot (the-as vector (-> self control c-R-w)) (-> self control edge-grab-edge-dir))))
             (cond
               ((< 0.7 f0-21)
                (set! (-> self board ride-mode) (the-as uint 2))
@@ -2353,24 +2350,12 @@
       (else
         (let ((f30-1
                 (* (lerp-scale 0.7 1.0 (fabs (-> self board ride-lean)) 0.0 1.0)
-                   (lerp-scale
-                     0.8
-                     1.0
-                     (fabs (-> self board ride-speed))
-                     0.0
-                     (* 0.5 (-> self control unknown-surface00 transv-max))
-                     )
+                   (lerp-scale 0.8 1.0 (fabs (-> self board ride-speed)) 0.0 (* 0.5 (-> self control mod-surface transv-max)))
                    )
                 )
               (f0-23
                 (+ (lerp-scale 0.0 0.05 (fabs (-> self board ride-lean)) 0.0 1.0)
-                   (lerp-scale
-                     -0.05
-                     0.0
-                     (fabs (-> self board ride-speed))
-                     0.0
-                     (* 0.3 (-> self control unknown-surface00 transv-max))
-                     )
+                   (lerp-scale -0.05 0.0 (fabs (-> self board ride-speed)) 0.0 (* 0.3 (-> self control mod-surface transv-max)))
                    )
                 )
               )
@@ -2390,13 +2375,7 @@
       (let ((gp-1 (vector+float*! (new 'stack-no-clear 'vector) (-> self control trans) (-> self board ride-dir) -4096.0))
             )
         (set! (-> *part-id-table* 431 init-specs 1 initial-valuef)
-              (lerp-scale
-                0.1
-                2.0
-                (fabs (-> self board ride-speed))
-                0.0
-                (* 0.3 (-> self control unknown-surface00 transv-max))
-                )
+              (lerp-scale 0.1 2.0 (fabs (-> self board ride-speed)) 0.0 (* 0.3 (-> self control mod-surface transv-max)))
               )
         (let ((t9-10 sp-launch-particles-var)
               (a0-42 *sp-particle-system-2d*)
@@ -2477,8 +2456,8 @@
     (set! (-> self control unknown-handle02) arg0)
     (set! (-> self state-time) (-> self clock frame-counter))
     (logior! (-> self control root-prim prim-core action) (collide-action no-normal-reset))
-    (set! (-> self control unknown-surface00) *board-halfpipe-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-halfpipe-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (let ((v1-12 (new-stack-vector0))
           (f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
           )
@@ -2522,8 +2501,8 @@
       (go target-board-turn-to (-> self control transv) (seconds 0.5))
       )
     (when (>= (- (-> self clock frame-counter) (-> self board halfpipe-gspot-time)) (seconds 0.5))
-      (+! (-> self control transv x) (* 20480.0 (-> self control unknown-vector36 x)))
-      (+! (-> self control transv z) (* 20480.0 (-> self control unknown-vector36 z)))
+      (+! (-> self control transv x) (* 20480.0 (-> self control edge-grab-across-edge-dir x)))
+      (+! (-> self control transv z) (* 20480.0 (-> self control edge-grab-across-edge-dir z)))
       (go target-board-stance)
       )
     (none)
@@ -2593,8 +2572,8 @@
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (-> self clock frame-counter))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
-    (set! (-> self control unknown-surface00) *board-jump-mods*)
-    (set! (-> self board mods-backup) (-> self control unknown-surface00))
+    (set! (-> self control mod-surface) *board-jump-mods*)
+    (set! (-> self board mods-backup) (-> self control mod-surface))
     (let ((a0-5 (target-time-to-ground)))
       (cond
         ((logtest? (water-flags touch-water) (-> self water flags))
@@ -2755,10 +2734,10 @@
           (s5-0 #t)
           )
       (ja-channel-push! 1 (seconds 0.05))
-      (set! (-> self control unknown-surface00) *empty-mods*)
+      (set! (-> self control mod-surface) *empty-mods*)
       (set! (-> self neck flex-blend) 0.0)
       (set! (-> self control unknown-vector37 quad) (-> self control trans quad))
-      (set! (-> self control unknown-vector39 quad) (-> self control quat vec quad))
+      (set! (-> self control unknown-vector39 quad) (-> self control quat quad))
       (ja :group! s4-0
           :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
           :frame-num 0.0
@@ -2773,7 +2752,7 @@
           (when s4-1
             (set! (-> self control unknown-vector38 quad) (-> (get-trans (the-as process-focusable s4-1) 0) quad))
             (set! (-> self control unknown-vector38 y) (+ 4096.0 (-> self control unknown-vector38 y)))
-            (set! (-> self control unknown-vector40 quad) (-> (get-quat (the-as process-focusable s4-1) 0) vec quad))
+            (set! (-> self control unknown-vector40 quad) (-> (get-quat (the-as process-focusable s4-1) 0) quad))
             )
           (let ((f28-0 (sin (lerp-scale 0.0 16384.0 (ja-aframe-num 0) 0.0 30.0))))
             (let ((f26-0 f28-0))
@@ -2840,37 +2819,37 @@
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (-> self clock frame-counter))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
-    (set! (-> self control unknown-surface00) (new 'static 'surface
-                                                :name 'jump
-                                                :turnv 131072.0
-                                                :turnvv 18204.445
-                                                :tiltv 131072.0
-                                                :tiltvv 262144.0
-                                                :transv-max 65536.0
-                                                :target-speed 65536.0
-                                                :seek0 0.3
-                                                :seek90 0.3
-                                                :seek180 0.3
-                                                :fric 0.05
-                                                :nonlin-fric-dist 1.0
-                                                :slip-factor 1.0
-                                                :slide-factor 1.0
-                                                :slope-up-factor 1.0
-                                                :slope-down-factor 1.0
-                                                :slope-slip-angle 1.0
-                                                :impact-fric 1.0
-                                                :bend-factor 1.0
-                                                :bend-speed 1.0
-                                                :alignv 1.0
-                                                :slope-up-traction 1.0
-                                                :align-speed 1.0
-                                                :turnvf 30.0
-                                                :turnvvf 30.0
-                                                :tiltvf 30.0
-                                                :tiltvvf 15.0
-                                                :mode 'air
-                                                :flags (surface-flag check-edge air)
-                                                )
+    (set! (-> self control mod-surface) (new 'static 'surface
+                                          :name 'jump
+                                          :turnv 131072.0
+                                          :turnvv 18204.445
+                                          :tiltv 131072.0
+                                          :tiltvv 262144.0
+                                          :transv-max 65536.0
+                                          :target-speed 65536.0
+                                          :seek0 0.3
+                                          :seek90 0.3
+                                          :seek180 0.3
+                                          :fric 0.05
+                                          :nonlin-fric-dist 1.0
+                                          :slip-factor 1.0
+                                          :slide-factor 1.0
+                                          :slope-up-factor 1.0
+                                          :slope-down-factor 1.0
+                                          :slope-slip-angle 1.0
+                                          :impact-fric 1.0
+                                          :bend-factor 1.0
+                                          :bend-speed 1.0
+                                          :alignv 1.0
+                                          :slope-up-traction 1.0
+                                          :align-speed 1.0
+                                          :turnvf 30.0
+                                          :turnvvf 30.0
+                                          :tiltvf 30.0
+                                          :tiltvvf 15.0
+                                          :mode 'air
+                                          :flags (surface-flag check-edge air)
+                                          )
           )
     (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
     (let ((a0-6 (target-time-to-ground)))
@@ -3056,7 +3035,7 @@
       )
     )
   :enter (behavior ((arg0 symbol))
-    (set! (-> self control unknown-surface00) *grab-mods*)
+    (set! (-> self control mod-surface) *grab-mods*)
     (set! (-> self neck flex-blend) 0.0)
     (logior! (-> self state-flags) (state-flags sf2))
     (logior! (-> self focus-status) (focus-status grabbed))
@@ -3143,7 +3122,7 @@
   :trans (behavior ()
     (when (= *cheat-mode* 'debug)
       (when (and (not *pause-lock*) (cpad-hold? (-> self control cpad number) r2))
-        (set! (-> self control unknown-time-frame30) (-> self clock frame-counter))
+        (set! (-> self control time-of-last-debug-heal) (-> self clock frame-counter))
         (pickup-collectable! (-> self fact-override) (pickup-type health) 100.0 (the-as handle #f))
         (go target-board-stance)
         )
@@ -3208,7 +3187,7 @@
               (cond
                 ((= (-> self game mode) 'debug)
                  (let ((s4-1 (new-stack-vector0)))
-                   (set! (-> s4-1 quad) (-> self control last-trans-on-surf quad))
+                   (set! (-> s4-1 quad) (-> self control last-trans-on-ground quad))
                    (ja-channel-set! 0)
                    (let ((s3-1 (-> self clock frame-counter)))
                      (until (>= (- (-> self clock frame-counter) s3-1) (seconds 1))
@@ -3217,7 +3196,7 @@
                      )
                    (move-to-point! (-> self control) s4-1)
                    )
-                 (set! (-> self control unknown-vector15 quad) (-> self control trans quad))
+                 (set! (-> self control camera-pos quad) (-> self control trans quad))
                  (send-event *camera* 'teleport)
                  (go target-stance)
                  )
@@ -3266,7 +3245,7 @@
               (go target-board-jump (-> gp-0 shove-up) (-> gp-0 shove-up) 'hit)
               )
           )
-        (set! (-> self control unknown-surface00) *smack-mods*)
+        (set! (-> self control mod-surface) *smack-mods*)
         (let ((v1-92 (ja-group)))
           (when (not (and v1-92 (or (= v1-92 (-> self draw art-group data 158)) (= v1-92 (-> self draw art-group data 165)))))
             (ja-channel-push! 1 (seconds 0.075))

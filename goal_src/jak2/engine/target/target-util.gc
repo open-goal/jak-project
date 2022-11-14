@@ -20,7 +20,7 @@
 
 (define *target-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center (new 'static 'vector :w (the-as float #x2))
+                                           :flags (shadow-flags disable-fade)
                                            :shadow-dir (new 'static 'vector :x -0.4226 :y -0.9063 :w 409600.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
                                            :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
@@ -280,21 +280,21 @@
          (a0-1 (+ (-> v1-0 attack-id) 1))
          )
     (set! (-> v1-0 attack-id) a0-1)
-    (set! (-> self control unknown-symbol05) (the-as symbol a0-1))
+    (set! (-> self control target-attack-id) a0-1)
     )
-  (set! (-> self control unknown-dword05) (the-as uint 0))
-  (set! (-> self control unknown-float40) 0.0)
+  (set! (-> self control attack-count) (the-as uint 0))
+  (set! (-> self control bomb-scale) 0.0)
   (+! (-> self anim-seed) 1)
   0
   (none)
   )
 
 (defbehavior target-danger-set! target ((arg0 symbol) (arg1 symbol))
-  (let ((s4-0 (-> self control unknown-sphere-array00 6))
-        (s5-0 (-> self control unknown-sphere-array00 7))
-        (gp-0 (-> self control unknown-sphere-array00 8))
+  (let ((s4-0 (-> self control collision-spheres 6))
+        (s5-0 (-> self control collision-spheres 7))
+        (gp-0 (-> self control collision-spheres 8))
         )
-    (let* ((s2-0 (-> self control unknown-sphere-array00 9))
+    (let* ((s2-0 (-> self control collision-spheres 9))
            (v1-4 arg1)
            (f30-0 (if (or (= v1-4 'cone) (= v1-4 'eco-red))
                       2.0
@@ -314,7 +314,7 @@
         (-> *TARGET-bank* root-offset)
         (-> *TARGET-bank* root-radius)
         )
-      (set! (-> self control unknown-symbol04) arg0)
+      (set! (-> self control danger-mode) arg0)
       (logclear! (-> self focus-status) (focus-status dangerous))
       (set! (-> s4-0 transform-index) -2)
       (set! (-> s4-0 prim-core collide-as) (collide-spec))
@@ -334,12 +334,12 @@
       (set! (-> s2-0 local-sphere w) 0.0)
       (case arg0
         (('harmless #f)
-         (set! (-> self control unknown-symbol04) #f)
-         (target-collide-set! (-> self control unknown-symbol00) (-> self control unknown-float000))
+         (set! (-> self control danger-mode) #f)
+         (target-collide-set! (-> self control collide-mode) (-> self control collide-mode-transition))
          )
         (('carry?)
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* spin-offset)
@@ -354,8 +354,8 @@
            9830.4
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* spin-offset)
@@ -370,8 +370,8 @@
            9830.4
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s4-0 local-sphere)) (-> *TARGET-bank* spin-offset) 6963.2)
          (set! (-> self control penetrate-using) (penetrate touch spin board))
          )
@@ -382,64 +382,64 @@
            10649.6
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* duck-spin-offset)
            (-> *TARGET-bank* duck-spin-radius)
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
          (set! (-> s5-0 transform-index) 35)
          (set! (-> self control penetrate-using) (penetrate touch spin))
          )
         (('duck-slide)
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* duck-spin-offset)
            (-> *TARGET-bank* duck-spin-radius)
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
          (set! (-> s5-0 transform-index) 28)
          (set! (-> self control penetrate-using) (penetrate touch punch))
          )
         (('roll-solid)
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* duck-spin-offset)
            (+ 819.2 (-> *TARGET-bank* duck-spin-radius))
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
          (set! (-> s5-0 transform-index) 8)
-         (set! (-> self control unknown-symbol04) 'roll)
+         (set! (-> self control danger-mode) 'roll)
          (set! (-> self control penetrate-using) (penetrate touch roll))
          )
         (('flip)
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* duck-spin-offset)
            (+ 819.2 (-> *TARGET-bank* duck-spin-radius))
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
          (set! (-> s5-0 transform-index) 8)
-         (set! (-> self control unknown-symbol04) 'flip)
+         (set! (-> self control danger-mode) 'flip)
          (set! (-> self control penetrate-using) (penetrate touch roll))
          )
         (('punch)
@@ -449,16 +449,16 @@
            11878.4
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* punch-offset)
            (-> *TARGET-bank* punch-radius)
            )
          (when (not (logtest? (focus-status indax) (-> self focus-status)))
-           (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-           (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+           (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+           (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
            (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* punch-radius))
            (set! (-> s5-0 transform-index) 21)
            )
@@ -477,19 +477,19 @@
            11878.4
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* uppercut0-offset)
            (-> *TARGET-bank* uppercut-radius)
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* uppercut-radius))
          (set! (-> s5-0 transform-index) 21)
-         (set! (-> gp-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> gp-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> gp-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> gp-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 local-sphere))
            (-> *TARGET-bank* uppercut1-offset)
@@ -499,28 +499,28 @@
          )
         (('flop)
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* flop0-offset)
            (-> *TARGET-bank* flop-radius)
            )
          (set! f30-0 1.0)
-         (set! (-> self control unknown-symbol04) 'flop)
+         (set! (-> self control danger-mode) 'flop)
          (set! (-> self control penetrate-using) (penetrate touch flop))
          )
         (('flop-down)
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* flop0-offset)
            (-> *TARGET-bank* flop-radius)
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s5-0 local-sphere))
            (-> *TARGET-bank* flop1-offset)
@@ -529,7 +529,7 @@
          (if (!= f30-0 1.0)
              (set! f30-0 2.1)
              )
-         (set! (-> self control unknown-symbol04) 'flop)
+         (set! (-> self control danger-mode) 'flop)
          (set! (-> self control penetrate-using) (penetrate touch flop))
          )
         (('flut-attack)
@@ -539,15 +539,15 @@
            12288.0
            )
          (logior! (-> self focus-status) (focus-status dangerous))
-         (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s4-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s4-0 local-sphere))
            (-> *TARGET-bank* spin-offset)
            (+ 2048.0 (-> *TARGET-bank* punch-radius))
            )
-         (set! (-> s5-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-         (set! (-> s5-0 prim-core collide-with) (the-as collide-spec (-> self control unknown-word10)))
+         (set! (-> s5-0 prim-core collide-as) (-> self control default-collide-as))
+         (set! (-> s5-0 prim-core collide-with) (-> self control default-collide-with))
          (sphere<-vector+r!
            (the-as sphere (-> s5-0 local-sphere))
            *null-vector*
@@ -561,7 +561,7 @@
          (set! (-> self control penetrate-using) (penetrate touch mech))
          )
         (('bomb)
-         (let* ((f0-32 (-> self control unknown-float40))
+         (let* ((f0-32 (-> self control bomb-scale))
                 (f28-0 (lerp-scale (-> *TARGET-bank* root-radius) 122880.0 f0-32 0.0 1.0))
                 )
            (sphere<-vector+r!
@@ -570,8 +570,10 @@
              f28-0
              )
            (logior! (-> self focus-status) (focus-status dangerous))
-           (set! (-> s4-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-           (set! (-> s4-0 prim-core collide-with) (the-as collide-spec (logand -4097 (-> self control unknown-word10))))
+           (set! (-> s4-0 prim-core collide-as) (-> self control default-collide-as))
+           (set! (-> s4-0 prim-core collide-with)
+                 (logclear (-> self control default-collide-with) (collide-spec collectable))
+                 )
            (sphere<-vector+r! (the-as sphere (-> s4-0 local-sphere)) (-> *TARGET-bank* root-offset) f28-0)
            )
          (set! (-> self control penetrate-using) (penetrate touch dark-bomb))
@@ -588,8 +590,10 @@
             (+ (-> *TARGET-bank* root-radius) (* 2.0 f28-1))
             )
           (logior! (-> self focus-status) (focus-status dangerous))
-          (set! (-> s2-0 prim-core collide-as) (the-as collide-spec (-> self control unknown-sphere000)))
-          (set! (-> s2-0 prim-core collide-with) (the-as collide-spec (logand -4097 (-> self control unknown-word10))))
+          (set! (-> s2-0 prim-core collide-as) (-> self control default-collide-as))
+          (set! (-> s2-0 prim-core collide-with)
+                (logclear (-> self control default-collide-with) (collide-spec collectable))
+                )
           (set! (-> s2-0 transform-index) 0)
           (sphere<-vector+r!
             (the-as sphere (-> s2-0 local-sphere))
@@ -649,47 +653,47 @@
   (let ((gp-0 (-> self control)))
     (if (and (= arg0 'normal)
              (enabled-gun? self)
-             (zero? (logand (-> self control unknown-surface01 flags) (surface-flag duck)))
+             (zero? (logand (-> self control current-surface flags) (surface-flag duck)))
              )
         (set! arg0 'gun)
         )
-    (set! (-> self control unknown-symbol00) arg0)
-    (set! (-> self control unknown-float000) arg1)
+    (set! (-> self control collide-mode) arg0)
+    (set! (-> self control collide-mode-transition) arg1)
     (logclear! (-> self control penetrate-using) (penetrate tube vehicle board mech))
     (set! (-> self control penetrated-by) (penetrate lunge))
     (dotimes (v1-10 4)
-      (set! (-> gp-0 unknown-sphere-array00 v1-10 transform-index) -2)
+      (set! (-> gp-0 collision-spheres v1-10 transform-index) -2)
       )
-    (set! (-> gp-0 unknown-sphere-array00 3 prim-core collide-as) (collide-spec))
-    (set! (-> gp-0 unknown-sphere-array00 3 prim-core collide-with) (collide-spec))
-    (set! (-> gp-0 unknown-sphere-array00 4 prim-core collide-as) (collide-spec jak))
-    (set! (-> gp-0 unknown-sphere-array00 4 prim-core collide-with) (collide-spec
-                                                                      backgnd
-                                                                      bot
-                                                                      crate
-                                                                      civilian
-                                                                      enemy
-                                                                      obstacle
-                                                                      hit-by-player-list
-                                                                      hit-by-others-list
-                                                                      player-list
-                                                                      water
-                                                                      collectable
-                                                                      blocking-plane
-                                                                      tobot
-                                                                      pusher
-                                                                      vehicle-mesh
-                                                                      obstacle-for-jak
-                                                                      )
+    (set! (-> gp-0 collision-spheres 3 prim-core collide-as) (collide-spec))
+    (set! (-> gp-0 collision-spheres 3 prim-core collide-with) (collide-spec))
+    (set! (-> gp-0 collision-spheres 4 prim-core collide-as) (collide-spec jak))
+    (set! (-> gp-0 collision-spheres 4 prim-core collide-with) (collide-spec
+                                                                 backgnd
+                                                                 bot
+                                                                 crate
+                                                                 civilian
+                                                                 enemy
+                                                                 obstacle
+                                                                 hit-by-player-list
+                                                                 hit-by-others-list
+                                                                 player-list
+                                                                 water
+                                                                 collectable
+                                                                 blocking-plane
+                                                                 tobot
+                                                                 pusher
+                                                                 vehicle-mesh
+                                                                 obstacle-for-jak
+                                                                 )
           )
     (cond
       ((= arg0 'pole)
-       (set-vector! (-> gp-0 unknown-sphere-array00 0 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
-       (set-vector! (-> gp-0 unknown-sphere-array00 1 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
-       (set-vector! (-> gp-0 unknown-sphere-array00 2 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
-       (set! (-> gp-0 unknown-sphere-array00 0 transform-index) 28)
-       (set! (-> gp-0 unknown-sphere-array00 1 transform-index) 26)
-       (set! (-> gp-0 unknown-sphere-array00 2 transform-index) 8)
+       (set-vector! (-> gp-0 collision-spheres 0 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
+       (set-vector! (-> gp-0 collision-spheres 1 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
+       (set-vector! (-> gp-0 collision-spheres 2 local-sphere) 0.0 0.0 0.0 (-> *TARGET-bank* body-radius))
+       (set! (-> gp-0 collision-spheres 0 transform-index) 28)
+       (set! (-> gp-0 collision-spheres 1 transform-index) 26)
+       (set! (-> gp-0 collision-spheres 2 transform-index) 8)
        )
       ((= arg0 'board)
        (logior! (-> self control penetrate-using) (penetrate touch board))
@@ -701,9 +705,9 @@
          (new 'static 'vector :y 8192.0 :w 1.0)
          16384.0
          )
-       (set-vector! (-> gp-0 unknown-sphere-array00 0 local-sphere) 0.0 6553.6 0.0 6553.6)
-       (set-vector! (-> gp-0 unknown-sphere-array00 1 local-sphere) 0.0 9420.8 0.0 6553.6)
-       (set-vector! (-> gp-0 unknown-sphere-array00 2 local-sphere) 0.0 12288.0 0.0 6553.6)
+       (set-vector! (-> gp-0 collision-spheres 0 local-sphere) 0.0 6553.6 0.0 6553.6)
+       (set-vector! (-> gp-0 collision-spheres 1 local-sphere) 0.0 9420.8 0.0 6553.6)
+       (set-vector! (-> gp-0 collision-spheres 2 local-sphere) 0.0 12288.0 0.0 6553.6)
        (logior! (-> self control penetrate-using) (penetrate touch vehicle))
        )
       ((= arg0 'flut)
@@ -712,9 +716,9 @@
          (new 'static 'vector :y 8192.0 :w 1.0)
          12288.0
          )
-       (set-vector! (-> gp-0 unknown-sphere-array00 0 local-sphere) 0.0 4915.2 0.0 4915.2)
-       (set-vector! (-> gp-0 unknown-sphere-array00 1 local-sphere) 0.0 7782.4004 0.0 4915.2)
-       (set-vector! (-> gp-0 unknown-sphere-array00 2 local-sphere) 0.0 10649.6 0.0 4915.2)
+       (set-vector! (-> gp-0 collision-spheres 0 local-sphere) 0.0 4915.2 0.0 4915.2)
+       (set-vector! (-> gp-0 collision-spheres 1 local-sphere) 0.0 7782.4004 0.0 4915.2)
+       (set-vector! (-> gp-0 collision-spheres 2 local-sphere) 0.0 10649.6 0.0 4915.2)
        )
       ((= arg0 'mech)
        (sphere<-vector+r!
@@ -722,9 +726,9 @@
          (new 'static 'vector :y 8192.0 :w 1.0)
          16384.0
          )
-       (set-vector! (-> gp-0 unknown-sphere-array00 0 local-sphere) 0.0 4096.0 0.0 4096.0)
-       (set-vector! (-> gp-0 unknown-sphere-array00 1 local-sphere) 0.0 8601.6 0.0 6553.6)
-       (set-vector! (-> gp-0 unknown-sphere-array00 2 local-sphere) 0.0 14745.6 0.0 9420.8)
+       (set-vector! (-> gp-0 collision-spheres 0 local-sphere) 0.0 4096.0 0.0 4096.0)
+       (set-vector! (-> gp-0 collision-spheres 1 local-sphere) 0.0 8601.6 0.0 6553.6)
+       (set-vector! (-> gp-0 collision-spheres 2 local-sphere) 0.0 14745.6 0.0 9420.8)
        (logior! (-> self control penetrate-using) (penetrate touch mech))
        )
       ((= arg0 'mech-carry)
@@ -734,10 +738,10 @@
          (new 'static 'vector :y 12288.0 :w 1.0)
          20480.0
          )
-       (set-vector! (-> gp-0 unknown-sphere-array00 0 local-sphere) 0.0 4096.0 0.0 4096.0)
-       (set-vector! (-> gp-0 unknown-sphere-array00 1 local-sphere) 0.0 8601.6 0.0 6553.6)
+       (set-vector! (-> gp-0 collision-spheres 0 local-sphere) 0.0 4096.0 0.0 4096.0)
+       (set-vector! (-> gp-0 collision-spheres 1 local-sphere) 0.0 8601.6 0.0 6553.6)
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 2 local-sphere)
+         (-> gp-0 collision-spheres 2 local-sphere)
          0.0
          (+ 5734.4 (lerp-scale 9011.2 12288.0 arg1 0.0 1.0))
          0.0
@@ -745,7 +749,7 @@
          )
        )
       ((= arg0 'duck)
-       (set! (-> self control unknown-float31) arg1)
+       (set! (-> self control duck-gun-tube-transision) arg1)
        (let ((f30-1 (- 1.0 arg1)))
          (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
@@ -754,7 +758,7 @@
            (-> *TARGET-bank* root-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 0 local-sphere)
+           (-> gp-0 collision-spheres 0 local-sphere)
            0.0
            (-> *TARGET-bank* body-radius)
            (* 0.0 f30-1)
@@ -762,14 +766,14 @@
            )
          (if (using-gun? self)
              (set-vector!
-               (-> gp-0 unknown-sphere-array00 1 local-sphere)
+               (-> gp-0 collision-spheres 1 local-sphere)
                0.0
                (+ 2867.2 (-> *TARGET-bank* body-radius))
                0.0
                (-> *TARGET-bank* body-radius)
                )
              (set-vector!
-               (-> gp-0 unknown-sphere-array00 1 local-sphere)
+               (-> gp-0 collision-spheres 1 local-sphere)
                0.0
                (+ (-> *TARGET-bank* body-radius) (* 2867.2 f30-1))
                0.0
@@ -777,7 +781,7 @@
                )
              )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 2 local-sphere)
+           (-> gp-0 collision-spheres 2 local-sphere)
            0.0
            (+ (-> *TARGET-bank* body-radius) (* 5734.4 f30-1))
            0.0
@@ -794,33 +798,33 @@
            (-> *TARGET-bank* root-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 0 local-sphere)
+           (-> gp-0 collision-spheres 0 local-sphere)
            0.0
            (-> *TARGET-bank* body-radius)
            (* 0.0 f30-2)
            (-> *TARGET-bank* body-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 1 local-sphere)
+           (-> gp-0 collision-spheres 1 local-sphere)
            0.0
            (+ (-> *TARGET-bank* body-radius) (* 2867.2 f30-2))
            0.0
            (-> *TARGET-bank* body-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 2 local-sphere)
+           (-> gp-0 collision-spheres 2 local-sphere)
            0.0
            (+ (-> *TARGET-bank* body-radius) (* 5734.4 f30-2))
            0.0
            (-> *TARGET-bank* body-radius)
            )
          )
-       (set! (-> gp-0 unknown-sphere-array00 4 prim-core collide-as) (collide-spec))
-       (set! (-> gp-0 unknown-sphere-array00 4 prim-core collide-with) (collide-spec))
+       (set! (-> gp-0 collision-spheres 4 prim-core collide-as) (collide-spec))
+       (set! (-> gp-0 collision-spheres 4 prim-core collide-with) (collide-spec))
        0
        )
       ((= arg0 'tube)
-       (set! (-> self control unknown-float31) arg1)
+       (set! (-> self control duck-gun-tube-transision) arg1)
        (let ((f30-3 (- 1.0 arg1)))
          (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
@@ -829,21 +833,21 @@
            (-> *TARGET-bank* root-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 0 local-sphere)
+           (-> gp-0 collision-spheres 0 local-sphere)
            0.0
            (-> *TARGET-bank* body-radius)
            (* 0.0 f30-3)
            (-> *TARGET-bank* body-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 1 local-sphere)
+           (-> gp-0 collision-spheres 1 local-sphere)
            0.0
            (+ (-> *TARGET-bank* body-radius) (* 2867.2 f30-3))
            0.0
            (-> *TARGET-bank* body-radius)
            )
          (set-vector!
-           (-> gp-0 unknown-sphere-array00 2 local-sphere)
+           (-> gp-0 collision-spheres 2 local-sphere)
            0.0
            (+ (-> *TARGET-bank* body-radius) (* 5734.4 f30-3))
            0.0
@@ -860,21 +864,21 @@
          (-> *TARGET-bank* root-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 0 local-sphere)
+         (-> gp-0 collision-spheres 0 local-sphere)
          0.0
          (-> *TARGET-bank* body-radius)
          0.0
          (-> *TARGET-bank* body-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 1 local-sphere)
+         (-> gp-0 collision-spheres 1 local-sphere)
          0.0
          (+ 2867.2 (-> *TARGET-bank* body-radius))
          0.0
          (-> *TARGET-bank* body-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 2 local-sphere)
+         (-> gp-0 collision-spheres 2 local-sphere)
          0.0
          (+ 5734.4 (-> *TARGET-bank* body-radius))
          0.0
@@ -882,7 +886,7 @@
          )
        )
       ((= arg0 'gun)
-       (set! (-> self control unknown-float31) arg1)
+       (set! (-> self control duck-gun-tube-transision) arg1)
        (set! (-> gp-0 draw-offset y) 0.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
@@ -890,53 +894,53 @@
          (-> *TARGET-bank* root-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 0 local-sphere)
+         (-> gp-0 collision-spheres 0 local-sphere)
          0.0
          (-> *TARGET-bank* body-radius)
          0.0
          (-> *TARGET-bank* body-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 1 local-sphere)
+         (-> gp-0 collision-spheres 1 local-sphere)
          0.0
          (+ 2867.2 (-> *TARGET-bank* body-radius))
          0.0
          (-> *TARGET-bank* body-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 2 local-sphere)
+         (-> gp-0 collision-spheres 2 local-sphere)
          0.0
          (+ 5734.4 (-> *TARGET-bank* body-radius))
          0.0
          (-> *TARGET-bank* body-radius)
          )
        (set-vector!
-         (-> gp-0 unknown-sphere-array00 3 local-sphere)
+         (-> gp-0 collision-spheres 3 local-sphere)
          0.0
          (+ 5734.4 (-> *TARGET-bank* body-radius))
          0.0
          (lerp-scale (-> *TARGET-bank* body-radius) 4915.2 arg1 0.0 1.0)
          )
-       (set! (-> gp-0 unknown-sphere-array00 3 prim-core collide-with) (collide-spec
-                                                                         backgnd
-                                                                         bot
-                                                                         crate
-                                                                         obstacle
-                                                                         hit-by-player-list
-                                                                         hit-by-others-list
-                                                                         player-list
-                                                                         water
-                                                                         collectable
-                                                                         blocking-plane
-                                                                         tobot
-                                                                         pusher
-                                                                         vehicle-mesh
-                                                                         obstacle-for-jak
-                                                                         )
+       (set! (-> gp-0 collision-spheres 3 prim-core collide-with) (collide-spec
+                                                                    backgnd
+                                                                    bot
+                                                                    crate
+                                                                    obstacle
+                                                                    hit-by-player-list
+                                                                    hit-by-others-list
+                                                                    player-list
+                                                                    water
+                                                                    collectable
+                                                                    blocking-plane
+                                                                    tobot
+                                                                    pusher
+                                                                    vehicle-mesh
+                                                                    obstacle-for-jak
+                                                                    )
              )
        )
       (else
-        (set! (-> self control unknown-float31) 0.0)
+        (set! (-> self control duck-gun-tube-transision) 0.0)
         (set! (-> gp-0 draw-offset y) 0.0)
         (sphere<-vector+r!
           (the-as sphere (-> gp-0 root-prim local-sphere))
@@ -944,21 +948,21 @@
           (-> *TARGET-bank* root-radius)
           )
         (set-vector!
-          (-> gp-0 unknown-sphere-array00 0 local-sphere)
+          (-> gp-0 collision-spheres 0 local-sphere)
           0.0
           (-> *TARGET-bank* body-radius)
           0.0
           (-> *TARGET-bank* body-radius)
           )
         (set-vector!
-          (-> gp-0 unknown-sphere-array00 1 local-sphere)
+          (-> gp-0 collision-spheres 1 local-sphere)
           0.0
           (+ 2867.2 (-> *TARGET-bank* body-radius))
           0.0
           (-> *TARGET-bank* body-radius)
           )
         (set-vector!
-          (-> gp-0 unknown-sphere-array00 2 local-sphere)
+          (-> gp-0 collision-spheres 2 local-sphere)
           0.0
           (+ 5734.4 (-> *TARGET-bank* body-radius))
           0.0
@@ -970,24 +974,16 @@
                (and (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
                )
       (let ((f0-183 (lerp-scale 1.0 (-> self darkjak-giant-interp) (-> self darkjak-interp) 0.0 1.0)))
-        (set! (-> gp-0 unknown-sphere-array00 0 local-sphere w)
-              (* 0.5 (+ 1.0 f0-183) (-> gp-0 unknown-sphere-array00 0 local-sphere w))
+        (set! (-> gp-0 collision-spheres 0 local-sphere w)
+              (* 0.5 (+ 1.0 f0-183) (-> gp-0 collision-spheres 0 local-sphere w))
               )
-        (set! (-> gp-0 unknown-sphere-array00 0 local-sphere y)
-              (* 0.5 (+ 1.0 f0-183) (-> gp-0 unknown-sphere-array00 0 local-sphere y))
+        (set! (-> gp-0 collision-spheres 0 local-sphere y)
+              (* 0.5 (+ 1.0 f0-183) (-> gp-0 collision-spheres 0 local-sphere y))
               )
-        (set! (-> gp-0 unknown-sphere-array00 1 local-sphere w)
-              (* (-> gp-0 unknown-sphere-array00 1 local-sphere w) f0-183)
-              )
-        (set! (-> gp-0 unknown-sphere-array00 1 local-sphere y)
-              (* (-> gp-0 unknown-sphere-array00 1 local-sphere y) f0-183)
-              )
-        (set! (-> gp-0 unknown-sphere-array00 2 local-sphere w)
-              (* (-> gp-0 unknown-sphere-array00 2 local-sphere w) f0-183)
-              )
-        (set! (-> gp-0 unknown-sphere-array00 2 local-sphere y)
-              (* (-> gp-0 unknown-sphere-array00 2 local-sphere y) f0-183)
-              )
+        (set! (-> gp-0 collision-spheres 1 local-sphere w) (* (-> gp-0 collision-spheres 1 local-sphere w) f0-183))
+        (set! (-> gp-0 collision-spheres 1 local-sphere y) (* (-> gp-0 collision-spheres 1 local-sphere y) f0-183))
+        (set! (-> gp-0 collision-spheres 2 local-sphere w) (* (-> gp-0 collision-spheres 2 local-sphere w) f0-183))
+        (set! (-> gp-0 collision-spheres 2 local-sphere y) (* (-> gp-0 collision-spheres 2 local-sphere y) f0-183))
         )
       )
     )
@@ -1006,16 +1002,16 @@
   )
 
 (defbehavior target-align-vel-z-adjust target ((arg0 float))
-  (let ((f1-0 (-> self control unknown-float17)))
+  (let ((f1-0 (-> self control local-slope-z)))
     (* arg0 (if (< 0.0 f1-0)
-                (* (- 1.0 f1-0) (-> self control unknown-surface01 alignv))
-                (-> self control unknown-surface01 alignv)
+                (* (- 1.0 f1-0) (-> self control current-surface alignv))
+                (-> self control current-surface alignv)
                 )
        )
     )
   )
 
-(defmethod process-focusable-method-26 target ((obj target))
+(defmethod get-inv-mass target ((obj target))
   (if (or (and (logtest? (focus-status dark) (-> obj focus-status))
                (nonzero? (-> obj darkjak))
                (logtest? (-> obj darkjak stage) 32)
@@ -1034,8 +1030,8 @@
       (set! (-> s2-0 quad) (-> arg2 quad))
       (set! (-> s2-0 z) (target-align-vel-z-adjust (-> s2-0 z)))
       (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
-        (let* ((s3-0 (-> obj control unknown-matrix01))
-               (s0-0 (-> obj control unknown-matrix00))
+        (let* ((s3-0 (-> obj control c-R-w))
+               (s0-0 (-> obj control w-R-c))
                (s1-0 (vector-matrix*! (new 'stack-no-clear 'vector) (-> obj control dynam gravity) s0-0))
                (a1-3 (vector-matrix*! (new 'stack-no-clear 'vector) (-> obj control transv) s0-0))
                )
@@ -1086,10 +1082,7 @@
     (dotimes (s5-0 8)
       (+! f30-0
           (fabs
-            (deg-diff
-              (atan (-> arg0 control unknown-vector-array01 s5-0 x) (-> arg0 control unknown-vector-array01 s5-0 z))
-              0.0
-              )
+            (deg-diff (atan (-> arg0 control turn-history-ctrl s5-0 x) (-> arg0 control turn-history-ctrl s5-0 z)) 0.0)
             )
           )
       )
@@ -1145,7 +1138,7 @@
 
 (defbehavior can-jump? target ((arg0 symbol))
   (and (or (logtest? (-> self control status) (collide-status on-surface))
-           (< (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+           (< (- (-> self clock frame-counter) (-> self control last-time-on-surface))
               (the-as time-frame (-> *TARGET-bank* ground-timeout))
               )
            (and (logtest? (-> self control status) (collide-status on-surface))
@@ -1153,17 +1146,17 @@
                 )
            (and (= arg0 'board)
                 (or (< (- (-> self clock frame-counter) (-> self board unknown-time-frame00)) (seconds 0.05))
-                    (and (< (- (-> self clock frame-counter) (-> self control unknown-time-frame14)) (seconds 0.5))
+                    (and (< (- (-> self clock frame-counter) (-> self control last-time-of-stuck)) (seconds 0.5))
                          (< (target-height-above-ground) 2048.0)
                          )
                     )
                 )
            )
-       (and (not (logtest? (-> self control unknown-surface01 flags) (surface-flag no-jump)))
-            (not (logtest? (-> self state-flags) (state-flags sf7)))
+       (and (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+            (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
             (or (= arg0 'board) (!= (-> self control poly-pat event) 13))
             (if (= arg0 'target-roll-flip)
-                (>= 0.5 (-> self control unknown-float17))
+                (>= 0.5 (-> self control local-slope-z))
                 #t
                 )
             )
@@ -1185,7 +1178,7 @@
       (when (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                  (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
                  )
-        (set! (-> self control unknown-time-frame14) (-> self clock frame-counter))
+        (set! (-> self control last-time-of-stuck) (-> self clock frame-counter))
         #t
         )
       )
@@ -1209,7 +1202,7 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior fall-test target ((arg0 (state symbol target)) (arg1 float))
   (when (and (not (logtest? (-> self control status) (collide-status on-surface)))
-             (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+             (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                  (the-as time-frame (-> *TARGET-bank* ground-timeout))
                  )
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -1228,7 +1221,7 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior slide-down-test target ()
   (if (and (not (logtest? (-> self control status) (collide-status on-surface touch-edge)))
-           (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+           (>= (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                (the-as time-frame (-> *TARGET-bank* ground-timeout))
                )
            (logtest? (-> self control status) (collide-status touch-surface))
@@ -1253,16 +1246,16 @@
        (or (not (logtest? (-> self control status) (collide-status touch-wall)))
            (>= 0.7 (-> self control touch-angle))
            )
-       (< (-> self control unknown-float17) 0.7)
-       (not (logtest? (-> self state-flags) (state-flags sf8 sf9)))
+       (< (-> self control local-slope-z) 0.7)
+       (not (logtest? (-> self state-flags) (state-flags prevent-attack prevent-duck)))
        (not (and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak))))
        (>= (- (-> self clock frame-counter) (the-as int (-> *TARGET-bank* roll-timeout)))
-           (-> self control unknown-time-frame10)
+           (-> self control last-roll-end-time)
            )
        (or (not (enabled-gun? self))
            (not (-> *TARGET-bank* strafe-duck-jump))
-           (and (< 0.3 (vector-dot (-> self control to-target-pt-xz) (-> self control unknown-matrix01 vector 2)))
-                (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame28)) (seconds 0.3))
+           (and (< 0.3 (vector-dot (-> self control to-target-pt-xz) (-> self control c-R-w vector 2)))
+                (>= (- (-> self clock frame-counter) (-> self control time-of-last-zero-input)) (seconds 0.3))
                 )
            )
        (not (and (not (using-gun? self)) (!= (-> self skel top-anim interp) 0.0)))
@@ -1271,9 +1264,9 @@
 
 (defbehavior can-duck? target ()
   (and (logtest? (-> self control status) (collide-status on-surface))
-       (>= (-> self control unknown-float0000) 0.7)
+       (>= (-> self control ground-local-norm-dot-grav) 0.7)
        (not (logtest? (water-flags under-water swimming) (-> self water flags)))
-       (not (logtest? (-> self state-flags) (state-flags sf9)))
+       (not (logtest? (-> self state-flags) (state-flags prevent-duck)))
        (or (not (logtest? (water-flags wading) (-> self water flags)))
            (< (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
            )
@@ -1316,19 +1309,19 @@
 
 (defbehavior can-hands? target ((arg0 symbol))
   (cond
-    ((or (logtest? (-> self state-flags) (state-flags sf8))
-         (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-hands))
+    ((or (logtest? (-> self state-flags) (state-flags prevent-attack))
+         (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands))
          )
      #f
      )
     ((and (or (not arg0)
-              (and (< (- (-> self clock frame-counter) (-> self control unknown-time-frame06))
+              (and (< (- (-> self clock frame-counter) (-> self control last-time-on-surface))
                       (the-as time-frame (-> *TARGET-bank* ground-timeout))
                       )
-                   (< (-> self control unknown-float17) 0.7)
+                   (< (-> self control local-slope-z) 0.7)
                    )
               )
-          (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame11))
+          (>= (- (-> self clock frame-counter) (-> self control last-running-attack-end-time))
               (the-as time-frame (if (and (= (-> (the-as fact-info-target (-> self fact-override)) eco-type) 1)
                                           (>= (-> (the-as fact-info-target (-> self fact-override)) eco-level) 1.0)
                                           )
@@ -1341,7 +1334,7 @@
      #t
      )
     (else
-      (set! (-> self control unknown-time-frame001) (-> self clock frame-counter))
+      (set! (-> self control last-hands-attempt-time) (-> self clock frame-counter))
       #f
       )
     )
@@ -1349,18 +1342,18 @@
 
 (defbehavior can-feet? target ((arg0 symbol))
   (cond
-    ((or (logtest? (-> self state-flags) (state-flags sf8))
-         (logtest? (-> self control unknown-surface01 flags) (surface-flag no-attack no-feet))
+    ((or (logtest? (-> self state-flags) (state-flags prevent-attack))
+         (logtest? (-> self control current-surface flags) (surface-flag no-attack no-feet))
          )
      #f
      )
-    ((>= (- (-> self clock frame-counter) (-> self control unknown-time-frame12))
+    ((>= (- (-> self clock frame-counter) (-> self control last-attack-end-time))
          (the-as time-frame (-> *TARGET-bank* attack-timeout))
          )
      #t
      )
     (else
-      (set! (-> self control unknown-time-frame002) (-> self clock frame-counter))
+      (set! (-> self control last-feet-attempt-time) (-> self clock frame-counter))
       #f
       )
     )
@@ -1368,13 +1361,13 @@
 
 (defbehavior are-still? target ()
   (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-      (< (-> self control unknown-float05) 61440.0)
+      (< (-> self control ctrl-xz-vel) 61440.0)
       )
   )
 
 (defbehavior vector-local+! target ((arg0 vector) (arg1 vector))
   (let ((s5-0 (new-stack-vector0)))
-    (vector-matrix*! s5-0 arg1 (-> self control unknown-matrix01))
+    (vector-matrix*! s5-0 arg1 (-> self control c-R-w))
     (vector+! arg0 arg0 s5-0)
     )
   )
@@ -1384,17 +1377,17 @@
         (gp-0 (new-stack-vector0))
         )
     (set-vector! a1-0 0.0 0.0 arg0 1.0)
-    (vector-matrix*! gp-0 a1-0 (-> self control unknown-matrix01))
+    (vector-matrix*! gp-0 a1-0 (-> self control c-R-w))
     (vector+! (-> self control transv) (-> self control transv) gp-0)
     )
   )
 
 (defbehavior set-forward-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
-    (vector-matrix*! gp-0 (-> self control transv) (-> self control unknown-matrix00))
+    (vector-matrix*! gp-0 (-> self control transv) (-> self control w-R-c))
     (set! (-> gp-0 z) arg0)
     (set! (-> gp-0 x) 0.0)
-    (vector-matrix*! (-> self control transv) gp-0 (-> self control unknown-matrix01))
+    (vector-matrix*! (-> self control transv) gp-0 (-> self control c-R-w))
     )
   )
 
@@ -1426,10 +1419,10 @@
 
 (defbehavior set-side-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
-    (vector-matrix*! gp-0 (-> self control transv) (-> self control unknown-matrix00))
+    (vector-matrix*! gp-0 (-> self control transv) (-> self control w-R-c))
     (set! (-> gp-0 x) arg0)
     (set! (-> gp-0 z) 0.0)
-    (vector-matrix*! (-> self control transv) gp-0 (-> self control unknown-matrix01))
+    (vector-matrix*! (-> self control transv) gp-0 (-> self control c-R-w))
     )
   )
 
@@ -1438,13 +1431,13 @@
     (case arg2
       ((1)
        (logior! (-> arg1 state-flags) (state-flags tinvul1))
-       (set! (-> arg1 control unknown-time-frame22) (-> pp clock frame-counter))
-       (set! (-> arg1 control unknown-time-frame23) arg0)
+       (set! (-> arg1 control invul1-on-time) (-> pp clock frame-counter))
+       (set! (-> arg1 control invul1-off-time) arg0)
        )
       ((2)
        (set! (-> arg1 state-flags) (logior (state-flags tinvul2) (-> arg1 state-flags)))
-       (set! (-> arg1 control unknown-time-frame24) (-> pp clock frame-counter))
-       (set! (-> arg1 control unknown-time-frame25) arg0)
+       (set! (-> arg1 control invul2-on-time) (-> pp clock frame-counter))
+       (set! (-> arg1 control invul2-off-time) arg0)
        )
       )
     (modify-collide-as! (-> arg1 control) 2 (collide-spec jak-vulnerable) (collide-spec))
@@ -1843,7 +1836,7 @@
        )
       ((logtest? (-> gp-0 state-flags) (state-flags sf14))
        (let ((s5-0 (new 'static 'vector)))
-         (set! (-> s5-0 quad) (-> gp-0 control unknown-vector15 quad))
+         (set! (-> s5-0 quad) (-> gp-0 control camera-pos quad))
          (set! (-> s5-0 y) (fmax (-> s5-0 y) (-> gp-0 alt-cam-pos y)))
          (add-debug-sphere
            *display-camera-marks*
@@ -1859,11 +1852,11 @@
         (add-debug-sphere
           *display-camera-marks*
           (bucket-id debug-no-zbuf1)
-          (-> gp-0 control unknown-vector15)
+          (-> gp-0 control camera-pos)
           (meters 0.2)
           (new 'static 'rgba :r #xff :a #x80)
           )
-        (-> gp-0 control unknown-vector15)
+        (-> gp-0 control camera-pos)
         )
       )
     )
@@ -1939,10 +1932,10 @@
          )
        )
       ((= arg0 7)
-       (-> v1-0 last-trans-on-surf)
+       (-> v1-0 last-trans-on-ground)
        )
       ((= arg0 8)
-       (-> v1-0 unknown-vector42)
+       (-> v1-0 last-trans-leaving-surf)
        )
       (else
         (-> v1-0 trans)
@@ -1951,7 +1944,7 @@
     )
   )
 
-(defmethod process-focusable-method-23 target ((obj target) (arg0 int))
+(defmethod time-to-apex-or-ground target ((obj target) (arg0 int))
   (let ((v1-0 (-> obj control)))
     (cond
       ((zero? arg0)
@@ -2008,6 +2001,6 @@
   (-> obj water surface-height)
   )
 
-(defmethod process-focusable-method-25 target ((obj target))
+(defmethod get-notice-time target ((obj target))
   (-> obj neck notice-time)
   )
