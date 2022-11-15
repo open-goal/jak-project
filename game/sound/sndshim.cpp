@@ -132,13 +132,28 @@ void snd_PauseAllSoundsInGroup(u8 groups) {
 
 void snd_SetMIDIRegister(s32 sound_handle, u8 reg, u8 value) {
   if (player) {
-    player->set_midi_reg(sound_handle, reg, value);
+    player->set_sound_reg(sound_handle, reg, value);
   }
 }
 
 s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pitch_mod, s32 pitch_bend) {
   if (player) {
     return player->play_sound(bank, sound, vol, pan, pitch_mod, pitch_bend);
+  } else {
+    return 0;
+  }
+}
+
+s32 snd_PlaySoundByNameVolPanPMPB(s32 bank_handle,
+                                  char* bank_name,
+                                  char* sound_name,
+                                  s32 vol,
+                                  s32 pan,
+                                  s32 pitch_mod,
+                                  s32 pitch_bend) {
+  if (player) {
+    return player->play_sound_by_name(bank_handle, bank_name, sound_name, vol, pan, pitch_mod,
+                                      pitch_bend);
   } else {
     return 0;
   }
@@ -205,5 +220,22 @@ void snd_keyOnVoiceRaw(u32 core, u32 voice_id) {
 void snd_keyOffVoiceRaw(u32 core, u32 voice_id) {
   if (voice) {
     voice->key_off();
+  }
+}
+
+s32 snd_GetSoundUserData(s32 block_handle,
+                         char* block_name,
+                         s32 sound_id,
+                         char* sound_name,
+                         SFXUserData* dst) {
+  if (player) {
+    return player->get_sound_user_data(block_handle, block_name, sound_id, sound_name, (snd::SFXUserData*)dst);
+  }
+  return 0;
+}
+
+void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val) {
+  if (player) {
+    player->set_sound_reg(sound_handle, which, val);
   }
 }

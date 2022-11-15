@@ -155,7 +155,7 @@ void player::stop_sound(u32 sound_id) {
   // m_handlers.erase(sound_id);
 }
 
-void player::set_midi_reg(u32 sound_id, u8 reg, u8 value) {
+void player::set_sound_reg(u32 sound_id, u8 reg, u8 value) {
   std::scoped_lock lock(m_ticklock);
   if (m_handlers.find(sound_id) == m_handlers.end()) {
     // fmt::print("set_midi_reg: Handler {} does not exist\n", sound_id);
