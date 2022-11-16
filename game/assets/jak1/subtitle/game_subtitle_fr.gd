@@ -639,7 +639,7 @@
   )
 
 ("FAR-AM02" :hint #x0 (0 "FERMIER" "(MURMURES)"))
-("FAR-AM2A" :hint #x0 (0 "FARMER" "(MURMURES)"))
+("FAR-AM2A" :hint #x0 (0 "FERMIER" "(MURMURES)"))
 ("FAR-LO01" :hint #x0 (0 "FERMIER" "(RONFLEMENTS)"))
 ("FAR-LO1A" :hint #x0 (0 "FERMIER" "(RONFLEMENTS)"))
 ("SAGELP03" :hint #x0 (0 "SAMOS" "CE SONT CES DEUX LA QUI DÉBLOQUENT !"))
