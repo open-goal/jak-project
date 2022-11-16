@@ -192,7 +192,6 @@
 (#x1114 "SVENSKA")
 (#x1115 "DANSK")
 (#x1116 "NORSK")
-(#x115 "FRANÇAIS")
 
 (#x1500 "MODE SPEEDRUN")
 
