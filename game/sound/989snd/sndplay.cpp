@@ -44,7 +44,8 @@ int main(int argc, char* argv[]) {
       if (parts.size() < 2) {
         printf("invalid args\n");
       } else {
-        player.play_sound(bankid, std::atoi(parts[1].c_str()), 0x400, 0, 0, 0);
+        auto id = player.play_sound(bankid, std::atoi(parts[1].c_str()), 0x400, 0, 0, 0);
+        printf("sound handle %d started\n", id);
       }
     }
 
@@ -58,6 +59,15 @@ int main(int argc, char* argv[]) {
           idx++;
           id = player.play_sound(bankid, idx, 0x400, 0, 0, 0);
         }
+      }
+    }
+
+    if (parts[0] == "setreg") {
+      if (parts.size() < 3) {
+        printf("invalid args\n");
+      } else {
+        player.set_sound_reg(std::atoi(parts[1].c_str()), std::atoi(parts[2].c_str()),
+                             std::atoi(parts[3].c_str()));
       }
     }
 
