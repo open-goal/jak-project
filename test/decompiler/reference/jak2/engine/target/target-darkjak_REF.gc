@@ -636,7 +636,7 @@
     (set-setting! 'rapid-tracking #f 0 0)
     ((lambda :behavior target
        ()
-       (set! (-> self control unknown-float29) (* 0.5 (-> self control unknown-float29)))
+       (set! (-> self control bend-target) (* 0.5 (-> self control bend-target)))
        (if (logtest? (water-flags touch-water) (-> self water flags))
            (sound-play "swim-stroke")
            )
@@ -659,7 +659,7 @@
          )
        (target-start-attack)
        (target-danger-set! 'punch #f)
-       (let ((a0-8 (-> self control unknown-impact-control00))
+       (let ((a0-8 (-> self control impact-ctrl))
              (t9-6 (method-of-type impact-control initialize))
              (a1-4 self)
              (v1-33 (ja-group))
@@ -748,13 +748,7 @@
                        )
                      )
                    )
-                 (initialize
-                   (-> self control unknown-impact-control00)
-                   self
-                   22
-                   3276.8
-                   (-> self control root-prim prim-core collide-with)
-                   )
+                 (initialize (-> self control impact-ctrl) self 22 3276.8 (-> self control root-prim prim-core collide-with))
                  (set! (-> arg0 0) (fmax 0.0 (-> arg0 0)))
                  )
                )
@@ -778,7 +772,7 @@
                           (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                           (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
                           )
-                     (>= (- (-> self clock frame-counter) (-> self control unknown-time-frame17)) (seconds 0.04))
+                     (>= (- (-> self clock frame-counter) (-> self control sliding-start-time)) (seconds 0.04))
                      )
                 )
            (go target-falling #f)
@@ -915,14 +909,14 @@
                  )
         (let ((gp-3 (new 'stack-no-clear 'collide-query)))
           (when (and (>= (impact-control-method-11
-                           (-> self control unknown-impact-control00)
+                           (-> self control impact-ctrl)
                            gp-3
                            (the-as process #f)
                            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1)
                            )
                          0.0
                          )
-                     (>= 0.0 (vector-dot (-> gp-3 best-other-tri normal) (-> self control unknown-impact-control00 dir)))
+                     (>= 0.0 (vector-dot (-> gp-3 best-other-tri normal) (-> self control impact-ctrl dir)))
                      )
             (when (= (-> gp-3 best-other-tri pat mode) (pat-mode wall))
               (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -960,7 +954,7 @@
                   (-> self skel effect)
                   'punch
                   -1.0
-                  (the-as int (-> self control unknown-impact-control00 joint))
+                  (the-as int (-> self control impact-ctrl joint))
                   (the-as basic #f)
                   (the-as sound-name t1-3)
                   )
@@ -1654,7 +1648,7 @@
       )
     (while (not (ja-done? 0))
       (compute-alignment! (-> self align))
-      (set! (-> self control unknown-float06) 1.0)
+      (set! (-> self control turn-go-the-long-way) 1.0)
       (set! (-> self darkjak clock-vel) -4.0)
       (set! (-> self darkjak clock-on) #t)
       (align! (-> self align) (align-opts adjust-y-vel) 1.0 1.0 1.0)
@@ -1922,7 +1916,7 @@
     (until (ja-done? 0)
       (ja-blend-eval)
       (compute-alignment! (-> self align))
-      (set! (-> self control unknown-float06) 1.0)
+      (set! (-> self control turn-go-the-long-way) 1.0)
       (set! (-> self darkjak clock-vel) 4.0)
       (suspend)
       (ja :num! (seek!))

@@ -86,9 +86,9 @@
     (enter () _type_ :state 20)
     (idle () _type_ :state 21)
     (exit () _type_ :state 22)
-    (remote-method-23 (_type_) none 23)
-    (remote-method-24 (_type_ vector) float 24)
-    (remote-method-25 (_type_) none 25)
+    (init (_type_) none 23)
+    (get-track-pt-and-scale (_type_ vector) float 24)
+    (post-common (_type_) none 25)
     )
   )
 
@@ -122,7 +122,7 @@
 
 ;; definition for method 24 of type remote
 ;; INFO: Used lq/sq
-(defmethod remote-method-24 remote ((obj remote) (arg0 vector))
+(defmethod get-track-pt-and-scale remote ((obj remote) (arg0 vector))
   (let ((s4-0 (handle->process (-> obj focus handle))))
     (when s4-0
       (set! (-> arg0 quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
@@ -136,7 +136,7 @@
 
 ;; definition for method 25 of type remote
 ;; WARN: Return type mismatch int vs none.
-(defmethod remote-method-25 remote ((obj remote))
+(defmethod post-common remote ((obj remote))
   (with-pp
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -198,7 +198,7 @@
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (set! (-> s5-0 quad) (-> self parent-override 0 trans quad))
-    (let ((f30-0 (remote-method-24 self s5-0)))
+    (let ((f30-0 (get-track-pt-and-scale self s5-0)))
       (let ((a1-2 (new 'stack-no-clear 'vector)))
         (set! (-> a1-2 quad) (-> self parent-override 0 trans quad))
         (vector-lerp! (-> self root trans) a1-2 s5-0 (-> self blend))
@@ -212,15 +212,7 @@
           (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 8) (-> self root trans)) 1.0)
           (new 'static 'vector :y 1.0 :w 1.0)
           )
-        (rotate-toward-orientation!
-          (-> self root)
-          s5-1
-          65536.0
-          5461.3335
-          150
-          0.00000000000000000000000000000000000000000021
-          0.0
-          )
+        (rotate-toward-orientation! (-> self root) s5-1 65536.0 5461.3335 150 150 0.0)
         )
       (when gp-0
         (let* ((gp-1 (-> (the-as process-drawable gp-0) root))
@@ -334,7 +326,7 @@
     (none)
     )
   :post (behavior ()
-    (remote-method-25 self)
+    (post-common self)
     (none)
     )
   )
@@ -371,7 +363,7 @@
 
 ;; definition for method 23 of type remote
 ;; WARN: Return type mismatch remote vs none.
-(defmethod remote-method-23 remote ((obj remote))
+(defmethod init remote ((obj remote))
   (reset-to-collide-spec (-> obj focus) (collide-spec jak player-list))
   (initialize-skeleton
     obj
@@ -459,7 +451,7 @@
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
   (set! (-> self base-trans quad) (-> arg0 quad))
-  (remote-method-23 self)
+  (init self)
   (set! (-> self event-hook) (-> (method-of-object self enter) event))
   (go-virtual enter)
   (none)
@@ -491,7 +483,7 @@
   :flag-assert         #x1c00c00139
   (:methods
     (wait () _type_ :state 26)
-    (judge-method-27 (_type_) none 27)
+    (setup-collision (_type_) none 27)
     )
   )
 
@@ -514,14 +506,14 @@
 
 ;; definition for method 24 of type judge
 ;; INFO: Used lq/sq
-(defmethod remote-method-24 judge ((obj judge) (arg0 vector))
+(defmethod get-track-pt-and-scale judge ((obj judge) (arg0 vector))
   (set! (-> arg0 quad) (-> obj base-trans quad))
   1.0
   )
 
 ;; definition for method 25 of type judge
 ;; WARN: Return type mismatch int vs none.
-(defmethod remote-method-25 judge ((obj judge))
+(defmethod post-common judge ((obj judge))
   (ja-post)
   (if (type? (-> obj root) collide-shape)
       (update-transforms (the-as collide-shape (-> obj root)))
@@ -621,7 +613,7 @@
 
 ;; definition for method 27 of type judge
 ;; WARN: Return type mismatch int vs none.
-(defmethod judge-method-27 judge ((obj judge))
+(defmethod setup-collision judge ((obj judge))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec collectable))
@@ -645,8 +637,8 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! judge ((obj judge) (arg0 entity-actor))
-  (judge-method-27 obj)
-  (remote-method-23 obj)
+  (setup-collision obj)
+  (init obj)
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj root trans y) (+ 4096.0 (-> obj root trans y)))
   (set! (-> obj base-trans quad) (-> obj root trans quad))
@@ -661,8 +653,8 @@
 (defbehavior judge-init-by-other judge ((arg0 vector) (arg1 uint))
   (process-entity-set! self (the-as entity-actor #f))
   (set! (-> self score) arg1)
-  (judge-method-27 self)
-  (remote-method-23 self)
+  (setup-collision self)
+  (init self)
   (vector-identity! (-> self root scale))
   (quaternion-identity! (-> self root quat))
   (set! (-> self root trans quad) (-> arg0 quad))
