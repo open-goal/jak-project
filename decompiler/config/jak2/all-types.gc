@@ -1578,7 +1578,7 @@
     (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion 14)
     (set-roll-to-grav! (_type_ float) quaternion 15)
     (set-roll-to-grav-2! (_type_ float) quaternion 16)
-    (rotate-toward-orientation! (_type_ quaternion float float int float float) quaternion 17)
+    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion 17)
     (set-quaternion! (_type_ quaternion) quaternion 18)
     (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion 19)
     (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion 20)
@@ -16751,7 +16751,7 @@
 
    ;; the desired velocity
    (target-transv               vector                       :inline :offset 496)  ;; logic-target::add-thrust
-   (unknown-vector02            vector                       :inline :offset 512)  ;; logic-target::reset-target-state
+   (bent-gravity-normal         vector                       :inline :offset 512)  ;; logic-target::reset-target-state
 
    ;; the quaternion used for all the control code.
    ;; there is an additional rotation offset applied for certain effects, like the pitch of
@@ -16768,15 +16768,15 @@
    (ctrl-xz-vel                 float                                :offset 564)  ;; logic-target::target-print-stats
 
    (unknown-float003            float                                :offset 568)  ;; (anon-function 22 target-gun)
-   (unknown-float06             float                                :offset 572)  ;; logic-target::do-rotations2
-   (unknown-float07             float                                :offset 576)  ;; logic-target::add-thrust
-   (unknown-time-frame00        time-frame                           :offset 584)  ;; logic-target::do-rotations2
-   (unknown-vector03            vector                       :inline :offset 592)  ;; logic-target::do-rotations2
-   (unknown-quaternion02        quaternion                   :inline :offset 608)  ;; logic-target::flag-setup
-   (unknown-quaternion03        quaternion                   :inline :offset 624)  ;; logic-target::flag-setup
-   (unknown-vector-array00      vector                   128 :inline :offset 640)  ;; logic-target::target-log-trans
-   (unknown-time-frame-array00  time-frame               128         :offset 2688) ;; logic-target::target-log-trans
-   (unknown-word00              int32                                :offset 3712) ;; logic-target::target-log-trans
+   (turn-go-the-long-way        float                                :offset 572)  ;; logic-target::do-rotations2
+   (velocity-after-thrust       float                                :offset 576)  ;; logic-target::add-thrust
+   (turn-lockout-end-time       time-frame                           :offset 584)  ;; logic-target::do-rotations2
+   (turn-to-alt-heading         vector                       :inline :offset 592)  ;; logic-target::do-rotations2
+   (last-transv                 vector                      :inline :offset 608)  ;; logic-target::flag-setup
+   (last-quat-for-control       quaternion                   :inline :offset 624)  ;; logic-target::flag-setup
+   (trans-log-trans             vector                   128 :inline :offset 640)  ;; logic-target::target-log-trans
+   (trans-log-times             time-frame               128         :offset 2688) ;; logic-target::target-log-trans
+   (trans-log-idx               int32                                :offset 3712) ;; logic-target::target-log-trans
 
    ;; offset applied to drawing, separate from collision or anything else
    ;; this should be filled out by the control code.
@@ -16796,34 +16796,40 @@
 
    ;; how much this changed from frame to frame.
    (anim-collide-offset-delta-world  vector                       :inline :offset 3808)
-   (unknown-dynamics00          dynamics                             :offset 3824) ;; logic-target::reset-target-state
+
+   ;; pointer to the *standard-dynamics* to help restore things.
+   (standard-dynamics          dynamics                             :offset 3824) ;; logic-target::reset-target-state
    (mod-surface                surface                              :offset 3828) ;; logic-target::target-print-stats
 
    ;; the "current" surface - interpolating between the surfaces we're standing on
    ;; plus mods.
    (current-surface             surface                              :offset 3832) ;; board-h::want-to-board?
-   (unknown-surface02           surface                              :offset 3836) ;; logic-target::build-conversions
+
+   ;; the previous "surf" (not the interpolated one, the "surf" one)
+   (prev-surf                   surface                              :offset 3836) ;; logic-target::build-conversions
    (time-of-last-surface-change time-frame                           :offset 3840) ;; logic-target::build-conversions
    (cpad                        cpad-info                            :offset 3848) ;; board-h::want-to-board?
-   (unknown-float08             float                                :offset 3852) ;; logic-target::turn-to-vector
-   (unknown-float09             float                                :offset 3856) ;; logic-target::turn-to-vector
-   (unknown-float10             float                                :offset 3860) ;; logic-target::turn-to-vector
-   (unknown-float11             float                                :offset 3864) ;; logic-target::turn-to-vector
+   (turn-to-angle               float                                :offset 3852) ;; logic-target::turn-to-vector
+   (last-turn-to-angle          float                                :offset 3856) ;; logic-target::turn-to-vector
+   (turn-to-magnitude           float                                :offset 3860) ;; logic-target::turn-to-vector
+   (last-turn-to-magnitude      float                                :offset 3864) ;; logic-target::turn-to-vector
 
    ;; unit vector in xz plane. Points from jak to the 'target' point.
    ;; if the user's input is 0, will keep the last value.
    (to-target-pt-xz             vector                       :inline :offset 3872) ;; logic-target::turn-to-vector
-   (unknown-vector09            vector                       :inline :offset 3888) ;; logic-target::turn-to-vector
-   (unknown-vector10            vector                       :inline :offset 3904) ;; logic-target::turn-to-vector
-   (unknown-vector11            vector                       :inline :offset 3920) ;; logic-target::turn-to-vector
+   (last-to-target-pt-xz        vector                       :inline :offset 3888) ;; logic-target::turn-to-vector
+
+   ;; scaled by stick magnitude, in the local normal plane.
+   (turn-to-target              vector                       :inline :offset 3904) ;; logic-target::turn-to-vector
+   (last-turn-to-target         vector                       :inline :offset 3920) ;; logic-target::turn-to-vector
 
    ;; last 7 (8?) turning directions, in control frame.
    (turn-history-ctrl           vector                   7   :inline :offset 3936) ;; logic-target::turn-to-vector
-   (unknown-vector12            vector                       :inline :offset 4064) ;; logic-target::read-pad
-   (unknown-vector13            vector                       :inline :offset 4080) ;; logic-target::read-pad
-   (unknown-float12             float                                :offset 4096) ;; logic-target::read-pad
-   (unknown-float13             float                                :offset 4100) ;; logic-target::read-pad
-   (unknown-dword01             int64                                :offset 4104) ;; logic-target::read-pad
+   (pad-xz-dir                  vector                       :inline :offset 4064) ;; logic-target::read-pad
+   (last-pad-xz-dir             vector                       :inline :offset 4080) ;; logic-target::read-pad
+   (pad-magnitude               float                                :offset 4096) ;; logic-target::read-pad
+   (last-pad-magnitude          float                                :offset 4100) ;; logic-target::read-pad
+   (time-of-last-pad-read       time-frame                           :offset 4104) ;; logic-target::read-pad
 
    ;; rotations from world to control frame and back.
    (w-R-c                       matrix                       :inline :offset 4112) ;; logic-target::build-conversions
@@ -16831,26 +16837,32 @@
 
    ;; rotate from "control frame" to world frame.
    (ctrl-orientation            matrix                       :inline :offset 4240) ;; logic-target::joint-points
-   (unknown-vector14            vector                       :inline :offset 4320) ;; logic-target::pre-collide-setup
+   (pre-collide-local-normal    vector                       :inline :offset 4320) ;; logic-target::pre-collide-setup
 
    ;; position that the camera should track.
    ;; note that there is an alt-cam-pos as well
    (camera-pos                  vector                       :inline :offset 4336) ;; logic-target::reset-target-state
-   (unknown-matrix03            matrix                       :inline :offset 4352) ;; logic-target::read-pad
-   (unknown-dword02             int64                                :offset 4416) ;; logic-target::read-pad
-   (unknown-vector16            vector                       :inline :offset 4432) ;; logic-target::target-real-post
-   (unknown-float14             float                                :offset 4448) ;; logic-target::target-real-post
+   ;; rotate from camera frame to world.
+   (cam-R-w                     matrix                       :inline :offset 4352) ;; logic-target::read-pad
+   ;; wait until this time to start updating cam-R-w
+   (update-cam-R-w-start-time   int64                                :offset 4416) ;; logic-target::read-pad
+   (force-turn-to-direction     vector                       :inline :offset 4432) ;; logic-target::target-real-post
+   (force-turn-to-speed         float                                :offset 4448) ;; logic-target::target-real-post
    (unknown-floatiujh1bnb2n3i1  float                                :offset 4452) ;; target-death::velocity-set-to-target!
-   (unknown-float15             float                                :offset 4456) ;; logic-target::target-real-post
-   (unknown-word01              int32                                :offset 4460) ;; logic-target::joint-points
+   ;; 0 to 1, to override the player's pad input.
+   (force-turn-to-strength      float                                :offset 4456) ;; logic-target::target-real-post
+
+   ;; stupid leftover from jak 1.
+   (tongue-counter              int32                                :offset 4460) ;; logic-target::joint-points
    (collide-extra-velocity      vector                       :inline :offset 4464) ;; logic-target::pre-collide-setup
 
    ;; likely board rail misalignment.
-   (unknown-vector18            vector                       :inline :offset 4480) ;; logic-target::pre-collide-setup
-   (unknown-time-frame03        time-frame                           :offset 4496) ;; logic-target::pre-collide-setup
-   (unknown-time-frame04        time-frame                           :offset 4504) ;; logic-target::pre-collide-setup
-   (unknown-vector19            vector                       :inline :offset 4512) ;; logic-target::build-conversions
-   (unknown-vector20            vector                       :inline :offset 4528) ;; logic-target::build-conversions
+   (additional-decaying-velocity vector                       :inline :offset 4480) ;; logic-target::pre-collide-setup
+   ;; there's a bonus 2 frames after this.
+   (additional-decaying-velocity-end-time   time-frame                           :offset 4496) ;; logic-target::pre-collide-setup
+   (additional-decaying-velocity-decay-start-time        time-frame                           :offset 4504) ;; logic-target::pre-collide-setup
+   (gravity-normal              vector                       :inline :offset 4512) ;; logic-target::build-conversions
+   (last-gravity-normal         vector                       :inline :offset 4528) ;; logic-target::build-conversions
    (last-trans-any-surf         vector                       :inline :offset 4544) ;; logic-target::target-print-stats
    (unknown-float16             float                                :offset 4548) ;; logic-target::target-print-stats
    (ground-contact-normal       vector                       :inline :offset 4560) ;; logic-target::target-update-ik
@@ -16872,7 +16884,7 @@
    (surface-slope-x             float                                :offset 4648) ;; logic-target::target-compute-slopes
    (last-time-on-surface        time-frame                           :offset 4656) ;; board-h::want-to-board?
    (normal-impact-vel           float                                :offset 4664) ;; target-board-anim-trans
-   (unknown-time-frame07        time-frame                           :offset 4672) ;; logic-target::turn-around?
+   (last-time-touching-actor    time-frame                           :offset 4672) ;; logic-target::turn-around?
    (wall-contact-pat            pat-surface                          :offset 4680) ;; logic-target::target-print-stats
    (wall-contact-pt             vector                       :inline :offset 4688) ;; logic-target::add-thrust
    (wall-contact-poly-normal          vector :inline :offset 4704)
@@ -16880,7 +16892,7 @@
    (actor-contact-pt            vector                       :inline :offset 4736) ;; target2::target-bonk-event-handler
    (actor-contact-normal        vector :inline :offset 4752)
    (actor-contact-handle        handle                               :offset 4768) ;; logic-target::reset-target-state
-   (unknown-pat-surface01       pat-surface                          :offset 4776) ;; logic-target::target-print-stats
+   (gspot-pat-surfce            pat-surface                          :offset 4776) ;; logic-target::target-print-stats
    (gspot-slope-z               float                                :offset 4780) ;; logic-target::target-compute-slopes
    (gspot-slope-x               float                                :offset 4784) ;; logic-target::target-compute-slopes
    (ctrl-slope-heading          float                                :offset 4788) ;; logic-target::target-compute-slopes
@@ -16923,7 +16935,8 @@
    ;; number which goes toward 1 as jak is blocked by a wall, and has surface mode air.
    (blocked-in-air-factor       float                                :offset 4996)
 
-   (unknown-time-frame09        time-frame                           :offset 5000) ;; logic-target::add-thrust
+   ;; last time we went from (jumping into wall) -> (jumping, not into wall)
+   (time-of-last-clear-wall-in-jump  time-frame                           :offset 5000) ;; logic-target::add-thrust
    (time-of-last-lc-touch-edge time-frame :offset 5008)
    (collision-spheres           collide-shape-prim-sphere 10         :offset 5016) ;; (method 28 target)
    (unknown-word02              int32                                :offset 5064) ;; (enter target-roll)
@@ -16935,16 +16948,23 @@
    (last-feet-attempt-time      time-frame                           :offset 5104) ;; target-util::can-feet?
    (unknown-time-frame13        time-frame                           :offset 5112) ;; (exit target-slide-down)
    (last-time-of-stuck          time-frame                           :offset 5120) ;; (trans target-stance)
-   (unknown-float28             float                                :offset 5132) ;; logic-target::target-print-stats
-   (unknown-float29             float                                :offset 5136) ;; logic-target::target-print-stats
-   (unknown-float30             float                                :offset 5140) ;; logic-target::target-print-stats
-   (unknown-vector28            vector                       :inline :offset 5152) ;; logic-target::joint-points
+
+   ;; the "bend" rotates the y axis of the control frame to align with the normal
+   ;; of the ground as bend-amount goes from 0 to 1.
+   (bend-amount             float                                :offset 5132) ;; logic-target::target-print-stats
+
+   ;; the target value for bend.
+   (bend-target                 float                                :offset 5136) ;; logic-target::target-print-stats
+
+   ;; how fast the "bend" is applied
+   (bend-speed                  float                                :offset 5140) ;; logic-target::target-print-stats
+   (ctrl-to-head-offset         vector                       :inline :offset 5152) ;; logic-target::joint-points
    ;(unknown-vector29            vector                       :inline :offset 5168) ;; logic-target::joint-points
    (lhand-cspace                cspace                               :offset 5168)
    (rhand-cspace                cspace                               :offset 5172)
    (midpoint-of-hands           vector                       :inline :offset 5184) ;; logic-target::joint-points
-   (unknown-vector31            vector                       :inline :offset 5200) ;; logic-target::joint-points
-   (unknown-cspacei1un23i1            cspace                       :inline :offset 5216) ;; logic-target::joint-points
+   (ctrl-to-hands-offset        vector                       :inline :offset 5200) ;; logic-target::joint-points
+   (sidekick-root               cspace                       :inline :offset 5216) ;; logic-target::joint-points
   ;;  (unknown-vector33            vector                       :inline :offset 5232) ;; logic-target::joint-points
 
    ;; 'duck 'normal 'gun
@@ -16957,26 +16977,39 @@
 
    ;; similar to above, but only used for duck, gun, and tube transitions.
    (duck-gun-tube-transision    float                                :offset 5256) ;; logic-target::joint-points
-   (unknown-vector-array02      vector                    15 :inline :offset 5264) ;; logic-target::turn-around?
-   (unknown-float32             float                                :offset 5520) ;; logic-target::turn-around?
-   (unknown-word03              int32                                :offset 5524) ;; logic-target::turn-around?
-   (unknown-float33             float                                :offset 5528) ;; logic-target::target-compute-pole
+
+   ;; w is ctrl-xz-vel
+   (transv-history              vector                    15 :inline :offset 5264) ;; logic-target::turn-around?
+   ;; in the above history
+   (average-xz-vel              float                                :offset 5520) ;; logic-target::turn-around?
+   ;; index of the above transv-history with the faster xz velocity in control frame.
+   (idx-of-fastest-xz-vel       int32                                :offset 5524) ;; logic-target::turn-around?
+
+   ;; distance that goes to 0 as jak is pulled toward an edge grab or pole swing
+   ;; measued as hand to edge distance or similar.
+   (hand-to-edge-dist           float                                :offset 5528) ;; logic-target::target-compute-pole
    (unknown-symbol000           symbol                               :offset 5532) ;; (code target-edge-grab)
    (edge-grab-edge-dir          vector                       :inline :offset 5536) ;; logic-target::target-compute-pole
    (unknown-vector35            vector                       :inline :offset 5552) ;; target-board::target-board-compute-edge
 
    ;; go along this direction to cross the edge. normal to gravity and edge dir.
    (edge-grab-across-edge-dir   vector                       :inline :offset 5568) ;; logic-target::target-compute-pole
-   (unknown-time-frame15        time-frame                           :offset 5584) ;; logic-target::target-compute-edge
-   (unknown-time-frame16        time-frame                           :offset 5592) ;; logic-target::target-compute-edge
+   (last-successful-compute-edge-time time-frame                           :offset 5584) ;; logic-target::target-compute-edge
+   (edge-grab-start-time        time-frame                           :offset 5592) ;; logic-target::target-compute-edge
    (unknown-handle000           handle                               :offset 5600) ;; (code target-edge-grab)
-   (unknown-handle01            handle                               :offset 5608) ;; logic-target::reset-target-state
+
+   ;; the thing that does clone-anim on target.
+   (anim-handle                 handle                               :offset 5608) ;; logic-target::reset-target-state
    (unknown-word04              uint32                               :offset 5616)
    (unknown-spool-anim00        spool-anim                           :offset 5616) ;; (code target-board-get-on)
    (unknown-word05              int32                                :offset 5616)
    (unknown-symbol01            symbol                               :offset 5616)
    (unknown-float34             float                                :offset 5616)
-   (unknown-symbol02            float                                :offset 5620) ;; logic-target::target-compute-pole
+
+   ;; awful thing, it's used as a boolean flag for remembering if we've moved
+   ;; to the pole during jumping on a pole, and also the max height for the current jump
+   (did-move-to-pole-or-max-jump-height float                        :offset 5620) ;; logic-target::target-compute-pole
+
    (unknown-symbol03            float                                :offset 5624) ;; (trans target-duck-high-jump-jump)
    (unknown-float35             float                                :offset 5628) ;; (trans target-high-jump)
    (unknown-float36             float                                :offset 5632) ;; (trans target-board-flip)
@@ -16985,16 +17018,19 @@
    (unknown-vector38            vector                       :inline :offset 5664) ;; (trans target-board-jump-kick)
    (unknown-vector39            vector                       :inline :offset 5680) ;; (code target-board-pegasus)
    (unknown-vector40            vector                       :inline :offset 5696) ;; (code target-board-pegasus)
-   (unknown-time-frame17        time-frame                           :offset 5712) ;; (trans target-board-halfpipe)
+   (sliding-start-time          time-frame                           :offset 5712) ;; (trans target-board-halfpipe)
    (unknown-time-frame18        time-frame                           :offset 5720) ;; (code target-running-attack)
    (unknown-sound-id00          sound-id                             :offset 5776) ;; (enter target-board-flip)
    (unknown-handle02            handle                               :offset 5792) ;; (event target-board-grenade) ;; TODO - make sure this is a handle
-   (unknown-impact-control00    impact-control               :inline :offset 5824) ;; logic-target::joint-points
+   (impact-ctrl                 impact-control               :inline :offset 5824) ;; logic-target::joint-points
    (unknown-word06              int32                                :offset 5832) ;; (code target-running-attack)
    (unknown-vector41            vector                       :inline :offset 5888) ;; (code target-running-attack)
    (last-trans-leaving-surf     vector                       :inline :offset 5904) ;; logic-target::target-print-stats
    (unknown-float38             float                                :offset 5908) ;; logic-target::target-print-stats
-   (unknown-vector43            vector                       :inline :offset 5920) ;; logic-target::target-print-stats
+
+   ;; same xz as trans, at the max height of the current jump
+   ;; gets reset to the current height when we leave a surface.
+   (highest-jump-mark      vector                                    :inline :offset 5920) ;; logic-target::target-print-stats
    (unknown-float39             float                                :offset 5924) ;; logic-target::target-print-stats
    (unknown-time-frame19        time-frame                           :offset 5936) ;; target::init-var-jump
    (time-of-last-debug-float    time-frame                           :offset 5944) ;; board-h::want-to-board?
@@ -17013,45 +17049,49 @@
    (unknown-dword08             int64                                :offset 6104) ;; (enter target-double-jump)
    (unknown-dword09             int64                                :offset 6112) ;; (enter target-double-jump)
    (unknown-dword10             int64                                :offset 6120) ;; (enter target-double-jump)
-   (unknown-symbol06            symbol                               :offset 6144) ;; logic-target::post-flag-setup
+
+   ;; unused, set to #f, checked for 'launch
+   (jump-kind                   symbol                               :offset 6144) ;; logic-target::post-flag-setup
    (unknown-quaternion04        quaternion                   :inline :offset 6160) ;; (enter target-attack)
    (unknown-sound-id01          sound-id                             :offset 6176) ;; (code target-attack)
    (unknown-float41             float                                :offset 6180) ;; (enter target-attack)
    (unknown-float42             float                                :offset 6184) ;; (enter target-attack)
    (history-idx                 uint16                               :offset 6188) ;; logic-target::target-no-move-post
    (history-length              uint16                               :offset 6190) ;; logic-target::draw-history
-   (unknown-word07              int32                                :offset 6192) ;; logic-target::target-real-post
+   (remaining-ctrl-iterations   int32                                :offset 6192) ;; logic-target::target-real-post
    (invul1-on-time              time-frame                           :offset 6200) ;; logic-target::post-flag-setup
    (invul1-off-time             time-frame                           :offset 6208) ;; logic-target::post-flag-setup
    (invul2-on-time              time-frame                           :offset 6216) ;; logic-target::post-flag-setup
    (invul2-off-time             time-frame                           :offset 6224) ;; logic-target::post-flag-setup
    (unknown-float43             float                                :offset 6232) ;; (event target-flop)
    (unknown-float001            float                                :offset 6236) ;; target-swim::target-swim-tilt
-   (unknown-sound-id02          sound-id                             :offset 6240) ;; (method 28 target)
-   (unknown-sound-id03          sound-id                             :offset 6244) ;; (method 28 target)
+   (board-jump-and-swim-sound   sound-id                             :offset 6240) ;; (method 28 target)
+   (bubbles-sound               sound-id                             :offset 6244) ;; (method 28 target)
    (unknown-time-frame26        time-frame                           :offset 6248) ;; logic-target::target-calc-camera-pos
    (unknown-time-frame27        time-frame                           :offset 6256) ;; logic-target::target-calc-camera-pos
-   (unknown-dword11             int64                                :offset 6264) ;; logic-target::reset-target-state
+
+   ;; possibly unused timeout from jak 1 for yellow eco/triangle zoom in mode thing.
+   (yellow-eco-last-use-time    int64                                :offset 6264) ;; logic-target::reset-target-state
 
    ;; the xz velocity from align.
    (align-xz-vel                vector                       :inline :offset 6272) ;; (code target-roll-flip)
    (zx-vel-frac                 float                                :offset 6288) ;; (code target-roll-flip)
    (unknown-sound-id04          sound-id                             :offset 6292) ;; (method 28 target)
    (unknown-float45             float                                :offset 6296) ;; powerups::target-powerup-process
-   (unknown-word08              int32                                :offset 6300) ;; (method 28 target)
-   (default-collide-as          collide-spec                         :offset 6304) ;; (method 28 target)
-   (unknown-word09              int32                                :offset 6308) ;; (method 28 target)
-   (default-collide-with        collide-spec                         :offset 6312) ;; (method 28 target)
+   (default-collide-as-all      collide-spec                         :offset 6300) ;; (method 28 target)
+   (default-collide-as-fgnd     collide-spec                         :offset 6304) ;; (method 28 target)
+   (default-collide-with-all    collide-spec                         :offset 6308) ;; (method 28 target)
+   (default-collide-with-fgnd   collide-spec                         :offset 6312) ;; (method 28 target)
    (time-of-last-zero-input     time-frame                           :offset 6320) ;; logic-target::flag-setup
-   (unknown-time-frame29        time-frame                           :offset 6328) ;; logic-target::flag-setup
-   (unknown-dword12             int64                                :offset 6336) ;; logic-target::flag-setup
+   (time-of-last-nonzero-input  time-frame                           :offset 6328) ;; logic-target::flag-setup
+   (time-between-zero-inputs    time-frame                                :offset 6336) ;; logic-target::flag-setup
 
    ;; when r2 was pushed to cancel out damage.
    ;; used to prevent this from getting mixed up with trying to get on/off jetboard.
    (time-of-last-debug-heal     time-frame                           :offset 6368) ;; board-h::want-to-board?
-   (unknown-quaternion05        quaternion                   :inline :offset 6384) ;; logic-target::flag-setup
-   (unknown-time-frame31        time-frame                           :offset 6400) ;; logic-target::wall-hide?
-   (unknown-time-frame32        time-frame                           :offset 6408) ;; logic-target::wall-hide?
+   (last-nonzero-input-dir-targ quaternion                   :inline :offset 6384) ;; logic-target::flag-setup
+   (time-of-last-wall-hide-first-check-pass time-frame                           :offset 6400) ;; logic-target::wall-hide?
+   (time-of-first-wall-hide-first-check-pass        time-frame                           :offset 6408) ;; logic-target::wall-hide?
    (pad                         uint8                                :offset #x190f)
    )
   :flag-assert #x4400001910
@@ -28508,9 +28548,9 @@
     (enter () _type_ :state 20)
     (idle () _type_ :state 21)
     (exit () _type_ :state 22)
-    (remote-method-23 (_type_) none 23)
-    (remote-method-24 (_type_ vector) float 24)
-    (remote-method-25 (_type_) none 25)
+    (init (_type_) none 23)
+    (get-track-pt-and-scale (_type_ vector) float 24)
+    (post-common (_type_) none 25)
     )
   )
 
@@ -28535,7 +28575,7 @@
   :flag-assert         #x1c00c00139
   (:methods
     (wait () _type_ :state 26)
-    (judge-method-27 (_type_) none 27)
+    (setup-collision (_type_) none 27)
     )
   )
 
