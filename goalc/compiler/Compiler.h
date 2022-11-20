@@ -631,6 +631,7 @@ class Compiler {
 
   // Debug
   Val* compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dbg_and_continue(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
