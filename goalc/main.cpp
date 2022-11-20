@@ -6,7 +6,6 @@
 #include "common/nrepl/ReplServer.h"
 #include "common/util/FileUtil.h"
 #include "common/util/diff.h"
-#include "common/util/json_util.h"
 #include "common/versions.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -71,7 +70,7 @@ int main(int argc, char** argv) {
   }
 
   std::vector<std::string> user_startup_commands = {};
-  std::optional<nlohmann::json> repl_config = {};
+  std::optional<std::string> repl_config = {};
 
   if (auto_find_user) {
     username = "#f";
@@ -105,8 +104,7 @@ int main(int argc, char** argv) {
         auto repl_config_path =
             file_util::get_file_path({"goal_src", "user", username, "repl-config.json"});
         if (file_util::file_exists(repl_config_path)) {
-          auto data = file_util::read_text_file(repl_config_path);
-          repl_config = parse_commented_json(data, repl_config_path);
+          repl_config = file_util::read_text_file(repl_config_path);
         }
       }
     } catch (std::exception& e) {
