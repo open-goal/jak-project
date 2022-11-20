@@ -120,6 +120,7 @@
 
 (defun set-master-mode ((arg0 symbol))
   "Change the master mode, updating pause masks in the kernel/sound system as needed."
+  (format #t "hello world ~A" arg0)
   (when (!= arg0 *master-mode*)
     (set! *last-master-mode* *master-mode*)
     (set! *master-mode* arg0)
@@ -180,6 +181,9 @@
 
 (defun pause-allowed? ()
   "Are you allowed to pause?"
+  ;; TODO - a temporary hack to make these conditions pass, i think this is
+  ;; managed by the `fade-in` script normally?
+  (set! (-> *setting-control* user-current bg-a) 0.0)
   (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
            (!= (-> *setting-control* user-current bg-a) 0.0)
            (!= (-> *setting-control* user-current bg-a-force) 0.0)
@@ -196,6 +200,7 @@
 (defun toggle-pause ()
   "Update the current master mode because a pause has been requested.
    This can reject the transition, or decide to go to any mode."
+  (format #t "toggle-pause!")
   (case *master-mode*
     (('game)
      (set-master-mode

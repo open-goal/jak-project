@@ -285,7 +285,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     ASSERT(false);
   }
   if (state.use_uv) {
-    ASSERT(false);
+    lg::warn("UV Reg bypassed in DirectRenderer!");
+    // ASSERT(false);
   }
   if (state.ctxt) {
     ASSERT(false);
@@ -580,9 +581,13 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
               break;
+            case GifTag::RegisterDescriptor::UV:
+              lg::warn("UV Register usage not supported yet, but bypassed!");
+              break;
             default:
               ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
                                             reg_descriptor_name(reg_desc[reg])));
+              break;
           }
           offset += 16;  // PACKED = quadwords
         }
