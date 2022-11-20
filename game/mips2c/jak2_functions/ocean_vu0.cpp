@@ -12,7 +12,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->mtc1(f0, a2);                                  // mtc1 f0, a2
   c->cvtws(f0, f0);                                 // cvt.w.s f0, f0
   c->mfc1(t1, f0);                                  // mfc1 t1, f0
@@ -198,7 +197,6 @@ namespace method_15_ocean {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->mov64(v1, a1);                                 // or v1, a1, r0
   c->mov64(a0, a2);                                 // or a0, a2, r0
@@ -511,7 +509,6 @@ block_5:
     goto block_13;
   }
 
-block_7:
   c->lui(a0, 16288);                                // lui a0, 16288
   c->mtc1(f0, a0);                                  // mtc1 f0, a0
   c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
@@ -528,7 +525,6 @@ block_9:
     goto block_13;
   }
 
-block_11:
   c->lui(a0, 16288);                                // lui a0, 16288
   c->mtc1(f0, a0);                                  // mtc1 f0, a0
   c->lwc1(f1, 8, v1);                               // lwc1 f1, 8(v1)

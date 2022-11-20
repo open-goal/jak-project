@@ -38,7 +38,7 @@ class GLDisplay : public GfxDisplay {
   int get_screen_rate(int vmode_idx) override;
   int get_screen_vmode_count() override;
   int get_monitor_count() override;
-  std::tuple<double, double> get_mouse_pos();
+  std::tuple<double, double> get_mouse_pos() override;
   void set_size(int w, int h) override;
   void update_fullscreen(GfxDisplayMode mode, int screen) override;
   void render() override;

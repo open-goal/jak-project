@@ -184,7 +184,6 @@ int sql_query_sync(Ptr<String> string_in) {
             break;
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
-          /*
           iVar2 = 99999;
           do {
             bVar1 = iVar2 != 0;

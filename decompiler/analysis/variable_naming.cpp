@@ -730,8 +730,14 @@ void merge_infos(
  * the none variables
  */
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
-  bool event_handler_hack =
-      function.ir2.env.version > GameVersion::Jak1 && function.guessed_name.is_event_handler();
+  bool event_handler_hack = false;
+
+  if (function.ir2.env.version == GameVersion::Jak2) {
+    event_handler_hack = function.guessed_name.is_event_handler() ||
+                         function.guessed_name.to_string() == "target-generic-event-handler" ||
+                         function.guessed_name.to_string() == "target-standard-event-handler";
+  }
+
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
