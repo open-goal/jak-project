@@ -23,8 +23,6 @@ void setup_logging() {
 }
 
 int main(int argc, char** argv) {
-  SQLite::Database db("example.db3");
-
   bool auto_listen = false;
   bool auto_debug = false;
   bool auto_find_user = false;

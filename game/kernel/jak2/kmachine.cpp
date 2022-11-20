@@ -663,7 +663,7 @@ void initialize_sql_db() {
 
   try {
     sql_db = SQLite::Database("C:\\Users\\xtvas\\Repos\\opengoal\\jak-project\\jak2-editor.db",
-                     SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+                              SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
     SQLite::Transaction tx(sql_db.value());
     sql_db->exec(
         "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
