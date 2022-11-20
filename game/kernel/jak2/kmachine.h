@@ -34,13 +34,17 @@ struct MouseInfo {
   s8 deltay;
   //  (wheel uint8 :offset-assert 24)
   u8 wheel;
+  u8 pad1[3];
   //  (change-time time-frame :offset-assert 32)
   //  (button0-abs uint32 3 :offset-assert 40)
   //  (button0-shadow-abs uint32 1 :offset-assert 52)
   //  (button0-rel uint32 3 :offset-assert 56)
   //  (pos vector 2 :inline :offset-assert 80)
+  u32 pad2[13];
   //  (posx float :offset 80)
+  float posx;
   //  (posy float :offset 84)
+  float posy;
   //  (oldposx float :offset 96 :do-not-decompile)
   //  (oldposy float :offset 100)
   //  (speedx float :offset 92)
