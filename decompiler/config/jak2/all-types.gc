@@ -15012,7 +15012,7 @@
   ;; Failed to read fields.
   (:methods
     (attack-info-method-9 (_type_ attack-info process-drawable process-drawable) none 9)
-    (attack-info-method-10 (_type_ object process-drawable process touching-shapes-entry) attack-info 10)
+    (compute-intersect-info (_type_ object process-drawable process touching-shapes-entry) attack-info 10)
     (combine! (_type_ attack-info process-drawable) attack-info 11)
     )
   )
@@ -17037,12 +17037,12 @@
    ;; eg: 'flop, 'punch
    (danger-mode                 symbol                               :offset 5984) ;; target-board-spin-check
    (target-attack-id            uint32                               :offset 5988) ;; target-board::target-board-handler
-   (unknown-attack-id00         int32                                :offset 5992) ;; target-handler::target-attacked
+   (attacked-by-id              int32                                :offset 5992) ;; target-handler::target-attacked
    ;; how big to make the darkjak bomb collision sphere.
    (bomb-scale                  float                                :offset 5996) ;; target-util::target-danger-set!
    (attack-count                uint64                               :offset 6000) ;; target-board::target-board-handler
-   (unknown-dword06             handle                               :offset 6008) ;; (method 28 target)
-   (unknown-time-frame000       time-frame                           :offset 6016) ;; target-handler::target-send-attack
+   (send-attack-dest            handle                               :offset 6008) ;; (method 28 target)
+   (send-attack-time            time-frame                           :offset 6016) ;; target-handler::target-send-attack
    (unknown-combo-tracker00     combo-tracker                :inline :offset 6032) ;; (enter target-running-attack)
    (unknown-time-frame21        time-frame                           :offset 6072) ;; (code target-running-attack)
    (unknown-dword07             int64                                :offset 6096) ;; (enter target-double-jump)
@@ -17571,9 +17571,9 @@
   (:methods
     (new (symbol type process-drawable) _type_ 0)
     (effect-control-method-9 (_type_) none 9) ;; (TODO-RENAME-9 (_type_) none 9)
-    (effect-control-method-10 () none 10) ;; (dummy-10 (_type_ symbol float int) object 10)
+    (do-effect (_type_ symbol float int) none 10) ;; (dummy-10 (_type_ symbol float int) object 10)
     (effect-control-method-11 () none 11) ;; (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
-    (effect-control-method-12 (_type_ symbol float int basic sound-name) int 12) ;; (dummy-12 (_type_ symbol float int basic sound-name) int 12)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int 12) ;; (dummy-12 (_type_ symbol float int basic sound-name) int 12)
     (set-channel-offset! (_type_ int) none 13)
     (effect-control-method-14 () none 14) ;; (TODO-RENAME-14 (_type_ float float float) none 14)
     )
@@ -18060,6 +18060,10 @@
     (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
     (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
     target-indax-start
+    (target-racing-start handle)
+    (target-flut-start handle)
+    (target-tube-start handle)
+
     )
   )
 
@@ -28729,8 +28733,8 @@
 
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern attack-mode-is-invinc (function symbol symbol))
-(define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
-(define-extern target-send-attack (function process uint uint int int uint symbol :behavior target))
+(define-extern target-attacked (function symbol attack-info process touching-shapes-entry (state symbol attack-info target) object :behavior target))
+(define-extern target-send-attack (function process symbol touching-shapes-entry int int uint symbol :behavior target))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target)) ;; (function process int symbol event-message-block object :behavior target)
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
@@ -34685,708 +34689,6 @@
 (define-extern *ocean-map-palace* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-h                         ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(deftype race-turbo-pad (structure)
-  ((position vector :inline :offset-assert 0)
-   (handle   uint64         :offset-assert 16)
-   )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
-  )
-
-(deftype race-decision-point (structure)
-  ((pos           float  :offset-assert 0)
-   (decision-type uint8  :offset-assert 4)
-   (shortcuts     uint8  :offset-assert 5)
-   (safe-paths    uint8  :offset-assert 6)
-   )
-  :method-count-assert 9
-  :size-assert         #x7
-  :flag-assert         #x900000007
-  )
-
-(deftype race-racer-info (structure)
-  ((rider       uint8  :offset-assert 0)
-   (vehicle     uint8  :offset-assert 1)
-   (flags       uint8  :offset-assert 2)
-   (seek-offset int8   :offset-assert 3)
-   )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
-  )
-
-(deftype race-info (basic)
-  ((race-mesh-name           string          :offset-assert 4)
-   (path-group-name          string          :offset-assert 8)
-   (task-node                uint16         :offset-assert 12)
-   (mesh                     basic          :offset-assert 16)
-   (ai-min-speed-factor      float          :offset-assert 20)
-   (ai-max-speed-factor      float          :offset-assert 24)
-   (ai-spread-factor         float          :offset-assert 28)
-   (start-sphere             sphere :inline :offset-assert 32)
-   (start-dir                vector :inline :offset-assert 48)
-   (finish-sphere            sphere :inline :offset-assert 64)
-   (finish-dir               vector :inline :offset-assert 80)
-   (player-intro-pos         vector :inline :offset-assert 96)
-   (flags                    uint8          :offset-assert 112)
-   (score                    uint8          :offset-assert 113)
-   (lap-count                int8           :offset-assert 114)
-   (racer-count              int8           :offset-assert 115)
-   (turbo-pad-count          int8           :offset-assert 116)
-   (map-index                int8           :offset-assert 117)
-   (decision-point-count     int8           :offset-assert 118)
-   (safe-paths               uint8          :offset-assert 119)
-   (turbo-pad-array          (inline-array race-turbo-pad)         :offset-assert 120)
-   (racer-array              (inline-array race-racer-info)         :offset-assert 124)
-   (decision-point-array     (inline-array race-decision-point)         :offset-assert 128)
-   (level                    symbol          :offset-assert 132)
-   (borrow-level             symbol          :offset-assert 136)
-   (borrow                   pair          :offset-assert 140)
-   (manager                  uint64         :offset-assert 144)
-   (manager-handle-init-hack basic          :offset 144)
-   (hatch-actor-name         string          :offset-assert 152)
-   (countdown-scene          basic          :offset-assert 156)
-   (complete-continue        basic          :offset-assert 160)
-   (start-camera             string          :offset-assert 164)
-   (go-speech                uint16         :offset-assert 168)
-   )
-  :method-count-assert 10
-  :size-assert         #xaa
-  :flag-assert         #xa000000aa
-  (:methods
-    (race-info-method-9 (_type_) none 9)
-    )
-  )
-
-(deftype racer-state (structure)
-  ((position          vector  :inline :offset-assert 0)
-   (racer             uint64          :offset-assert 16)
-   (flags             uint8           :offset-assert 24)
-   (rank              int8            :offset-assert 25)
-   (finish-count      int8            :offset-assert 26)
-   (lap-count         int8            :offset-assert 27)
-   (lap-quadrant      int8            :offset-assert 28)
-   (rider             uint8           :offset-assert 29)
-   (lap-distance      float           :offset-assert 32)
-   (lap-distance-prev float           :offset-assert 36)
-   (pos               float           :offset-assert 40)
-   (target-pos-offset float           :offset-assert 44)
-   (speed-factor      float           :offset-assert 48)
-   (finish-time       uint32          :offset-assert 52)
-   (lap-start         uint32          :offset-assert 56)
-   (best-lap-time     uint32          :offset-assert 60)
-   (lap-time-array    float   5       :offset-assert 64) ;; kinda a guess, too small to be time-frames
-   (start-position    vector  :inline :offset-assert 96)
-   )
-  :method-count-assert 14
-  :size-assert         #x70
-  :flag-assert         #xe00000070
-  (:methods
-    (racer-state-method-9 () none 9)
-    (racer-state-method-10 () none 10)
-    (racer-state-method-11 () none 11)
-    (racer-state-method-12 () none 12)
-    (racer-state-method-13 () none 13)
-    )
-  )
-
-(deftype race-state (structure)
-  ((info                 basic               :offset-assert 0)
-   (flags                uint8               :offset-assert 4)
-   (state                uint8               :offset-assert 5)
-   (racer-count          int8                :offset-assert 6)
-   (finished-count       int8                :offset-assert 7)
-   (i-player             int8                :offset-assert 8)
-   (i-countdown          int8                :offset-assert 9)
-   (manager              uint64              :offset-assert 16)
-   (scene-player         uint64              :offset-assert 24)
-   (race-signal          uint64              :offset-assert 32)
-   (arrow                uint64              :offset-assert 40)
-   (hud-timer            uint64              :offset-assert 48)
-   (hud-lap-counter      uint64              :offset-assert 56)
-   (hud-turbo-counter    uint64              :offset-assert 64)
-   (hud-position         uint64              :offset-assert 72)
-   (current-time         uint32              :offset-assert 80)
-   (countdown-start-time uint32              :offset-assert 84)
-   (race-start-time      uint32              :offset-assert 88)
-   (rankings             int8     10      :offset-assert 92) ;; weird size
-   (target-pos           float               :offset-assert 104)
-   (suck-factor          float               :offset-assert 108)
-   (racer-array          racer-state     10      :inline :offset-assert 112)
-   (player-intro-curve   cubic-curve :inline :offset-assert 1232)
-   )
-  :method-count-assert 19
-  :size-assert         #x510
-  :flag-assert         #x1300000510
-  (:methods
-    (race-state-method-9 () none 9)
-    (race-state-method-10 () none 10)
-    (race-state-method-11 () none 11)
-    (race-state-method-12 () none 12)
-    (race-state-method-13 () none 13)
-    (race-state-method-14 () none 14)
-    (race-state-method-15 () none 15)
-    (race-state-method-16 () none 16)
-    (race-state-method-17 () none 17)
-    (race-state-method-18 () none 18)
-    )
-  )
-
-(deftype race-manager (process)
-  ((race-state           race-state  :offset-assert 128)
-   (state-time           time-frame      :offset-assert 136)
-   (player-on-track-time time-frame      :offset-assert 144)
-   (message-id           uint32      :offset-assert 152)
-   (finish-sound-id      uint32      :offset-assert 156)
-   )
-  :method-count-assert 28
-  :size-assert         #xa0
-  :flag-assert         #x1c002000a0
-  (:methods
-    (idle () _type_ :state 14)
-    (active () _type_ :state 15)
-    (fail () _type_ :state 16)
-    (win () _type_ :state 17)
-    (lose () _type_ :state 18)
-    (die () _type_ :state 19)
-    (race-manager-method-20 () none 20)
-    (race-manager-method-21 () none 21)
-    (race-manager-method-22 () none 22)
-    (race-manager-method-23 () none 23)
-    (race-manager-method-24 () none 24)
-    (race-manager-method-25 () none 25)
-    (race-manager-method-26 () none 26)
-    (race-manager-method-27 () none 27)
-    )
-  )
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-mesh                      ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype race-mesh-hash-search (structure)
-  ((best-dist             float                  :offset-assert 0)
-   (debug-cells-searched  int32                  :offset-assert 4)
-   (debug-slices-searched int32                  :offset-assert 8)
-   (bounds                bounding-box4w :inline :offset-assert 16)
-   (cell-quads            UNKNOWN        2       :offset-assert 48)
-   (slice-quads           UNKNOWN        4       :offset-assert 80)
-   (cell-bits             UNKNOWN        2       :offset-assert 48)
-   (slice-bits            UNKNOWN        2       :offset-assert 80)
-   )
-  :method-count-assert 9
-  :size-assert         #x90
-  :flag-assert         #x900000090
-  )
-|#
-
-#|
-(deftype race-mesh-slice-query (structure)
-  ((slice-id      int16           :offset-assert 0)
-   (lap-dist      float           :offset-assert 4)
-   (pt-on-slice   vector  :inline :offset-assert 16)
-   (slice-corners UNKNOWN 4       :offset-assert 32)
-   (search-sphere sphere  :inline :offset-assert 96)
-   )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
-  )
-|#
-
-#|
-(deftype race-path-edge-info (structure)
-  ((sample-t float  :offset-assert 0)
-   )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
-  )
-|#
-
-#|
-(deftype race-path-sample (structure)
-  ((bytes    UNKNOWN    32      :offset-assert 0)
-   (pos      vector     :inline :offset-assert 0)
-   (quat     quaternion :inline :offset-assert 16)
-   (stick-x  int8               :offset-assert 12)
-   (stick-y  int8               :offset-assert 13)
-   (throttle uint8              :offset-assert 14)
-   (flags    uint8              :offset-assert 15)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
-|#
-
-#|
-(deftype race-path (structure)
-  ((sample-count uint16  :offset-assert 0)
-   (record-id    int8    :offset-assert 2)
-   (pad          uint8   :offset-assert 3)
-   (samples      uint32  :offset-assert 4)
-   (edge-infos   uint32  :offset-assert 8)
-   )
-  :method-count-assert 13
-  :size-assert         #xc
-  :flag-assert         #xd0000000c
-  (:methods
-    (race-path-method-9 () none 9)
-    (race-path-method-10 () none 10)
-    (race-path-method-11 () none 11)
-    (race-path-method-12 () none 12)
-    )
-  )
-|#
-
-#|
-(deftype race-path-group (structure)
-  ((name       basic     :offset-assert 0)
-   (path-count int8      :offset-assert 4)
-   (pad        UNKNOWN 3 :offset-assert 5)
-   (paths      uint32    :offset-assert 8)
-   )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
-  )
-|#
-
-#|
-(deftype race-mesh-edge (structure)
-  ((left     vector :inline :offset-assert 0)
-   (right    vector :inline :offset-assert 16)
-   (lap-dist float          :offset-assert 12)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
-|#
-
-#|
-(deftype race-mesh-slice (structure)
-  ((edge-index-array UNKNOWN 2 :offset-assert 0)
-   (start-edge       int16     :offset-assert 0)
-   (end-edge         int16     :offset-assert 2)
-   )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
-  )
-|#
-
-#|
-(deftype race-mesh-hash-cell (structure)
-  ((first-slice int16  :offset-assert 0)
-   (slice-count uint8  :offset-assert 2)
-   (pad         uint8  :offset-assert 3)
-   )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
-  )
-|#
-
-#|
-(deftype race-mesh-hash (structure)
-  ((cells-wide  int8           :offset-assert 0)
-   (cells-tall  int8           :offset-assert 1)
-   (cell-length float          :offset-assert 4)
-   (cells       uint32         :offset-assert 8)
-   (slice-table uint32         :offset-assert 12)
-   (origin      vector :inline :offset-assert 16)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
-|#
-
-#|
-(deftype race-mesh (basic)
-  ((version          uint8            :offset-assert 4)
-   (path-group-count uint8            :offset-assert 5)
-   (flags            uint8            :offset-assert 6)
-   (pad              UNKNOWN        1 :offset-assert 7)
-   (slice-count      int16            :offset-assert 8)
-   (edge-count       int16            :offset-assert 10)
-   (slices           uint32           :offset-assert 12)
-   (edges            uint32           :offset-assert 16)
-   (hash             race-mesh-hash   :offset-assert 20)
-   (path-groups      uint32           :offset-assert 24)
-   )
-  :method-count-assert 20
-  :size-assert         #x1c
-  :flag-assert         #x140000001c
-  (:methods
-    (race-mesh-method-9 () none 9)
-    (race-mesh-method-10 () none 10)
-    (race-mesh-method-11 () none 11)
-    (race-mesh-method-12 () none 12)
-    (race-mesh-method-13 () none 13)
-    (race-mesh-method-14 () none 14)
-    (race-mesh-method-15 () none 15)
-    (race-mesh-method-16 () none 16)
-    (race-mesh-method-17 () none 17)
-    (race-mesh-method-18 () none 18)
-    (race-mesh-method-19 () none 19)
-    )
-  )
-|#
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-part                      ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-obs                       ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype race-signal-banner (process-drawable)
-  ()
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    )
-  )
-|#
-
-#|
-(deftype race-signal (process-drawable)
-  ((pos           vector      :inline :offset-assert 204)
-   (y-offset      float               :offset-assert 220)
-   (dest-y-offset float               :offset-assert 224)
-   (bob-time      time-frame              :offset-assert 228)
-   (start-time    time-frame              :offset-assert 236)
-   (banner        uint64              :offset-assert 244)
-   (curve         cubic-curve :inline :offset-assert 252)
-   )
-  :method-count-assert 30
-  :size-assert         #x140
-  :flag-assert         #x1e00c00140
-  (:methods
-    (spawn-banner () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (count-3 () _type_ :state 22)
-    (count-2 () _type_ :state 23)
-    (count-1 () _type_ :state 24)
-    (count-go () _type_ :state 25)
-    (die () _type_ :state 26)
-    (test () _type_ :state 27)
-    (race-signal-method-28 () none 28)
-    (race-signal-method-29 () none 29)
-    )
-  )
-|#
-
-#|
-(deftype stadium-racer (vehicle-rider)
-  ((rider-type uint8  :offset-assert 217)
-   )
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype errol-rider (stadium-racer)
-  ()
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype turbo-pickup (process-drawable)
-  ((available basic  :offset-assert 196)
-   )
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (turbo-pickup-method-22 () none 22)
-    )
-  )
-|#
-
-;; (define-extern race-signal-banner-init-by-other function)
-;; (define-extern race-signal-banner-spawn function)
-;; (define-extern race-signal-event-handler function)
-;; (define-extern race-signal-init-by-other function)
-;; (define-extern race-signal-spawn function)
-;; (define-extern turbo-pickup-init-by-other function)
-;; (define-extern turbo-pickup-spawn function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; vehicle-racer                  ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype race-control (structure)
-  ((state        race-state               :offset-assert 0)
-   (mesh         basic                    :offset-assert 4)
-   (path-select  int8                     :offset-assert 8)
-   (path-group   race-path-group          :offset-assert 12)
-   (path         race-path                :offset-assert 16)
-   (path-t       float                    :offset-assert 20)
-   (racer-state  racer-state              :offset-assert 24)
-   (path-sample  race-path-sample :inline :offset-assert 32)
-   (lin-velocity vector           :inline :offset-assert 64)
-   (ang-velocity vector           :inline :offset-assert 80)
-   )
-  :method-count-assert 13
-  :size-assert         #x60
-  :flag-assert         #xd00000060
-  (:methods
-    (race-control-method-9 () none 9)
-    (race-control-method-10 () none 10)
-    (race-control-method-11 () none 11)
-    (race-control-method-12 () none 12)
-    )
-  )
-|#
-
-#|
-(deftype vehicle-racer (vehicle)
-  ((race                  race-control       :inline :offset-assert 876)
-   (ai-controls           vehicle-controls   :inline :offset-assert 972)
-   (rider-hand-joint      int8                       :offset-assert 988)
-   (turbo-pickup-count    int8                       :offset-assert 989)
-   (minimap               connection-minimap         :offset-assert 992)
-   (shortcut-speed-factor float                      :offset-assert 996)
-   (path-deviation        float                      :offset-assert 1000)
-   (shortcut-time         time-frame                     :offset-assert 1004)
-   )
-  :method-count-assert 156
-  :size-assert         #x3f8
-  :flag-assert         #x9c038003f8
-  (:methods
-    (waiting-race () _type_ :state 144)
-    (waiting-for-start () _type_ :state 145)
-    (racing () _type_ :state 146)
-    (race-finished () _type_ :state 147)
-    (vehicle-racer-method-148 () none 148)
-    (vehicle-racer-method-149 () none 149)
-    (vehicle-racer-method-150 () none 150)
-    (vehicle-racer-method-151 () none 151)
-    (vehicle-racer-method-152 () none 152)
-    (vehicle-racer-method-153 () none 153)
-    (vehicle-racer-method-154 () none 154)
-    (vehicle-racer-method-155 () none 155)
-    )
-  )
-|#
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-info                      ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-extern *race-info-array* (array race-info))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-manager                   ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-extern race-find-ground (function object none))
-(define-extern *race-state* race-state)
-(define-extern *race-rigid-body-queue* rigid-body-queue)
-;; (define-extern race-manager-event-handler function)
-(define-extern *race-manager* race-manager)
-;; (define-extern race-manager-init-by-other function)
-;; (define-extern race-start function)
-;; (define-extern race-kill function)
-;; (define-extern type-from-race-vehicle-type function)
-;; (define-extern race-vehicle-entity-hack function)
-;; (define-extern race-level-activate function)
-;; (define-extern race-level-deactivate function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; race-hud                       ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; (define-extern rminutes function)
-;; (define-extern rseconds function)
-;; (define-extern rmicroseconds function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; pilot-recorder                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype pilrec-sample (structure)
-  ((sample-time time-frame             :offset-assert 0)
-   (pos         vector     :inline :offset-assert 16)
-   (quat        quaternion :inline :offset-assert 32)
-   (stick-x     float              :offset-assert 48)
-   (stick-y     float              :offset-assert 52)
-   (throttle    float              :offset-assert 56)
-   (flags       uint8              :offset-assert 60)
-   )
-  :method-count-assert 9
-  :size-assert         #x3d
-  :flag-assert         #x90000003d
-  )
-|#
-
-#|
-(deftype pilot-recorder-samples (basic)
-  ((samples uint32  :offset-assert 4)
-   )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
-  )
-|#
-
-#|
-(deftype pilot-recorder (process)
-  ((info                 basic          :offset-assert 124)
-   (mesh                 basic          :offset-assert 128)
-   (select-race          uint64         :offset-assert 132)
-   (path-num             int32          :offset-assert 140)
-   (sample-count         int32          :offset-assert 144)
-   (samples              uint32         :offset-assert 148)
-   (state-time           time-frame         :offset-assert 156)
-   (start-time           time-frame         :offset-assert 164)
-   (start-record-plane   plane  :inline :offset-assert 172)
-   (start-record-center  vector :inline :offset-assert 188)
-   (finish-record-plane  plane  :inline :offset-assert 204)
-   (finish-record-center vector :inline :offset-assert 220)
-   (prev-pos             vector :inline :offset-assert 236)
-   )
-  :method-count-assert 31
-  :size-assert         #x100
-  :flag-assert         #x1f00800100
-  (:methods
-    (pilot-recorder-method-9 () none 9)
-    (pilot-recorder-method-10 () none 10)
-    (pilot-recorder-method-11 () none 11)
-    (pilot-recorder-method-12 () none 12)
-    (pilot-recorder-method-13 () none 13)
-    (die-fast () _type_ :state 14)
-    (idle () _type_ :state 15)
-    (active () _type_ :state 16)
-    (recording () _type_ :state 17)
-    (fail-full () _type_ :state 18)
-    (finished () _type_ :state 19)
-    (save () _type_ :state 20)
-    (fail-save () _type_ :state 21)
-    (pilot-recorder-method-22 () none 22)
-    (pilot-recorder-method-23 () none 23)
-    (pilot-recorder-method-24 () none 24)
-    (pilot-recorder-method-25 () none 25)
-    (pilot-recorder-method-26 () none 26)
-    (pilot-recorder-method-27 () none 27)
-    (pilot-recorder-method-28 () none 28)
-    (pilot-recorder-method-29 () none 29)
-    (pilot-recorder-method-30 () none 30)
-    )
-  )
-|#
-
-;; (define-extern *pilot-recorder-samples* object)
-;; (define-extern delete-race-path function)
-;; (define-extern *pilot-recorder* object)
-;; (define-extern pilot-recorder-init-by-other function)
-;; (define-extern start-pilot-recorder function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; racebike                       ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype vehicle-race-bike (vehicle-racer)
-  ((steering-wheel basic  :offset-assert 1012)
-   )
-  :method-count-assert 156
-  :size-assert         #x3fc
-  :flag-assert         #x9c038003fc
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype race-bike-d (vehicle-race-bike)
-  ()
-  :method-count-assert 156
-  :size-assert         #x3fc
-  :flag-assert         #x9c038003fc
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype race-bike-e (vehicle-race-bike)
-  ()
-  :method-count-assert 156
-  :size-assert         #x3fc
-  :flag-assert         #x9c038003fc
-  (:methods
-    )
-  )
-|#
-
-;; (define-extern *race-bike-d-constants* object)
-;; (define-extern *race-bike-e-constants* object)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; stadium-race-obs               ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype stdmb-race-hatch (process-drawable)
-  ((tt        float  :offset-assert 196)
-   (tt-target float  :offset-assert 200)
-   )
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
-  (:methods
-    (idle () _type_ :state 20)
-    (stdmb-race-hatch-method-21 () none 21)
-    (stdmb-race-hatch-method-22 () none 22)
-    )
-  )
-|#
-
-#|
-(deftype stdmb-platform (stdmb-race-hatch)
-  ()
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
-  (:methods
-    )
-  )
-|#
-
-;; (define-extern stdmb-race-hatch-init-by-other function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; spyder                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -37750,7 +37052,7 @@
 ;; (define-extern target-turret-post function)
 ;; (define-extern target-turret-stance state)
 ;; (define-extern *turret-get-on-mods* object)
-;; (define-extern target-turret-get-on state)
+(define-extern target-turret-get-on (state handle target))
 ;; (define-extern target-turret-get-off state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43931,93 +43233,6 @@
 (define-extern target-demo (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; errol-chal-part                ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; (define-extern city-race-borrow-level-activate function)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; errol-chal                     ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype errol-racer (vehicle-rider)
-  ((minimap connection-minimap  :offset-assert 220)
-   )
-  :method-count-assert 36
-  :size-assert         #xe4
-  :flag-assert         #x24007000e4
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype vehicle-city-racer (vehicle-racer)
-  ()
-  :method-count-assert 156
-  :size-assert         #x3f8
-  :flag-assert         #x9c038003f8
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype race-bike-a (vehicle-city-racer)
-  ()
-  :method-count-assert 156
-  :size-assert         #x3f8
-  :flag-assert         #x9c038003f8
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype race-bike-b (vehicle-city-racer)
-  ()
-  :method-count-assert 156
-  :size-assert         #x3f8
-  :flag-assert         #x9c038003f8
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype turbo-ring (process-drawable)
-  ((touch-time time-frame                     :offset-assert 196)
-   (minimap    connection-minimap         :offset-assert 204)
-   (player-got basic                      :offset-assert 208)
-   (persistent basic                      :offset-assert 212)
-   (id         int8                       :offset-assert 216)
-   (boost      float                      :offset-assert 220)
-   (plane      vector             :inline :offset-assert 236)
-   (part-track uint64                     :offset-assert 252)
-   (mat        matrix             :inline :offset-assert 268)
-   )
-  :method-count-assert 25
-  :size-assert         #x150
-  :flag-assert         #x1900d00150
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (turbo-ring-method-22 () none 22)
-    (turbo-ring-method-23 () none 23)
-    (turbo-ring-method-24 () none 24)
-    )
-  )
-|#
-
-;; (define-extern *race-bike-a-constants* object)
-;; (define-extern *race-bike-b-constants* object)
-;; (define-extern turbo-ring-init-by-other function)
-;; (define-extern turbo-ring-spawn function)
-;; (define-extern *city-errol-challenge-rings* array)
-;; (define-extern *city-bush-port-rings* array)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; credits                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -45290,7 +44505,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *mech-exploder-params* joint-exploder-static-params)
-;; (define-extern target-mech-start state)
+(define-extern target-mech-start (state handle target))
 ;; (define-extern target-mech-stance state)
 ;; (define-extern target-mech-walk state)
 ;; (define-extern target-mech-punch-pick function)
@@ -49980,6 +49195,21 @@
   :flag-assert         #x900000004
   )
 
+(defenum vehicle-type
+  :type int32
+  (bikea 0)
+  (bikeb 1)
+  (bikec 2)
+  (cara  3)
+  (carb  4)
+  (carc  5)
+  (guard-bike 6)
+  (hellcat 7)
+  (evan-test-bike 8)
+  (test-bike 9)
+  (test-car 10)
+  )
+
 (deftype vehicle (rigid-body-object)
   (
     (pad uint32 4 :offset-assert 272)
@@ -50569,9 +49799,9 @@
   )
 |#
 
-#|
 (deftype vehicle-guard (vehicle)
-  ()
+  ((pad2 uint8 196)
+   )
   :method-count-assert 159
   :size-assert         #x434
   :flag-assert         #x9f03c00434
@@ -50594,7 +49824,6 @@
     (vehicle-guard-method-158 () none 158)
     )
   )
-|#
 
 ;; (define-extern vehicle-los-clear? function)
 ;; (define-extern vehicle-draw-beam function)
@@ -50678,10 +49907,661 @@
 ;; (define-extern transport-init-by-other function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; bike                           ;;
+;; race-h                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype race-turbo-pad (structure)
+  ((position vector :inline :offset-assert 0)
+   (handle   uint64         :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+(deftype race-decision-point (structure)
+  ((pos           float  :offset-assert 0)
+   (decision-type uint8  :offset-assert 4)
+   (shortcuts     uint8  :offset-assert 5)
+   (safe-paths    uint8  :offset-assert 6)
+   )
+  :method-count-assert 9
+  :size-assert         #x7
+  :flag-assert         #x900000007
+  )
+
+(deftype race-racer-info (structure)
+  ((rider       uint8  :offset-assert 0)
+   (vehicle     uint8  :offset-assert 1)
+   (flags       uint8  :offset-assert 2)
+   (seek-offset int8   :offset-assert 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype race-info (basic)
+  ((race-mesh-name           string          :offset-assert 4)
+   (path-group-name          string          :offset-assert 8)
+   (task-node                uint16         :offset-assert 12)
+   (mesh                     basic          :offset-assert 16)
+   (ai-min-speed-factor      float          :offset-assert 20)
+   (ai-max-speed-factor      float          :offset-assert 24)
+   (ai-spread-factor         float          :offset-assert 28)
+   (start-sphere             sphere :inline :offset-assert 32)
+   (start-dir                vector :inline :offset-assert 48)
+   (finish-sphere            sphere :inline :offset-assert 64)
+   (finish-dir               vector :inline :offset-assert 80)
+   (player-intro-pos         vector :inline :offset-assert 96)
+   (flags                    uint8          :offset-assert 112)
+   (score                    uint8          :offset-assert 113)
+   (lap-count                int8           :offset-assert 114)
+   (racer-count              int8           :offset-assert 115)
+   (turbo-pad-count          int8           :offset-assert 116)
+   (map-index                int8           :offset-assert 117)
+   (decision-point-count     int8           :offset-assert 118)
+   (safe-paths               uint8          :offset-assert 119)
+   (turbo-pad-array          (inline-array race-turbo-pad)         :offset-assert 120)
+   (racer-array              (inline-array race-racer-info)         :offset-assert 124)
+   (decision-point-array     (inline-array race-decision-point)         :offset-assert 128)
+   (level                    symbol          :offset-assert 132)
+   (borrow-level             symbol          :offset-assert 136)
+   (borrow                   pair          :offset-assert 140)
+   (manager                  uint64         :offset-assert 144)
+   (manager-handle-init-hack basic          :offset 144)
+   (hatch-actor-name         string          :offset-assert 152)
+   (countdown-scene          basic          :offset-assert 156)
+   (complete-continue        basic          :offset-assert 160)
+   (start-camera             string          :offset-assert 164)
+   (go-speech                uint16         :offset-assert 168)
+   )
+  :method-count-assert 10
+  :size-assert         #xaa
+  :flag-assert         #xa000000aa
+  (:methods
+    (race-info-method-9 (_type_) none 9)
+    )
+  )
+
+(deftype racer-state (structure)
+  ((position          vector  :inline :offset-assert 0)
+   (racer             uint64          :offset-assert 16)
+   (flags             uint8           :offset-assert 24)
+   (rank              int8            :offset-assert 25)
+   (finish-count      int8            :offset-assert 26)
+   (lap-count         int8            :offset-assert 27)
+   (lap-quadrant      int8            :offset-assert 28)
+   (rider             uint8           :offset-assert 29)
+   (lap-distance      float           :offset-assert 32)
+   (lap-distance-prev float           :offset-assert 36)
+   (pos               float           :offset-assert 40)
+   (target-pos-offset float           :offset-assert 44)
+   (speed-factor      float           :offset-assert 48)
+   (finish-time       uint32          :offset-assert 52)
+   (lap-start         uint32          :offset-assert 56)
+   (best-lap-time     uint32          :offset-assert 60)
+   (lap-time-array    float   5       :offset-assert 64) ;; kinda a guess, too small to be time-frames
+   (start-position    vector  :inline :offset-assert 96)
+   )
+  :method-count-assert 14
+  :size-assert         #x70
+  :flag-assert         #xe00000070
+  (:methods
+    (racer-state-method-9 () none 9)
+    (racer-state-method-10 () none 10)
+    (racer-state-method-11 () none 11)
+    (racer-state-method-12 () none 12)
+    (racer-state-method-13 () none 13)
+    )
+  )
+
+(deftype race-state (structure)
+  ((info                 basic               :offset-assert 0)
+   (flags                uint8               :offset-assert 4)
+   (state                uint8               :offset-assert 5)
+   (racer-count          int8                :offset-assert 6)
+   (finished-count       int8                :offset-assert 7)
+   (i-player             int8                :offset-assert 8)
+   (i-countdown          int8                :offset-assert 9)
+   (manager              uint64              :offset-assert 16)
+   (scene-player         uint64              :offset-assert 24)
+   (race-signal          uint64              :offset-assert 32)
+   (arrow                uint64              :offset-assert 40)
+   (hud-timer            uint64              :offset-assert 48)
+   (hud-lap-counter      uint64              :offset-assert 56)
+   (hud-turbo-counter    uint64              :offset-assert 64)
+   (hud-position         uint64              :offset-assert 72)
+   (current-time         uint32              :offset-assert 80)
+   (countdown-start-time uint32              :offset-assert 84)
+   (race-start-time      uint32              :offset-assert 88)
+   (rankings             int8     10      :offset-assert 92) ;; weird size
+   (target-pos           float               :offset-assert 104)
+   (suck-factor          float               :offset-assert 108)
+   (racer-array          racer-state     10      :inline :offset-assert 112)
+   (player-intro-curve   cubic-curve :inline :offset-assert 1232)
+   )
+  :method-count-assert 19
+  :size-assert         #x510
+  :flag-assert         #x1300000510
+  (:methods
+    (race-state-method-9 () none 9)
+    (race-state-method-10 () none 10)
+    (race-state-method-11 () none 11)
+    (race-state-method-12 () none 12)
+    (race-state-method-13 () none 13)
+    (race-state-method-14 () none 14)
+    (race-state-method-15 () none 15)
+    (race-state-method-16 () none 16)
+    (race-state-method-17 () none 17)
+    (race-state-method-18 () none 18)
+    )
+  )
+
+(deftype race-manager (process)
+  ((race-state           race-state  :offset-assert 128)
+   (state-time           time-frame      :offset-assert 136)
+   (player-on-track-time time-frame      :offset-assert 144)
+   (message-id           uint32      :offset-assert 152)
+   (finish-sound-id      uint32      :offset-assert 156)
+   )
+  :method-count-assert 28
+  :size-assert         #xa0
+  :flag-assert         #x1c002000a0
+  (:methods
+    (idle () _type_ :state 14)
+    (active () _type_ :state 15)
+    (fail () _type_ :state 16)
+    (win () _type_ :state 17)
+    (lose () _type_ :state 18)
+    (die () _type_ :state 19)
+    (race-manager-method-20 () none 20)
+    (race-manager-method-21 () none 21)
+    (race-manager-method-22 () none 22)
+    (race-manager-method-23 () none 23)
+    (race-manager-method-24 () none 24)
+    (race-manager-method-25 () none 25)
+    (race-manager-method-26 () none 26)
+    (race-manager-method-27 () none 27)
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-mesh                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #|
+(deftype race-mesh-hash-search (structure)
+  ((best-dist             float                  :offset-assert 0)
+   (debug-cells-searched  int32                  :offset-assert 4)
+   (debug-slices-searched int32                  :offset-assert 8)
+   (bounds                bounding-box4w :inline :offset-assert 16)
+   (cell-quads            UNKNOWN        2       :offset-assert 48)
+   (slice-quads           UNKNOWN        4       :offset-assert 80)
+   (cell-bits             UNKNOWN        2       :offset-assert 48)
+   (slice-bits            UNKNOWN        2       :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
+|#
+
+#|
+(deftype race-mesh-slice-query (structure)
+  ((slice-id      int16           :offset-assert 0)
+   (lap-dist      float           :offset-assert 4)
+   (pt-on-slice   vector  :inline :offset-assert 16)
+   (slice-corners UNKNOWN 4       :offset-assert 32)
+   (search-sphere sphere  :inline :offset-assert 96)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+|#
+
+#|
+(deftype race-path-edge-info (structure)
+  ((sample-t float  :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+|#
+
+(deftype race-path-sample (structure)
+  ((bytes    uint8      32      :offset-assert 0)
+   (pos      vector     :inline :offset 0)
+   (quat     quaternion :inline :offset 16)
+   (stick-x  int8               :offset 12)
+   (stick-y  int8               :offset 13)
+   (throttle uint8              :offset 14)
+   (flags    uint8              :offset 15)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype race-path (structure)
+  ((sample-count uint16  :offset-assert 0)
+   (record-id    int8    :offset-assert 2)
+   (pad          uint8   :offset-assert 3)
+   (samples      uint32  :offset-assert 4)
+   (edge-infos   uint32  :offset-assert 8)
+   )
+  :method-count-assert 13
+  :size-assert         #xc
+  :flag-assert         #xd0000000c
+  (:methods
+    (race-path-method-9 () none 9)
+    (race-path-method-10 () none 10)
+    (race-path-method-11 () none 11)
+    (race-path-method-12 () none 12)
+    )
+  )
+
+(deftype race-path-group (structure)
+  ((name       basic     :offset-assert 0)
+   (path-count int8      :offset-assert 4)
+   (pad        uint8   3 :offset-assert 5)
+   (paths      uint32    :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+#|
+(deftype race-mesh-edge (structure)
+  ((left     vector :inline :offset-assert 0)
+   (right    vector :inline :offset-assert 16)
+   (lap-dist float          :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+|#
+
+#|
+(deftype race-mesh-slice (structure)
+  ((edge-index-array UNKNOWN 2 :offset-assert 0)
+   (start-edge       int16     :offset-assert 0)
+   (end-edge         int16     :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+|#
+
+#|
+(deftype race-mesh-hash-cell (structure)
+  ((first-slice int16  :offset-assert 0)
+   (slice-count uint8  :offset-assert 2)
+   (pad         uint8  :offset-assert 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+|#
+
+#|
+(deftype race-mesh-hash (structure)
+  ((cells-wide  int8           :offset-assert 0)
+   (cells-tall  int8           :offset-assert 1)
+   (cell-length float          :offset-assert 4)
+   (cells       uint32         :offset-assert 8)
+   (slice-table uint32         :offset-assert 12)
+   (origin      vector :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+|#
+
+#|
+(deftype race-mesh (basic)
+  ((version          uint8            :offset-assert 4)
+   (path-group-count uint8            :offset-assert 5)
+   (flags            uint8            :offset-assert 6)
+   (pad              UNKNOWN        1 :offset-assert 7)
+   (slice-count      int16            :offset-assert 8)
+   (edge-count       int16            :offset-assert 10)
+   (slices           uint32           :offset-assert 12)
+   (edges            uint32           :offset-assert 16)
+   (hash             race-mesh-hash   :offset-assert 20)
+   (path-groups      uint32           :offset-assert 24)
+   )
+  :method-count-assert 20
+  :size-assert         #x1c
+  :flag-assert         #x140000001c
+  (:methods
+    (race-mesh-method-9 () none 9)
+    (race-mesh-method-10 () none 10)
+    (race-mesh-method-11 () none 11)
+    (race-mesh-method-12 () none 12)
+    (race-mesh-method-13 () none 13)
+    (race-mesh-method-14 () none 14)
+    (race-mesh-method-15 () none 15)
+    (race-mesh-method-16 () none 16)
+    (race-mesh-method-17 () none 17)
+    (race-mesh-method-18 () none 18)
+    (race-mesh-method-19 () none 19)
+    )
+  )
+|#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-part                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-obs                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#|
+(deftype race-signal-banner (process-drawable)
+  ()
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+|#
+
+#|
+(deftype race-signal (process-drawable)
+  ((pos           vector      :inline :offset-assert 204)
+   (y-offset      float               :offset-assert 220)
+   (dest-y-offset float               :offset-assert 224)
+   (bob-time      time-frame              :offset-assert 228)
+   (start-time    time-frame              :offset-assert 236)
+   (banner        uint64              :offset-assert 244)
+   (curve         cubic-curve :inline :offset-assert 252)
+   )
+  :method-count-assert 30
+  :size-assert         #x140
+  :flag-assert         #x1e00c00140
+  (:methods
+    (spawn-banner () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (count-3 () _type_ :state 22)
+    (count-2 () _type_ :state 23)
+    (count-1 () _type_ :state 24)
+    (count-go () _type_ :state 25)
+    (die () _type_ :state 26)
+    (test () _type_ :state 27)
+    (race-signal-method-28 () none 28)
+    (race-signal-method-29 () none 29)
+    )
+  )
+|#
+
+#|
+(deftype stadium-racer (vehicle-rider)
+  ((rider-type uint8  :offset-assert 217)
+   )
+  :method-count-assert 36
+  :size-assert         #xde
+  :flag-assert         #x24006000de
+  (:methods
+    )
+  )
+|#
+
+#|
+(deftype errol-rider (stadium-racer)
+  ()
+  :method-count-assert 36
+  :size-assert         #xde
+  :flag-assert         #x24006000de
+  (:methods
+    )
+  )
+|#
+
+#|
+(deftype turbo-pickup (process-drawable)
+  ((available basic  :offset-assert 196)
+   )
+  :method-count-assert 23
+  :size-assert         #xcc
+  :flag-assert         #x17005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (turbo-pickup-method-22 () none 22)
+    )
+  )
+|#
+
+;; (define-extern race-signal-banner-init-by-other function)
+;; (define-extern race-signal-banner-spawn function)
+;; (define-extern race-signal-event-handler function)
+;; (define-extern race-signal-init-by-other function)
+;; (define-extern race-signal-spawn function)
+;; (define-extern turbo-pickup-init-by-other function)
+;; (define-extern turbo-pickup-spawn function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; vehicle-racer                  ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype race-control (structure)
+  ((state        race-state               :offset-assert 0)
+   (mesh         basic                    :offset-assert 4)
+   (path-select  int8                     :offset-assert 8)
+   (path-group   race-path-group          :offset-assert 12)
+   (path         race-path                :offset-assert 16)
+   (path-t       float                    :offset-assert 20)
+   (racer-state  racer-state              :offset-assert 24)
+   (path-sample  race-path-sample :inline :offset-assert 32)
+   (lin-velocity vector           :inline :offset-assert 64)
+   (ang-velocity vector           :inline :offset-assert 80)
+   )
+  :method-count-assert 13
+  :size-assert         #x60
+  :flag-assert         #xd00000060
+  (:methods
+    (race-control-method-9 () none 9)
+    (race-control-method-10 () none 10)
+    (race-control-method-11 () none 11)
+    (race-control-method-12 () none 12)
+    )
+  )
+
+(deftype vehicle-racer (vehicle)
+  ((race                  race-control       :inline :offset-assert 880)
+   (ai-controls           vehicle-controls   :inline :offset-assert 976)
+   (rider-hand-joint      int8                       :offset-assert 992)
+   (turbo-pickup-count    int8                       :offset-assert 993)
+   (minimap               connection-minimap         :offset-assert 996)
+   (shortcut-speed-factor float                      :offset-assert 1000)
+   (path-deviation        float                      :offset-assert 1004)
+   (shortcut-time         time-frame                 :offset-assert 1008)
+   )
+  :method-count-assert 156
+  :size-assert         #x3f8
+  :flag-assert         #x9c038003f8
+  (:methods
+    (waiting-race () _type_ :state 144)
+    (waiting-for-start () _type_ :state 145)
+    (racing () _type_ :state 146)
+    (race-finished () _type_ :state 147)
+    (vehicle-racer-method-148 () none 148)
+    (vehicle-racer-method-149 () none 149)
+    (vehicle-racer-method-150 () none 150)
+    (vehicle-racer-method-151 () none 151)
+    (vehicle-racer-method-152 () none 152)
+    (vehicle-racer-method-153 () none 153)
+    (vehicle-racer-method-154 () none 154)
+    (vehicle-racer-method-155 () none 155)
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-info                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern *race-info-array* (array race-info))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-manager                   ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern race-find-ground (function object none))
+(define-extern *race-state* race-state)
+(define-extern *race-rigid-body-queue* rigid-body-queue)
+;; (define-extern race-manager-event-handler function)
+(define-extern *race-manager* race-manager)
+;; (define-extern race-manager-init-by-other function)
+;; (define-extern race-start function)
+;; (define-extern race-kill function)
+(define-extern type-from-race-vehicle-type (function int type))
+;; (define-extern race-vehicle-entity-hack function)
+;; (define-extern race-level-activate function)
+;; (define-extern race-level-deactivate function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; race-hud                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (define-extern rminutes function)
+;; (define-extern rseconds function)
+;; (define-extern rmicroseconds function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pilot-recorder                 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#|
+(deftype pilrec-sample (structure)
+  ((sample-time time-frame             :offset-assert 0)
+   (pos         vector     :inline :offset-assert 16)
+   (quat        quaternion :inline :offset-assert 32)
+   (stick-x     float              :offset-assert 48)
+   (stick-y     float              :offset-assert 52)
+   (throttle    float              :offset-assert 56)
+   (flags       uint8              :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x3d
+  :flag-assert         #x90000003d
+  )
+|#
+
+#|
+(deftype pilot-recorder-samples (basic)
+  ((samples uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+|#
+
+#|
+(deftype pilot-recorder (process)
+  ((info                 basic          :offset-assert 124)
+   (mesh                 basic          :offset-assert 128)
+   (select-race          uint64         :offset-assert 132)
+   (path-num             int32          :offset-assert 140)
+   (sample-count         int32          :offset-assert 144)
+   (samples              uint32         :offset-assert 148)
+   (state-time           time-frame         :offset-assert 156)
+   (start-time           time-frame         :offset-assert 164)
+   (start-record-plane   plane  :inline :offset-assert 172)
+   (start-record-center  vector :inline :offset-assert 188)
+   (finish-record-plane  plane  :inline :offset-assert 204)
+   (finish-record-center vector :inline :offset-assert 220)
+   (prev-pos             vector :inline :offset-assert 236)
+   )
+  :method-count-assert 31
+  :size-assert         #x100
+  :flag-assert         #x1f00800100
+  (:methods
+    (pilot-recorder-method-9 () none 9)
+    (pilot-recorder-method-10 () none 10)
+    (pilot-recorder-method-11 () none 11)
+    (pilot-recorder-method-12 () none 12)
+    (pilot-recorder-method-13 () none 13)
+    (die-fast () _type_ :state 14)
+    (idle () _type_ :state 15)
+    (active () _type_ :state 16)
+    (recording () _type_ :state 17)
+    (fail-full () _type_ :state 18)
+    (finished () _type_ :state 19)
+    (save () _type_ :state 20)
+    (fail-save () _type_ :state 21)
+    (pilot-recorder-method-22 () none 22)
+    (pilot-recorder-method-23 () none 23)
+    (pilot-recorder-method-24 () none 24)
+    (pilot-recorder-method-25 () none 25)
+    (pilot-recorder-method-26 () none 26)
+    (pilot-recorder-method-27 () none 27)
+    (pilot-recorder-method-28 () none 28)
+    (pilot-recorder-method-29 () none 29)
+    (pilot-recorder-method-30 () none 30)
+    )
+  )
+|#
+
+;; (define-extern *pilot-recorder-samples* object)
+;; (define-extern delete-race-path function)
+;; (define-extern *pilot-recorder* object)
+;; (define-extern pilot-recorder-init-by-other function)
+;; (define-extern start-pilot-recorder function)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; stadium-race-obs               ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#|
+(deftype stdmb-race-hatch (process-drawable)
+  ((tt        float  :offset-assert 196)
+   (tt-target float  :offset-assert 200)
+   )
+  :method-count-assert 23
+  :size-assert         #xd0
+  :flag-assert         #x17005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (stdmb-race-hatch-method-21 () none 21)
+    (stdmb-race-hatch-method-22 () none 22)
+    )
+  )
+|#
+
+#|
+(deftype stdmb-platform (stdmb-race-hatch)
+  ()
+  :method-count-assert 23
+  :size-assert         #xd0
+  :flag-assert         #x17005000d0
+  (:methods
+    )
+  )
+|#
+
+;; (define-extern stdmb-race-hatch-init-by-other function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; bike                           ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (deftype bike-base (vehicle)
   ()
   :method-count-assert 144
@@ -50690,17 +50570,15 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype bikea (bike-base)
-  ((fin-fl  basic  :offset-assert 876)
-   (fin-fr  basic  :offset-assert 880)
-   (fin-rl  basic  :offset-assert 884)
-   (fin-rr  basic  :offset-assert 888)
-   (rudder  basic  :offset-assert 892)
-   (brake-l basic  :offset-assert 896)
-   (brake-r basic  :offset-assert 900)
+  ((fin-fl  basic  :offset-assert 880)
+   (fin-fr  basic  :offset-assert 884)
+   (fin-rl  basic  :offset-assert 888)
+   (fin-rr  basic  :offset-assert 892)
+   (rudder  basic  :offset-assert 896)
+   (brake-l basic  :offset-assert 900)
+   (brake-r basic  :offset-assert 904)
    )
   :method-count-assert 144
   :size-assert         #x38c
@@ -50708,18 +50586,16 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype bikeb (bike-base)
-  ((fin-rl   basic  :offset-assert 876)
-   (fin-rr   basic  :offset-assert 880)
-   (rudder   basic  :offset-assert 884)
-   (rudder-f basic  :offset-assert 888)
-   (brake-l  basic  :offset-assert 892)
-   (brake-r  basic  :offset-assert 896)
-   (flap-l   basic  :offset-assert 900)
-   (flap-r   basic  :offset-assert 904)
+  ((fin-rl   basic  :offset-assert 880)
+   (fin-rr   basic  :offset-assert 884)
+   (rudder   basic  :offset-assert 888)
+   (rudder-f basic  :offset-assert 892)
+   (brake-l  basic  :offset-assert 896)
+   (brake-r  basic  :offset-assert 900)
+   (flap-l   basic  :offset-assert 904)
+   (flap-r   basic  :offset-assert 908)
    )
   :method-count-assert 144
   :size-assert         #x390
@@ -50727,21 +50603,19 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype bikec (bike-base)
-  ((fin-fl    basic  :offset-assert 876)
-   (fin-fr    basic  :offset-assert 880)
-   (fin-rl    basic  :offset-assert 884)
-   (fin-rr    basic  :offset-assert 888)
-   (fin2-fl   basic  :offset-assert 892)
-   (fin2-fr   basic  :offset-assert 896)
-   (rudder    basic  :offset-assert 900)
-   (brake-l   basic  :offset-assert 904)
-   (brake-r   basic  :offset-assert 908)
-   (spoiler-l basic  :offset-assert 912)
-   (spoiler-r basic  :offset-assert 916)
+  ((fin-fl    basic  :offset-assert 880)
+   (fin-fr    basic  :offset-assert 884)
+   (fin-rl    basic  :offset-assert 888)
+   (fin-rr    basic  :offset-assert 892)
+   (fin2-fl   basic  :offset-assert 896)
+   (fin2-fr   basic  :offset-assert 900)
+   (rudder    basic  :offset-assert 904)
+   (brake-l   basic  :offset-assert 908)
+   (brake-r   basic  :offset-assert 912)
+   (spoiler-l basic  :offset-assert 916)
+   (spoiler-r basic  :offset-assert 920)
    )
   :method-count-assert 144
   :size-assert         #x39c
@@ -50749,11 +50623,9 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype guard-bike (vehicle-guard)
-  ((turret-jm basic  :offset-assert 1072)
+  ((turret-jm basic  :offset-assert 1076)
    )
   :method-count-assert 159
   :size-assert         #x438
@@ -50761,7 +50633,6 @@
   (:methods
     )
   )
-|#
 
 ;; (define-extern *bike-explosion-info* vehicle-explosion-info)
 ;; (define-extern *bikea-constants* object)
@@ -50774,9 +50645,8 @@
 ;; car                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype car-base (vehicle)
-  ((rider-hand-joint-array UNKNOWN 2 :offset-assert 876)
+  ((rider-hand-joint-array int8 2 :offset-assert 880)
    )
   :method-count-assert 144
   :size-assert         #x372
@@ -50784,19 +50654,17 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype cara (car-base)
-  ((steering-wheel-l basic  :offset-assert 880)
-   (steering-wheel-r basic  :offset-assert 884)
-   (fin-fl           basic  :offset-assert 888)
-   (fin-fr           basic  :offset-assert 892)
-   (fin-rl           basic  :offset-assert 896)
-   (fin-rr           basic  :offset-assert 900)
-   (rudder-l         basic  :offset-assert 904)
-   (rudder-r         basic  :offset-assert 908)
-   (rudder           basic  :offset-assert 912)
+  ((steering-wheel-l basic  :offset-assert 884)
+   (steering-wheel-r basic  :offset-assert 888)
+   (fin-fl           basic  :offset-assert 892)
+   (fin-fr           basic  :offset-assert 896)
+   (fin-rl           basic  :offset-assert 900)
+   (fin-rr           basic  :offset-assert 904)
+   (rudder-l         basic  :offset-assert 908)
+   (rudder-r         basic  :offset-assert 912)
+   (rudder           basic  :offset-assert 916)
    )
   :method-count-assert 144
   :size-assert         #x398
@@ -50804,16 +50672,14 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype carb (car-base)
-  ((steering-wheel-l basic  :offset-assert 880)
-   (steering-wheel-r basic  :offset-assert 884)
-   (fin-fl           basic  :offset-assert 888)
-   (fin-fr           basic  :offset-assert 892)
-   (fin-rl           basic  :offset-assert 896)
-   (fin-rr           basic  :offset-assert 900)
+  ((steering-wheel-l basic  :offset-assert 884)
+   (steering-wheel-r basic  :offset-assert 888)
+   (fin-fl           basic  :offset-assert 892)
+   (fin-fr           basic  :offset-assert 896)
+   (fin-rl           basic  :offset-assert 900)
+   (fin-rr           basic  :offset-assert 904)
    )
   :method-count-assert 144
   :size-assert         #x38c
@@ -50821,17 +50687,15 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype carc (car-base)
-  ((steering-wheel basic  :offset-assert 880)
-   (fin-fl         basic  :offset-assert 884)
-   (fin-fr         basic  :offset-assert 888)
-   (fin-rl         basic  :offset-assert 892)
-   (fin-rr         basic  :offset-assert 896)
-   (fin2-rl        basic  :offset-assert 900)
-   (fin2-rr        basic  :offset-assert 904)
+  ((steering-wheel basic  :offset-assert 884)
+   (fin-fl         basic  :offset-assert 888)
+   (fin-fr         basic  :offset-assert 892)
+   (fin-rl         basic  :offset-assert 896)
+   (fin-rr         basic  :offset-assert 900)
+   (fin2-rl        basic  :offset-assert 904)
+   (fin2-rr        basic  :offset-assert 908)
    )
   :method-count-assert 144
   :size-assert         #x390
@@ -50839,11 +50703,9 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hellcat (vehicle-guard)
-  ((turret-jm basic  :offset-assert 1072)
+  ((turret-jm basic  :offset-assert 1076)
    )
   :method-count-assert 159
   :size-assert         #x438
@@ -50851,7 +50713,6 @@
   (:methods
     )
   )
-|#
 
 ;; (define-extern *car-explosion-info* vehicle-explosion-info)
 ;; (define-extern *cara-constants* object)
@@ -50864,7 +50725,6 @@
 ;; test-bike                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype test-bike (bikec)
   ()
   :method-count-assert 144
@@ -50873,9 +50733,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype evan-test-bike (bikea)
   ()
   :method-count-assert 144
@@ -50884,7 +50742,6 @@
   (:methods
     )
   )
-|#
 
 ;; (define-extern *test-bike-constants* object)
 ;; (define-extern *evan-test-bike-constants* object)
@@ -50893,7 +50750,6 @@
 ;; test-car                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype test-car (cara)
   ()
   :method-count-assert 144
@@ -50902,7 +50758,6 @@
   (:methods
     )
   )
-|#
 
 ;; (define-extern *test-car-constants* object)
 
@@ -51361,10 +51216,10 @@
 ;; (define-extern *traffic-engine* object)
 ;; (define-extern *traffic-fast-spawn* object)
 ;; (define-extern draw-city-info function)
-;; (define-extern vehicle-spawn function)
+(define-extern vehicle-spawn (function target type traffic-object-spawn-params process-drawable))
 ;; (define-extern citizen-spawn function)
 ;; (define-extern traffic-object-spawn function)
-;; (define-extern type-from-vehicle-type function)
+(define-extern type-from-vehicle-type (function vehicle-type type))
 ;; (define-extern traffic-manager-event-handler function)
 ;; (define-extern traffic-manager-init-by-other function)
 (define-extern traffic-start (function none))
@@ -51379,6 +51234,133 @@
 ;; (define-extern ctywide-deactivate function)
 ;; (define-extern ctywide-entity-hack function)
 ;; (define-extern lwide-entity-hack function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; errol-chal-part                ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (define-extern city-race-borrow-level-activate function)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; errol-chal                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#|
+(deftype errol-racer (vehicle-rider)
+  ((minimap connection-minimap  :offset-assert 220)
+   )
+  :method-count-assert 36
+  :size-assert         #xe4
+  :flag-assert         #x24007000e4
+  (:methods
+    )
+  )
+|#
+
+(deftype vehicle-city-racer (vehicle-racer)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3f8
+  :flag-assert         #x9c038003f8
+  (:methods
+    )
+  )
+
+(deftype race-bike-a (vehicle-city-racer)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3f8
+  :flag-assert         #x9c038003f8
+  (:methods
+    )
+  )
+
+(deftype race-bike-b (vehicle-city-racer)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3f8
+  :flag-assert         #x9c038003f8
+  (:methods
+    )
+  )
+
+;; is this actually here?
+(deftype race-bike-c (vehicle-city-racer)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3f8
+  :flag-assert         #x9c038003f8
+  (:methods
+    )
+  )
+
+#|
+(deftype turbo-ring (process-drawable)
+  ((touch-time time-frame                     :offset-assert 196)
+   (minimap    connection-minimap         :offset-assert 204)
+   (player-got basic                      :offset-assert 208)
+   (persistent basic                      :offset-assert 212)
+   (id         int8                       :offset-assert 216)
+   (boost      float                      :offset-assert 220)
+   (plane      vector             :inline :offset-assert 236)
+   (part-track uint64                     :offset-assert 252)
+   (mat        matrix             :inline :offset-assert 268)
+   )
+  :method-count-assert 25
+  :size-assert         #x150
+  :flag-assert         #x1900d00150
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (turbo-ring-method-22 () none 22)
+    (turbo-ring-method-23 () none 23)
+    (turbo-ring-method-24 () none 24)
+    )
+  )
+|#
+
+;; (define-extern *race-bike-a-constants* object)
+;; (define-extern *race-bike-b-constants* object)
+;; (define-extern turbo-ring-init-by-other function)
+;; (define-extern turbo-ring-spawn function)
+;; (define-extern *city-errol-challenge-rings* array)
+;; (define-extern *city-bush-port-rings* array)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; racebike                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype vehicle-race-bike (vehicle-racer)
+  ((steering-wheel basic  :offset-assert 1016)
+   )
+  :method-count-assert 156
+  :size-assert         #x3fc
+  :flag-assert         #x9c038003fc
+  (:methods
+    )
+  )
+
+(deftype race-bike-d (vehicle-race-bike)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3fc
+  :flag-assert         #x9c038003fc
+  (:methods
+    )
+  )
+
+(deftype race-bike-e (vehicle-race-bike)
+  ()
+  :method-count-assert 156
+  :size-assert         #x3fc
+  :flag-assert         #x9c038003fc
+  (:methods
+    )
+  )
+
+;; (define-extern *race-bike-d-constants* object)
+;; (define-extern *race-bike-e-constants* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-texture                ;;
@@ -51679,7 +51661,7 @@
 ;; pilot-states                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern target-pilot-start state)
+(define-extern target-pilot-start (state handle target))
 ;; (define-extern target-pilot-bike-anim-loop function)
 ;; (define-extern target-pilot-car-anim-loop function)
 ;; (define-extern target-daxter-pilot-car-anim-loop function)
@@ -51693,7 +51675,7 @@
 ;; (define-extern target-pilot-get-off state)
 ;; (define-extern target-pilot-grab state)
 ;; (define-extern target-pilot-clone-anim state)
-;; (define-extern target-pilot-edge-grab state)
+(define-extern target-pilot-edge-grab (state target))
 ;; (define-extern target-pilot-hit state)
 ;; (define-extern target-pilot-death state)
 

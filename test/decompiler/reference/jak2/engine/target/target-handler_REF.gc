@@ -1,17 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-handler.gc
-;; name in dgo: target-handler
-;; dgos: ENGINE, GAME
-
-(define-extern type-from-race-vehicle-type (function int type))
-(define-extern type-from-vehicle-type (function vehicle-type type))
-(define-extern vehicle-spawn (function target type traffic-object-spawn-params process-drawable))
-
-
-;; DECOMP BEGINS
-
+;; definition for function target-shoved
 (defbehavior target-shoved target ((arg0 meters) (arg1 meters) (arg2 process) (arg3 (state object object target)))
   (let ((s5-0 (new 'static 'attack-info)))
     (set! (-> s5-0 attacker) (process->handle arg2))
@@ -29,6 +19,7 @@
     )
   )
 
+;; definition for function attack-mode-is-invinc
 (defun attack-mode-is-invinc ((arg0 symbol))
   (case arg0
     (('dark-eco-pool
@@ -49,6 +40,8 @@
     )
   )
 
+;; definition for function target-attacked
+;; INFO: Used lq/sq
 (defbehavior target-attacked target ((arg0 symbol)
                            (arg1 attack-info)
                            (arg2 process)
@@ -213,6 +206,18 @@
     )
   )
 
+;; definition for function target-send-attack
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
+;; WARN: Stack slot offset 96 signed mismatch
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 711]
 (defbehavior target-send-attack target ((arg0 process) (arg1 symbol) (arg2 touching-shapes-entry) (arg3 int) (arg4 int) (arg5 uint))
   (local-vars
@@ -278,12 +283,11 @@
       (set! (-> self control send-attack-dest) (process->handle arg0))
       (set! (-> self control send-attack-time) (-> self clock frame-counter))
       (send-event self 'hit arg1 arg0 arg2)
-      (set! arg0 (the process (and (and (logtest? (focus-status dark) (-> self focus-status))
-                                        (nonzero? (-> self darkjak))
-                                        (logtest? (-> self darkjak stage) 2)
-                                        )
-                                   arg0
-                                   )
+      (set! arg0 (and (and (logtest? (focus-status dark) (-> self focus-status))
+                           (nonzero? (-> self darkjak))
+                           (logtest? (-> self darkjak stage) 2)
+                           )
+                      arg0
                       )
             )
       (when (the-as object arg0)
@@ -663,6 +667,8 @@
   sv-96
   )
 
+;; definition for function target-generic-event-handler
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 (defbehavior target-generic-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 object))
@@ -1064,6 +1070,8 @@
     )
   )
 
+;; definition for function target-standard-event-handler
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 (defbehavior target-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (at-0 int) (s3-0 type))
@@ -1419,6 +1427,7 @@
     )
   )
 
+;; definition for function target-dangerous-event-handler
 (defbehavior target-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touched)
@@ -1476,6 +1485,8 @@
     )
   )
 
+;; definition for function target-bonk-event-handler
+;; INFO: Used lq/sq
 (defbehavior target-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (cond
@@ -1552,6 +1563,7 @@
     )
   )
 
+;; definition for function target-jump-event-handler
 (defbehavior target-jump-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (if (and (= arg2 'swim) (< 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
       (return #f)
@@ -1569,6 +1581,7 @@
     )
   )
 
+;; definition for function target-walk-event-handler
 (defbehavior target-walk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
     (cond
@@ -1583,10 +1596,15 @@
     )
   )
 
+;; failed to figure out what this is:
 target-post
 
+;; failed to figure out what this is:
 target-standard-event-handler
 
+;; definition for function target-exit
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-exit target ()
   (set! (-> self control mod-surface) *walk-mods*)
   (set! (-> self control anim-collide-offset-local quad) (the-as uint128 0))
@@ -1623,12 +1641,14 @@ target-standard-event-handler
   (none)
   )
 
+;; definition for function target-state-hook-exit
 ;; WARN: Return type mismatch (function none) vs none.
 (defbehavior target-state-hook-exit target ()
   (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
   (none)
   )
 
+;; definition for function target-effect-exit
 ;; WARN: Return type mismatch state-flags vs none.
 (defbehavior target-effect-exit target ()
   (let ((v1-1 (-> self skel effect)))
