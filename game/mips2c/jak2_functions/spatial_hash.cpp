@@ -8,7 +8,6 @@ namespace method_18_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lh(v1, 10, a0);                                // lh v1, 10(a0)
   c->lb(a3, 24, a0);                                // lb a3, 24(a0)
   c->mult3(a3, a3, v1);                             // mult3 a3, a3, v1
@@ -49,7 +48,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_2:
   c->dsubu(a2, r0, a2);                             // dsubu a2, r0, a2
   c->dsrav(a1, a1, a2);                             // dsrav a1, a1, a2
 
@@ -117,7 +115,6 @@ namespace method_19_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lh(v1, 10, a0);                                // lh v1, 10(a0)
   c->lb(a3, 24, a0);                                // lb a3, 24(a0)
   c->mult3(a3, a3, v1);                             // mult3 a3, a3, v1
@@ -158,7 +155,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_2:
   c->dsubu(a2, r0, a2);                             // dsubu a2, r0, a2
   c->dsrav(a1, a1, a2);                             // dsrav a1, a1, a2
 
@@ -226,7 +222,6 @@ namespace method_20_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -48);                           // daddiu sp, sp, -48
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s5, 16, sp);                                // sq s5, 16(sp)
@@ -357,8 +352,6 @@ namespace Mips2C::jak2 {
 namespace method_22_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lq(v1, 0, a2);                                 // lq v1, 0(a2)
@@ -507,7 +500,6 @@ u64 execute(void* ctxt) {
     goto block_4;
   }
 
-  block_3:
   c->dsubu(a3, r0, a3);                             // dsubu a3, r0, a3
   c->dsrav(a3, t2, a3);                             // dsrav a3, t2, a3
 
@@ -647,7 +639,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_2:
   c->dsubu(t3, r0, t3);                             // dsubu t3, r0, t3
   c->dsrav(t1, t1, t3);                             // dsrav t1, t1, t3
 
@@ -1220,7 +1211,6 @@ u64 execute(void* ctxt) {
     goto block_6;
   }
 
-  block_5:
   c->dsubu(a1, r0, a1);                             // dsubu a1, r0, a1
   c->dsrav(a0, a0, a1);                             // dsrav a0, a0, a1
 
@@ -1464,7 +1454,6 @@ u64 execute(void* ctxt) {
     goto block_6;
   }
 
-  block_5:
   c->dsubu(a1, r0, a1);                             // dsubu a1, r0, a1
   c->dsrav(a0, a0, a1);                             // dsrav a0, a0, a1
 
@@ -1738,7 +1727,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_2:
   c->dsubu(t0, r0, t0);                             // dsubu t0, r0, t0
   c->dsrav(t0, t2, t0);                             // dsrav t0, t2, t0
 
@@ -1899,7 +1887,6 @@ u64 execute(void* ctxt) {
     goto block_4;
   }
 
-  block_3:
   c->dsubu(a3, r0, a3);                             // dsubu a3, r0, a3
   c->dsrav(a3, t2, a3);                             // dsrav a3, t2, a3
 
@@ -2249,7 +2236,6 @@ u64 execute(void* ctxt) {
     goto block_4;
   }
 
-  block_3:
   c->dsubu(a1, r0, a1);                             // dsubu a1, r0, a1
   c->dsrav(a0, a0, a1);                             // dsrav a0, a0, a1
 
@@ -2611,7 +2597,6 @@ u64 execute(void* ctxt) {
     goto block_30;
   }
 
-  block_12:
   c->lwc1(f0, 16, gp);                              // lwc1 f0, 16(gp)
   c->lwc1(f1, 0, t0);                               // lwc1 f1, 0(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)
@@ -2629,7 +2614,6 @@ u64 execute(void* ctxt) {
     goto block_30;
   }
 
-  block_16:
   c->lwc1(f0, 4, t0);                               // lwc1 f0, 4(t0)
   c->lwc1(f1, 12, t0);                              // lwc1 f1, 12(t0)
   c->adds(f0, f0, f1);                              // add.s f0, f0, f1
@@ -2647,7 +2631,6 @@ u64 execute(void* ctxt) {
     goto block_30;
   }
 
-  block_20:
   c->lwc1(f0, 20, gp);                              // lwc1 f0, 20(gp)
   c->lwc1(f1, 4, t0);                               // lwc1 f1, 4(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)
@@ -2665,7 +2648,6 @@ u64 execute(void* ctxt) {
     goto block_30;
   }
 
-  block_24:
   c->lwc1(f0, 8, t0);                               // lwc1 f0, 8(t0)
   c->lwc1(f1, 12, t0);                              // lwc1 f1, 12(t0)
   c->adds(f0, f0, f1);                              // add.s f0, f0, f1
@@ -2683,7 +2665,6 @@ u64 execute(void* ctxt) {
     goto block_30;
   }
 
-  block_28:
   c->lwc1(f0, 24, gp);                              // lwc1 f0, 24(gp)
   c->lwc1(f1, 8, t0);                               // lwc1 f1, 8(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)
