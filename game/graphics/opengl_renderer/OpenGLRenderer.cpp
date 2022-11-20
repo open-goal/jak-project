@@ -107,6 +107,11 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
   // 30
   // 40
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-tfrag", BucketCategory::TEX,
+                                             BucketId::TEX_L3_TFRAG);
+  init_bucket_renderer<TFragment>("tfrag-l3-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L3_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 3);
+  init_bucket_renderer<Tie3>("tie-l3-tfrag", BucketCategory::TIE, BucketId::TIE_L3_TFRAG, 3);
   // 50
   // 60
   // 70
@@ -119,6 +124,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
   // 90
   // 100
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,
+                                             BucketId::TEX_L3_SHRUB);
+  init_bucket_renderer<Shrub>("shrub-l3-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L3_SHRUB);
   // 110
   // 120
   init_bucket_renderer<TextureUploadHandler>("tex-l0-alpha", BucketCategory::TEX,
@@ -143,6 +151,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 200
   init_bucket_renderer<TextureUploadHandler>("tex-l2-pris", BucketCategory::TEX,
                                              BucketId::TEX_L2_PRIS);
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
+                                             BucketId::TEX_L3_PRIS);
   // 210
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
