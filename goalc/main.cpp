@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
+#include "SQLiteCpp/SQLiteCpp.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
