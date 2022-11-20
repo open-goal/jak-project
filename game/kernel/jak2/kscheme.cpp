@@ -255,6 +255,25 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+u64 make_debug_string_from_c(const char* c_str) {
+  auto str_size = strlen(c_str);
+  auto mem_size = str_size + 1;
+  if (mem_size < 8) {
+    mem_size = 8;
+  }
+
+  auto mem = alloc_heap_object((s7 + FIX_SYM_DEBUG).offset, u32_in_fixed_sym(FIX_SYM_STRING_TYPE),
+                               mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
+  // there's no check for failed allocation here!
+
+  // string size field
+  *Ptr<u32>(mem) = str_size;
+
+  // rest is chars
+  kstrcpy(Ptr<char>(mem + 4).c(), c_str);
+  return mem;
+}
+
 extern "C" {
 void _arg_call_linux();
 }

@@ -1,6 +1,7 @@
 #include "kmachine.h"
 
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
 #include "common/log/log.h"
@@ -425,25 +426,38 @@ int ShutdownMachine() {
 }
 
 u32 MouseGetData(u32 _mouse) {
-  // stubbed out in the actual game
-  static double px = 0;
-  static double py = 0;
-
   auto mouse = Ptr<MouseInfo>(_mouse).c();
 
   mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->status = 1;
   mouse->button0 = 0;
 
-  // TODO: actually hook these up.
-  double last_cursor_x_position = 0;
-  double last_cursor_y_position = 0;
+  auto [xpos, ypos] = Gfx::get_mouse_pos();
 
-  mouse->deltax = last_cursor_x_position - px;
-  mouse->deltay = last_cursor_y_position - py;
-  px = last_cursor_x_position;
-  py = last_cursor_y_position;
+  // NOTE - ignoring speed and setting position directly
+  // the game assumes resolutions, so this makes it a lot easier to make it actually
+  // line up with the mouse cursor
+
+  // TODO - probably factor in scaling as well
+  auto win_width = Gfx::get_window_width();
+  auto win_height = Gfx::get_window_height();
+
+  // These are used to calculate the speed at which to move the mouse to it's new coordinates
+  // zero'd out so they are ignored and don't impact the position we are about to set
+  mouse->deltax = 0;
+  mouse->deltay = 0;
+  // These positions will get capped to:
+  // - [-256.0, 256.0] for width
+  // - [-208.0, 208.0] for height
+  // (then 208 or 256 is always added to them to get the final screen coordinate)
+  // So just normalize the actual window's values to this range
+  double width_per = xpos / win_width;
+  double height_per = ypos / win_height;
+  mouse->posx = (512.0 * width_per) - 256.0;
+  mouse->posy = (416.0 * height_per) - 208.0;
+  // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
   return _mouse;
 }
 
@@ -643,6 +657,92 @@ void InitMachineScheme() {
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
     call_goal_function_by_name("play-boot");  // new function for jak2!
+  }
+}
+
+std::optional<SQLite::Database> sql_db = std::nullopt;
+
+void initialize_sql_db() {
+  // If the DB has already been initialized, no-op
+  if (sql_db) {
+    return;
+  }
+  // In the original environment, they relied on a database already being setup with the correct
+  // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
+  // that here!
+
+  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
+  // nicer editing experience
+
+  fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
+  file_util::create_dir_if_needed_for_file(db_path);
+
+  try {
+    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    SQLite::Transaction tx(sql_db.value());
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
+        "'translate_x' REAL, 'translate_y' REAL, 'translate_z' REAL, 'last_update' TEXT, "
+        "'sample_point_update' TEXT, PRIMARY KEY('level_info_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'light' ( 'light_id' INTEGER, 'name' TEXT, 'level_name' TEXT, "
+        "'pos_x' REAL, 'pos_y' REAL, 'pos_z' REAL, 'r' REAL, 'dir_x' REAL, 'dir_y' REAL, 'dir_z' "
+        "REAL, 'color0_r' REAL, 'color0_g' REAL, 'color0_b' REAL, 'color0_a' REAL, 'decay_start' "
+        "REAL, 'ambient_point_ratio' REAL, 'brightness' REAL, PRIMARY KEY('light_id' "
+        "AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_edge' ( 'nav_edge_id' INTEGER NOT NULL, 'nav_graph_id' "
+        "INTEGER NOT NULL, 'nav_node_id_1' INTEGER, 'nav_node_id_2' INTEGER, 'directionality' "
+        "TEXT, 'speed_limit' NUMERIC, 'density' NUMERIC, 'traffic_edge_flag' NUMERIC, "
+        "'nav_clock_mask' NUMERIC, 'nav_clock_type' TEXT, 'width' NUMERIC, 'minimap_edge_flag' "
+        "NUMERIC, FOREIGN KEY('nav_node_id_2') REFERENCES 'nav_node'('nav_node_id'), FOREIGN "
+        "KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'), FOREIGN KEY('nav_node_id_1') "
+        "REFERENCES 'nav_node'('nav_node_id'), PRIMARY KEY('nav_edge_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_graph' ( 'nav_graph_id' INTEGER, 'name' TEXT, PRIMARY "
+        "KEY('nav_graph_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_mesh' ( 'nav_mesh_id' INTEGER, PRIMARY KEY('nav_mesh_id' "
+        "AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_node' ( 'nav_node_id' INTEGER NOT NULL, 'nav_graph_id' "
+        "INTEGER NOT NULL, 'nav_mesh_id' INTEGER NOT NULL, 'x' REAL, 'y' REAL, 'z' REAL, "
+        "'level_name' TEXT, 'angle' REAL, 'radius' REAL, 'nav_node_flag' NUMERIC, FOREIGN "
+        "KEY('nav_mesh_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
+        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_visible_nodes' ( 'nav_node_id' INTEGER NOT NULL, "
+        "'nav_graph_id' INTEGER NOT NULL, 'nav_edge_id' INTEGER NOT NULL, FOREIGN "
+        "KEY('nav_edge_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
+        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'race_path' ( 'race_path_id' INTEGER, 'race' TEXT, 'path' "
+        "INTEGER, PRIMARY KEY('race_path_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region' ( 'region_id' INTEGER NOT NULL, 'level_name' TEXT, "
+        "'flags' NUMERIC, 'tree' TEXT, 'on_enter' TEXT, 'on_exit' TEXT, 'on_inside' TEXT, PRIMARY "
+        "KEY('region_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_face' ( 'region_face_id' INTEGER NOT NULL, 'region_id' "
+        "INTEGER NOT NULL, 'idx' INTEGER, 'kind' TEXT, 'radius' REAL, FOREIGN KEY('region_id') "
+        "REFERENCES 'region'('region_id'), PRIMARY KEY('region_face_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_point' ( 'region_point_id' INTEGER, 'region_face_id' "
+        "INTEGER NOT NULL, 'idx' INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
+        "KEY('region_face_id') REFERENCES 'region_face'('region_face_id'), PRIMARY "
+        "KEY('region_point_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_sphere' ( 'region_sphere_id' INTEGER, 'region_id' "
+        "INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, 'r' REAL, FOREIGN KEY('region_id') REFERENCES "
+        "'region'('region_id'), PRIMARY KEY('region_sphere_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'sample_point' ( 'sample_point_id' INTEGER, 'level_info_id' "
+        "INTEGER NOT NULL, 'source' TEXT, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
+        "KEY('level_info_id') REFERENCES 'level_info'('level_info_id'), PRIMARY "
+        "KEY('sample_point_id' AUTOINCREMENT) );");
+    tx.commit();
+  } catch (std::exception& e) {
+    lg::error("[SQL] Error creating SQLite DB - {}", e.what());
   }
 }
 
