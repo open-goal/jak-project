@@ -1,8 +1,10 @@
 #pragma once
 
-#include "SQLiteCpp/SQLiteCpp.h"
 #include <optional>
+
 #include "common/common_types.h"
+
+#include "SQLiteCpp/SQLiteCpp.h"
 
 namespace jak2 {
 void InitParms(int argc, const char* const* argv);

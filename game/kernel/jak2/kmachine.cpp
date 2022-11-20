@@ -1,6 +1,7 @@
 #include "kmachine.h"
 
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
 #include "common/log/log.h"
@@ -660,7 +661,6 @@ void InitMachineScheme() {
 }
 
 std::optional<SQLite::Database> sql_db = std::nullopt;
-#include <stdexcept>
 
 void initialize_sql_db() {
   // If the DB has already been initialized, no-op
@@ -674,9 +674,11 @@ void initialize_sql_db() {
   // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
   // nicer editing experience
 
+  fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
+  file_util::create_dir_if_needed_for_file(db_path);
+
   try {
-    sql_db = SQLite::Database("C:\\Users\\xtvas\\Repos\\opengoal\\jak-project\\jak2-editor.db",
-                              SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
     SQLite::Transaction tx(sql_db.value());
     sql_db->exec(
         "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "

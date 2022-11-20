@@ -3,8 +3,11 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "kmachine.h"
+
+#include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
-#include <common/goal_constants.h>
 
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
@@ -14,8 +17,6 @@
 #include "game/kernel/jak2/klink.h"
 #include "game/kernel/jak2/kprint.h"
 #include "game/kernel/jak2/kscheme.h"
-#include <common/log/log.h>
-#include "kmachine.h"
 
 namespace jak2 {
 using namespace jak2_symbols;
@@ -153,7 +154,7 @@ int sql_query_sync(Ptr<String> string_in) {
 
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
-    // TODO - query the databasex
+    // TODO - query the database!
     auto sym = find_symbol_from_c("sql-result");
     if (sym.offset) {
       Ptr<Type> type = Ptr<Type>(sym->value());

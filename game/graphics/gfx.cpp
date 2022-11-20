@@ -388,7 +388,7 @@ std::tuple<double, double> get_mouse_pos() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_mouse_pos();
   } else {
-    return {0,0};
+    return {0, 0};
   }
 }
 

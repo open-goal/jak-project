@@ -262,9 +262,8 @@ u64 make_debug_string_from_c(const char* c_str) {
     mem_size = 8;
   }
 
-  auto mem =
-      alloc_heap_object((s7 + FIX_SYM_DEBUG).offset, u32_in_fixed_sym(FIX_SYM_STRING_TYPE),
-                        mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
+  auto mem = alloc_heap_object((s7 + FIX_SYM_DEBUG).offset, u32_in_fixed_sym(FIX_SYM_STRING_TYPE),
+                               mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
   // there's no check for failed allocation here!
 
   // string size field
