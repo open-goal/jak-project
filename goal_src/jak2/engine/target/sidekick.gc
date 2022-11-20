@@ -10,22 +10,22 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-sidekick daxter 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-sidekick daxter daxter-lod0-jg -1
+              ((daxter-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               :longest-edge (meters 1)
-              :shadow 3
+              :shadow daxter-shadow-mg
               :texture-level 6
               :sort 1
               :origin-joint-index 6
               :shadow-joint-index 6
               )
 
-(defskelgroup skel-sidekick-highres daxter-highres 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-sidekick-highres daxter-highres daxter-highres-lod0-jg -1
+              ((daxter-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               :longest-edge (meters 1)
-              :shadow 2
+              :shadow daxter-highres-shadow-mg
               :sort 1
               :origin-joint-index 6
               :shadow-joint-index 6
@@ -78,14 +78,14 @@
              (set! (-> self special-anim-frame) 0.0)
              )
            (cond
-             ((or (and (= (-> gp-0 control unknown-surface00 name) 'spin) (!= (-> gp-0 board trotyv) 0.0))
+             ((or (and (= (-> gp-0 control mod-surface name) 'spin) (!= (-> gp-0 board trotyv) 0.0))
                   (!= (-> self special-anim-interp) 0.0)
                   )
               (case arg2
                 ((1)
                  (set! (-> self special-anim-time) (-> self clock frame-counter))
                  (cond
-                   ((= (-> gp-0 control unknown-surface00 name) 'spin)
+                   ((= (-> gp-0 control mod-surface name) 'spin)
                     (set! (-> arg1 z)
                           (* (lerp-scale 0.0 5.0 (fabs (-> gp-0 board trotyv)) 0.0 182044.44) (-> self special-anim-interp))
                           )
@@ -131,9 +131,9 @@
       (.lvf vf1 (&-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
       (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
       (.lvf vf6 (&-> arg2 trans quad))
-      (.lvf vf3 (&-> s4-0 vector 0 quad))
-      (.lvf vf4 (&-> s4-0 vector 1 quad))
-      (.lvf vf5 (&-> s4-0 vector 2 quad))
+      (.lvf vf3 (&-> s4-0 quad 0))
+      (.lvf vf4 (&-> s4-0 quad 1))
+      (.lvf vf5 (&-> s4-0 quad 2))
       (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
       (.wait.vf)
       (.mul.vf vf2 vf2 Q :mask #b111)
@@ -146,9 +146,9 @@
       (.add.mul.z.vf acc vf5 vf6 acc)
       (.add.mul.w.vf vf2 vf2 vf0 acc :mask #b111)
       (.svf (&-> s4-0 trans quad) vf2)
-      (.svf (&-> s4-0 vector 0 quad) vf3)
-      (.svf (&-> s4-0 vector 1 quad) vf4)
-      (.svf (&-> s4-0 vector 2 quad) vf5)
+      (.svf (&-> s4-0 quad 0) vf3)
+      (.svf (&-> s4-0 quad 1) vf4)
+      (.svf (&-> s4-0 quad 2) vf5)
       s4-0
       )
     )
@@ -181,7 +181,9 @@
        (case (-> event param 0)
          (('play-anim)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+transformq!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace+transformq!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -189,7 +191,9 @@
           )
          (('copy-parent)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -197,7 +201,9 @@
           )
          (('root)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace-normalized!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace-normalized!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data))
                 )
@@ -205,17 +211,21 @@
           )
          (('indax)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-transformq+trans!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-transformq+trans!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 control trans))
                 )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param2)
-                (the-as basic (-> self parent-override 0 control unknown-vector05))
+                (the-as basic (-> self parent-override 0 control cspace-offset))
                 )
           )
          (('board)
           (set! v0-0 (-> self node-list data))
-          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace-normalized!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace matrix none) cspace<-cspace-normalized!)
+                )
           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
                 (the-as basic (-> self parent-override 0 node-list data 25))
                 )
@@ -223,9 +233,11 @@
           )
          (else
            (set! v0-0 (-> self node-list data))
-           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+transformq!)
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                 (the-as (function cspace matrix none) cspace<-cspace+transformq!)
+                 )
            (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
-                 (the-as basic (-> self parent-override 0 control unknown-cspacei1un23i1 parent))
+                 (the-as basic (-> self parent-override 0 control sidekick-root parent))
                  )
            (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) (the-as basic (-> self offset)))
            )
@@ -352,7 +364,7 @@
           (set! (-> self offset trans y) (* 204.8 f0-3))
           (set! (-> self offset trans z) (* 409.6 f0-3))
           )
-        (joint-control-method-10 (-> self skel))
+        (update-anim-data (-> self skel))
         (when *debug-segment*
           (let ((gp-2 (-> *display* frames (-> *display* on-screen) profile-array data 0))
                 (v1-132 'target-post)
@@ -375,7 +387,7 @@
             )
           0
           )
-        (draw-control-method-14 (-> self draw) (-> self node-list) (-> self skel))
+        (do-joint-math (-> self draw) (-> self node-list) (-> self skel))
         (when *debug-segment*
           (let ((gp-3 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
             (when (and *dproc* *debug-segment*)
@@ -400,7 +412,7 @@
       (add-debug-sphere
         *display-sidekick-stats*
         (bucket-id debug-no-zbuf1)
-        (-> self parent-override 0 control unknown-cspacei1un23i1 parent bone transform trans)
+        (-> self parent-override 0 control sidekick-root parent bone transform trans)
         (meters 0.1)
         (new 'static 'rgba :g #xff :a #x80)
         )
@@ -452,31 +464,28 @@
          )
         (else
           (let* ((s5-3 (get-process *default-dead-pool* manipy #x4000))
-                 (gp-4
-                   (when s5-3
-                     (let ((t9-22 (method-of-type manipy activate)))
-                       (t9-22 (the-as manipy s5-3) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((gp-5 run-function-in-process)
-                           (s4-3 s5-3)
-                           (s3-1 manipy-init)
-                           (s2-0 (-> self root trans))
-                           (s1-0 (-> self entity))
-                           (t0-4 (art-group-get-by-name *level* "skel-sidekick" (the-as (pointer uint32) #f)))
-                           (t1-1 #f)
+                 (gp-4 (when s5-3
+                         (let ((t9-22 (method-of-type manipy activate)))
+                           (t9-22 (the-as manipy s5-3) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
                            )
-                       0
-                       ((the-as (function object object object object object object none) gp-5) s4-3 s3-1 s2-0 s1-0 t0-4 t1-1)
+                         (run-now-in-process
+                           s5-3
+                           manipy-init
+                           (-> self root trans)
+                           (-> self entity)
+                           (art-group-get-by-name *level* "skel-sidekick" (the-as (pointer uint32) #f))
+                           #f
+                           0
+                           )
+                         (the-as (pointer process-drawable) (-> s5-3 ppointer))
+                         )
                        )
-                     (the-as (pointer process-drawable) (-> s5-3 ppointer))
-                     )
-                   )
                  )
             (send-event (ppointer->process gp-4) 'anim-mode 'mirror)
             (send-event (ppointer->process gp-4) 'mirror #t)
             (set! (-> self mirror) gp-4)
             (let ((v0-29 (-> gp-4 0 node-list data)))
-              (set! (-> v0-29 0 param0) cspace<-cspace!)
+              (set! (-> v0-29 0 param0) (the-as (function cspace matrix none) cspace<-cspace!))
               (set! (-> v0-29 0 param1) (the-as basic (-> self node-list data)))
               (set! (-> v0-29 0 param2) #f)
               )
@@ -503,8 +512,8 @@
   (logior! (-> self skel status) (joint-control-status sync-math blend-shape eye-anim))
   (set! (-> self draw light-index) (the-as uint 30))
   (let ((v1-14 (-> self node-list data)))
-    (set! (-> v1-14 0 param0) cspace<-cspace+transformq!)
-    (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspacei1un23i1 parent)))
+    (set! (-> v1-14 0 param0) (the-as (function cspace matrix none) cspace<-cspace+transformq!))
+    (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control sidekick-root parent)))
     (set! (-> v1-14 0 param2) (the-as basic (-> self offset)))
     )
   (set! (-> self shadow-in-movie?) #t)

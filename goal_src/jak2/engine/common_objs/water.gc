@@ -701,7 +701,7 @@
 
 (defmethod water-control-method-10 water-control ((obj water-control))
   (local-vars
-    (sv-272 (function vector entity-actor skeleton-group vector none :behavior manipy))
+    (sv-272 (function vector entity-actor skeleton-group vector object none :behavior manipy))
     (sv-288 vector)
     (sv-304 entity-actor)
     )
@@ -778,7 +778,7 @@
            (set! (-> obj swim-depth) (fmax 0.0 (- (- (-> obj surface-height) (-> obj swim-height)) (-> obj bottom 0 y))))
            (and (>= (-> obj height) (-> obj bottom 0 y)) (logtest? (water-flags touch-water) (-> s5-0 flags)))
            )
-         (if (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags on-water))
+         (if (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status on-water))
              (set! (-> obj on-water-time) (-> pp clock frame-counter))
              )
          (when (not (logtest? (-> obj flags) (water-flags dark-eco lava)))
@@ -818,9 +818,17 @@
                              (set! sv-304 (-> obj process entity))
                              (let ((t0-0 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
                                    (t1-0 #f)
+                                   (t2-0 0)
                                    )
-                               0
-                               ((the-as (function object object object object object object none) s2-1) s0-0 sv-272 sv-288 sv-304 t0-0 t1-0)
+                               ((the-as (function object object object object object object object none) s2-1)
+                                s0-0
+                                sv-272
+                                sv-288
+                                sv-304
+                                t0-0
+                                t1-0
+                                t2-0
+                                )
                                )
                              )
                            (-> s1-0 ppointer)
@@ -964,23 +972,22 @@
                               s3-2
                               )
                           )
-                  (v1-237 (and v1-236 (< (- (-> pp clock frame-counter) (-> v1-236 unknown-time-frame06)) (seconds 0.5))))
+                  (v1-237 (and v1-236 (< (- (-> pp clock frame-counter) (-> v1-236 last-time-on-surface)) (seconds 0.5))))
                   )
              (if (and (logtest? (-> obj flags) (water-flags swim-ground))
                       (and v1-237
-                           (zero? (logand (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags on-water))
-                                  )
+                           (zero? (logand (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status on-water)))
                            )
                       )
                  (set! (-> obj bob amp) (* 0.8 (-> obj bob amp)))
                  )
              (cond
                ((and (logtest? (-> obj flags) (water-flags can-swim))
-                     (or (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags on-water))
+                     (or (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status on-water))
                          (>= f30-1 (-> obj bottom 0 y))
                          (and (logtest? (water-flags swimming) s4-0)
-                              (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags t-surface))
-                              (not (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags on-surface))
+                              (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status touch-surface))
+                              (not (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status on-surface))
                                    )
                               (>= (+ 204.8 f30-1) (-> obj bottom 0 y))
                               )
@@ -1007,23 +1014,23 @@
                     )
                 (cond
                   ((and (logtest? (-> obj flags) (water-flags swim-ground))
-                        (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (cshape-moving-flags t-surface))
+                        (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status touch-surface))
                         (zero? (logand (water-flags jump-out) (-> obj flags)))
                         )
                    (let ((v1-260 (new 'stack-no-clear 'vector)))
                      (set! (-> v1-260 quad) (-> obj bottom 0 quad))
                      (set! (-> v1-260 y) (- (-> obj height) (-> obj swim-height)))
                      (let ((s3-3 (the-as collide-shape-moving (-> obj process control))))
-                       (when (and (not (logtest? (-> s3-3 status) (cshape-moving-flags csmf12)))
+                       (when (and (not (logtest? (-> s3-3 status) (collide-status touch-background)))
                                   (logtest? (water-flags swimming) (-> obj flags))
                                   (zero? (logand (focus-status board pilot) (-> obj process focus-status)))
                                   )
                          (let ((a1-42 (vector-! (new 'stack-no-clear 'vector) v1-260 (-> (the-as control-info s3-3) trans))))
                            (vector-float*! a1-42 a1-42 (-> pp clock frames-per-second))
-                           (collide-shape-method-37 s3-3 a1-42)
+                           (integrate-and-collide! s3-3 a1-42)
                            )
                          (set! (-> (the-as control-info s3-3) status)
-                               (logior (-> s3-3 status) (cshape-moving-flags on-surface on-ground t-surface on-water))
+                               (logior (-> s3-3 status) (collide-status on-surface on-ground touch-surface on-water))
                                )
                          )
                        )
@@ -1063,12 +1070,8 @@
                  (set! (-> a1-47 y) f30-1)
                  (when (not (logtest? (focus-status board pilot) (-> obj process focus-status)))
                    (let ((f30-2 (-> s4-1 ground-impact-vel)))
-                     (let ((t9-26 (method-of-object s4-1 collide-shape-moving-method-61)))
-                       (-> (the-as control-info s4-1) transv)
-                       *up-vector*
-                       (t9-26)
-                       )
-                     (set! (-> (the-as control-info s4-1) status) (logior (-> s4-1 status) (cshape-moving-flags on-water)))
+                     (move-to-ground-point s4-1 a1-47 (-> (the-as control-info s4-1) transv) *up-vector*)
+                     (set! (-> (the-as control-info s4-1) status) (logior (-> s4-1 status) (collide-status on-water)))
                      (set! (-> (the-as control-info s4-1) ground-impact-vel) f30-2)
                      )
                    )
@@ -1080,7 +1083,7 @@
            (cond
              ((logtest? (-> obj flags) (water-flags tar))
               (when (and (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status)
-                                   (cshape-moving-flags on-surface on-water)
+                                   (collide-status on-surface on-water)
                                    )
                          (zero? (logand (focus-status board pilot) (-> obj process focus-status)))
                          )
@@ -1114,7 +1117,7 @@
               )
              ((logtest? (-> obj flags) (water-flags lava))
               (when (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status)
-                              (cshape-moving-flags on-surface on-water)
+                              (collide-status on-surface on-water)
                               )
                 (when (< (-> obj process control trans y) (+ -204.8 (-> obj base-height)))
                   (send-event (-> obj process) 'no-look-around (seconds 1.5))
@@ -1444,26 +1447,18 @@
             )
         (when (and arg4 (>= (- (-> pp clock frame-counter) (-> obj distort-time)) (seconds 0.3)))
           (set! (-> obj distort-time) (-> pp clock frame-counter))
-          (let* ((s2-0 (get-process *default-dead-pool* manipy #x4000))
-                 (s3-1
-                   (when s2-0
-                     (let ((t9-2 (method-of-type manipy activate)))
-                       (t9-2 (the-as manipy s2-0) (-> obj process) (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((s3-2 run-function-in-process)
-                           (s1-0 s2-0)
-                           (s0-0 manipy-init)
-                           (s5-1 (-> obj process entity))
-                           (t0-1 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
-                           (t1-1 #f)
-                           )
-                       0
-                       ((the-as (function object object object object object object none) s3-2) s1-0 s0-0 s4-1 s5-1 t0-1 t1-1)
-                       )
-                     (-> s2-0 ppointer)
-                     )
-                   )
-                 )
+          (let ((s3-1 (process-spawn
+                        manipy
+                        :init manipy-init
+                        s4-1
+                        (-> obj process entity)
+                        (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f))
+                        #f
+                        0
+                        :to (-> obj process)
+                        )
+                      )
+                )
             (when s3-1
               (send-event (ppointer->process s3-1) 'anim-mode 'play1)
               (send-event (ppointer->process s3-1) 'anim "idle")

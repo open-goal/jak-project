@@ -1034,6 +1034,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2_mask(i0, instr_str, "vabs");
     case InstructionKind::VADDQ:
       return handle_generic_op2_mask(i0, instr_str, "vaddq");
+    case InstructionKind::VMR32:
+      return handle_generic_op2_mask(i0, instr_str, "vmr32");
     case InstructionKind::ANDI:
     case InstructionKind::ORI:
     case InstructionKind::XORI:
@@ -1108,6 +1110,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3(i0, instr_str, "xor_");
     case InstructionKind::AND:
       return handle_generic_op3(i0, instr_str, "and_");  // and isn't allowed in C++
+    case InstructionKind::NOR:
+      return handle_generic_op3(i0, instr_str, "nor");  // and isn't allowed in C++
     case InstructionKind::DADDIU:
       return handle_daddiu(output, i0, instr_str, version);
     case InstructionKind::ADDIU:
@@ -1159,6 +1163,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "mtc1");
     case InstructionKind::NEGS:
       return handle_generic_op2(i0, instr_str, "negs");
+    case InstructionKind::ABSS:
+      return handle_generic_op2(i0, instr_str, "abss");
     case InstructionKind::MOVS:
       return handle_generic_op2(i0, instr_str, "movs");
     case InstructionKind::CVTWS:

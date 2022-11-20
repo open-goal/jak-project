@@ -41,7 +41,6 @@ static s32 CheckVAGStreamProgress(VagCommand* vag);
 static void StopVAG(VagCommand* vag);
 static void PauseVAG(VagCommand* vag);
 static void UnpauseVAG(VagCommand* vag);
-static void SetVAGVol();
 static s32 GetPlayPos();
 static void UpdatePlayPos();
 static void VAG_MarkLoopEnd(void* data, u32 size);
@@ -1254,7 +1253,7 @@ static void UnpauseVAG(VagCommand* vag) {
   }
 }
 
-static void SetVAGVol() {
+void SetVAGVol() {
   if (gVAGCMD && gVAGCMD->started && !gVAGCMD->paused) {
     s32 left = 0, right = 0;
     CalculateVAGVolumes(gVAGCMD->volume, gVAGCMD->positioned, &gVAGCMD->trans, &left, &right);

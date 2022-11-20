@@ -1941,162 +1941,160 @@
 (defstate progress-normal (progress)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 none))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'go-away)
-                        (go progress-going-out)
-                        )
-                       ((= v1-0 'notify)
-                        (cond
-                          ((= (-> event param 0) 'done)
-                           (case (-> self display-state)
-                             (((progress-screen memcard-saving))
-                              (cond
-                                ((= (-> self display-state-stack 0) (progress-screen title))
-                                 (let ((gp-1 (-> *setting-control* default auto-save)))
-                                   (sound-volume-off)
-                                   (set! (-> *game-info* mode) 'play)
-                                   (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
-                                   (set! (-> *setting-control* default auto-save) gp-1)
-                                   )
-                                 (set-master-mode 'game)
+    (the-as object (case event-type
+                     (('go-away)
+                      (go progress-going-out)
+                      )
+                     (('notify)
+                      (cond
+                        ((= (-> event param 0) 'done)
+                         (case (-> self display-state)
+                           (((progress-screen memcard-saving))
+                            (cond
+                              ((= (-> self display-state-stack 0) (progress-screen title))
+                               (let ((gp-1 (-> *setting-control* default auto-save)))
+                                 (sound-volume-off)
+                                 (set! (-> *game-info* mode) 'play)
+                                 (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+                                 (set! (-> *setting-control* default auto-save) gp-1)
                                  )
-                                (else
-                                  (set! v0-0 (the-as none -1))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  v0-0
-                                  )
+                               (set-master-mode 'game)
+                               )
+                              (else
+                                (set! v0-0 (the-as none -1))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                                v0-0
                                 )
                               )
-                             (((progress-screen memcard-formatting))
-                              (set! (-> self force-transition) #t)
-                              (set! v0-0 (the-as none 15))
-                              (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                              v0-0
-                              )
-                             (((progress-screen memcard-creating))
-                              (cond
-                                ((= (-> self display-state-stack 0) (progress-screen title))
-                                 (set! v0-0 (the-as none 18))
-                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                 )
-                                (else
-                                  (set! v0-0 (the-as none 17))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  )
+                            )
+                           (((progress-screen memcard-formatting))
+                            (set! (-> self force-transition) #t)
+                            (set! v0-0 (the-as none 15))
+                            (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                            v0-0
+                            )
+                           (((progress-screen memcard-creating))
+                            (cond
+                              ((= (-> self display-state-stack 0) (progress-screen title))
+                               (set! v0-0 (the-as none 18))
+                               (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                               )
+                              (else
+                                (set! v0-0 (the-as none 17))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 )
-                              v0-0
                               )
+                            v0-0
+                            )
+                           )
+                         )
+                        ((= (-> event param 0) 'error)
+                         (let ((t9-4 format)
+                               (a0-17 #t)
+                               (a1-2 "ERROR NOTIFY: ~S ~D~%")
+                               (v1-13 (-> event param 1))
+                               )
+                           (t9-4
+                             a0-17
+                             a1-2
+                             (cond
+                               ((= v1-13 17)
+                                "no-auto-save"
+                                )
+                               ((= v1-13 16)
+                                "no-process"
+                                )
+                               ((= v1-13 15)
+                                "bad-version"
+                                )
+                               ((= v1-13 14)
+                                "no-space"
+                                )
+                               ((= v1-13 13)
+                                "no-save"
+                                )
+                               ((= v1-13 12)
+                                "no-file"
+                                )
+                               ((= v1-13 11)
+                                "no-format"
+                                )
+                               ((= v1-13 10)
+                                "no-last"
+                                )
+                               ((= v1-13 9)
+                                "no-card"
+                                )
+                               ((= v1-13 8)
+                                "no-memory"
+                                )
+                               ((= v1-13 7)
+                                "new-game"
+                                )
+                               ((= v1-13 6)
+                                "read-error"
+                                )
+                               ((= v1-13 5)
+                                "write-error"
+                                )
+                               ((= v1-13 4)
+                                "internal-error"
+                                )
+                               ((= v1-13 3)
+                                "format-failed"
+                                )
+                               ((= v1-13 2)
+                                "bad-handle"
+                                )
+                               ((= v1-13 1)
+                                "ok"
+                                )
+                               ((zero? v1-13)
+                                "busy"
+                                )
+                               (else
+                                 "*unknown*"
+                                 )
+                               )
+                             (-> self display-state)
                              )
                            )
-                          ((= (-> event param 0) 'error)
-                           (let ((t9-4 format)
-                                 (a0-17 #t)
-                                 (a1-2 "ERROR NOTIFY: ~S ~D~%")
-                                 (v1-13 (-> event param 1))
-                                 )
-                             (t9-4
-                               a0-17
-                               a1-2
-                               (cond
-                                 ((= v1-13 17)
-                                  "no-auto-save"
-                                  )
-                                 ((= v1-13 16)
-                                  "no-process"
-                                  )
-                                 ((= v1-13 15)
-                                  "bad-version"
-                                  )
-                                 ((= v1-13 14)
-                                  "no-space"
-                                  )
-                                 ((= v1-13 13)
-                                  "no-save"
-                                  )
-                                 ((= v1-13 12)
-                                  "no-file"
-                                  )
-                                 ((= v1-13 11)
-                                  "no-format"
-                                  )
-                                 ((= v1-13 10)
-                                  "no-last"
-                                  )
-                                 ((= v1-13 9)
-                                  "no-card"
-                                  )
-                                 ((= v1-13 8)
-                                  "no-memory"
-                                  )
-                                 ((= v1-13 7)
-                                  "new-game"
-                                  )
-                                 ((= v1-13 6)
-                                  "read-error"
-                                  )
-                                 ((= v1-13 5)
-                                  "write-error"
-                                  )
-                                 ((= v1-13 4)
-                                  "internal-error"
-                                  )
-                                 ((= v1-13 3)
-                                  "format-failed"
-                                  )
-                                 ((= v1-13 2)
-                                  "bad-handle"
-                                  )
-                                 ((= v1-13 1)
-                                  "ok"
-                                  )
-                                 ((zero? v1-13)
-                                  "busy"
-                                  )
-                                 (else
-                                   "*unknown*"
-                                   )
-                                 )
-                               (-> self display-state)
-                               )
-                             )
-                           (case (-> event param 1)
-                             ((14)
-                              (set! v0-0 (the-as none 7))
-                              (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                              v0-0
-                              )
-                             (else
-                               (case (-> self display-state)
-                                 (((progress-screen memcard-formatting))
-                                  (set! v0-0 (the-as none 24))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  v0-0
-                                  )
-                                 (((progress-screen memcard-creating))
-                                  (set! v0-0 (the-as none 25))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  v0-0
-                                  )
-                                 (((progress-screen memcard-saving))
-                                  (set! v0-0 (the-as none 21))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  v0-0
-                                  )
-                                 (((progress-screen memcard-loading))
-                                  (set! v0-0 (the-as none 20))
-                                  (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                  v0-0
-                                  )
-                                 )
+                         (case (-> event param 1)
+                           ((14)
+                            (set! v0-0 (the-as none 7))
+                            (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                            v0-0
+                            )
+                           (else
+                             (case (-> self display-state)
+                               (((progress-screen memcard-formatting))
+                                (set! v0-0 (the-as none 24))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                                v0-0
+                                )
+                               (((progress-screen memcard-creating))
+                                (set! v0-0 (the-as none 25))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                                v0-0
+                                )
+                               (((progress-screen memcard-saving))
+                                (set! v0-0 (the-as none 21))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                                v0-0
+                                )
+                               (((progress-screen memcard-loading))
+                                (set! v0-0 (the-as none 20))
+                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                                v0-0
+                                )
                                )
                              )
                            )
-                          )
+                         )
                         )
-                       )
-              )
-      )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (loop

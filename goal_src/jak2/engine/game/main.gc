@@ -489,9 +489,9 @@
     ; (region-execute)
 
     ;; final call to update joints before drawing.
-    ; (with-profiler 'joints *profile-joints-color*
-    ;   (execute-math-engine)
-    ;   )
+    (with-profiler 'joints *profile-joints-color*
+      (execute-math-engine)
+      )
 
     ;; execute the debug hook before doing the big updates
     (with-profiler 'debug *profile-debug-color*
@@ -611,7 +611,7 @@
     ;; start profiling for the new frame
     (when *debug-segment*
       (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
-      ;(reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
+      (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
       )
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -623,11 +623,11 @@
     (set! (-> *time-of-day-context* title-updated) #f)
 
     ;; update teleport counter
-    ; (set! *teleport* #f)
-    ; (when (nonzero? *teleport-count*)
-    ;   (set! *teleport* #t)
-    ;   (set! *teleport-count* (+ *teleport-count* -1))
-    ;   )
+    (set! *teleport* #f)
+    (when (nonzero? *teleport-count*)
+      (set! *teleport* #t)
+      (set! *teleport-count* (+ *teleport-count* -1))
+      )
 
     ;; update particles (we're racing the DMA transfer again, do this asap)
     (let ((gp-1 (-> pp clock)))
@@ -662,61 +662,26 @@
 (defbehavior display-loop process ()
   (stack-size-set! (-> self main-thread) 512)
 
-  ;; spawn the matrix process. This is responsible for doing the first pass through joints
-  ; (process-spawn-function
-  ;   process
-  ;   (lambda :behavior process
-  ;     ()
-  ;     (logclear! (-> self mask) (process-mask freeze pause menu progress entity))
-  ;     (until #f
-  ;       (when *debug-segment*
-  ;         (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
-  ;               (v1-9 'joints)
-  ;               (s5-0 *profile-joints-color*)
-  ;               )
-  ;           (when (and *dproc* *debug-segment*)
-  ;             (let ((s4-0 (-> gp-0 data (-> gp-0 count))))
-  ;               (let ((s3-0 (-> gp-0 base-time)))
-  ;                 (set! (-> s4-0 name) v1-9)
-  ;                 (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
-  ;                 )
-  ;               (set! (-> s4-0 depth) (the-as uint (-> gp-0 depth)))
-  ;               (set! (-> s4-0 color) s5-0)
-  ;               (set! (-> gp-0 segment (-> gp-0 depth)) s4-0)
-  ;               )
-  ;             (+! (-> gp-0 count) 1)
-  ;             (+! (-> gp-0 depth) 1)
-  ;             (set! (-> gp-0 max-depth) (max (-> gp-0 max-depth) (-> gp-0 depth)))
-  ;             )
-  ;           )
-  ;         0
-  ;         )
-  ;       (execute-math-engine)
-  ;       (when *debug-segment*
-  ;         (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
-  ;           (when (and *dproc* *debug-segment*)
-  ;             (let* ((v1-33 (+ (-> gp-1 depth) -1))
-  ;                    (s5-1 (-> gp-1 segment v1-33))
-  ;                    (s4-1 (-> gp-1 base-time))
-  ;                    )
-  ;               (when (>= v1-33 0)
-  ;                 (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
-  ;                 (+! (-> gp-1 depth) -1)
-  ;                 )
-  ;               )
-  ;             )
-  ;           )
-  ;         0
-  ;         )
-  ;       (suspend)
-  ;       )
-  ;     #f
-  ;     (none)
-  ;     )
-  ;   :name "matrix"
-  ;   :from *4k-dead-pool*
-  ;   :to *mid-pool*
-  ;   )
+  ;; it's unclear why this exists, when there's also a call to execute-math-engine
+  ;; in display-loop-main
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ()
+      (logclear! (-> self mask) (process-mask freeze pause menu progress entity))
+      (until #f
+        (with-profiler 'joints *profile-joints-color*
+          (execute-math-engine)
+          )
+        (suspend)
+        )
+      #f
+      (none)
+      )
+    :name "matrix"
+    :from *4k-dead-pool*
+    :to *mid-pool*
+    )
   (let ((gp-1 *display*))
     (set! *teleport* #t)
     (update *setting-control*)
@@ -727,10 +692,9 @@
     (swap-display gp-1)
     (format 0 "about to install-handler~%")
     (install-handler 3 vblank-handler) ;; TODO: this never gets called.
-    ; *touching-list*
-    ; ((method-of-type touching-list touching-list-method-10))
-    ; (prepare *collide-rider-pool*)
-    ; (update-actor-hash)
+    (free-nodes *touching-list*)
+    (prepare *collide-rider-pool*)
+    (update-actor-hash)
     ; (blerc-init)
     ; (dma-send
     ;   (the-as dma-bank #x10008000)
@@ -780,15 +744,15 @@
            (level-get-with-status *level* 'active)
            )
        (activate-levels! *level*)
-    ;    (when (not arg0)
-    ;      (let ((gp-1 (entity-by-type camera-start)))
-    ;        (when (and gp-1 (type? gp-1 entity-actor))
-    ;          (while (not (camera-teleport-to-entity gp-1))
-    ;            (suspend)
-    ;            )
-    ;          )
-    ;        )
-    ;      )
+       (when (not arg0)
+         (let ((gp-1 (entity-by-type camera-start)))
+           (when (and gp-1 (type? gp-1 entity-actor))
+             (while (not (camera-teleport-to-entity gp-1))
+               (suspend)
+               )
+             )
+           )
+         )
     ;    (if (and (= *kernel-boot-message* 'art-group) *kernel-boot-art-group*)
     ;        (anim-tester-add-object *kernel-boot-art-group*)
     ;        )
