@@ -1,5 +1,6 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
+#include "common/util/json_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
@@ -151,6 +152,13 @@ void Compiler::shutdown_target() {
 
 bool Compiler::knows_object_file(const std::string& name) {
   return m_debugger.knows_object(name);
+}
+
+void Compiler::update_via_config_file(const std::string& json) {
+  auto cfg = parse_commented_json(json, "repl-config.json");
+  if (cfg.contains("numConnectToTargetAttempts")) {
+    m_target_connect_attempts = cfg.at("numConnectToTargetAttempts").get<int>();
+  }
 }
 
 /*!

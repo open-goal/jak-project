@@ -142,6 +142,8 @@ int set_socket_timeout(int socket, long microSeconds) {
   return ret;
 #elif _WIN32
   DWORD timeout = microSeconds / 1000;  // milliseconds
+  // TODO - NOTE this might be bad / unreliable if the socket ends up being in a bad state
+  // select() instead should be used, will do so if ends up being an issue in practice
   return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 #endif
 }

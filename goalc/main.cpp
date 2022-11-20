@@ -5,9 +5,9 @@
 #include "common/log/log.h"
 #include "common/nrepl/ReplServer.h"
 #include "common/util/FileUtil.h"
+#include "common/util/diff.h"
 #include "common/versions.h"
 
-#include "SQLiteCpp/SQLiteCpp.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
@@ -33,6 +33,8 @@ int main(int argc, char** argv) {
   int nrepl_port = 8181;
   fs::path project_path_override;
 
+  // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
+  // TODO - auto-find the user if there is only one folder within `user/`
   CLI::App app{"OpenGOAL Compiler / REPL"};
   app.add_option("-c,--cmd", cmd, "Specify a command to run");
   app.add_option("--startup-cmd", startup_cmd,
@@ -67,6 +69,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  std::vector<std::string> user_startup_commands = {};
+  std::optional<std::string> repl_config = {};
+
   if (auto_find_user) {
     username = "#f";
     std::regex allowed_chars("[0-9a-zA-Z\\-\\.\\!\\?<>]");
@@ -85,6 +90,22 @@ int main(int argc, char** argv) {
       }
       if (!found_username.empty()) {
         username = found_username;
+        // Check for a `startup.gc` file, each line will be executed on the REPL on startup
+        auto startup_file_path =
+            file_util::get_file_path({"goal_src", "user", username, "startup.gc"});
+        if (file_util::file_exists(startup_file_path)) {
+          auto data = file_util::read_text_file(startup_file_path);
+          auto startup_cmds = split_string(data);
+          for (const auto& cmd : startup_cmds) {
+            user_startup_commands.push_back(cmd);
+          }
+        }
+        // Check for a `repl-config.json` file, so things can be configured without tons of flags
+        auto repl_config_path =
+            file_util::get_file_path({"goal_src", "user", username, "repl-config.json"});
+        if (file_util::file_exists(repl_config_path)) {
+          repl_config = file_util::read_text_file(repl_config_path);
+        }
       }
     } catch (std::exception& e) {
       printf("error opening user desc file: %s\n", e.what());
@@ -104,13 +125,16 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     std::unique_ptr<Compiler> compiler;
-    // TODO - allow passing in an iso_data override
     std::mutex compiler_mutex;
     // if a command is provided on the command line, no REPL just run the compiler on it
     if (!cmd.empty()) {
       compiler = std::make_unique<Compiler>(game_version);
       compiler->run_front_end_on_string(cmd);
       return 0;
+    }
+    compiler = std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
+    if (repl_config) {
+      compiler->update_via_config_file(repl_config.value());
     }
     // Start nREPL Server
     if (repl_server_ok) {
@@ -128,14 +152,23 @@ int main(int argc, char** argv) {
       });
     }
     // Run automatic forms if applicable
-    if (auto_debug || auto_listen) {
-      std::lock_guard<std::mutex> lock(compiler_mutex);
-      status = compiler->handle_repl_string("(lt)");
+    // - this should probably be deprecated in favor of the `startup.gc` file
+    if (user_startup_commands.empty() && (auto_debug || auto_listen)) {
+      user_startup_commands.push_back("(lt)");
     }
-    if (auto_debug) {
+    if (user_startup_commands.empty() && auto_debug) {
       std::lock_guard<std::mutex> lock(compiler_mutex);
-      status = compiler->handle_repl_string("(dbg) (:cont)");
+      status = compiler->handle_repl_string("(dbgc)");
+      user_startup_commands.push_back("(dbgc)");
     }
+
+    if (!user_startup_commands.empty()) {
+      std::lock_guard<std::mutex> lock(compiler_mutex);
+      for (const auto& cmd : user_startup_commands) {
+        status = compiler->handle_repl_string(cmd);
+      }
+    }
+
     // Poll Terminal
     while (status != ReplStatus::WANT_EXIT) {
       if (status == ReplStatus::WANT_RELOAD) {
@@ -146,6 +179,9 @@ int main(int argc, char** argv) {
         }
         compiler =
             std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
+        if (repl_config) {
+          compiler->update_via_config_file(repl_config.value());
+        }
         if (!startup_cmd.empty()) {
           compiler->handle_repl_string(startup_cmd);
           // reset to prevent re-executing on manual reload

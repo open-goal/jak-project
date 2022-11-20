@@ -31,4 +31,7 @@ class ReplWrapper {
   std::vector<std::string> examples{};
   using cl = Replxx::Color;
   std::vector<std::pair<std::string, cl>> regex_colors{};
+
+ private:
+  replxx::Replxx::key_press_handler_t commit_text_action(std::string text_to_commit);
 };

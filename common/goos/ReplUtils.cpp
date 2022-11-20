@@ -130,6 +130,31 @@ void ReplWrapper::print_help_message() {
   fmt::print(" - Enter a GOOS REPL\n");
 }
 
+replxx::Replxx::key_press_handler_t ReplWrapper::commit_text_action(std::string text_to_commit) {
+  return [this, text_to_commit](char32_t code) {
+    repl.set_state(
+        replxx::Replxx::State(text_to_commit.c_str(), static_cast<int>(text_to_commit.size())));
+    return repl.invoke(Replxx::ACTION::COMMIT_LINE, code);
+  };
+}
+
 void ReplWrapper::init_default_settings() {
+  // NOTE - a nice popular project that uses replxx
+  // - https://github.com/ClickHouse/ClickHouse/blob/master/base/base/ReplxxLineReader.cpp#L366
   repl.set_word_break_characters(" \t");
+  // Setup default keybinds
+  // (test-play) : Ctrl-P
+  repl.bind_key(Replxx::KEY::control('T'), commit_text_action("(test-play)"));
+  // (e) : Ctrl-Q
+  repl.bind_key(Replxx::KEY::control('Q'), commit_text_action("(e)"));
+  // (lt) : Ctrl-G
+  repl.bind_key(Replxx::KEY::control('L'), commit_text_action("(lt)"));
+  /// (:stop) : Ctrl-H
+  repl.bind_key(Replxx::KEY::control('W'), commit_text_action("(:stop)"));
+  // (dbgc) : Ctrl-F
+  repl.bind_key(Replxx::KEY::control('G'), commit_text_action("(dbgc)"));
+  // (:di) : Ctrl-B
+  repl.bind_key(Replxx::KEY::control('B'), commit_text_action("(:di)"));
+  // (mi) : Ctrl-M
+  repl.bind_key(Replxx::KEY::control('N'), commit_text_action("(mi)"));
 }
