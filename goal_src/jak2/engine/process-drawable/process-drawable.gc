@@ -7,6 +7,20 @@
 
 (declare-type fuel-cell basic) ;; TODO!!
 
+(defun-debug draw-bone-lines ((obj process-drawable))
+  "Added in PC port to debug bones"
+  (dotimes (i (-> obj node-list length))
+    (let ((parent (-> obj node-list data i parent)))
+      (when (and parent (nonzero? parent) (-> parent joint) (-> parent parent))
+        (let ((child (vector<-cspace! (new-stack-vector0) (-> obj node-list data i)))
+              )
+          (add-debug-line #t (bucket-id debug2) child (vector<-cspace! (new-stack-vector0) parent) (new 'static 'rgba :g #xff :a #x40) #f (the rgba -1))
+          )
+        )
+      )
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (defmethod add-to-loading-level skeleton-group ((obj skeleton-group))
@@ -444,6 +458,7 @@
           )
         )
       )
+    (draw-bone-lines (-> obj process))
     0
     (none)
     )
@@ -1299,7 +1314,8 @@
       (label cfg-45)
       (let ((a0-26 (-> gp-0 effect)))
         (if a0-26
-            (effect-control-method-9 a0-26)
+            (format 0 "skip effect control~%")
+            ;(effect-control-method-9 a0-26)
             )
         )
       )

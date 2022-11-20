@@ -1769,9 +1769,11 @@ u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   return 0;
 }
 
-u64 loado(u32 /*file_name_in*/, u32 /*heap_in*/) {
-  ASSERT(false);
-  return 0;
+u64 loado(u32 file_name_in, u32 /*heap_in*/) {
+  // ASSERT(false);
+  Ptr<String> file_name(file_name_in);
+  printf("****** CALL TO loado(%s) ******\n", file_name->data());
+  return s7.offset;
 }
 
 /*!
