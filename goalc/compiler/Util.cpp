@@ -153,6 +153,12 @@ bool Compiler::knows_object_file(const std::string& name) {
   return m_debugger.knows_object(name);
 }
 
+void Compiler::update_via_config_file(const nlohmann::json& cfg) {
+  if (cfg.contains("numConnectToTargetAttempts")) {
+    m_target_connect_attempts = cfg.at("numConnectToTargetAttempts").get<int>();
+  }
+}
+
 /*!
  * Parse arguments into a goos::Arguments format.
  */

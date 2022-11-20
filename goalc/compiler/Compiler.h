@@ -21,6 +21,7 @@
 
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -93,6 +94,7 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
+  void update_via_config_file(const nlohmann::json& cfg);
 
  private:
   GameVersion m_version;
@@ -113,6 +115,7 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+  int m_target_connect_attempts = 30;
 
   struct DebugStats {
     int num_spills = 0;
