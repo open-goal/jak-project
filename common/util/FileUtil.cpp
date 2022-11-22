@@ -334,7 +334,8 @@ std::string base_name_no_ext(const std::string& filename) {
     }
   }
   std::string file_name = filename.substr(pos);
-  return file_name.substr(0, file_name.find_last_of('.'));;
+  return file_name.substr(0, file_name.find_last_of('.'));
+  ;
 }
 
 void ISONameFromAnimationName(char* dst, const char* src) {

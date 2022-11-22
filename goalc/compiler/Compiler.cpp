@@ -67,8 +67,8 @@ Compiler::Compiler(GameVersion version,
     auto regex_colors = m_repl->regex_colors;
     m_repl->init_default_settings();
     using namespace std::placeholders;
-    m_repl->get_repl().set_completion_callback(
-        std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+    m_repl->get_repl().set_completion_callback(std::bind(
+        &Compiler::find_symbols_or_object_file_by_prefix, this, _1, _2, std::cref(examples)));
     m_repl->get_repl().set_hint_callback(
         std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
     m_repl->get_repl().set_highlighter_callback(
