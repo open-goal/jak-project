@@ -35,6 +35,8 @@ class player {
 
   u32 load_bank(fs::path& path, size_t offset);
 
+  u32 find_bank_by_name(char* name);
+  u32 find_sound_by_name(char* name);
   u32 play_sound(u32 bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
   u32 play_sound_by_name(u32 bank,
                          char* bank_name,

@@ -143,6 +143,16 @@ u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 
   return handle;
 }
 
+u32 player::play_sound_by_name(u32 bank,
+                               char* bank_name,
+                               char* sound_name,
+                               s32 vol,
+                               s32 pan,
+                               s32 pm,
+                               s32 pb) {
+  return 0;
+}
+
 void player::stop_sound(u32 sound_id) {
   std::scoped_lock lock(m_ticklock);
   auto handler = m_handlers.find(sound_id);
@@ -291,6 +301,18 @@ void player::stop_all_sounds() {
     m_handle_allocator.free_id(it->first);
     it = m_handlers.erase(it);
   }
+}
+
+s32 player::get_sound_user_data(s32 block_handle,
+                                char* block_name,
+                                s32 sound_id,
+                                char* sound_name,
+                                SFXUserData* dst) {
+  dst->data[0] = 0;
+  dst->data[1] = 0;
+  dst->data[2] = 0;
+  dst->data[3] = 0;
+  return 0;
 }
 
 }  // namespace snd
