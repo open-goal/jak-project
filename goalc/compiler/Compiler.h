@@ -93,7 +93,8 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-  void update_via_config_file(const std::string& json);
+  void update_via_config_file(const std::string& json,
+                              const std::optional<std::string> game_name = {});
 
  private:
   GameVersion m_version;
@@ -114,7 +115,10 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+
+  // Configurable fields
   int m_target_connect_attempts = 30;
+  std::vector<std::string> m_asm_file_search_dirs = {};
 
   struct DebugStats {
     int num_spills = 0;
