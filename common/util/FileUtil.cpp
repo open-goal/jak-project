@@ -76,6 +76,11 @@ fs::path get_user_memcard_dir(GameVersion game_version) {
   return get_user_config_dir() / game_version_name / "saves";
 }
 
+fs::path get_user_misc_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "misc";
+}
+
 struct {
   bool initialized = false;
   fs::path path_to_data;

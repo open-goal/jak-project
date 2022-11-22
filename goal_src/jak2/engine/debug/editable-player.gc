@@ -5,11 +5,6 @@
 ;; name in dgo: editable-player
 ;; dgos: ENGINE, GAME
 
-;; og:ignore-form:insert-box
-
-(define-extern insert-box (function editable-array vector none))
-(define-extern editable-player-init (function symbol none :behavior editable-player))
-
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -44,42 +39,127 @@
   (none)
   )
 
-;; WARN: Failed store: (s.w! (+ a0-9 120) v1-10) at op 39
-;; WARN: Failed store: (s.w! (+ a0-18 120) #f) at op 57
-;; WARN: Failed store: (s.w! (+ a0-24 120) v1-21) at op 93
-;; WARN: Failed store: (s.w! (+ a0-30 120) v1-24) at op 118
-;; WARN: Failed store: (s.w! (+ a0-36 120) v1-27) at op 143
-;; WARN: Failed store: (s.w! (+ a0-42 120) v1-30) at op 168
-;; WARN: Failed store: (s.w! (+ a0-48 120) v1-33) at op 193
-;; WARN: Failed store: (s.w! (+ a0-54 120) v1-36) at op 218
-;; WARN: Failed store: (s.w! (+ a0-60 120) v1-39) at op 243
-;; WARN: Failed store: (s.w! (+ a0-65 120) v1-42) at op 267
-;; WARN: Failed load: (set! a0-67 (l.wu (+ v1-47 120))) at op 278
-;; WARN: Failed load: (set! a0-68 (l.wu (+ v1-52 120))) at op 287
-;; WARN: Failed load: (set! a0-69 (l.wu (+ v1-57 120))) at op 296
-;; WARN: Failed load: (set! a0-70 (l.wu (+ v1-62 120))) at op 305
-;; WARN: Failed load: (set! a0-73 (l.wu (+ v1-71 120))) at op 329
-;; WARN: Failed load: (set! a0-74 (l.wu (+ v1-76 120))) at op 338
-;; WARN: Failed load: (set! a0-75 (l.wu (+ v1-81 120))) at op 347
-;; WARN: Failed load: (set! a0-76 (l.wu (+ v1-86 120))) at op 356
-;; WARN: Failed load: (set! a0-80 (l.wu (+ v1-97 120))) at op 387
-;; WARN: Failed load: (set! a0-81 (l.wu (+ v1-102 120))) at op 396
-;; WARN: Failed load: (set! a0-82 (l.wu (+ v1-107 120))) at op 405
-;; WARN: Failed load: (set! a0-83 (l.wu (+ v1-112 120))) at op 414
-;; WARN: Failed load: (set! a0-86 (l.wu (+ v1-121 120))) at op 438
-;; WARN: Failed load: (set! a0-87 (l.wu (+ v1-126 120))) at op 447
-;; WARN: Failed load: (set! a0-88 (l.wu (+ v1-131 120))) at op 456
-;; WARN: Failed load: (set! a0-89 (l.wu (+ v1-136 120))) at op 465
-;; WARN: Failed load: (set! a0-93 (l.wu (+ v1-147 120))) at op 496
-;; WARN: Failed load: (set! a0-94 (l.wu (+ v1-152 120))) at op 505
-;; WARN: Failed load: (set! a0-95 (l.wu (+ v1-157 120))) at op 514
-;; WARN: Failed load: (set! a0-96 (l.wu (+ v1-162 120))) at op 523
-;; WARN: Failed load: (set! a0-100 (l.wu (+ v1-173 120))) at op 554
-;; WARN: Failed load: (set! a0-101 (l.wu (+ v1-178 120))) at op 563
-;; WARN: Failed load: (set! a0-102 (l.wu (+ v1-183 120))) at op 572
-;; WARN: Failed load: (set! a0-103 (l.wu (+ v1-188 120))) at op 581
-;; WARN: Failed load: (set! a0-106 (l.wu (+ v1-199 120))) at op 610
 ;; WARN: Function insert-box has a return type of none, but the expression builder found a return statement.
+(defun insert-box ((arg0 editable-array) (arg1 vector))
+  (if (not (-> arg0 region))
+      (set! (-> arg0 region) (new 'debug 'editable-region))
+      )
+  (let ((f30-0 (* 4096.0 (-> arg0 edit-param0)))
+        (s3-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'array 'int32 8))
+        )
+    (let ((s4-0 (-> arg0 region)))
+      (if (= f30-0 0.0)
+          (set! f30-0 40960.0)
+          )
+      (dotimes (s1-0 8)
+        (set! (-> s5-0 s1-0) (editable-array-method-11 arg0))
+        (set! (-> arg0 data (-> s5-0 s1-0)) (the-as editable #t))
+        )
+      (dotimes (v1-13 8)
+        (when (< (-> s5-0 v1-13) 0)
+          (dotimes (v1-14 8)
+            (set! (-> arg0 data (-> s5-0 v1-14)) #f)
+            )
+          (return #f)
+          )
+        )
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (set! (-> s3-0 y) (- (-> s3-0 y) f30-0))
+      (set! (-> s3-0 x) (- (-> s3-0 x) f30-0))
+      (set! (-> s3-0 z) (- (-> s3-0 z) f30-0))
+      (set! (-> arg0 data (-> s5-0 0)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (set! (-> s3-0 y) (- (-> s3-0 y) f30-0))
+      (+! (-> s3-0 x) f30-0)
+      (set! (-> s3-0 z) (- (-> s3-0 z) f30-0))
+      (set! (-> arg0 data (-> s5-0 1)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (set! (-> s3-0 y) (- (-> s3-0 y) f30-0))
+      (set! (-> s3-0 x) (- (-> s3-0 x) f30-0))
+      (+! (-> s3-0 z) f30-0)
+      (set! (-> arg0 data (-> s5-0 2)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (set! (-> s3-0 y) (- (-> s3-0 y) f30-0))
+      (+! (-> s3-0 x) f30-0)
+      (+! (-> s3-0 z) f30-0)
+      (set! (-> arg0 data (-> s5-0 3)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (+! (-> s3-0 y) f30-0)
+      (set! (-> s3-0 x) (- (-> s3-0 x) f30-0))
+      (set! (-> s3-0 z) (- (-> s3-0 z) f30-0))
+      (set! (-> arg0 data (-> s5-0 4)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (+! (-> s3-0 y) f30-0)
+      (+! (-> s3-0 x) f30-0)
+      (set! (-> s3-0 z) (- (-> s3-0 z) f30-0))
+      (set! (-> arg0 data (-> s5-0 5)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (+! (-> s3-0 y) f30-0)
+      (set! (-> s3-0 x) (- (-> s3-0 x) f30-0))
+      (+! (-> s3-0 z) f30-0)
+      (set! (-> arg0 data (-> s5-0 6)) (new 'debug 'editable-point s3-0 s4-0))
+      (set! (-> s3-0 quad) (-> arg1 quad))
+      (+! (-> s3-0 y) f30-0)
+      (+! (-> s3-0 x) f30-0)
+      (+! (-> s3-0 z) f30-0)
+      (set! (-> arg0 data (-> s5-0 7)) (new 'debug 'editable-point s3-0 s4-0))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 0)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 1)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 2)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 3)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 4)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 5)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 6)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 7)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command flip-side) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 0)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 2)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 4)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 6)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 1)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 3)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 5)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 7)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command flip-side) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 0)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 1)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 4)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 5)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command flip-side) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (select-editable! (-> arg0 data (-> s5-0 2)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 3)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 6)) #t)
+      (select-editable! (-> arg0 data (-> s5-0 7)) #t)
+      (set! (-> arg0 region) s4-0)
+      (editable-array-method-9 arg0 (editable-command insert-face) (the-as editable-array #f))
+      (editable-array-method-9 arg0 (editable-command select-none) (the-as editable-array #f))
+      (set! (-> arg0 region) s4-0)
+      )
+    (dotimes (s4-1 8)
+      (select-editable! (-> arg0 data (-> s5-0 s4-1)) #t)
+      )
+    )
+  (editable-array-method-9 arg0 (editable-command select-current-owner) (the-as editable-array #f))
+  0
+  (none)
+  )
 
 (defun execute-select ((arg0 editable-array) (arg1 editable-command) (arg2 editable-array))
   (case arg1
@@ -1259,32 +1339,16 @@
             (v1-231 (-> obj data s4-21))
             )
        (while (< s4-21 s5-17)
-         (when (and v1-231 (-> v1-231 region))
-           (let ((t9-53 (method-of-object (-> v1-231 region) editable-region-method-9)))
-             0
-             0
-             (t9-53)
+         (if (and v1-231 (-> v1-231 region))
+             (editable-region-method-9 (-> v1-231 region) obj 0 0)
              )
-           )
          (+! s4-21 1)
          (set! v1-231 (-> obj data s4-21))
          )
        )
-     (let ((t9-54 (method-of-object *editable-sample-region* editable-region-method-9)))
-       0
-       0
-       (t9-54)
-       )
-     (let ((t9-55 (method-of-object *editable-light-region* editable-region-method-9)))
-       0
-       0
-       (t9-55)
-       )
-     (let ((t9-56 (method-of-object *editable-entity-region* editable-region-method-9)))
-       0
-       0
-       (t9-56)
-       )
+     (editable-region-method-9 *editable-sample-region* obj 0 0)
+     (editable-region-method-9 *editable-light-region* obj 0 0)
+     (editable-region-method-9 *editable-entity-region* obj 0 0)
      )
     ((= arg0 (editable-command load))
      (editable-array-method-9 obj (editable-command select-none) arg1)
@@ -1306,23 +1370,21 @@
      (editable-array-method-9 obj (editable-command update-game) (the-as editable-array #f))
      )
     ((= arg0 (editable-command update-game))
-     (let ((t9-61 reset-light-hash))
-       *light-hash*
-       (t9-61)
-       )
-     (let* ((s5-19 (-> obj length))
-            (s4-23 0)
-            (a0-76 (-> obj data s4-23))
-            )
-       (while (< s4-23 s5-19)
-         (if a0-76
-             (editable-method-23 a0-76)
-             )
-         (+! s4-23 1)
-         (set! a0-76 (-> obj data s4-23))
-         )
-       )
-     (update-light-hash *light-hash*)
+    ;; TODO - waiting for lights/light-hash to be done
+    ;;  (reset-light-hash *light-hash*)
+    ;;  (let* ((s5-19 (-> obj length))
+    ;;         (s4-23 0)
+    ;;         (a0-76 (-> obj data s4-23))
+    ;;         )
+    ;;    (while (< s4-23 s5-19)
+    ;;      (if a0-76
+    ;;          (editable-method-23 a0-76)
+    ;;          )
+    ;;      (+! s4-23 1)
+    ;;      (set! a0-76 (-> obj data s4-23))
+    ;;      )
+    ;;    )
+    ;;  (update-light-hash *light-hash*)
      )
     ((or (= arg0 (editable-command exit)) (= arg0 (editable-command kill)))
      (deactivate self)
@@ -2452,10 +2514,10 @@
         (let ((s5-1 (s5-0 *temp-string*)))
           (cond
             ((and (= (-> s5-1 error) 'select) (= (-> s5-1 len) 4))
-             (let ((f26-0 (* 4096.0 (string->float (the-as string (-> s5-1 data 0)))))
-                   (f28-0 (* 4096.0 (string->float (the-as string (-> s5-1 data 1)))))
-                   (f30-3 (* 4096.0 (string->float (the-as string (-> s5-1 data 2)))))
-                   (s5-2 (string->int (the-as string (-> s5-1 data 3))))
+             (let ((f26-0 (* 4096.0 (string->float (-> s5-1 data 0))))
+                   (f28-0 (* 4096.0 (string->float (-> s5-1 data 1))))
+                   (f30-3 (* 4096.0 (string->float (-> s5-1 data 2))))
+                   (s5-2 (string->int (-> s5-1 data 3)))
                    (s3-0 (math-camera-pos))
                    (s4-1 (clear *temp-string*))
                    )
