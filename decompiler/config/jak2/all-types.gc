@@ -1888,6 +1888,9 @@
   (sm-unk1)
   (sm-unk2)
   (reg0)
+  (reg1)
+  (reg2)
+  (unk)
   )
 
 
@@ -8106,6 +8109,9 @@
 ;; main-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
+
 (deftype frame-stats (structure)
   ((field-time time-frame 2 :offset-assert 0) ;; guessed by decompiler
    (field      int32        :offset-assert 16)
@@ -8135,6 +8141,76 @@
     )
   )
 
+(defenum collide-spec
+  :bitfield #t
+  :type uint32
+
+  (backgnd            0) ;; 1
+  (jak                1) ;; 2
+  (bot                2) ;; 4
+  (crate              3) ;; 8
+  (civilian           4) ;; 16
+  (enemy              5) ;; 32
+  (obstacle           6) ;; 64
+  (vehicle-sphere     7) ;; 128
+  (hit-by-player-list 8) ;; 256
+  (hit-by-others-list 9) ;; 512
+  (player-list       10) ;; 1024
+  (water             11) ;; 2048
+  (collectable       12) ;; 4096
+  (blocking-plane    13) ;; 8192
+  (projectile        14) ;; 16384
+  (jak-vulnerable    15) ;; 32768
+  (camera-blocker    16) ;; hi 1
+  (notice-blue-eco-powerup 17) ;; hi 2
+  (tobot             18) ;; hi 4
+  (pusher            19) ;; hi 8
+  (vehicle-mesh      20) ;; hi 16
+  (bot-targetable    21) ;; hi 32
+  (jak-vehicle       22) ;; hi 64
+  (special-obstacle  23) ;; hi 128
+  (mech-punch        24) ;; hi 256
+  (obstacle-for-jak  25) ;; hi 512
+  (vehicle-mesh-probeable 26) ;; hi 1024
+  (unknown-27 27)
+  (unknown-28 28)
+  (unknown-29 29)
+  (unknown-30 30)
+  (unknown-31 31)
+  (unknown-32 32)
+  (unknown-33 33)
+  (unknown-34 34)
+  (unknown-35 35)
+  (unknown-36 36)
+  (unknown-37 37)
+  (unknown-38 38)
+  (unknown-39 39)
+  (unknown-40 40)
+  (unknown-41 41)
+  (unknown-42 42)
+  (unknown-43 43)
+  (unknown-44 44)
+  (unknown-45 45)
+  (unknown-46 46)
+  (unknown-47 47)
+  (unknown-48 48)
+  (unknown-49 49)
+  (unknown-50 50)
+  (unknown-51 51)
+  (unknown-52 52)
+  (unknown-53 53)
+  (unknown-54 54)
+  (unknown-55 55)
+  (unknown-56 56)
+  (unknown-57 57)
+  (unknown-58 58)
+  (unknown-59 59)
+  (unknown-60 60)
+  (unknown-61 61)
+  (unknown-62 62)
+  (unknown-63 63)
+  )
+
 (deftype col-rend (basic)
   ((draw?               symbol         :offset-assert 4)
    (outline?            symbol         :offset-assert 8)
@@ -8142,7 +8218,7 @@
    (show-normals?       symbol         :offset-assert 16)
    (ghost-hidden?       symbol         :offset-assert 20)
    (show-only           uint32         :offset-assert 24)
-   (cspec               uint32         :offset-assert 28)
+   (cspec               collide-spec   :offset-assert 28)
    (track               uint8          :offset-assert 32)
    (bbox-radius         float          :offset-assert 36)
    (bbox-center         vector :inline :offset-assert 48)
@@ -8152,7 +8228,7 @@
   :size-assert         #x44
   :flag-assert         #xa00000044
   (:methods
-    (col-rend-method-9 () none 9)
+    (col-rend-method-9 (_type_) none 9)
     )
   )
 
@@ -15859,75 +15935,6 @@
 (declare-type collide-shape-moving collide-shape)
 (declare-type touching-list structure)
 
-(defenum collide-spec
-  :bitfield #t
-  :type uint32
-
-  (backgnd            0) ;; 1
-  (jak                1) ;; 2
-  (bot                2) ;; 4
-  (crate              3) ;; 8
-  (civilian           4) ;; 16
-  (enemy              5) ;; 32
-  (obstacle           6) ;; 64
-  (vehicle-sphere     7) ;; 128
-  (hit-by-player-list 8) ;; 256
-  (hit-by-others-list 9) ;; 512
-  (player-list       10) ;; 1024
-  (water             11) ;; 2048
-  (collectable       12) ;; 4096
-  (blocking-plane    13) ;; 8192
-  (projectile        14) ;; 16384
-  (jak-vulnerable    15) ;; 32768
-  (camera-blocker    16) ;; hi 1
-  (notice-blue-eco-powerup 17) ;; hi 2
-  (tobot             18) ;; hi 4
-  (pusher            19) ;; hi 8
-  (vehicle-mesh      20) ;; hi 16
-  (bot-targetable    21) ;; hi 32
-  (jak-vehicle       22) ;; hi 64
-  (special-obstacle  23) ;; hi 128
-  (mech-punch        24) ;; hi 256
-  (obstacle-for-jak  25) ;; hi 512
-  (vehicle-mesh-probeable 26) ;; hi 1024
-  (unknown-27 27)
-  (unknown-28 28)
-  (unknown-29 29)
-  (unknown-30 30)
-  (unknown-31 31)
-  (unknown-32 32)
-  (unknown-33 33)
-  (unknown-34 34)
-  (unknown-35 35)
-  (unknown-36 36)
-  (unknown-37 37)
-  (unknown-38 38)
-  (unknown-39 39)
-  (unknown-40 40)
-  (unknown-41 41)
-  (unknown-42 42)
-  (unknown-43 43)
-  (unknown-44 44)
-  (unknown-45 45)
-  (unknown-46 46)
-  (unknown-47 47)
-  (unknown-48 48)
-  (unknown-49 49)
-  (unknown-50 50)
-  (unknown-51 51)
-  (unknown-52 52)
-  (unknown-53 53)
-  (unknown-54 54)
-  (unknown-55 55)
-  (unknown-56 56)
-  (unknown-57 57)
-  (unknown-58 58)
-  (unknown-59 59)
-  (unknown-60 60)
-  (unknown-61 61)
-  (unknown-62 62)
-  (unknown-63 63)
-  )
 
 (defenum collide-action
   :bitfield #t
@@ -17359,7 +17366,7 @@
     (find-grabbable-tris (_type_) none 17) ;; (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 17)
     (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol 18)
     (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol 19)
-    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) none 20)
+    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol 20)
     )
   )
 
@@ -17514,6 +17521,13 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; effect-control                 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-extern *footstep-surface* pat-surface)
+(define-extern sound-name-with-material (function string pat-surface string sound-name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; effect-control-h               ;;
@@ -17571,12 +17585,12 @@
   :flag-assert         #xf00000024
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (effect-control-method-9 (_type_) none 9) ;; (TODO-RENAME-9 (_type_) none 9)
+    (update-effects (_type_) none 9) ;; (TODO-RENAME-9 (_type_) none 9)
     (do-effect (_type_ symbol float int) none 10) ;; (dummy-10 (_type_ symbol float int) object 10)
-    (effect-control-method-11 () none 11) ;; (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none 11) ;; (dummy-11 (_type_ symbol float int basic pat-surface) none 11)
     (play-effect-sound (_type_ symbol float int basic sound-name) int 12) ;; (dummy-12 (_type_ symbol float int basic sound-name) int 12)
     (set-channel-offset! (_type_ int) none 13)
-    (effect-control-method-14 () none 14) ;; (TODO-RENAME-14 (_type_ float float float) none 14)
+    (play-effects-from-res-lump (_type_ float float float) none 14) ;; (TODO-RENAME-14 (_type_ float float float) none 14)
     )
   )
 
@@ -22951,7 +22965,7 @@
 
 ;; ghost function
 (define-extern *debug-effect-control* symbol)
-(define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
 
 (deftype engine-sound-pers (engine-pers)
   ()
@@ -28870,7 +28884,7 @@
 (define-extern want-to-darkjak? (function symbol :behavior target))
 (define-extern *darkjak-trans-mods* surface)
 (define-extern target-darkjak-end-mode (function none :behavior target))
-(define-extern target-darkjak-process (function object object object object object object float none :behavior target)) ;; only arg6 used
+(define-extern target-darkjak-process (function none :behavior target)) ;; only arg6 used
 (define-extern target-darkjak-get-on (state int target))
 (define-extern target-darkjak-get-off (state target))
 (define-extern target-darkjak-running-attack (state target))
@@ -29471,7 +29485,7 @@
 (define-extern prototype-bucket-type (function prototype-bucket type))
 (define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
 (define-extern print-prototype-list (function none))
-;; (define-extern draw-instance-info function) ;; (function string none)
+(define-extern draw-instance-info (function string none))
 ;; (define-extern set-shadow-by-name function)
 ;; (define-extern get-shadow-by-name function)
 ;; (define-extern teleport-camera-by-name function)
@@ -29480,8 +29494,8 @@
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control symbol dma-buffer none)
 (define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 (define-extern foreground-engine-execute (function engine display-frame none))
-;; (define-extern main-debug-hook function) ;; (function none)
-;; (define-extern *debug-hook* object) ;; (function none)
+(define-extern main-debug-hook (function none))
+;(define-extern *debug-hook* (function none))
 (define-extern *add-sphere* symbol)
 (define-extern *generic-effect-mode* int)
 (define-extern foreground-initialize-engines (function none))
@@ -29617,19 +29631,17 @@
 ;; collide-debug                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype col-rend-filter (structure)
-  ((show-pat-set   uint32  :offset-assert 0)
-   (show-pat-clear uint32  :offset-assert 4)
+  ((show-pat-set   pat-surface  :offset-assert 0)
+   (show-pat-clear pat-surface  :offset-assert 4)
    (event-mask     uint32  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern col-rend-draw function)
+(define-extern col-rend-draw (function col-rend col-rend-filter none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; relocate                       ;;

@@ -504,6 +504,7 @@
   "target/collide-reaction-target.gc"
   "target/logic-target.gc"
   "target/sidekick.gc"
+  "game/effect-control.gc"
   "common_objs/voicebox.gc"
   "common_objs/collectables-part.gc"
   "debug/debug-part.gc"
@@ -836,6 +837,27 @@
   "hide-door-a-ag"
   "ctysluma-vis"
 )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; CITY INDUSTRIAL B
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CIB.DGO" "cib.gd")
+
+(goal-src-sequence
+  "levels/city/industrial/"
+  :deps ("$OUT/obj/los-control.o")
+  "ctyindb-part.gc"
+  "ctyindb-obs.gc"
+  )
+
+(copy-textures 1565 1577 1601 1614 1642)
+
+(copy-gos
+  "com-airlock-outer-ag"
+  "ctyindb-vis"
+)
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; VILLAGE 1

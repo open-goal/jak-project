@@ -717,6 +717,31 @@ void LoadSourceElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+namespace {
+FormElement* label_to_form_element(const Env& env, const SimpleAtom& atom, FormPool& pool) {
+  auto lab = env.file->labels.at(atom.label());
+  if (env.file->is_string(lab.target_segment, lab.offset)) {
+    auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
+    return pool.alloc_element<StringConstantElement>(str);
+  } else {
+    // look for a label hint:
+    const auto& hint = env.file->label_db->lookup(lab.name);
+    if (!hint.known) {
+      throw std::runtime_error(
+          fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
+    }
+    if (hint.is_value) {
+      return nullptr;
+    }
+    if (hint.result_type.base_type() == "function") {
+      return nullptr;
+    } else {
+      return pool.alloc_element<DecompiledDataElement>(lab, hint);
+    }
+  }
+}
+}  // namespace
+
 void SimpleExpressionElement::update_from_stack_identity(const Env& env,
                                                          FormPool& pool,
                                                          FormStack& stack,
@@ -729,30 +754,13 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(x);
     }
   } else if (arg.is_static_addr()) {
-    auto lab = env.file->labels.at(arg.label());
-    if (env.file->is_string(lab.target_segment, lab.offset)) {
-      auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
-      result->push_back(pool.alloc_element<StringConstantElement>(str));
+    auto as_label_form_element = label_to_form_element(env, arg, pool);
+    if (as_label_form_element) {
+      result->push_back(as_label_form_element);
     } else {
-      // look for a label hint:
-      const auto& hint = env.file->label_db->lookup(lab.name);
-      if (!hint.known) {
-        throw std::runtime_error(
-            fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
-      }
-      if (hint.is_value) {
-        result->push_back(this);
-        return;
-      }
-      if (hint.result_type.base_type() == "function") {
-        result->push_back(this);
-        return;
-      } else {
-        result->push_back(pool.alloc_element<DecompiledDataElement>(lab, hint));
-        return;
-      }
+      result->push_back(this);
     }
-
+    return;
   } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list() ||
              arg.is_sym_val_ptr()) {
     result->push_back(this);
@@ -1035,8 +1043,21 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
                         allow_side_effects);
   } else {
+    // arg1 might be a label.
+    // do arg0 like a normal var
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+
+    // then try to simplify the label
+    if (m_expr.get_arg(1).is_label()) {
+      auto as_lab = label_to_form_element(env, m_expr.get_arg(1), pool);
+      if (as_lab) {
+        args.push_back(pool.alloc_single_form(nullptr, as_lab));
+      } else {
+        args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+      }
+    } else {
+      args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    }
   }
 
   bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), true);
