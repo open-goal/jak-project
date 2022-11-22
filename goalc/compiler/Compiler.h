@@ -81,9 +81,10 @@ class Compiler {
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
-  Replxx::completions_t find_symbols_by_prefix(std::string const& context,
-                                               int& contextLen,
-                                               std::vector<std::string> const& user_data);
+  Replxx::completions_t find_symbols_or_object_file_by_prefix(
+      std::string const& context,
+      int& contextLen,
+      std::vector<std::string> const& user_data);
   Replxx::hints_t find_hints_by_prefix(std::string const& context,
                                        int& contextLen,
                                        Replxx::Color& color,
