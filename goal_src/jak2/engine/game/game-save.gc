@@ -309,9 +309,6 @@
   obj
   )
 
-(defmethod inspect game-save ((obj game-save))
-  (debug-inspect obj #f)
-  )
 
 (defmethod save-game game-info ((obj game-info) (arg0 game-save) (arg1 string))
   (with-pp
@@ -673,7 +670,7 @@
                                                                                                             (set! (-> (the-as (pointer float) (+ a0-95 (* a1-94 4))) 0) (-> obj game-score a1-94))
                                                                                                             )
                                                                                                           (let ((s4-6 (the-as object (+ a0-95 (logand -16 (+ (* v1-153 4) 15))))))
-                                                                                                            ((method-of-object *bigmap* bigmap-method-13))
+                                                                                                            (bigmap-method-13 *bigmap*)
                                                                                                             (let ((v1-161 (-> *bigmap* compressed-next-index)))
                                                                                                               (let ((a0-97 (-> (the-as (inline-array game-save-tag) s4-6) 0)))
                                                                                                                 (set! (-> a0-97 elt-type) (game-save-elt bigmap-data))
@@ -2160,17 +2157,15 @@ auto-save-post
 (defstate error (auto-save)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'progress-allowed?)
-                        #t
-                        )
-                       ((= v1-0 'die)
-                        (deactivate self)
-                        )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('progress-allowed?)
+                      #t
+                      )
+                     (('die)
+                      (the-as symbol (deactivate self))
+                      )
+                     )
+            )
     )
   :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
@@ -2303,6 +2298,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; WARN: Return type mismatch (pointer process) vs (pointer auto-save).
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree) (arg4 symbol))
   (format #t "AUTO SAVE COMMAND ~S~%" arg0)
   (process-spawn auto-save arg0 arg3 arg1 arg2 arg4 :to *target-pool* :stack *kernel-dram-stack*)
