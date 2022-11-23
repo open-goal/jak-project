@@ -172,7 +172,7 @@ void midi_handler::note_on() {
   //            velocity);
 
   // Key on all the applicable tones for the program
-  auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_name(m_header->BankID));
+  auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_id(m_header->BankID));
   auto& program = bank->m_programs[m_programs[channel]];
 
   for (auto& t : program.tones) {

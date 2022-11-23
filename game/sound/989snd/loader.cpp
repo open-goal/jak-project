@@ -100,7 +100,7 @@ SoundBank* loader::get_bank_by_handle(u32 id) {
   return m_soundbanks[id].get();
 }
 
-MusicBank* loader::get_bank_by_name(u32 id) {
+MusicBank* loader::get_bank_by_id(u32 id) {
   for (auto& b : m_soundbanks) {
     if (b.second->type == BankType::Music) {
       auto* bank = static_cast<MusicBank*>(b.second.get());

@@ -33,7 +33,7 @@ struct FileAttributes {
 class loader : public locator {
  public:
   SoundBank* get_bank_by_handle(u32 id) override;
-  MusicBank* get_bank_by_name(u32 id) override;
+  MusicBank* get_bank_by_id(u32 id) override;
   MIDIBlock* get_midi(u32 id) override;
   u8* get_bank_samples(u32 id) override;
 
