@@ -19,9 +19,13 @@ void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
 }
 
 // I'm not bored enough to reimplement their strcpy
+// Only for use with 16 character sound names!
 void strcpy_toupper(char* dest, const char* source) {
+  // clear the dest string
+  memset(dest, 0, 16);
   std::string string(source);
   std::transform(string.begin(), string.end(), string.begin(), ::toupper);
+  std::replace(string.begin(), string.end(), '-', '_');
   string.copy(dest, 16);
 }
 
