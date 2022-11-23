@@ -157,9 +157,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
 
 void blocksound_handler::update_pitch() {
   m_cur_pm = m_app_pm + m_lfo_pm;
-  s32 new_pb = std::clamp<s32>(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
-
-  m_cur_pb = new_pb;
+  m_cur_pb = std::clamp<s32>(m_app_pb + m_lfo_pb, INT16_MIN, INT16_MAX);
 
   for (auto& p : m_voices) {
     auto voice = p.lock();

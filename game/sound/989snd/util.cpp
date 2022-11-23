@@ -135,7 +135,7 @@ std::pair<s16, s16> pitchbend(Tone& tone,
   if (current_pb >= 0)
     v7 = tone.PBHigh * (current_pb << 7) / 0x7fff + v9;
   else
-    v7 = tone.PBLow * (current_pb << 7) / -0x8000 + v9;
+    v7 = tone.PBLow * (current_pb << 7) / 0x8000 + v9;
 
   return {v7 / 128, v7 % 128};
 }
