@@ -435,13 +435,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
             snd_SetSoundPitchBend(sound->sound_handle, sound->params.bend);
           }
           if (sound->params.mask & 0x800) {
-            // snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
+            snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
           }
           if (sound->params.mask & 0x1000) {
-            // snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
+            snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
           }
           if (sound->params.mask & 0x2000) {
-            // snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
+            snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
           }
 
         } else {
@@ -486,13 +486,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           if (handle != 0) {
             sound->id = cmd->play.sound_id;
             if (sound->params.mask & 0x800) {
-              // snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
+              snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
             }
             if (sound->params.mask & 0x1000) {
-              // snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
+              snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
             }
             if (sound->params.mask & 0x2000) {
-              // snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
+              snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
             }
           }
         }
