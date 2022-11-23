@@ -407,6 +407,43 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
         auto sound = LookupSound(cmd->play.sound_id);
         if (sound != nullptr) {
           // update
+          sound->params = cmd->play.parms;
+          sound->is_music = false;
+          SFXUserData data{};
+          s32 found = snd_GetSoundUserData(0, nullptr, -1, sound->name, &data);
+          if (sound->params.mask & 0x40) {
+            s16 fo_min = 5;
+            if (found && data.data[0])
+              fo_min = data.data[0];
+            sound->params.fo_min = fo_min;
+          }
+          if (sound->params.mask & 0x80) {
+            s16 fo_max = 30;
+            if (found && data.data[1])
+              fo_max = data.data[1];
+            sound->params.fo_min = fo_max;
+          }
+          if (sound->params.mask & 0x100) {
+            s16 fo_curve = 2;
+            if (found && data.data[2])
+              fo_curve = data.data[2];
+            sound->params.fo_min = fo_curve;
+          }
+          UpdateVolume(sound);
+          snd_SetSoundPitchModifier(sound->sound_handle, sound->params.pitch_mod);
+          if (sound->params.mask & 0x4) {
+            snd_SetSoundPitchBend(sound->sound_handle, sound->params.bend);
+          }
+          if (sound->params.mask & 0x800) {
+            // snd_SetSoundReg(sound->sound_handle, 0, sound->params.reg[0]);
+          }
+          if (sound->params.mask & 0x1000) {
+            // snd_SetSoundReg(sound->sound_handle, 1, sound->params.reg[1]);
+          }
+          if (sound->params.mask & 0x2000) {
+            // snd_SetSoundReg(sound->sound_handle, 2, sound->params.reg[2]);
+          }
+
         } else {
           // new sound
           sound = AllocateSound();
@@ -440,6 +477,8 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
               fo_curve = data.data[2];
             sound->params.fo_min = fo_curve;
           }
+          //lg::warn("RPC: PLAY {} v:{}, p:{}", sound->name, GetVolume(sound), GetPan(sound));
+
           s32 handle = snd_PlaySoundByNameVolPanPMPB(0, nullptr, sound->name, GetVolume(sound),
                                                      GetPan(sound), sound->params.pitch_mod,
                                                      sound->params.bend);
@@ -459,6 +498,19 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
         }
       } break;
       case Jak2SoundCommand::set_master_volume: {
+        u32 group = cmd->master_volume.group.group;
+        // FIXME array of set volumes
+        for (int i = 0; i < 32; i++) {
+          if (((group >> i) & 1) != 0) {
+            if (i == 1) {
+              gMusicVol = cmd->master_volume.volume;
+            } else if (i == 2) {
+              SetDialogVolume(cmd->master_volume.volume);
+            } else {
+              snd_SetMasterVolume(i, cmd->master_volume.volume);
+            }
+          }
+        }
       } break;
       case Jak2SoundCommand::set_reverb: {
       } break;
