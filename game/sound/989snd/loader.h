@@ -37,6 +37,9 @@ class loader : public locator {
   MIDIBlock* get_midi(u32 id) override;
   u8* get_bank_samples(u32 id) override;
 
+  SoundBank* get_bank_by_name(const char* name);
+  SoundBank* get_bank_with_sound(const char* name);
+
   void unload_bank(u32 id);
 
   u32 read_bank(std::fstream& in);

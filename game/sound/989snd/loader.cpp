@@ -113,6 +113,30 @@ MusicBank* loader::get_bank_by_id(u32 id) {
   return nullptr;
 }
 
+SoundBank* loader::get_bank_by_name(const char* name) {
+  for (auto& b : m_soundbanks) {
+    auto bankname = b.second->get_name();
+    if (bankname.has_value()) {
+      if (bankname->compare(name) == 0) {
+        return b.second.get();
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+SoundBank* loader::get_bank_with_sound(const char* name) {
+  for (auto& b : m_soundbanks) {
+    auto sound = b.second->get_sound_by_name(name);
+    if (sound.has_value()) {
+      return b.second.get();
+    }
+  }
+
+  return nullptr;
+}
+
 MIDIBlock* loader::get_midi(u32 id) {
   return m_midi.at(id);
 }

@@ -84,4 +84,18 @@ std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,
   return handler;
 }
 
+std::optional<u32> SFXBlock2::get_sound_by_name(const char* name) {
+  //lg::error("searching for sound {}", name);
+  //for (auto& s : m_names) {
+  //  lg::error("{}", s.first);
+  //}
+
+  auto sound = m_names.find(name);
+  if (sound != m_names.end()) {
+    return sound->second;
+  }
+
+  return std::nullopt;
+}
+
 }  // namespace snd

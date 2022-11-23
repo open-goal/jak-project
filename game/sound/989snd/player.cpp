@@ -143,13 +143,35 @@ u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 
   return handle;
 }
 
-u32 player::play_sound_by_name(u32 bank,
+u32 player::play_sound_by_name(u32 bank_id,
                                char* bank_name,
                                char* sound_name,
                                s32 vol,
                                s32 pan,
                                s32 pm,
                                s32 pb) {
+  std::scoped_lock lock(m_ticklock);
+  SoundBank* bank = nullptr;
+  if (bank_id == 0 && bank_name != nullptr) {
+    bank = m_loader.get_bank_by_name(bank_name);
+  } else if (bank_id != 0) {
+    bank = m_loader.get_bank_by_handle(bank_id);
+  } else {
+    bank = m_loader.get_bank_with_sound(sound_name);
+  }
+
+  if (bank == nullptr) {
+    lg::error("play_sound_by_name: failed to find bank for sound {}", sound_name);
+    return 0;
+  }
+
+  auto sound = bank->get_sound_by_name(sound_name);
+  if (sound.has_value()) {
+    return play_sound(bank->bank_id, sound.value(), vol, pan, pm, pb);
+  }
+
+  lg::error("play_sound_by_name: failed to find sound {}", sound_name);
+
   return 0;
 }
 

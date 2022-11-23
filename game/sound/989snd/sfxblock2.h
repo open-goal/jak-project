@@ -98,6 +98,7 @@ class SFXBlock2 : public SoundBank {
                                               SndPlayParams& params) override;
 
   std::optional<std::string_view> get_name() override { return m_name; };
+  std::optional<u32> get_sound_by_name(const char* name) override;
 
  private:
   locator& m_locator;
