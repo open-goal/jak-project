@@ -7,6 +7,7 @@
 
 #include "game/overlord/iso.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
@@ -15,7 +16,7 @@ Sound gSounds[64];
 Curve gCurve[8];  // TODO verify count
 VolumePair gPanTable[361];
 
-Vec3w gEarTrans;
+Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gCamAngle;
 
@@ -220,18 +221,18 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     return volume;
   }
 
-  s32 xdiff = gEarTrans.x - pos->x;
-  s32 ydiff = gEarTrans.y - pos->y;
-  s32 zdiff = gEarTrans.z - pos->z;
+  s32 xdiff = gEarTrans[0].x - pos->x;
+  s32 ydiff = gEarTrans[0].y - pos->y;
+  s32 zdiff = gEarTrans[0].z - pos->z;
 
   if (xdiff < 0) {
-    xdiff = pos->x - gEarTrans.x;
+    xdiff = pos->x - gEarTrans[0].x;
   }
   if (ydiff < 0) {
-    ydiff = pos->y - gEarTrans.y;
+    ydiff = pos->y - gEarTrans[0].y;
   }
   if (zdiff < 0) {
-    zdiff = pos->z - gEarTrans.z;
+    zdiff = pos->z - gEarTrans[0].z;
   }
 
   s32 min = fo_min << 8;
@@ -368,8 +369,10 @@ static void UpdateLocation(Sound* sound) {
     return;
   }
 
-  if ((sound->bank_entry->fallof_params >> 28) == 0) {
-    return;
+  if (g_game_version == GameVersion::Jak1) {
+    if ((sound->bank_entry->fallof_params >> 28) == 0) {
+      return;
+    }
   }
 
   s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
@@ -439,12 +442,13 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
+void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle) {
   s32 tick = snd_GetTick();
   u32 delta = tick - sLastTick;
   sLastTick = tick;
 
-  gEarTrans = *ear_trans;
+  gEarTrans[0] = *ear_trans1;
+  gEarTrans[1] = *ear_trans2;
   gCamTrans = *cam_trans;
   gCamAngle = cam_angle;
 

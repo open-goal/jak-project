@@ -59,7 +59,7 @@ struct Curve {
 
 void InitSound_Overlord();
 void SetCurve(s32 curve, s32 fallof, s32 ease);
-void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle);
+void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle);
 void KillSoundsInGroup(u8 group);
 void PrintActiveSounds();
 void SetMusicVol();

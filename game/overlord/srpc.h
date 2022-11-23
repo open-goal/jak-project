@@ -150,6 +150,13 @@ struct SoundRpcSetEarTrans {
   s32 cam_angle;
 };
 
+struct SoundRpc2SetEarTrans {
+  Vec3w ear_trans1;
+  Vec3w ear_trans2;
+  Vec3w cam_trans;
+  s32 cam_angle;
+};
+
 struct SoundRpcSetFPSCommand {
   u8 fps;
 };
@@ -195,6 +202,7 @@ struct SoundRpcCommand {
     SoundRpcSoundIdCommand sound_id;
     SoundRpcSetFPSCommand fps;
     SoundRpcSetEarTrans ear_trans;
+    SoundRpc2SetEarTrans ear_trans_j2;
     SoundRpcSetReverb reverb;
     SoundRpcSetFallof fallof;
     SoundRpcSetFallofCurve fallof_curve;

@@ -341,8 +341,8 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           gFlava = cmd->flava.flava;
         } break;
         case Jak1SoundCommand::SET_EAR_TRANS: {
-          SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.cam_trans,
-                      cmd->ear_trans.cam_angle);
+          SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.ear_trans,
+                      &cmd->ear_trans.cam_trans, cmd->ear_trans.cam_angle);
         } break;
         case Jak1SoundCommand::SHUTDOWN: {
           gSoundEnable = 0;
@@ -477,7 +477,7 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
               fo_curve = data.data[2];
             sound->params.fo_min = fo_curve;
           }
-          //lg::warn("RPC: PLAY {} v:{}, p:{}", sound->name, GetVolume(sound), GetPan(sound));
+          // lg::warn("RPC: PLAY {} v:{}, p:{}", sound->name, GetVolume(sound), GetPan(sound));
 
           s32 handle = snd_PlaySoundByNameVolPanPMPB(0, nullptr, sound->name, GetVolume(sound),
                                                      GetPan(sound), sound->params.pitch_mod,
@@ -515,9 +515,8 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
       case Jak2SoundCommand::set_reverb: {
       } break;
       case Jak2SoundCommand::set_ear_trans: {
-        // new struct
-        // SetEarTrans(&cmd->ear_trans.ear_trans, &cmd->ear_trans.cam_trans,
-        // cmd->ear_trans.cam_angle)
+        SetEarTrans(&cmd->ear_trans_j2.ear_trans1, &cmd->ear_trans_j2.ear_trans2,
+                    &cmd->ear_trans_j2.cam_trans, cmd->ear_trans_j2.cam_angle);
       } break;
       case Jak2SoundCommand::set_fps: {
       } break;
