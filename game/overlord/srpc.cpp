@@ -521,8 +521,9 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
       case Jak2SoundCommand::set_fps: {
       } break;
       default:
-        ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
-                                      magic_enum::enum_name(cmd->j2command)));
+        lg::error("Unhandled RPC Player command {}", magic_enum::enum_name(cmd->j2command));
+        // ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
+        //                               magic_enum::enum_name(cmd->j2command)));
     }
 
     n_messages--;
