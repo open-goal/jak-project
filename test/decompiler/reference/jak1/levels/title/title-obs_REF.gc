@@ -152,29 +152,27 @@
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 uint))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'blend-shape)
-                        (cond
-                          ((-> event param 0)
-                           (set! v0-0 (the-as uint (logior (-> self skel status) (janim-status blerc eye))))
-                           (set! (-> self skel status) (the-as janim-status v0-0))
-                           )
-                          (else
-                            (set! v0-0 (the-as uint (logclear (-> self skel status) (janim-status blerc eye))))
-                            (set! (-> self skel status) (the-as janim-status v0-0))
-                            )
+    (the-as object (case event-type
+                     (('blend-shape)
+                      (cond
+                        ((-> event param 0)
+                         (set! v0-0 (the-as uint (logior (-> self skel status) (janim-status blerc eye))))
+                         (set! (-> self skel status) (the-as janim-status v0-0))
+                         )
+                        (else
+                          (set! v0-0 (the-as uint (logclear (-> self skel status) (janim-status blerc eye))))
+                          (set! (-> self skel status) (the-as janim-status v0-0))
                           )
-                        v0-0
                         )
-                       ((= v1-0 'origin-joint-index)
-                        (set! v0-0 (-> event param 0))
-                        (set! (-> self draw origin-joint-index) v0-0)
-                        v0-0
-                        )
-                       )
-              )
-      )
+                      v0-0
+                      )
+                     (('origin-joint-index)
+                      (set! v0-0 (-> event param 0))
+                      (set! (-> self draw origin-joint-index) v0-0)
+                      v0-0
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (ja-post)
@@ -225,12 +223,12 @@
 (defstate startup (logo)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'update)
-                         (remove-setting! 'process-mask)
-                         )
-              )
-      )
+    (the-as object (case event-type
+                     (('update)
+                      (remove-setting! 'process-mask)
+                      )
+                     )
+            )
     )
   :exit (behavior ()
     (let ((a0-0 (-> self anim)))
@@ -494,12 +492,12 @@
 (defstate ndi (logo)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'blackout)
-                         (set-setting! 'bg-a 'abs 1.0 0)
-                         )
-              )
-      )
+    (the-as object (case event-type
+                     (('blackout)
+                      (set-setting! 'bg-a 'abs 1.0 0)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set-setting! 'bg-a 'abs 0.0 0)

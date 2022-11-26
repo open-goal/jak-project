@@ -93,6 +93,7 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
+  void update_via_config_file(const std::string& json);
 
  private:
   GameVersion m_version;
@@ -113,6 +114,7 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
+  int m_target_connect_attempts = 30;
 
   struct DebugStats {
     int num_spills = 0;
@@ -628,6 +630,7 @@ class Compiler {
 
   // Debug
   Val* compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dbg_and_continue(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);

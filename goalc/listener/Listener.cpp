@@ -552,6 +552,8 @@ void Listener::handle_output_message(const char* msg) {
 
       add_load(name_str.substr(2, name_str.length() - 3), entry);
       // lg::print("LOAD:\n{}", entry.print());
+    } else if (kind == "sql-query") {
+      lg::info("SQL Query - '{}'", msg);
     } else {
       // todo unload
       printf("[Listener Warning] unknown output message \"%s\"\n", msg);

@@ -207,7 +207,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
     }
   });
 
-  m_listener.connect_to_target(30, ip, port);
+  m_listener.connect_to_target(m_target_connect_attempts, ip, port);
   return get_none();
 }
 

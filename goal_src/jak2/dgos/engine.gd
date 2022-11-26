@@ -289,6 +289,7 @@
   ("collide-reaction-target.o" "collide-reaction-target")
   ("logic-target.o" "logic-target")
   ("sidekick.o" "sidekick")
+  ("effect-control.o" "effect-control")
   ("voicebox.o" "voicebox")
   ("collectables-part.o" "collectables-part")
   ("debug-part.o" "debug-part")

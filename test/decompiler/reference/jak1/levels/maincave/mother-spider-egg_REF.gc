@@ -289,24 +289,22 @@
 ;; failed to figure out what this is:
 (defstate mother-spider-egg-on-ground (mother-spider-egg)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'touch)
-                        (send-shove-back
-                          (-> self root-override)
-                          proc
-                          (the-as touching-shapes-entry (-> event param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
+    (the-as object (case event-type
+                     (('touch)
+                      (send-shove-back
+                        (-> self root-override)
+                        proc
+                        (the-as touching-shapes-entry (-> event param 0))
+                        0.7
+                        6144.0
+                        16384.0
                         )
-                       ((= v1-0 'attack)
-                        (go mother-spider-egg-die)
-                        )
-                       )
-              )
-      )
+                      )
+                     (('attack)
+                      (go mother-spider-egg-die)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))

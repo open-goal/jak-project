@@ -36,7 +36,7 @@ u64 execute(void* ctxt) {
         c->daddu(a3, a3, a1);                             // daddu a3, a3, a1
         c->mov128_vf_gpr(vf13, a2);                       // qmtc2.i vf13, a2
         //c->lui(t2, 28672);                                // lui t2, 28672
-        get_fake_spad_addr(t2, cache.fake_scratchpad_data, 0, c);
+        get_fake_spad_addr2(t2, cache.fake_scratchpad_data, 0, c);
         c->lw(t4, 0, a1);                                 // lw t4, 0(a1)
         c->daddiu(v1, a1, 16);                            // daddiu v1, a1, 16
         c->lw(t5, 4, a1);                                 // lw t5, 4(a1)
@@ -835,7 +835,7 @@ u64 execute(void* ctxt) {
         c->mov128_vf_gpr(vf13, a2);                       // qmtc2.i vf13, a2
         c->sq(a0, 0, sp);                                 // sq a0, 0(sp)
         //c->lui(t2, 28672);                                // lui t2, 28672
-        get_fake_spad_addr(t2, cache.fake_scratchpad_data, 0, c);
+        get_fake_spad_addr2(t2, cache.fake_scratchpad_data, 0, c);
         c->lw(t4, 0, a1);                                 // lw t4, 0(a1)
         c->daddiu(v1, a1, 16);                            // daddiu v1, a1, 16
         c->lw(t5, 4, a1);                                 // lw t5, 4(a1)
@@ -1451,7 +1451,7 @@ u64 execute(void* ctxt) {
         // nop                                            // sll r0, r0, 0
         c->mov128_vf_gpr(vf13, a2);                       // qmtc2.i vf13, a2
         // c->lui(t2, 28672);                                // lui t2, 28672
-        get_fake_spad_addr(t2, cache.fake_scratchpad_data, 0, c);
+        get_fake_spad_addr2(t2, cache.fake_scratchpad_data, 0, c);
         c->lw(t4, 64, a1);                                // lw t4, 64(a1)
         c->daddiu(v1, a1, 80);                            // daddiu v1, a1, 80
         c->lw(t5, 68, a1);                                // lw t5, 68(a1)
@@ -2177,7 +2177,7 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf15, r0);                       // qmtc2.i vf15, r0
   c->sw(a1, 0, sp);                                 // sw a1, 0(sp)
   //c->lui(v1, 28672);                                // lui v1, 28672
-  get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);
+  get_fake_spad_addr2(v1, cache.fake_scratchpad_data, 0, c);
   c->lw(s1, 2384, v1);                              // lw s1, 2400(v1)
   c->daddiu(t7, v1, 1808);                          // daddiu t7, v1, 1824
   c->lui(s0, 4096);                                 // lui s0, 4096
@@ -2240,7 +2240,7 @@ u64 execute(void* ctxt) {
   // Unknown instr: sync.l
   c->lw(a2, 16, t7);                                // lw a2, 16(t7)
   //c->lui(a1, 28672);                                // lui a1, 28672
-  get_fake_spad_addr(a1, cache.fake_scratchpad_data, 0, c);
+  get_fake_spad_addr2(a1, cache.fake_scratchpad_data, 0, c);
   c->load_symbol2(t9, cache.decompress_fixed_data_to_accumulator);// lw t9, decompress-fixed-data-to-accumulator(s7)
   c->daddiu(a1, a1, 7392);                          // daddiu a1, a1, 7408
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -2283,7 +2283,7 @@ u64 execute(void* ctxt) {
   block_7:
   c->lw(t0, 20, t7);                                // lw t0, 20(t7)
   //c->lui(a1, 28672);                                // lui a1, 28672
-  get_fake_spad_addr(a1, cache.fake_scratchpad_data, 0, c);
+  get_fake_spad_addr2(a1, cache.fake_scratchpad_data, 0, c);
   c->lw(a2, 16, t7);                                // lw a2, 16(t7)
   c->daddiu(a1, a1, 9600);                          // daddiu a1, a1, 9616
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L6

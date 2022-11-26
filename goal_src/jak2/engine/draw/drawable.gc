@@ -274,6 +274,21 @@
 (defun find-instance-by-name ((a0-0 string))
   (the prototype-bucket #f))
 
+(defun main-debug-hook ()
+  (when (not (or (= *master-mode* 'menu) (= *master-mode* 'progress)))
+    (let ((a0-3 *col-rend*))
+      (if (-> a0-3 draw?)
+          (col-rend-method-9 a0-3)
+          )
+      )
+    (execute-connections *debug-engine* #f)
+    ;(draw-instance-info *stdcon*)
+    )
+  (none)
+  )
+
+(define *debug-hook* (cons main-debug-hook '()))
+
 (defun real-main-draw-hook ()
   (local-vars (a0-96 int) (a0-98 int))
   (with-pp
@@ -385,18 +400,18 @@
     ;; debug draw collision stuff before processing it.
     (when *debug-segment*
       (debug-draw-actors *level* *display-actor-marks*)
-      ; (collide-shape-draw-debug-marks)
+      (collide-shape-draw-debug-marks)
       )
 
     ;; after debug drawing, send events to actors
-    ; (send-events-for-touching-shapes *touching-list*)
-    ; (free-nodes *touching-list*)
-    ; (prepare *collide-rider-pool*)
+    (send-events-for-touching-shapes *touching-list*)
+    (free-nodes *touching-list*)
+    (prepare *collide-rider-pool*)
     (send-all! *event-queue*)
 
     ;; spawn/update actors
     (with-profiler 'update-actors *profile-update-actors-color*
-      ;(actors-update *level*)
+      (actors-update *level*)
       )
 
     ;; ??
