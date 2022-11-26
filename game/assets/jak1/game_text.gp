@@ -8,6 +8,7 @@
   (file "$DECOMP/assets/game_text.txt") ;; this is the decompiler-generated file!
   ;; add custom files down here
   (file "game/assets/jak1/text/game_text_en.gs")
+  (file "game/assets/jak1/text/game_text_fr.gs")
   (file "game/assets/jak1/text/game_text_de.gs")
   (file "game/assets/jak1/text/game_text_ja.gs")
   (file "game/assets/jak1/text/game_text_ptbr.gs")
