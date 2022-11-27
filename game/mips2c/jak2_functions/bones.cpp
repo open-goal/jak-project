@@ -136,6 +136,23 @@ u64 execute(void* ctxt) {
   bool bc = false;
   u32 call_addr = 0;
   u32 madr, sadr, qwc;
+
+  // hack, added this that should be loaded by the caller.
+  //  lqc2 vf28, 0(v1)          ;; [ 60] (set! vf28 (l.vf v1-13)) [v1: matrix ] -> []
+  c->lqc2(vf28, 0, t0);
+  //  lqc2 vf29, 16(v1)         ;; [ 61] (set! vf29 (l.vf (+ v1-13 16))) [v1: matrix ] -> []
+  c->lqc2(vf29, 16, t0);
+  //  lqc2 vf30, 32(v1)         ;; [ 62] (set! vf30 (l.vf (+ v1-13 32))) [v1: matrix ] -> []
+  c->lqc2(vf30, 32, t0);
+  //  lqc2 vf31, 48(v1)         ;; [ 63] (set! vf31 (l.vf (+ v1-13 48))) [v1: matrix ] -> []
+  c->lqc2(vf31, 48, t0);
+  //  lqc2 vf25, 0(v1)          ;; [ 64] (set! vf25 (l.vf v1-13)) [v1: matrix ] -> []
+  c->lqc2(vf25, 0, t0);
+  //  lqc2 vf26, 16(v1)         ;; [ 65] (set! vf26 (l.vf (+ v1-13 16))) [v1: matrix ] -> []
+  c->lqc2(vf26, 16, t0);
+  //  lqc2 vf27, 32(v1)         ;; [ 66] (set! vf27 (l.vf (+ v1-13 32))) [v1: matrix ] -> []
+  c->lqc2(vf27, 32, t0);
+
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s2, 16, sp);                                // sq s2, 16(sp)
