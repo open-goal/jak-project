@@ -3,9 +3,11 @@
 
 ;; definition of type vu-lights
 (deftype vu-lights (structure)
-  ((direction vector 3 :inline :offset-assert   0)
-   (color     vector 3 :inline :offset-assert  48)
-   (ambient   vector :inline   :offset-assert  96)
+  ((direction  vector 3 :inline :offset-assert   0)
+   (color      vector 3 :inline :offset-assert  48)
+   (ambient    vector :inline   :offset-assert  96)
+   (fade-int   uint32           :offset         44)
+   (fade-flags uint32           :offset         28)
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -107,6 +109,7 @@
   ((index uint16  :offset-assert   0)
    (count uint16  :offset-assert   2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -127,16 +130,16 @@
 
 ;; definition of type light-hash
 (deftype light-hash (basic)
-  ((num-lights         uint16                              :offset-assert   4)
-   (num-indices        uint16                              :offset-assert   6)
-   (num-buckets        uint16                              :offset-assert   8)
-   (bucket-step        uint8                       2       :offset-assert  10)
-   (base-trans         vector                      :inline :offset-assert  16)
-   (axis-scale         vector                      :inline :offset-assert  32)
-   (dimension-array    vector4w                    :inline :offset-assert  48)
-   (bucket-array       pointer                             :offset-assert  64)
-   (index-array        pointer                             :offset-assert  68)
-   (light-sphere-array (inline-array light-sphere)         :offset-assert  72)
+  ((num-lights         uint16                                   :offset-assert   4)
+   (num-indices        uint16                                   :offset-assert   6)
+   (num-buckets        uint16                                   :offset-assert   8)
+   (bucket-step        uint8                            2       :offset-assert  10)
+   (base-trans         vector                           :inline :offset-assert  16)
+   (axis-scale         vector                           :inline :offset-assert  32)
+   (dimension-array    vector4w                         :inline :offset-assert  48)
+   (bucket-array       (inline-array light-hash-bucket)         :offset-assert  64)
+   (index-array        pointer                                  :offset-assert  68)
+   (light-sphere-array (inline-array light-sphere)              :offset-assert  72)
    )
   :method-count-assert 9
   :size-assert         #x4c
