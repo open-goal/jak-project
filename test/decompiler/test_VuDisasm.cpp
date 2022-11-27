@@ -135,6 +135,14 @@ TEST(VuDisasm, BonesVu0) {
   EXPECT_EQ(disasm.to_string(prog), get_expected("bones-vu0"));
 }
 
+TEST(VuDisasm, BonesVu0_Jak2) {
+  auto data = get_test_data("jak2/bones-vu0");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU0);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/bones-vu0"));
+  fmt::print("CPP:\n{}", disasm.to_string_with_cpp(prog, true));
+}
+
 TEST(VuDisasm, ShadowVu0) {
   auto data = get_test_data("shadow-vu0");
   VuDisassembler disasm(VuDisassembler::VuKind::VU0);
