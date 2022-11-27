@@ -90,6 +90,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/collide_mesh.cpp
         mips2c/jak2_functions/debug.cpp
         mips2c/jak2_functions/font.cpp
+        mips2c/jak2_functions/foreground.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/sky.cpp
         mips2c/jak2_functions/sparticle.cpp

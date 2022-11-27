@@ -728,7 +728,14 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       u32 tex_combo = (((u32)tpage) << 16) | tidx;
       // look up the texture to make sure it's valid
       auto tex = tdb.textures.find(tex_combo);
+      if (tex == tdb.textures.end()) {
+        fmt::print("failed to get texture 0x{:x}\n", tex_combo);
+        tex = tdb.textures.begin();
+      } else {
+        fmt::print("lookup ok {}\n", tex->second.name);
+      }
       ASSERT(tex != tdb.textures.end());
+
       // remember the texture id
       merc_state.merc_draw_mode.pc_combo_tex_id = tex_combo;
 
@@ -941,8 +948,10 @@ void extract_merc(const ObjectFileData& ag_data,
             // not added to level, add it
             auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
             if (tex_it == tex_db.textures.end()) {
-              ASSERT(false);
+              // ASSERT(false);
+              fmt::print("failed2: {}\n", draw.state.merc_draw_mode.pc_combo_tex_id);
             } else {
+              fmt::print("ok2: {}\n", tex_it->second.name);
               idx_in_level_texture = out.textures.size();
               auto& new_tex = out.textures.emplace_back();
               new_tex.combo_id = draw.state.merc_draw_mode.pc_combo_tex_id;
