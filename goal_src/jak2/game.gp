@@ -628,6 +628,10 @@
   "battle.gc"
   "elec-gate.gc"
   "cty-guard-turret-button.gc"
+  "enemy/guards/crimson-guard-level.gc"
+  "enemy/guards/guard-conversation.gc"
+  "enemy/guards/transport-level.gc"
+
   )
 
 (cgo "ENGINE.CGO" "engine.gd")
@@ -682,6 +686,8 @@
 
 (copy-gos
   "fort-entry-gate-ag"
+  "crimson-guard-ag"
+  "com-airlock-outer-ag"
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -804,7 +810,6 @@
 (copy-gos
   "citizen-fat-ag"
   "citizen-norm-ag"
-  "crimson-guard-ag"
   "citizen-chick-ag"
   "hellcat-ag"
   "carc-ag"
@@ -854,7 +859,6 @@
 (copy-textures 1565 1577 1601 1614 1642)
 
 (copy-gos
-  "com-airlock-outer-ag"
   "ctyindb-vis"
 )
 
@@ -994,7 +998,6 @@
 ;; (copy-gos
 ;;   "fodder-ag"
 ;;   "liftcat-ag"
-;;   "com-airlock-outer-ag"
 ;;   "atoll-windmill-ag"
 ;;   "turbine-ag"
 ;;   "slider-ag"
@@ -1029,7 +1032,6 @@
 ;;   "krew-lowres-ag"
 ;;   "cboss-tractor-ag"
 ;;   "krew-clone-ag"
-;;   "com-airlock-outer-ag"
 ;;   "cboss-bomb-ag"
 ;;   "cboss-elevator-ag"
 ;;   "casboss-vis"
@@ -1054,7 +1056,6 @@
 ;; (copy-gos
 ;;   "daxter-highres-ag"
 ;;   "jak-highres-ag"
-;;   "com-airlock-outer-ag"
 ;;   "air-train-ag"
 ;;   "cpad-elevator-ag"
 ;;   "particleman-ag"
@@ -1070,9 +1071,7 @@
 ;; (goal-src-sequence
 ;;   ""
 ;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
+;;
 ;;   "levels/landing_pad/roboguard-level.gc"
 ;;   "levels/landing_pad/castle-texture.gc"
 ;;   "levels/landing_pad/castle-obs.gc"
@@ -1084,7 +1083,6 @@
 ;; (copy-gos
 ;;   "roboguard-ag"
 ;;   "crimson-guard-ag"
-;;   "com-airlock-outer-ag"
 ;;   "cas-rot-bridge-ag"
 ;;   "cas-electric-fence-ag"
 ;;   "cas-rot-blade-ag"
@@ -1151,7 +1149,6 @@
 ;; (copy-textures 2444 2445 2645 2644 2744 2791 2441)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "com-airlock-inner-ag"
 ;;   "farm-chilirots-ag"
 ;;   "farm-cabbage-ag"
@@ -1225,7 +1222,6 @@
 ;; (copy-textures 955 957 956 958 1019 1638)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "ctygenb-vis"
 ;;   )
 
@@ -1284,7 +1280,6 @@
 ;; (copy-textures 1565 1577 1601 1614 1642)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "ctyindb-vis"
 ;;   )
 
@@ -1368,7 +1363,6 @@
 ;;   "crimson-guard-highres-ag"
 ;;   "consite-bomb-elevator-ag"
 ;;   "crimson-guard-lowres-ag"
-;;   "com-airlock-outer-ag"
 ;;   "consite-silo-doors-ag"
 ;;   "precursor-stone-ag"
 ;;   "bomb-trigger-ag"
@@ -1416,7 +1410,6 @@
 
 ;; (copy-gos
 ;;   "ctypal-baron-statue-broken-ag"
-;;   "com-airlock-outer-ag"
 ;;   "com-airlock-inner-ag"
 ;;   "water-anim-ctypal-ag"
 ;;   "palace-door-ag"
@@ -1447,26 +1440,24 @@
 ;;   "ctyport-vis"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; CTB
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; CTB
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "CTB.DGO" "ctb.gd")
+(cgo "CTB.DGO" "ctb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/slums/ctyslumb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/slums/ctyslumb-part.gc"
+  )
 
-;; (copy-textures 977 1308 978 1022 1647)
+(copy-textures 977 1308 978 1022 1647)
 
-;; (copy-gos
-;;   "com-airlock-outer-ag"
-;;   "com-airlock-inner-ag"
-;;   "fort-entry-gate-ag"
-;;   "ctyslumb-vis"
-;;   )
+(copy-gos
+  "com-airlock-inner-ag"
+  "ctyslumb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; CTC
@@ -1483,7 +1474,6 @@
 ;; (copy-textures 1268 1303 1269 1023 1648)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "door-ag"
 ;;   "ctyslumc-vis"
 ;;   )
@@ -1680,9 +1670,6 @@
 ;; (goal-src-sequence
 ;;   ""
 ;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
 ;;   "levels/dig/dig-digger.gc"
 ;;   "levels/dig/dig-obs.gc"
 ;;   "levels/dig/dig1-obs.gc"
@@ -1880,7 +1867,6 @@
 ;;   "fort-robotank-top-ag"
 ;;   "fort-elec-switch-ag"
 ;;   "fort-roboscreen-ag"
-;;   "fort-entry-gate-ag"
 ;;   "fort-robotank-sight-ag"
 ;;   "fordumpa-vis"
 ;;   )
@@ -1894,9 +1880,6 @@
 ;; (goal-src-sequence
 ;;   ""
 ;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
 ;;   "levels/fortress/ammo_dump/fordumpb-obs.gc"
 ;;   "levels/fortress/ammo_dump/fordumpb-part.gc"
 ;;   "levels/fortress/fortress-obs.gc"
@@ -1916,54 +1899,49 @@
 ;;   "fordumpb-vis"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; FEA
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; FEA
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FEA.DGO" "fea.gd")
+(cgo "FEA.DGO" "fea.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
-;;   "levels/fortress/exit/forexita-part.gc"
-;;   "levels/fortress/exit/forexita-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/fortress/exit/forexita-part.gc"
+  "levels/fortress/exit/forexita-obs.gc"
+  )
 
-;; (copy-textures 1580 1583 1581)
+(copy-textures 1580 1583 1581)
 
-;; (copy-gos
-;;   "jak-pole+0-ag"
-;;   "crimson-guard-ag"
-;;   "fort-lift-plat-ag"
-;;   "forexita-vis"
-;;   )
+(copy-gos
+  "jak-pole+0-ag"
+  "fort-lift-plat-ag"
+  "forexita-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FEB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FEB.DGO" "feb.gd")
+(cgo "FEB.DGO" "feb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "engine/target/target-tube.gc"
-;;   "levels/fortress/fortress-obs.gc"
-;;   "levels/fortress/exit/forexitb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "engine/target/target-tube.gc"
+  "levels/fortress/fortress-obs.gc"
+  "levels/fortress/exit/forexitb-part.gc"
+  )
 
-;; (copy-textures 1584 1587 1585 1586 1712)
+(copy-textures 1584 1587 1585 1586 1712)
 
-;; (copy-gos
-;;   "jak-tube+0-ag"
-;;   "water-anim-fortress-ag"
-;;   "fort-trap-door-ag"
-;;   "fort-entry-gate-ag"
-;;   "forexitb-vis"
-;;   )
+(copy-gos
+  "jak-tube+0-ag"
+  "water-anim-fortress-ag"
+  "fort-trap-door-ag"
+  "forexitb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FOB
@@ -1978,7 +1956,6 @@
 ;;   "daxter-highres-ag"
 ;;   "youngsamos-highres-ag"
 ;;   "jak-highres-ag"
-;;   "crimson-guard-ag"
 ;;   "crimson-guard-hover-ag"
 ;;   "transport-ag"
 ;;   "life-seed-ag"
@@ -1995,9 +1972,6 @@
   ""
   :deps ("$OUT/obj/los-control.o")
   "levels/common/enemy/spyder.gc"
-  "levels/common/enemy/guards/crimson-guard-level.gc"
-  "levels/common/enemy/guards/guard-conversation.gc"
-  "levels/common/enemy/guards/transport-level.gc"
   "levels/common/enemy/hover/hover-formation-h.gc"
   "levels/common/enemy/hover/hover-nav-control-h.gc"
   "levels/common/enemy/hover/hover-enemy-h.gc"
@@ -2061,7 +2035,6 @@
 ;;   "fort-robotank-top-ag"
 ;;   "fort-roboscreen-ag"
 ;;   "fort-missile-ag"
-;;   "fort-entry-gate-ag"
 ;;   "fort-robotank-sight-ag"
 ;;   "fort-dump-bomb-a-ag"
 ;;   "particleman-ag"
@@ -2106,9 +2079,6 @@
 ;;   "levels/common/enemy/hover/wasp.gc"
 ;;   "levels/common/enemy/hover/crimson-guard-hover.gc"
 ;;   "levels/common/enemy/hover/flamer.gc"
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
 ;;   "levels/fortress/rescue/forresca-part.gc"
 ;;   "levels/fortress/rescue/forresca-obs.gc"
 ;;   )
@@ -2116,9 +2086,7 @@
 ;; (copy-textures 3190 3192 3191)
 
 ;; (copy-gos
-;;   "crimson-guard-ag"
 ;;   "crimson-guard-hover-ag"
-;;   "fort-entry-gate-ag"
 ;;   "cty-guard-turret-button-ag"
 ;;   "fort-led-ag"
 ;;   "forresca-vis"
@@ -2145,7 +2113,6 @@
 ;; (copy-gos
 ;;   "spydroid-ag"
 ;;   "fort-turret-ag"
-;;   "fort-entry-gate-ag"
 ;;   "cty-guard-turret-button-ag"
 ;;   "fort-elec-belt-ag"
 ;;   "forrescb-vis"
@@ -2205,7 +2172,6 @@
 ;;   "gun-dummy-b-ag"
 ;;   "gun-cit-c-ag"
 ;;   "gun-dummy-big-ag"
-;;   "fort-entry-gate-ag"
 ;;   "hip-door-a-ag"
 ;;   "yellow-barrel-ag"
 ;;   "dark-barrel-ag"
@@ -2467,21 +2433,21 @@
 ;;   "lcitylow"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LDJAKBRN
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LDJAKBRN
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LDJAKBRN.DGO" "ldjakbrn.gd")
+(cgo "LDJAKBRN.DGO" "ldjakbrn.gd")
 
-;; (copy-textures 2662 2657 3094)
+(copy-textures 2662 2657 3094)
 
-;; (copy-gos
-;;   "jak-highres-prison-ag"
-;;   "baron-highres-ag"
-;;   "prsn-daxter-plat-ag"
-;;   "jak-clothes-ag"
-;;   "ldjakbrn"
-;;   )
+(copy-gos
+  "jak-highres-prison-ag"
+  "baron-highres-ag"
+  "prsn-daxter-plat-ag"
+  "jak-clothes-ag"
+  "ldjakbrn"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LERBRNGD
@@ -3195,7 +3161,6 @@
 ;; (copy-gos
 ;;   "grunt-ag"
 ;;   "citizen-norm-ag"
-;;   "crimson-guard-ag"
 ;;   "predator-ag"
 ;;   "flitter-ag"
 ;;   "cara-ag"
@@ -3216,7 +3181,6 @@
 ;; (copy-gos
 ;;   "roboguard-ag"
 ;;   "citizen-norm-ag"
-;;   "crimson-guard-ag"
 ;;   "citizen-chick-ag"
 ;;   "hellcat-ag"
 ;;   "carc-ag"
@@ -3339,7 +3303,6 @@
 ;; (copy-textures 1254 1256 1255 1253 1257 3470 1275)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "plat-buried-ag"
 ;;   "plat-return-ag"
 ;;   "water-anim-mountain-ag"
@@ -3638,7 +3601,6 @@
 ;; (copy-gos
 ;;   "jak-pole+0-ag"
 ;;   "pal-gun-turret-ag"
-;;   "com-airlock-outer-ag"
 ;;   "pal-electric-fan-ag"
 ;;   "pal-cable-nut-ag"
 ;;   "pal-flip-step-ag"
@@ -3658,9 +3620,6 @@
 ;; (goal-src-sequence
 ;;   ""
 ;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/guards/crimson-guard-level.gc"
-;;   "levels/common/enemy/guards/guard-conversation.gc"
-;;   "levels/common/enemy/guards/transport-level.gc"
 ;;   "levels/common/entities/sew-gunturret.gc"
 ;;   "levels/palace/explore/palent-part.gc"
 ;;   "levels/palace/pal-obs.gc"
@@ -3670,10 +3629,8 @@
 
 ;; (copy-gos
 ;;   "jak-pole+0-ag"
-;;   "crimson-guard-ag"
 ;;   "palent-turret-ag"
 ;;   "pal-breakable-window-ag"
-;;   "com-airlock-outer-ag"
 ;;   "pal-grind-ring-ag"
 ;;   "pal-grind-ring-center-ag"
 ;;   "pal-throne-door-ag"
@@ -3749,7 +3706,6 @@
 ;; (copy-textures 2360 2363 2361 2362 2521 2746)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "pal-prong-ag"
 ;;   "pal-flip-step-ag"
 ;;   "pal-lowrez-throne-ag"
@@ -3772,7 +3728,6 @@
 ;; (copy-textures 2371 2372 2692)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "com-airlock-inner-ag"
 ;;   "com-elevator-ag"
 ;;   "palshaft-vis"
@@ -3835,7 +3790,6 @@
 ;;   "mech-ag"
 ;;   "fodder-ag"
 ;;   "ruins-bridge-ag"
-;;   "com-airlock-outer-ag"
 ;;   "shield-gunner-ag"
 ;;   "precipice-b-ag"
 ;;   "ruins-precipice-ag"
@@ -3922,7 +3876,6 @@
 ;; (copy-textures 1133 1135 1134 3383)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "com-airlock-inner-ag"
 ;;   "sew-elevator-ag"
 ;;   "sewerb-vis"
@@ -4243,7 +4196,6 @@
 ;; (copy-textures 1372 1373 1458)
 
 ;; (copy-gos
-;;   "com-airlock-outer-ag"
 ;;   "com-airlock-inner-ag"
 ;;   "sew-elevator-ag"
 ;;   "sewescb-vis"
@@ -4456,7 +4408,6 @@
 ;;   "crocadog-highres-ag"
 ;;   "kor-highres-ag"
 ;;   "kid-highres-ag"
-;;   "com-airlock-outer-ag"
 ;;   "tomb-mar-door-ag"
 ;;   "com-elevator-ag"
 ;;   "tombd-vis"

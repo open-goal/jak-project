@@ -55,8 +55,6 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
         m_stats.num_predicted_tris += draw.num_triangles;
       }
     }
-  } else {
-    fmt::print("failed to get model {}\n", name);
   }
 }
 
@@ -348,7 +346,8 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
     if (init.vifcode0().kind != VifCode::Kind::STROW) {
       while(dma.current_tag_offset() != render_state->next_bucket) {
         auto skip = dma.read_and_advance();
-        fmt::print("skip: {}\n",skip.vifcode0().print());
+        ASSERT(skip.vifcode0().kind == VifCode::Kind::NOP);
+        ASSERT(skip.vifcode1().kind == VifCode::Kind::NOP);
       }
       return;
     }

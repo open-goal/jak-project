@@ -106,13 +106,21 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 1);
   // 20
   init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
+  init_bucket_renderer<Merc2>("merc-l1-tfrag", BucketCategory::MERC, BucketId::MERC_L1_TFRAG);
+  init_bucket_renderer<TextureUploadHandler>("tex-l2-tfrag", BucketCategory::TEX,
+                                             BucketId::TEX_L2_TFRAG);
   // 30
+  init_bucket_renderer<TFragment>("tfrag-l2-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L2_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 2);
+  init_bucket_renderer<Tie3>("tie-l2-tfrag", BucketCategory::TIE, BucketId::TIE_L2_TFRAG, 2);
+
   // 40
   init_bucket_renderer<TextureUploadHandler>("tex-l3-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L3_TFRAG);
   init_bucket_renderer<TFragment>("tfrag-l3-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L3_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 3);
   init_bucket_renderer<Tie3>("tie-l3-tfrag", BucketCategory::TIE, BucketId::TIE_L3_TFRAG, 3);
+  init_bucket_renderer<Merc2>("merc-l3-tfrag", BucketCategory::MERC, BucketId::MERC_L3_TFRAG);
   // 50
   // 60
   // 70
@@ -124,6 +132,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_L1_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
   // 90
+  init_bucket_renderer<TextureUploadHandler>("tex-l2-shrub", BucketCategory::TEX,
+                                             BucketId::TEX_L2_SHRUB);
+  init_bucket_renderer<Shrub>("shrub-l2-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L2_SHRUB);
   // 100
   init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L3_SHRUB);
@@ -136,6 +147,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   BucketId::TFRAG_T_L0_ALPHA,
                                   std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 0);
   // 130
+  init_bucket_renderer<TextureUploadHandler>("tex-l1-alpha", BucketCategory::TEX,
+                                             BucketId::TEX_L1_ALPHA);
   // 140
   // 150
   // 160
@@ -151,8 +164,12 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_L0_PRIS);
   init_bucket_renderer<Merc2>("merc-l0-pris", BucketCategory::MERC, BucketId::MERC_L0_PRIS);
   // 200
+  init_bucket_renderer<TextureUploadHandler>("tex-l1-pris", BucketCategory::TEX,
+                                             BucketId::TEX_L1_PRIS);
+  init_bucket_renderer<Merc2>("merc-l1-pris", BucketCategory::MERC, BucketId::MERC_L1_PRIS);
   init_bucket_renderer<TextureUploadHandler>("tex-l2-pris", BucketCategory::TEX,
                                              BucketId::TEX_L2_PRIS);
+  init_bucket_renderer<Merc2>("merc-l2-pris", BucketCategory::MERC, BucketId::MERC_L2_PRIS);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
                                              BucketId::TEX_L3_PRIS);
   // 210
@@ -165,12 +182,15 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 250
   init_bucket_renderer<TextureUploadHandler>("tex-l0-water", BucketCategory::TEX,
                                              BucketId::TEX_L0_WATER);
+  init_bucket_renderer<Merc2>("merc-l0-water", BucketCategory::MERC, BucketId::MERC_L0_WATER);
   init_bucket_renderer<TFragment>("tfrag-w-l0-alpha", BucketCategory::TFRAG,
                                   BucketId::TFRAG_W_L0_WATER,
                                   std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 0);
   // 260
   init_bucket_renderer<TextureUploadHandler>("tex-l1-water", BucketCategory::TEX,
                                              BucketId::TEX_L1_WATER);
+  init_bucket_renderer<Merc2>("merc-l1-water", BucketCategory::MERC, BucketId::MERC_L1_WATER);
+
   // 270
   init_bucket_renderer<TextureUploadHandler>("tex-l2-water", BucketCategory::TEX,
                                              BucketId::TEX_L2_WATER);
@@ -661,13 +681,14 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // glfw controls the window framebuffer, so we just update the size:
   auto& window_fb = m_fbo_state.resources.window;
-  bool window_resized = window_fb.width != settings.window_framebuffer_width ||
-                        window_fb.height != settings.window_framebuffer_height;
+
+  bool window_resized = window_fb.width != settings.window_framebuffer_width * 2 ||
+                        window_fb.height != settings.window_framebuffer_height * 2;
   window_fb.valid = true;
   window_fb.is_window = true;
   window_fb.fbo_id = 0;
-  window_fb.width = settings.window_framebuffer_width;
-  window_fb.height = settings.window_framebuffer_height;
+  window_fb.width = settings.window_framebuffer_width * 2;
+  window_fb.height = settings.window_framebuffer_height * 2;
   window_fb.multisample_count = 1;
   window_fb.multisampled = false;
 
@@ -737,14 +758,14 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   glDisable(GL_BLEND);
 
   // setup the draw region to letterbox later
-  m_render_state.draw_region_w = settings.draw_region_width;
-  m_render_state.draw_region_h = settings.draw_region_height;
+  m_render_state.draw_region_w = settings.draw_region_width * 2;
+  m_render_state.draw_region_h = settings.draw_region_height * 2;
 
   // center the letterbox
   m_render_state.draw_offset_x =
       (settings.window_framebuffer_width - m_render_state.draw_region_w) / 2;
   m_render_state.draw_offset_y =
-      (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
+      (settings.window_framebuffer_height- m_render_state.draw_region_h) / 2;
 
   if (settings.borderless_windows_hacks) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
