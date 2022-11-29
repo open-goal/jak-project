@@ -113,7 +113,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TFragment>("tfrag-l2-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L2_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 2);
   init_bucket_renderer<Tie3>("tie-l2-tfrag", BucketCategory::TIE, BucketId::TIE_L2_TFRAG, 2);
-
+  init_bucket_renderer<Merc2>("merc-l2-tfrag", BucketCategory::MERC, BucketId::MERC_L2_TFRAG);
   // 40
   init_bucket_renderer<TextureUploadHandler>("tex-l3-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L3_TFRAG);
@@ -156,6 +156,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 180
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_TFRAG);
+  init_bucket_renderer<Merc2>("merc-lcom-tfrag", BucketCategory::MERC, BucketId::MERC_LCOM_TFRAG);
   // 190
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-shrub", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SHRUB);
@@ -765,7 +766,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   m_render_state.draw_offset_x =
       (settings.window_framebuffer_width - m_render_state.draw_region_w) / 2;
   m_render_state.draw_offset_y =
-      (settings.window_framebuffer_height- m_render_state.draw_region_h) / 2;
+      (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
 
   if (settings.borderless_windows_hacks) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
