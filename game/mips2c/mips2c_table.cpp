@@ -195,7 +195,6 @@ namespace method_10_collide_puss_work { extern void link(); }
 namespace bones_mtx_calc { extern void link(); }
 namespace foreground_check_longest_edge_asm { extern void link(); }
 namespace foreground_merc { extern void link(); }
-namespace method_11_collide_mesh { extern void link(); }
 }
 // clang-format on
 
@@ -296,7 +295,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::fill_bg_using_box_new::link, jak2::fill_bg_using_line_sphere_new::link}},
      {"collide-mesh",
       {jak2::method_12_collide_mesh::link, jak2::method_14_collide_mesh::link,
-       jak2::method_15_collide_mesh::link, jak2::method_11_collide_mesh::link}},
+       jak2::method_15_collide_mesh::link}},
      {"collide-edge-grab",
       {jak2::method_10_collide_edge_hold_list::link, jak2::method_19_collide_edge_work::link,
        jak2::method_9_edge_grab_info::link, jak2::method_16_collide_edge_work::link,

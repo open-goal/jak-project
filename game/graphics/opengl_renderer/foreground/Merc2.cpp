@@ -248,7 +248,7 @@ void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) 
     ASSERT(vif3.num == 8);
   }
 
-  // 8 qw's of low memory dataj
+  // 8 qw's of low memory data
   memcpy(&m_low_memory, first.data + 16, sizeof(LowMemory));
   //  fmt::print("low\nhvdf: {}\nfog: {}\nmat:\n{}\n{}\n{}\n{}\n\n",
   //             m_low_memory.hvdf_offset.to_string_aligned(), m_low_memory.fog.to_string_aligned(),
@@ -344,7 +344,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
       init = dma.read_and_advance();
     }
     if (init.vifcode0().kind != VifCode::Kind::STROW) {
-      while(dma.current_tag_offset() != render_state->next_bucket) {
+      while (dma.current_tag_offset() != render_state->next_bucket) {
         auto skip = dma.read_and_advance();
         ASSERT(skip.vifcode0().kind == VifCode::Kind::NOP);
         ASSERT(skip.vifcode1().kind == VifCode::Kind::NOP);

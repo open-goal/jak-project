@@ -683,13 +683,13 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // glfw controls the window framebuffer, so we just update the size:
   auto& window_fb = m_fbo_state.resources.window;
 
-  bool window_resized = window_fb.width != settings.window_framebuffer_width * 2 ||
-                        window_fb.height != settings.window_framebuffer_height * 2;
+  bool window_resized = window_fb.width != settings.window_framebuffer_width ||
+                        window_fb.height != settings.window_framebuffer_height;
   window_fb.valid = true;
   window_fb.is_window = true;
   window_fb.fbo_id = 0;
-  window_fb.width = settings.window_framebuffer_width * 2;
-  window_fb.height = settings.window_framebuffer_height * 2;
+  window_fb.width = settings.window_framebuffer_width;
+  window_fb.height = settings.window_framebuffer_height;
   window_fb.multisample_count = 1;
   window_fb.multisampled = false;
 
@@ -759,8 +759,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   glDisable(GL_BLEND);
 
   // setup the draw region to letterbox later
-  m_render_state.draw_region_w = settings.draw_region_width * 2;
-  m_render_state.draw_region_h = settings.draw_region_height * 2;
+  m_render_state.draw_region_w = settings.draw_region_width;
+  m_render_state.draw_region_h = settings.draw_region_height;
 
   // center the letterbox
   m_render_state.draw_offset_x =
