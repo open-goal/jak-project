@@ -113,6 +113,7 @@
 
 (declare-type entity res-lump)
 (declare-type entity-actor entity)
+(declare-type actor-group inline-array-class)
 (declare-type target process-focusable)
 (define-extern process-task-mask (function process task-mask))
 
@@ -373,18 +374,18 @@
 
 
 (deftype fact-info-enemy (fact-info)
-  ((speed            float          :offset-assert  40)
-   (idle-distance    meters         :offset-assert  44)
-   (notice-top       meters         :offset-assert  48)
-   (notice-bottom    meters         :offset-assert  52)
-   (cam-horz         meters         :offset-assert  56)
-   (cam-vert         meters         :offset-assert  60)
-   (cam-notice-dist  meters         :offset-assert  64)
-   (enemy-options    enemy-option   :offset-assert  68)
-   (trig-dist        meters         :offset-assert  72)
-   (trig-actor-group uint32         :offset-assert  76)
-   (trig-mask-count  int8           :offset-assert  80)
-   (trig-mask        uint8        2 :offset-assert  81)
+  ((speed            float                   :offset-assert  40)
+   (idle-distance    meters                  :offset-assert  44)
+   (notice-top       meters                  :offset-assert  48)
+   (notice-bottom    meters                  :offset-assert  52)
+   (cam-horz         meters                  :offset-assert  56)
+   (cam-vert         meters                  :offset-assert  60)
+   (cam-notice-dist  meters                  :offset-assert  64)
+   (enemy-options    enemy-option            :offset-assert  68)
+   (trig-dist        meters                  :offset-assert  72)
+   (trig-actor-group (pointer actor-group)   :offset-assert  76)
+   (trig-mask-count  int8                    :offset-assert  80)
+   (trig-mask        uint8                 2 :offset-assert  81)
    )
   :method-count-assert 13
   :size-assert         #x53
@@ -518,7 +519,7 @@
           (set! sv-32 (new 'static 'res-tag))
           (let ((v1-20 (res-lump-data s5-0 'trig-ag pointer :tag-ptr (& sv-32))))
             (if (and v1-20 (nonzero? (-> sv-32 elt-count)))
-                (set! (-> gp-0 trig-actor-group) (the-as uint v1-20))
+                (set! (-> gp-0 trig-actor-group) (the-as (pointer actor-group) v1-20))
                 (clear-mask-bits gp-0 2)
                 )
             )
