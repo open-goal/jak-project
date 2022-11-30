@@ -948,7 +948,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_6:
   cop1_bc = c->fprs[f1] <= c->fprs[f2];             // c.le.s f1, f2
   c->lqc2(vf3, 64, s3);                             // lqc2 vf3, 64(s3)
   if (cop1_bc) {                                    // bc1tl L38
@@ -956,7 +955,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_8:
   c->vmul(DEST::xyzw, vf5, vf1, vf2);               // vmul.xyzw vf5, vf1, vf2
   c->lqc2(vf4, 0, s5);                              // lqc2 vf4, 0(s5)
   // nop                                            // sll r0, r0, 0
@@ -984,7 +982,6 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-  block_11:
   c->vadd_bc(DEST::x, BC::z, vf6, vf6, vf6);        // vaddz.x vf6, vf6, vf6
   // nop                                            // sll r0, r0, 0
   c->mov128_gpr_vf(v1, vf6);                        // qmfc2.i v1, vf6
@@ -1026,7 +1023,6 @@ u64 execute(void* ctxt) {
     goto block_17;
   }
 
-  block_16:
   c->lui(v0, -13122);                               // lui v0, -13122
   c->ori(v0, v0, 48160);                            // ori v0, v0, 48160
 
@@ -1188,7 +1184,6 @@ u64 execute(void* ctxt) {
     goto block_10;
   }
 
-  block_9:
   c->vsub_bc(DEST::x, BC::y, vf2, vf0, vf1);        // vsuby.x vf2, vf0, vf1
   // nop                                            // sll r0, r0, 0
   c->vrsqrt(vf0, BC::w, vf14, BC::x);               // vrsqrt Q, vf0.w, vf14.x
@@ -1381,7 +1376,6 @@ u64 execute(void* ctxt) {
     goto block_10;
   }
 
-  block_9:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   c->lwu(a0, 24, s4);                               // lwu a0, 24(s4)
   c->andi(a0, a0, 1);                               // andi a0, a0, 1
@@ -1592,7 +1586,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_4:
   c->vwaitq();                                      // vwaitq
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf8, vf8);                    // vmulq.xyz vf8, vf8, Q
@@ -1608,7 +1601,6 @@ u64 execute(void* ctxt) {
     goto block_1;
   }
 
-  block_7:
   c->daddiu(s0, s0, 1);                             // daddiu s0, s0, 1
   c->lq(a1, 16, s2);                                // lq a1, 16(s2)
   // nop                                            // sll r0, r0, 0
@@ -1632,7 +1624,6 @@ u64 execute(void* ctxt) {
     goto block_5;
   }
 
-  block_9:
   c->load_symbol2(t9, cache.closest_pt_in_triangle);// lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, gp);                             // daddu a0, r0, gp
   c->daddu(a1, r0, s2);                             // daddu a1, r0, s2
@@ -1658,7 +1649,6 @@ u64 execute(void* ctxt) {
     goto block_5;
   }
 
-  block_11:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, #t
   c->mov64(v0, v1);                                 // or v0, v1, r0
   //beq r0, r0, L16                                 // beq r0, r0, L16
@@ -1712,7 +1702,6 @@ namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 116, a2);                              // lwu v1, 116(a2)
