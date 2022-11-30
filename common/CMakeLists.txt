@@ -46,11 +46,12 @@ add_library(common
         util/json_util.cpp
         util/read_iso_file.cpp
         util/SimpleThreadGroup.cpp
+        util/StringUtil.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp
         util/FrameLimiter.cpp
-        util/unicode_util.cpp  )
+        util/unicode_util.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
