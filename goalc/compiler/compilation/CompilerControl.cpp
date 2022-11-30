@@ -9,6 +9,7 @@
 #include "common/goos/ReplUtils.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
+#include "common/util/StringUtil.h"
 #include "common/util/Timer.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -378,17 +379,42 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
   return get_none();
 }
 
-Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& context,
-                                                       int& contextLen,
-                                                       std::vector<std::string> const& user_data) {
+Replxx::completions_t Compiler::find_symbols_or_object_file_by_prefix(
+    std::string const& context,
+    int& contextLen,
+    std::vector<std::string> const& user_data) {
   (void)contextLen;
   (void)user_data;
-  auto token = m_repl->get_current_repl_token(context);
-  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
   Replxx::completions_t completions;
-  for (auto& x : possible_forms) {
-    completions.push_back(token.second ? "(" + x : x);
+
+  // If we are trying to execute a `(ml ...)` we can automatically get the object file
+  // insert quotes if needed as well.
+  if (str_util::starts_with(context, "(ml ")) {
+    std::string file_name_prefix = context.substr(4);
+    // Trim string just incase, extra whitespace is valid LISP
+    file_name_prefix = str_util::trim(file_name_prefix);
+    // Remove quotes
+    file_name_prefix.erase(remove(file_name_prefix.begin(), file_name_prefix.end(), '"'),
+                           file_name_prefix.end());
+    if (file_name_prefix.empty()) {
+      return completions;
+    }
+
+    // Get all the potential object file names
+    const auto& matches = m_global_env->list_files_with_prefix(file_name_prefix);
+    for (const auto& match : matches) {
+      completions.push_back(fmt::format("\"{}\")", match));
+    }
+  } else {
+    const auto [token, stripped_leading_paren] = m_repl->get_current_repl_token(context);
+    // Otherwise, look for symbols
+    auto possible_forms = lookup_symbol_infos_starting_with(token);
+
+    for (auto& x : possible_forms) {
+      completions.push_back(stripped_leading_paren ? "(" + x : x);
+    }
   }
+
   return completions;
 }
 
@@ -402,6 +428,8 @@ Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
   auto possible_forms = lookup_symbol_infos_starting_with(token.first);
 
   Replxx::hints_t hints;
+
+  // TODO - hints for `(ml ...` as well
 
   // Only show hints if there are <= 3 possibilities
   if (possible_forms.size() <= 3) {

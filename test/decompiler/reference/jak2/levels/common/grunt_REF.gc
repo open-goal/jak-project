@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: grunt.gc
-;; name in dgo: grunt
-;; dgos: GAME, COMMON
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-grunt grunt 0 -1
               ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
@@ -14,6 +9,7 @@
               :origin-joint-index 18
               )
 
+;; definition of type grunt-anim-info
 (deftype grunt-anim-info (structure)
   ((anim-index   int32   :offset-assert   0)
    (travel-speed meters  :offset-assert   4)
@@ -24,7 +20,20 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type grunt-anim-info
+(defmethod inspect grunt-anim-info ((obj grunt-anim-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'grunt-anim-info)
+  (format #t "~1Tanim-index: ~D~%" (-> obj anim-index))
+  (format #t "~1Ttravel-speed: (meters ~m)~%" (-> obj travel-speed))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type grunt-global-info
 (deftype grunt-global-info (basic)
   ((prev-knocked-anim-index    int32                     :offset-assert   4)
    (prev-yellow-hit-anim-index int32                     :offset-assert   8)
@@ -42,7 +51,28 @@
   :flag-assert         #x9000000e8
   )
 
+;; definition for method 3 of type grunt-global-info
+(defmethod inspect grunt-global-info ((obj grunt-global-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprev-knocked-anim-index: ~D~%" (-> obj prev-knocked-anim-index))
+  (format #t "~1Tprev-yellow-hit-anim-index: ~D~%" (-> obj prev-yellow-hit-anim-index))
+  (format #t "~1Tprev-blue-hit-anim-index: ~D~%" (-> obj prev-blue-hit-anim-index))
+  (format #t "~1Tpatrol-anim[4] @ #x~X~%" (-> obj patrol-anim))
+  (format #t "~1Tcharge-anim[3] @ #x~X~%" (-> obj charge-anim))
+  (format #t "~1Tattack-anim[2] @ #x~X~%" (-> obj attack-anim))
+  (format #t "~1Tknocked-anim[4] @ #x~X~%" (-> obj knocked-anim))
+  (format #t "~1Tknocked-land-anim[4] @ #x~X~%" (-> obj knocked-land-anim))
+  (format #t "~1Tyellow-hit-anim[4] @ #x~X~%" (-> obj yellow-hit-anim))
+  (format #t "~1Tblue-hit-anim[6] @ #x~X~%" (-> obj blue-hit-anim))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type grunt
 (deftype grunt (nav-enemy)
   ((patrol-anim            grunt-anim-info            :offset-assert 604)
    (charge-anim            grunt-anim-info            :offset-assert 608)
@@ -80,7 +110,37 @@
     )
   )
 
+;; definition for method 3 of type grunt
+(defmethod inspect grunt ((obj grunt))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpatrol-anim: #<grunt-anim-info @ #x~X>~%" (-> obj patrol-anim))
+  (format #t "~2Tcharge-anim: #<grunt-anim-info @ #x~X>~%" (-> obj charge-anim))
+  (format #t "~2Tattack-anim: #<grunt-anim-info @ #x~X>~%" (-> obj attack-anim))
+  (format #t "~2Tknocked-anim: #<grunt-anim-info @ #x~X>~%" (-> obj knocked-anim))
+  (format #t "~2Tyellow-hit-anim: #<grunt-anim-info @ #x~X>~%" (-> obj yellow-hit-anim))
+  (format #t "~2Tblue-hit-anim: #<grunt-anim-info @ #x~X>~%" (-> obj blue-hit-anim))
+  (format #t "~2Tintro-path: ~A~%" (-> obj intro-path))
+  (format #t "~2Tcircle-radial-dist: ~f~%" (-> obj desired-angle))
+  (format #t "~2Tuse-charge-anim-index: ~D~%" (-> obj unknown-byte-n1k2n3))
+  (format #t "~2Tknocked-anim-index: ~D~%" (-> obj unknown-byte-m2j342))
+  (format #t "~2Tjumping-ambush-path-pt: ~D~%" (-> obj unknown-byte-1ji2n3))
+  (format #t "~2Tgrunt-flags: ~D~%" (-> obj stack 511))
+  (format #t "~2Tstate-timeout2: ~D~%" (-> obj state-timeout2))
+  (format #t "~2Tnext-warn-time: ~D~%" (-> obj next-warn-time))
+  (format #t "~2Tdest: #<vector @ #x~X>~%" (-> obj dest))
+  (format #t "~2Tfocus-pos: #<vector @ #x~X>~%" (-> obj focus-pos))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *grunt-global-info*, type grunt-global-info
 (define *grunt-global-info* (new 'static 'grunt-global-info
                               :patrol-anim (new 'static 'inline-array grunt-anim-info 4
                                 (new 'static 'grunt-anim-info :anim-index 11 :travel-speed (meters 4))
@@ -126,6 +186,7 @@
                               )
         )
 
+;; definition for symbol *grunt-nav-enemy-info*, type nav-enemy-info
 (define *grunt-nav-enemy-info* (new 'static 'nav-enemy-info
                                  :use-die-falling #t
                                  :use-victory #f
@@ -269,8 +330,10 @@
                                  )
         )
 
+;; failed to figure out what this is:
 (set! (-> *grunt-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for method 74 of type grunt
 (defmethod enemy-method-74 grunt ((obj grunt) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('hit 'hit-knocked)
@@ -329,6 +392,7 @@
   (none)
   )
 
+;; definition for method 66 of type grunt
 (defmethod go-ambush grunt ((obj grunt))
   (cond
     ((logtest? (-> obj fact-info-override enemy-options) (enemy-option user10))
@@ -345,6 +409,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate falling-ambush (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -435,6 +500,7 @@
   :post (the-as (function none :behavior grunt) nav-enemy-falling-post)
   )
 
+;; definition for method 93 of type grunt
 (defmethod enemy-method-93 grunt ((obj grunt))
   (case (-> obj jump-why)
     ((2)
@@ -447,6 +513,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate jumping-ambush (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -483,6 +550,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate jumping-ambush-cont (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -517,6 +585,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (grunt)
   :virtual #t
   :code (behavior ()
@@ -664,6 +733,7 @@
     )
   )
 
+;; definition for method 184 of type grunt
 (defmethod grunt-method-184 grunt ((obj grunt) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
@@ -715,6 +785,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hostile (grunt)
   :virtual #t
   :trans (behavior ()
@@ -800,6 +871,7 @@
   :post (the-as (function none :behavior grunt) nav-enemy-chase-post)
   )
 
+;; failed to figure out what this is:
 (defstate attack (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -902,6 +974,7 @@
   :post (the-as (function none :behavior grunt) nav-enemy-chase-post)
   )
 
+;; failed to figure out what this is:
 (defstate spin-attack (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -983,6 +1056,7 @@
   :post (the-as (function none :behavior grunt) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate circling (grunt)
   :virtual #t
   :code (behavior ()
@@ -1099,6 +1173,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pacing (grunt)
   :virtual #t
   :code (behavior ()
@@ -1168,6 +1243,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate stop-chase (grunt)
   :virtual #t
   :code (behavior ()
@@ -1205,6 +1281,7 @@
     )
   )
 
+;; definition for method 77 of type grunt
 (defmethod enemy-method-77 grunt ((obj grunt) (arg0 (pointer float)))
   (local-vars (v1-72 int) (a2-3 int) (a2-5 int))
   (case (-> obj incoming knocked-type)
@@ -1349,6 +1426,7 @@
     )
   )
 
+;; definition for method 78 of type grunt
 (defmethod enemy-method-78 grunt ((obj grunt) (arg0 (pointer float)))
   (cond
     ((= (-> obj incoming knocked-type) (knocked-type knocked-type-6))
@@ -1401,6 +1479,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-focus (grunt)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
@@ -1449,6 +1528,7 @@
   :post (-> (method-of-type nav-enemy idle) post)
   )
 
+;; definition for method 132 of type grunt
 (defmethod enemy-method-132 grunt ((obj grunt))
   (when (-> obj minimap)
     (logior! (-> obj minimap flags) (minimap-flag fade-out))
@@ -1458,6 +1538,7 @@
   (none)
   )
 
+;; definition for method 7 of type grunt
 ;; WARN: Return type mismatch nav-enemy vs grunt.
 (defmethod relocate grunt ((obj grunt) (arg0 int))
   (if (nonzero? (-> obj intro-path))
@@ -1466,6 +1547,8 @@
   (the-as grunt ((method-of-type nav-enemy relocate) obj arg0))
   )
 
+;; definition for method 114 of type grunt
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-114 grunt ((obj grunt))
   "@abstract"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
@@ -1562,12 +1645,15 @@
   (none)
   )
 
+;; definition for method 185 of type grunt
 ;; WARN: Return type mismatch nav-enemy-info vs none.
 (defmethod grunt-method-185 grunt ()
   *grunt-nav-enemy-info*
   (none)
   )
 
+;; definition for method 115 of type grunt
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-115 grunt ((obj grunt))
   "@abstract"
   (initialize-skeleton
@@ -1624,6 +1710,8 @@
   (none)
   )
 
+;; definition for method 116 of type grunt
+;; WARN: Return type mismatch int vs none.
 (defmethod go-idle grunt ((obj grunt))
   (if (logtest? (-> obj fact-info-override enemy-options) (enemy-option user9))
       (go (method-of-object obj wait-for-focus))

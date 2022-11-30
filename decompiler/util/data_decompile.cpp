@@ -215,7 +215,8 @@ goos::Object decompile_at_label(const TypeSpec& type,
     return decompile_pair(label, labels, words, ts, true, file, version);
   }
 
-  throw std::runtime_error("Unimplemented decompile_at_label for " + type.print());
+  throw std::runtime_error(fmt::format(
+      "Unimplemented decompile_at_label for Label: {} and Type: {}", label.name, type.print()));
 }
 
 /*!
@@ -744,6 +745,11 @@ const std::unordered_map<
            {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
                                           1,
                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"nav-enemy-info",
+           {{"idle-anim-script",
+             ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                  4,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           // kinda want to add regex support now...
           {"bigmap-compressed-layers",
            {{"layer0", ArrayFieldDecompMeta(TypeSpec("uint32"),

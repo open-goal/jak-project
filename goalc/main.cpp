@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
     }
     compiler = std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
     if (repl_config) {
-      compiler->update_via_config_file(repl_config.value());
+      compiler->update_via_config_file(repl_config.value(), game);
     }
     // Start nREPL Server
     if (repl_server_ok) {
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
         compiler =
             std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
         if (repl_config) {
-          compiler->update_via_config_file(repl_config.value());
+          compiler->update_via_config_file(repl_config.value(), game);
         }
         if (!startup_cmd.empty()) {
           compiler->handle_repl_string(startup_cmd);

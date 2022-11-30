@@ -239,17 +239,9 @@ Object Reader::read_from_string(const std::string& str,
  * Read a file
  */
 Object Reader::read_from_file(const std::vector<std::string>& file_path, bool check_encoding) {
-  std::string joined_name;
+  std::string joined_path = fmt::format("{}", fmt::join(file_path, "/"));
 
-  for (const auto& thing : file_path) {
-    if (!joined_name.empty()) {
-      joined_name += '/';
-    }
-
-    joined_name += thing;
-  }
-
-  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_name);
+  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_path);
   db.insert(textFrag);
 
   auto result = internal_read(textFrag, check_encoding);
