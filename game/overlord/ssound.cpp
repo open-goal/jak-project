@@ -13,7 +13,7 @@
 using namespace iop;
 
 Sound gSounds[64];
-Curve gCurve[8];  // TODO verify count
+Curve gCurve[12];  // TODO verify count
 VolumePair gPanTable[361];
 
 Vec3w gEarTrans[2];
@@ -76,13 +76,26 @@ void InitSound_Overlord() {
     s.id = 0;
   }
 
-  SetCurve(1, 0, 0);
-  SetCurve(2, 0x1000, 0);
-  SetCurve(3, 0, 0x1000);
-  SetCurve(4, 0x800, 0);
-  SetCurve(5, 0x800, 0x800);
-  SetCurve(6, -0x1000, 0);
-  SetCurve(6, -0x800, 0);
+  if (g_game_version == GameVersion::Jak1) {
+    SetCurve(1, 0, 0);
+    SetCurve(2, 4096, 0);
+    SetCurve(3, 0, 4096);
+    SetCurve(4, 2048, 0);
+    SetCurve(5, 2048, 2048);
+    SetCurve(6, -4096, 0);
+    SetCurve(7, -2048, 0);
+  } else {
+    SetCurve(2, 0, 0);
+    SetCurve(9, 0, 0);
+    SetCurve(11, 0, 0);
+    SetCurve(10, 0, 0);
+    SetCurve(3, 4096, 0);
+    SetCurve(4, 0, 4096);
+    SetCurve(5, 2048, 0);
+    SetCurve(6, 2048, 2048);
+    SetCurve(7, -4096, 0);
+    SetCurve(8, -2048, 0);
+  }
 
   snd_StartSoundSystem();
   snd_RegisterIOPMemAllocator(SndMemAlloc, SndMemFree);
@@ -482,7 +495,8 @@ void PrintActiveSounds() {
         if (len > 16) {
           len = 16;
         }
-        sprintf(string, "                 : Vol %d, ID %d ", GetVolume(&s), s.id);
+        sprintf(string, "                 : Vol %d, ID %d, Curve %d", GetVolume(&s), s.id,
+                s.params.fo_curve);
         memcpy(string, s.name, len);
         printf("%s\n", string);
       }
