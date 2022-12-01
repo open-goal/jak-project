@@ -3,9 +3,9 @@
 
 ;; definition of type bone-buffer
 (deftype bone-buffer (structure)
-  ((joint joint-anim-compressed-hdr 16 :inline :offset-assert   0)
-   (bone  bone                      16 :inline :offset-assert 1024)
-   (_pad  uint8                     2048       :offset-assert 2304)
+  ((joint  matrix   16 :inline :offset-assert   0)
+   (bone   bone     16 :inline :offset-assert 1024)
+   (output pris-mtx 16 :inline :offset-assert 2304)
    )
   :method-count-assert 9
   :size-assert         #x1100
@@ -21,18 +21,18 @@
   (format #t "[~8x] ~A~%" obj 'bone-buffer)
   (format #t "~1Tjoint[16] @ #x~X~%" (-> obj joint))
   (format #t "~1Tbone[16] @ #x~X~%" (-> obj bone))
-  (format #t "~1Toutput[16] @ #x~X~%" (-> obj _pad))
+  (format #t "~1Toutput[16] @ #x~X~%" (-> obj output))
   (label cfg-4)
   obj
   )
 
 ;; definition of type bone-layout
 (deftype bone-layout (structure)
-  ((data   uint16 8 :offset-assert   0)
-   (joint  joint  2 :offset          0)
-   (bone   bone   2 :offset          8)
-   (output uint32 2 :offset         16)
-   (unused uint32 2 :offset         24)
+  ((data   uint16                  8 :offset-assert   0)
+   (joint  (inline-array matrix)   2 :offset          0)
+   (bone   (inline-array bone)     2 :offset          8)
+   (output (inline-array pris-mtx) 2 :offset         16)
+   (unused uint32                  2 :offset         24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -57,15 +57,15 @@
 
 ;; definition of type bone-regs
 (deftype bone-regs (structure)
-  ((dma-buf    basic                 :offset-assert   0)
-   (wait-count uint32                :offset-assert   4)
-   (in-count   uint32                :offset-assert   8)
-   (sp-size    uint32                :offset-assert  12)
-   (sp-bufnum  uint32                :offset-assert  16)
-   (joint-ptr  (inline-array joint)  :offset-assert  20)
-   (bone-ptr   (inline-array bone)   :offset-assert  24)
-   (num-bones  uint32                :offset-assert  28)
-   (mtxs       uint32                :offset-assert  32)
+  ((dma-buf    basic                    :offset-assert   0)
+   (wait-count uint32                   :offset-assert   4)
+   (in-count   uint32                   :offset-assert   8)
+   (sp-size    uint32                   :offset-assert  12)
+   (sp-bufnum  uint32                   :offset-assert  16)
+   (joint-ptr  (inline-array joint)     :offset-assert  20)
+   (bone-ptr   (inline-array bone)      :offset-assert  24)
+   (num-bones  uint32                   :offset-assert  28)
+   (mtxs       (inline-array pris-mtx)  :offset-assert  32)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -163,19 +163,20 @@
 
 ;; definition of type bone-calculation
 (deftype bone-calculation (structure)
-  ((flags               bone-calc-flags        :offset-assert   0)
-   (num-bones           uint16                 :offset-assert   2)
-   (matrix-area         (inline-array matrix)  :offset-assert   4)
-   (joints              (inline-array joint)   :offset-assert   8)
-   (bones               (inline-array bone)    :offset-assert  12)
-   (ripple-scale        float                  :offset-assert  16)
-   (ripple-y-scale      float                  :offset-assert  20)
-   (ripple-normal-scale float                  :offset-assert  24)
-   (ripple-area         (inline-array vector)  :offset-assert  28)
-   (next                bone-calculation       :offset-assert  32)
-   (dummy-1             uint32                 :offset-assert  36)
-   (dummy-2             uint32                 :offset-assert  40)
-   (dummy-3             uint32                 :offset-assert  44)
+  ((flags               bone-calc-flags                 :offset-assert   0)
+   (num-bones           uint16                          :offset-assert   2)
+   (matrix-area         (inline-array pris-mtx)         :offset-assert   4)
+   (joints              (inline-array joint)            :offset-assert   8)
+   (bones               (inline-array bone)             :offset-assert  12)
+   (ripple-scale        float                           :offset-assert  16)
+   (ripple-y-scale      float                           :offset-assert  20)
+   (ripple-normal-scale float                           :offset-assert  24)
+   (ripple-area         (inline-array vector)           :offset-assert  28)
+   (ripple-vec          vector                  :inline :offset         16)
+   (next                bone-calculation                :offset-assert  32)
+   (dummy-1             uint32                          :offset-assert  36)
+   (dummy-2             uint32                          :offset-assert  40)
+   (dummy-3             uint32                          :offset-assert  44)
    )
   :method-count-assert 9
   :size-assert         #x30

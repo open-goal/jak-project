@@ -858,9 +858,17 @@ bool setup_stack_bonus_ops(const AllocationInput& input,
                            int my_slot) {
   auto& var = cache->vars.at(var_idx);
   // loop over all possible instruction that might use this var
-  //  bool successful = false;
-  //  while (!successful) {
+
+  // we may retry, so don't add bonus ops until the end (
+  struct BonusToAdd {
+    StackOp::Op op;
+    int instr_idx = -1;
+  };
+  std::vector<BonusToAdd> bonus_ops;
+
 loop_top:
+  bonus_ops.clear();
+
   for (int instr_idx = var.first_live(); instr_idx <= var.last_live(); instr_idx++) {
     // check out the instruction
     auto& op = input.instructions.at(instr_idx);
@@ -945,19 +953,22 @@ loop_top:
     bonus.store = is_written;
 
     if (bonus.load || bonus.store) {
-      cache->stack_ops.at(instr_idx).ops.push_back(bonus);
-      if (bonus.load) {
-        cache->stats.num_spill_ops++;
-      }
-      if (bonus.store) {
-        cache->stats.num_spill_ops++;
-      }
+      bonus_ops.push_back(BonusToAdd{bonus, instr_idx});
     }
   }
 
   //  }
 
   cache->stats.num_spilled_vars++;
+  for (auto& op : bonus_ops) {
+    if (op.op.load) {
+      cache->stats.num_spill_ops++;
+    }
+    if (op.op.store) {
+      cache->stats.num_spill_ops++;
+    }
+    cache->stack_ops.at(op.instr_idx).ops.push_back(op.op);
+  }
 
   return true;
 }

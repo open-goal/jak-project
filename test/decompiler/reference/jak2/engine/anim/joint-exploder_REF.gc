@@ -18,14 +18,14 @@
    (away-from-rand-transv-xz-hi float              :offset         68)
    (away-from-rand-transv-y-lo  float              :offset         72)
    (away-from-rand-transv-y-hi  float              :offset         76)
-   (hit-xz-reaction             float              :offset-assert  80)
-   (hit-y-reaction              float              :offset-assert  84)
+   (hit-xz-reaction             float              :offset         80)
+   (hit-y-reaction              float              :offset         84)
    )
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type uint) _type_ 0)
     )
   )
 
@@ -171,7 +171,7 @@
   ((head        int32                :offset-assert   0)
    (pre-moved?  symbol               :offset-assert   4)
    (bbox-valid? symbol               :offset-assert   8)
-   (probeless?  symbol               :offset-assert  12)
+   (probeless?  basic                :offset-assert  12)
    (bbox        bounding-box :inline :offset-assert  16)
    )
   :method-count-assert 9
@@ -197,8 +197,7 @@
 
 ;; definition of type joint-exploder
 (deftype joint-exploder (process-drawable)
-  ((parent-override            (pointer process-drawable)             :offset         16)
-   (die-if-below-y             float                                  :offset-assert 200)
+  ((die-if-below-y             float                                  :offset-assert 200)
    (die-if-beyond-xz-dist-sqrd float                                  :offset-assert 204)
    (joints                     joint-exploder-joints                  :offset-assert 208)
    (static-params              joint-exploder-static-params           :offset-assert 212)
@@ -212,16 +211,16 @@
   :size-assert         #x240
   :flag-assert         #x1e01c00240
   (:methods
-    (joint-exploder-method-20 (_type_ joint-exploder-list int) int 20)
-    (joint-exploder-method-21 (_type_ joint-exploder-list joint-exploder-joint) none 21)
-    (joint-exploder-method-22 (_type_ joint-exploder-list) none 22)
-    (joint-exploder-method-23 (_type_) none 23)
-    (joint-exploder-method-24 (_type_ joint-exploder-list int) int 24)
-    (joint-exploder-method-25 (_type_ joint-exploder-list int) symbol 25)
-    (joint-exploder-method-26 (_type_ joint-exploder-list) none 26)
-    (joint-exploder-method-27 (_type_ joint-exploder-list int) int 27)
-    (joint-exploder-method-28 (_type_ joint-exploder-list int) joint-exploder-list 28)
-    (joint-exploder-method-29 (_type_ joint-exploder-list) none 29)
+    (add-joint-to-list (_type_ joint-exploder-list int) int 20)
+    (update-bbox-for-joint (_type_ joint-exploder-list joint-exploder-joint) none 21)
+    (do-collision-response (_type_ joint-exploder-list) none 22)
+    (init-joint-list (_type_) none 23)
+    (remove-from-list-and-reset (_type_ joint-exploder-list int) int 24)
+    (final-adjust (_type_ joint-exploder-list int) int 25)
+    (integrate-and-kill (_type_ joint-exploder-list) none 26)
+    (remove-joint-from-list (_type_ joint-exploder-list int) int 27)
+    (adjust-bbox-for-limits-along-axis (_type_ joint-exploder-list int) joint-exploder-list 28)
+    (adjust-bbox-for-limits (_type_ joint-exploder-list) none 29)
     )
   )
 
@@ -298,8 +297,8 @@
 
 ;; definition for method 24 of type joint-exploder
 ;; INFO: Used lq/sq
-(defmethod joint-exploder-method-24 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
-  (let ((v0-0 (joint-exploder-method-27 obj arg0 arg1)))
+(defmethod remove-from-list-and-reset joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+  (let ((v0-0 (remove-joint-from-list obj arg0 arg1)))
     (let* ((v1-1 (-> obj joints))
            (v1-2 (-> v1-1 joint arg1))
            )
@@ -313,7 +312,7 @@
   )
 
 ;; definition for method 27 of type joint-exploder
-(defmethod joint-exploder-method-27 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod remove-joint-from-list joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (let* ((v1-0 (-> obj joints))
          (a2-1 (-> v1-0 joint arg1))
          (a0-4 (-> a2-1 prev))
@@ -345,7 +344,7 @@
   )
 
 ;; definition for method 20 of type joint-exploder
-(defmethod joint-exploder-method-20 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod add-joint-to-list joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (let* ((v1-0 (-> obj joints))
          (a3-0 (-> v1-0 joint arg1))
          (a0-4 (-> arg0 head))
@@ -362,7 +361,7 @@
 
 ;; definition for method 21 of type joint-exploder
 ;; INFO: Used lq/sq
-(defmethod joint-exploder-method-21 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 joint-exploder-joint))
+(defmethod update-bbox-for-joint joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 joint-exploder-joint))
   (let ((a1-1 (-> arg1 mat trans)))
     (cond
       ((-> arg0 bbox-valid?)
@@ -381,7 +380,7 @@
 
 ;; definition for method 28 of type joint-exploder
 ;; INFO: Used lq/sq
-(defmethod joint-exploder-method-28 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+(defmethod adjust-bbox-for-limits-along-axis joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (local-vars
     (sv-16 int)
     (sv-32 int)
@@ -391,7 +390,7 @@
     (sv-96 int)
     (sv-112 joint-exploder-joint)
     )
-  (let ((s5-0 (the-as object #f)))
+  (let ((s5-0 (the-as joint-exploder-list #f)))
     (let ((v1-0 1))
       (until (= v1-0 5)
         (let ((a0-4 (-> obj lists v1-0)))
@@ -405,12 +404,12 @@
       )
     (label cfg-6)
     (cond
-      ((the-as joint-exploder-list s5-0)
-       (set! (-> (the-as joint-exploder-list s5-0) pre-moved?) #t)
-       (set! (-> (the-as joint-exploder-list s5-0) bbox-valid?) #f)
-       )
+      (s5-0
+        (set! (-> s5-0 pre-moved?) #t)
+        (set! (-> s5-0 bbox-valid?) #f)
+        )
       (else
-        (set! s5-0 (-> obj lists))
+        (set! s5-0 (the-as joint-exploder-list (-> obj lists)))
         )
       )
     (set! (-> arg0 bbox-valid?) #f)
@@ -427,14 +426,14 @@
                  (set! sv-48 (-> s2-0 joint sv-32))
                  (cond
                    ((>= (-> sv-48 mat trans x) f30-0)
-                    (set! sv-16 (joint-exploder-method-27 obj arg0 sv-32))
-                    (joint-exploder-method-20 obj (the-as joint-exploder-list s5-0) sv-32)
+                    (set! sv-16 (remove-joint-from-list obj arg0 sv-32))
+                    (add-joint-to-list obj s5-0 sv-32)
                     (set! sv-32 sv-16)
-                    (joint-exploder-method-21 obj (the-as joint-exploder-list s5-0) sv-48)
+                    (update-bbox-for-joint obj s5-0 sv-48)
                     (+! s0-0 1)
                     )
                    (else
-                     (joint-exploder-method-21 obj arg0 sv-48)
+                     (update-bbox-for-joint obj arg0 sv-48)
                      (set! sv-32 (-> sv-48 next))
                      (+! s1-0 1)
                      )
@@ -448,14 +447,14 @@
                  (set! sv-80 (-> s2-0 joint sv-32))
                  (cond
                    ((>= (-> sv-80 mat trans y) f30-1)
-                    (set! sv-64 (joint-exploder-method-27 obj arg0 sv-32))
-                    (joint-exploder-method-20 obj (the-as joint-exploder-list s5-0) sv-32)
+                    (set! sv-64 (remove-joint-from-list obj arg0 sv-32))
+                    (add-joint-to-list obj s5-0 sv-32)
                     (set! sv-32 sv-64)
-                    (joint-exploder-method-21 obj (the-as joint-exploder-list s5-0) sv-80)
+                    (update-bbox-for-joint obj s5-0 sv-80)
                     (+! s0-0 1)
                     )
                    (else
-                     (joint-exploder-method-21 obj arg0 sv-80)
+                     (update-bbox-for-joint obj arg0 sv-80)
                      (set! sv-32 (-> sv-80 next))
                      (+! s1-0 1)
                      )
@@ -469,14 +468,14 @@
                  (set! sv-112 (-> s2-0 joint sv-32))
                  (cond
                    ((>= (-> sv-112 mat trans z) f30-2)
-                    (set! sv-96 (joint-exploder-method-27 obj arg0 sv-32))
-                    (joint-exploder-method-20 obj (the-as joint-exploder-list s5-0) sv-32)
+                    (set! sv-96 (remove-joint-from-list obj arg0 sv-32))
+                    (add-joint-to-list obj s5-0 sv-32)
                     (set! sv-32 sv-96)
-                    (joint-exploder-method-21 obj (the-as joint-exploder-list s5-0) sv-112)
+                    (update-bbox-for-joint obj s5-0 sv-112)
                     (+! s0-0 1)
                     )
                    (else
-                     (joint-exploder-method-21 obj arg0 sv-112)
+                     (update-bbox-for-joint obj arg0 sv-112)
                      (set! sv-32 (-> sv-112 next))
                      (+! s1-0 1)
                      )
@@ -488,23 +487,24 @@
           )
         (cond
           ((zero? s0-0)
-           (joint-exploder-method-25 obj arg0 arg1)
+           (final-adjust obj arg0 arg1)
            )
           ((zero? s1-0)
-           (if (not (-> (the-as joint-exploder-list s5-0) probeless?))
-               (joint-exploder-method-25 obj (the-as joint-exploder-list s5-0) arg1)
+           (if (not (-> s5-0 probeless?))
+               (final-adjust obj s5-0 arg1)
                )
            )
           )
         )
       )
-    (the-as joint-exploder-list s5-0)
+    s5-0
     )
   )
 
 ;; definition for method 25 of type joint-exploder
 ;; INFO: Used lq/sq
-(defmethod joint-exploder-method-25 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+;; WARN: Return type mismatch symbol vs int.
+(defmethod final-adjust joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (local-vars (sv-48 int) (sv-64 (inline-array joint-exploder-list)) (sv-80 joint-exploder-joint))
   (set! (-> arg0 bbox-valid?) #f)
   (let ((s3-0 (-> obj joints))
@@ -512,12 +512,12 @@
         )
     (while (>= s2-0 0)
       (set! sv-80 (-> s3-0 joint s2-0))
-      (let ((s1-0 (new 'stack-no-clear 'bounding-box))
+      (let ((s1-0 (new 'stack-no-clear 'matrix))
             (s0-0 (-> arg0 bbox-valid?))
             )
-        (set! (-> s1-0 min quad) (-> arg0 bbox min quad))
-        (set! (-> s1-0 max quad) (-> arg0 bbox max quad))
-        (joint-exploder-method-21 obj arg0 sv-80)
+        (set! (-> s1-0 vector 0 quad) (-> arg0 bbox min quad))
+        (set! (-> s1-0 vector 1 quad) (-> arg0 bbox max quad))
+        (update-bbox-for-joint obj arg0 sv-80)
         (let* ((v1-7 arg1)
                (v1-8 (cond
                        ((zero? v1-7)
@@ -533,25 +533,25 @@
                      )
                )
           (when v1-8
-            (set! sv-48 (joint-exploder-method-27 obj arg0 s2-0))
+            (set! sv-48 (remove-joint-from-list obj arg0 s2-0))
             (set! sv-64 (-> obj lists))
-            (joint-exploder-method-20 obj (the-as joint-exploder-list sv-64) s2-0)
+            (add-joint-to-list obj (the-as joint-exploder-list sv-64) s2-0)
             (set! s2-0 sv-48)
-            (joint-exploder-method-21 obj (the-as joint-exploder-list sv-64) sv-80)
+            (update-bbox-for-joint obj (the-as joint-exploder-list sv-64) sv-80)
             (set! (-> arg0 bbox-valid?) s0-0)
-            (set! (-> arg0 bbox min quad) (-> s1-0 min quad))
-            (set! (-> arg0 bbox max quad) (-> s1-0 max quad))
+            (set! (-> arg0 bbox min quad) (-> s1-0 vector 0 quad))
+            (set! (-> arg0 bbox max quad) (-> s1-0 vector 1 quad))
             )
           )
         )
       )
     )
-  #f
+  (the-as int #f)
   )
 
 ;; definition for method 29 of type joint-exploder
 ;; WARN: Return type mismatch int vs none.
-(defmethod joint-exploder-method-29 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
+(defmethod adjust-bbox-for-limits joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
   (when (and (-> arg0 bbox-valid?) (>= (-> arg0 head) 0) (not (-> arg0 probeless?)))
     (let ((a2-0 -1))
       (cond
@@ -566,12 +566,12 @@
          )
         )
       (when (>= a2-0 0)
-        (let ((a1-2 (joint-exploder-method-28 obj arg0 a2-0)))
+        (let ((a1-2 (adjust-bbox-for-limits-along-axis obj arg0 a2-0)))
           (if (not (-> a1-2 probeless?))
-              (joint-exploder-method-29 obj a1-2)
+              (adjust-bbox-for-limits obj a1-2)
               )
           )
-        (joint-exploder-method-29 obj arg0)
+        (adjust-bbox-for-limits obj arg0)
         )
       )
     )
@@ -582,7 +582,7 @@
 ;; definition for method 26 of type joint-exploder
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod joint-exploder-method-26 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
+(defmethod integrate-and-kill joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
   (with-pp
     (set! (-> arg0 bbox-valid?) #f)
     (set! (-> arg0 pre-moved?) #t)
@@ -602,10 +602,10 @@
             ((or (< (-> s1-0 y) (-> obj die-if-below-y))
                  (< (-> obj die-if-beyond-xz-dist-sqrd) (vector-vector-xz-distance s1-0 (-> obj root trans)))
                  )
-             (set! s3-0 (joint-exploder-method-24 obj arg0 s3-0))
+             (set! s3-0 (remove-from-list-and-reset obj arg0 s3-0))
              )
             (else
-              (joint-exploder-method-21 obj arg0 s2-0)
+              (update-bbox-for-joint obj arg0 s2-0)
               (set! s3-0 (-> s2-0 next))
               )
             )
@@ -620,7 +620,7 @@
 ;; definition for method 22 of type joint-exploder
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod joint-exploder-method-22 joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
+(defmethod do-collision-response joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (set! (-> s5-0 collide-with) (the-as collide-spec (-> obj static-params collide-spec)))
     (set! (-> s5-0 ignore-process0) obj)
@@ -696,9 +696,9 @@
       (let ((s5-0 (-> self lists gp-0)))
         (when (>= (-> s5-0 head) 0)
           (when (not (-> s5-0 pre-moved?))
-            (joint-exploder-method-26 self s5-0)
+            (integrate-and-kill self s5-0)
             (if (nonzero? gp-0)
-                (joint-exploder-method-29 self s5-0)
+                (adjust-bbox-for-limits self s5-0)
                 )
             )
           )
@@ -715,7 +715,7 @@
               (add-box! gp-1 (-> s4-0 bbox))
               )
           (if (nonzero? s5-1)
-              (joint-exploder-method-22 self s4-0)
+              (do-collision-response self s4-0)
               )
           )
         )
@@ -741,7 +741,7 @@
 ;; definition for method 23 of type joint-exploder
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod joint-exploder-method-23 joint-exploder ((obj joint-exploder))
+(defmethod init-joint-list joint-exploder ((obj joint-exploder))
   (let ((gp-0 (-> obj joints)))
     (dotimes (s4-0 (-> gp-0 num-joints))
       (let ((v1-2 (-> obj static-params joints s4-0))
@@ -756,7 +756,7 @@
              (if (zero? a0-6)
                  (set! a0-6 (-> v1-2 joint-index))
                  )
-             (let* ((a3-0 (-> obj parent-override 0 node-list data a0-6 bone transform))
+             (let* ((a3-0 (-> (the-as process-drawable (-> obj parent 0)) node-list data a0-6 bone transform))
                     (a2-0 (-> s3-0 mat))
                     (v1-9 (-> a3-0 quad 0))
                     (a0-8 (-> a3-0 quad 1))
@@ -827,7 +827,7 @@
       (let ((v1-32 (-> gp-0 joint (+ (-> gp-0 num-joints) -1))))
         (set! (-> v1-32 next) -1)
         )
-      (let ((v1-33 (the-as joint-exploder-list (&-> obj stack 256))))
+      (let ((v1-33 (-> obj lists 1)))
         (set! (-> v1-33 head) 0)
         (let ((s5-1 (-> v1-33 bbox)))
           (let ((v1-34 (-> gp-0 joint 0 mat trans)))
@@ -857,7 +857,7 @@
 ;; definition for function joint-exploder-init-by-other
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defbehavior joint-exploder-init-by-other joint-exploder ((arg0 skeleton-group) (arg1 int) (arg2 joint-exploder-static-params) (arg3 joint-exploder-static-params))
+(defbehavior joint-exploder-init-by-other joint-exploder ((arg0 skeleton-group) (arg1 int) (arg2 joint-exploder-tuning) (arg3 joint-exploder-static-params))
   (set! (-> self static-params) arg3)
   (set! (-> self die-if-beyond-xz-dist-sqrd) 10485760000.0)
   (mem-copy! (the-as pointer (-> self tuning)) (the-as pointer arg2) 88)
@@ -871,12 +871,12 @@
       )
     )
   (let ((v1-5 (-> self lists)))
-    (set! (-> v1-5 0 probeless?) #t)
+    (set! (-> v1-5 0 probeless?) (the-as basic #t))
     )
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> self parent-override 0 root trans quad))
-  (quaternion-copy! (-> self root quat) (-> self parent-override 0 root quat))
-  (set! (-> self root scale quad) (-> self parent-override 0 root scale quad))
+  (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+  (quaternion-copy! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
+  (set! (-> self root scale quad) (-> (the-as process-drawable (-> self parent 0)) root scale quad))
   (when (-> arg3 art-level)
     (let ((a1-6 (entity-actor-from-level-name (the-as level (-> arg3 art-level)))))
       (if a1-6
@@ -890,7 +890,7 @@
   (ja-channel-set! 1)
   (ja :group! (-> self anim) :num! min)
   (ja-post)
-  (joint-exploder-method-23 self)
+  (init-joint-list self)
   (set! (-> self die-if-below-y) (+ -102400.0 (-> self root trans y)))
   (set! (-> self skel postbind-function) joint-exploder-joint-callback)
   (go joint-exploder-shatter)
@@ -898,13 +898,14 @@
   )
 
 ;; definition for method 0 of type joint-exploder-tuning
-(defmethod new joint-exploder-tuning ((allocation symbol) (type-to-make type) (arg0 int))
+;; WARN: Return type mismatch structure vs joint-exploder-tuning.
+(defmethod new joint-exploder-tuning ((allocation symbol) (type-to-make type) (arg0 uint))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
         )
     (-> type-to-make size)
-    (let ((v0-0 ((the-as (function symbol type joint-exploder-tuning) t9-0) allocation v1-1)))
-      (set! (-> v0-0 explosion) (the-as uint arg0))
+    (let ((v0-0 (the-as joint-exploder-tuning (t9-0 allocation v1-1))))
+      (set! (-> v0-0 explosion) arg0)
       (set! (-> v0-0 duration) (seconds 2))
       (set! (-> v0-0 gravity) -286720.0)
       (set! (-> v0-0 rot-speed) 8.4)
@@ -927,7 +928,7 @@
          (set! (-> v0-0 fountain-rand-transv-hi w) 61440.0)
          )
         )
-      v0-0
+      (the-as joint-exploder-tuning v0-0)
       )
     )
   )

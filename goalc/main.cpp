@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   // Init REPL
-  ReplStatus status = ReplStatus::WANT_RELOAD;
+  ReplStatus status = ReplStatus::OK;
   std::function<bool()> shutdown_callback = [&]() { return status == ReplStatus::WANT_EXIT; };
   ReplServer repl_server(shutdown_callback, nrepl_port);
   bool repl_server_ok = repl_server.init_server();
