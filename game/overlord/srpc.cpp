@@ -411,19 +411,19 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           sound->is_music = false;
           SFXUserData data{};
           s32 found = snd_GetSoundUserData(0, nullptr, -1, sound->name, &data);
-          if (sound->params.mask & 0x40) {
+          if ((sound->params.mask & 0x40) == 0) {
             s16 fo_min = 5;
             if (found && data.data[0])
               fo_min = data.data[0];
             sound->params.fo_min = fo_min;
           }
-          if (sound->params.mask & 0x80) {
+          if ((sound->params.mask & 0x80) == 0) {
             s16 fo_max = 30;
             if (found && data.data[1])
               fo_max = data.data[1];
             sound->params.fo_max = fo_max;
           }
-          if (sound->params.mask & 0x100) {
+          if ((sound->params.mask & 0x100) == 0) {
             s16 fo_curve = 2;
             if (found && data.data[2])
               fo_curve = data.data[2];
@@ -459,19 +459,19 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
 
           SFXUserData data{};
           s32 found = snd_GetSoundUserData(0, nullptr, -1, sound->name, &data);
-          if (sound->params.mask & 0x40) {
+          if ((sound->params.mask & 0x40) == 0) {
             s16 fo_min = 5;
             if (found && data.data[0])
               fo_min = data.data[0];
             sound->params.fo_min = fo_min;
           }
-          if (sound->params.mask & 0x80) {
+          if ((sound->params.mask & 0x80) == 0) {
             s16 fo_max = 30;
             if (found && data.data[1])
               fo_max = data.data[1];
             sound->params.fo_max = fo_max;
           }
-          if (sound->params.mask & 0x100) {
+          if ((sound->params.mask & 0x100) == 0) {
             s16 fo_curve = 2;
             if (found && data.data[2])
               fo_curve = data.data[2];
