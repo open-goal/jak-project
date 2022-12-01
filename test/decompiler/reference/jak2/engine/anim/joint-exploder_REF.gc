@@ -741,9 +741,6 @@
 ;; definition for method 23 of type joint-exploder
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-;; WARN: Failed store: (s.w! v1-33 0) at op 172
-;; WARN: Failed store: (s.q! a0-29 a1-19) at op 178
-;; WARN: Failed store: (s.q! a0-30 v1-35) at op 181
 (defmethod joint-exploder-method-23 joint-exploder ((obj joint-exploder))
   (let ((gp-0 (-> obj joints)))
     (dotimes (s4-0 (-> gp-0 num-joints))
@@ -830,26 +827,15 @@
       (let ((v1-32 (-> gp-0 joint (+ (-> gp-0 num-joints) -1))))
         (set! (-> v1-32 next) -1)
         )
-      (let ((v1-33 (&-> obj stack 256)))
-        (s.w! v1-33 0)
-        (let ((s5-1 (&-> v1-33 16)))
+      (let ((v1-33 (the-as joint-exploder-list (&-> obj stack 256))))
+        (set! (-> v1-33 head) 0)
+        (let ((s5-1 (-> v1-33 bbox)))
           (let ((v1-34 (-> gp-0 joint 0 mat trans)))
-            (let ((a0-29 (&-> s5-1 0))
-                  (a1-19 (-> v1-34 quad))
-                  )
-              (s.q! a0-29 a1-19)
-              )
-            (let ((a0-30 (&-> s5-1 16))
-                  (v1-35 (-> v1-34 quad))
-                  )
-              (s.q! a0-30 v1-35)
-              )
+            (set! (-> s5-1 min quad) (-> v1-34 quad))
+            (set! (-> s5-1 max quad) (-> v1-34 quad))
             )
           (dotimes (s4-1 (-> gp-0 num-joints))
-            ((method-of-type bounding-box add-point!)
-             (the-as bounding-box s5-1)
-             (the-as vector (+ (the-as uint (-> gp-0 joint 0 mat trans)) (* 240 s4-1)))
-             )
+            (add-point! s5-1 (the-as vector (+ (the-as uint (-> gp-0 joint 0 mat trans)) (* 240 s4-1))))
             )
           )
         )
@@ -945,7 +931,3 @@
       )
     )
   )
-
-
-
-
