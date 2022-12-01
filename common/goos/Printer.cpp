@@ -1,8 +1,7 @@
 #include "Printer.h"
 
-#include <mutex>
 #include <cmath>
-
+#include <mutex>
 
 #include "third-party/fmt/core.h"
 
