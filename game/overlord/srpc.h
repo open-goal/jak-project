@@ -188,6 +188,11 @@ struct SoundRpcStereoMode {
   s32 stereo_mode;
 };
 
+struct SoundRpcSetMidiReg {
+  s32 reg;
+  s32 value;
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   union {
@@ -211,6 +216,7 @@ struct SoundRpcCommand {
     SoundRpcMasterVolCommand master_volume;
     SoundRpcSetParamCommand param;
     SoundRpcStereoMode stereo_mode;
+    SoundRpcSetMidiReg midi_reg;
     u8 max_size[0x4C];  // Temporary
   };
 };

@@ -185,11 +185,11 @@ void snd_ContinueSound(s32 sound_handle) {
 
 void snd_AutoPitch(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_from) {
   // TODO
-  printf("snd_AutoPitch\n");
+  lg::warn("Unimplemented snd_AutoPitch\n");
 }
 void snd_AutoPitchBend(s32 sound_handle, s32 pitch, s32 delta_time, s32 delta_from) {
   // TODO
-  printf("snd_AutoPitchBend\n");
+  lg::warn("Unimplemented snd_AutoPitchBend\n");
 }
 
 s32 snd_BankLoadEx(const char* filename, s32 offset, u32 spu_mem_loc, u32 spu_mem_size) {
@@ -238,4 +238,9 @@ void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val) {
   if (player) {
     player->set_sound_reg(sound_handle, which, val);
   }
+}
+
+void snd_SetGlobalExcite(u8 value) {
+  // TODO
+  lg::warn("Unimplemented snd_SetGlobalExcite\n");
 }

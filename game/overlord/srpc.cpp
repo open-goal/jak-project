@@ -519,6 +519,14 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           }
         }
       } break;
+      case Jak2SoundCommand::set_midi_reg: {
+        if (cmd->midi_reg.reg == 16) {
+          snd_SetGlobalExcite(cmd->midi_reg.value);
+        } else {
+          Sound* sound = LookupSound(666);
+          snd_SetMIDIRegister(sound->sound_handle, cmd->midi_reg.reg, cmd->midi_reg.value);
+        }
+      } break;
       case Jak2SoundCommand::set_reverb: {
       } break;
       case Jak2SoundCommand::set_ear_trans: {

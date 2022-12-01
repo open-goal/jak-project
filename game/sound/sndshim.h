@@ -37,6 +37,7 @@ void snd_ResolveBankXREFS();
 void snd_ContinueAllSoundsInGroup(u8 groups);
 void snd_PauseAllSoundsInGroup(u8 groups);
 void snd_SetMIDIRegister(s32 handle, u8 reg, u8 value);
+void snd_SetGlobalExcite(u8 value);
 
 s32 snd_PlaySoundVolPanPMPB(s32 bank_handle,
                             s32 sound_id,
