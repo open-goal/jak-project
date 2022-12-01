@@ -230,22 +230,56 @@ Sound* AllocateSound() {
 }
 
 s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
-  if (fo_curve == 0) {
-    return volume;
-  }
+  s32 xdiff = 0;
+  s32 ydiff = 0;
+  s32 zdiff = 0;
 
-  s32 xdiff = gEarTrans[0].x - pos->x;
-  s32 ydiff = gEarTrans[0].y - pos->y;
-  s32 zdiff = gEarTrans[0].z - pos->z;
+  if (g_game_version == GameVersion::Jak1) {
+    if (fo_curve == 0) {
+      return volume;
+    }
+
+    xdiff = gEarTrans[0].x - pos->x;
+    ydiff = gEarTrans[0].y - pos->y;
+    zdiff = gEarTrans[0].z - pos->z;
+  } else {
+    if (fo_curve == 1) {
+      return volume;
+    }
+
+    if (fo_curve < 9) {
+      xdiff = gEarTrans[0].x - pos->x;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = gEarTrans[0].z - pos->z;
+    }
+
+    if (fo_curve == 9) {
+      xdiff = gEarTrans[1].x - pos->x;
+      ydiff = gEarTrans[1].y - pos->y;
+      zdiff = gEarTrans[1].z - pos->z;
+    }
+
+    if (fo_curve == 10) {
+      xdiff = 0;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = 0;
+    }
+
+    if (fo_curve == 11) {
+      xdiff = gEarTrans[1].x - pos->x;
+      ydiff = gEarTrans[1].y - pos->y;
+      zdiff = gEarTrans[1].z - pos->z;
+    }
+  }
 
   if (xdiff < 0) {
-    xdiff = pos->x - gEarTrans[0].x;
+    xdiff = -xdiff;
   }
   if (ydiff < 0) {
-    ydiff = pos->y - gEarTrans[0].y;
+    ydiff = -ydiff;
   }
   if (zdiff < 0) {
-    zdiff = pos->z - gEarTrans[0].z;
+    zdiff = -zdiff;
   }
 
   s32 min = fo_min << 8;
@@ -314,7 +348,12 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     factor = 0x10000;
   }
 
-  return (factor * volume) >> 16;
+  s32 ret = (factor * volume) >> 16;
+  if (fo_curve == 11 && ret < 0x180) {
+    ret = 0x180;
+  }
+
+  return ret;
 }
 
 s32 CalculateAngle(Vec3w* trans) {
