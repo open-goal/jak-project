@@ -1,18 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-tube.gc
-;; name in dgo: target-tube
-;; dgos: FEB
-
-(define-extern *tube-surface* surface)
-(define-extern target-tube (state target))
-(define-extern target-tube-jump (state float float target))
-(define-extern target-tube-hit (state symbol attack-info target))
-(define-extern target-tube-death (state symbol target))
-
-;; DECOMP BEGINS
-
+;; definition for symbol *tube-mods*, type surface
 (define *tube-mods* (new 'static 'surface
                       :name 'tube
                       :turnv 21845.334
@@ -40,6 +29,7 @@
                       )
         )
 
+;; definition for symbol *tube-jump-mods*, type surface
 (define *tube-jump-mods* (new 'static 'surface
                            :name 'tube
                            :turnv 21845.334
@@ -68,6 +58,7 @@
                            )
         )
 
+;; definition for symbol *tube-hit-mods*, type surface
 (define *tube-hit-mods* (new 'static 'surface
                           :name 'tube
                           :turnv 21845.334
@@ -93,6 +84,7 @@
                           )
         )
 
+;; failed to figure out what this is:
 (let ((v1-3 (new 'static 'surface
               :name '*tube-surface*
               :turnv 1.0
@@ -123,6 +115,7 @@
   (set! (-> v1-3 active-hook) nothing)
   )
 
+;; definition of type tube-info
 (deftype tube-info (basic)
   ((entity           basic              :offset-assert   4)
    (tube             handle             :offset-assert   8)
@@ -147,7 +140,35 @@
   :flag-assert         #x900000098
   )
 
+;; definition for method 3 of type tube-info
+(defmethod inspect tube-info ((obj tube-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tentity: ~A~%" (-> obj entity))
+  (format #t "~1Ttube: ~D~%" (-> obj tube))
+  (format #t "~1Tdownhill: ~`vector`P~%" (-> obj downhill))
+  (format #t "~1Tcentertube: ~`vector`P~%" (-> obj centertube))
+  (format #t "~1Tdowntube: ~`vector`P~%" (-> obj downtube))
+  (format #t "~1Tsidetube: ~`vector`P~%" (-> obj sidetube))
+  (format #t "~1Tforetube: ~`vector`P~%" (-> obj foretube))
+  (format #t "~1Told-transv: ~`vector`P~%" (-> obj old-transv))
+  (format #t "~1Tmod-x: ~f~%" (-> obj mod-x))
+  (format #t "~1Tmod-y: ~f~%" (-> obj mod-y))
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tturn-anim-targ: ~f~%" (-> obj turn-anim-targ))
+  (format #t "~1Tturn-anim-frame: ~f~%" (-> obj turn-anim-frame))
+  (format #t "~1Tturn-anim-vel: ~f~%" (-> obj turn-anim-vel))
+  (format #t "~1Ttube-sound-id: ~D~%" (-> obj tube-sound-id))
+  (format #t "~1Ttube-sound-vol: ~f~%" (-> obj tube-sound-vol))
+  (format #t "~1Ttube-sound-pitch: ~f~%" (-> obj tube-sound-pitch))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type tube-bank
 (deftype tube-bank (basic)
   ()
   :method-count-assert 9
@@ -155,9 +176,21 @@
   :flag-assert         #x900000004
   )
 
+;; definition for method 3 of type tube-bank
+(defmethod inspect tube-bank ((obj tube-bank))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *TUBE-bank*, type tube-bank
 (define *TUBE-bank* (new 'static 'tube-bank))
 
+;; definition for function tube-sounds
 (defbehavior tube-sounds target ()
   (seek!
     (-> self tube tube-sound-vol)
@@ -187,6 +220,9 @@
     )
   )
 
+;; definition for function tube-thrust
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior tube-thrust target ((arg0 float) (arg1 float))
   (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self tube foretube) (-> self control trans))))
     (vector-flatten! s4-1 s4-1 (-> self tube downtube))
@@ -344,6 +380,8 @@
   (none)
   )
 
+;; definition for function target-tube-post
+;; INFO: Used lq/sq
 (defbehavior target-tube-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -488,6 +526,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-tube-start (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
@@ -624,6 +663,8 @@
   :post target-post
   )
 
+;; definition for function target-tube-turn-anim
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-tube-turn-anim target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -682,6 +723,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-tube (target)
   :event (-> target-tube-start event)
   :enter (behavior ()
@@ -738,6 +780,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-tube-jump (target)
   :event (-> target-tube-start event)
   :enter (behavior ((arg0 float) (arg1 float))
@@ -796,6 +839,7 @@
   :post (-> target-tube post)
   )
 
+;; failed to figure out what this is:
 (defstate target-tube-hit (target)
   :event (-> target-tube-start event)
   :enter (behavior ((arg0 symbol) (arg1 attack-info))
@@ -922,6 +966,7 @@
   :post target-post
   )
 
+;; failed to figure out what this is:
 (defstate target-tube-death (target)
   :event (-> target-death event)
   :exit (behavior ()
@@ -966,6 +1011,7 @@
   :post target-no-stick-post
   )
 
+;; definition of type slide-control
 (deftype slide-control (process-drawable)
   ((target handle         :offset-assert 200)
    (pos    float          :offset-assert 208)
@@ -983,7 +1029,25 @@
     )
   )
 
+;; definition for method 3 of type slide-control
+(defmethod inspect slide-control ((obj slide-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttarget: ~D~%" (-> obj target))
+  (format #t "~2Tpos: ~f~%" (-> obj pos))
+  (format #t "~2Ttrans: ~`vector`P~%" (-> obj trans))
+  (format #t "~2Trot: ~`vector`P~%" (-> obj rot))
+  (format #t "~2Tside: ~`vector`P~%" (-> obj side))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for function distance-from-tangent
 (defun distance-from-tangent ((arg0 path-control) (arg1 float) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 vector))
   (get-point-in-path! arg0 arg2 arg1 'interp)
   (displacement-between-two-points-normalized! arg0 arg3 arg1)
@@ -1003,6 +1067,8 @@
     )
   )
 
+;; definition for function find-target-point
+;; INFO: Used lq/sq
 (defbehavior find-target-point slide-control ((arg0 vector))
   (local-vars (f0-2 float))
   (let* ((s4-0 (new 'stack-no-clear 'vector))
@@ -1031,6 +1097,7 @@
   (-> self pos)
   )
 
+;; failed to figure out what this is:
 (defstate slide-control-watch (slide-control)
   :virtual #t
   :enter (behavior ()
@@ -1064,6 +1131,7 @@
   :code (the-as (function none :behavior slide-control) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate slide-control-ride (slide-control)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1121,6 +1189,7 @@
   :code (the-as (function none :behavior slide-control) sleep-code)
   )
 
+;; definition for method 11 of type slide-control
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! slide-control ((obj slide-control) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
