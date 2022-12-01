@@ -469,14 +469,23 @@ void PrintActiveSounds() {
 
   for (auto& s : gSounds) {
     if (s.id != 0 && s.is_music == 0) {
-      u32 len = strlen(s.bank_entry->name);
-      if (len > 16) {
-        len = 16;
+      if (s.bank_entry != nullptr) {
+        u32 len = strlen(s.bank_entry->name);
+        if (len > 16) {
+          len = 16;
+        }
+        sprintf(string, "                 : Vol %d", GetVolume(&s));
+        memcpy(string, s.bank_entry->name, len);
+        printf("%s\n", string);
+      } else {  // added for printing jak2 sounds
+        u32 len = strlen(s.name);
+        if (len > 16) {
+          len = 16;
+        }
+        sprintf(string, "                 : Vol %d, ID %d ", GetVolume(&s), s.id);
+        memcpy(string, s.name, len);
+        printf("%s\n", string);
       }
-      s32 volume = GetVolume(&s);
-      sprintf(string, "                 : Vol %d", volume);
-      memcpy(string, s.bank_entry->name, len);
-      printf("%s\n", string);
     }
   }
 }

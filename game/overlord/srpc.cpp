@@ -497,6 +497,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           }
         }
       } break;
+      case Jak2SoundCommand::stop_sound: {
+        Sound* sound = LookupSound(cmd->sound_id.sound_id);
+        if (sound != nullptr) {
+          snd_StopSound(sound->sound_handle);
+        }
+        // TODO vag
+      } break;
       case Jak2SoundCommand::set_master_volume: {
         u32 group = cmd->master_volume.group.group;
         // FIXME array of set volumes
@@ -684,6 +691,10 @@ void* RPC_Loader2(unsigned int fno, void* data, int size) {
       } break;
       case Jak2SoundCommand::set_language: {
         gLanguage = languages[cmd->set_language.langauge_id];
+      } break;
+      case Jak2SoundCommand::list_sounds: {
+        // Not present in real jak2 overlord
+        PrintActiveSounds();
       } break;
       case Jak2SoundCommand::unload_music: {
         while (WaitSema(gSema))
