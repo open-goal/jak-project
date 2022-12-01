@@ -140,7 +140,7 @@
 (#x10d6 "KEIRA")
 (#x10d7 "SINDACO")
 (#x10d8 "SCULTORE")
-(#x10d9 "ZIO DI JAK")
+(#x10d9 "ZIO")
 (#x10da "PORTO")
 (#x10db "USCITA GIUNGLA PROIBITA")
 (#x10dc "MACCHINA LURKER")
