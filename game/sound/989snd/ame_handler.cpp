@@ -75,7 +75,6 @@ void ame_handler::stop_segment(u32 id) {
     return;
 
   m->second->stop();
-  m_midis.erase(id);
 }
 
 void ame_handler::pause() {
