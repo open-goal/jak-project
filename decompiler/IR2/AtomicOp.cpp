@@ -184,11 +184,10 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
         s32 as_s32 = m_int;
         ASSERT(((s64)as_s32) == m_int);  // float should always be a sign extended 32-bit value.
         memcpy(&f, &as_s32, 4);
-        if (f == f) {
+        if (f == f && std::isfinite(f)) {
           return goos::Object::make_float(f);
         } else {
           // nan or weird
-          ASSERT(false);  // let's abort on this for now, can remove if it actually comes up.
           return pretty_print::to_symbol(fmt::format("(the-as float #x{:x})", m_int));
         }
       } else {

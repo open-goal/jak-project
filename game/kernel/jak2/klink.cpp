@@ -348,8 +348,15 @@ uint32_t link_control::jak2_work_v2() {
         MsgErr("dkernel: heap overflow\n");  // game has ~% instead of \n :P
         return 1;
       }
-    } else {  // not close enough, need to move the object
 
+      // added in jak 2, move the link block to the top of the heap so we can allocate on
+      // the level heap during linking without overwriting link data. this is used for level types
+      u32 link_block_size = *m_link_block_ptr.cast<u32>();
+      auto new_link_block = kmalloc(m_heap, link_block_size, KMALLOC_TOP, "link-block");
+      memmove(new_link_block.c(), m_link_block_ptr.c() - 4, link_block_size);
+      m_link_block_ptr = Ptr<uint8_t>(new_link_block.offset + 4);  // basic offset
+
+    } else {  // not close enough, need to move the object
       // on the first run of this state...
       if (m_segment_process == 0) {
         m_original_object_location = m_object_data;

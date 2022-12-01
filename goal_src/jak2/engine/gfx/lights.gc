@@ -7,3 +7,52 @@
 
 ;; DECOMP BEGINS
 
+(define *light-hash-work* (new 'static 'light-hash-work :ones (new 'static 'vector4w :x 1 :y 1 :z 1)))
+
+(defun light-slerp ((arg0 light) (arg1 light) (arg2 light) (arg3 float))
+  (let ((s3-0 (fmax 0.0 (fmin 1.0 arg3))))
+    (vector-lerp! (-> arg0 color) (-> arg1 color) (-> arg2 color) s3-0)
+    (vector-deg-slerp (-> arg0 direction) (-> arg1 direction) (-> arg2 direction) s3-0)
+    (let ((f0-2 (-> arg1 extra x))
+          (f1-2 (-> arg2 extra x))
+          )
+      (set! (-> arg0 extra x) (+ f0-2 (* s3-0 (- f1-2 f0-2))))
+      )
+    )
+  arg0
+  )
+
+(defun light-group-slerp ((arg0 light-group) (arg1 light-group) (arg2 light-group) (arg3 float))
+  (dotimes (s2-0 4)
+    (light-slerp (-> arg0 lights s2-0) (-> arg1 lights s2-0) (-> arg2 lights s2-0) arg3)
+    )
+  arg0
+  )
+
+(defun light-group-process! ((arg0 vu-lights) (arg1 light-group) (arg2 vector) (arg3 vector))
+  (rotate-y<-vector+vector arg3 arg2)
+  (vu-lights<-light-group! arg0 arg1)
+  (none)
+  )
+
+(define *default-lights* (new 'global 'vu-lights))
+
+(defun vu-lights-default! ((arg0 vu-lights))
+  (set-vector! (-> arg0 ambient) 0.3 0.3 0.3 1.0)
+  (set-vector! (-> arg0 color 0) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> arg0 color 1) 0.2 0.2 0.2 1.0)
+  (set-vector! (-> arg0 color 2) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 0) 1.0 0.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 1) 0.0 1.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 2) 0.0 0.0 1.0 1.0)
+  arg0
+  )
+
+;; stub
+(defun light-hash-get-bucket-index ((arg0 light-hash) (arg1 vector))
+  -1
+  )
+
+(defun add-light-sphere-to-light-group (arg0 arg1 arg2 arg3)
+  (the object #f)
+  )

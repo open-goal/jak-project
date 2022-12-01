@@ -349,7 +349,7 @@
    (art-group            art-group                          :offset-assert  12)
    (jgeo                 art-joint-geo                      :offset-assert  16)
    (mgeo                 merc-ctrl                          :offset-assert  20)
-   (dma-add-func         function                           :offset-assert  24)
+   (dma-add-func         (function process-drawable draw-control symbol object none) :offset-assert  24)
    (skeleton             skeleton                           :offset-assert  28)
    (lod-set              lod-set                    :inline :offset-assert  32)
    (max-lod              int8                               :offset         80)
@@ -407,17 +407,18 @@
   (if (number? elt-name)
       elt-name
       (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
-          (if (not (car ag-info))
-              -1
-              (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
-                  (if (not (car elt-info))
-                      -1
-                      (cadr (cdr elt-info)))
-                  )
+        (if (not (car ag-info))
+            (error (symbol->string ag-name))
+            (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+              (if (not (car elt-info))
+                  (error (symbol->string ag-name))
+                  (cadr (cdr elt-info)))
               )
-          )
+            )
+        )
       )
   )
+
 
 (defmacro defskelgroup (name ag-name joint-geom joint-anim lods
                         &key (shadow 0)
@@ -472,3 +473,4 @@
 
 
 
+(import "goal_src/jak2/engine/data/art-elts.gc")

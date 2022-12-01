@@ -192,6 +192,9 @@ namespace method_10_collide_cache_prim { extern void link(); }
 namespace method_17_collide_cache { extern void link(); }
 namespace method_9_collide_puss_work { extern void link(); }
 namespace method_10_collide_puss_work { extern void link(); }
+namespace bones_mtx_calc { extern void link(); }
+namespace foreground_check_longest_edge_asm { extern void link(); }
+namespace foreground_merc { extern void link(); }
 }
 // clang-format on
 
@@ -319,7 +322,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_11_collide_shape_prim_sphere::link,
        jak2::method_11_collide_shape_prim_group::link, jak2::method_9_collide_cache_prim::link,
        jak2::method_10_collide_cache_prim::link, jak2::method_17_collide_cache::link,
-       jak2::method_9_collide_puss_work::link, jak2::method_10_collide_puss_work::link}}},
+       jak2::method_9_collide_puss_work::link, jak2::method_10_collide_puss_work::link}},
+     {"bones", {jak2::bones_mtx_calc::link}},
+     {"foreground", {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
