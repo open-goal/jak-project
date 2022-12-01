@@ -421,13 +421,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
             s16 fo_max = 30;
             if (found && data.data[1])
               fo_max = data.data[1];
-            sound->params.fo_min = fo_max;
+            sound->params.fo_max = fo_max;
           }
           if (sound->params.mask & 0x100) {
             s16 fo_curve = 2;
             if (found && data.data[2])
               fo_curve = data.data[2];
-            sound->params.fo_min = fo_curve;
+            sound->params.fo_curve = fo_curve;
           }
           UpdateVolume(sound);
           snd_SetSoundPitchModifier(sound->sound_handle, sound->params.pitch_mod);
@@ -469,13 +469,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
             s16 fo_max = 30;
             if (found && data.data[1])
               fo_max = data.data[1];
-            sound->params.fo_min = fo_max;
+            sound->params.fo_max = fo_max;
           }
           if (sound->params.mask & 0x100) {
             s16 fo_curve = 2;
             if (found && data.data[2])
               fo_curve = data.data[2];
-            sound->params.fo_min = fo_curve;
+            sound->params.fo_curve = fo_curve;
           }
           // lg::warn("RPC: PLAY {} v:{}, p:{}", sound->name, GetVolume(sound), GetPan(sound));
 
