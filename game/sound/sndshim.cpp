@@ -229,7 +229,8 @@ s32 snd_GetSoundUserData(s32 block_handle,
                          char* sound_name,
                          SFXUserData* dst) {
   if (player) {
-    return player->get_sound_user_data(block_handle, block_name, sound_id, sound_name, (snd::SFXUserData*)dst);
+    return player->get_sound_user_data(block_handle, block_name, sound_id, sound_name,
+                                       (snd::SFXUserData*)dst);
   }
   return 0;
 }

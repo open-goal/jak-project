@@ -32,6 +32,7 @@ enum class BankType {
   SFX,
 };
 
+struct SFXUserData;
 class SoundBank {
  public:
   SoundBank(u32 id, BankType type) : type(type), bank_id(id){};
@@ -60,6 +61,9 @@ class SoundBank {
 
   virtual std::optional<std::string_view> get_name() { return std::nullopt; };
   virtual std::optional<u32> get_sound_by_name(const char* name) { return std::nullopt; };
+  virtual std::optional<const SFXUserData*> get_sound_user_data(u32 sound_id) {
+    return std::nullopt;
+  };
 
   BankType type;
   u32 bank_id;

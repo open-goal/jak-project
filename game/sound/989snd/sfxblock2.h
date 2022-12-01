@@ -85,6 +85,7 @@ struct SFX2 {
   SFX2Data d;
   std::string name;
   std::vector<std::unique_ptr<Grain>> grains;
+  SFXUserData user_data;
   int index;
 };
 
@@ -99,6 +100,10 @@ class SFXBlock2 : public SoundBank {
 
   std::optional<std::string_view> get_name() override { return m_name; };
   std::optional<u32> get_sound_by_name(const char* name) override;
+
+  std::optional<const SFXUserData*> get_sound_user_data(u32 sound_id) override {
+    return &m_sounds.at(sound_id).user_data;
+  };
 
  private:
   locator& m_locator;

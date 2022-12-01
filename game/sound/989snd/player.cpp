@@ -330,10 +330,40 @@ s32 player::get_sound_user_data(s32 block_handle,
                                 s32 sound_id,
                                 char* sound_name,
                                 SFXUserData* dst) {
-  dst->data[0] = 0;
-  dst->data[1] = 0;
-  dst->data[2] = 0;
-  dst->data[3] = 0;
+  std::scoped_lock lock(m_ticklock);
+  SoundBank* bank = nullptr;
+  if (block_handle == 0 && block_name != nullptr) {
+    bank = m_loader.get_bank_by_name(block_name);
+  } else if (block_handle != 0) {
+    bank = m_loader.get_bank_by_handle(block_handle);
+  } else {
+    bank = m_loader.get_bank_with_sound(sound_name);
+  }
+
+  if (bank == nullptr) {
+    return 0;
+  }
+
+  if (sound_id == -1) {
+    auto sound = bank->get_sound_by_name(sound_name);
+    if (sound.has_value()) {
+      sound_id = sound.value();
+    } else {
+      return 0;
+    }
+  }
+
+  auto ud = bank->get_sound_user_data(sound_id);
+  if (ud.has_value()) {
+    dst->data[0] = ud.value()->data[0];
+    dst->data[1] = ud.value()->data[1];
+    dst->data[2] = ud.value()->data[2];
+    dst->data[3] = ud.value()->data[3];
+    return 1;
+  } else {
+    return 0;
+  }
+
   return 0;
 }
 

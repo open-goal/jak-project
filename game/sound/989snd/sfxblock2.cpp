@@ -10,10 +10,12 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
   auto data = (SFXBlockData2*)tag;
 
   auto sounddata = (SFX2Data*)((uintptr_t)data + data->FirstSound);
+  auto userdata = (SFXUserData*)((uintptr_t)data + data->SFXUD);
   for (int i = 0; i < data->NumSounds; i++) {
     SFX2 sound;
     sound.index = i;
     sound.d = sounddata[i];
+    sound.user_data = userdata[i];
     m_sounds.push_back(std::move(sound));
   }
 
@@ -85,10 +87,10 @@ std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,
 }
 
 std::optional<u32> SFXBlock2::get_sound_by_name(const char* name) {
-  //lg::error("searching for sound {}", name);
-  //for (auto& s : m_names) {
-  //  lg::error("{}", s.first);
-  //}
+  // lg::error("searching for sound {}", name);
+  // for (auto& s : m_names) {
+  //   lg::error("{}", s.first);
+  // }
 
   auto sound = m_names.find(name);
   if (sound != m_names.end()) {
