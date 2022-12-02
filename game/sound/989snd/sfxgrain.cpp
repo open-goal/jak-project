@@ -15,7 +15,7 @@ SFXGrain_Tone::SFXGrain_Tone(SFXGrain2& grain, u8* data) : Grain(grain) {
 s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
   handler.m_cur_volume =
       ((handler.m_app_volume * handler.m_orig_volume) >> 10) + handler.m_lfo_volume;
-  handler.m_cur_volume = std::clamp(handler.m_cur_volume, 0, 127);
+  handler.m_cur_volume = std::clamp<s32>(handler.m_cur_volume, 0, 127);
 
   handler.m_cur_pan = handler.m_app_pan + handler.m_lfo_pan;
   while (handler.m_cur_pan >= 360)
@@ -322,7 +322,7 @@ SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain2& grain, u8* data) : Grain(grain) {
 }
 s32 SFXGrain_AddPB::execute(blocksound_handler& handler) {
   s32 new_pb = handler.m_cur_pb + 0x7fff * m_pb / 127;
-  std::clamp(new_pb, INT16_MIN, INT16_MAX);
+  std::clamp<s32>(new_pb, INT16_MIN, INT16_MAX);
 
   handler.set_pbend(new_pb);
 
@@ -378,11 +378,11 @@ SFXGrain_IncRegister::SFXGrain_IncRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_IncRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) + 1;
-    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    g_block_reg.at(-m_reg - 1) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
 
   } else {
     s32 new_val = handler.m_registers.at(m_reg) + 1;
-    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    handler.m_registers.at(m_reg) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
   }
   return 0;
 }
@@ -396,11 +396,11 @@ SFXGrain_DecRegister::SFXGrain_DecRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_DecRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) - 1;
-    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    g_block_reg.at(-m_reg - 1) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
 
   } else {
     s32 new_val = handler.m_registers.at(m_reg) - 1;
-    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    handler.m_registers.at(m_reg) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
   }
 
   return 0;
@@ -540,10 +540,10 @@ SFXGrain_AddRegister::SFXGrain_AddRegister(SFXGrain2& grain, u8* data) : Grain(g
 s32 SFXGrain_AddRegister::execute(blocksound_handler& handler) {
   if (m_reg < 0) {
     s32 new_val = g_block_reg.at(-m_reg - 1) + m_val;
-    g_block_reg.at(-m_reg - 1) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    g_block_reg.at(-m_reg - 1) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
   } else {
     s32 new_val = handler.m_registers.at(m_reg) + m_val;
-    handler.m_registers.at(m_reg) = std::clamp(new_val, INT8_MIN, INT8_MAX);
+    handler.m_registers.at(m_reg) = std::clamp<s32>(new_val, INT8_MIN, INT8_MAX);
   }
   return 0;
 }

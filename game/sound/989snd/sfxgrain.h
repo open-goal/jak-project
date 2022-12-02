@@ -129,6 +129,9 @@ class Grain {
   Grain(SFXGrain2& grain) : m_type((grain_type)grain.OpcodeData.type), m_delay(grain.Delay) {}
   Grain(SFXGrain2& grain, [[maybe_unused]] u8* data)
       : m_type((grain_type)grain.OpcodeData.type), m_delay(grain.Delay) {}
+
+  virtual ~Grain() = default;
+
   virtual s32 execute(blocksound_handler& handler) { return 0; };
   virtual std::string_view inspect() { return magic_enum::enum_name(type()); };
   s32 delay() { return m_delay; }
