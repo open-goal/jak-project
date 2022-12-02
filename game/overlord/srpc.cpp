@@ -761,7 +761,6 @@ void* RPC_Loader2(unsigned int fno, void* data, int size) {
   while (n_messages > 0) {
     switch (cmd->j2command) {
       case Jak2SoundCommand::load_bank: {
-        lg::error("loaded bank {}", cmd->load_bank.bank_name);
         if (LookupBank(cmd->load_bank.bank_name)) {
           break;
         }

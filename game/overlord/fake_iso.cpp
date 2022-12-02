@@ -388,7 +388,6 @@ uint32_t FS_LoadMusic2(char* name, void* buffer) {
 
   MakeISOName(isoname, namebuf);
 
-  lg::warn("{}", isoname);
   file = FS_FindIN(isoname);
   if (!file) {
     return 6;
