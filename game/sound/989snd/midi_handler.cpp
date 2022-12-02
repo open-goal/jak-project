@@ -6,6 +6,7 @@
 
 #include "common/log/log.h"
 
+#include "game/sound/989snd/util.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -140,7 +141,21 @@ void midi_handler::set_vol_pan(s32 vol, s32 pan) {
 }
 
 void midi_handler::set_pmod(s32 mod) {
-  // TODO
+  m_cur_pm = mod;
+
+  for (auto& v : m_voices) {
+    auto voice = v.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    voice->current_pm = m_cur_pm;
+    auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+                          voice->start_fine);
+    auto pitch =
+        PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+    voice->set_pitch(pitch);
+  }
 }
 
 void midi_handler::mute_channel(u8 channel) {
@@ -192,9 +207,8 @@ void midi_handler::note_on() {
       voice->start_note = note;
       voice->start_fine = 0;
 
-      // TODO
-      // voice->current_pm = 0;
-      // voice->current_pb = 0;
+      voice->current_pm = m_pitch_bend[channel];
+      voice->current_pb = m_cur_pm;
 
       voice->group = m_sound.VolGroup;
       m_vm.start_tone(voice, m_bank.bank_id);
@@ -260,12 +274,26 @@ void midi_handler::channel_pressure() {
 
 void midi_handler::channel_pitch() {
   u8 channel = m_status & 0xF;
-  u32 pitch = (m_seq_ptr[0] << 7) | m_seq_ptr[1];
-  (void)pitch;
-  (void)channel;
+  s32 pitch = 0xFFFF * ((m_seq_ptr[0] & 0x7f) | ((m_seq_ptr[1] & 0x7f) << 7)) / 0x3FFF;
   // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
 
-  throw std::runtime_error("midi pitch change");
+  m_pitch_bend[channel] = pitch + 0x8000;
+  for (auto& v : m_voices) {
+    auto voice = v.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    if (voice->channel == channel) {
+      voice->current_pb = m_pitch_bend[channel];
+      auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+                            voice->start_fine);
+      auto pitch =
+          PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+      voice->set_pitch(pitch);
+    }
+  }
+
   m_seq_ptr += 2;
 }
 

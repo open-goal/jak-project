@@ -98,6 +98,7 @@ class midi_handler : public sound_handler {
   locator& m_locator;
   s32 m_vol{0x7f};
   s32 m_pan{0};
+  s32 m_cur_pm{0};
   s8 m_repeats{0};
   SoundBank& m_bank;
 
@@ -108,6 +109,7 @@ class midi_handler : public sound_handler {
   std::array<bool, 16> m_mute_state{};
   std::array<s8, 16> m_chanvol{};
   std::array<s8, 16> m_chanpan{};
+  std::array<s16, 16> m_pitch_bend{};
   u8* m_sample_data{nullptr};
 
   u8* m_seq_data_start{nullptr};
