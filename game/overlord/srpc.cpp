@@ -38,6 +38,7 @@ s32 gMusicTweak = 0x80;
 s32 gMusicPause = 0;
 u32 gFreeMem = 0;
 u32 gFrameNum = 0;
+u8 gFPS = 60;
 
 // added
 u32 gMusicFadeHack = 0;
@@ -497,10 +498,90 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           }
         }
       } break;
+      case Jak2SoundCommand::pause_sound: {
+        Sound* sound = LookupSound(cmd->sound_id.sound_id);
+        if (sound != nullptr) {
+          snd_PauseSound(sound->sound_handle);
+        }
+        // TODO vag
+      } break;
       case Jak2SoundCommand::stop_sound: {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
         if (sound != nullptr) {
           snd_StopSound(sound->sound_handle);
+        }
+        // TODO vag
+      } break;
+      case Jak2SoundCommand::continue_sound: {
+        Sound* sound = LookupSound(cmd->sound_id.sound_id);
+        if (sound != nullptr) {
+          snd_ContinueSound(sound->sound_handle);
+        }
+        // TODO vag
+      } break;
+      case Jak2SoundCommand::set_param: {
+        Sound* sound = LookupSound(cmd->sound_id.sound_id);
+        u32 mask = cmd->param.parms.mask;
+        if (sound != nullptr) {
+          if (mask & 1) {
+            if (mask & 0x10) {
+              sound->auto_time = cmd->param.auto_time;
+              sound->new_volume = cmd->param.parms.volume;
+            } else {
+              sound->params.volume = cmd->param.parms.volume;
+            }
+          }
+          if (mask & 0x20) {
+            sound->params.trans = cmd->param.parms.trans;
+          }
+          if (mask & 0x21) {
+            UpdateVolume(sound);
+          }
+          if (mask & 2) {
+            sound->params.pitch_mod = cmd->param.parms.pitch_mod;
+            if (mask & 0x10) {
+              snd_AutoPitch(sound->sound_handle, sound->params.pitch_mod, cmd->param.auto_time,
+                            cmd->param.auto_from);
+            } else {
+              snd_SetSoundPitchModifier(sound->sound_handle, cmd->param.parms.pitch_mod);
+            }
+          }
+          if (mask & 4) {
+            sound->params.bend = cmd->param.parms.bend;
+            if (mask & 0x10) {
+              snd_AutoPitchBend(sound->sound_handle, sound->params.bend, cmd->param.auto_time,
+                                cmd->param.auto_from);
+            } else {
+              snd_SetSoundPitchBend(sound->sound_handle, cmd->param.parms.bend);
+            }
+          }
+          if (mask & 0x400) {
+            sound->params.priority = cmd->param.parms.priority;
+          }
+          if (mask & 0x8) {
+            sound->params.group = cmd->param.parms.group;
+          }
+          if (mask & 0x40) {
+            sound->params.fo_min = cmd->param.parms.fo_min;
+          }
+          if (mask & 0x80) {
+            sound->params.fo_max = cmd->param.parms.fo_max;
+          }
+          if (mask & 0x100) {
+            sound->params.fo_curve = cmd->param.parms.fo_curve;
+          }
+          if (mask & 0x800) {
+            sound->params.reg[0] = cmd->param.parms.reg[0];
+            snd_SetSoundReg(sound->sound_handle, 0, cmd->param.parms.reg[0]);
+          }
+          if (mask & 0x1000) {
+            sound->params.reg[1] = cmd->param.parms.reg[1];
+            snd_SetSoundReg(sound->sound_handle, 1, cmd->param.parms.reg[1]);
+          }
+          if (mask & 0x2000) {
+            sound->params.reg[2] = cmd->param.parms.reg[2];
+            snd_SetSoundReg(sound->sound_handle, 2, cmd->param.parms.reg[2]);
+          }
         }
         // TODO vag
       } break;
@@ -519,6 +600,27 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           }
         }
       } break;
+      case Jak2SoundCommand::pause_group: {
+        snd_PauseAllSoundsInGroup(cmd->group.group);
+        if (cmd->group.group & 2) {
+          gMusicPause = 1;
+        }
+        if (cmd->group.group & 4) {
+          // TODO vag
+        }
+      } break;
+      case Jak2SoundCommand::stop_group: {
+        KillSoundsInGroup(cmd->group.group);
+      } break;
+      case Jak2SoundCommand::continue_group: {
+        snd_ContinueAllSoundsInGroup(cmd->group.group);
+        if (cmd->group.group & 2) {
+          gMusicPause = 0;
+        }
+        if (cmd->group.group & 4) {
+          // TODO vag
+        }
+      } break;
       case Jak2SoundCommand::set_midi_reg: {
         if (cmd->midi_reg.reg == 16) {
           snd_SetGlobalExcite(cmd->midi_reg.value);
@@ -528,17 +630,22 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
         }
       } break;
       case Jak2SoundCommand::set_reverb: {
+        lg::warn("RPC_Player: unimplemented set_reverb");
+        // TODO reverb
       } break;
       case Jak2SoundCommand::set_ear_trans: {
         SetEarTrans(&cmd->ear_trans_j2.ear_trans1, &cmd->ear_trans_j2.ear_trans2,
                     &cmd->ear_trans_j2.cam_trans, cmd->ear_trans_j2.cam_angle);
       } break;
+      case Jak2SoundCommand::shutdown: {
+        gSoundEnable = 0;
+      } break;
       case Jak2SoundCommand::set_fps: {
+        gFPS = cmd->fps.fps;
       } break;
       default:
-        lg::error("Unhandled RPC Player command {}", magic_enum::enum_name(cmd->j2command));
-        // ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
-        //                               magic_enum::enum_name(cmd->j2command)));
+        ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
+                                      magic_enum::enum_name(cmd->j2command)));
     }
 
     n_messages--;
