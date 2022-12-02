@@ -7,15 +7,12 @@
 (define-extern start-sig-recorder (function none))
 (define-extern intro-play (function none))
 (define-extern find-nearest-entity (function vector type entity))
-
-
-;; DECOMP BEGINS
 (define-extern warp-gate type)
 
-;; definition for symbol *auto-continue*, type symbol
+;; DECOMP BEGINS
+
 (define *auto-continue* #f)
 
-;; definition for function next-continue
 ;; WARN: Return type mismatch object vs continue-point.
 (defun next-continue ((arg0 continue-point))
   (let* ((v1-0 #f)
@@ -44,7 +41,6 @@
   (the-as continue-point #f)
   )
 
-;; failed to figure out what this is:
 (defstate target-continue (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
@@ -425,7 +421,6 @@
   :post target-no-move-post
   )
 
-;; definition for symbol *smack-mods*, type surface
 (define *smack-mods* (new 'static 'surface
                        :name 'jump
                        :tiltv 32768.0
@@ -469,7 +464,6 @@
                        )
         )
 
-;; definition for symbol *smack-up-mods*, type surface
 (define *smack-up-mods* (new 'static 'surface
                           :name 'jump
                           :turnv 131072.0
@@ -517,8 +511,6 @@
                           )
         )
 
-;; definition for function velocity-set-to-target!
-;; INFO: Used lq/sq
 (defbehavior velocity-set-to-target! target ((arg0 vector) (arg1 float) (arg2 attack-info))
   (let* ((v1-1 (-> self control trans))
          (gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 v1-1))
@@ -533,9 +525,6 @@
     )
   )
 
-;; definition for function target-hit-effect
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-hit-effect target ((arg0 attack-info))
   (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when s5-0
@@ -636,8 +625,6 @@
   (none)
   )
 
-;; definition for function target-hit-push
-;; INFO: Used lq/sq
 (defbehavior target-hit-push target ((arg0 vector) (arg1 matrix) (arg2 float) (arg3 float) (arg4 attack-info))
   (case (-> arg4 mode)
     (('shock 'shockup 'shock-red 'shock-green)
@@ -744,7 +731,6 @@
     )
   )
 
-;; definition for function target-hit-orient
 (defbehavior target-hit-orient target ((arg0 attack-info) (arg1 vector))
   (let ((s5-0 #f))
     (if (and (!= (-> arg0 angle) 'front)
@@ -780,7 +766,6 @@
     )
   )
 
-;; definition for function target-hit-setup-anim
 (defbehavior target-hit-setup-anim target ((arg0 attack-info))
   (let ((v1-0 (-> arg0 angle)))
     (cond
@@ -888,9 +873,6 @@
   (none)
   )
 
-;; definition for function target-hit-move
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-hit-move target ((arg0 attack-info) (arg1 symbol) (arg2 (function none :behavior target)) (arg3 float))
   (local-vars (v1-29 symbol) (s1-1 symbol))
   (vector-identity! (-> self control transv))
@@ -941,7 +923,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-hit (target)
   :event target-standard-event-handler
   :exit (behavior ()
@@ -1295,7 +1276,6 @@
   :post target-post
   )
 
-;; definition for symbol *death-spool-array*, type (array spool-anim)
 (define *death-spool-array*
   (new 'static 'boxed-array :type spool-anim
     (new 'static 'spool-anim :name "jak-death-1" :anim-name "jak-death-1" :parts 1 :command-list '())
@@ -1306,7 +1286,6 @@
     )
   )
 
-;; definition for function death-movie-remap
 (defun death-movie-remap ((arg0 int) (arg1 int))
   (let ((v1-0 (/ arg0 arg1)))
     (mod
@@ -1319,7 +1298,6 @@
     )
   )
 
-;; definition of type kill-nearby-enemies-info
 (deftype kill-nearby-enemies-info (basic)
   ((dist float          :offset-assert   4)
    (pos  vector :inline :offset-assert  16)
@@ -1329,24 +1307,9 @@
   :flag-assert         #x900000020
   )
 
-;; definition for method 3 of type kill-nearby-enemies-info
-(defmethod inspect kill-nearby-enemies-info ((obj kill-nearby-enemies-info))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tdist: ~f~%" (-> obj dist))
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (label cfg-4)
-  obj
-  )
 
-;; definition for symbol *kill-nearby-enemies-info*, type kill-nearby-enemies-info
 (define *kill-nearby-enemies-info* (new 'static 'kill-nearby-enemies-info))
 
-;; definition for function kill-nearby-enemies
-;; INFO: Used lq/sq
 (defun kill-nearby-enemies ((arg0 vector) (arg1 float))
   (let ((v1-0 *kill-nearby-enemies-info*))
     (set! (-> v1-0 dist) arg1)
@@ -1369,8 +1332,6 @@
     )
   )
 
-;; definition for function target-death-anim-trans
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-death-anim-trans target ()
   (send-event *camera* 'joystick 0 -1082130432)
   (compute-alignment! (-> self align))
@@ -1384,8 +1345,6 @@
   (none)
   )
 
-;; definition for function target-death-anim
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-death-anim target ((arg0 spool-anim))
   (set! (-> self control mod-surface) *neutral-mods*)
   (set! (-> self state-flags) (logior (state-flags lleg-no-ik rleg-no-ik) (-> self state-flags)))
@@ -1412,8 +1371,6 @@
   (none)
   )
 
-;; definition for function target-death-main
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-death-main target ((arg0 symbol))
   (case arg0
     (('tar)
@@ -1473,9 +1430,6 @@
   (none)
   )
 
-;; definition for function target-death-reset
-;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs none.
 (defbehavior target-death-reset target ((arg0 symbol) (arg1 symbol))
   (let ((v1-1 (-> *task-manager-engine* alive-list next0)))
     *task-manager-engine*
@@ -1535,7 +1489,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate target-death (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (let ((v1-0 event-type))
@@ -1610,14 +1563,582 @@
     )
   :trans (-> target-hit trans)
   :code (behavior ((arg0 symbol))
-          (while #t
-            (format 0 "no code~%")
+    (set! (-> self control unknown-word04) (the-as uint #f))
+    (set! (-> self control did-move-to-pole-or-max-jump-height)
+          (the-as float (send-event (handle->process (-> self attack-info attacker)) 'target 'die arg0))
+          )
+    (set! (-> self neck flex-blend) 0.0)
+    (set! (-> self control pat-ignore-mask)
+          (logior (new 'static 'pat-surface :noendlessfall #x1) (-> self control pat-ignore-mask))
+          )
+    (target-timed-invulnerable-off self 0)
+    (case arg0
+      (('bot 'centipede)
+       (set-setting! 'process-mask 'set 0 (process-mask platform projectile death))
+       )
+      (('endlessfall)
+       (set-setting! 'process-mask 'set 0 (process-mask enemy projectile death))
+       )
+      (('instant-death 'lava 'dark-eco-pool 'melt 'explode 'grenade 'big-explosion 'turret)
+       (set-setting! 'process-mask 'set 0 (process-mask enemy platform projectile death))
+       )
+      (else
+        (let ((v1-21 (-> self water flags)))
+          (if (or (and (logtest? (water-flags touch-water) v1-21)
+                       (logtest? (water-flags under-water swimming) v1-21)
+                       (zero? (logand (focus-status mech) (-> self focus-status)))
+                       )
+                  (= (-> self control cur-pat material) (pat-material waterbottom))
+                  )
+              (set! arg0 'drown)
+              )
+          )
+        (set-setting! 'process-mask 'set 0 (process-mask enemy platform projectile death))
+        (when (using-gun? self)
+          (send-event (ppointer->process (-> self gun gun)) 'die)
+          (target-gun-end-mode #f)
+          )
+        )
+      )
+    (apply-settings *setting-control*)
+    (set! (-> self control transv quad) (the-as uint128 0))
+    (logior! (-> self focus-status) (focus-status dead))
+    (set! (-> self state-flags) (logior (state-flags disable-attacks) (-> self state-flags)))
+    (let ((v1-50 arg0))
+      (b! (not (or (= v1-50 'none) (= v1-50 'instant-death))) cfg-52 :delay (nop!))
+      (b! #t cfg-167 :delay (nop!))
+      (label cfg-52)
+      (b!
+        (not (or (= v1-50 'lava)
+                 (= v1-50 'dark-eco-pool)
+                 (= v1-50 'melt)
+                 (= v1-50 'explode)
+                 (= v1-50 'grenade)
+                 (= v1-50 'big-explosion)
+                 )
+             )
+        cfg-132
+        :delay (nop!)
+        )
+      (let ((s5-0 (handle->process (-> self attack-info attacker))))
+        (when (if (type? s5-0 water-vol)
+                  s5-0
+                  )
+          (logior! (-> self state-flags) (state-flags sf14))
+          (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))
+          )
+        )
+      (set! (-> self control mod-surface) *neutral-mods*)
+      (let ((v1-63 arg0))
+        (b! (!= v1-63 'dark-eco-pool) cfg-79 :delay (empty-form))
+        (sound-play "death-darkeco")
+        (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
+          (when s5-2
+            (let ((t9-14 (method-of-type part-tracker activate)))
+              (t9-14
+                (the-as part-tracker s5-2)
+                *entity-pool*
+                (symbol->string (-> part-tracker symbol))
+                (the-as pointer #x70004000)
+                )
+              )
+            (let ((t9-15 run-function-in-process)
+                  (a0-61 s5-2)
+                  (a1-27 part-tracker-init)
+                  (a2-10 (-> *part-group-id-table* 56))
+                  (a3-6 0)
+                  (t0-5 #f)
+                  (t1-5 #f)
+                  (t2-1 #f)
+                  (t3-0 *launch-matrix*)
+                  )
+              (set! (-> t3-0 trans quad) (-> self control trans quad))
+              ((the-as (function object object object object object object object object none) t9-15)
+               a0-61
+               a1-27
+               a2-10
+               a3-6
+               t0-5
+               t1-5
+               t2-1
+               t3-0
+               )
+              )
+            (-> s5-2 ppointer)
+            )
+          )
+        (let ((v1-75 (-> self control root-prim)))
+          (set! (-> v1-75 prim-core collide-as) (collide-spec))
+          (set! (-> v1-75 prim-core collide-with) (collide-spec))
+          )
+        0
+        (set! (-> self post-hook) target-no-ja-move-post)
+        (ja-channel-set! 0)
+        (ja-post)
+        (let ((s5-3 (-> self clock frame-counter)))
+          (until (>= (- (-> self clock frame-counter) s5-3) (seconds 2))
             (suspend)
             )
           )
+        (b! #t cfg-131 :delay (nop!))
+        (label cfg-79)
+        (b! (not (or (= v1-63 'grenade) (= v1-63 'big-explosion) (= v1-63 'explode))) cfg-122 :delay (empty-form))
+        (set! (-> self post-hook) target-no-stick-post)
+        (set! (-> self control dynam gravity-max) 294912.0)
+        (set! (-> self control dynam gravity-length) 294912.0)
+        (vector-float*!
+          (-> self control dynam gravity)
+          (-> self control dynam gravity-normal)
+          (the-as float (-> self control dynam gravity-length))
+          )
+        (case arg0
+          (('big-explosion)
+           (sound-play "jak-explode")
+           )
+          (else
+            (sound-play "explosion")
+            )
+          )
+        (let ((s5-6 (get-process *default-dead-pool* part-tracker #x4000)))
+          (when s5-6
+            (let ((t9-23 (method-of-type part-tracker activate)))
+              (t9-23
+                (the-as part-tracker s5-6)
+                *entity-pool*
+                (symbol->string (-> part-tracker symbol))
+                (the-as pointer #x70004000)
+                )
+              )
+            (let ((t9-24 run-function-in-process)
+                  (a0-80 s5-6)
+                  (a1-36 part-tracker-init)
+                  (a2-17 (-> *part-group-id-table* 58))
+                  (a3-10 0)
+                  (t0-8 #f)
+                  (t1-8 #f)
+                  (t2-4 #f)
+                  (t3-1 *launch-matrix*)
+                  )
+              (set! (-> t3-1 trans quad) (-> self control trans quad))
+              ((the-as (function object object object object object object object object none) t9-24)
+               a0-80
+               a1-36
+               a2-17
+               a3-10
+               t0-8
+               t1-8
+               t2-4
+               t3-1
+               )
+              )
+            (-> s5-6 ppointer)
+            )
+          )
+        (set-vector! (-> self control transv) 0.0 65502.96 0.0 1.0)
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! (-> self draw art-group data 66)
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 66)) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (b!
+            (not (and (logtest? (-> self control status) (collide-status on-surface))
+                      (>= 409.6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                      )
+                 )
+            cfg-98
+            :delay (empty-form)
+            )
+          (b! #t cfg-106 :delay (nop!))
+          (the-as none 0)
+          (label cfg-98)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (while (not (or (logtest? (-> self control status) (collide-status on-surface))
+                        (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+                        )
+                    )
+          (suspend)
+          )
+        (label cfg-106)
+        (when (logtest? (-> self control status) (collide-status on-surface))
+          (let ((v1-159 (-> self water flags)))
+            (b!
+              (or (and (logtest? (water-flags touch-water) v1-159)
+                       (logtest? (water-flags under-water swimming) v1-159)
+                       (zero? (logand (focus-status mech) (-> self focus-status)))
+                       )
+                  (= (-> self control cur-pat material) (pat-material waterbottom))
+                  )
+              cfg-149
+              :delay (nop!)
+              )
+            )
+          (set! (-> self post-hook) target-no-move-post)
+          (let ((v1-171 (-> self control root-prim)))
+            (set! (-> v1-171 prim-core collide-as) (collide-spec))
+            (set! (-> v1-171 prim-core collide-with) (collide-spec))
+            )
+          0
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja-no-eval :group! (-> self draw art-group data 70)
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 70)) frames num-frames) -1)))
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (set! (-> self control transv quad) (the-as uint128 0))
+            (vector-seek!
+              (-> self draw color-mult)
+              (new 'static 'vector :x 0.5 :y 0.5 :z 0.5 :w 1.0)
+              (* 5.0 (-> self clock seconds-per-frame))
+              )
+            (suspend)
+            (ja :num! (seek!))
+            )
+          (let ((s5-7 (-> self clock frame-counter)))
+            (until (>= (- (-> self clock frame-counter) s5-7) (seconds 2))
+              (suspend)
+              )
+            )
+          )
+        (b! #t cfg-131 :delay (nop!))
+        (label cfg-122)
+        (when (or (= v1-63 'lava) (= v1-63 'melt))
+          (sound-play "death-melt")
+          (let ((s5-9 (get-process *default-dead-pool* part-tracker #x4000)))
+            (when s5-9
+              (let ((t9-37 (method-of-type part-tracker activate)))
+                (t9-37
+                  (the-as part-tracker s5-9)
+                  *entity-pool*
+                  (symbol->string (-> part-tracker symbol))
+                  (the-as pointer #x70004000)
+                  )
+                )
+              (let ((t9-38 run-function-in-process)
+                    (a0-107 s5-9)
+                    (a1-49 part-tracker-init)
+                    (a2-28 (-> *part-group-id-table* 57))
+                    (a3-13 0)
+                    (t0-10 #f)
+                    (t1-10 #f)
+                    (t2-6 #f)
+                    (t3-2 *launch-matrix*)
+                    )
+                (set! (-> t3-2 trans quad) (-> self control trans quad))
+                ((the-as (function object object object object object object object object none) t9-38)
+                 a0-107
+                 a1-49
+                 a2-28
+                 a3-13
+                 t0-10
+                 t1-10
+                 t2-6
+                 t3-2
+                 )
+                )
+              (-> s5-9 ppointer)
+              )
+            )
+          (let ((v1-219 (-> self control root-prim)))
+            (set! (-> v1-219 prim-core collide-as) (collide-spec))
+            (set! (-> v1-219 prim-core collide-with) (collide-spec))
+            )
+          0
+          (set! (-> self post-hook) target-no-ja-move-post)
+          (ja-channel-set! 0)
+          (ja-post)
+          (let ((s5-10 (-> self clock frame-counter)))
+            (until (>= (- (-> self clock frame-counter) s5-10) (seconds 2))
+              (suspend)
+              )
+            )
+          )
+        )
+      (label cfg-131)
+      (b! #t cfg-167 :delay (nop!))
+      (label cfg-132)
+      (cond
+        ((= v1-50 'turret)
+         (let ((v1-228 (-> self control root-prim)))
+           (set! (-> v1-228 prim-core collide-as) (collide-spec))
+           (set! (-> v1-228 prim-core collide-with) (collide-spec))
+           )
+         0
+         (set! (-> self post-hook) target-no-ja-move-post)
+         (ja-channel-set! 0)
+         (ja-post)
+         (let ((s5-11 (-> self clock frame-counter)))
+           (until (>= (- (-> self clock frame-counter) s5-11) (seconds 1.2))
+             (suspend)
+             )
+           )
+         )
+        ((= v1-50 'endlessfall)
+         ((lambda :behavior target
+            ()
+            (local-vars (v1-24 symbol))
+            (sound-play "death-fall")
+            (set! (-> self control unknown-sound-id00)
+                  (gui-control-method-9 *gui-control* *target* (gui-channel daxter) (gui-action play) "jakfall" -99.0 0)
+                  )
+            (gui-control-method-20 *gui-control* (-> self control unknown-sound-id00) #t -1 100 2)
+            (set-setting! 'mode-name 'cam-endlessfall 0 0)
+            (logclear! (-> self water flags) (water-flags swim-ground))
+            (let ((f0-1 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
+              (set! (-> self control unknown-word04) (the-as uint f0-1))
+              (let ((v1-13 (new-stack-vector0)))
+                (let ((f1-3 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+                  0.0
+                  (vector-! v1-13 (-> self control transv) (vector-float*! v1-13 (-> self control dynam gravity-normal) f1-3))
+                  )
+                (let* ((f1-4 (vector-length v1-13))
+                       (f2-1 f1-4)
+                       )
+                  (vector+!
+                    (-> self control transv)
+                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f0-1)
+                    (vector-float*! v1-13 v1-13 (/ f1-4 f2-1))
+                    )
+                  )
+                )
+              )
+            (when (and (logtest? (-> self control status) (collide-status on-surface)) (!= (-> self control cur-pat event) 2))
+              (set! v1-24 'target-hit-ground-hard)
+              (goto cfg-17)
+              )
+            (target-falling-anim 30 (seconds 0.33))
+            (ja-channel-push! 1 (seconds 0.3))
+            (ja-no-eval :group! (-> self draw art-group data 32) :num! (loop! 0.5) :frame-num 0.0)
+            (let ((gp-1 (-> self clock frame-counter)))
+              (until (>= (- (-> self clock frame-counter) gp-1) (seconds 0.8))
+                (when (and (logtest? (-> self control status) (collide-status on-surface)) (!= (-> self control cur-pat event) 2))
+                  (set! v1-24 'target-hit-ground-hard)
+                  (goto cfg-17)
+                  )
+                (vector-seek! (-> self draw color-mult) *zero-vector* (-> self clock seconds-per-frame))
+                (let ((v1-49 (new-stack-vector0))
+                      (f0-7 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+                      )
+                  0.0
+                  (vector-!
+                    v1-49
+                    (-> self control transv)
+                    (vector-float*! v1-49 (-> self control dynam gravity-normal) (the-as float f0-7))
+                    )
+                  (let* ((f1-7 (vector-length v1-49))
+                         (f2-2 f1-7)
+                         )
+                    (if (< (the-as float (-> self control unknown-word04)) (the-as float f0-7))
+                        (set! f0-7 (-> self control unknown-word04))
+                        )
+                    (vector+!
+                      (-> self control transv)
+                      (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f0-7))
+                      (vector-float*! v1-49 v1-49 (/ f1-7 f2-2))
+                      )
+                    )
+                  )
+                (ja :group! (-> self draw art-group data 32) :num! (loop! 0.5))
+                (suspend)
+                )
+              )
+            (set! v1-24 #f)
+            (label cfg-17)
+            (when (= v1-24 'target-hit-ground-hard)
+              (set! (-> self control mod-surface) *neutral-mods*)
+              (set! (-> self post-hook) target-no-move-post)
+              (set! (-> self control transv quad) (the-as uint128 0))
+              (ja-channel-push! 1 (seconds 0.05))
+              (ja-no-eval :group! (-> self draw art-group data 70)
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 70)) frames num-frames) -1)))
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (vector-seek! (-> self draw color-mult) *identity-vector* (-> self clock seconds-per-frame))
+                (suspend)
+                (ja :num! (seek!))
+                )
+              (let ((gp-2 (-> self clock frame-counter)))
+                (until (>= (- (-> self clock frame-counter) gp-2) (seconds 2))
+                  (suspend)
+                  )
+                )
+              )
+            (remove-setting! 'mode-name)
+            (none)
+            )
+          )
+         )
+        ((or (= v1-50 'burn) (= v1-50 'burnup))
+         (let ((s5-12 (get-process *default-dead-pool* part-tracker #x4000)))
+           (when s5-12
+             (let ((t9-45 (method-of-type part-tracker activate)))
+               (t9-45
+                 (the-as part-tracker s5-12)
+                 *entity-pool*
+                 (symbol->string (-> part-tracker symbol))
+                 (the-as pointer #x70004000)
+                 )
+               )
+             (let ((t9-46 run-function-in-process)
+                   (a0-118 s5-12)
+                   (a1-53 part-tracker-init)
+                   (a2-33 (-> *part-group-id-table* 59))
+                   (a3-15 0)
+                   (t0-11 #f)
+                   (t1-11 #f)
+                   (t2-7 #f)
+                   (t3-3 *launch-matrix*)
+                   )
+               (set! (-> t3-3 trans quad) (-> self control trans quad))
+               ((the-as (function object object object object object object object object none) t9-46)
+                a0-118
+                a1-53
+                a2-33
+                a3-15
+                t0-11
+                t1-11
+                t2-7
+                t3-3
+                )
+               )
+             (-> s5-12 ppointer)
+             )
+           )
+         (target-death-anim (the-as spool-anim #f))
+         )
+        ((or (= v1-50 'drown) (= v1-50 'drown-death))
+         (label cfg-149)
+         ((lambda :behavior target
+            ()
+            (logior! (-> self state-flags) (state-flags sf14))
+            (set! (-> self alt-cam-pos y) (+ -8192.0 (-> self water height)))
+            (sound-play "death-drown")
+            (logclear! (-> self water flags) (water-flags swim-ground))
+            (set! (-> self control mod-surface) *dive-mods*)
+            (set! (-> self control dynam gravity-max) 6144.0)
+            (set! (-> self control dynam gravity-length) 6144.0)
+            (ja-channel-push! 1 (seconds 0.1))
+            (ja-no-eval :group! (-> self draw art-group data 89)
+                        :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 89)) frames num-frames) -1)))
+                        :frame-num 0.0
+                        )
+            (until (ja-done? 0)
+              (if (< (+ -10240.0 (-> self water height)) (-> self control trans y))
+                  (seek!
+                    (-> self control trans y)
+                    (+ -10240.0 (-> self water height))
+                    (* 81920.0 (-> self clock seconds-per-frame))
+                    )
+                  )
+              (suspend)
+              (ja :num! (seek!))
+              )
+            (dotimes (gp-1 1)
+              (ja-no-eval :group! (-> self draw art-group data 90)
+                          :num! (seek!
+                            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 90)) frames num-frames) -1))
+                            0.75
+                            )
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek! max 0.75))
+                )
+              )
+            (ja-no-eval :group! (-> self draw art-group data 91)
+                        :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 91)) frames num-frames) -1)) 0.5)
+                        :frame-num 0.0
+                        )
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek! max 0.5))
+              )
+            #f
+            )
+          )
+         )
+        ((or (= v1-50 'target-hit-ground-hard) (= v1-50 'smush))
+         (set! (-> self control mod-surface) *neutral-mods*)
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! (-> self draw art-group data 70)
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 70)) frames num-frames) -1)))
+                     :frame-num 0.0
+                     )
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (let ((s5-13 (-> self clock frame-counter)))
+           (until (>= (- (-> self clock frame-counter) s5-13) (seconds 2))
+             (suspend)
+             )
+           )
+         )
+        ((= v1-50 'centipede)
+         (set! (-> self trans-hook) #f)
+         (set! (-> self control mod-surface) *neutral-mods*)
+         (set! (-> self post-hook) target-no-move-post)
+         (ja-channel-push! 1 (seconds 0.075))
+         (ja :group! (-> self draw art-group data 67) :num! min)
+         (while (not (-> self control unknown-spool-anim00))
+           (suspend)
+           (ja :num! (loop!))
+           )
+         )
+        ((= v1-50 'bot)
+         ((lambda :behavior target
+            ()
+            (set! (-> self trans-hook) #f)
+            (let ((gp-0 0))
+              (while (not (logtest? (-> self control status) (collide-status on-surface)))
+                (target-falling-anim-trans)
+                (+! gp-0 (- (-> self clock frame-counter) (-> self clock old-frame-counter)))
+                (if (-> self control unknown-spool-anim00)
+                    (return #f)
+                    )
+                (suspend)
+                )
+              (if (or (> gp-0 0) (let ((v1-14 (ja-group)))
+                                   (and v1-14 (or (= v1-14 (-> self draw art-group data 23))
+                                                  (= v1-14 (-> self draw art-group data 27))
+                                                  (= v1-14 (-> self draw art-group data 30))
+                                                  )
+                                        )
+                                   )
+                      )
+                  (target-hit-ground-anim #f (are-still?))
+                  )
+              )
+            (target-stance-push 1)
+            (until #f
+              (ja-no-eval :group! (-> self draw art-group data 5)
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (if (-> self control unknown-spool-anim00)
+                    (return #f)
+                    )
+                (suspend)
+                (ja :num! (seek!))
+                )
+              )
+            #f
+            )
+          )
+         )
+        (else
+          (target-death-main arg0)
+          )
+        )
+      )
+    (label cfg-167)
+    (target-death-reset arg0 #f)
+    (none)
+    )
   :post target-no-stick-post
   )
-
-
-
-
