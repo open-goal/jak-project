@@ -195,6 +195,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 270
   init_bucket_renderer<TextureUploadHandler>("tex-l2-water", BucketCategory::TEX,
                                              BucketId::TEX_L2_WATER);
+  init_bucket_renderer<Merc2>("merc-l2-water", BucketCategory::MERC, BucketId::MERC_L2_WATER);
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-water", BucketCategory::TEX,
+                                             BucketId::TEX_L3_WATER);
   // 280
   // 290
   // 300
