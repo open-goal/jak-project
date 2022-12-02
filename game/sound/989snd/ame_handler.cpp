@@ -17,7 +17,7 @@ ame_handler::ame_handler(MultiMIDIBlockHeader* block,
                          s32 vol,
                          s32 pan,
                          locator& loc,
-                         u32 bank)
+                         SoundBank& bank)
     : m_sound(sound),
       m_bank(bank),
       m_header(block),
@@ -75,7 +75,6 @@ void ame_handler::stop_segment(u32 id) {
     return;
 
   m->second->stop();
-  m_midis.erase(id);
 }
 
 void ame_handler::pause() {
@@ -115,7 +114,9 @@ void ame_handler::set_vol_pan(s32 vol, s32 pan) {
 }
 
 void ame_handler::set_pmod(s32 mod) {
-  // TODO
+  for (auto& m : m_midis) {
+    m.second->set_pmod(mod);
+  }
 }
 
 #define AME_BEGIN(op) \

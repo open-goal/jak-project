@@ -4,24 +4,66 @@
 
 #include "soundcommon.h"
 
-constexpr int N_BANKS = 3;
-SoundBank* gBanks[N_BANKS];
+#include "common/log/log.h"
+
+#include "game/runtime.h"
+
+static constexpr int N_BANKS = 6;
+
 SoundBank gCommonBank;
-SoundBank gLevelBank[2];
+SoundBank gGunBank;
+SoundBank gBoardBank;
+SoundBank gLevelBanks[3];
+
+SoundBank* gBanks[N_BANKS] = {&gCommonBank,    &gGunBank,       &gBoardBank,
+                              &gLevelBanks[0], &gLevelBanks[1], &gLevelBanks[2]};
 
 void sbank_init_globals() {
-  gBanks[0] = &gCommonBank;
-  gBanks[1] = &gLevelBank[0];
-  gBanks[2] = &gLevelBank[1];
   memset((void*)&gCommonBank, 0, sizeof(gCommonBank));
-  memset((void*)&gLevelBank, 0, sizeof(gLevelBank));
+  memset((void*)&gGunBank, 0, sizeof(gGunBank));
+  memset((void*)&gBoardBank, 0, sizeof(gBoardBank));
+  memset((void*)&gLevelBanks, 0, sizeof(gLevelBanks));
 }
 
 void InitBanks() {
   for (auto& gBank : gBanks) {
     gBank->bank_handle = 0;
     gBank->sound_count = 0;
+
+    gBank->in_use = false;
+    gBank->unk4 = 0;
+
+    // paper over bank allocation differences
+    if (g_game_version == GameVersion::Jak1)
+      gBank->in_use = 1;
+
     strcpy(gBank->name, "<unused>");
+  }
+
+  if (g_game_version == GameVersion::Jak2) {
+    strncpy(gBanks[0]->name, "common", 16);
+    gBanks[0]->spu_loc = 0x20000;
+    gBanks[0]->spu_size = 0xAFCC0;
+
+    strncpy(gBanks[1]->name, "gun", 16);
+    gBanks[0]->spu_loc = 0x131740;
+    gBanks[0]->spu_size = 0;
+
+    strncpy(gBanks[2]->name, "board", 16);
+    gBanks[0]->spu_loc = 0x131740;
+    gBanks[0]->spu_size = 0;
+
+    strncpy(gBanks[3]->name, "level0", 16);
+    gBanks[0]->spu_loc = 0x131740;
+    gBanks[0]->spu_size = 0x42800;
+
+    strncpy(gBanks[4]->name, "level1", 16);
+    gBanks[0]->spu_loc = 0x173f40;
+    gBanks[0]->spu_size = 0x42800;
+
+    strncpy(gBanks[5]->name, "level2", 16);
+    gBanks[0]->spu_loc = 0x1B6740;
+    gBanks[0]->spu_size = 0x42800;
   }
 }
 
@@ -50,25 +92,34 @@ SoundBank* AllocateBank() {
   return gBanks[idx];
 }
 
+SoundBank* AllocateBankName(const char* name) {
+  if ((!strncmp(name, "common", 16) || !strncmp(name, "commonj", 16)) && !gBanks[0]->in_use) {
+    return gBanks[0];
+  }
+
+  for (int i = 3; i < N_BANKS; i++) {
+    if (!gBanks[i]->in_use) {
+      gBanks[i]->bank_handle = 0;
+      gBanks[i]->unk4 = 0;
+      return gBanks[i];
+    }
+  }
+
+  return nullptr;
+}
+
 s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
-  int idx = 0;
-  while (true) {
-    if (idx > N_BANKS - 1) {
-      return -1;
+  for (auto bank : gBanks) {
+    if (!bank->bank_handle) {
+      continue;
     }
 
-    auto& bank = gBanks[idx];
-    if (bank->bank_handle == 0) {
-      break;
-    }
-
-    for (int i = 0; i < (int)bank->sound_count; i++) {
+    for (int i = 0; i < bank->sound_count; i++) {
       if (memcmp(bank->sound[i].name, name, 16) == 0) {
         *bank_out = bank;
         return i;
       }
     }
-    idx++;
   }
 
   return -1;
@@ -84,7 +135,7 @@ SoundBank* LookupBank(const char* name) {
     auto& bank = gBanks[idx];
     // they had some weird stuff here that took advantage of the fact that this region was
     // 16-byte aligned, so it probably wasn't a memcmp, but this is easier.
-    if (memcmp(bank->name, name, 16) == 0) {
+    if ((memcmp(bank->name, name, 16) == 0) && bank->in_use) {
       return bank;
     }
     idx--;

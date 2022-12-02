@@ -1,44 +1,90 @@
 #pragma once
-#include <unordered_map>
-
-#include "sfxblock.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
 
 #include "common/common_types.h"
 
+#include "game/sound/989snd/lfo.h"
+#include "sfxblock2.h"
+
 namespace snd {
+
+extern std::array<s8, 32> g_block_reg;
+
 class blocksound_handler : public sound_handler {
  public:
-  blocksound_handler(SFX& sfx, voice_manager& vm, s32 vol, s32 pan, s32 pm, s32 pb, u32 bank_id)
-      : m_sfx(sfx), m_vm(vm), m_bank(bank_id) {
-    vol = (vol * m_sfx.d.Vol) >> 10;
-    if (vol >= 128) {
-      vol = 127;
+  blocksound_handler(SoundBank& bank,
+                     SFX2& sfx,
+                     voice_manager& vm,
+                     s32 sfx_vol,
+                     s32 sfx_pan,
+                     SndPlayParams& params)
+      : m_sfx(sfx), m_vm(vm), m_bank(bank) {
+    s32 vol, pan, pitch_mod, pitch_bend;
+    if (sfx_vol == -1) {
+      sfx_vol = sfx.d.Vol;
+    }
+    if (sfx_pan == -1) {
+      sfx_pan = sfx.d.Pan;
     }
 
-    if (pan >= PAN_DONT_CHANGE) {
-      pan = m_sfx.d.Pan;
+    if (params.vol.has_value()) {
+      vol = params.vol.value();
+    } else {
+      vol = 1024;
     }
 
-    m_cur_volume = vol;
+    if (params.pan.has_value()) {
+      pan = params.pan.value();
+    } else {
+      pan = -1;
+    }
+
+    if (params.pitch_mod.has_value()) {
+      pitch_mod = params.pitch_mod.value();
+    } else {
+      pitch_mod = 0;
+    }
+
+    if (params.pitch_bend.has_value()) {
+      pitch_bend = params.pitch_bend.value();
+    } else {
+      pitch_bend = 0;
+    }
+
+    if (vol == VOLUME_DONT_CHANGE) {
+      vol = 1024;
+    }
+    s32 play_vol = (sfx_vol * vol) >> 10;
+    if (play_vol >= 128) {
+      play_vol = 127;
+    }
+
+    if (pan == PAN_RESET || pan == PAN_DONT_CHANGE) {
+      pan = sfx_pan;
+    }
+
+    m_orig_volume = sfx_vol;
+    m_orig_pan = sfx_pan;
+
+    m_cur_volume = play_vol;
     m_cur_pan = pan;
-    m_cur_pm = pm;
-    m_cur_pb = pb;
+    m_cur_pb = pitch_bend;
+    m_cur_pm = pitch_mod;
 
     m_app_volume = vol;
     m_app_pan = pan;
-    m_app_pm = 0;  // why only this one?
-    m_app_pb = pb;
+    m_app_pb = pitch_bend;
+    m_app_pm = pitch_mod;
 
-    m_orig_pan = m_sfx.d.Pan;
-    m_orig_volume = m_sfx.d.Vol;
+    m_lfo_volume = 0;
+    m_lfo_pan = 0;
+    m_lfo_pb = 0;
+    m_lfo_pm = 0;
 
-    m_group = sfx.d.VolGroup;
-
-    m_grain_handler.insert(std::make_pair(grain_type::null, &blocksound_handler::null));
-    m_grain_handler.insert(std::make_pair(grain_type::tone, &blocksound_handler::play_tone));
-    m_grain_handler.insert(std::make_pair(grain_type::rand_play, &blocksound_handler::rand_play));
+    if (params.registers.has_value()) {
+      m_registers = params.registers.value();
+    }
   }
 
   ~blocksound_handler() override {
@@ -51,7 +97,7 @@ class blocksound_handler : public sound_handler {
   }
 
   bool tick() override;
-  u32 bank() override { return m_bank; };
+  SoundBank& bank() override { return m_bank; };
 
   void pause() override;
   void unpause() override;
@@ -59,33 +105,14 @@ class blocksound_handler : public sound_handler {
   u8 group() override { return m_group; };
   void set_vol_pan(s32 vol, s32 pan) override;
   void set_pmod(s32 mod) override;
+  void set_register(u8 reg, u8 value) override { m_registers.at(reg) = value; };
   void set_pbend(s32 bend);  // TODO override;
 
   void init();
 
- private:
-  enum class grain_type : u32 {
-    null = 0,
-    tone = 1,
-    xref_id = 2,
-    xref_num = 3,
-    lfo_settings = 4,
-    loop_start = 21,
-    loop_end = 22,
-    loop_continue = 23,
-    rand_play = 25,
-    rand_delay = 26,
-  };
-
   void do_grain();
 
-  s32 null(SFXGrain& grain);
-  s32 play_tone(SFXGrain& grain);
-  s32 rand_play(SFXGrain& grain);
   void update_pitch();
-
-  using grain_fp = int (blocksound_handler::*)(SFXGrain& grain);
-  std::unordered_map<grain_type, grain_fp> m_grain_handler;
 
   bool m_paused{false};
 
@@ -96,10 +123,12 @@ class blocksound_handler : public sound_handler {
   u32 m_grains_to_skip{0};
   bool m_skip_grains{false};
 
-  SFX& m_sfx;
+  SFX2& m_sfx;
   voice_manager& m_vm;
 
   std::list<std::weak_ptr<vag_voice>> m_voices;
+
+  std::list<std::unique_ptr<sound_handler>> m_children;
 
   s32 m_current_pb{0};
   s32 m_current_pm{0};
@@ -118,13 +147,15 @@ class blocksound_handler : public sound_handler {
   s32 m_lfo_volume{0};
   s32 m_lfo_pan{0};
   s32 m_lfo_pm{0};
+  s32 m_lfo_pb{0};
 
-  u32 m_bank{0};
+  SoundBank& m_bank;
 
   u8 m_note{60};
   u8 m_fine{0};
 
-  std::array<u8, 4> m_registers{};
+  std::array<s8, 4> m_registers{};
+  std::array<LFOTracker, 4> m_lfo{{*this, *this, *this, *this}};
 
   // TODO LFO
 
