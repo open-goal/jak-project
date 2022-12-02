@@ -161,7 +161,7 @@ u32 player::play_sound_by_name(u32 bank_id,
   }
 
   if (bank == nullptr) {
-    //lg::error("play_sound_by_name: failed to find bank for sound {}", sound_name);
+    // lg::error("play_sound_by_name: failed to find bank for sound {}", sound_name);
     return 0;
   }
 
@@ -170,7 +170,7 @@ u32 player::play_sound_by_name(u32 bank_id,
     return play_sound(bank->bank_id, sound.value(), vol, pan, pm, pb);
   }
 
-  //lg::error("play_sound_by_name: failed to find sound {}", sound_name);
+  // lg::error("play_sound_by_name: failed to find sound {}", sound_name);
 
   return 0;
 }

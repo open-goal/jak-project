@@ -22,7 +22,7 @@ void blocksound_handler::init() {
 
   int idx = 0;
   for (auto& g : m_sfx.grains) {
-    lg::info("grain {}: {}", idx, g->inspect());
+    // lg::info("grain {}: {}", idx, g->inspect());
     idx++;
   }
 
