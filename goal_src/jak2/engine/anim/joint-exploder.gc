@@ -24,8 +24,8 @@
    (away-from-rand-transv-xz-hi float              :offset         68)
    (away-from-rand-transv-y-lo  float              :offset         72)
    (away-from-rand-transv-y-hi  float              :offset         76)
-   (hit-xz-reaction             float              :offset         80)
-   (hit-y-reaction              float              :offset         84)
+   (hit-xz-reaction             float              :offset-assert  80)
+   (hit-y-reaction              float              :offset-assert  84)
    )
   :method-count-assert 9
   :size-assert         #x58
@@ -34,6 +34,7 @@
     (new (symbol type uint) _type_ 0)
     )
   )
+
 
 (deftype joint-exploder-static-joint-params (structure)
   ((joint-index        int16  :offset-assert   0)
@@ -44,6 +45,7 @@
   :flag-assert         #x900000004
   )
 
+
 (deftype joint-exploder-static-params (basic)
   ((joints       (array joint-exploder-static-joint-params)  :offset-assert   4)
    (collide-spec uint32                                      :offset-assert   8)
@@ -53,6 +55,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype joint-exploder-joint (structure)
   ((next        int16          :offset-assert   0)
@@ -69,6 +72,7 @@
   :flag-assert         #x9000000f0
   )
 
+
 (deftype joint-exploder-joints (basic)
   ((num-joints int32                                 :offset-assert   4)
    (joint      joint-exploder-joint :inline :dynamic :offset-assert  16)
@@ -81,17 +85,19 @@
     )
   )
 
+
 (deftype joint-exploder-list (structure)
   ((head        int32                :offset-assert   0)
    (pre-moved?  symbol               :offset-assert   4)
    (bbox-valid? symbol               :offset-assert   8)
-   (probeless?  basic                :offset-assert  12)
+   (probeless?  symbol               :offset-assert  12)
    (bbox        bounding-box :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
+
 
 (deftype joint-exploder (process-drawable)
   ((die-if-below-y             float                                  :offset-assert 200)
@@ -121,6 +127,8 @@
     )
   )
 
+
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of joint-exploder-joints ((obj joint-exploder-joints))
   (the-as int (+ (-> obj type size) (* 240 (-> obj num-joints))))
   )
@@ -363,6 +371,7 @@
     )
   )
 
+;; WARN: Return type mismatch symbol vs int.
 (defmethod final-adjust joint-exploder ((obj joint-exploder) (arg0 joint-exploder-list) (arg1 int))
   (local-vars (sv-48 int) (sv-64 (inline-array joint-exploder-list)) (sv-80 joint-exploder-joint))
   (set! (-> arg0 bbox-valid?) #f)
@@ -371,11 +380,11 @@
         )
     (while (>= s2-0 0)
       (set! sv-80 (-> s3-0 joint s2-0))
-      (let ((s1-0 (new 'stack-no-clear 'matrix))
+      (let ((s1-0 (new 'stack-no-clear 'bounding-box))
             (s0-0 (-> arg0 bbox-valid?))
             )
-        (set! (-> s1-0 vector 0 quad) (-> arg0 bbox min quad))
-        (set! (-> s1-0 vector 1 quad) (-> arg0 bbox max quad))
+        (set! (-> s1-0 min quad) (-> arg0 bbox min quad))
+        (set! (-> s1-0 max quad) (-> arg0 bbox max quad))
         (update-bbox-for-joint obj arg0 sv-80)
         (let* ((v1-7 arg1)
                (v1-8 (cond
@@ -398,8 +407,8 @@
             (set! s2-0 sv-48)
             (update-bbox-for-joint obj (the-as joint-exploder-list sv-64) sv-80)
             (set! (-> arg0 bbox-valid?) s0-0)
-            (set! (-> arg0 bbox min quad) (-> s1-0 vector 0 quad))
-            (set! (-> arg0 bbox max quad) (-> s1-0 vector 1 quad))
+            (set! (-> arg0 bbox min quad) (-> s1-0 min quad))
+            (set! (-> arg0 bbox max quad) (-> s1-0 max quad))
             )
           )
         )
@@ -692,6 +701,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch process-drawable vs joint-exploder.
 (defmethod relocate joint-exploder ((obj joint-exploder) (arg0 int))
   (if (nonzero? (-> obj joints))
       (&+! (-> obj joints) arg0)
@@ -699,6 +709,7 @@
   (the-as joint-exploder ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior joint-exploder-init-by-other joint-exploder ((arg0 skeleton-group) (arg1 int) (arg2 joint-exploder-tuning) (arg3 joint-exploder-static-params))
   (set! (-> self static-params) arg3)
   (set! (-> self die-if-beyond-xz-dist-sqrd) 10485760000.0)
@@ -713,7 +724,7 @@
       )
     )
   (let ((v1-5 (-> self lists)))
-    (set! (-> v1-5 0 probeless?) (the-as basic #t))
+    (set! (-> v1-5 0 probeless?) #t)
     )
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
@@ -739,13 +750,14 @@
   (none)
   )
 
+;; WARN: Return type mismatch structure vs joint-exploder-tuning.
 (defmethod new joint-exploder-tuning ((allocation symbol) (type-to-make type) (arg0 uint))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
         )
     (-> type-to-make size)
     (let ((v0-0 (the-as joint-exploder-tuning (t9-0 allocation v1-1))))
-      (set! (-> v0-0 explosion) (the-as uint arg0))
+      (set! (-> v0-0 explosion) arg0)
       (set! (-> v0-0 duration) (seconds 2))
       (set! (-> v0-0 gravity) -286720.0)
       (set! (-> v0-0 rot-speed) 8.4)
@@ -772,7 +784,3 @@
       )
     )
   )
-
-
-
-
