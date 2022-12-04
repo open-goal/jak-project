@@ -67,8 +67,8 @@ Compiler::Compiler(GameVersion version,
     auto regex_colors = m_repl->regex_colors;
     m_repl->init_default_settings();
     using namespace std::placeholders;
-    m_repl->get_repl().set_completion_callback(
-        std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+    m_repl->get_repl().set_completion_callback(std::bind(
+        &Compiler::find_symbols_or_object_file_by_prefix, this, _1, _2, std::cref(examples)));
     m_repl->get_repl().set_hint_callback(
         std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
     m_repl->get_repl().set_highlighter_callback(
@@ -382,14 +382,57 @@ void Compiler::setup_goos_forms() {
 }
 
 void Compiler::asm_file(const CompilationOptions& options) {
-  auto code = m_goos.reader.read_from_file({options.filename});
+  // If the filename provided is not a valid path but it's a name (with or without an extension)
+  // attempt to find it in the defined `asmFileSearchDirs`
+  //
+  // For example - (ml "process-drawable.gc")
+  // - This allows you to load a file without precisely defining the entire path
+  //
+  // If multiple candidates are found, abort
 
-  std::string obj_file_name = options.filename;
+  std::string file_name = options.filename;
+  std::string file_path = file_util::get_file_path({file_name});
+
+  if (!file_util::file_exists(file_path)) {
+    if (file_path.empty()) {
+      lg::print("ERROR - can't load a file without a providing a path\n");
+      return;
+    } else if (m_asm_file_search_dirs.empty()) {
+      lg::print(
+          "ERROR - can't load a file that doesn't exist - '{}' and no search dirs are defined\n",
+          file_path);
+      return;
+    }
+    std::string base_name = file_util::base_name_no_ext(file_path);
+    // Attempt the find the full path of the file (ignore extension)
+    std::vector<fs::path> candidate_paths = {};
+    for (const auto& dir : m_asm_file_search_dirs) {
+      std::string base_dir = file_util::get_file_path({dir});
+      const auto& results = file_util::find_files_recursively(
+          base_dir, std::regex(fmt::format("^{}(\\..*)?$", base_name)));
+      for (const auto& result : results) {
+        candidate_paths.push_back(result);
+      }
+    }
+    if (candidate_paths.empty()) {
+      lg::print("ERROR - attempt to find object file automatically, but found nothing\n");
+      return;
+    } else if (candidate_paths.size() > 1) {
+      lg::print("ERROR - attempt to find object file automatically, but found multiple\n");
+      return;
+    }
+    // Found the file!, use it!
+    file_path = candidate_paths.at(0).string();
+  }
+
+  auto code = m_goos.reader.read_from_file({file_path});
+
+  std::string obj_file_name = file_path;
 
   // Extract object name from file name.
-  for (int idx = int(options.filename.size()) - 1; idx-- > 0;) {
-    if (options.filename.at(idx) == '\\' || options.filename.at(idx) == '/') {
-      obj_file_name = options.filename.substr(idx + 1);
+  for (int idx = int(file_path.size()) - 1; idx-- > 0;) {
+    if (file_path.at(idx) == '\\' || file_path.at(idx) == '/') {
+      obj_file_name = file_path.substr(idx + 1);
       break;
     }
   }

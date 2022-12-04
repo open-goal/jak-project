@@ -143,6 +143,7 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
+std::tuple<double, double> get_mouse_pos();
 GfxDisplayMode get_fullscreen();
 int get_screen_vmode_count();
 int get_screen_rate(s64 vmode_idx);

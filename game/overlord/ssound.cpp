@@ -7,15 +7,16 @@
 
 #include "game/overlord/iso.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
 
 Sound gSounds[64];
-Curve gCurve[8];  // TODO verify count
+Curve gCurve[12];  // TODO verify count
 VolumePair gPanTable[361];
 
-Vec3w gEarTrans;
+Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gCamAngle;
 
@@ -75,18 +76,31 @@ void InitSound_Overlord() {
     s.id = 0;
   }
 
-  SetCurve(1, 0, 0);
-  SetCurve(2, 0x1000, 0);
-  SetCurve(3, 0, 0x1000);
-  SetCurve(4, 0x800, 0);
-  SetCurve(5, 0x800, 0x800);
-  SetCurve(6, -0x1000, 0);
-  SetCurve(6, -0x800, 0);
+  if (g_game_version == GameVersion::Jak1) {
+    SetCurve(1, 0, 0);
+    SetCurve(2, 4096, 0);
+    SetCurve(3, 0, 4096);
+    SetCurve(4, 2048, 0);
+    SetCurve(5, 2048, 2048);
+    SetCurve(6, -4096, 0);
+    SetCurve(7, -2048, 0);
+  } else {
+    SetCurve(2, 0, 0);
+    SetCurve(9, 0, 0);
+    SetCurve(11, 0, 0);
+    SetCurve(10, 0, 0);
+    SetCurve(3, 4096, 0);
+    SetCurve(4, 0, 4096);
+    SetCurve(5, 2048, 0);
+    SetCurve(6, 2048, 2048);
+    SetCurve(7, -4096, 0);
+    SetCurve(8, -2048, 0);
+  }
 
   snd_StartSoundSystem();
   snd_RegisterIOPMemAllocator(SndMemAlloc, SndMemFree);
   snd_LockVoiceAllocator(1);
-  u32 voice = snd_ExternVoiceVoiceAlloc(2, 0x7f);
+  u32 voice = snd_ExternVoiceAlloc(2, 0x7f);
   snd_UnlockVoiceAllocator();
 
   // The voice allocator returns a number in the range 0-47 where voices
@@ -216,22 +230,56 @@ Sound* AllocateSound() {
 }
 
 s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
-  if (fo_curve == 0) {
-    return volume;
-  }
+  s32 xdiff = 0;
+  s32 ydiff = 0;
+  s32 zdiff = 0;
 
-  s32 xdiff = gEarTrans.x - pos->x;
-  s32 ydiff = gEarTrans.y - pos->y;
-  s32 zdiff = gEarTrans.z - pos->z;
+  if (g_game_version == GameVersion::Jak1) {
+    if (fo_curve == 0) {
+      return volume;
+    }
+
+    xdiff = gEarTrans[0].x - pos->x;
+    ydiff = gEarTrans[0].y - pos->y;
+    zdiff = gEarTrans[0].z - pos->z;
+  } else {
+    if (fo_curve == 1) {
+      return volume;
+    }
+
+    if (fo_curve < 9) {
+      xdiff = gEarTrans[0].x - pos->x;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = gEarTrans[0].z - pos->z;
+    }
+
+    if (fo_curve == 9) {
+      xdiff = gEarTrans[1].x - pos->x;
+      ydiff = gEarTrans[1].y - pos->y;
+      zdiff = gEarTrans[1].z - pos->z;
+    }
+
+    if (fo_curve == 10) {
+      xdiff = 0;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = 0;
+    }
+
+    if (fo_curve == 11) {
+      xdiff = gEarTrans[1].x - pos->x;
+      ydiff = gEarTrans[1].y - pos->y;
+      zdiff = gEarTrans[1].z - pos->z;
+    }
+  }
 
   if (xdiff < 0) {
-    xdiff = pos->x - gEarTrans.x;
+    xdiff = -xdiff;
   }
   if (ydiff < 0) {
-    ydiff = pos->y - gEarTrans.y;
+    ydiff = -ydiff;
   }
   if (zdiff < 0) {
-    zdiff = pos->z - gEarTrans.z;
+    zdiff = -zdiff;
   }
 
   s32 min = fo_min << 8;
@@ -300,7 +348,12 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     factor = 0x10000;
   }
 
-  return (factor * volume) >> 16;
+  s32 ret = (factor * volume) >> 16;
+  if (fo_curve == 11 && ret < 0x180) {
+    ret = 0x180;
+  }
+
+  return ret;
 }
 
 s32 CalculateAngle(Vec3w* trans) {
@@ -368,8 +421,10 @@ static void UpdateLocation(Sound* sound) {
     return;
   }
 
-  if ((sound->bank_entry->fallof_params >> 28) == 0) {
-    return;
+  if (g_game_version == GameVersion::Jak1) {
+    if ((sound->bank_entry->fallof_params >> 28) == 0) {
+      return;
+    }
   }
 
   s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
@@ -439,12 +494,13 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
+void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle) {
   s32 tick = snd_GetTick();
   u32 delta = tick - sLastTick;
   sLastTick = tick;
 
-  gEarTrans = *ear_trans;
+  gEarTrans[0] = *ear_trans1;
+  gEarTrans[1] = *ear_trans2;
   gCamTrans = *cam_trans;
   gCamAngle = cam_angle;
 
@@ -465,14 +521,24 @@ void PrintActiveSounds() {
 
   for (auto& s : gSounds) {
     if (s.id != 0 && s.is_music == 0) {
-      u32 len = strlen(s.bank_entry->name);
-      if (len > 16) {
-        len = 16;
+      if (s.bank_entry != nullptr) {
+        u32 len = strlen(s.bank_entry->name);
+        if (len > 16) {
+          len = 16;
+        }
+        sprintf(string, "                 : Vol %d", GetVolume(&s));
+        memcpy(string, s.bank_entry->name, len);
+        printf("%s\n", string);
+      } else {  // added for printing jak2 sounds
+        u32 len = strlen(s.name);
+        if (len > 16) {
+          len = 16;
+        }
+        sprintf(string, "                 : Vol %d, ID %d, Curve %d", GetVolume(&s), s.id,
+                s.params.fo_curve);
+        memcpy(string, s.name, len);
+        printf("%s\n", string);
       }
-      s32 volume = GetVolume(&s);
-      sprintf(string, "                 : Vol %d", volume);
-      memcpy(string, s.bank_entry->name, len);
-      printf("%s\n", string);
     }
   }
 }

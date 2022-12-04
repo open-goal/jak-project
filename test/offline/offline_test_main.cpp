@@ -1,22 +1,13 @@
 #include <future>
-#include <memory>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "common/common_types.h"
 #include "common/log/log.h"
-#include "common/util/FileUtil.h"
-#include "common/util/Timer.h"
-#include "common/util/diff.h"
-#include "common/util/json_util.h"
-#include <common/util/unicode_util.h>
+#include "common/util/unicode_util.h"
 
 #include "config/config.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "framework/file_management.h"
 #include "framework/orchestration.h"
-#include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/format.h"
@@ -25,10 +16,8 @@
 void clear_terminal() {
 #if defined _WIN32
   system("cls");
-  // clrscr(); // including header file : conio.h
 #elif defined(__LINUX__) || defined(__gnu_linux__) || defined(__linux__)
   system("clear");
-  // std::cout<< u8"\033[2J\033[1;1H"; //Using ANSI Escape Sequences
 #elif defined(__APPLE__)
   system("clear");
 #endif

@@ -1,8 +1,8 @@
 #include "config.h"
 
-#include <common/log/log.h>
-#include <common/util/FileUtil.h>
-#include <common/util/json_util.h>
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
 
 OfflineTestConfig::OfflineTestConfig(const std::string_view& _game_name,
                                      const std::string& _iso_data_path,

@@ -12,3 +12,8 @@ which contains just the username you want to log in as. That way you don't have 
 modify multiple scripts when you want to change users.
 
 If you want to make your profile public, edit the .gitignore in this directory.
+
+Additionally, you can provide a `repl-config.json` to set various REPL settings:
+- `numConnectToTargetAttempts` - the number of times the REPL will attempt to connect to the target on an `(lt)`
+
+And a `startup.gc` where each line will be executed upon startup

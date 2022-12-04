@@ -36,7 +36,14 @@ class player {
   u32 load_bank(fs::path& path, size_t offset);
 
   u32 play_sound(u32 bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
-  void set_midi_reg(u32 sound_id, u8 reg, u8 value);
+  u32 play_sound_by_name(u32 bank,
+                         char* bank_name,
+                         char* sound_name,
+                         s32 vol,
+                         s32 pan,
+                         s32 pm,
+                         s32 pb);
+  void set_sound_reg(u32 sound_id, u8 reg, u8 value);
   bool sound_still_active(u32 sound_id);
   void set_master_volume(u32 group, s32 volume);
   void unload_bank(u32 bank_handle);
@@ -53,6 +60,12 @@ class player {
   void init_cubeb();
   void destroy_cubeb();
   s32 get_tick() { return m_tick; };
+  void stop_all_sounds();
+  s32 get_sound_user_data(s32 block_handle,
+                          char* block_name,
+                          s32 sound_id,
+                          char* sound_name,
+                          SFXUserData* dst);
 
  private:
   std::recursive_mutex m_ticklock;  // TODO does not need to recursive with some light restructuring

@@ -156,7 +156,7 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            GameVersion version) {
   auto guessed_type = get_type_of_label(label, words);
   if (!guessed_type.has_value()) {
-    throw std::runtime_error("Could not guess the type of " + label.name);
+    throw std::runtime_error("(1) Could not guess the type of " + label.name);
   }
   return decompile_at_label(*guessed_type, label, labels, words, ts, file, version);
 }
@@ -215,7 +215,8 @@ goos::Object decompile_at_label(const TypeSpec& type,
     return decompile_pair(label, labels, words, ts, true, file, version);
   }
 
-  throw std::runtime_error("Unimplemented decompile_at_label for " + type.print());
+  throw std::runtime_error(fmt::format(
+      "Unimplemented decompile_at_label for Label: {} and Type: {}", label.name, type.print()));
 }
 
 /*!
@@ -744,6 +745,11 @@ const std::unordered_map<
            {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
                                           1,
                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"nav-enemy-info",
+           {{"idle-anim-script",
+             ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                  4,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           // kinda want to add regex support now...
           {"bigmap-compressed-layers",
            {{"layer0", ArrayFieldDecompMeta(TypeSpec("uint32"),
@@ -1561,7 +1567,14 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
     auto& label = labels.at(word.label_id());
     auto guessed_type = get_type_of_label(label, words);
     if (!guessed_type.has_value()) {
-      throw std::runtime_error("Could not guess the type of " + label.name);
+      auto& info = file->label_db->lookup(label.name);
+      if (info.known) {
+        guessed_type = info.result_type;
+      }
+    }
+
+    if (!guessed_type.has_value()) {
+      throw std::runtime_error("(1) Could not guess the type of " + label.name);
     }
 
     if (guessed_type == TypeSpec("pair")) {

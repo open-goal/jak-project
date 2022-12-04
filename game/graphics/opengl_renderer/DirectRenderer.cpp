@@ -278,13 +278,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
-  if (state.fogging_enable) {
-    //    ASSERT(false);
-  }
+
   if (state.aa_enable) {
-    ASSERT(false);
-  }
-  if (state.use_uv) {
     ASSERT(false);
   }
   if (state.ctxt) {
@@ -580,6 +575,9 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
               break;
+            case GifTag::RegisterDescriptor::UV:
+              handle_uv_packed(data + offset);
+              break;
             default:
               ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
                                             reg_descriptor_name(reg_desc[reg])));
@@ -767,6 +765,15 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.st_reg.x(), data + 0, 4);
   memcpy(&m_prim_building.st_reg.y(), data + 4, 4);
   memcpy(&m_prim_building.Q, data + 8, 4);
+}
+
+void DirectRenderer::handle_uv_packed(const u8* data) {
+  u32 u, v;
+  memcpy(&u, data, 4);
+  memcpy(&v, data + 4, 4);
+  m_prim_building.st_reg.x() = u;
+  m_prim_building.st_reg.y() = v;
+  m_prim_building.Q = 16.f;
 }
 
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {

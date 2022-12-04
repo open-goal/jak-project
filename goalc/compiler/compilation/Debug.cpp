@@ -76,6 +76,14 @@ Val* Compiler::compile_dbg(const goos::Object& form, const goos::Object& rest, E
   return get_none();
 }
 
+Val* Compiler::compile_dbg_and_continue(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  compile_dbg(form, rest, env);
+  compile_cont(form, rest, env);
+  return get_none();
+}
+
 Val* Compiler::compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env) {
   // todo - do something with args.
   (void)form;

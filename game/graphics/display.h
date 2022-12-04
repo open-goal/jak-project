@@ -67,6 +67,7 @@ class GfxDisplay {
     // hack, force a vsync update.
     Gfx::g_global_settings.old_vsync = !Gfx::g_global_settings.vsync;
   }
+  virtual std::tuple<double, double> get_mouse_pos() = 0;
 
   bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);

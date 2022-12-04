@@ -735,7 +735,6 @@ end_type_pass:
       }
       auto& type = instr.unknown_label_tag->selected_type.value();
       int idx = instr.unknown_label_tag->label_idx;
-      ASSERT(type.base_type() != "pointer");  // want to test this if we find example...
       env.file->label_db->set_and_get_previous(idx, type, false, {});
     }
 

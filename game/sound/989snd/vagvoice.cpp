@@ -15,7 +15,7 @@ voice_manager::voice_manager(synth& synth, locator& loc) : m_synth(synth), m_loc
   m_group_duck.fill(0x10000);
 }
 
-void voice_manager::start_tone(std::shared_ptr<vag_voice> voice) {
+void voice_manager::start_tone(std::shared_ptr<vag_voice> voice, u32 bank) {
   s16 left = adjust_vol_to_group(voice->basevol.left, voice->group);
   s16 right = adjust_vol_to_group(voice->basevol.right, voice->group);
 
@@ -35,7 +35,7 @@ void voice_manager::start_tone(std::shared_ptr<vag_voice> voice) {
   voice->set_asdr1(voice->tone.ADSR1);
   voice->set_asdr2(voice->tone.ADSR2);
 
-  u8* sbuf = m_locator.get_bank_samples(voice->tone.BankID);
+  u8* sbuf = m_locator.get_bank_samples(bank);
   voice->set_sample((u16*)(sbuf + voice->tone.VAGInSR));
 
   voice->key_on();

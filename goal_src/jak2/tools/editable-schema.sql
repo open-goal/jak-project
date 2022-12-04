@@ -55,150 +55,150 @@
 
 -- NOTE this is SQLite3, NOT MySQL
 
-CREATE TABLE IF NOT EXISTS "level_info" (
-	"level_info_id"	INTEGER,
-	"name"	TEXT,
-	"translate_x"	REAL,
-	"translate_y"	REAL,
-	"translate_z"	REAL,
-	"last_update"	TEXT,
-	"sample_point_update"	TEXT,
-	PRIMARY KEY("level_info_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'level_info' (
+	'level_info_id'	INTEGER,
+	'name'	TEXT,
+	'translate_x'	REAL,
+	'translate_y'	REAL,
+	'translate_z'	REAL,
+	'last_update'	TEXT,
+	'sample_point_update'	TEXT,
+	PRIMARY KEY('level_info_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "light" (
-	"light_id"	INTEGER,
-	"name"	TEXT,
-	"level_name"	TEXT,
-	"pos_x"	REAL,
-	"pos_y"	REAL,
-	"pos_z"	REAL,
-	"r"	REAL,
-	"dir_x"	REAL,
-	"dir_y"	REAL,
-	"dir_z"	REAL,
-	"color0_r"	REAL,
-	"color0_g"	REAL,
-	"color0_b"	REAL,
-	"color0_a"	REAL,
-	"decay_start"	REAL,
-	"ambient_point_ratio"	REAL,
-	"brightness"	REAL,
-	PRIMARY KEY("light_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'light' (
+	'light_id'	INTEGER,
+	'name'	TEXT,
+	'level_name'	TEXT,
+	'pos_x'	REAL,
+	'pos_y'	REAL,
+	'pos_z'	REAL,
+	'r'	REAL,
+	'dir_x'	REAL,
+	'dir_y'	REAL,
+	'dir_z'	REAL,
+	'color0_r'	REAL,
+	'color0_g'	REAL,
+	'color0_b'	REAL,
+	'color0_a'	REAL,
+	'decay_start'	REAL,
+	'ambient_point_ratio'	REAL,
+	'brightness'	REAL,
+	PRIMARY KEY('light_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "nav_edge" (
-	"nav_edge_id"	INTEGER NOT NULL,
-	"nav_graph_id"	INTEGER NOT NULL,
-	"nav_node_id_1"	INTEGER,
-	"nav_node_id_2"	INTEGER,
-	"directionality"	TEXT,
-	"speed_limit"	NUMERIC,
-	"density"	NUMERIC,
-	"traffic_edge_flag"	NUMERIC,
-	"nav_clock_mask"	NUMERIC,
-	"nav_clock_type"	TEXT,
-	"width"	NUMERIC,
-	"minimap_edge_flag"	NUMERIC,
-	FOREIGN KEY("nav_node_id_2") REFERENCES "nav_node"("nav_node_id"),
-	FOREIGN KEY("nav_graph_id") REFERENCES "nav_graph"("nav_graph_id"),
-	FOREIGN KEY("nav_node_id_1") REFERENCES "nav_node"("nav_node_id"),
-	PRIMARY KEY("nav_edge_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'nav_edge' (
+	'nav_edge_id'	INTEGER NOT NULL,
+	'nav_graph_id'	INTEGER NOT NULL,
+	'nav_node_id_1'	INTEGER,
+	'nav_node_id_2'	INTEGER,
+	'directionality'	TEXT,
+	'speed_limit'	NUMERIC,
+	'density'	NUMERIC,
+	'traffic_edge_flag'	NUMERIC,
+	'nav_clock_mask'	NUMERIC,
+	'nav_clock_type'	TEXT,
+	'width'	NUMERIC,
+	'minimap_edge_flag'	NUMERIC,
+	FOREIGN KEY('nav_node_id_2') REFERENCES 'nav_node'('nav_node_id'),
+	FOREIGN KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'),
+	FOREIGN KEY('nav_node_id_1') REFERENCES 'nav_node'('nav_node_id'),
+	PRIMARY KEY('nav_edge_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "nav_graph" (
-	"nav_graph_id"	INTEGER,
-	"name"	TEXT,
-	PRIMARY KEY("nav_graph_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'nav_graph' (
+	'nav_graph_id'	INTEGER,
+	'name'	TEXT,
+	PRIMARY KEY('nav_graph_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "nav_mesh" (
-	"nav_mesh_id"	INTEGER,
-	PRIMARY KEY("nav_mesh_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'nav_mesh' (
+	'nav_mesh_id'	INTEGER,
+	PRIMARY KEY('nav_mesh_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "nav_node" (
-	"nav_node_id"	INTEGER NOT NULL,
-	"nav_graph_id"	INTEGER NOT NULL,
-	"nav_mesh_id"	INTEGER NOT NULL,
-	"x"	REAL,
-	"y"	REAL,
-	"z"	REAL,
-	"level_name"	TEXT,
-	"angle"	REAL,
-	"radius"	REAL,
-	"nav_node_flag"	NUMERIC,
-	FOREIGN KEY("nav_mesh_id") REFERENCES "nav_mesh"("nav_mesh_id"),
-	FOREIGN KEY("nav_graph_id") REFERENCES "nav_graph"("nav_graph_id"),
-	PRIMARY KEY("nav_node_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'nav_node' (
+	'nav_node_id'	INTEGER NOT NULL,
+	'nav_graph_id'	INTEGER NOT NULL,
+	'nav_mesh_id'	INTEGER NOT NULL,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	'level_name'	TEXT,
+	'angle'	REAL,
+	'radius'	REAL,
+	'nav_node_flag'	NUMERIC,
+	FOREIGN KEY('nav_mesh_id') REFERENCES 'nav_mesh'('nav_mesh_id'),
+	FOREIGN KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'),
+	PRIMARY KEY('nav_node_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "nav_visible_nodes" (
-	"nav_node_id"	INTEGER NOT NULL,
-	"nav_graph_id"	INTEGER NOT NULL,
-	"nav_edge_id"	INTEGER NOT NULL,
-	FOREIGN KEY("nav_edge_id") REFERENCES "nav_mesh"("nav_mesh_id"),
-	FOREIGN KEY("nav_graph_id") REFERENCES "nav_graph"("nav_graph_id"),
-	PRIMARY KEY("nav_node_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'nav_visible_nodes' (
+	'nav_node_id'	INTEGER NOT NULL,
+	'nav_graph_id'	INTEGER NOT NULL,
+	'nav_edge_id'	INTEGER NOT NULL,
+	FOREIGN KEY('nav_edge_id') REFERENCES 'nav_mesh'('nav_mesh_id'),
+	FOREIGN KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'),
+	PRIMARY KEY('nav_node_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "race_path" (
-	"race_path_id"	INTEGER,
-	"race"	TEXT,
-	"path"	INTEGER,
-	PRIMARY KEY("race_path_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'race_path' (
+	'race_path_id'	INTEGER,
+	'race'	TEXT,
+	'path'	INTEGER,
+	PRIMARY KEY('race_path_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "region" (
-	"region_id"	INTEGER NOT NULL,
-	"level_name"	TEXT,
-	"flags"	NUMERIC,
-	"tree"	TEXT,
-	"on_enter"	TEXT,
-	"on_exit"	TEXT,
-	"on_inside"	TEXT,
-	PRIMARY KEY("region_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'region' (
+	'region_id'	INTEGER NOT NULL,
+	'level_name'	TEXT,
+	'flags'	NUMERIC,
+	'tree'	TEXT,
+	'on_enter'	TEXT,
+	'on_exit'	TEXT,
+	'on_inside'	TEXT,
+	PRIMARY KEY('region_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "region_face" (
-	"region_face_id"	INTEGER NOT NULL,
-	"region_id"	INTEGER NOT NULL,
-	"idx"	INTEGER,
-	"kind"	TEXT,
-	"radius"	REAL,
-	FOREIGN KEY("region_id") REFERENCES "region"("region_id"),
-	PRIMARY KEY("region_face_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'region_face' (
+	'region_face_id'	INTEGER NOT NULL,
+	'region_id'	INTEGER NOT NULL,
+	'idx'	INTEGER,
+	'kind'	TEXT,
+	'radius'	REAL,
+	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
+	PRIMARY KEY('region_face_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "region_point" (
-	"region_point_id"	INTEGER,
-	"region_face_id"	INTEGER NOT NULL,
-	"idx"	INTEGER,
-	"x"	REAL,
-	"y"	REAL,
-	"z"	REAL,
-	FOREIGN KEY("region_face_id") REFERENCES "region_face"("region_face_id"),
-	PRIMARY KEY("region_point_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'region_point' (
+	'region_point_id'	INTEGER,
+	'region_face_id'	INTEGER NOT NULL,
+	'idx'	INTEGER,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	FOREIGN KEY('region_face_id') REFERENCES 'region_face'('region_face_id'),
+	PRIMARY KEY('region_point_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "region_sphere" (
-	"region_sphere_id"	INTEGER,
-	"region_id"	INTEGER,
-	"x"	REAL,
-	"y"	REAL,
-	"z"	REAL,
-	"r"	REAL,
-	FOREIGN KEY("region_id") REFERENCES "region"("region_id"),
-	PRIMARY KEY("region_sphere_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'region_sphere' (
+	'region_sphere_id'	INTEGER,
+	'region_id'	INTEGER,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	'r'	REAL,
+	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
+	PRIMARY KEY('region_sphere_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS "sample_point" (
-	"sample_point_id"	INTEGER,
-	"level_info_id"	INTEGER NOT NULL,
-	"source"	TEXT,
-	"x"	REAL,
-	"y"	REAL,
-	"z"	REAL,
-	FOREIGN KEY("level_info_id") REFERENCES "level_info"("level_info_id"),
-	PRIMARY KEY("sample_point_id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS 'sample_point' (
+	'sample_point_id'	INTEGER,
+	'level_info_id'	INTEGER NOT NULL,
+	'source'	TEXT,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	FOREIGN KEY('level_info_id') REFERENCES 'level_info'('level_info_id'),
+	PRIMARY KEY('sample_point_id' AUTOINCREMENT)
 );

@@ -3,13 +3,13 @@
 #include "execution.h"
 #include "file_management.h"
 
-#include <common/log/log.h>
-#include <common/util/FileUtil.h>
-#include <common/util/diff.h>
-#include <common/util/str_util.h>
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/diff.h"
+#include "common/util/StringUtil.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
-#include <test/offline/config/config.h>
+#include "test/offline/config/config.h"
 
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"

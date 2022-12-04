@@ -211,7 +211,7 @@ using ::jak2::intern_from_c;
 namespace Mips2C::jak2 {
 namespace method_14_collide_mesh {
 u64 execute(void* ctxt) {
-  ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
+  // ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   // nop                                            // sll r0, r0, 0
@@ -416,7 +416,7 @@ using ::jak2::intern_from_c;
 namespace Mips2C::jak2 {
 namespace method_15_collide_mesh {
 u64 execute(void* ctxt) {
-  ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
+  // ASSERT(false); // this should be totally fine to remove, just trying to find what calls this
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   // nop                                            // sll r0, r0, 0
@@ -716,3 +716,4 @@ void link() {
 
 } // namespace method_15_collide_mesh
 } // namespace Mips2C
+

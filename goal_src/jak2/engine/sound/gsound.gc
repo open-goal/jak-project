@@ -691,12 +691,9 @@
              (set! (-> s5-1 sound-name) (-> obj name))
              (set! (-> s5-1 fo-max) (-> obj falloff-far))
              (set! (-> s5-1 mask) (sound-mask))
-             (when (-> obj params)
-               ;; ADDED - the function after this has been removed in jak 2, and calling it will crash.
-               (format 0 "bad case in update! ambient-sound~%")
-               pp
-               (effect-param->sound-spec s5-1 (-> obj params) (-> obj param-count))
-               )
+             (if (-> obj params)
+                 (effect-param->sound-spec s5-1 (-> obj params) (-> obj param-count) (the-as process-focusable pp))
+                 )
              )
            (let ((v1-23 (-> s5-1 fo-max)))
              (if (and (nonzero? v1-23) (< (* 4096.0 (the float v1-23)) (vector-vector-distance (ear-trans 0) (-> obj trans))))
@@ -733,7 +730,7 @@
                                    (-> obj pitch)
                                    0
                                    (sound-group sfx)
-                                   (the-as symbol (-> obj trans))
+                                   (-> obj trans)
                                    )
              )
        )
@@ -747,7 +744,7 @@
                   (-> obj pitch)
                   0
                   (sound-group sfx)
-                  (the-as symbol (-> obj trans))
+                  (-> obj trans)
                   )
                 )
           (set! (-> obj play-time)
@@ -938,9 +935,6 @@
   0
   )
 
-;; temporarily removed, will crash on startup
-(format 0 "HACK: skipping check-irx-version and common soundbank load.~%")
-#|
 (check-irx-version)
 
 (case (scf-get-territory)
@@ -961,7 +955,6 @@
       )
     )
   )
-|#
 
 
 

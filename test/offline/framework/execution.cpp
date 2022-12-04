@@ -1,10 +1,10 @@
 #include "execution.h"
 
-#include <common/util/diff.h>
-#include <common/util/str_util.h>
+#include "common/util/diff.h"
+#include "common/util/StringUtil.h"
 
-#include <goalc/compiler/Compiler.h>
-#include <test/offline/config/config.h>
+#include "goalc/compiler/Compiler.h"
+#include "test/offline/config/config.h"
 
 #include "third-party/fmt/ranges.h"
 

@@ -7,6 +7,20 @@
 
 (declare-type fuel-cell basic) ;; TODO!!
 
+(defun-debug draw-bone-lines ((obj process-drawable))
+  "Added in PC port to debug bones"
+  (dotimes (i (-> obj node-list length))
+    (let ((parent (-> obj node-list data i parent)))
+      (when (and parent (nonzero? parent) (-> parent joint) (-> parent parent))
+        (let ((child (vector<-cspace! (new-stack-vector0) (-> obj node-list data i)))
+              )
+          (add-debug-line #t (bucket-id debug2) child (vector<-cspace! (new-stack-vector0) parent) (new 'static 'rgba :g #xff :a #x40) #f (the rgba -1))
+          )
+        )
+      )
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (defmethod add-to-loading-level skeleton-group ((obj skeleton-group))
@@ -393,16 +407,11 @@
                 )
             (dotimes (s1-1 1)
               (let* ((v1-20 (-> arg0 data s1-1))
-                     (t9-3 (-> v1-20 param0))
+                     (t9-3 (the-as function (-> v1-20 param0)))
                      )
-                (when t9-3
-                  (let ((a0-9 v1-20)
-                        (a1-5 (-> v1-20 param1))
-                        )
-                    (-> v1-20 param2)
-                    (t9-3 a0-9 (the-as matrix a1-5))
+                (if (the-as (function cspace matrix none) t9-3)
+                    ((the-as (function object object object none) t9-3) v1-20 (-> v1-20 param1) (-> v1-20 param2))
                     )
-                  )
                 )
               )
             (dotimes (s1-2 2)
@@ -444,6 +453,7 @@
           )
         )
       )
+    ; (draw-bone-lines (-> obj process))
     0
     (none)
     )
@@ -568,6 +578,7 @@
       )
     )
   :code (behavior ((arg0 string))
+          (format 0 "ART ERROR: ~A for ~A~%" arg0 self)
     (if (-> self entity)
         (logior! (-> self entity extra perm status) (entity-perm-status bit-1))
         )
@@ -703,7 +714,7 @@
       )
     (set! (-> s2-0 level-index) (the-as uint (-> s3-0 index)))
     )
-  (set! (-> s2-0 dma-add-func) nothing)
+  (set! (-> s2-0 dma-add-func) (the-as (function process-drawable draw-control symbol object none) nothing))
   (set! (-> arg2 0) (the-as cspace-array (setup-cspace-and-add s2-0 (the-as art-joint-geo sv-16) 'process)))
   (set! (-> s2-0 dma-add-func) dma-add-process-drawable)
   (set! (-> s2-0 shadow-mask) (res-lump-value (-> arg0 entity) 'shadow-mask uint :time -1000000000.0))
@@ -1299,7 +1310,7 @@
       (label cfg-45)
       (let ((a0-26 (-> gp-0 effect)))
         (if a0-26
-            (effect-control-method-9 a0-26)
+            (update-effects a0-26)
             )
         )
       )

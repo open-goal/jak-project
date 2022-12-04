@@ -31,6 +31,7 @@ fs::path get_user_home_dir();
 fs::path get_user_config_dir();
 fs::path get_user_settings_dir(GameVersion game_version);
 fs::path get_user_memcard_dir(GameVersion game_version);
+fs::path get_user_misc_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
 
 bool create_dir_if_needed(const fs::path& path);
@@ -51,6 +52,7 @@ bool is_printable_char(char c);
 std::string combine_path(const std::string& parent, const std::string& child);
 bool file_exists(const std::string& path);
 std::string base_name(const std::string& filename);
+std::string base_name_no_ext(const std::string& filename);
 void MakeISOName(char* dst, const char* src);
 void ISONameFromAnimationName(char* dst, const char* src);
 void assert_file_exists(const char* path, const char* error_message);

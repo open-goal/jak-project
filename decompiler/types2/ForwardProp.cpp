@@ -212,6 +212,8 @@ std::optional<TP_Type> try_get_type_of_atom(const types2::TypeState& type_state,
     case SimpleAtom::Kind::INTEGER_CONSTANT: {
       return TP_Type::make_from_integer(atom.get_int());
     } break;
+    case SimpleAtom::Kind::STATIC_ADDRESS:
+      return try_get_type_of_label(atom.label(), env);
     default:
       ASSERT_MSG(false,
                  fmt::format("unknown kind in try_get_type_of_atom: {}", atom.to_string(env)));
