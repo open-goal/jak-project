@@ -377,7 +377,7 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   if (enable_display) {
     Gfx::Exit();
   }
-  lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;
 }

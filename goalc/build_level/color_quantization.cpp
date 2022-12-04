@@ -1,5 +1,6 @@
 #include "color_quantization.h"
 
+#include <unordered_map>
 #include <algorithm>
 
 #include "common/log/log.h"
