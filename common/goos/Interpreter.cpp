@@ -11,9 +11,9 @@
 
 #include "common/util/FileUtil.h"
 #include "common/util/unicode_util.h"
+#include <common/log/log.h>
 
 #include "third-party/fmt/core.h"
-#include <common/log/log.h>
 
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {

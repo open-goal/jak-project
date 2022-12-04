@@ -1,7 +1,7 @@
 #include "color_quantization.h"
 
-#include <unordered_map>
 #include <algorithm>
+#include <unordered_map>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"

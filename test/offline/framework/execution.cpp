@@ -1,7 +1,7 @@
 #include "execution.h"
 
-#include "common/util/diff.h"
 #include "common/util/StringUtil.h"
+#include "common/util/diff.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "test/offline/config/config.h"
@@ -46,7 +46,7 @@ std::string clean_decompilation_code(const std::string& in, const bool leave_com
         line_itr = lines.erase(line_itr);
       } else {
         // iterate
-        line_itr++;
+        ++line_itr;
       }
     }
     out = fmt::format("{}", fmt::join(lines, "\n"));

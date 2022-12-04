@@ -5,8 +5,8 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/util/diff.h"
 #include "common/util/StringUtil.h"
+#include "common/util/diff.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "test/offline/config/config.h"
@@ -37,7 +37,6 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
 
   // modify the config
   std::unordered_set<std::string> object_files;
-  u32 expected_db_size = 0;
   for (const auto& coll : work.work_collections) {
     for (auto& file : coll.source_files) {
       object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
@@ -254,8 +253,7 @@ std::string thread_dgos_to_str(std::vector<std::string> dgos) {
 std::string thread_progress_bar(u32 curr_step, u32 total_steps) {
   const u32 completion =
       std::floor(static_cast<double>(curr_step) / static_cast<double>(total_steps) * 100.0);
-  const u32 rounded_completion = ((completion + 9) / 10) * 10;
-  const u32 completed_segments = rounded_completion / 10;
+  const u32 completed_segments = completion / 10;
   std::string progress_bar = "";
   int added_segments = 0;
   for (int i = 0; i < completed_segments; i++) {

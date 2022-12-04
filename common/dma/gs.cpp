@@ -353,7 +353,8 @@ std::string GsTexa::print() const {
 std::string GsTex0::print() const {
   return fmt::format(
       "tbp0: {} tbw: {} psm: {} tw: {} th: {} tcc: {} tfx: {} cbp: {} cpsm: {} csm: {}\n", tbp0(),
-      tbw(), fmt::underlying(psm()), tw(), th(), tcc(), fmt::underlying(tfx()), cbp(), cpsm(), csm());
+      tbw(), fmt::underlying(psm()), tw(), th(), tcc(), fmt::underlying(tfx()), cbp(), cpsm(),
+      csm());
 }
 
 std::string GsPrim::print() const {
@@ -361,7 +362,8 @@ std::string GsPrim::print() const {
 }
 
 std::string GsFrame::print() const {
-  return fmt::format("fbp: {} fbw: {} psm: {} fbmsk: {:x}\n", fbp(), fbw(), fmt::underlying(psm()), fbmsk());
+  return fmt::format("fbp: {} fbw: {} psm: {} fbmsk: {:x}\n", fbp(), fbw(), fmt::underlying(psm()),
+                     fbmsk());
 }
 
 std::string GsXYOffset::print() const {

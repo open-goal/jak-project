@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
   // Useful for testing in debug mode (dont have to wait for everything to finish)
   int max_files = -1;
   std::string single_file = "";
-  uint32_t num_threads = 4;
+  uint32_t num_threads = 1;
   bool fail_on_cmp = false;
   bool pretty_print = false;
 
