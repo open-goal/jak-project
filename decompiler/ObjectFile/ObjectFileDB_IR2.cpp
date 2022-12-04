@@ -125,19 +125,24 @@ void ObjectFileDB::process_object_file_data(
 void ObjectFileDB::analyze_functions_ir2(
     const fs::path& output_dir,
     const Config& config,
+    const std::optional<std::function<void(std::string)>> prefile_callback,
+    const std::optional<std::function<void()>> postfile_callback,
     const std::unordered_set<std::string>& skip_functions,
-    std::string& file_name_tracker,
-    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states
-    ) {
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   int total_file_count = 0;
   for (auto& f : obj_files_by_name) {
     total_file_count += f.second.size();
   }
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
+    if (prefile_callback) {
+      prefile_callback.value()(data.to_unique_name());
+    }
     lg::info("[{:3d}/{}]------ {}", file_idx++, total_file_count, data.to_unique_name());
-    file_name_tracker = data.to_unique_name();
     process_object_file_data(data, output_dir, config, skip_functions, skip_states);
+    if (postfile_callback) {
+      postfile_callback.value()();
+    }
   });
 
   lg::info("{}", stats.let.print());
