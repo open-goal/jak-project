@@ -106,7 +106,7 @@ class blocksound_handler : public sound_handler {
   void set_vol_pan(s32 vol, s32 pan) override;
   void set_pmod(s32 mod) override;
   void set_register(u8 reg, u8 value) override { m_registers.at(reg) = value; };
-  void set_pbend(s32 bend);  // TODO override;
+  void set_pbend(s32 bend) override;
 
   void init();
 

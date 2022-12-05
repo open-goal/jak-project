@@ -174,13 +174,17 @@ void blocksound_handler::update_pitch() {
 }
 
 void blocksound_handler::set_pmod(s32 mod) {
-  // TODO update children
+  for (auto& c : m_children) {
+    c->set_pmod(mod);
+  }
   m_app_pm = mod;
   update_pitch();
 }
 
 void blocksound_handler::set_pbend(s32 bend) {
-  // TODO update children
+  for (auto& c : m_children) {
+    c->set_pbend(bend);
+  }
   m_app_pb = bend;
   update_pitch();
 }
