@@ -2409,37 +2409,37 @@
 ;; ;; INTROCST
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "INTROCST.DGO" "introcst.gd")
+(cgo "INTROCST.DGO" "introcst.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/intro/intro-ocean.gc"
-;;   "levels/intro/intro-scenes.gc"
-;;   "levels/intro/intro-obs.gc"
-;;   "levels/intro/vortex-data.gc"
-;;   "levels/intro/vortex.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/intro/intro-ocean.gc"
+  "levels/intro/intro-scenes.gc"
+  "levels/intro/intro-obs.gc"
+  "levels/intro/vortex-data.gc"
+  "levels/intro/vortex.gc"
+  )
 
-;; (copy-textures 2568 2570 3264)
+(copy-textures 2568 2570 3264)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jakone-highres-ag"
-;;   "errol-highres-ag"
-;;   "crimson-guard-lowres-ag"
-;;   "time-map-ag"
-;;   "rift-rider-heart-of-mar-ag"
-;;   "rift-rider-dash-ag"
-;;   "meteor-ag"
-;;   "rift-rider-break-b-ag"
-;;   "vortex-light-ag"
-;;   "rift-rider-chunk-a-ag"
-;;   "rift-rider-break-c-ag"
-;;   "particleman-ag"
-;;   "rift-rider-bar-ag"
-;;   "introcst"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  "jakone-highres-ag"
+  "errol-highres-ag"
+  ;; "crimson-guard-lowres-ag"
+  "time-map-ag"
+  "rift-rider-heart-of-mar-ag"
+  "rift-rider-dash-ag"
+  "meteor-ag"
+  "rift-rider-break-b-ag"
+  "vortex-light-ag"
+  "rift-rider-chunk-a-ag"
+  "rift-rider-break-c-ag"
+  ;; "particleman-ag"
+  "rift-rider-bar-ag"
+  "introcst"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; KIOSK
