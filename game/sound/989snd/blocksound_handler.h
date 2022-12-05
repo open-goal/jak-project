@@ -130,9 +130,6 @@ class blocksound_handler : public sound_handler {
 
   std::list<std::unique_ptr<sound_handler>> m_children;
 
-  s32 m_current_pb{0};
-  s32 m_current_pm{0};
-
   s32 m_orig_volume{0};
   s32 m_orig_pan{0};
   s32 m_cur_volume{0};

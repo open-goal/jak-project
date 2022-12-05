@@ -61,6 +61,8 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
 
   voice->start_note = handler.m_note;
   voice->start_fine = handler.m_fine;
+  voice->current_pb = handler.m_cur_pb;
+  voice->current_pm = handler.m_cur_pm;
   voice->group = handler.m_group;
 
   voice->basevol =
