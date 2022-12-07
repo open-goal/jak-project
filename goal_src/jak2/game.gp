@@ -1133,33 +1133,33 @@
 ;; ;; ATO
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "ATO.DGO" "ato.gd")
+(cgo "ATO.DGO" "ato.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/entities/gun-buoy.gc"
-;;   "levels/atoll/atoll-part.gc"
-;;   "levels/atoll/atoll-obs.gc"
-;;   "levels/common/enemy/fodder/fodder.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/entities/gun-buoy.gc"
+  "levels/atoll/atoll-part.gc"
+  "levels/atoll/atoll-obs.gc"
+  "levels/common/enemy/fodder/fodder.gc"
+  )
 
-;; (copy-textures 856 858 857 855 1083)
+(copy-textures 856 858 857 855 1083)
 
-;; (copy-gos
-;;   "fodder-ag"
-;;   "liftcat-ag"
-;;   "atoll-windmill-ag"
-;;   "turbine-ag"
-;;   "slider-ag"
-;;   "gun-buoy-ag"
-;;   "atoll-hatch-ag"
-;;   "atoll-valve-ag"
-;;   "piston-ag"
-;;   "atollrotpipe-ag"
-;;   "atoll-mar-symbol-ag"
-;;   "atoll-vis"
-;;   )
+(copy-gos
+  "fodder-ag"
+  "liftcat-ag"
+  "atoll-windmill-ag"
+  "turbine-ag"
+  "slider-ag"
+  "gun-buoy-ag"
+  "atoll-hatch-ag"
+  "atoll-valve-ag"
+  "piston-ag"
+  "atollrotpipe-ag"
+  "atoll-mar-symbol-ag"
+  "atoll-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; CAB
@@ -1950,46 +1950,46 @@
 ;; ;; DRILLMTN
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "DRILLMTN.DGO" "drillmtn.gd")
+(cgo "DRILLMTN.DGO" "drillmtn.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "engine/target/mech_suit/mech-part.gc"
-;;   "engine/target/mech_suit/mech.gc"
-;;   "engine/target/mech_suit/target-mech.gc"
-;;   "engine/target/mech_suit/mech-states.gc"
-;;   "engine/target/mech_suit/grunt-mech.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "engine/target/mech_suit/mech-part.gc"
+  "engine/target/mech_suit/mech.gc"
+  "engine/target/mech_suit/target-mech.gc"
+  "engine/target/mech_suit/mech-states.gc"
+  "engine/target/mech_suit/grunt-mech.gc"
+  )
 
-;; (copy-textures 1877 2535 2624)
+(copy-textures 1877 2535 2624)
 
-;; (copy-gos
-;;   "jak-mech+0-ag"
-;;   "grunt-mech-anims+0-ag"
-;;   "drill-top-break-ag"
-;;   "drill-barons-ship-ag"
-;;   "grunt-ag"
-;;   "drill-control-panel-ag"
-;;   "drill-crane-ag"
-;;   "crimson-guard-hover-ag"
-;;   "wasp-ag"
-;;   "drill-turret-ext-ag"
-;;   "mech-ag"
-;;   "drill-drill-ag"
-;;   "port-turret-ag"
-;;   "drill-flip-step-ag"
-;;   "drill-lift-ag"
-;;   "drill-elevator-doors-ag"
-;;   "drill-wall-ag"
-;;   "drill-metalhead-eggs-c-ag"
-;;   "drill-metalhead-eggs-b-ag"
-;;   "drill-metalhead-eggs-a-ag"
-;;   "drill-switch-ag"
-;;   "drill-turret-int-ag"
-;;   "drill-moving-staircase-ag"
-;;   "drillmtn"
-;;   )
+(copy-gos
+  "jak-mech+0-ag"
+  "grunt-mech-anims+0-ag"
+  "drill-top-break-ag"
+  "drill-barons-ship-ag"
+  "grunt-ag"
+  "drill-control-panel-ag"
+  "drill-crane-ag"
+  "crimson-guard-hover-ag"
+  "wasp-ag"
+  "drill-turret-ext-ag"
+  ;; "mech-ag"
+  "drill-drill-ag"
+  "port-turret-ag"
+  "drill-flip-step-ag"
+  "drill-lift-ag"
+  "drill-elevator-doors-ag"
+  "drill-wall-ag"
+  "drill-metalhead-eggs-c-ag"
+  "drill-metalhead-eggs-b-ag"
+  "drill-metalhead-eggs-a-ag"
+  "drill-switch-ag"
+  "drill-turret-int-ag"
+  "drill-moving-staircase-ag"
+  "drillmtn"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FDA
@@ -2237,7 +2237,7 @@
 (copy-textures 3190 3192 3191)
 
 (copy-gos
-  "crimson-guard-hover-ag"
+  ;; "crimson-guard-hover-ag"
   "cty-guard-turret-button-ag"
   "fort-led-ag"
   "forresca-vis"
@@ -2375,35 +2375,35 @@
 ;; ;; HIPHOG
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "HIPHOG.DGO" "hiphog.gd")
+(cgo "HIPHOG.DGO" "hiphog.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/hiphog/hiphog-obs.gc"
-;;   "levels/hiphog/hiphog-part.gc"
-;;   "levels/hiphog/hiphog-scenes.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/hiphog/hiphog-obs.gc"
+  "levels/hiphog/hiphog-part.gc"
+  "levels/hiphog/hiphog-scenes.gc"
+  )
 
-;; (copy-textures 929 930 3042 998)
+(copy-textures 929 930 3042 998)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "hip-whack-a-metal-ag"
-;;   "hip-trophy-g-ag"
-;;   "hip-trophy-d-ag"
-;;   "hip-trophy-c-ag"
-;;   "hip-trophy-a-ag"
-;;   "hip-trophy-f-ag"
-;;   "hip-trophy-i-ag"
-;;   "hip-trophy-m-ag"
-;;   "hip-door-a-ag"
-;;   "hip-trophy-n-ag"
-;;   "hip-trophy-j-ag"
-;;   "hip-mirror-ag"
-;;   "hiphog"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  "hip-whack-a-metal-ag"
+  "hip-trophy-g-ag"
+  "hip-trophy-d-ag"
+  "hip-trophy-c-ag"
+  "hip-trophy-a-ag"
+  "hip-trophy-f-ag"
+  "hip-trophy-i-ag"
+  "hip-trophy-m-ag"
+  ;; "hip-door-a-ag"
+  "hip-trophy-n-ag"
+  "hip-trophy-j-ag"
+  "hip-mirror-ag"
+  "hiphog"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; INTROCST
@@ -3279,27 +3279,27 @@
 ;; ;; LWHACK
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LWHACK.DGO" "lwhack.gd")
+(cgo "LWHACK.DGO" "lwhack.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/hiphog/whack.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/hiphog/whack.gc"
+  )
 
-;; (copy-textures 2889 3256)
+(copy-textures 2889 3256)
 
-;; (copy-gos
-;;   "daxter-mole+0-ag"
-;;   "tess-lwhack+0-ag"
-;;   "tess-highres-ag"
-;;   "time-map-ag"
-;;   "grunt-fma-ag"
-;;   "hip-mole-ag"
-;;   "big-bopper-ag"
-;;   "particleman-ag"
-;;   "lwhack"
-;;   )
+(copy-gos
+  "daxter-mole+0-ag"
+  "tess-lwhack+0-ag"
+  "tess-highres-ag"
+  ;; "time-map-ag"
+  "grunt-fma-ag"
+  "hip-mole-ag"
+  "big-bopper-ag"
+  ;; "particleman-ag"
+  "lwhack"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LWIDEB
@@ -3550,7 +3550,7 @@
   "metalkor-explode-ag"
   "kid-highres-ag"
   "nest-gun-parts-ag"
-  "wasp-ag"
+  ;; "wasp-ag"
   "kid-ag"
   ;; "flitter-ag"
   "nest-break-precipice-ag"
@@ -3580,7 +3580,7 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "levels/common/entities/gun-buoy.gc"
+  ;; "levels/common/entities/gun-buoy.gc"
   "levels/nest/nest-obs.gc"
   "levels/nest/mantis.gc"
   "levels/nest/mammoth.gc"
@@ -3598,11 +3598,11 @@
   "mantis-ag"
   "nest-break-rocks-ag"
   "water-anim-nest-dark-eco-ag"
-  "gun-buoy-ag"
+  ;; "gun-buoy-ag"
   "transport-ag"
   "switch-ag"
   ;; "air-train-ag"
-  "piston-ag"
+  ;; "piston-ag"
   "nest-vis"
   )
 
@@ -3702,65 +3702,65 @@
 ;; ;; OUTROCST
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "OUTROCST.DGO" "outrocst.gd")
+(cgo "OUTROCST.DGO" "outrocst.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "engine/ui/credits.gc"
-;;   "levels/outro/outro-scenes.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "engine/ui/credits.gc"
+  "levels/outro/outro-scenes.gc"
+  )
 
-;; (copy-textures 3182 3183 3263 3513)
+(copy-textures 3182 3183 3263 3513)
 
-;; (copy-gos
-;;   "0credits-tx"
-;;   "1credits-tx"
-;;   "2credits-tx"
-;;   "3credits-tx"
-;;   "4credits-tx"
-;;   "5credits-tx"
-;;   "6credits-tx"
-;;   "7credits-tx"
-;;   "keira-highres-ag"
-;;   "samos-highres-ag"
-;;   "tess-highres-ag"
-;;   "onin-highres-ag"
-;;   "rift-break-ring-ag"
-;;   "precursor-ag"
-;;   "outrocst"
-;;   )
+(copy-gos
+  "0credits-tx"
+  "1credits-tx"
+  "2credits-tx"
+  "3credits-tx"
+  "4credits-tx"
+  "5credits-tx"
+  "6credits-tx"
+  "7credits-tx"
+  "keira-highres-ag"
+  "samos-highres-ag"
+  ;; "tess-highres-ag"
+  ;; "onin-highres-ag"
+  "rift-break-ring-ag"
+  "precursor-ag"
+  "outrocst"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; PAC
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "PAC.DGO" "pac.gd")
+(cgo "PAC.DGO" "pac.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/palace/cable/palcab-part.gc"
-;;   "levels/palace/cable/palcab-obs.gc"
-;;   "levels/city/common/searchlight.gc"
-;;   "levels/common/entities/sew-gunturret.gc"
-;;   "levels/palace/pal-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/palace/cable/palcab-part.gc"
+  "levels/palace/cable/palcab-obs.gc"
+  ;; "levels/city/common/searchlight.gc"
+  "levels/common/entities/sew-gunturret.gc"
+  "levels/palace/pal-obs.gc"
+  )
 
-;; (copy-textures 2354 2357 2355 2356 3371 2619)
+(copy-textures 2354 2357 2355 2356 3371 2619)
 
-;; (copy-gos
-;;   "jak-pole+0-ag"
-;;   "pal-gun-turret-ag"
-;;   "pal-electric-fan-ag"
-;;   "pal-cable-nut-ag"
-;;   "pal-flip-step-ag"
-;;   "pal-rot-gun-ag"
-;;   "pal-falling-plat-ag"
-;;   "searchlight-ag"
-;;   "pal-windmill-ag"
-;;   "palcab-vis"
-;;   )
+(copy-gos
+  ;; "jak-pole+0-ag"
+  "pal-gun-turret-ag"
+  "pal-electric-fan-ag"
+  "pal-cable-nut-ag"
+  "pal-flip-step-ag"
+  "pal-rot-gun-ag"
+  "pal-falling-plat-ag"
+  ;; "searchlight-ag"
+  ;; "pal-windmill-ag"
+  "palcab-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; PAE
@@ -3771,9 +3771,9 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "levels/common/entities/sew-gunturret.gc"
+  ;; "levels/common/entities/sew-gunturret.gc"
   "levels/palace/explore/palent-part.gc"
-  "levels/palace/pal-obs.gc"
+  ;; "levels/palace/pal-obs.gc"
   )
 
 (copy-textures 3169 3171 3170 3168)
@@ -3785,7 +3785,7 @@
   "pal-grind-ring-ag"
   "pal-grind-ring-center-ag"
   "pal-throne-door-ag"
-  "pal-falling-plat-ag"
+  ;; "pal-falling-plat-ag"
   "pal-ent-door-ag"
   "pal-ent-glass-ag"
   "palent-vis"
@@ -3858,7 +3858,7 @@
 
 (copy-gos
   "pal-prong-ag"
-  "pal-flip-step-ag"
+  ;; "pal-flip-step-ag"
   "pal-lowrez-throne-ag"
   "palroof-vis"
   )
@@ -3906,11 +3906,11 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "engine/target/mech_suit/mech-part.gc"
-  "engine/target/mech_suit/mech.gc"
-  "engine/target/mech_suit/target-mech.gc"
-  "engine/target/mech_suit/mech-states.gc"
-  "engine/target/mech_suit/grunt-mech.gc"
+  ;; "engine/target/mech_suit/mech-part.gc"
+  ;; "engine/target/mech_suit/mech.gc"
+  ;; "engine/target/mech_suit/target-mech.gc"
+  ;; "engine/target/mech_suit/mech-states.gc"
+  ;; "engine/target/mech_suit/grunt-mech.gc"
   "levels/ruins/ruins-ocean.gc"
   "levels/ruins/ruins-scenes.gc"
   "levels/ruins/mechtest-obs.gc"
@@ -3920,7 +3920,7 @@
   "levels/ruins/ruins-obs.gc"
   "levels/ruins/rapid-gunner.gc"
   "levels/common/enemy/amphibian/amphibian.gc"
-  "levels/common/enemy/fodder/fodder.gc"
+  ;; "levels/common/enemy/fodder/fodder.gc"
   ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
   )
 
@@ -3928,9 +3928,9 @@
 
 (copy-gos
   ;; "jak-pole+0-ag"
-  "jak-mech+0-ag"
-  "grunt-mech-anims+0-ag"
-  "grunt-ag"
+  ;; "jak-mech+0-ag"
+  ;; "grunt-mech-anims+0-ag"
+  ;; "grunt-ag"
   "ruins-breakable-wall-ag"
   ;; "grenadier-ag"
   "amphibian-ag"
@@ -3939,7 +3939,7 @@
   ;; "flitter-ag"
   "ruins-pillar-collapse-ag"
   ;; "mech-ag"
-  "fodder-ag"
+  ;; "fodder-ag"
   "ruins-bridge-ag"
   "shield-gunner-ag"
   "precipice-b-ag"
@@ -4738,39 +4738,39 @@
 ;; ;; VIN
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "VIN.DGO" "vin.gd")
+(cgo "VIN.DGO" "vin.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/power_station/vinroom-part.gc"
-;;   "levels/power_station/vinroom-scenes.gc"
-;;   "levels/power_station/vinroom-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/power_station/vinroom-part.gc"
+  "levels/power_station/vinroom-scenes.gc"
+  "levels/power_station/vinroom-obs.gc"
+  )
 
-;; (copy-textures 778 779 3278 979)
+(copy-textures 778 779 3278 979)
 
-;; (copy-gos
-;;   "kid-tombd+0-ag"
-;;   "daxter-highres-ag"
-;;   "vin-ag"
-;;   "jak-highres-ag"
-;;   "crocadog-highres-ag"
-;;   "kor-highres-ag"
-;;   "kid-highres-ag"
-;;   "ecowell-a-ag"
-;;   "ecowell-b-ag"
-;;   "ecowell-c-ag"
-;;   "ecowell-d-ag"
-;;   "plasmitebox-ag"
-;;   "warp-gate-ag"
-;;   "vin-door-ag"
-;;   "vin-turbine-ag"
-;;   "pow-mov-plat-ag"
-;;   "palmpilot-ag"
-;;   "particleman-ag"
-;;   "vinroom-vis"
-;;   )
+(copy-gos
+  "kid-tombd+0-ag"
+  ;; "daxter-highres-ag"
+  "vin-ag"
+  ;; "jak-highres-ag"
+  "crocadog-highres-ag"
+  "kor-highres-ag"
+  ;; "kid-highres-ag"
+  "ecowell-a-ag"
+  "ecowell-b-ag"
+  "ecowell-c-ag"
+  "ecowell-d-ag"
+  "plasmitebox-ag"
+  ;; "warp-gate-ag"
+  "vin-door-ag"
+  "vin-turbine-ag"
+  "pow-mov-plat-ag"
+  ;; "palmpilot-ag"
+  ;; "particleman-ag"
+  "vinroom-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
