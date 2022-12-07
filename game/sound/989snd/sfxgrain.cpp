@@ -28,9 +28,10 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
     return 0;
   }
 
-  auto voice = std::make_shared<vag_voice>(m_tone);
+  auto voice = std::make_shared<blocksound_voice>(m_tone);
 
   s32 vol = m_tone.Vol;
+
   if (vol < 0) {
     if (vol >= -4) {
       vol = handler.m_registers.at(-vol - 1);
@@ -61,7 +62,11 @@ s32 SFXGrain_Tone::execute(blocksound_handler& handler) {
 
   voice->start_note = handler.m_note;
   voice->start_fine = handler.m_fine;
+  voice->current_pb = handler.m_cur_pb;
+  voice->current_pm = handler.m_cur_pm;
   voice->group = handler.m_group;
+  voice->g_vol = vol;
+  voice->g_pan = pan;
 
   voice->basevol =
       handler.m_vm.make_volume(127, 0, handler.m_cur_volume, handler.m_cur_pan, vol, pan);
