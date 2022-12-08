@@ -199,6 +199,21 @@ namespace add_light_sphere_to_light_group { extern void link(); }
 namespace light_hash_add_items { extern void link(); }
 namespace light_hash_count_items { extern void link(); }
 namespace light_hash_get_bucket_index { extern void link(); }
+namespace nav_state_patch_pointers { extern void link(); }
+namespace method_45_nav_mesh { extern void link(); }
+namespace method_20_nav_engine { extern void link(); }
+namespace method_43_nav_mesh { extern void link(); }
+namespace find_closest_circle_ray_intersection { extern void link(); }
+namespace nav_dma_send_to_spr_no_flush { extern void link(); }
+namespace nav_dma_send_from_spr_no_flush { extern void link(); }
+namespace method_17_nav_engine { extern void link(); }
+namespace method_18_nav_engine { extern void link(); }
+namespace method_51_nav_state { extern void link(); }
+namespace method_40_nav_state { extern void link(); }
+namespace method_18_nav_mesh { extern void link(); }
+namespace method_19_nav_mesh { extern void link(); }
+namespace method_19_nav_control { extern void link(); }
+namespace method_18_nav_control { extern void link(); }
 
 }
 // clang-format on

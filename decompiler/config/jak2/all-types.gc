@@ -16077,7 +16077,7 @@
    (collide-with collide-spec           :offset-assert 20)
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    prim-type              :offset-assert 28)
-   (unused1      uint8        3       :offset-assert 29)
+   (unused1      uint8          3       :offset-assert 29)
    (quad         uint128        2       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -22366,7 +22366,7 @@
   )
 
 (deftype clamp-travel-vector-to-mesh-return-info (structure)
-  ((found-boundary  basic            :offset-assert 0)
+  ((found-boundary  symbol            :offset-assert 0)
    (intersection    vector   :inline :offset-assert 16)
    (boundary-normal vector   :inline :offset-assert 32)
    (prev-normal     vector   :inline :offset-assert 48)
@@ -22445,15 +22445,11 @@
     (nav-mesh-method-28 (_type_ object) none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
     (nav-mesh-method-29 (_type_ process-drawable symbol) nav-control 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
     (nav-mesh-method-30 (_type_ process-drawable) none 30)
-    (change-to (_type_ process-drawable) none 31)
-    (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) none 32)
+    (change-to (_type_ process-drawable int) none 31)
+    (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) symbol 32)
     (nav-mesh-method-33 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) symbol 33)
-    (nav-mesh-method-34 (_type_ object vector float) none 34)
-    (nav-mesh-method-35
-      "TODO - Assertion failed: 'std::isfinite(value)'
-        Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90
-        Function: int __cdecl float_to_cstr(float, char *, bool)"
-      () none 35)
+    (nav-mesh-method-34 (_type_ vector vector float) float 34)
+    (nav-mesh-method-35 (_type_ vector vector float) none 35)
     (nav-mesh-method-36 (_type_ nav-poly rgba) none 36)
     (point-in-poly? (_type_ nav-poly vector) symbol 37)
     (nav-mesh-method-38 (_type_ nav-poly vector vector vector object) vector 38)
@@ -22463,8 +22459,8 @@
     (nav-mesh-method-42 (_type_ nav-find-poly-parms) nav-poly 42)
     (nav-mesh-method-43 (_type_ nav-find-poly-parms) none 43)
     (nav-mesh-method-44 (_type_ vector float float) symbol 44)
-    (nav-mesh-method-45 "TODO - asm expression building error" (_type_ entity-perm) none 45) ;; entity-perm is wrong
-    (nav-mesh-method-46 (_type_ object) none 46)
+    (nav-mesh-method-45 (_type_ nav-mesh-link) symbol 45)
+    (nav-mesh-method-46 (_type_ nav-mesh-link) none 46)
     )
   )
 
@@ -22758,7 +22754,7 @@
   :size-assert         #x58
   :flag-assert         #x1900000058
   (:methods
-    (new (symbol type int int) _type_ 0)
+    (new (symbol type int) _type_ 0) ;; TODO see top-level of nav-mesh, doesn't seem to be 2 ints?
     (update-grid-for-objects-in-box (_type_ int vector vector) none 9)
     (clear-bucket-array (_type_) none 10)
     (setup-search-box (_type_ int vector vector vector) none 11)
@@ -29772,9 +29768,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype nav-engine-spr-buffer (structure)
-  ((mem-addr  uint32  :offset-assert 0)
+  ((mem-addr  (pointer nav-mesh)  :offset-assert 0) ;; TODO - pretty sure these are wrong...
    (mem-nav   uint32  :offset 0)
-   (spr-addr  uint32  :offset-assert 4)
+   (spr-addr  (pointer nav-control)  :offset-assert 4) ;; TODO - pretty sure these are wrong...
    (spr-nav   uint32  :offset 4)
    (q-size    uint32  :offset-assert 8)
    (i-nav     uint8   :offset-assert 12)
@@ -29801,7 +29797,7 @@
    (work-buf-array        nav-engine-spr-buffer       3 :inline :offset-assert 28)
    (spr-work              nav-mesh-work   :offset 4)
    (mem-work              nav-mesh-work   :offset-assert 76)
-   (spr-mesh              basic           :offset 8)
+   (spr-mesh              nav-mesh           :offset 8)
    (mem-mesh              nav-mesh           :offset-assert 80)
    (spr-poly-array        uint32          :offset 12)
    (mem-poly-array        (inline-array nav-poly)          :offset-assert 84)
@@ -29815,9 +29811,9 @@
   :flag-assert         #x1600000060
   (:methods
     (inc-spr-addr! "Adds the given integer to `spr-addr` and returns it" (_type_ uint) uint 9)
-    (nav-engine-method-10 (_type_ object) none 10)
+    (nav-engine-method-10 (_type_ nav-mesh) none 10)
     (nav-engine-method-11 (_type_) none 11)
-    (nav-engine-method-12 (_type_ nav-mesh object) none 12)
+    (nav-engine-method-12 (_type_ sphere-hash nav-mesh) none 12)
     (nav-engine-method-13 (_type_) none 13)
     (nav-engine-method-14 (_type_) none 14)
     (nav-engine-method-15 (_type_) none 15)
@@ -29825,7 +29821,7 @@
     (nav-engine-method-17 (_type_ nav-engine-spr-buffer) none 17)
     (nav-engine-method-18 (_type_ nav-engine-spr-buffer) none 18)
     (nav-engine-method-19 (_type_ nav-engine-spr-buffer) none 19)
-    (nav-engine-method-20 () none 20)
+    (nav-engine-method-20 (_type_ nav-engine-spr-buffer) none 20)
     (nav-engine-method-21 (_type_) none 21)
     )
   )
@@ -29838,10 +29834,10 @@
 (define-extern *debug-offset* vector) ;; vector
 (define-extern *nav-mesh-work* nav-mesh-work)
 (define-extern *default-nav-mesh* nav-mesh) ;; nav-mesh
-(define-extern nav-mesh-connect-from-ent (function entity-nav-mesh none))
+(define-extern nav-mesh-connect-from-ent (function process-drawable symbol))
 (define-extern connection-validate (function connection none))
 (define-extern connection-list-validate (function (inline-array connection) symbol))
-(define-extern nav-control-validate (function nav-control none))
+(define-extern nav-control-validate (function process-drawable none))
 (define-extern debug-validate-nav-poly (function nav-mesh-link nav-poly none))
 (define-extern nav-dma-send-to-spr-no-flush (function object object object none))
 (define-extern nav-dma-send-from-spr-no-flush (function none))
@@ -29860,11 +29856,7 @@
 (define-extern nav-normal-from-3-points (function vector vector vector vector none))
 (define-extern get-nav-mesh (function actor-id nav-mesh))
 (define-extern find-nearest-nav-mesh (function vector int nav-mesh))
-;; (define-extern point-to-poly-boundary
-;;   "TODO - assertion:
-;;    Assertion failed: 'std::isfinite(value)'
-;;         Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90"
-;;   (function nav-poly object vector object none))
+(define-extern point-to-poly-boundary (function nav-poly vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control                    ;;
