@@ -1088,6 +1088,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::SLTU:
     case InstructionKind::DSRAV:
     case InstructionKind::DSLLV:
+    case InstructionKind::DSRLV:
     case InstructionKind::SLLV:
     case InstructionKind::PAND:
     case InstructionKind::PCEQB:

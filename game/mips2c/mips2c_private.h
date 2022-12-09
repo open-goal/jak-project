@@ -1091,6 +1091,9 @@ struct ExecutionContext {
   void dsrav(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> gpr_src(sa).du32[0];
   }
+  void dsrlv(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (gpr_src(sa).du32[0] & 0b111111);
+  }
   void dsllv(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] << (gpr_src(sa).du32[0] & 0b111111);
   }
