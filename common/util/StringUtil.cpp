@@ -1,8 +1,14 @@
 #include "StringUtil.h"
 
+#include "diff.h"
+
 namespace str_util {
 
 const std::string WHITESPACE = " \n\r\t\f\v";
+
+bool contains(const std::string& s, const std::string& substr) {
+  return s.find(substr) != std::string::npos;
+}
 
 bool starts_with(const std::string& s, const std::string& prefix) {
   return s.rfind(prefix) == 0;
@@ -20,5 +26,9 @@ std::string rtrim(const std::string& s) {
 
 std::string trim(const std::string& s) {
   return rtrim(ltrim(s));
+}
+
+std::vector<std::string> split(const ::std::string& str, char delimiter) {
+  return split_string(str, delimiter);
 }
 }  // namespace str_util
