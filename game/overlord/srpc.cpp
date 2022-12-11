@@ -634,7 +634,7 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
         // TODO reverb
       } break;
       case Jak2SoundCommand::set_ear_trans: {
-        SetEarTrans(&cmd->ear_trans_j2.ear_trans1, &cmd->ear_trans_j2.ear_trans2,
+        SetEarTrans(&cmd->ear_trans_j2.ear_trans0, &cmd->ear_trans_j2.ear_trans1,
                     &cmd->ear_trans_j2.cam_trans, cmd->ear_trans_j2.cam_angle);
       } break;
       case Jak2SoundCommand::shutdown: {
