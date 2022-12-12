@@ -11851,7 +11851,7 @@
 
 (deftype merc-matrix (structure)
   ((quad   uint128 8 :offset-assert 0) ;; guessed by decompiler
-   (vector vector  8 :offset 0) ;; guessed by decompiler
+   (vector vector  8 :inline :offset 0 :score 100) ;; guessed by decompiler
    (tag    uint64    :offset 0)
    )
   :method-count-assert 9
@@ -32871,10 +32871,11 @@
   ((info               rigid-body-info              :inline :offset-assert 0 :score -1)
    (mass               float                                :offset 0)
    (inv-mass           float                                :offset 4)
+   (cm-joint           vector                       :inline :offset 32)
    (cm-joint-x         meters                               :offset 32)
    (cm-joint-y         meters                               :offset 36)
    (cm-joint-z         meters                               :offset 40)
-   (cm-joint-w         float                                :offset 44) ;; added to make data decompilation happy
+   (cm-joint-w         meters                               :offset 44) ;; added to make data decompilation happy
    (linear-damping     float                                :offset 8)
    (angular-damping    float                                :offset 12)
    (bounce-factor      float                                :offset 16)
@@ -33103,7 +33104,7 @@
     (rigid-body-object-method-41 (_type_) none 41)
     (rigid-body-object-method-42 (_type_) none :behavior rigid-body-object 42)
     (rigid-body-object-method-43 (_type_) none 43)
-    (apply-damage (_type_ float) none 44)
+    (apply-damage (_type_ float matrix) none 44)
     (rigid-body-object-method-45 "TODO - matrix is kinda a guess" (_type_ matrix) none 45)
     (rigid-body-object-method-46 (_type_ process-drawable int symbol event-message-block) none :behavior rigid-body-object 46)
     (rigid-body-object-method-47 (_type_ process-drawable attack-info touching-shapes-entry penetrate) symbol 47)
@@ -49071,10 +49072,10 @@
    (stabilizer-count                  int8                         :offset-assert 1043)
    (inv-lift-thruster-count           float                        :offset-assert 1044)
    (pad int8 8 :offset-assert 1048)
-   (lift-thruster-array               vector4w-2              2   :inline   :offset-assert 1056)
-   (roll-thruster-array               vector4w-2              2   :inline   :offset-assert 1120)
-   (steering-thruster-array           vector4w-2              2   :inline   :offset-assert 1184)
-   (stabilizer-array                  vector4w-2              6   :inline   :offset-assert 1248)
+   (lift-thruster-array               vehicle-control-point              2   :inline   :offset-assert 1056)
+   (roll-thruster-array               vehicle-control-point              2   :inline   :offset-assert 1120)
+   (steering-thruster-array           vehicle-control-point              2   :inline   :offset-assert 1184)
+   (stabilizer-array                  vehicle-control-point              6   :inline   :offset-assert 1248)
    (engine-thrust-local-pos           vector               :inline :offset-assert 1440)
    (brake-local-pos                   vector               :inline :offset-assert 1456)
    (particle-system-2d                basic                        :offset-assert 1472)
@@ -49086,7 +49087,7 @@
    (part-vel                          vector                       :offset-assert 1496)
    (color-option-count                int8                         :offset-assert 1500)
    (color-option-select               int8                         :offset-assert 1501)
-   (color-option-array                uint32                       :offset-assert 1504)
+   (color-option-array                (array rgba)                       :offset-assert 1504)
    (sample-dir                        vector               :inline :offset-assert 1520)
    (sample-time                       time-frame                       :offset-assert 1536)
    (sample-index                      int32                        :offset-assert 1544)
@@ -49147,7 +49148,7 @@
     (vehicle-controller-method-11 (_type_) none 11) ;; (dummy-11 (_type_) none 11)
     (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none :behavior vehicle 12) ;; (TODO-RENAME-12 (_type_ int vector) none 12)
     (vehicle-controller-method-13 (_type_ nav-branch vector) none 13) ;; (move-to-next-point (_type_ vector) none 13)
-    (vehicle-controller-method-14 (_type_) nav-branch 14) ;; (TODO-RENAME-14 (_type_ vector vector) none 14)
+    (vehicle-controller-method-14 (_type_ vehicle) nav-branch 14) ;; (TODO-RENAME-14 (_type_ vector vector) none 14)
     (vehicle-controller-method-15 (_type_) nav-branch 15) ;; (dummy-15 (_type_ collide-shape-moving) none 15)
     (vehicle-controller-method-16 (_type_ vector vector) none 16) ;; (dummy-16 (_type_) none 16)
     (draw-debug-info (_type_) none 17)
@@ -49337,13 +49338,13 @@
     (vehicle-method-127 (_type_) none 127)
     (vehicle-method-128 (_type_) none 128)
     (vehicle-method-129 (_type_) none 129)
-    (vehicle-method-130 (_type_) none 130)
+    (vehicle-method-130 (_type_ traffic-object-spawn-params) none 130)
     (vehicle-method-131 (_type_) none 131)
     (vehicle-method-132 (_type_) none 132)
-    (vehicle-method-133 (_type_) none 133)
-    (vehicle-method-134 "Stubbed" (_type_) none 134)
+    (check-player-get-on (_type_) none 133)
+    (vehicle-method-134 "Stubbed" (_type_ process) none 134)
     (vehicle-method-135 () none 135)
-    (vehicle-method-136 (_type_) none 136)
+    (vehicle-method-136 (_type_ traffic-object-spawn-params) none 136)
     (vehicle-method-137 (_type_ traffic-object-spawn-params) none 137)
     (vehicle-method-138 (_type_) none 138)
     (vehicle-method-139 (_type_) none 139)
@@ -49606,7 +49607,7 @@
   (:methods
     (vehicle-hud-requests-method-9 (_type_) none 9)
     (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request 10)
-    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-requests 11)
+    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request 11)
     )
   )
 
@@ -49618,7 +49619,7 @@
   :size-assert         #x90
   :flag-assert         #xa00000090
   (:methods
-    (vehicle-hud-chooser-method-9 (_type_ vehicle-hud-requests float) none 9)
+    (vehicle-hud-chooser-method-9 (_type_ handle float) symbol 9)
     )
   )
 
@@ -49751,10 +49752,10 @@
   :size-assert         #x50
   :flag-assert         #x1200000050
   (:methods
-    (turret-control-method-9 (_type_) none 9)
+    (turret-control-method-9 (_type_ object vector vector) none 9)
     (turret-control-method-10 (_type_) none 10)
-    (turret-control-method-11 (_type_) none 11)
-    (turret-control-method-12 (_type_ object) none 12)
+    (turret-control-method-11 (_type_ object object vector) none 11)
+    (turret-control-method-12 (_type_ joint-mod-rotate-local) none 12)
     (turret-control-method-13 (_type_) none 13)
     (turret-control-method-14 (_type_) none 14)
     (turret-control-method-15 (_type_ turret-control-info) none 15)
@@ -49773,7 +49774,7 @@
    (to-target     vector :inline :offset-assert 96)
    (to-target-dir vector :inline :offset-assert 112)
    (temp          vector :inline :offset-assert 128)
-   (target        basic          :offset-assert 144)
+   (target        target          :offset-assert 144)
    (dist          float          :offset-assert 148)
    (inv-dist      float          :offset-assert 152)
    (attack-range  float          :offset-assert 156)
@@ -49809,12 +49810,12 @@
     (waiting-ambush () _type_ :state 149)
     (vehicle-guard-method-150 (_type_) none 150)
     (vehicle-guard-method-151 (_type_ vehicle-guard-target-data) none 151)
-    (vehicle-guard-method-152 (_type_) none 152)
+    (vehicle-guard-method-152 (_type_ vehicle-guard-target-data) none 152)
     (vehicle-guard-method-153 (_type_) none 153)
     (vehicle-guard-method-154 (_type_) none 154)
     (vehicle-guard-method-155 (_type_) none 155)
     (vehicle-guard-method-156 (_type_) none 156)
-    (vehicle-guard-method-157 (_type_) none 157)
+    (vehicle-guard-method-157 (_type_ vehicle-guard-target-data) symbol 157)
     (vehicle-guard-method-158 (_type_) none 158)
     )
   )

@@ -153,7 +153,7 @@ for rule in linter_rules:
             print(match)
 
 if throw_error:
-    print(Fore.RED + "Found potential problems, exiting with code 1!")
+    print(Fore.RED + "Found potential problems, exiting with code 1!" + Fore.RESET)
     exit(1)
 else:
-    print(Fore.GREEN + "Looks good!")
+    print(Fore.GREEN + "Looks good!" + Fore.RESET)
