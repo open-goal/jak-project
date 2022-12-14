@@ -3530,66 +3530,66 @@
 ;; ;; NEB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "NEB.DGO" "neb.gd")
+(cgo "NEB.DGO" "neb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/hover/hover-formation-h.gc"
-;;   "levels/common/enemy/hover/hover-nav-control-h.gc"
-;;   "levels/common/enemy/hover/hover-enemy-h.gc"
-;;   "levels/common/enemy/hover/hover-nav-network.gc"
-;;   "levels/common/enemy/hover/hover-nav-control.gc"
-;;   "levels/common/enemy/hover/hover-enemy.gc"
-;;   "levels/common/enemy/hover/hover-enemy-battle.gc"
-;;   "levels/common/enemy/hover/hover-formation.gc"
-;;   "levels/common/enemy/hover/hover-nav-edit.gc"
-;;   "levels/common/enemy/hover/wasp-part.gc"
-;;   "levels/common/enemy/hover/wasp.gc"
-;;   "levels/common/enemy/hover/crimson-guard-hover.gc"
-;;   "levels/common/enemy/hover/flamer.gc"
-;;   "levels/nest/boss/nest-texture.gc"
-;;   "levels/nest/boss/metalkor-part.gc"
-;;   "levels/nest/boss/metalkor-setup.gc"
-;;   "levels/nest/boss/metalkor-states.gc"
-;;   "levels/nest/boss/metalkor-extras.gc"
-;;   "levels/nest/boss/nestb-scenes.gc"
-;;   "levels/nest/boss/nestb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  ;; "levels/common/enemy/hover/hover-formation-h.gc"
+  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
+  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
+  ;; "levels/common/enemy/hover/hover-nav-network.gc"
+  ;; "levels/common/enemy/hover/hover-nav-control.gc"
+  ;; "levels/common/enemy/hover/hover-enemy.gc"
+  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
+  ;; "levels/common/enemy/hover/hover-formation.gc"
+  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
+  ;; "levels/common/enemy/hover/wasp-part.gc"
+  ;; "levels/common/enemy/hover/wasp.gc"
+  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
+  ;; "levels/common/enemy/hover/flamer.gc"
+  "levels/nest/boss/nest-texture.gc"
+  "levels/nest/boss/metalkor-part.gc"
+  "levels/nest/boss/metalkor-setup.gc"
+  "levels/nest/boss/metalkor-states.gc"
+  "levels/nest/boss/metalkor-extras.gc"
+  "levels/nest/boss/nestb-scenes.gc"
+  "levels/nest/boss/nestb-part.gc"
+  )
 
-;; (copy-textures 2985 2986 3122 3121 2987 3092 3378)
+(copy-textures 2985 2986 3122 3121 2987 3092 3378)
 
-;; (copy-gos
-;;   "kid-nestb+0-ag"
-;;   "metalkor-ag"
-;;   "daxter-highres-ag"
-;;   "metalkor-lowtorso-ag"
-;;   "metalkor-highres-ag"
-;;   "darkjak-highres-ag"
-;;   "metalkor-legs-ag"
-;;   "metalkor-explode-ag"
-;;   "kid-highres-ag"
-;;   "nest-gun-parts-ag"
-;;   "wasp-ag"
-;;   "kid-ag"
-;;   "flitter-ag"
-;;   "nest-break-precipice-ag"
-;;   "metalkor-bomb-ag"
-;;   "metalkor-wings-ag"
-;;   "metalkor-egg-ag"
-;;   "rift-ring-in-game-ag"
-;;   "nest-unbroken-rocks-ag"
-;;   "metalkor-distort-ag"
-;;   "metalkor-rays-ag"
-;;   "nest-gun-elevator-ag"
-;;   "precursor-stone-ag"
-;;   "palmpilot-ag"
-;;   "metalkor-fma-spinner-ag"
-;;   "nestb-tail-bound-ag"
-;;   "particleman-ag"
-;;   "rift-occlude-ag"
-;;   "nestb-vis"
-;;   )
+(copy-gos
+  "kid-nestb+0-ag"
+  "metalkor-ag"
+  ;; "daxter-highres-ag"
+  "metalkor-lowtorso-ag"
+  "metalkor-highres-ag"
+  ;; "darkjak-highres-ag"
+  "metalkor-legs-ag"
+  "metalkor-explode-ag"
+  "kid-highres-ag"
+  "nest-gun-parts-ag"
+  "wasp-ag"
+  "kid-ag"
+  ;; "flitter-ag"
+  "nest-break-precipice-ag"
+  "metalkor-bomb-ag"
+  "metalkor-wings-ag"
+  "metalkor-egg-ag"
+  "rift-ring-in-game-ag"
+  "nest-unbroken-rocks-ag"
+  "metalkor-distort-ag"
+  "metalkor-rays-ag"
+  "nest-gun-elevator-ag"
+  "precursor-stone-ag"
+  "palmpilot-ag"
+  "metalkor-fma-spinner-ag"
+  "nestb-tail-bound-ag"
+  ;; "particleman-ag"
+  "rift-occlude-ag"
+  "nestb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; NES

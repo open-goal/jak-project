@@ -733,6 +733,8 @@ const std::unordered_map<
            {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
           {"sparticle-launch-group",
            {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+          {"nav-network-info",
+           {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
           {"race-info",
            {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
             {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
