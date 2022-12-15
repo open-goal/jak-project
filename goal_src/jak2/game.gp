@@ -2538,22 +2538,22 @@
 ;; ;; LBOMBBOT
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBOMBBOT.DGO" "lbombbot.gd")
+(cgo "LBOMBBOT.DGO" "lbombbot.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/bombots/bombbot-h.gc"
-;;   "levels/common/enemy/bombots/bombbot-path.gc"
-;;   "levels/common/enemy/bombots/bombbot.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/enemy/bombots/bombbot-h.gc"
+  "levels/common/enemy/bombots/bombbot-path.gc"
+  "levels/common/enemy/bombots/bombbot.gc"
+  )
 
-;; (copy-textures 2751)
+(copy-textures 2751)
 
-;; (copy-gos
-;;   "bombbot-ag"
-;;   "lbombbot"
-;;   )
+(copy-gos
+  "bombbot-ag"
+  "lbombbot"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBRNERMK
@@ -2834,38 +2834,38 @@
 ;; ;; LKIDDOGE
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LKIDDOGE.DGO" "lkiddoge.gd")
+(cgo "LKIDDOGE.DGO" "lkiddoge.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/city/kid_escort/kidesc-h.gc"
-;;   "levels/city/kid_escort/crocesc-h.gc"
-;;   "levels/city/kid_escort/hal4-course.gc"
-;;   "levels/city/kid_escort/kidesc-task.gc"
-;;   "levels/city/kid_escort/kidesc.gc"
-;;   "levels/city/kid_escort/kidesc-states.gc"
-;;   "levels/city/kid_escort/crocesc-task.gc"
-;;   "levels/city/kid_escort/crocesc.gc"
-;;   "levels/city/kid_escort/crocesc-states.gc"
-;;   "levels/city/kid_escort/kidesc4-course.gc"
-;;   "levels/city/kid_escort/crocesc4-course.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/ai/ai-task-h.gc"
+  "levels/common/ai/bot-h.gc"
+  "levels/common/ai/bot.gc"
+  "levels/common/ai/bot-states.gc"
+  "levels/undefined/hal-h.gc"
+  "levels/undefined/hal-task.gc"
+  "levels/undefined/hal.gc"
+  "levels/city/kid_escort/kidesc-h.gc"
+  "levels/city/kid_escort/crocesc-h.gc"
+  "levels/city/kid_escort/hal4-course.gc"
+  "levels/city/kid_escort/kidesc-task.gc"
+  "levels/city/kid_escort/kidesc.gc"
+  "levels/city/kid_escort/kidesc-states.gc"
+  "levels/city/kid_escort/crocesc-task.gc"
+  "levels/city/kid_escort/crocesc.gc"
+  "levels/city/kid_escort/crocesc-states.gc"
+  "levels/city/kid_escort/kidesc4-course.gc"
+  "levels/city/kid_escort/crocesc4-course.gc"
+  )
 
-;; (copy-textures 2209)
+(copy-textures 2209)
 
-;; (copy-gos
-;;   "crocadog-escort-ag"
-;;   "kid-escort-ag"
-;;   "lkiddoge"
-;;   )
+(copy-gos
+  "crocadog-escort-ag"
+  "kid-escort-ag"
+  "lkiddoge"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LMEETBRT
@@ -4002,55 +4002,55 @@
 ;; ;; SEB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "SEB.DGO" "seb.gd")
+(cgo "SEB.DGO" "seb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/undefined/ruf-h.gc"
-;;   "levels/undefined/ruf-task.gc"
-;;   "levels/undefined/ruf.gc"
-;;   "levels/undefined/ruf-states.gc"
-;;   "levels/sewer/escort/jinx-h.gc"
-;;   "levels/sewer/escort/jinx-shot.gc"
-;;   "levels/sewer/escort/jinx-bomb.gc"
-;;   "levels/sewer/escort/jinx.gc"
-;;   "levels/sewer/escort/jinx-states.gc"
-;;   "levels/sewer/escort/mog-h.gc"
-;;   "levels/sewer/escort/mog.gc"
-;;   "levels/sewer/escort/grim-h.gc"
-;;   "levels/sewer/escort/grim.gc"
-;;   "levels/sewer/sewer-part.gc"
-;;   "levels/sewer/sewer-ocean.gc"
-;;   "levels/sewer/sewer-obs.gc"
-;;   "levels/sewer/sewer-obs2.gc"
-;;   "levels/sewer/hosehead.gc"
-;;   "levels/sewer/hosehead-fake.gc"
-;;   "levels/common/enemy/amphibian/amphibian.gc"
-;;   "levels/sewer/gator.gc"
-;;   "levels/common/enemy/fodder/fodder.gc"
-;;   "levels/sewer/hal2-course.gc"
-;;   "levels/sewer/mog2-course.gc"
-;;   "levels/sewer/jinx2-course.gc"
-;;   "levels/sewer/grim2-course.gc"
-;;   "levels/sewer/sewer-scenes.gc"
-;;   "levels/common/entities/sew-gunturret.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  ;; "levels/common/ai/ai-task-h.gc"
+  ;; "levels/common/ai/bot-h.gc"
+  ;; "levels/common/ai/bot.gc"
+  ;; "levels/common/ai/bot-states.gc"
+  ;; "levels/undefined/hal-h.gc"
+  ;; "levels/undefined/hal-task.gc"
+  ;; "levels/undefined/hal.gc"
+  "levels/undefined/ruf-h.gc"
+  "levels/undefined/ruf-task.gc"
+  "levels/undefined/ruf.gc"
+  "levels/undefined/ruf-states.gc"
+  "levels/sewer/escort/jinx-h.gc"
+  "levels/sewer/escort/jinx-shot.gc"
+  "levels/sewer/escort/jinx-bomb.gc"
+  "levels/sewer/escort/jinx.gc"
+  "levels/sewer/escort/jinx-states.gc"
+  "levels/sewer/escort/mog-h.gc"
+  "levels/sewer/escort/mog.gc"
+  "levels/sewer/escort/grim-h.gc"
+  "levels/sewer/escort/grim.gc"
+  "levels/sewer/sewer-part.gc"
+  "levels/sewer/sewer-ocean.gc"
+  "levels/sewer/sewer-obs.gc"
+  "levels/sewer/sewer-obs2.gc"
+  "levels/sewer/hosehead.gc"
+  "levels/sewer/hosehead-fake.gc"
+  ;; "levels/common/enemy/amphibian/amphibian.gc"
+  "levels/sewer/gator.gc"
+  ;; "levels/common/enemy/fodder/fodder.gc"
+  "levels/sewer/hal2-course.gc"
+  "levels/sewer/mog2-course.gc"
+  "levels/sewer/jinx2-course.gc"
+  "levels/sewer/grim2-course.gc"
+  "levels/sewer/sewer-scenes.gc"
+  "levels/common/entities/sew-gunturret.gc"
+  )
 
-;; (copy-textures 1133 1135 1134 3383)
+(copy-textures 1133 1135 1134 3383)
 
-;; (copy-gos
-;;   "com-airlock-inner-ag"
-;;   "sew-elevator-ag"
-;;   "sewerb-vis"
-;;   )
+(copy-gos
+  ;; "com-airlock-inner-ag"
+  "sew-elevator-ag"
+  "sewerb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SEW
@@ -4628,104 +4628,104 @@
 ;; ;; UNB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "UNB.DGO" "unb.gd")
+(cgo "UNB.DGO" "unb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/hover/hover-formation-h.gc"
-;;   "levels/common/enemy/hover/hover-nav-control-h.gc"
-;;   "levels/common/enemy/hover/hover-enemy-h.gc"
-;;   "levels/common/enemy/hover/hover-nav-network.gc"
-;;   "levels/common/enemy/hover/hover-nav-control.gc"
-;;   "levels/common/enemy/hover/hover-enemy.gc"
-;;   "levels/common/enemy/hover/hover-enemy-battle.gc"
-;;   "levels/common/enemy/hover/hover-formation.gc"
-;;   "levels/common/enemy/hover/hover-nav-edit.gc"
-;;   "levels/common/enemy/hover/wasp-part.gc"
-;;   "levels/common/enemy/hover/wasp.gc"
-;;   "levels/common/enemy/hover/crimson-guard-hover.gc"
-;;   "levels/common/enemy/hover/flamer.gc"
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/undefined/ruf-h.gc"
-;;   "levels/undefined/ruf-task.gc"
-;;   "levels/undefined/ruf.gc"
-;;   "levels/undefined/ruf-states.gc"
-;;   "levels/sewer/escort/jinx-h.gc"
-;;   "levels/sewer/escort/jinx-shot.gc"
-;;   "levels/sewer/escort/jinx-bomb.gc"
-;;   "levels/sewer/escort/jinx.gc"
-;;   "levels/sewer/escort/jinx-states.gc"
-;;   "levels/sewer/escort/mog-h.gc"
-;;   "levels/sewer/escort/mog.gc"
-;;   "levels/sewer/escort/grim-h.gc"
-;;   "levels/sewer/escort/grim.gc"
-;;   "characters/sig/sig-h.gc"
-;;   "characters/sig/sig-task.gc"
-;;   "characters/sig/sig-shot.gc"
-;;   "characters/sig/sig-plasma.gc"
-;;   "characters/sig/sig.gc"
-;;   "characters/sig/sig-states.gc"
-;;   "engine/target/mech_suit/mech-part.gc"
-;;   "engine/target/mech_suit/mech.gc"
-;;   "engine/target/mech_suit/target-mech.gc"
-;;   "engine/target/mech_suit/mech-states.gc"
-;;   "engine/target/mech_suit/grunt-mech.gc"
-;;   "levels/underport/under-shoot-block.gc"
-;;   "levels/underport/underb-master.gc"
-;;   "levels/underport/under-obs.gc"
-;;   "levels/underport/under-sig-obs.gc"
-;;   "levels/underport/under-laser.gc"
-;;   "levels/underport/pipe-grunt.gc"
-;;   "levels/underport/jellyfish.gc"
-;;   "levels/underport/under-part.gc"
-;;   "levels/underport/centipede.gc"
-;;   "levels/underport/sig5-cent1-path0.gc"
-;;   "levels/underport/sig5-cent2-path0.gc"
-;;   "levels/underport/sig5-course.gc"
-;;   "levels/underport/under-scenes.gc"
-;;   "levels/underport/sig-recorder.gc"
-;;   "levels/common/enemy/metalhead_slinger/grenadier.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  ;; "levels/common/enemy/hover/hover-formation-h.gc"
+  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
+  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
+  ;; "levels/common/enemy/hover/hover-nav-network.gc"
+  ;; "levels/common/enemy/hover/hover-nav-control.gc"
+  ;; "levels/common/enemy/hover/hover-enemy.gc"
+  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
+  ;; "levels/common/enemy/hover/hover-formation.gc"
+  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
+  ;; "levels/common/enemy/hover/wasp-part.gc"
+  ;; "levels/common/enemy/hover/wasp.gc"
+  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
+  ;; "levels/common/enemy/hover/flamer.gc"
+  ;; "levels/common/ai/ai-task-h.gc"
+  ;; "levels/common/ai/bot-h.gc"
+  ;; "levels/common/ai/bot.gc"
+  ;; "levels/common/ai/bot-states.gc"
+  ;; "levels/undefined/hal-h.gc"
+  ;; "levels/undefined/hal-task.gc"
+  ;; "levels/undefined/hal.gc"
+  ;; "levels/undefined/ruf-h.gc"
+  ;; "levels/undefined/ruf-task.gc"
+  ;; "levels/undefined/ruf.gc"
+  ;; "levels/undefined/ruf-states.gc"
+  ;; "levels/sewer/escort/jinx-h.gc"
+  ;; "levels/sewer/escort/jinx-shot.gc"
+  ;; "levels/sewer/escort/jinx-bomb.gc"
+  ;; "levels/sewer/escort/jinx.gc"
+  ;; "levels/sewer/escort/jinx-states.gc"
+  ;; "levels/sewer/escort/mog-h.gc"
+  ;; "levels/sewer/escort/mog.gc"
+  ;; "levels/sewer/escort/grim-h.gc"
+  ;; "levels/sewer/escort/grim.gc"
+  "characters/sig/sig-h.gc"
+  "characters/sig/sig-task.gc"
+  "characters/sig/sig-shot.gc"
+  "characters/sig/sig-plasma.gc"
+  "characters/sig/sig.gc"
+  "characters/sig/sig-states.gc"
+  ;; "engine/target/mech_suit/mech-part.gc"
+  ;; "engine/target/mech_suit/mech.gc"
+  ;; "engine/target/mech_suit/target-mech.gc"
+  ;; "engine/target/mech_suit/mech-states.gc"
+  ;; "engine/target/mech_suit/grunt-mech.gc"
+  "levels/underport/under-shoot-block.gc"
+  "levels/underport/underb-master.gc"
+  "levels/underport/under-obs.gc"
+  "levels/underport/under-sig-obs.gc"
+  "levels/underport/under-laser.gc"
+  "levels/underport/pipe-grunt.gc"
+  "levels/underport/jellyfish.gc"
+  "levels/underport/under-part.gc"
+  "levels/underport/centipede.gc"
+  "levels/underport/sig5-cent1-path0.gc"
+  "levels/underport/sig5-cent2-path0.gc"
+  "levels/underport/sig5-course.gc"
+  "levels/underport/under-scenes.gc"
+  "levels/underport/sig-recorder.gc"
+  ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
+  )
 
-;; (copy-textures 3051 3053 3054 3413)
+(copy-textures 3051 3053 3054 3413)
 
-;; (copy-gos
-;;   "jak-mech+0-ag"
-;;   "grunt-mech-anims+0-ag"
-;;   "sig-ag"
-;;   "grunt-ag"
-;;   "under-mine-ag"
-;;   "jellyfish-ag"
-;;   "mech-ag"
-;;   "under-shoot-block-ag"
-;;   "under-break-floor-ag"
-;;   "centipede-ag"
-;;   "com-airlock-inner-ag"
-;;   "under-int-door-ag"
-;;   "under-break-wall-b-ag"
-;;   "under-break-wall-ag"
-;;   "under-rise-plat-ag"
-;;   "under-lift-ag"
-;;   "under-buoy-base-ag"
-;;   "under-buoy-chain-ag"
-;;   "under-buoy-plat-ag"
-;;   "water-anim-under-ag"
-;;   "under-plat-shoot-ag"
-;;   "under-plat-wall-ag"
-;;   "under-plat-long-ag"
-;;   "hip-door-a-ag"
-;;   "under-warp-ag"
-;;   "under-laser-ag"
-;;   "under-laser-shadow-ag"
-;;   "underb-vis"
-;;   )
+(copy-gos
+  ;; "jak-mech+0-ag"
+  ;; "grunt-mech-anims+0-ag"
+  "sig-ag"
+  ;; "grunt-ag"
+  "under-mine-ag"
+  "jellyfish-ag"
+  ;; "mech-ag"
+  "under-shoot-block-ag"
+  "under-break-floor-ag"
+  "centipede-ag"
+  ;; "com-airlock-inner-ag"
+  "under-int-door-ag"
+  "under-break-wall-b-ag"
+  "under-break-wall-ag"
+  "under-rise-plat-ag"
+  "under-lift-ag"
+  "under-buoy-base-ag"
+  "under-buoy-chain-ag"
+  "under-buoy-plat-ag"
+  "water-anim-under-ag"
+  "under-plat-shoot-ag"
+  "under-plat-wall-ag"
+  "under-plat-long-ag"
+  "hip-door-a-ag"
+  "under-warp-ag"
+  "under-laser-ag"
+  "under-laser-shadow-ag"
+  "underb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; UND
