@@ -1,6 +1,5 @@
 import re
 import argparse
-import os
 from utils import get_gsrc_path_from_filename
 
 parser = argparse.ArgumentParser("lint-gsrc-file")
