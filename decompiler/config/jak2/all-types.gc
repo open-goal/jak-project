@@ -35019,25 +35019,22 @@
 ;; hover-formation-h              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype form-search-info (structure)
-  ((form           basic      :offset-assert 0)
-   (count          int32      :offset-assert 4)
-   (pos-table      uint32     :offset-assert 8)
-   (actor-position UNKNOWN 16 :offset-assert 16)
-   (actor-valid?   UNKNOWN 16 :offset-assert 272)
-   (index-table    UNKNOWN 16 :offset-assert 336)
-   (dest-pos-table UNKNOWN 16 :offset-assert 400)
-   (best-mapping   UNKNOWN 16 :offset-assert 656)
-   (best-cost      float      :offset-assert 720)
+  ((form           basic              :offset-assert 0)
+   (count          int32              :offset-assert 4)
+   (pos-table      uint32             :offset-assert 8)
+   (actor-position vector  16 :inline :offset-assert 16)  ;; Guessing this an inline postiion vector as it's 16 x (4 x 4)
+   (actor-valid?   symbol  16         :offset-assert 272) ;; Guessing symbol as it looks like an array of bools
+   (index-table    uint32  16         :offset-assert 336) ;; Guessing it's uint32 as it's 16 x 4
+   (dest-pos-table vector  16 :inline :offset-assert 400) ;; Guessing this an inline position vector as it's 16 x (4 x 4)
+   (best-mapping   uint32  16         :offset-assert 656) ;; Guessing it's uint32 as it's 16 x 4
+   (best-cost      float              :offset-assert 720)
    )
   :method-count-assert 9
   :size-assert         #x2d4
   :flag-assert         #x9000002d4
   )
-|#
 
-#|
 (deftype hover-actor (structure)
   ((handle uint64         :offset-assert 0)
    (offset vector :inline :offset-assert 16)
@@ -35046,14 +35043,13 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype hover-formation-control (basic)
   ((search-info    form-search-info :inline :offset-assert 16)
    (entity         basic                    :offset-assert 740)
    (anchor-proc    uint64                   :offset-assert 744)
-   (actor-table    UNKNOWN          16      :offset-assert 752)
+   (actor-table    uint64           16      :offset-assert 752) ;; Guessing uint64 as it's 16 x 8
+   ;; NOTE These appear to be 2 different sets of flags, some functions (eg method 12 and 19) load from 884 instead
    (flags          uint16                   :offset-assert 880)
    (formation-type uint64                   :offset-assert 888)
    (center         vector           :inline :offset-assert 896)
@@ -35068,42 +35064,34 @@
   :size-assert         #x438
   :flag-assert         #x1500000438
   (:methods
-    (hover-formation-control-method-9 () none 9)
+    (hover-formation-control-method-9 (_type_ uint) int 9)
     (hover-formation-control-method-10 () none 10)
     (hover-formation-control-method-11 () none 11)
-    (hover-formation-control-method-12 () none 12)
+    (hover-formation-control-method-12 (_type_) symbol 12)
     (hover-formation-control-method-13 () none 13)
     (hover-formation-control-method-14 () none 14)
     (hover-formation-control-method-15 () none 15)
     (hover-formation-control-method-16 () none 16)
     (hover-formation-control-method-17 () none 17)
     (hover-formation-control-method-18 () none 18)
-    (hover-formation-control-method-19 () none 19)
+    (hover-formation-control-method-19 (_type_ uint) int 19)
     (hover-formation-control-method-20 () none 20)
     )
   )
-|#
 
-#|
 (deftype hover-formation (process)
-  ((formation       basic   :offset-assert 124)
-   (path            basic   :offset-assert 128)
-   (formation-timer uint64  :offset-assert 132)
+  ((formation       basic   :offset 128) ;; The original offset here was 124, all bumped up by 4 to match process parent
+   (path            basic   :offset 132)
+   (formation-timer uint64  :offset 136)
    )
   :method-count-assert 16
   :size-assert         #x90
   :flag-assert         #x1000100090
   (:methods
-    (hover-formation-method-9 () none 9)
-    (hover-formation-method-10 () none 10)
-    (hover-formation-method-11 () none 11)
-    (hover-formation-method-12 () none 12)
-    (hover-formation-method-13 () none 13)
-    (hover-formation-method-14 () none 14)
-    (hover-formation-method-15 () none 15)
+    (idle () _type_ :state 14)
+    (hover-formation-method-15 () int 15)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35576,7 +35564,6 @@
 ;; hover-formation                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gen-perms-context (structure)
   ((num           int32   :offset-assert 0)
    (table         uint32  :offset-assert 4)
@@ -35586,12 +35573,11 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern odd? function)
-;; (define-extern even? function)
-;; (define-extern gen-perms function)
-;; (define-extern test-gen-perms function)
+(define-extern odd? (function int symbol))
+(define-extern even? (function int symbol))
+(define-extern gen-perms function)
+(define-extern test-gen-perms function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-edit                 ;;
