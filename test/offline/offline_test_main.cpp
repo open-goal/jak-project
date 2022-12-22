@@ -19,7 +19,7 @@ void clear_terminal() {
 #elif defined(__LINUX__) || defined(__gnu_linux__) || defined(__linux__)
   system("clear");
 #elif defined(__APPLE__)
-  system("clear");
+  // system("clear");
 #endif
 }
 
@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
   int max_files = -1;
   std::string single_file = "";
   uint32_t num_threads = 1;
+  std::string project_path;
   bool fail_on_cmp = false;
   bool pretty_print = false;
 
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
   app.add_flag("--fail-on-cmp", fail_on_cmp, "Fail the tests immediately if the comparison fails");
   app.add_flag("-p,--pretty-print", pretty_print,
                "Use the condensed and progress-indicating printing format");
+  app.add_option("--proj-path", project_path, "Project path");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -63,7 +65,11 @@ int main(int argc, char* argv[]) {
   }
   lg::initialize();
 
-  if (!file_util::setup_project_path(std::nullopt)) {
+  std::optional<fs::path> pp;
+  if (!project_path.empty()) {
+    pp = project_path;
+  }
+  if (!file_util::setup_project_path(pp)) {
     lg::error("Couldn't setup project path, tool is supposed to be ran in the jak-project repo!");
     return 1;
   }

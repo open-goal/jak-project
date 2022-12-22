@@ -5,6 +5,8 @@
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
+#include "third-party/zstd/lib/common/xxhash.h"
+
 IsoFile::IsoFile() {
   root.is_dir = true;
 }
@@ -102,7 +104,7 @@ void unpack_entry(FILE* fp,
     file_util::write_binary_file(path_to_entry.string(), buffer.data(), buffer.size());
     iso.files_extracted++;
     if (iso.shouldHash) {
-      xxh::hash_t<64> hash = xxh::xxhash<64>(buffer);
+      auto hash = XXH64(buffer.data(), buffer.size(), 0);
       iso.hashes.push_back(hash);
     }
   }
