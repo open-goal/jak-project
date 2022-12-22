@@ -8,7 +8,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 #include "common/util/read_iso_file.h"
-#include <common/util/unicode_util.h>
+#include "common/util/unicode_util.h"
 
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
@@ -71,7 +71,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB};
   }
 
-  auto version_info = meta_entry->second;
+  auto& version_info = meta_entry->second;
   // Print out some information
   lg::info("Detected Game Metadata:");
   lg::info("\tDetected - {}", version_info.canonical_name);
