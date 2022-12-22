@@ -101,10 +101,6 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
                                    const std::vector<level_tools::TextureRemap>& tex_remap,
                                    const std::string& dgo_name,
                                    tfrag3::Level& level_data) {
-  if (db.version() == GameVersion::Jak2) {
-    lg::warn("skipping art group extraction for jak 2");
-    return;
-  }
   const auto& files = db.obj_files_by_dgo.at(dgo_name);
   for (const auto& file : files) {
     if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {

@@ -32,11 +32,7 @@ struct Tone {
   /*   c */ s16 ADSR2;
   /*   e */ s16 Flags;
   /*  10 */ /*void**/ u32 VAGInSR;
-  ///*  14 */ u32 reserved1; confiscated
-
-  // FIXME I'd rather restructure things than mess about like this.
-  // If we have to edit the structs they should't be loaded like this
-  /*  14 */ u32 BankID;
+  /*  14 */ u32 reserved1;
 };
 
 class vag_voice : public voice {
@@ -55,7 +51,7 @@ class vag_voice : public voice {
 class voice_manager {
  public:
   voice_manager(synth& synth, locator& loc);
-  void start_tone(std::shared_ptr<vag_voice> voice);
+  void start_tone(std::shared_ptr<vag_voice> voice, u32 bank);
   void pause(std::shared_ptr<vag_voice> voice);
   void unpause(std::shared_ptr<vag_voice> voice);
   void set_pan_table(vol_pair* table) { m_pan_table = table; };

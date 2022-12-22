@@ -1,6 +1,7 @@
 #include "collide_pack.h"
 
 #include <functional>
+#include <unordered_map>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"

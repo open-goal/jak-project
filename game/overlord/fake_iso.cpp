@@ -64,6 +64,10 @@ static uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len);
 static uint32_t FS_SyncRead();
 static uint32_t FS_LoadSoundBank(char*, void*);
 static uint32_t FS_LoadMusic(char*, void*);
+
+static uint32_t FS_LoadSoundBank2(char*, void*);
+static uint32_t FS_LoadMusic2(char*, void*);
+
 static void FS_PollDrive();
 static void LoadMusicTweaks();
 
@@ -84,9 +88,15 @@ void fake_iso_init_globals() {
   fake_iso.close = FS_Close;
   fake_iso.begin_read = FS_BeginRead;
   fake_iso.sync_read = FS_SyncRead;
-  fake_iso.load_sound_bank = FS_LoadSoundBank;
-  fake_iso.load_music = FS_LoadMusic;
   fake_iso.poll_drive = FS_PollDrive;
+
+  if (g_game_version == GameVersion::Jak1) {
+    fake_iso.load_sound_bank = FS_LoadSoundBank;
+    fake_iso.load_music = FS_LoadMusic;
+  } else {
+    fake_iso.load_sound_bank = FS_LoadSoundBank2;
+    fake_iso.load_music = FS_LoadMusic2;
+  }
 
   sReadInfo = nullptr;
 }
@@ -361,6 +371,56 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   snd_ResolveBankXREFS();
   PrintBankInfo(bank);
   bank->bank_handle = handle;
+
+  return 0;
+}
+
+uint32_t FS_LoadMusic2(char* name, void* buffer) {
+  FileRecord* file = nullptr;
+  u32* bank_handle = (u32*)buffer;
+  char namebuf[16];
+  char isoname[16];
+  u32 handle;
+
+  strncpy(namebuf, name, 12);
+  namebuf[8] = 0;
+  strcat(namebuf, ".mus");
+
+  MakeISOName(isoname, namebuf);
+
+  file = FS_FindIN(isoname);
+  if (!file) {
+    return 6;
+  }
+
+  handle = snd_BankLoadEx(get_file_path(file), 0, 0xcfcc0, 0x61a80);
+  snd_ResolveBankXREFS();
+  *bank_handle = handle;
+
+  return 0;
+}
+
+uint32_t FS_LoadSoundBank2(char* name, void* buffer) {
+  SoundBank* bank = (SoundBank*)buffer;
+  FileRecord* file = nullptr;
+  char namebuf[16];
+  char isoname[16];
+  u32 handle;
+
+  strncpy(namebuf, name, 12);
+  namebuf[8] = 0;
+  strcat(namebuf, ".sbk");
+
+  MakeISOName(isoname, namebuf);
+  file = FS_FindIN(isoname);
+  if (!file) {
+    return 6;
+  }
+
+  handle = snd_BankLoadEx(get_file_path(file), 0, bank->spu_loc, bank->spu_size);
+  snd_ResolveBankXREFS();
+  bank->bank_handle = handle;
+
   return 0;
 }
 

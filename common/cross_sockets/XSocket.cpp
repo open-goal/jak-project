@@ -4,7 +4,8 @@
  */
 
 // clang-format off
-#ifdef __linux
+#include "common/common_types.h"
+#ifdef OS_POSIX
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -22,7 +23,7 @@
 // clang-format on
 
 int open_socket(int af, int type, int protocol) {
-#ifdef __linux
+#ifdef OS_POSIX
   return socket(af, type, protocol);
 #elif _WIN32
   WSADATA wsaData = {0};
@@ -45,7 +46,7 @@ int connect_socket(int socket, sockaddr* addr, int nameLen) {
   return result;
 }
 
-#ifdef __linux
+#ifdef OS_POSIX
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
   return accept(socket, addr, addrLen);
 }
@@ -106,7 +107,7 @@ void close_socket(int sock) {
   if (sock < 0) {
     return;
   }
-#ifdef __linux
+#ifdef OS_POSIX
   close(sock);
 #elif _WIN32
   closesocket(sock);
@@ -130,7 +131,7 @@ int set_socket_option(int socket, int level, int optname, const void* optval, in
 }
 
 int set_socket_timeout(int socket, long microSeconds) {
-#ifdef __linux
+#ifdef OS_POSIX
   struct timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = microSeconds;
@@ -150,7 +151,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 
 int write_to_socket(int socket, const char* buf, int len) {
   int bytes_wrote = 0;
-#ifdef __linux
+#ifdef OS_POSIX
   bytes_wrote = send(socket, buf, len, MSG_NOSIGNAL);
 #elif _WIN32
   bytes_wrote = send(socket, buf, len, 0);
@@ -162,7 +163,7 @@ int write_to_socket(int socket, const char* buf, int len) {
 }
 
 int read_from_socket(int socket, char* buf, int len) {
-#ifdef __linux
+#ifdef OS_POSIX
   return read(socket, buf, len);
 #elif _WIN32
   return recv(socket, buf, len, 0);
@@ -170,7 +171,7 @@ int read_from_socket(int socket, char* buf, int len) {
 }
 
 bool socket_timed_out() {
-#ifdef __linux
+#ifdef OS_POSIX
   return errno == EAGAIN;
 #elif _WIN32
   auto err = WSAGetLastError();

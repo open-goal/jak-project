@@ -26,9 +26,9 @@ class ame_handler : public sound_handler {
               s32 vol,
               s32 pan,
               locator& loc,
-              u32 bank);
+              SoundBank& bank);
   bool tick() override;
-  u32 bank() override { return m_bank; };
+  SoundBank& bank() override { return m_bank; };
 
   void pause() override;
   void unpause() override;
@@ -61,7 +61,7 @@ class ame_handler : public sound_handler {
   std::pair<bool, u8*> run_ame(midi_handler&, u8* stream);
 
   MIDISound& m_sound;
-  u32 m_bank{0};
+  SoundBank& m_bank;
 
   MultiMIDIBlockHeader* m_header{nullptr};
   locator& m_locator;

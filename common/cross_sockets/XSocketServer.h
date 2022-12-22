@@ -3,6 +3,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include "common/common_types.h"
 #include "common/cross_sockets/XSocket.h"

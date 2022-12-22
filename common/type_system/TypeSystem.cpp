@@ -7,6 +7,7 @@
 
 #include "TypeSystem.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 #include "common/log/log.h"

@@ -654,7 +654,6 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
 
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
-                                        const TextureDB& tdb,
                                         const std::vector<level_tools::TextureRemap>& map,
                                         const std::string& debug_name,
                                         size_t ctrl_idx,
@@ -726,9 +725,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       u32 tpage = new_tex >> 20;
       u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
       u32 tex_combo = (((u32)tpage) << 16) | tidx;
-      // look up the texture to make sure it's valid
-      auto tex = tdb.textures.find(tex_combo);
-      ASSERT(tex != tdb.textures.end());
+
       // remember the texture id
       merc_state.merc_draw_mode.pc_combo_tex_id = tex_combo;
 
@@ -882,8 +879,8 @@ void extract_merc(const ObjectFileData& ag_data,
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
-      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
-                                                    map, ctrls[ci].name, ci, ei, dump_level));
+      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, map,
+                                                    ctrls[ci].name, ci, ei, dump_level));
     }
   }
 
@@ -941,7 +938,8 @@ void extract_merc(const ObjectFileData& ag_data,
             // not added to level, add it
             auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
             if (tex_it == tex_db.textures.end()) {
-              ASSERT(false);
+              lg::error("failed to find texture: 0x{:x} for {}\n",
+                        draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name);
             } else {
               idx_in_level_texture = out.textures.size();
               auto& new_tex = out.textures.emplace_back();

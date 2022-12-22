@@ -3,6 +3,7 @@
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 GameVersion game_name_to_version(const std::string& name) {
   if (name == "jak1") {
@@ -25,6 +26,6 @@ std::string version_to_game_name(GameVersion v) {
     case GameVersion::Jak2:
       return "jak2";
     default:
-      ASSERT_MSG(false, fmt::format("no game_name for version: {} found", v));
+      ASSERT_MSG(false, fmt::format("no game_name for version: {} found", fmt::underlying(v)));
   }
 }

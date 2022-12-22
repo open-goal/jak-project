@@ -135,6 +135,21 @@ TEST(VuDisasm, BonesVu0) {
   EXPECT_EQ(disasm.to_string(prog), get_expected("bones-vu0"));
 }
 
+TEST(VuDisasm, BonesVu0_Jak2) {
+  auto data = get_test_data("jak2/bones-vu0");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU0);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/bones-vu0"));
+}
+
+TEST(VuDisasm, ForegroundVu0_Jak2) {
+  auto data = get_test_data("jak2/foreground-vu0");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU0);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  // fmt::print("{}\n", disasm.to_string(prog));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/foreground-vu0"));
+}
+
 TEST(VuDisasm, ShadowVu0) {
   auto data = get_test_data("shadow-vu0");
   VuDisassembler disasm(VuDisassembler::VuKind::VU0);

@@ -5,8 +5,6 @@
 
 #include "common/util/FileUtil.h"
 
-#include "third-party/xxhash.hpp"
-
 struct IsoFile {
   struct Entry {
     bool is_dir = false;
@@ -29,7 +27,7 @@ struct IsoFile {
   bool shouldHash = false;
   // There is no reason to map to the files, as we don't retain mappings of each file's expected
   // hash
-  std::vector<xxh::hash64_t> hashes = {};
+  std::vector<uint64_t> hashes = {};
 
   IsoFile();
 };
