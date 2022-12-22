@@ -1417,7 +1417,7 @@
   )
 
 (deftype matrix3 (structure)
-  ((data   float   12 :offset-assert 0)
+  ((data   float   12 :offset-assert 0 :score -10)
    (vector vector  3 :inline :offset        0)
    (quad   uint128 3  :offset        0)
    )
@@ -15218,15 +15218,15 @@
    (wait-max-time    time-frame           :offset-assert 64)
    (wait-air-time    time-frame           :offset-assert 72)
    (wait-ground-time time-frame           :offset-assert 80)
-   (draw-target      level-load-info            :offset-assert 88)
+   (draw-target      symbol            :offset-assert 88)
    (abort            symbol            :offset-assert 92)
    (actor            (array scene-actor)            :offset-assert 96)
    (load-point-obj   object :offset-assert 100 :score 100) ;; TODO - unfortunate requirement
    (load-point       continue-point            :offset 100)
    (load-point-name  string            :offset 100)
-   (end-point-obj   object :offset-assert 104 :score 100) ;; TODO - unfortunate requirement
+   (end-point-obj    object :offset-assert 104 :score 100) ;; TODO - unfortunate requirement
    (end-point        continue-point            :offset 104)
-   (end-point-name        string            :offset 104)
+   (end-point-name   string            :offset 104)
    (borrow           pair            :offset-assert 108) ;; seen .empty-list
    (sfx-volume       float            :offset-assert 112)
    (ambient-volume   float            :offset-assert 116)
@@ -18013,7 +18013,7 @@
 (declare-type pilot-info basic)
 (declare-type gun-info basic)
 (declare-type darkjak-info basic)
-
+(declare-type mech-info basic)
 (deftype target (process-focusable)
   ((self-override           target                                   :offset 32 :score 100)
    (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
@@ -18077,7 +18077,7 @@
    (board                   board-info                               :offset-assert 2204)
    (pilot                   pilot-info                               :offset-assert 2208)
    (gun                     gun-info                                 :offset-assert 2212)
-   (mech                    basic                                    :offset-assert 2216)
+   (mech                    mech-info                                :offset-assert 2216)
    (turret                  basic                                    :offset-assert 2220)
    (darkjak                 darkjak-info                             :offset-assert 2224)
    (indax                   basic                                    :offset-assert 2228)
@@ -33532,6 +33532,13 @@
   (elevator-status-0)
   (elevator-status-1)
   (moving)
+  (elevator-status-3)
+  (elevator-status-4)
+  (elevator-status-5)
+  (elevator-status-6)
+  (elevator-status-7)
+  (elevator-status-8)
+  (elevator-status-9)
   )
 ;; ---elevator:elevator-status
 
@@ -33544,7 +33551,7 @@
    (move-dist                    float                   :offset-assert 320)
    (path-pos                     float                   :offset-assert 324)
    (path-eased-pos               float                   :offset-assert 328)
-   (ride-timer                   uint64                  :offset-assert 336)
+   (ride-timer                   time-frame                  :offset-assert 336)
    (sticky-player-last-ride-time time-frame              :offset-assert 344)
    (elevator-status              elevator-status                  :offset-assert 352)
    (on-activate                  basic                   :offset-assert 360)
@@ -34710,7 +34717,7 @@
 
 (define-extern *baron-neon-skull* (array object))
 (define-extern *city-baron-group-ids* (array int32))
-;; (define-extern *neon-baron-flashing-acc* (pointer int32)) TODO - https://github.com/open-goal/jak-project/issues/1982
+(define-extern *neon-baron-flashing-acc* (pointer int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palace-ocean                   ;;
@@ -35802,17 +35809,14 @@
 ;; forest-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype forest-part (UNKNOWN)
+(deftype forest-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-forest-drop-userdata function)
+(define-extern check-drop-level-forest-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-obs                     ;;
@@ -36298,7 +36302,7 @@
 |#
 
 ;; (define-extern birth-func-dig-digger-collide function)
-;; (define-extern check-drop-level-dig-digger-rubble-sparks function)
+;; (define-extern check-drop-level-dig-digger-rubble-sparks (function sparticle-system sparticle-cpuinfo vector none))
 ;; (define-extern *dig-clasp-exploder-params* joint-exploder-static-params)
 ;; (define-extern dig-tether-handler function)
 ;; (define-extern dig-tether-init-by-other function)
@@ -36804,17 +36808,14 @@
 ;; dig-part                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype dig-part (UNKNOWN)
+(deftype dig-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-dig-lava-bloops function)
+(define-extern check-drop-level-dig-lava-bloops (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-tube                    ;;
@@ -37138,22 +37139,19 @@
 ;; drill-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype drill-part (UNKNOWN)
+(deftype drill-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-part2                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern check-drop-level-drill-drillbit-rubble-sparks function)
+(define-extern check-drop-level-drill-drillbit-rubble-sparks (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-mech-master              ;;
@@ -37787,28 +37785,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *darkjak-hires-texture-anim-array* texture-anim-array)
-(define-extern set-darkjak-highres-texture-morph! (function float none))
+(define-extern set-darkjak-highres-texture-morph! (function float symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; oracle-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype oracle-part (UNKNOWN)
+(deftype oracle-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; oracle-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype oracle-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -37817,7 +37811,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37836,30 +37829,24 @@
 ;; ctyslumc-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyslumc-part (UNKNOWN)
+(deftype ctyslumc-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forresca-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype forresca-part (UNKNOWN)
+(deftype forresca-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37982,13 +37969,13 @@
 ;; mountain-ocean                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-spheres-mountain* object)
-;; (define-extern *ocean-colors-mountain* object)
-;; (define-extern *ocean-near-indices-mountain* ocean-near-indices)
-;; (define-extern *ocean-trans-indices-mountain* ocean-trans-indices)
-;; (define-extern *ocean-mid-indices-mountain* ocean-mid-indices)
-;; (define-extern *ocean-mid-masks-mountain* ocean-mid-masks)
-;; (define-extern *ocean-map-mountain* object)
+(define-extern *ocean-spheres-mountain* ocean-spheres)
+(define-extern *ocean-colors-mountain* ocean-colors)
+(define-extern *ocean-near-indices-mountain* ocean-near-indices)
+(define-extern *ocean-trans-indices-mountain* ocean-trans-indices)
+(define-extern *ocean-mid-indices-mountain* ocean-mid-indices)
+(define-extern *ocean-mid-masks-mountain* ocean-mid-masks)
+(define-extern *ocean-map-mountain* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mountain-obs                   ;;
@@ -38215,112 +38202,88 @@
 ;; mountain-scenes                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype mtn-plat-buried-rocks (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype mtn-plat-buried-rocks (process-drawable)
+  (
+    (root-override        collide-shape          :offset 128 :score 1)
   )
-|#
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (done (symbol) _type_ :state 21)
+    )
+  )
 
-#|
-(deftype mtn-plat-buried (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype mtn-plat-buried (plat)
+  (
+    (incoming-attack-id uint32 :offset-assert 324)
+    (offset float :offset-assert 328)
+    (options actor-option :offset-assert 336)
   )
-|#
+  :method-count-assert 37
+  :size-assert         #x158
+  :flag-assert         #x2500e00158
+  )
 
-#|
-(deftype mtn-lens (UNKNOWN)
+(deftype mtn-lens (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype mtn-lens-base (UNKNOWN)
+(deftype mtn-lens-base (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype mtn-lens-floor (UNKNOWN)
+(deftype mtn-lens-floor (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (idle-no-beam () _type_ :state 21)
+    )
   )
-|#
 
-#|
-(deftype mtn-shard (UNKNOWN)
+(deftype mtn-shard (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype mtn-step-plat-rocks-a (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype mtn-step-plat-rocks-b (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype mtn-step-plat-rocks-c (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype mtn-step-plat-rocks-a (mtn-plat-buried-rocks) () )
+(deftype mtn-step-plat-rocks-b (mtn-plat-buried-rocks) () )
+(deftype mtn-step-plat-rocks-c (mtn-plat-buried-rocks) () )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mountain-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype mountain-part (UNKNOWN)
+(deftype mountain-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-mountain-drop-userdata function)
+(define-extern check-drop-level-mountain-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hopper                         ;;
@@ -38390,22 +38353,22 @@
 ;; intro-ocean                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-spheres-village1* object) ;; ocean-spheres
-;; (define-extern *ocean-colors-village1* object) ;; ocean-colors
-;; (define-extern *ocean-near-indices-village1* ocean-near-indices) ;; ocean-near-indices
-;; (define-extern *ocean-trans-indices-village1* ocean-trans-indices) ;; ocean-trans-indices
-;; (define-extern *ocean-mid-indices-village1* ocean-mid-indices) ;; ocean-mid-indices
-;; (define-extern *ocean-mid-masks-village1* ocean-mid-masks) ;; ocean-mid-masks
-;; (define-extern *ocean-map-village1* object) ;; ocean-map
+(define-extern *ocean-spheres-village1* ocean-spheres) ;; ocean-spheres
+(define-extern *ocean-colors-village1* ocean-colors) ;; ocean-colors
+(define-extern *ocean-near-indices-village1* ocean-near-indices) ;; ocean-near-indices
+(define-extern *ocean-trans-indices-village1* ocean-trans-indices) ;; ocean-trans-indices
+(define-extern *ocean-mid-indices-village1* ocean-mid-indices) ;; ocean-mid-indices
+(define-extern *ocean-mid-masks-village1* ocean-mid-masks) ;; ocean-mid-masks
+(define-extern *ocean-map-village1* ocean-map) ;; ocean-map
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; intro-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern check-drop-level-bigdoor-open-pops function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern check-split-level-intro-vortex-pop-userdata function)
-;; (define-extern *jak-highres-src-lightning-joints* array)
-;; (define-extern *jak-highres-dst-lightning-joints* array)
+(define-extern check-drop-level-bigdoor-open-pops (function sparticle-system sparticle-cpuinfo matrix none)) ;; (function sparticle-system sparticle-cpuinfo vector none)
+(define-extern check-split-level-intro-vortex-pop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *jak-highres-src-lightning-joints* (array int32))
+(define-extern *jak-highres-dst-lightning-joints* (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; intro-obs                      ;;
@@ -39381,7 +39344,7 @@
 ;; atoll-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern atoll-sniper-lightning function)
+(define-extern atoll-sniper-lightning (function object :behavior process-drawable))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sniper                         ;;
@@ -39733,35 +39696,29 @@
 ;; ctyfarma-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyfarma-part (UNKNOWN)
+(deftype ctyfarma-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern birth-func-ctyfarma-drip function)
-;; (define-extern check-drop-level-ctyfarma-drop-userdata function)
+(define-extern birth-func-ctyfarma-drip (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-ctyfarma-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyfarmb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyfarmb-part (UNKNOWN)
+(deftype ctyfarmb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern birth-func-ctyfarmb-drip function)
-;; (define-extern check-drop-level-ctyfarmb-drop-userdata function)
+(define-extern birth-func-ctyfarmb-drip (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-ctyfarmb-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; yakow                          ;;
@@ -39878,25 +39835,19 @@
 ;; casboss-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype casboss-part (UNKNOWN)
+(deftype casboss-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype cascity-part (UNKNOWN)
+(deftype cascity-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39908,30 +39859,27 @@
 ;; strip-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype strip-part (UNKNOWN)
+(deftype strip-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-strip-fencespikes-sparks-10 function)
-;; (define-extern check-drop-level-ecowell-victory-dirt-rubble function)
+(define-extern check-drop-level-strip-fencespikes-sparks-10 (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ecowell-victory-dirt-rubble (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; strip-ocean                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-spheres-strip* object)
-;; (define-extern *ocean-colors-strip* object)
-;; (define-extern *ocean-near-indices-strip* ocean-near-indices)
-;; (define-extern *ocean-trans-indices-strip* ocean-trans-indices)
-;; (define-extern *ocean-mid-indices-strip* ocean-mid-indices)
-;; (define-extern *ocean-mid-masks-strip* ocean-mid-masks)
-;; (define-extern *ocean-map-strip* object)
+(define-extern *ocean-spheres-strip* ocean-spheres)
+(define-extern *ocean-colors-strip* ocean-colors)
+(define-extern *ocean-near-indices-strip* ocean-near-indices)
+(define-extern *ocean-trans-indices-strip* ocean-trans-indices)
+(define-extern *ocean-mid-indices-strip* ocean-mid-indices)
+(define-extern *ocean-mid-masks-strip* ocean-mid-masks)
+(define-extern *ocean-map-strip* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; strip-rescue                   ;;
@@ -40079,8 +40027,8 @@
   )
 |#
 
-;; (define-extern check-drop-level-strip-crate-drop-userdata-nosplat function)
-;; (define-extern check-drop-level-strip-crate-drop-userdata function)
+;; (define-extern check-drop-level-strip-crate-drop-userdata-nosplat (function sparticle-system sparticle-cpuinfo matrix none))
+;; (define-extern check-drop-level-strip-crate-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 ;; (define-extern strip-game-crate-init-by-other function)
 ;; (define-extern *grunt-egg-a-script* object)
 ;; (define-extern *grunt-egg-b-script* object)
@@ -40312,19 +40260,16 @@
 ;; atoll-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype atoll-part (UNKNOWN)
+(deftype atoll-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern birth-func-atoll-bird-wing function)
-;; (define-extern check-drop-level-atoll-drop function)
-;; (define-extern check-drop-level-atoll-drop-userdata function)
+(define-extern birth-func-atoll-bird-wing (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern check-drop-level-atoll-drop (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-atoll-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-obs                      ;;
@@ -40865,31 +40810,28 @@
 ;; sewer-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype sewer-part (UNKNOWN)
+(deftype sewer-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern sewer-drop-birth-func function)
-;; (define-extern check-drop-level-sewer-drop function)
-;; (define-extern sewer-drop2-birth-func function)
-;; (define-extern check-drop2-level-sewer-drop function)
+(define-extern sewer-drop-birth-func (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-sewer-drop (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern sewer-drop2-birth-func (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop2-level-sewer-drop (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-ocean                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-spheres-sewer* object)
-;; (define-extern *ocean-colors-sewer* object)
-;; (define-extern *ocean-near-indices-sewer* ocean-near-indices)
-;; (define-extern *ocean-trans-indices-sewer* ocean-trans-indices)
-;; (define-extern *ocean-mid-indices-sewer* ocean-mid-indices)
-;; (define-extern *ocean-mid-masks-sewer* ocean-mid-masks)
+(define-extern *ocean-spheres-sewer* ocean-spheres)
+(define-extern *ocean-colors-sewer* ocean-colors)
+(define-extern *ocean-near-indices-sewer* ocean-near-indices)
+(define-extern *ocean-trans-indices-sewer* ocean-trans-indices)
+(define-extern *ocean-mid-indices-sewer* ocean-mid-indices)
+(define-extern *ocean-mid-masks-sewer* ocean-mid-masks)
 (define-extern *ocean-map-sewer* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41542,15 +41484,12 @@
 ;; ctyindb-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyindb-part (UNKNOWN)
+(deftype ctyindb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41769,15 +41708,12 @@
 ;; fordumpc-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype fordumpc-part (UNKNOWN)
+(deftype fordumpc-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41849,24 +41785,20 @@
 ;; throne-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype throne-part (UNKNOWN)
+(deftype throne-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern throne-deactivate function)
-;; (define-extern throne-activate function)
+(define-extern throne-deactivate (function none))
+(define-extern throne-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palace-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype throne-throne (process-drawable)
   ()
   :method-count-assert 21
@@ -41876,17 +41808,16 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern check-drop-level-palace-roof-rain function)
-;; (define-extern *metalkor-head-lightning-shock-skel* lightning-spec)
+(define-extern check-drop-level-palace-roof-rain (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *metalkor-head-lightning-shock-skel* lightning-spec)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; intro-texture                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *jakb-prison-texture-anim-array* texture-anim-array)
-;; (define-extern set-jakb-prison-texture-morph! function)
+(define-extern set-jakb-prison-texture-morph! (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prison-part                    ;;
@@ -42351,21 +42282,20 @@
 ;; nest-ocean                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *ocean-spheres-nest* object)
-;; (define-extern *ocean-colors-nest* object)
-;; (define-extern *ocean-near-indices-nest* ocean-near-indices)
-;; (define-extern *ocean-trans-indices-nest* ocean-trans-indices)
-;; (define-extern *ocean-mid-indices-nest* ocean-mid-indices)
-;; (define-extern *ocean-mid-masks-nest* ocean-mid-masks)
-;; (define-extern *ocean-map-nest* object)
+(define-extern *ocean-spheres-nest* ocean-spheres)
+(define-extern *ocean-colors-nest* ocean-colors)
+(define-extern *ocean-near-indices-nest* ocean-near-indices)
+(define-extern *ocean-trans-indices-nest* ocean-trans-indices)
+(define-extern *ocean-mid-indices-nest* ocean-mid-indices)
+(define-extern *ocean-mid-masks-nest* ocean-mid-masks)
+(define-extern *ocean-map-nest* ocean-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nest-scenes                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype canyon-lightning-thingy (process-drawable)
-  ((lightning UNKNOWN 5 :offset-assert 196)
+  ((lightning lightning-control 5 :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xdc
@@ -42374,26 +42304,22 @@
     (zap () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern canyon-lightning-thingy-init-by-other function)
-;; (define-extern activate-canyon-lightning-thingy function)
-;; (define-extern nest-deactivate function)
-;; (define-extern nest-activate function)
+(define-extern canyon-lightning-thingy-init-by-other (function vector vector none :behavior canyon-lightning-thingy))
+(define-extern activate-canyon-lightning-thingy (function object vector sparticle-launch-state none))
+(define-extern nest-deactivate (function none))
+(define-extern nest-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nest-part                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype nest-part (UNKNOWN)
+(deftype nest-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42401,7 +42327,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *darkjak-hires-nest-texture-anim-array* texture-anim-array)
-;; (define-extern set-darkjak-highres-nest-texture-morph! function)
+(define-extern set-darkjak-highres-nest-texture-morph! (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; metalkor-part                  ;;
@@ -42945,7 +42871,6 @@
 ;; nestb-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nest-gun-parts (process-drawable)
   ()
   :method-count-assert 21
@@ -42955,9 +42880,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype nest-unbroken-rocks (process-drawable)
   ()
   :method-count-assert 21
@@ -42967,43 +42890,36 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern movie-nest-metalkor-shot-draw-fire function)
-;; (define-extern movie-nest-metalkor-shot-draw-moving function)
-;; (define-extern movie-nest-metalkor-shot-draw-impact function)
-;; (define-extern nestb-login function)
-;; (define-extern nestb-deactivate function)
-;; (define-extern nestb-activate function)
+(define-extern movie-nest-metalkor-shot-draw-fire (function vector vector none))
+(define-extern movie-nest-metalkor-shot-draw-moving (function vector vector float none))
+(define-extern movie-nest-metalkor-shot-draw-impact (function scene-player vector vector none))
+(define-extern nestb-login (function none))
+(define-extern nestb-deactivate (function none))
+(define-extern nestb-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nestb-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype nestb-part (UNKNOWN)
+(deftype nestb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consiteb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype consiteb-part (UNKNOWN)
+(deftype consiteb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43210,38 +43126,35 @@
 ;; credits                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern draw-end-credits function) ;; (function int symbol)
-;; (define-extern start-credits function)
-;; (define-extern check-pop-level-firework-userdata function)
-;; (define-extern check-pop-level-firework-red-userdata function)
-;; (define-extern check-pop-level-firework-green-userdata function)
-;; (define-extern birth-func-firework-color function)
+(define-extern draw-end-credits (function level float symbol)) ;; 
+(define-extern start-credits (function process none))
+(define-extern check-pop-level-firework-userdata (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-pop-level-firework-red-userdata (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-pop-level-firework-green-userdata (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-firework-color (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; outro-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern death-precursor death-info)
-;; (define-extern start-precursor-effect function)
-;; (define-extern birth-func-pecker-feather-color function)
+(define-extern death-precursor death-info)
+;; (define-extern start-precursor-effect (function object none))
+(define-extern birth-func-pecker-feather-color (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palroof-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype palroof-part (UNKNOWN)
+(deftype palroof-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-palroof-drop-userdata function)
-;; (define-extern palroof-deactivate function)
-;; (define-extern palroof-activate function)
+(define-extern check-drop-level-palroof-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern palroof-deactivate (function none))
+(define-extern palroof-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palroof-obs                    ;;
@@ -43292,23 +43205,20 @@
 ;; palboss-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern attach-squid-movie-part function)
-;; (define-extern func-squid-damaged-sparks-awake function)
-;; (define-extern attach-squid-break-movie-part function)
+(define-extern attach-squid-movie-part (function none :behavior elevator))
+(define-extern func-squid-damaged-sparks-awake (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern attach-squid-break-movie-part "TODO - this naming is...very strange!" (function none :behavior elevator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fordumpa-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype fordumpa-part (UNKNOWN)
+(deftype fordumpa-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43442,20 +43352,49 @@
   )
 |#
 
-#|
-(deftype whack-a-metal (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype whack-a-metal (process-drawable)
+  (
+    (cabinet handle :offset-assert 200)
+    (bopper uint32 :offset-assert 208)
+    (mole object 8 :offset-assert 212)
+    (score-part basic 2 :offset-assert 244)
+    (wave int32 :offset-assert 252)
+    (event int32 :offset-assert 256)
+    (event-time time-frame :offset-assert 264)
+    (event-length time-frame :offset-assert 272)
+    (hud-score int64 :offset-assert 280)
+    (hud-goal int64 :offset-assert 288)
+    (score float :offset-assert 296)
+    (score-time time-frame :offset-assert 304)
+    (dizzy? symbol :offset-assert 312)
+    (miss-count int32 :offset-assert 316)
+    (air-attack-count int32 :offset-assert 320)
+    (slot-buffer int32 4 :offset-assert 324)
+    (speech-time time-frame :offset-assert 344)
+    (speech-count int32 :offset-assert 352)
+    (speech-last basic 4 :offset-assert 356)
   )
-|#
+  :method-count-assert 30
+  :size-assert         #x174
+  :flag-assert         #x1e01000174
+  (:methods
+    (whack-a-metal-method-21 () none 20)
+    (whack-a-metal-method-22 () none 21)
+    (whack-a-metal-method-23 () none 22)
+    (whack-a-metal-method-24 () none 23)
+    (whack-a-metal-method-25 () none 24)
+    (whack-a-metal-method-26 () none 25)
+    (whack-a-metal-method-27 () none 26)
+    (whack-a-metal-method-28 () none 27)
+    (whack-a-metal-method-29 () none 28)
+    (whack-a-metal-method-30 () none 29)
+    )
+  )
 
-;; (define-extern birth-func-whack-score function)
+;; (define-extern birth-func-whack-score (function int sparticle-cpuinfo sparticle-launchinfo none))
 ;; (define-extern *mole-data* array)
 ;; (define-extern hip-mole-init function)
-;; (define-extern whack-a-metal-init function)
+(define-extern whack-a-metal-init (function entity-actor none :behavior whack-a-metal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; roboguard-level                ;;
@@ -43642,21 +43581,18 @@
 ;; castle-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype castle-part (UNKNOWN)
+(deftype castle-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-castle-drop-userdata function)
-;; (define-extern castle-green-dome-light-pulsate function)
-;; (define-extern castle-green-slime-popper function)
-;; (define-extern birth-func-castle-green-slime-tube function)
-;; (define-extern castle-green-slime-tube-check-delta function)
+(define-extern check-drop-level-castle-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern castle-green-dome-light-pulsate (function int sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern castle-green-slime-popper (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-castle-green-slime-tube (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern castle-green-slime-tube-check-delta (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consite-texture                ;;
@@ -43669,25 +43605,22 @@
 ;; consite-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype consite-part (UNKNOWN)
+(deftype consite-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consite-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern consite-crimson-guard-shot function)
-;; (define-extern movie-consite-metalkor-shot-draw-fire function)
-;; (define-extern movie-consite-metalkor-shot-draw-moving function)
-;; (define-extern movie-consite-metalkor-shot-draw-impact function)
+(define-extern consite-crimson-guard-shot (function sparticle-launcher vector sparticle-launch-state none))
+(define-extern movie-consite-metalkor-shot-draw-fire (function vector vector none))
+(define-extern movie-consite-metalkor-shot-draw-moving (function vector vector float none))
+(define-extern movie-consite-metalkor-shot-draw-impact (function scene-player vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consite-obs                    ;;
@@ -44109,15 +44042,12 @@
 ;; forrescb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype forrescb-part (UNKNOWN)
+(deftype forrescb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44227,18 +44157,15 @@
 ;; palent-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype palent-part (UNKNOWN)
+(deftype palent-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern palent-deactivate function)
-;; (define-extern palent-activate function)
+(define-extern palent-deactivate (function none))
+(define-extern palent-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pal-obs                        ;;
@@ -44399,14 +44326,15 @@
 ;; mech-part                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern mech-spawn-thruster function)
+(define-extern mech-spawn-thruster (function mech-info vector vector float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype mech (process-drawable)
-  ((extra-trans       vector :inline :offset-assert 208)
+  ((root-override     collide-shape-moving          :offset 128 :score 1)
+   (extra-trans       vector :inline :offset-assert 208)
    (condition         int32          :offset-assert 224)
    (shadow-backup     basic          :offset-assert 228)
    (rider             uint64         :offset-assert 232)
@@ -44440,7 +44368,7 @@
 |#
 
 ;; (define-extern *kernel-packages* object) ;; pair
-(define-extern mech-init (function none))
+(define-extern mech-init (function entity-actor matrix3 handle float none :behavior mech))
 ;; (define-extern mech-target-init function)
 ;; (define-extern mech-target-spawn function)
 
@@ -44570,18 +44498,15 @@
 ;; palcab-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype palcab-part (UNKNOWN)
+(deftype palcab-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern palcab-bird-bob-func function)
-;; (define-extern sparticle-palcab-bird-moon function)
+(define-extern palcab-bird-bob-func (function sparticle-system sparticle-cpuinfo matrix none :behavior palcab-part))
+(define-extern sparticle-palcab-bird-moon (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palcab-obs                     ;;
@@ -44775,8 +44700,9 @@
 
 (deftype forexita-part (part-spawner)
   ()
+  :method-count-assert 16
+  :size-assert         #xb0
   :flag-assert         #x10003000b0
-  ;; Failed to read fields.
   )
 
 
@@ -44814,18 +44740,15 @@
 ;; onintent-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype onintent-part (UNKNOWN)
+(deftype onintent-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-bubble-surface-onintent function)
-;; (define-extern check-onintent-bugs function)
+(define-extern check-bubble-surface-onintent (function sparticle-system sparticle-cpuinfo matrix symbol))
+(define-extern check-onintent-bugs (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; onintent-scenes                ;;
@@ -44911,8 +44834,8 @@
   )
 
 ;; (define-extern *onin-game-data* array)
-;; (define-extern birth-func-onin-bubble-pop function)
-;; (define-extern birth-func-onin-bubble-birth-pop function)
+;; (define-extern birth-func-onin-bubble-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern birth-func-onin-bubble-birth-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
 ;; (define-extern onin-game-bubble-init function)
 (define-extern onin-game-init (function entity none))
 
@@ -44927,51 +44850,39 @@
 ;; stadium-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype stadium-part (UNKNOWN)
+(deftype stadium-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-stadium-drop-userdata function)
+(define-extern check-drop-level-stadium-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype stadiumb-part (UNKNOWN)
+(deftype stadiumb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype stadiumc-part (UNKNOWN)
+(deftype stadiumc-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype stadiumd-part (UNKNOWN)
+(deftype stadiumd-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 ;; (define-extern race-birth-func-texture-lap-01 function)
 ;; (define-extern race-birth-func-texture-lap-02 function)
@@ -45183,15 +45094,12 @@
 ;; ctygenc-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctygenc-part (UNKNOWN)
+(deftype ctygenc-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45253,30 +45161,24 @@
 ;; ctymarka-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctymarka-part (UNKNOWN)
+(deftype ctymarka-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctymarkb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctymarkb-part (UNKNOWN)
+(deftype ctymarkb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45343,30 +45245,24 @@
 ;; fordumpb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype fordumpb-part (UNKNOWN)
+(deftype fordumpb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; skatea-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype skatea-part (UNKNOWN)
+(deftype skatea-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45469,15 +45365,12 @@
 ;; ctyinda-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyinda-part (UNKNOWN)
+(deftype ctyinda-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45489,15 +45382,12 @@
 ;; tomb-part                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype tomb-part (UNKNOWN)
+(deftype tomb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45948,9 +45838,9 @@
 ;; widow-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern birth-func-boss-pebble function)
-;; (define-extern check-drop-level-boss-pebble function)
-;; (define-extern func-widow-damaged-sparks-awake function)
+(define-extern birth-func-boss-pebble "TODO - bad VF Dependency" (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-boss-pebble (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern func-widow-damaged-sparks-awake (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; widow-baron                    ;;
@@ -46427,17 +46317,14 @@
 ;; palshaft-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype palshaft-part (UNKNOWN)
+(deftype palshaft-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern palshaft-deactivate function)
+(define-extern palshaft-deactivate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-bbush                  ;;
@@ -46686,15 +46573,12 @@
 ;; ctygenb-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctygenb-part (UNKNOWN)
+(deftype ctygenb-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46961,15 +46845,12 @@
 ;; gungame-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype gungame-part (UNKNOWN)
+(deftype gungame-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47045,31 +46926,27 @@
 ;; canyon-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern canyon-draw-beam function)
-;; (define-extern canyon-draw-beam-lens function)
-;; (define-extern canyon-draw-beam-statue function)
+(define-extern canyon-draw-beam (function vector vector none))
+(define-extern canyon-draw-beam-lens (function vector vector none))
+(define-extern canyon-draw-beam-statue (function vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vinroom-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype vinroom-part (UNKNOWN)
+(deftype vinroom-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern birth-func-vinroom-sphere function)
+(define-extern birth-func-vinroom-sphere (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vinroom-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vin-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -47078,10 +46955,9 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern check-drop-level-vinroom-piss-drop-userdata function)
-;; (define-extern vin-rescue-yellow-shot function)
+(define-extern check-drop-level-vinroom-piss-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern vin-rescue-yellow-shot (function object vector sparticle-launch-state none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vinroom-obs                    ;;
@@ -47120,25 +46996,19 @@
 ;; ctygena-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctygena-part (UNKNOWN)
+(deftype ctygena-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype citytest-part (UNKNOWN)
+(deftype citytest-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47163,17 +47033,14 @@
 ;; ctypal-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctypal-part (UNKNOWN)
+(deftype ctypal-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-ctypal-drop-userdata function)
+(define-extern check-drop-level-ctypal-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctypal-obs                     ;;
@@ -47996,17 +47863,14 @@
 ;; under-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype under-part (UNKNOWN)
+(deftype under-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern check-drop-level-under-drip function)
+(define-extern check-drop-level-under-drip (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; centipede                      ;;
@@ -48123,9 +47987,9 @@
 ;; under-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern under-sig-red-shot function)
-;; (define-extern under-sig-red-shot-overhead function)
-;; (define-extern under-sig-red-shot-grunt function)
+(define-extern under-sig-red-shot (function object vector sparticle-launch-state none :behavior scene-player))
+(define-extern under-sig-red-shot-overhead (function object vector sparticle-launch-state none :behavior scene-player))
+(define-extern under-sig-red-shot-grunt (function object vector sparticle-launch-state none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig-recorder                   ;;
@@ -48217,40 +48081,43 @@
 ;; ctyport-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctyport-part (UNKNOWN)
+(deftype ctyport-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype hiphog-exterior-marquee (UNKNOWN)
+(deftype hiphog-exterior-marquee (process-drawable)
+  (
+    (rot vector :inline :offset-assert 208)
+    (master-enable uint32 :offset-assert  224)
+    (pad-ih12nb312 uint32 3 :offset-assert 228)
+    (mode uint32 :offset-assert 240)
+    (counter int32 :offset-assert 244)
+    (parts basic 1 :offset-assert 248)
+  )
+  :method-count-assert 22
+  :size-assert         #xfc
+  :flag-assert         #x16008000fc
+  (:methods
+    (idle () _type_ :state 20)
+    (hiphog-exterior-marquee-method-21 () none 21))
+  )
+
+(deftype farthy (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20))
   )
-|#
 
-#|
-(deftype farthy (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-;; (define-extern check-drop-level-ctyport-drop-userdata function)
-;; (define-extern *hiphog-exterior-marquee* array)
-;; (define-extern *hiphog-exterior-marquee-group-ids* array)
-;; (define-extern *hiphog-exterior-marquee-daxter-group-ids* array)
+;; (define-extern check-drop-level-ctyport-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *hiphog-exterior-marquee* (array object))
+(define-extern *hiphog-exterior-marquee-group-ids* (array int32))
+(define-extern *hiphog-exterior-marquee-daxter-group-ids* (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; caspad-obs                     ;;
@@ -48274,15 +48141,12 @@
 ;; caspad-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype caspad-part (UNKNOWN)
+(deftype caspad-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50391,7 +50255,7 @@
 ;; (define-extern race-manager-event-handler function)
 (define-extern *race-manager* race-manager)
 ;; (define-extern race-manager-init-by-other function)
-;; (define-extern race-start function)
+(define-extern race-start (function int symbol symbol object))
 ;; (define-extern race-kill function)
 (define-extern type-from-race-vehicle-type (function int type))
 ;; (define-extern race-vehicle-entity-hack function)
@@ -51203,7 +51067,7 @@
 ;; errol-chal-part                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern city-race-borrow-level-activate function)
+(define-extern city-race-borrow-level-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; errol-chal                     ;;
@@ -51339,28 +51203,22 @@
 ;; ctywide-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ctywide-part (UNKNOWN)
+(deftype ctywide-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype citywide-part (UNKNOWN)
+(deftype citywide-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-;; (define-extern birth-func-race-poster function)
-;; (define-extern birth-func-ctywide-baron-propoganda-ticker-rotate function)
+;; (define-extern birth-func-race-poster (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern birth-func-ctywide-baron-propoganda-ticker-rotate (function int sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-obs                    ;;
@@ -52335,38 +52193,32 @@
 ;; hiphog-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype hiphog-part (UNKNOWN)
+(deftype hiphog-part (part-spawner)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
   )
-|#
 
-#|
-(deftype hiphog-mirror-wf-pt (UNKNOWN)
+(deftype hiphog-mirror-wf-pt (structure)
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern birth-func-rotate-minute function)
-;; (define-extern birth-func-rotate-hour function)
-;; (define-extern birth-func-rotate-second function)
-;; (define-extern *hiphog-mirror-sheen-waveform* object)
-;; (define-extern hiphog-mirror-sheen-func function)
+(define-extern birth-func-rotate-minute (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-hour (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-second (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *hiphog-mirror-sheen-waveform* (inline-array ripple-wave))
+(define-extern hiphog-mirror-sheen-func (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hiphog-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hip-door-b (com-airlock)
   ()
   :method-count-assert 28
@@ -52375,9 +52227,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hip-whack-a-metal (process-taskable)
   ()
   :method-count-assert 38
@@ -52386,9 +52236,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hip-mirror (process-drawable)
   ()
   :method-count-assert 21
@@ -52398,9 +52246,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype sig-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -52409,9 +52255,8 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern hiphog-activate function)
+(define-extern hiphog-activate (function vector))
 
 
 
