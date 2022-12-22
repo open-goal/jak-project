@@ -19,7 +19,7 @@ extern OverlordDataSource isodrv;
 extern u32 modsrc;
 
 // Reboot IOP on start?
-extern u32 reboot;
+extern u32 reboot_iop;  // renamed to reboot_iop to avoid conflict
 
 extern const char* init_types[];
 extern u32 vblank_interrupt_handler;

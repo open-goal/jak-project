@@ -185,6 +185,8 @@ class ObjectFileDB {
   void analyze_functions_ir2(
       const fs::path& output_dir,
       const Config& config,
+      const std::optional<std::function<void(std::string)>> prefile_callback,
+      const std::optional<std::function<void()>> postfile_callback,
       const std::unordered_set<std::string>& skip_functions,
       const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {});
   void ir2_top_level_pass(const Config& config);

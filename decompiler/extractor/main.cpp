@@ -35,7 +35,7 @@ IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
 
 std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     const fs::path& extracted_iso_path,
-    const xxh::hash64_t expected_hash,
+    const uint64_t expected_hash,
     const int expected_num_files) {
   if (!fs::exists(extracted_iso_path / "DGO")) {
     lg::error("input folder doesn't have a DGO folder. Is this the right input?");

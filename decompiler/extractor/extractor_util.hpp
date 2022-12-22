@@ -13,7 +13,7 @@
 #include "game/kernel/common/kboot.h"
 
 #include "third-party/json.hpp"
-#include "third-party/xxhash.hpp"
+#include "third-party/zstd/lib/common/xxhash.h"
 
 enum class ExtractorErrorCode {
   SUCCESS = 0,
@@ -54,7 +54,7 @@ struct ISOMetadata {
   std::string canonical_name;
   int region;  // territory code
   int num_files;
-  xxh::hash64_t contents_hash;
+  uint64_t contents_hash;
   std::string decomp_config;
   std::string game_name;
   std::vector<std::string> flags;
@@ -65,7 +65,7 @@ struct ISOMetadata {
 //   then the database isn't adequate and everything must change
 struct BuildInfo {
   std::string serial = "";
-  xxh::hash64_t elf_hash = 0;
+  uint64_t elf_hash = 0;
 };
 
 void to_json(nlohmann::json& j, const BuildInfo& info) {
@@ -101,35 +101,35 @@ static const ISOMetadata jak1_ntsc_black_label_info = {
     {"jak1-black-label"}};
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-static const std::unordered_map<std::string, std::unordered_map<xxh::hash64_t, ISOMetadata>>
-    isoDatabase{{"SCUS-97124",
-                 {{7280758013604870207U, jak1_ntsc_black_label_info},
-                  {744661860962747854,
-                   {"Jak & Daxter™: The Precursor Legacy",
-                    GAME_TERRITORY_SCEA,
-                    338,
-                    8538304367812415885U,
-                    "jak1_jp",
-                    "jak1",
-                    {}}}}},
-                {"SCES-50361",
-                 {{12150718117852276522U,
-                   {"Jak & Daxter™: The Precursor Legacy",
-                    GAME_TERRITORY_SCEE,
-                    338,
-                    16850370297611763875U,
-                    "jak1_pal",
-                    "jak1",
-                    {}}}}},
-                {"SCPS-15021",
-                 {{16909372048085114219U,
-                   {"ジャックＸダクスター　～　旧世界の遺産",
-                    GAME_TERRITORY_SCEI,
-                    338,
-                    1262350561338887717,
-                    "jak1_jp",
-                    "jak1",
-                    {}}}}}};
+static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> isoDatabase{
+    {"SCUS-97124",
+     {{7280758013604870207U, jak1_ntsc_black_label_info},
+      {744661860962747854,
+       {"Jak & Daxter™: The Precursor Legacy",
+        GAME_TERRITORY_SCEA,
+        338,
+        8538304367812415885U,
+        "jak1_jp",
+        "jak1",
+        {}}}}},
+    {"SCES-50361",
+     {{12150718117852276522U,
+       {"Jak & Daxter™: The Precursor Legacy",
+        GAME_TERRITORY_SCEE,
+        338,
+        16850370297611763875U,
+        "jak1_pal",
+        "jak1",
+        {}}}}},
+    {"SCPS-15021",
+     {{16909372048085114219U,
+       {"ジャックＸダクスター　～　旧世界の遺産",
+        GAME_TERRITORY_SCEI,
+        338,
+        1262350561338887717,
+        "jak1_jp",
+        "jak1",
+        {}}}}}};
 
 std::optional<ISOMetadata> get_version_info_from_build_info(const BuildInfo& build_info) {
   if (build_info.serial.empty() || build_info.elf_hash == 0) {
@@ -168,10 +168,10 @@ ISOMetadata get_version_info_or_default(const fs::path& iso_data_path) {
   return version_info;
 }
 
-std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
+std::tuple<std::optional<std::string>, std::optional<uint64_t>> findElfFile(
     const fs::path& extracted_iso_path) {
   std::optional<std::string> serial = std::nullopt;
-  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::optional<uint64_t> elf_hash = std::nullopt;
   for (const auto& entry : fs::directory_iterator(extracted_iso_path)) {
     auto as_str = entry.path().filename().string();
     if (std::regex_match(as_str, std::regex(".{4}_.{3}\\..{2}"))) {
@@ -184,7 +184,7 @@ std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile
       std::vector<u8> buffer(size);
       rewind(fp);
       fread(&buffer[0], sizeof(std::vector<u8>::value_type), buffer.size(), fp);
-      elf_hash = std::make_optional(xxh::xxhash<64>(buffer));
+      elf_hash = std::make_optional(XXH64(buffer.data(), buffer.size(), 0));
       fclose(fp);
       break;
     }
@@ -194,9 +194,9 @@ std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile
 
 void log_potential_new_db_entry(ExtractorErrorCode error_code,
                                 const std::string& serial,
-                                const xxh::hash64_t elf_hash,
+                                const uint64_t elf_hash,
                                 const int files_extracted,
-                                const xxh::hash64_t contents_hash) {
+                                const uint64_t contents_hash) {
   // Finally, return the result
   // Generate the map entry to make things simple, just convienance
   if (error_code == ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB) {
@@ -237,28 +237,28 @@ std::tuple<bool, ExtractorErrorCode> is_iso_file(fs::path path_to_supposed_iso) 
   return {true, ExtractorErrorCode::SUCCESS};
 }
 
-std::tuple<xxh::hash64_t, int> calculate_extraction_hash(const IsoFile& iso_file) {
+std::tuple<uint64_t, int> calculate_extraction_hash(const IsoFile& iso_file) {
   // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
   // files) irrelevant
-  xxh::hash64_t combined_hash = 0;
+  uint64_t combined_hash = 0;
   for (const auto& hash : iso_file.hashes) {
     combined_hash ^= hash;
   }
-  return {xxh::xxhash<64>({combined_hash}), iso_file.hashes.size()};
+  return {XXH64(&combined_hash, sizeof(uint64_t), 0), iso_file.hashes.size()};
 }
 
-std::tuple<xxh::hash64_t, int> calculate_extraction_hash(const fs::path& extracted_iso_path) {
+std::tuple<uint64_t, int> calculate_extraction_hash(const fs::path& extracted_iso_path) {
   // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
   // files) irrelevant
-  xxh::hash64_t combined_hash = 0;
+  uint64_t combined_hash = 0;
   int filec = 0;
   for (auto const& dir_entry : fs::recursive_directory_iterator(extracted_iso_path)) {
     if (dir_entry.is_regular_file()) {
       auto buffer = file_util::read_binary_file(dir_entry.path().string());
-      auto hash = xxh::xxhash<64>(buffer);
+      auto hash = XXH64(buffer.data(), buffer.size(), 0);
       combined_hash ^= hash;
       filec++;
     }
   }
-  return {xxh::xxhash<64>({combined_hash}), filec};
+  return {XXH64(&combined_hash, sizeof(uint64_t), 0), filec};
 }

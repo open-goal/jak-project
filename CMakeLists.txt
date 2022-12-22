@@ -94,6 +94,34 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     endif()
     set(THIRDPARTY_IGNORED_WARNINGS "-w")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    message(STATUS "AppleClang detected - Setting Defaults")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} \
+        -Wall \
+        -Winit-self \
+        -ggdb \
+        -Wextra \
+        -Wno-cast-align \
+        -Wcast-qual \
+        -Wdisabled-optimization \
+        -Wformat \
+        -Wextra \
+        -Wmissing-include-dirs \
+        -Woverloaded-virtual \
+        -Wredundant-decls \
+        -Wshadow \
+        -Wsign-promo \
+        -O3 \
+        -fdiagnostics-color=always"
+        )
+
+    # additional c++ flags for release mode for our projects
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    endif()
+    set(THIRDPARTY_IGNORED_WARNINGS "-w")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-stack_size -Wl,0x20000000")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "MSVC detected - Setting Defaults")
 
