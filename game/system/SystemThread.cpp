@@ -1,9 +1,10 @@
 #include "SystemThread.h"
 
+#include "common/common_types.h"
 #include "common/log/log.h"
 #include "common/util/unicode_util.h"
 
-#ifdef __linux
+#ifdef OS_POSIX
 #include <pthread.h>
 #else
 // Include order matters...
@@ -96,8 +97,10 @@ void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
   SystemThreadInterface iface(thd);
 
-#ifdef __linux__
+#ifdef __linux
   pthread_setname_np(pthread_self(), thd->name.c_str());
+#elif __APPLE__
+  pthread_setname_np(thd->name.c_str());
 #else
   SetThreadDescription(GetCurrentThread(), (LPCWSTR)utf8_string_to_wide_string(thd->name).c_str());
 #endif

@@ -3,6 +3,8 @@
 #include <cmath>
 #include <mutex>
 
+#include "common/goos/Object.h"
+
 #include "third-party/fmt/core.h"
 
 namespace pretty_print {
@@ -74,14 +76,12 @@ goos::Object build_list(const std::vector<goos::Object>& objects) {
 // build a list out of an array of forms
 goos::Object build_list(const goos::Object* objects, int count) {
   ASSERT(count);
-  auto car = objects[0];
-  goos::Object cdr;
-  if (count - 1) {
-    cdr = build_list(objects + 1, count - 1);
-  } else {
-    cdr = goos::Object::make_empty_list();
+  goos::Object result = goos::Object::make_empty_list();
+  for (int i = count; i-- > 0;) {
+    result = goos::PairObject::make_new(objects[i], result);
   }
-  return goos::PairObject::make_new(car, cdr);
+
+  return result;
 }
 
 // build a list out of a vector of strings that are converted to symbols

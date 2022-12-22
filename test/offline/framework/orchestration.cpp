@@ -67,7 +67,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   }
 
   if (db_files.size() != object_files.size()) {
-    lg::error("DB file error: has {} entries, but expected {", db_files.size(),
+    lg::error("DB file error: has {} entries, but expected {}", db_files.size(),
               object_files.size());
     for (const auto& coll : work.work_collections) {
       for (auto& file : coll.source_files) {

@@ -20,7 +20,7 @@
 #endif
 
 namespace xdbg {
-#ifdef __linux
+#ifdef OS_POSIX
 
 /*!
  * Identification for a thread.

@@ -688,6 +688,54 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   // todo, set fprs.
   return true;
 }
+#elif __APPLE__
+ThreadID::ThreadID(const std::string& str) {}
+
+std::string ThreadID::to_string() const {
+  return "invalid";
+}
+
+ThreadID get_current_thread_id();
+bool attach_and_break(const ThreadID& tid);
+void allow_debugging();
+bool detach_and_resume(const ThreadID& tid) {
+  return false;
+}
+bool get_regs_now(const ThreadID& tid, Regs* out) {
+  return false;
+}
+bool set_regs_now(const ThreadID& tid, const Regs& in) {
+  return false;
+}
+bool break_now(const ThreadID& tid) {
+  return false;
+}
+bool cont_now(const ThreadID& tid) {
+  return false;
+}
+bool open_memory(const ThreadID& tid, MemoryHandle* out);
+bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
+  return false;
+}
+bool read_goal_memory(u8* dest_buffer,
+                      int size,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& mem) {
+  return false;
+}
+
+bool write_goal_memory(const u8* src_buffer,
+                       int size,
+                       u32 goal_addr,
+                       const DebugContext& context,
+                       const MemoryHandle& mem) {
+  return false;
+}
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  return false;
+}
 #endif
 
 const char* gpr_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",

@@ -1,5 +1,7 @@
 #include "fr3_to_gltf.h"
 
+#include <unordered_map>
+
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
 
