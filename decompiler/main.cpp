@@ -9,8 +9,8 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/os.h"
+#include "common/util/unicode_util.h"
 #include "common/versions.h"
-#include <common/util/unicode_util.h>
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"

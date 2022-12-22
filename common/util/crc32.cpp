@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#ifdef __APPLE__
+#ifdef __arm__
 #include <arm_acle.h>
 u32 crc32(const u8* data, size_t size) {
   u32 result = 0xffffffff;
