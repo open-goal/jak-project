@@ -7,6 +7,7 @@
 #include "goalc/emitter/IGen.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 using namespace emitter;
 namespace {
@@ -1006,7 +1007,7 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
   } else {
     throw std::runtime_error(
         fmt::format("IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})",
-                    m_value->ireg().reg_class, m_size));
+                    fmt::underlying(m_value->ireg().reg_class), m_size));
   }
 }
 
@@ -1934,7 +1935,7 @@ IR_SplatVF::IR_SplatVF(bool use_color,
 
 std::string IR_SplatVF::print() {
   return fmt::format(".splat.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                     m_src->print(), m_element);
+                     m_src->print(), fmt::underlying(m_element));
 }
 
 RegAllocInstr IR_SplatVF::to_rai() {

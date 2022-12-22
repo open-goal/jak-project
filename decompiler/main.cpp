@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
 
   // main decompile.
   if (config.decompile_code) {
-    db.analyze_functions_ir2(out_folder, config, {});
+    db.analyze_functions_ir2(out_folder, config, {}, {}, {});
   }
 
   if (config.generate_all_types) {
