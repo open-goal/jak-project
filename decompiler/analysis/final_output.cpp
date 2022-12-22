@@ -227,10 +227,9 @@ std::string careful_function_to_string(
                               func->guessed_name.method_id, func->guessed_name.type_name,
                               func->guessed_name.method_id, func->guessed_name.type_name);
       } else if (func->guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-        // For functions it is - (def-mips2c <FUNC_NAME> (function <ARGS> <RET>))
-        // TODO - is it possible to easily get the args from `all-types` to this point?
-        output += fmt::format(";; (def-mips2c {} (function ARGS RET))\n",
-                              func->guessed_name.function_name);
+        // For functions it is - (def-mips2c <FUNC_NAME> (function <SIGNATURE>))
+        output += fmt::format("(def-mips2c {} {})\n", func->guessed_name.function_name,
+                              func->type.print());
       }
 
       return output + "\n";
