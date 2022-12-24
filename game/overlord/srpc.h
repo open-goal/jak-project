@@ -152,7 +152,7 @@ struct SoundRpcSetEarTrans {
 
 struct SoundRpc2SetEarTrans {
   Vec3w ear_trans1;
-  Vec3w ear_trans2;
+  Vec3w ear_trans0;
   Vec3w cam_trans;
   s32 cam_angle;
 };

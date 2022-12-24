@@ -57,6 +57,8 @@ target_link_libraries(common fmt lzokay replxx libzstd_static)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)
+elseif(APPLE)
+    # don't need anything special
 else()
     target_link_libraries(common stdc++fs)
 endif()

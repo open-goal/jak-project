@@ -12,8 +12,8 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
+#include "common/util/unicode_util.h"
 #include "common/versions.h"
-#include <common/util/unicode_util.h>
 
 #include "game/discord.h"
 

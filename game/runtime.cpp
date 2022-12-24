@@ -3,7 +3,8 @@
  * Setup and launcher for the runtime.
  */
 
-#ifdef __linux__
+#include "common/common_types.h"
+#ifdef OS_POSIX
 #include <unistd.h>
 
 #include <sys/mman.h>
@@ -129,7 +130,12 @@ void ee_runner(SystemThreadInterface& iface) {
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
         (u8*)mmap((void*)0x10000000, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
+#ifdef __APPLE__
+                  // has no map_populate
+                  MAP_ANONYMOUS | MAP_32BIT | MAP_PRIVATE, 0, 0);
+#else
                   MAP_ANONYMOUS | MAP_32BIT | MAP_PRIVATE | MAP_POPULATE, 0, 0);
+#endif
   } else {
     g_ee_main_mem =
         (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
@@ -377,7 +383,7 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   if (enable_display) {
     Gfx::Exit();
   }
-  lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;
 }
