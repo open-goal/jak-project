@@ -47,7 +47,9 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
         strncpy(buf, (char*)name->Name, 16);
 
         std::string str(buf);
-        m_names[str] = name->Index;
+        if (m_names.find(str) == m_names.end()) {
+          m_names[str] = name->Index;
+        }
         m_sounds.at(name->Index).name = str;
 
         name++;

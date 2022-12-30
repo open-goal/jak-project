@@ -20,19 +20,13 @@ void blocksound_handler::init() {
   //   return;
   // }
 
-  int idx = 0;
-  for (auto& g : m_sfx.grains) {
-    // lg::info("grain {}: {}", idx, g->inspect());
-    idx++;
-  }
-
   while (m_countdown <= 0 && !m_done) {
     do_grain();
   }
 }
 
 bool blocksound_handler::tick() {
-  m_voices.remove_if([](std::weak_ptr<vag_voice>& p) { return p.expired(); });
+  m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
 
   for (auto& lfo : m_lfo) {
     lfo.tick();
@@ -145,8 +139,7 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
         continue;
       }
 
-      auto volume =
-          m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, voice->tone.Vol, voice->tone.Pan);
+      auto volume = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
       auto left = m_vm.adjust_vol_to_group(volume.left, m_sfx.d.VolGroup);
       auto right = m_vm.adjust_vol_to_group(volume.right, m_sfx.d.VolGroup);
 
@@ -174,13 +167,17 @@ void blocksound_handler::update_pitch() {
 }
 
 void blocksound_handler::set_pmod(s32 mod) {
-  // TODO update children
+  for (auto& c : m_children) {
+    c->set_pmod(mod);
+  }
   m_app_pm = mod;
   update_pitch();
 }
 
 void blocksound_handler::set_pbend(s32 bend) {
-  // TODO update children
+  for (auto& c : m_children) {
+    c->set_pbend(bend);
+  }
   m_app_pb = bend;
   update_pitch();
 }

@@ -4,6 +4,7 @@
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 namespace pretty_print {
 
@@ -100,7 +101,7 @@ inline const std::string quote_symbol(Node::QuoteKind kind) {
     case Node::QuoteKind::UNQUOTE_SPLICING:
       return ",@";
     default:
-      ASSERT_MSG(false, fmt::format("invalid quote kind {}", kind));
+      ASSERT_MSG(false, fmt::format("invalid quote kind {}", fmt::underlying(kind)));
       return "[invalid]";
   }
 }

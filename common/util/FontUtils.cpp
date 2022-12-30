@@ -15,6 +15,7 @@
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 namespace {
 
@@ -38,7 +39,7 @@ const std::string& get_text_version_name(GameTextVersion version) {
       return name;
     }
   }
-  throw std::runtime_error(fmt::format("invalid text version {}", version));
+  throw std::runtime_error(fmt::format("invalid text version {}", fmt::underlying(version)));
 }
 
 GameTextFontBank::GameTextFontBank(GameTextVersion version,

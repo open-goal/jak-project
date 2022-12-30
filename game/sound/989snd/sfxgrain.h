@@ -521,7 +521,7 @@ std::unique_ptr<Grain> new_grain(grain_type id, Args&&... args) {
     case grain_type::COPY_REGISTER:
       return std::make_unique<SFXGrain_CopyRegister>(std::forward<Args>(args)...);
     default:
-      throw std::runtime_error(fmt::format("Unknown grain type {}", id));
+      throw std::runtime_error(fmt::format("Unknown grain type {}", fmt::underlying(id)));
   }
   return nullptr;
 }

@@ -238,12 +238,12 @@ void LoadSettings() {
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
     case GfxPipeline::Invalid:
-      lg::error("Requested invalid renderer", pipeline);
+      lg::error("Requested invalid renderer", fmt::underlying(pipeline));
       return NULL;
     case GfxPipeline::OpenGL:
       return &gRendererOpenGL;
     default:
-      lg::error("Requested unknown renderer {}", (u64)pipeline);
+      lg::error("Requested unknown renderer {}", fmt::underlying(pipeline));
       return NULL;
   }
 }
@@ -509,7 +509,7 @@ void SetLod(RendererTreeType tree, int lod) {
       g_global_settings.lod_tie = lod;
       break;
     default:
-      lg::error("Invalid tree {} specified for SetLod ({})", tree, lod);
+      lg::error("Invalid tree {} specified for SetLod ({})", fmt::underlying(tree), lod);
       break;
   }
 }
@@ -529,7 +529,7 @@ bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int
       ASSERT(arr_idx == 0);
       return (g_global_settings.collision_skip_mask >> arr_ofs) & 1;
     default:
-      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);
+      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);
       return false;
   }
 }
@@ -553,7 +553,7 @@ void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int
       g_global_settings.collision_skip_mask |= 1 << arr_ofs;
       break;
     default:
-      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);
+      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);
       break;
   }
 }
@@ -577,7 +577,7 @@ void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, i
       g_global_settings.collision_skip_mask &= ~(1 << arr_ofs);
       break;
     default:
-      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, mode, mask_id);
+      lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);
       break;
   }
 }

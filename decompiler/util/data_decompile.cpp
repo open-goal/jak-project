@@ -735,6 +735,7 @@ const std::unordered_map<
            {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
           {"nav-network-info",
            {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
+          {"sig-path", {{"samples", ArrayFieldDecompMeta(TypeSpec("sig-path-sample"), 64)}}},
           {"race-info",
            {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
             {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},

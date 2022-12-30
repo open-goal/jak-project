@@ -9,6 +9,7 @@
 
 #include "ParseHelpers.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/unicode_util.h"
 
@@ -1590,7 +1591,7 @@ Object Interpreter::eval_format(const Object& form,
                    fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
 
   if (truthy(dest)) {
-    printf("%s", formatted.c_str());
+    lg::print(formatted.c_str());
   }
 
   return StringObject::make_new(formatted);

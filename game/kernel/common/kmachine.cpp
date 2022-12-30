@@ -26,7 +26,7 @@ OverlordDataSource isodrv;
 u32 modsrc;
 
 // Reboot IOP with IOP kernel from DVD/CD on boot
-u32 reboot;
+u32 reboot_iop;
 
 const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
@@ -41,7 +41,7 @@ void kmachine_init_globals_common() {
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
   modsrc = 1;
-  reboot = 1;
+  reboot_iop = 1;
   vif1_interrupt_handler = 0;
   vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
