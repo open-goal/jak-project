@@ -7943,10 +7943,16 @@
     (instance-tie-colors3 22)
     (inst-tie-colors* 23)
 
+    ;; 25-33 is shrub stuff
+
+    ;;
+
     (entity 43)
     (camera 44)
 
     (res 48)
+
+    ;; 50-57 is collision
 
     (bsp-main          58)
     (bsp-misc          59)
@@ -7976,6 +7982,29 @@
     (texture          82)
 
     (array            84)
+
+    (unsorted-proc    90)
+    (8k-dead-pool     91)
+    (16k-dead-pool    92)
+    (nk-dead-pool     93)
+    (target-dead-pool 94)
+    (camera-dead-pool 95)
+    (debug-dead-pool  96)
+    (process-active   97)
+    (heap-total       98)
+    (heap-process     99)
+    (heap-header     100)
+    (heap-thread     101)
+    (heap-root       102)
+
+    (heap-draw-control 103)
+    (heap-joint-control 104)
+    (heap-cspace     105)
+    (heap-bone       106)
+    (heap-part       107)
+    (heap-collide-prim 108)
+    (heap-misc       109)
+
 
     (eye-anim        111)
     )
@@ -12382,7 +12411,7 @@
   ((first        uint32  :offset-assert 0)
    (next         uint32  :offset-assert 4)
    (bucket-id    int32   :offset-assert 8)
-   (shadow-color uint32  :offset-assert 12)
+   (shadow-color rgba    :offset-assert 12)
    (constants    basic   :offset-assert 16)
    )
   :allow-misaligned
@@ -12606,7 +12635,7 @@
 (declare-type mc-slot-info structure)
 (define-extern mc-sync (function int))
 (define-extern mc-get-slot-info (function int mc-slot-info none))
-
+(define-extern show-mc-info (function dma-buffer none))
 (define-extern mc-check-result (function mc-status-code))
 ;; mc-makefile
 
@@ -13294,9 +13323,10 @@
 (defenum prototype-flags
   :bitfield #t
   :type uint16
-  (disable     0)
+  (disable     0) ;; set from debug menu, for debugging
   (tpage-alpha 2)
   (vanish      3)
+  (visible     5) ;; set by prototypes-game-visible-set! to hide things on purpose
   (no-collide  6)
   (tpage-water 7)
   )
@@ -24035,7 +24065,7 @@
 (define-extern foreground-check-longest-edge-asm (function draw-control float symbol))
 (define-extern foreground-ripple (function draw-control merc-ctrl pointer int pointer))
 (define-extern foreground-draw (function draw-control dma-buffer float none))
-;; (define-extern foreground-draw-hud function)
+(define-extern foreground-draw-hud (function draw-control dma-buffer float none))
 (define-extern *foreground-draw-engine* engine)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29512,17 +29542,17 @@
 (define-extern find-instance-by-name-level (function string level prototype-bucket))
 (define-extern find-instance-by-name (function string prototype-bucket))
 (define-extern prototypes-game-visible-set! (function pair symbol int))
-;; (define-extern find-instance-by-index function) ;; (function type int bsp-header prototype-bucket)
+(define-extern find-instance-by-index (function type int bsp-header prototype-bucket))
 (define-extern prototype-bucket-type (function prototype-bucket type))
 (define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
 (define-extern print-prototype-list (function none))
 (define-extern draw-instance-info (function string none))
-;; (define-extern set-shadow-by-name function)
-;; (define-extern get-shadow-by-name function)
-;; (define-extern teleport-camera-by-name function)
+(define-extern set-shadow-by-name (function string int int none))
+(define-extern get-shadow-by-name (function string none))
+(define-extern teleport-camera-by-name (function string none))
 (define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 (define-extern *hud-lights* vu-lights)
-;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control symbol dma-buffer none)
+(define-extern dma-add-process-drawable-hud (function process-drawable draw-control float dma-buffer none))
 (define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
 (define-extern foreground-engine-execute (function engine display-frame none))
 (define-extern main-debug-hook (function none))
@@ -29536,8 +29566,8 @@
 (define-extern *draw-hook* (function none))
 (define-extern default-init-buffer (function bucket-id gs-zbuf gs-test none))
 (define-extern default-end-buffer (function bucket-id gs-zbuf gs-test none))
-;; (define-extern screen-shot-scale function)
-;; (define-extern screen-shot function)
+(define-extern screen-shot-scale (function int string none))
+(define-extern screen-shot (function none))
 (define-extern display-frame-start (function display int float none))
 (define-extern display-frame-finish (function display display))
 (define-extern determine-pause-mode (function int))
