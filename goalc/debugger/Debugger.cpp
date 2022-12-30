@@ -777,6 +777,8 @@ bool Debugger::try_start_watcher() {
     stop_watcher();
   }
   return m_attach_response;
+#else
+  return false;
 #endif
 }
 

@@ -7,21 +7,22 @@
 
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+#include "common/common_types.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
 
-#ifdef __linux__
-u32 get_current_tid() {
-  return (u32)pthread_self();
+#ifdef OS_POSIX
+u64 get_current_tid() {
+  return (u64)pthread_self();
 }
 #else
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "Processthreadsapi.h"
-u32 get_current_tid() {
-  return (u32)GetCurrentThreadId();
+u64 get_current_tid() {
+  return (u64)GetCurrentThreadId();
 }
 #endif
 #include "common/log/log.h"
