@@ -1545,8 +1545,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       for (int j = start; j < end; j++) {
         auto& word = words.at(label.target_segment).at(j / 4);
         if (word.kind() != LinkedWord::PLAIN_DATA) {
-          throw std::runtime_error(
-              fmt::format("Got bad word of kind {} in boxed array of values", word.kind()));
+          throw std::runtime_error(fmt::format("Got bad word of kind {} in boxed array of values",
+                                               fmt::underlying(word.kind())));
         }
         elt_bytes.push_back(word.get_byte(j % 4));
       }

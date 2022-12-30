@@ -132,7 +132,7 @@ class Grain {
 
   virtual ~Grain() = default;
 
-  virtual s32 execute(blocksound_handler& handler) { return 0; };
+  virtual s32 execute(blocksound_handler& /*handler*/) { return 0; };
   virtual std::string_view inspect() { return magic_enum::enum_name(type()); };
   s32 delay() { return m_delay; }
   grain_type type() { return m_type; }
@@ -218,13 +218,13 @@ class SFXGrain_Branch : public Grain {
 class SFXGrain_ControlNull : public Grain {
  public:
   SFXGrain_ControlNull(SFXGrain& grain) : Grain(grain){};
-  SFXGrain_ControlNull(SFXGrain2& grain, u8* data) : Grain(grain){};
+  SFXGrain_ControlNull(SFXGrain2& grain, u8* /*data*/) : Grain(grain){};
 };
 
 class SFXGrain_LoopStart : public Grain {
  public:
   SFXGrain_LoopStart(SFXGrain& grain) : Grain(grain){};
-  SFXGrain_LoopStart(SFXGrain2& grain, u8* data) : Grain(grain){};
+  SFXGrain_LoopStart(SFXGrain2& grain, u8* /*data*/) : Grain(grain){};
 };
 
 class SFXGrain_LoopEnd : public Grain {
@@ -358,7 +358,7 @@ class SFXGrain_TestRegister : public Grain {
 class SFXGrain_Marker : public Grain {
  public:
   SFXGrain_Marker(SFXGrain& grain) : Grain(grain), m_mark(grain.GrainParams.control.param[0]) {}
-  SFXGrain_Marker(SFXGrain2& grain, u8* data) : Grain(grain), m_mark(grain.OpcodeData.arg[0]) {}
+  SFXGrain_Marker(SFXGrain2& grain, u8* /*data*/) : Grain(grain), m_mark(grain.OpcodeData.arg[0]) {}
   int marker() { return m_mark; }
 
  private:

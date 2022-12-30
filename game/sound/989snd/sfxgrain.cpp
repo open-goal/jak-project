@@ -228,7 +228,7 @@ SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain& grain) : Grain(grain) {}
 SFXGrain_LoopContinue::SFXGrain_LoopContinue(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_LoopContinue::execute(blocksound_handler& handler) {
   bool found = false;
-  for (int i = handler.m_next_grain + 1; i < handler.m_sfx.grains.size() && !found; i++) {
+  for (int i = handler.m_next_grain + 1; i < (int)handler.m_sfx.grains.size() && !found; i++) {
     if (handler.m_sfx.grains[i]->type() == grain_type::LOOP_END) {
       handler.m_next_grain = i;
       found = true;
@@ -453,7 +453,7 @@ SFXGrain_GotoMarker::SFXGrain_GotoMarker(SFXGrain2& grain, u8* data) : Grain(gra
 }
 s32 SFXGrain_GotoMarker::execute(blocksound_handler& handler) {
   bool found = false;
-  for (int i = 0; i < handler.m_sfx.grains.size() && !found; i++) {
+  for (int i = 0; i < (int)handler.m_sfx.grains.size() && !found; i++) {
     if (handler.m_sfx.grains.at(i)->type() == grain_type::MARKER) {
       if (static_cast<SFXGrain_Marker*>(handler.m_sfx.grains.at(i).get())->marker() == m_mark) {
         handler.m_next_grain = i - 1;
@@ -482,7 +482,7 @@ s32 SFXGrain_GotoRandomMarker::execute(blocksound_handler& handler) {
   s32 range = m_upper_bound - m_lower_bound + 1;
   s32 mark = (rand() % range) + m_lower_bound;
 
-  for (int i = 0; i < handler.m_sfx.grains.size() && !found; i++) {
+  for (int i = 0; i < (int)handler.m_sfx.grains.size() && !found; i++) {
     if (handler.m_sfx.grains.at(i)->type() == grain_type::MARKER) {
       if (static_cast<SFXGrain_Marker*>(handler.m_sfx.grains.at(i).get())->marker() == mark) {
         handler.m_next_grain = i - 1;

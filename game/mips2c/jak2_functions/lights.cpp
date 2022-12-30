@@ -8,7 +8,6 @@ namespace add_light_sphere_to_light_group {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
@@ -418,7 +417,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -48);                           // daddiu sp, sp, -48
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->daddiu(t0, sp, 16);                            // daddiu t0, sp, 16
@@ -564,7 +562,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -48);                           // daddiu sp, sp, -48
   c->daddiu(v1, sp, 16);                            // daddiu v1, sp, 16
   // nop                                            // sll r0, r0, 0
@@ -700,7 +697,6 @@ namespace light_hash_get_bucket_index {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
   c->daddiu(v1, sp, 16);                            // daddiu v1, sp, 16
   // nop                                            // sll r0, r0, 0
