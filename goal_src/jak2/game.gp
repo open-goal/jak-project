@@ -1077,57 +1077,55 @@
 ;; ;; ATE
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "ATE.DGO" "ate.gd")
+(cgo "ATE.DGO" "ate.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "characters/sig/sig-h.gc"
-;;   "characters/sig/sig-task.gc"
-;;   "characters/sig/sig-shot.gc"
-;;   "characters/sig/sig-plasma.gc"
-;;   "characters/sig/sig.gc"
-;;   "characters/sig/sig-states.gc"
-;;   "characters/ashelin/ash-h.gc"
-;;   "characters/ashelin/ash-task.gc"
-;;   "characters/ashelin/ash-shot.gc"
-;;   "characters/ashelin/ash.gc"
-;;   "characters/ashelin/ash-states.gc"
-;;   "levels/common/enemy/spyder.gc"
-;;   "levels/atoll/sig0-course.gc"
-;;   "levels/atoll/ash1-course.gc"
-;;   "levels/atoll/atoll-tank.gc"
-;;   "levels/atoll/atoll-scenes.gc"
-;;   "levels/atoll/sniper.gc"
-;;   "levels/common/enemy/amphibian/amphibian.gc"
-;;   "levels/atoll/juicer.gc"
-;;   "levels/common/enemy/metalhead_brown/metalmonk.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/ai/ai-task-h.gc"
+  "levels/common/ai/bot-h.gc"
+  "levels/common/ai/bot.gc"
+  "levels/common/ai/bot-states.gc"
+  "characters/sig/sig-h.gc"
+  "characters/sig/sig-task.gc"
+  "characters/sig/sig-shot.gc"
+  "characters/sig/sig-plasma.gc"
+  "characters/sig/sig.gc"
+  "characters/sig/sig-states.gc"
+  "characters/ashelin/ash-h.gc"
+  "characters/ashelin/ash-task.gc"
+  "characters/ashelin/ash-shot.gc"
+  "characters/ashelin/ash.gc"
+  "characters/ashelin/ash-states.gc"
+  "levels/common/enemy/spyder.gc"
+  "levels/atoll/sig0-course.gc"
+  "levels/atoll/ash1-course.gc"
+  "levels/atoll/atoll-tank.gc"
+  "levels/atoll/atoll-scenes.gc"
+  "levels/atoll/sniper.gc"
+  "levels/common/enemy/amphibian/amphibian.gc"
+  "levels/atoll/juicer.gc"
+  "levels/common/enemy/metalhead_brown/metalmonk.gc"
+  )
 
-;; (copy-textures 1606 1607 2461 3237 3412)
+(copy-textures 1606 1607 2461 3237 3412)
 
-;; (copy-gos
-;;   "sig-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "atoll-tank-ag"
-;;   "sig-highres-ag"
-;;   "juicer-ag"
-;;   "ashelin-highres-ag"
-;;   "atoll-hellcat-ag"
-;;   "ashelin-ag"
-;;   "metalmonk-ag"
-;;   "amphibian-ag"
-;;   "spyder-ag"
-;;   "com-airlock-inner-ag"
-;;   "palmpilot-ag"
-;;   "particleman-ag"
-;;   "atollext-vis"
-;;   )
+(copy-gos
+  "sig-ag"
+  "jak-highres-ag"
+  "atoll-tank-ag"
+  "sig-highres-ag"
+  "juicer-ag"
+  "ashelin-highres-ag"
+  "atoll-hellcat-ag"
+  "ashelin-ag"
+  "metalmonk-ag"
+  "amphibian-ag"
+  "spyder-ag"
+  "com-airlock-inner-ag"
+  "palmpilot-ag"
+  "atollext-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; ATO
@@ -1205,11 +1203,8 @@
 (copy-textures 2537 2539 2538 3498)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  "jak-highres-ag"
   "air-train-ag"
   "cpad-elevator-ag"
-  ;; "particleman-ag"
   "caspad-vis"
   )
 
@@ -1300,7 +1295,6 @@
 (copy-textures 2444 2445 2645 2644 2744 2791 2441)
 
 (copy-gos
-  "com-airlock-inner-ag"
   "farm-chilirots-ag"
   "farm-cabbage-ag"
   "farm-marrow-ag"
@@ -1747,7 +1741,6 @@
   "levels/dig/dig3-obs.gc"
   "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
   "levels/common/enemy/metalhead_slinger/grenadier.gc"
-  "levels/common/enemy/metalhead_brown/metalmonk.gc"
   "levels/dig/dig-texture.gc"
   "levels/dig/dig-scenes.gc"
   "levels/dig/dig-part.gc"
@@ -1757,7 +1750,6 @@
 
 (copy-gos
   "grenadier-ag"
-  "metalmonk-ag"
   "flitter-ag"
   "dig-balloon-lurker-ag"
   "dig-spikey-sphere-ag"
@@ -2122,20 +2114,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "levels/common/enemy/spyder.gc"
-  ;; "levels/common/enemy/hover/hover-formation-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-network.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control.gc"
-  ;; "levels/common/enemy/hover/hover-enemy.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
-  ;; "levels/common/enemy/hover/hover-formation.gc"
-  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
-  ;; "levels/common/enemy/hover/wasp-part.gc"
-  ;; "levels/common/enemy/hover/wasp.gc"
-  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
-  ;; "levels/common/enemy/hover/flamer.gc"
   "levels/forest/forest-part.gc"
   "levels/forest/forest-obs.gc"
   "levels/forest/pegasus.gc"
@@ -2153,7 +2131,6 @@
   "jak-pegasus+0-ag"
   "pegasus-ag"
   "predator-ag"
-  "spyder-ag"
   "wren-ag"
   "minnow-ag"
   "forest-vis"
@@ -2819,13 +2796,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "levels/common/ai/ai-task-h.gc"
-  "levels/common/ai/bot-h.gc"
-  "levels/common/ai/bot.gc"
-  "levels/common/ai/bot-states.gc"
-  "levels/undefined/hal-h.gc"
-  "levels/undefined/hal-task.gc"
-  "levels/undefined/hal.gc"
   "levels/city/kid_escort/kidesc-h.gc"
   "levels/city/kid_escort/crocesc-h.gc"
   "levels/city/kid_escort/hal4-course.gc"
@@ -3515,19 +3485,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/enemy/hover/hover-formation-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-network.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control.gc"
-  ;; "levels/common/enemy/hover/hover-enemy.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
-  ;; "levels/common/enemy/hover/hover-formation.gc"
-  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
-  ;; "levels/common/enemy/hover/wasp-part.gc"
-  ;; "levels/common/enemy/hover/wasp.gc"
-  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
-  ;; "levels/common/enemy/hover/flamer.gc"
   "levels/nest/boss/nest-texture.gc"
   "levels/nest/boss/metalkor-part.gc"
   "levels/nest/boss/metalkor-setup.gc"
@@ -3542,17 +3499,13 @@
 (copy-gos
   "kid-nestb+0-ag"
   "metalkor-ag"
-  ;; "daxter-highres-ag"
   "metalkor-lowtorso-ag"
   "metalkor-highres-ag"
-  ;; "darkjak-highres-ag"
   "metalkor-legs-ag"
   "metalkor-explode-ag"
   "kid-highres-ag"
   "nest-gun-parts-ag"
-  ;; "wasp-ag"
   "kid-ag"
-  ;; "flitter-ag"
   "nest-break-precipice-ag"
   "metalkor-bomb-ag"
   "metalkor-wings-ag"
@@ -3562,11 +3515,8 @@
   "metalkor-distort-ag"
   "metalkor-rays-ag"
   "nest-gun-elevator-ag"
-  ;; "precursor-stone-ag"
-  "palmpilot-ag"
   "metalkor-fma-spinner-ag"
   "nestb-tail-bound-ag"
-  ;; "particleman-ag"
   "rift-occlude-ag"
   "nestb-vis"
   )
@@ -3906,11 +3856,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "engine/target/mech_suit/mech-part.gc"
-  ;; "engine/target/mech_suit/mech.gc"
-  ;; "engine/target/mech_suit/target-mech.gc"
-  ;; "engine/target/mech_suit/mech-states.gc"
-  ;; "engine/target/mech_suit/grunt-mech.gc"
   "levels/ruins/ruins-ocean.gc"
   "levels/ruins/ruins-scenes.gc"
   "levels/ruins/mechtest-obs.gc"
@@ -3919,27 +3864,15 @@
   "levels/ruins/pillar-collapse.gc"
   "levels/ruins/ruins-obs.gc"
   "levels/ruins/rapid-gunner.gc"
-  "levels/common/enemy/amphibian/amphibian.gc"
-  ;; "levels/common/enemy/fodder/fodder.gc"
-  ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
   )
 
 (copy-textures 851 853 852 2205 1000)
 
 (copy-gos
-  ;; "jak-pole+0-ag"
-  ;; "jak-mech+0-ag"
-  ;; "grunt-mech-anims+0-ag"
-  ;; "grunt-ag"
   "ruins-breakable-wall-ag"
-  ;; "grenadier-ag"
-  "amphibian-ag"
   "ruins-drop-plat-ag"
   "rapid-gunner-ag"
-  ;; "flitter-ag"
   "ruins-pillar-collapse-ag"
-  ;; "mech-ag"
-  ;; "fodder-ag"
   "ruins-bridge-ag"
   "shield-gunner-ag"
   "precipice-b-ag"
@@ -4613,50 +4546,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/enemy/hover/hover-formation-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-network.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control.gc"
-  ;; "levels/common/enemy/hover/hover-enemy.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
-  ;; "levels/common/enemy/hover/hover-formation.gc"
-  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
-  ;; "levels/common/enemy/hover/wasp-part.gc"
-  ;; "levels/common/enemy/hover/wasp.gc"
-  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
-  ;; "levels/common/enemy/hover/flamer.gc"
-  ;; "levels/common/ai/ai-task-h.gc"
-  ;; "levels/common/ai/bot-h.gc"
-  ;; "levels/common/ai/bot.gc"
-  ;; "levels/common/ai/bot-states.gc"
-  ;; "levels/undefined/hal-h.gc"
-  ;; "levels/undefined/hal-task.gc"
-  ;; "levels/undefined/hal.gc"
-  ;; "levels/undefined/ruf-h.gc"
-  ;; "levels/undefined/ruf-task.gc"
-  ;; "levels/undefined/ruf.gc"
-  ;; "levels/undefined/ruf-states.gc"
-  ;; "levels/sewer/escort/jinx-h.gc"
-  ;; "levels/sewer/escort/jinx-shot.gc"
-  ;; "levels/sewer/escort/jinx-bomb.gc"
-  ;; "levels/sewer/escort/jinx.gc"
-  ;; "levels/sewer/escort/jinx-states.gc"
-  ;; "levels/sewer/escort/mog-h.gc"
-  ;; "levels/sewer/escort/mog.gc"
-  ;; "levels/sewer/escort/grim-h.gc"
-  ;; "levels/sewer/escort/grim.gc"
-  "characters/sig/sig-h.gc"
-  "characters/sig/sig-task.gc"
-  "characters/sig/sig-shot.gc"
-  "characters/sig/sig-plasma.gc"
-  "characters/sig/sig.gc"
-  "characters/sig/sig-states.gc"
-  ;; "engine/target/mech_suit/mech-part.gc"
-  ;; "engine/target/mech_suit/mech.gc"
-  ;; "engine/target/mech_suit/target-mech.gc"
-  ;; "engine/target/mech_suit/mech-states.gc"
-  ;; "engine/target/mech_suit/grunt-mech.gc"
   "levels/underport/under-shoot-block.gc"
   "levels/underport/underb-master.gc"
   "levels/underport/under-obs.gc"
@@ -4671,23 +4560,16 @@
   "levels/underport/sig5-course.gc"
   "levels/underport/under-scenes.gc"
   "levels/underport/sig-recorder.gc"
-  ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
   )
 
 (copy-textures 3051 3053 3054 3413)
 
 (copy-gos
-  ;; "jak-mech+0-ag"
-  ;; "grunt-mech-anims+0-ag"
-  "sig-ag"
-  ;; "grunt-ag"
   "under-mine-ag"
   "jellyfish-ag"
-  ;; "mech-ag"
   "under-shoot-block-ag"
   "under-break-floor-ag"
   "centipede-ag"
-  ;; "com-airlock-inner-ag"
   "under-int-door-ag"
   "under-break-wall-b-ag"
   "under-break-wall-ag"
@@ -4700,7 +4582,6 @@
   "under-plat-shoot-ag"
   "under-plat-wall-ag"
   "under-plat-long-ag"
-  ;; "hip-door-a-ag"
   "under-warp-ag"
   "under-laser-ag"
   "under-laser-shadow-ag"
