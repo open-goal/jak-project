@@ -218,7 +218,24 @@ std::string careful_function_to_string(
   }
 
   if (!func->ir2.top_form) {
-    return ";; ERROR: function was not converted to expressions. Cannot decompile.\n\n";
+    if (func->mips2c_output) {
+      std::string output = ";; INFO: function output is handled by mips2c\n";
+      // Attempt to automatically generate the OpenGOAL code for calling the mips2c varient
+      // For methods this is - (defmethod-mips2c "(method <METHOD_ID> <TYPE>)" <METHOD_ID>)
+      if (func->guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+        output += fmt::format("(defmethod-mips2c \"(method {} {})\" {} {})\n",
+                              func->guessed_name.method_id, func->guessed_name.type_name,
+                              func->guessed_name.method_id, func->guessed_name.type_name);
+      } else if (func->guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+        // For functions it is - (def-mips2c <FUNC_NAME> (function <SIGNATURE>))
+        output += fmt::format("(def-mips2c {} {})\n", func->guessed_name.function_name,
+                              func->type.print());
+      }
+
+      return output + "\n";
+    } else {
+      return ";; ERROR: function was not converted to expressions. Cannot decompile.\n\n";
+    }
   }
   if (!env.has_type_analysis()) {
     return ";; ERROR: function has no type analysis. Cannot decompile.\n\n";
