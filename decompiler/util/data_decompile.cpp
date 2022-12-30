@@ -733,6 +733,7 @@ const std::unordered_map<
            {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
           {"sparticle-launch-group",
            {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+          {"sig-path", {{"samples", ArrayFieldDecompMeta(TypeSpec("sig-path-sample"), 64)}}},
           {"race-info",
            {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
             {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
@@ -1544,8 +1545,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       for (int j = start; j < end; j++) {
         auto& word = words.at(label.target_segment).at(j / 4);
         if (word.kind() != LinkedWord::PLAIN_DATA) {
-          throw std::runtime_error(
-              fmt::format("Got bad word of kind {} in boxed array of values", word.kind()));
+          throw std::runtime_error(fmt::format("Got bad word of kind {} in boxed array of values",
+                                               fmt::underlying(word.kind())));
         }
         elt_bytes.push_back(word.get_byte(j % 4));
       }

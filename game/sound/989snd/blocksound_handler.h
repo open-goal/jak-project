@@ -11,6 +11,13 @@ namespace snd {
 
 extern std::array<s8, 32> g_block_reg;
 
+class blocksound_voice : public vag_voice {
+ public:
+  blocksound_voice(Tone& t) : vag_voice(t) {}
+  s32 g_vol;
+  s32 g_pan;
+};
+
 class blocksound_handler : public sound_handler {
  public:
   blocksound_handler(SoundBank& bank,
@@ -106,7 +113,7 @@ class blocksound_handler : public sound_handler {
   void set_vol_pan(s32 vol, s32 pan) override;
   void set_pmod(s32 mod) override;
   void set_register(u8 reg, u8 value) override { m_registers.at(reg) = value; };
-  void set_pbend(s32 bend);  // TODO override;
+  void set_pbend(s32 bend) override;
 
   void init();
 
@@ -126,12 +133,9 @@ class blocksound_handler : public sound_handler {
   SFX2& m_sfx;
   voice_manager& m_vm;
 
-  std::list<std::weak_ptr<vag_voice>> m_voices;
+  std::list<std::weak_ptr<blocksound_voice>> m_voices;
 
   std::list<std::unique_ptr<sound_handler>> m_children;
-
-  s32 m_current_pb{0};
-  s32 m_current_pm{0};
 
   s32 m_orig_volume{0};
   s32 m_orig_pan{0};

@@ -1,7 +1,7 @@
 #include "common/util/Assert.h"
 #include "common/util/DgoReader.h"
 #include "common/util/FileUtil.h"
-#include <common/util/unicode_util.h>
+#include "common/util/unicode_util.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/ObjectFile/LinkedObjectFileCreation.h"

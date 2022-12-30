@@ -9,8 +9,8 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/os.h"
+#include "common/util/unicode_util.h"
 #include "common/versions.h"
-#include <common/util/unicode_util.h>
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
 
   // main decompile.
   if (config.decompile_code) {
-    db.analyze_functions_ir2(out_folder, config, {});
+    db.analyze_functions_ir2(out_folder, config, {}, {}, {});
   }
 
   if (config.generate_all_types) {

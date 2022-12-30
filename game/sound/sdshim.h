@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "common/common_types.h"
 
 #include "game/sound/common/voice.h"

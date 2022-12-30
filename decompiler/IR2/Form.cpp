@@ -1108,7 +1108,7 @@ void EmptyElement::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 
 bool cmp(Register x, Register y) {
-  int comparison = x.to_string().compare(y.to_string());
+  int comparison = x.to_string() > y.to_string();
   if (comparison <= 0)
     return true;
   return false;
@@ -1118,7 +1118,7 @@ RLetElement::RLetElement(Form* _body, RegSet _regs) : body(_body) {
   for (auto& reg : _regs) {
     sorted_regs.push_back(reg);
   }
-  std::sort(sorted_regs.begin(), sorted_regs.end(), cmp);
+  std::stable_sort(sorted_regs.begin(), sorted_regs.end(), cmp);
 }
 
 void RLetElement::apply(const std::function<void(FormElement*)>& f) {
