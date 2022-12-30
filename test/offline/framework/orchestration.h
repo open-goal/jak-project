@@ -2,6 +2,7 @@
 
 #include <future>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -85,7 +86,7 @@ class OfflineTestThreadStatus {
   Stage stage = Stage::IDLE;
   uint32_t total_steps = 0;
   uint32_t curr_step = 0;
-  std::vector<std::string> dgos = {};
+  std::set<std::string> dgos;
   std::string curr_file;
   OfflineTestConfig config;
 
@@ -100,16 +101,12 @@ struct OfflineTestWorkCollection {
 };
 
 struct OfflineTestWorkGroup {
-  std::vector<std::string> dgos;
-  std::vector<OfflineTestWorkCollection> work_collections;
+  std::set<std::string> dgo_set;
+  OfflineTestWorkCollection work_collection;
   std::shared_ptr<OfflineTestThreadStatus> status;
 
   int work_size() const {
-    int i = 0;
-    for (const auto& coll : work_collections) {
-      i += coll.source_files.size() + coll.art_files.size();
-    }
-    return i;
+    return work_collection.source_files.size() + work_collection.art_files.size();
   }
 };
 

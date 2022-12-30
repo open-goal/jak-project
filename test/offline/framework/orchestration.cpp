@@ -37,13 +37,11 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
 
   // modify the config
   std::unordered_set<std::string> object_files;
-  for (const auto& coll : work.work_collections) {
-    for (auto& file : coll.source_files) {
-      object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
-    }
-    for (auto& file : coll.art_files) {
-      object_files.insert(file.unique_name);
-    }
+  for (auto& file : work.work_collection.source_files) {
+    object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
+  }
+  for (auto& file : work.work_collection.art_files) {
+    object_files.insert(file.unique_name);
   }
 
   dc.config->allowed_objects = object_files;
@@ -69,19 +67,17 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   if (db_files.size() != object_files.size()) {
     lg::error("DB file error: has {} entries, but expected {}", db_files.size(),
               object_files.size());
-    for (const auto& coll : work.work_collections) {
-      for (auto& file : coll.source_files) {
-        if (!db_files.count(file.unique_name)) {
-          lg::error(
-              "didn't find {}, make sure it's part of the DGO inputs and not in the banned objects "
-              "list\n",
-              file.unique_name);
-        }
+    for (auto& file : work.work_collection.source_files) {
+      if (!db_files.count(file.unique_name)) {
+        lg::error(
+            "didn't find {}, make sure it's part of the DGO inputs and not in the banned objects "
+            "list\n",
+            file.unique_name);
       }
-      for (auto& file : coll.art_files) {
-        if (!db_files.count(file.unique_name)) {
-          lg::error("didn't find {}\n", file.unique_name);
-        }
+    }
+    for (auto& file : work.work_collection.art_files) {
+      if (!db_files.count(file.unique_name)) {
+        lg::error("didn't find {}\n", file.unique_name);
       }
     }
     exit(1);
@@ -112,16 +108,11 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
   }
 
   // Now partition by DGO so that threads do not consume unnecessary or duplicate resources
-  // this is a half-decent approximation of a greedy-knapsack approach (where the knapsack can be
-  // overstuffed) Repeatedly just add to the thread with the current least amount of work
-  //
-  // TODO - if it ends up being that it would be advantageous to split up a massive dgo into
-  // multiple threads (ie. lots in engine) then this should be improved to accomodate that.
   //
   // TODO - additionally, if we have more threads than we can actually utilize we should not
   // reserve them and dynamically adjust the used thread count
   std::vector<OfflineTestWorkGroup> work_groups = {};
-  for (int i = 0; i < offline_config.num_threads; i++) {
+  for (int i = 0; i < (int)offline_config.num_threads; i++) {
     auto new_group = OfflineTestWorkGroup();
     new_group.status = std::make_shared<OfflineTestThreadStatus>(offline_config);
     work_groups.push_back(new_group);
@@ -130,21 +121,39 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
 
   g_offline_test_thread_manager.print_current_test_status(offline_config);
 
+  // Count the total number of files.
+  // We'll divide the files evenly between workers. We want to avoid the case where all workers need
+  // all DGOs, so assign consecutive files (likely to belong to the same dgo) to the same worker.
+  int total_files = 0;
   for (const auto& [dgo, work] : work_colls) {
-    // Find the smallest group
-    u32 smallest_group_idx = 0;
-    for (int i = 0; i < work_groups.size(); i++) {
-      if (work_groups[i].work_size() < work_groups[smallest_group_idx].work_size()) {
-        smallest_group_idx = i;
-      }
+    total_files += work.source_files.size() + work.art_files.size();
+  }
+  int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
+
+  // Divide up the work
+  int file_idx = 0;
+  for (const auto& [dgo, work] : work_colls) {
+    // art files
+    for (auto& art_file : work.art_files) {
+      auto& wg = work_groups.at(file_idx / divisor);
+      wg.dgo_set.insert(dgo);
+      wg.work_collection.art_files.push_back(art_file);
+      file_idx++;
     }
 
-    // Add the DGO and the files to it
-    work_groups[smallest_group_idx].dgos.push_back(dgo);
-    work_groups[smallest_group_idx].work_collections.push_back(work);
-    work_groups[smallest_group_idx].status->dgos.push_back(dgo);
-    work_groups[smallest_group_idx].status->total_steps =
-        work_groups[smallest_group_idx].work_size() * 3;  // decomp, compare, compile
+    // source files
+    for (auto& source_file : work.source_files) {
+      auto& wg = work_groups.at(file_idx / divisor);
+      wg.dgo_set.insert(dgo);
+      wg.work_collection.source_files.push_back(source_file);
+      file_idx++;
+    }
+  }
+
+  // Create summary of work for pretty printing.
+  for (auto& wg : work_groups) {
+    wg.status->dgos = wg.dgo_set;
+    wg.status->total_steps = wg.work_size() * 3;  // decomp, compare, compile
   }
 
   // Now we can finally create the futures
@@ -235,7 +244,7 @@ std::tuple<fmt::color, std::string> thread_stage_to_str(OfflineTestThreadStatus:
   }
 }
 
-std::string thread_dgos_to_str(std::vector<std::string> dgos) {
+std::string thread_dgos_to_str(const std::set<std::string>& dgos) {
   std::vector<std::string> ones_to_print = {};
   for (const auto& dgo : dgos) {
     ones_to_print.push_back(dgo);
@@ -256,7 +265,7 @@ std::string thread_progress_bar(u32 curr_step, u32 total_steps) {
   const u32 completed_segments = completion / 10;
   std::string progress_bar = "";
   int added_segments = 0;
-  for (int i = 0; i < completed_segments; i++) {
+  for (int i = 0; i < (int)completed_segments; i++) {
     progress_bar += "■";
     added_segments++;
   }

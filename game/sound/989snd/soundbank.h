@@ -60,8 +60,8 @@ class SoundBank {
                                                       SndPlayParams& params) = 0;
 
   virtual std::optional<std::string_view> get_name() { return std::nullopt; };
-  virtual std::optional<u32> get_sound_by_name(const char* name) { return std::nullopt; };
-  virtual std::optional<const SFXUserData*> get_sound_user_data(u32 sound_id) {
+  virtual std::optional<u32> get_sound_by_name(const char* /*name*/) { return std::nullopt; };
+  virtual std::optional<const SFXUserData*> get_sound_user_data(u32 /*sound_id*/) {
     return std::nullopt;
   };
 

@@ -751,7 +751,7 @@ static void UnLoadMusic(s32* handle) {
   *handle = 0;
 }
 
-void* RPC_Loader2(unsigned int fno, void* data, int size) {
+void* RPC_Loader2(unsigned int /*fno*/, void* data, int size) {
   int n_messages = size / SRPC_MESSAGE_SIZE;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
   if (!gSoundEnable) {
