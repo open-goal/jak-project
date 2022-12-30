@@ -1268,6 +1268,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
             "Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
       }
+      // TODO - crashes LSP
       ASSERT(field_type->is_reference());
       return field.array_size() * align(field_type->get_size_in_memory(),
                                         field_type->get_inline_array_stride_alignment());

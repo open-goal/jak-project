@@ -2518,22 +2518,22 @@
 ;; ;; LBOMBBOT
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBOMBBOT.DGO" "lbombbot.gd")
+(cgo "LBOMBBOT.DGO" "lbombbot.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/enemy/bombots/bombbot-h.gc"
-;;   "levels/common/enemy/bombots/bombbot-path.gc"
-;;   "levels/common/enemy/bombots/bombbot.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/enemy/bombots/bombbot-h.gc"
+  "levels/common/enemy/bombots/bombbot-path.gc"
+  "levels/common/enemy/bombots/bombbot.gc"
+  )
 
-;; (copy-textures 2751)
+(copy-textures 2751)
 
-;; (copy-gos
-;;   "bombbot-ag"
-;;   "lbombbot"
-;;   )
+(copy-gos
+  "bombbot-ag"
+  "lbombbot"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBRNERMK
@@ -2814,38 +2814,38 @@
 ;; ;; LKIDDOGE
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LKIDDOGE.DGO" "lkiddoge.gd")
+(cgo "LKIDDOGE.DGO" "lkiddoge.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/city/kid_escort/kidesc-h.gc"
-;;   "levels/city/kid_escort/crocesc-h.gc"
-;;   "levels/city/kid_escort/hal4-course.gc"
-;;   "levels/city/kid_escort/kidesc-task.gc"
-;;   "levels/city/kid_escort/kidesc.gc"
-;;   "levels/city/kid_escort/kidesc-states.gc"
-;;   "levels/city/kid_escort/crocesc-task.gc"
-;;   "levels/city/kid_escort/crocesc.gc"
-;;   "levels/city/kid_escort/crocesc-states.gc"
-;;   "levels/city/kid_escort/kidesc4-course.gc"
-;;   "levels/city/kid_escort/crocesc4-course.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/common/ai/ai-task-h.gc"
+  "levels/common/ai/bot-h.gc"
+  "levels/common/ai/bot.gc"
+  "levels/common/ai/bot-states.gc"
+  "levels/undefined/hal-h.gc"
+  "levels/undefined/hal-task.gc"
+  "levels/undefined/hal.gc"
+  "levels/city/kid_escort/kidesc-h.gc"
+  "levels/city/kid_escort/crocesc-h.gc"
+  "levels/city/kid_escort/hal4-course.gc"
+  "levels/city/kid_escort/kidesc-task.gc"
+  "levels/city/kid_escort/kidesc.gc"
+  "levels/city/kid_escort/kidesc-states.gc"
+  "levels/city/kid_escort/crocesc-task.gc"
+  "levels/city/kid_escort/crocesc.gc"
+  "levels/city/kid_escort/crocesc-states.gc"
+  "levels/city/kid_escort/kidesc4-course.gc"
+  "levels/city/kid_escort/crocesc4-course.gc"
+  )
 
-;; (copy-textures 2209)
+(copy-textures 2209)
 
-;; (copy-gos
-;;   "crocadog-escort-ag"
-;;   "kid-escort-ag"
-;;   "lkiddoge"
-;;   )
+(copy-gos
+  "crocadog-escort-ag"
+  "kid-escort-ag"
+  "lkiddoge"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LMEETBRT
@@ -3987,13 +3987,13 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  "levels/common/ai/ai-task-h.gc"
-  "levels/common/ai/bot-h.gc"
-  "levels/common/ai/bot.gc"
-  "levels/common/ai/bot-states.gc"
-  "levels/undefined/hal-h.gc"
-  "levels/undefined/hal-task.gc"
-  "levels/undefined/hal.gc"
+  ;; "levels/common/ai/ai-task-h.gc"
+  ;; "levels/common/ai/bot-h.gc"
+  ;; "levels/common/ai/bot.gc"
+  ;; "levels/common/ai/bot-states.gc"
+  ;; "levels/undefined/hal-h.gc"
+  ;; "levels/undefined/hal-task.gc"
+  ;; "levels/undefined/hal.gc"
   "levels/undefined/ruf-h.gc"
   "levels/undefined/ruf-task.gc"
   "levels/undefined/ruf.gc"

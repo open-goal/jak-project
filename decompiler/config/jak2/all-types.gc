@@ -35368,7 +35368,6 @@
 ;; hover-enemy-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-enemy-info (structure)
   ((fly-forward-anim    int32  :offset-assert 0)
    (fly-backward-anim   int32  :offset-assert 4)
@@ -35386,36 +35385,34 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype hover-enemy (enemy)
-  ((hover                      basic                    :offset-assert 528)
-   (hover-info                 hover-enemy-info         :offset-assert 532)
-   (formation-entity           basic                    :offset-assert 536)
-   (fly-anim-speed             float                    :offset-assert 540)
-   (restart-fly-anims          basic                    :offset-assert 544)
-   (main-joint-acc             vector           :inline :offset-assert 556)
-   (main-joint-vel             vector           :inline :offset-assert 572)
-   (main-joint-pos             vector           :inline :offset-assert 588)
-   (thrust                     UNKNOWN          2       :offset-assert 604)
-   (rotation-vec               vector           :inline :offset-assert 620)
-   (dest-pos                   vector           :inline :offset-assert 636)
-   (offset                     vector           :inline :offset-assert 652)
-   (surface-normal             vector           :inline :offset-assert 668)
-   (local-dir                  vector           :inline :offset-assert 684)
-   (scale                      float                    :offset-assert 700)
-   (scale-timer                uint64                   :offset-assert 708)
-   (hit-surface?               basic                    :offset-assert 716)
-   (knocked-start-level        float                    :offset-assert 720)
-   (knocked-fall-dist          float                    :offset-assert 724)
-   (flying-death-anim          int32                    :offset-assert 728)
-   (flying-death-transv        vector           :inline :offset-assert 732)
-   (flying-death-engine        int32                    :offset-assert 748)
-   (flying-death-thrust-rotate float                    :offset-assert 752)
-   (flying-death-spin          float                    :offset-assert 756)
-   (flying-death-spin-dest     float                    :offset-assert 760)
-   (flying-death-spin-axis     vector           :inline :offset-assert 764)
+  ((hover                      basic                    :offset-assert 532)
+   (hover-info                 hover-enemy-info         :offset-assert 536)
+   (formation-entity           basic                    :offset-assert 540)
+   (fly-anim-speed             float                    :offset-assert 544)
+   (restart-fly-anims          basic                    :offset-assert 548)
+   (main-joint-acc             vector           :inline :offset-assert 560)
+   (main-joint-vel             vector           :inline :offset-assert 576)
+   (main-joint-pos             vector           :inline :offset-assert 592)
+   (thrust                     int64            2       :offset-assert 608)
+   (rotation-vec               vector           :inline :offset-assert 624)
+   (dest-pos                   vector           :inline :offset-assert 640)
+   (offset                     vector           :inline :offset-assert 656)
+   (surface-normal             vector           :inline :offset-assert 672)
+   (local-dir                  vector           :inline :offset-assert 688)
+   (scale                      float                    :offset-assert 704)
+   (scale-timer                uint64                   :offset-assert 712)
+   (hit-surface?               basic                    :offset-assert 720)
+   (knocked-start-level        float                    :offset-assert 724)
+   (knocked-fall-dist          float                    :offset-assert 728)
+   (flying-death-anim          int32                    :offset-assert 732)
+   (flying-death-transv        vector           :inline :offset-assert 736)
+   (flying-death-engine        int32                    :offset-assert 752)
+   (flying-death-thrust-rotate float                    :offset-assert 756)
+   (flying-death-spin          float                    :offset-assert 760)
+   (flying-death-spin-dest     float                    :offset-assert 764)
+   (flying-death-spin-axis     vector           :inline :offset-assert 768)
    )
   :method-count-assert 156
   :size-assert         #x310
@@ -35442,7 +35439,6 @@
     (hover-enemy-method-155 () none 155)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36017,22 +36013,48 @@
 ;; predator-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++predator-h:predator-node-flag
+(defenum predator-node-flag
+  :type uint32
+  :bitfield #t
+  (taken)
+  (spawnable)
+  )
+;; ---predator-h:predator-node-flag
+
 (deftype predator-node (structure)
-  ()
+  (
+    (position    vector :inline :offset-assert 0)
+    (nav-mesh-id uint32  :offset-assert 16)
+    (edge-index  int16   :offset-assert 20)
+    (edge-count  int16   :offset-assert 22)
+    (radius      float   :offset-assert 24)
+    (flags       predator-node-flag :offset-assert 28)
+    (points      uint32  :offset-assert 32)
+    (pos-x       float   :offset 0)
+    (pos-y       float   :offset 4)
+    (pos-z       float   :offset 8)
+  )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
-  ;; Failed to read fields.
   )
-|#
 
-;; (deftype predator-edge (structure)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+;; +++predator-h:predator-edge-flag
+(defenum predator-edge-flag
+  :type uint16
+  :bitfield #t
+  )
+;; ---predator-h:predator-edge-flag
 
-#|
+(deftype predator-edge (structure)
+  (
+    (dest-node-id uint16  :offset-assert 0)
+    (flags        predator-edge-flag :offset-assert 2)
+  )
+  :flag-assert #x900000004
+  )
+
 (deftype predator-graph (structure)
   ((node-count uint16  :offset-assert 0)
    (edge-count uint16  :offset-assert 2)
@@ -36043,7 +36065,6 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38499,13 +38520,13 @@
 ;; ai-task-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ai-task (basic)
-  ((next      basic      :offset-assert 4)
-   (prev      basic      :offset-assert 8)
-   (pool      basic      :offset-assert 12)
-   (unique-id uint32     :offset-assert 16)
-   (bytes     UNKNOWN 16 :offset-assert 32)
+  ((next        basic      :offset-assert 4)
+   (prev        basic      :offset-assert 8)
+   (pool        basic      :offset-assert 12)
+   (unique-id   uint32     :offset-assert 16)
+   (pad-ik1n231 uint32 3   :offset-assert 20)
+   (bytes       int8    16 :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -38516,7 +38537,6 @@
     (ai-task-method-11 () none 11)
     )
   )
-|#
 
 #|
 (deftype ai-task-pool (basic)
@@ -38563,7 +38583,6 @@
 ;; bot-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bot-focus-info (structure)
   ((max-los-dist     float          :offset-assert 0)
    (fproc            basic          :offset-assert 4)
@@ -38582,7 +38601,6 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
 #|
 (deftype bot-turn-info (structure)
@@ -38629,20 +38647,18 @@
   )
 |#
 
-#|
 (deftype bot-spot (structure)
   ((center          vector :inline :offset-assert 0)
-   (center-x        float          :offset-assert 0)
-   (center-y        float          :offset-assert 4)
-   (center-z        float          :offset-assert 8)
-   (inside-xz-dist  float          :offset-assert 12)
+   (center-x        float          :offset 0)
+   (center-y        float          :offset 4)
+   (center-z        float          :offset 8)
+   (inside-xz-dist  float          :offset 12)
    (blocked-xz-dist float          :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
 #|
 (deftype bot-waypoint (basic)
@@ -38663,7 +38679,6 @@
   )
 |#
 
-#|
 (deftype bot-course (basic)
   ((course-id              uint8   :offset-assert 4)
    (speech-count           uint16  :offset-assert 6)
@@ -38684,62 +38699,60 @@
   :flag-assert         #x900000030
   ;; field default-check-too-far uses ~A with a signed load
   )
-|#
 
-#|
 (deftype bot (nav-enemy)
-  ((bot-flags                       uint32                 :offset-assert 600)
-   (min-speed                       float                  :offset-assert 604)
-   (max-speed                       float                  :offset-assert 608)
-   (follow-offset                   float                  :offset-assert 612)
-   (too-far-warn-dist               float                  :offset-assert 616)
-   (too-far-fail-dist-delta         float                  :offset-assert 620)
-   (too-far-warn-dist-default       float                  :offset-assert 624)
-   (too-far-fail-dist-delta-default float                  :offset-assert 628)
-   (travel-prev-ry                  float                  :offset-assert 632)
-   (travel-prev-ry1                 float                  :offset-assert 636)
-   (player-blocking                 float                  :offset-assert 640)
-   (ai-ctrl                         basic                  :offset-assert 644)
-   (course                          basic                  :offset-assert 648)
-   (waypoint                        basic                  :offset-assert 652)
-   (waypoint-bits                   uint32                 :offset-assert 656)
-   (waypoint-int32a                 int32                  :offset-assert 660)
-   (bot-task-bits                   uint32                 :offset-assert 664)
-   (hit-invuln-ignore-me-delay      uint32                 :offset-assert 668)
-   (hit-invuln-focus-disable-delay  uint32                 :offset-assert 672)
-   (warn-to-fail-timeout            uint32                 :offset-assert 676)
-   (warn-min-delay                  uint32                 :offset-assert 680)
-   (warn-max-delay                  uint32                 :offset-assert 684)
-   (spot-color                      uint32                 :offset-assert 688)
-   (waypoint-request                int16                  :offset-assert 692)
-   (hit-by-enemy-count              uint16                 :offset-assert 694)
-   (hit-by-player-count             uint16                 :offset-assert 696)
-   (notice-enemy-dist               float                  :offset-assert 700)
-   (channel                         uint8                  :offset-assert 704)
-   (focus-mode                      int8                   :offset-assert 705)
-   (nav-mesh-index                  int8                   :offset-assert 706)
-   (delay-too-far-check             int8                   :offset-assert 707)
-   (slave-id                        int8                   :offset-assert 708)
-   (vehicle-seat-index              int8                   :offset-assert 709)
-   (bot-health-index                int8                   :offset-assert 710)
-   (task                            basic                  :offset-assert 712)
-   (swivel-joint-mod                basic                  :offset-assert 716)
-   (health-handle                   uint64                 :offset-assert 724)
-   (poi-handle                      uint64                 :offset-assert 732)
-   (my-simple-focus                 uint32                 :offset-assert 740)
-   (attacker-handle                 uint64                 :offset-assert 748)
-   (scene-player-handle             uint64                 :offset-assert 756)
-   (master-handle                   uint64                 :offset-assert 764)
-   (vehicle-handle                  uint64                 :offset-assert 772)
-   (hit-invuln-starting-time        time-frame                 :offset-assert 780)
-   (danger-time                     time-frame                 :offset-assert 788)
-   (attacker-time                   time-frame                 :offset-assert 796)
-   (started-warning-time            time-frame                 :offset-assert 804)
-   (waypoint-time0                  uint64                 :offset-assert 812)
-   (next-too-far-warn-time          time-frame                 :offset-assert 820)
-   (spot                            bot-spot       :inline :offset-assert 828)
-   (follow-dir                      vector         :inline :offset-assert 860)
-   (focus-info                      bot-focus-info :inline :offset-assert 876)
+  ((bot-flags                       uint32                 :offset-assert 604)
+   (min-speed                       float                  :offset-assert 608)
+   (max-speed                       float                  :offset-assert 612)
+   (follow-offset                   float                  :offset-assert 616)
+   (too-far-warn-dist               float                  :offset-assert 620)
+   (too-far-fail-dist-delta         float                  :offset-assert 624)
+   (too-far-warn-dist-default       float                  :offset-assert 628)
+   (too-far-fail-dist-delta-default float                  :offset-assert 632)
+   (travel-prev-ry                  float                  :offset-assert 636)
+   (travel-prev-ry1                 float                  :offset-assert 640)
+   (player-blocking                 float                  :offset-assert 644)
+   (ai-ctrl                         basic                  :offset-assert 648)
+   (course                          basic                  :offset-assert 652)
+   (waypoint                        basic                  :offset-assert 656)
+   (waypoint-bits                   uint32                 :offset-assert 660)
+   (waypoint-int32a                 int32                  :offset-assert 664)
+   (bot-task-bits                   uint32                 :offset-assert 668)
+   (hit-invuln-ignore-me-delay      uint32                 :offset-assert 672)
+   (hit-invuln-focus-disable-delay  uint32                 :offset-assert 676)
+   (warn-to-fail-timeout            uint32                 :offset-assert 680)
+   (warn-min-delay                  uint32                 :offset-assert 684)
+   (warn-max-delay                  uint32                 :offset-assert 688)
+   (spot-color                      uint32                 :offset-assert 692)
+   (waypoint-request                int16                  :offset-assert 696)
+   (hit-by-enemy-count              uint16                 :offset-assert 698)
+   (hit-by-player-count             uint16                 :offset-assert 700)
+   (notice-enemy-dist               float                  :offset-assert 704)
+   (channel                         uint8                  :offset-assert 708)
+   (focus-mode                      int8                   :offset-assert 709)
+   (nav-mesh-index                  int8                   :offset-assert 710)
+   (delay-too-far-check             int8                   :offset-assert 711)
+   (slave-id                        int8                   :offset-assert 712)
+   (vehicle-seat-index              int8                   :offset-assert 713)
+   (bot-health-index                int8                   :offset-assert 714)
+   (task                            basic                  :offset-assert 716)
+   (swivel-joint-mod                basic                  :offset-assert 720)
+   (health-handle                   uint64                 :offset-assert 728)
+   (poi-handle                      uint64                 :offset-assert 736)
+   (my-simple-focus                 uint32                 :offset-assert 744)
+   (attacker-handle                 uint64                 :offset-assert 752)
+   (scene-player-handle             uint64                 :offset-assert 760)
+   (master-handle                   uint64                 :offset-assert 768)
+   (vehicle-handle                  uint64                 :offset-assert 776)
+   (hit-invuln-starting-time        time-frame                 :offset-assert 784)
+   (danger-time                     time-frame                 :offset-assert 792)
+   (attacker-time                   time-frame                 :offset-assert 800)
+   (started-warning-time            time-frame                 :offset-assert 808)
+   (waypoint-time0                  uint64                 :offset-assert 816)
+   (next-too-far-warn-time          time-frame                 :offset-assert 824)
+   (spot                            bot-spot       :inline :offset-assert 832)
+   (follow-dir                      vector         :inline :offset-assert 864)
+   (focus-info                      bot-focus-info :inline :offset-assert 880)
    )
   :method-count-assert 225
   :size-assert         #x3e0
@@ -38794,7 +38807,6 @@
     (bot-method-224 () none 224)
     )
   )
-|#
 
 #|
 (deftype bot-speech-list (basic)
@@ -38896,7 +38908,7 @@
 
 (deftype sig-path (basic)
   ((sample-count int32   :offset-assert 4)
-   (samples      uint32  :offset-assert 8)
+   (samples      (inline-array sig-path-sample)  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -40492,10 +40504,9 @@
 ;; hal-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hal (bot)
-  ((handle-failed-slave-id int8      :offset-assert 988)
-   (slave-handle           UNKNOWN 3 :offset-assert 996)
+  ((handle-failed-slave-id int8      :offset-assert 992)
+   (slave-handle           uint64  3 :offset-assert 1000)
    )
   :method-count-assert 227
   :size-assert         #x400
@@ -40505,14 +40516,12 @@
     (hal-method-226 () none 226)
     )
   )
-|#
 
-#|
 (deftype halt-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   basic     :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes int8    6 :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -40520,7 +40529,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40541,22 +40549,18 @@
 ;; ruf-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ruffian-course (bot-course)
   ((ouch-speeches basic  :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
-  ;; field default-check-too-far uses ~A with a signed load
   )
-|#
 
-#|
 (deftype ruffian (bot)
-  ((travel-anim-interp float   :offset-assert 988)
-   (fired-gun-count    uint32  :offset-assert 992)
-   (next-fire-time     time-frame  :offset-assert 996)
+  ((travel-anim-interp float   :offset-assert 992)
+   (fired-gun-count    uint32  :offset-assert 996)
+   (next-fire-time     time-frame  :offset-assert 1000)
    )
   :method-count-assert 246
   :size-assert         #x3f0
@@ -40585,30 +40589,24 @@
     (ruffian-method-245 () none 245)
     )
   )
-|#
 
-#|
 (deftype ruft-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   basic     :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes int8    6 :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype ruft-choose-jump (ai-task)
-  ((check-done        basic     :offset-assert 32)
-   (which-spot        int8      :offset-assert 36)
-   (num-spots         uint8     :offset-assert 37)
-   (src-spot-indexes  UNKNOWN 4 :offset-assert 38)
-   (dest-spot-indexes UNKNOWN 4 :offset-assert 42)
+  ((check-done        basic     :offset 32)
+   (which-spot        int8      :offset 36)
+   (num-spots         uint8     :offset 37)
+   (src-spot-indexes  int8 4 :offset 38)
+   (dest-spot-indexes int8 4 :offset 42)
    )
   :method-count-assert 14
   :size-assert         #x30
@@ -40618,34 +40616,25 @@
     (ruft-choose-jump-method-13 () none 13)
     )
   )
-|#
 
-#|
 (deftype ruft-fight-focus (ai-task)
   ()
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype ruft-plant-bomb (ai-task)
-  ((check-done         basic     :offset-assert 32)
-   (which-spot         int8      :offset-assert 36)
-   (num-spots          uint8     :offset-assert 37)
-   (stand-spot-indexes UNKNOWN 2 :offset-assert 38)
-   (face-spot-indexes  UNKNOWN 2 :offset-assert 40)
+  ((check-done         basic     :offset 32)
+   (which-spot         int8      :offset 36)
+   (num-spots          uint8     :offset 37)
+   (stand-spot-indexes int8    2 :offset 38)
+   (face-spot-indexes  int8    2 :offset 40)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
-  (:methods
-    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40667,19 +40656,15 @@
 ;; jinx-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jinx (ruffian)
-  ((bomb-handle     uint64  :offset-assert 1004)
-   (bomb-func       basic   :offset-assert 1012)
-   (bomb-fuse-delay uint32  :offset-assert 1016)
+  ((bomb-handle     uint64  :offset-assert 1008)
+   (bomb-func       basic   :offset-assert 1016)
+   (bomb-fuse-delay uint32  :offset-assert 1020)
    )
   :method-count-assert 246
   :size-assert         #x400
   :flag-assert         #xf603800400
-  (:methods
-    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40789,16 +40774,12 @@
 ;; grim-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype grim (jinx)
   ()
   :method-count-assert 246
   :size-assert         #x400
   :flag-assert         #xf603800400
-  (:methods
-    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41894,13 +41875,12 @@
 ;; kidesc-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kid-escort (bot)
-  ((travel-anim-interp  float          :offset-assert 988)
-   (arrest-attempt-time time-frame         :offset-assert 996)
-   (arrestor-handle     uint64         :offset-assert 1004)
-   (crocadog-handle     uint64         :offset-assert 1012)
-   (exit-vehicle-dest   vector :inline :offset-assert 364)
+  ((travel-anim-interp  float          :offset-assert 992)
+   (arrest-attempt-time time-frame     :offset-assert 1000)
+   (arrestor-handle     handle         :offset-assert 1008)
+   (crocadog-handle     handle         :offset-assert 1016)
+   (exit-vehicle-dest   vector :inline :offset 368 :score 999)
    )
   :method-count-assert 240
   :size-assert         #x400
@@ -41923,35 +41903,30 @@
     (kid-escort-method-239 () none 239)
     )
   )
-|#
 
-#|
 (deftype kidesct-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   basic     :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes int8    6 :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
-  (:methods
-    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; crocesc-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype crocadog-escort (bot)
-  ((travel-anim-interp float          :offset-assert 988)
-   (anim-speed         float          :offset-assert 992)
-   (kid-handle         uint64         :offset-assert 996)
-   (local-seat-pos     vector :inline :offset-assert 1020)
-   (exit-vehicle-dest  vector :inline :offset-assert 364)
+  ((travel-anim-interp float          :offset-assert 992)
+   (anim-speed         float          :offset-assert 996)
+   (kid-handle         handle         :offset-assert 1000)
+   (pad-ki1jn23ikuj1n2 uint32 4       :offset-assert 1008)
+   (local-seat-pos     vector :inline :offset-assert 1024)
+   (exit-vehicle-dest  vector :inline :offset 368 :score 999)
    )
   :method-count-assert 239
   :size-assert         #x410
@@ -41973,22 +41948,17 @@
     (crocadog-escort-method-238 () none 238)
     )
   )
-|#
 
-#|
 (deftype crocesct-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   basic     :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes int8    6 :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
-  (:methods
-    )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42926,21 +42896,18 @@
 ;; bombbot-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bombbot-node (structure)
   ((position    vector :inline :offset-assert 0)
    (nav-mesh-id uint32         :offset-assert 16)
-   (pos-x       float          :offset-assert 0)
-   (pos-y       float          :offset-assert 4)
-   (pos-z       float          :offset-assert 8)
+   (pos-x       float          :offset 0)
+   (pos-y       float          :offset 4)
+   (pos-z       float          :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype bombbot-path (structure)
   ((node-count uint16  :offset-assert 0)
    (node       uint32  :offset-assert 4)
@@ -42949,7 +42916,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47935,13 +47901,13 @@
 ;; sig5-cent1-path0               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sig5-cent1-path0* sig-path)
+(define-extern *sig5-cent1-path0* sig-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig5-cent2-path0               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sig5-cent2-path0* sig-path)
+(define-extern *sig5-cent2-path0* sig-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig5-course                    ;;
