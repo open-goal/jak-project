@@ -188,7 +188,7 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
           return goos::Object::make_float(f);
         } else {
           // nan or weird
-          return pretty_print::to_symbol(fmt::format("(the-as float #x{:x})", m_int));
+          return pretty_print::to_symbol(fmt::format("(the-as float #x{:x})", (u32)m_int));
         }
       } else {
         if (std::abs(m_int) > INT32_MAX) {
