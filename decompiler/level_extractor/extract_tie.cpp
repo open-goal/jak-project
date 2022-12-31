@@ -559,7 +559,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u32 tex_combo = (((u32)tpage) << 16) | tidx;
         // look up the texture to make sure it's valid
         auto tex = tdb.textures.find(tex_combo);
-        ASSERT(tex != tdb.textures.end());
+        // ASSERT(tex != tdb.textures.end());
         // remember the texture id
         adgif.combo_tex = tex_combo;
         // and the hidden value in the unused a+d
@@ -2056,7 +2056,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         for (auto& vert : strip.verts) {
           tree.packed_vertices.vertices.push_back(
               {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
-          ASSERT(vert.tex.z() == 1.);
+          // ASSERT(vert.tex.z() == 1.);
         }
         int end = tree.packed_vertices.vertices.size();
         frag_vert_indices.emplace_back(start, end);
