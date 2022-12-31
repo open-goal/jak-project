@@ -1099,8 +1099,9 @@ void types2_for_add(types2::Type& type_out,
   // honestly not sure why I have this one... let's have it abort for now.
   if (arg0_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT &&
       arg1_type.typespec().base_type() == "pointer") {
-    ASSERT(false);
-    // return TP_Type::make_from_ts(TypeSpec("int"));
+    // ASSERT(false);
+    type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+    return;
   }
 
   // special case: dynamic access to the method table, to look up a method by ID.
