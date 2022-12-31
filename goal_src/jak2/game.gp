@@ -3920,13 +3920,9 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/ai/ai-task-h.gc"
-  ;; "levels/common/ai/bot-h.gc"
-  ;; "levels/common/ai/bot.gc"
-  ;; "levels/common/ai/bot-states.gc"
-  ;; "levels/undefined/hal-h.gc"
-  ;; "levels/undefined/hal-task.gc"
-  ;; "levels/undefined/hal.gc"
+  "levels/undefined/hal-h.gc"
+  "levels/undefined/hal-task.gc"
+  "levels/undefined/hal.gc"
   "levels/undefined/ruf-h.gc"
   "levels/undefined/ruf-task.gc"
   "levels/undefined/ruf.gc"
@@ -3946,21 +3942,17 @@
   "levels/sewer/sewer-obs2.gc"
   "levels/sewer/hosehead.gc"
   "levels/sewer/hosehead-fake.gc"
-  ;; "levels/common/enemy/amphibian/amphibian.gc"
   "levels/sewer/gator.gc"
-  ;; "levels/common/enemy/fodder/fodder.gc"
   "levels/sewer/hal2-course.gc"
   "levels/sewer/mog2-course.gc"
   "levels/sewer/jinx2-course.gc"
   "levels/sewer/grim2-course.gc"
   "levels/sewer/sewer-scenes.gc"
-  ;; "levels/common/entities/sew-gunturret.gc"
   )
 
 (copy-textures 1133 1135 1134 3383)
 
 (copy-gos
-  ;; "com-airlock-inner-ag"
   "sew-elevator-ag"
   "sewerb-vis"
   )
