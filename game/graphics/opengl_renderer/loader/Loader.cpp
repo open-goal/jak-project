@@ -164,7 +164,7 @@ void Loader::loader_thread() {
       m_file_load_done_cv.notify_all();
     }
   } catch (std::exception& e) {
-    ASSERT_MSG(false, fmt::format("Exception encountered in loader_thread"));
+    ASSERT_MSG(false, fmt::format("Exception {} encountered in loader_thread", e.what()));
   }
 }
 
