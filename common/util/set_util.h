@@ -4,7 +4,7 @@
 
 namespace set_util {
 template <typename T>
-std::unordered_set<T> intersection(std::unordered_set<T>& set1, std::unordered_set<T>& set2) {
+std::unordered_set<T> intersection(std::unordered_set<T> set1, std::unordered_set<T> set2) {
   if (set2.size() < set1.size()) {
     auto temp = set1;
     set1 = set2;
