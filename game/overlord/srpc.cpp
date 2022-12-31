@@ -626,7 +626,9 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           snd_SetGlobalExcite(cmd->midi_reg.value);
         } else {
           Sound* sound = LookupSound(666);
-          snd_SetMIDIRegister(sound->sound_handle, cmd->midi_reg.reg, cmd->midi_reg.value);
+          if (sound != nullptr) {
+            snd_SetMIDIRegister(sound->sound_handle, cmd->midi_reg.reg, cmd->midi_reg.value);
+          }
         }
       } break;
       case Jak2SoundCommand::set_reverb: {

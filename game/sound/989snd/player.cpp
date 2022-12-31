@@ -132,12 +132,12 @@ u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 
   }
 
   auto handler = bank->make_handler(m_vmanager, sound_id, vol, pan, pm, pb);
-  if (handler == nullptr) {
+  if (!handler.has_value()) {
     return 0;
   }
 
   u32 handle = m_handle_allocator.get_id();
-  m_handlers.emplace(handle, std::move(handler));
+  m_handlers.emplace(handle, std::move(handler.value()));
   // fmt::print("play_sound {}:{} - {}\n", bank_id, sound_id, handle);
 
   return handle;

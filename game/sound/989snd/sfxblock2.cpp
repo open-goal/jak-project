@@ -64,27 +64,24 @@ SFXBlock2::SFXBlock2(locator& loc, u32 id, BankTag* tag)
   }
 }
 
-std::unique_ptr<sound_handler> SFXBlock2::make_handler(voice_manager& vm,
-                                                       u32 sound_id,
-                                                       s32 vol,
-                                                       s32 pan,
-                                                       SndPlayParams& params) {
+std::optional<std::unique_ptr<sound_handler>> SFXBlock2::make_handler(voice_manager& vm,
+                                                                      u32 sound_id,
+                                                                      s32 vol,
+                                                                      s32 pan,
+                                                                      SndPlayParams& params) {
   if (sound_id >= m_sounds.size()) {
     lg::error("out of bounds sound_id");
-    return nullptr;
+    return std::nullopt;
   }
 
   auto& SFX = m_sounds[sound_id];
 
   if (SFX.grains.empty()) {
-    // fmt::print("skipping empty sfx\n");
-    return nullptr;
+    return std::nullopt;
   }
 
-  lg::info("playing sound: {}", SFX.name);
   auto handler =
       std::make_unique<blocksound_handler>(*this, m_sounds[sound_id], vm, vol, pan, params);
-  handler->init();
   return handler;
 }
 

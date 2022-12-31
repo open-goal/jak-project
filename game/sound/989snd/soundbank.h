@@ -38,12 +38,12 @@ class SoundBank {
   SoundBank(u32 id, BankType type) : type(type), bank_id(id){};
   virtual ~SoundBank() = default;
 
-  virtual std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
-                                                      u32 sound_id,
-                                                      s32 vol,
-                                                      s32 pan,
-                                                      s32 pm,
-                                                      s32 pb) {
+  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+                                                                     u32 sound_id,
+                                                                     s32 vol,
+                                                                     s32 pan,
+                                                                     s32 pm,
+                                                                     s32 pb) {
     SndPlayParams params{};
     params.vol = vol;
     params.pan = pan;
@@ -53,11 +53,11 @@ class SoundBank {
     return make_handler(vm, sound_id, -1, -1, params);
   };
 
-  virtual std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
-                                                      u32 sound_id,
-                                                      s32 vol,
-                                                      s32 pan,
-                                                      SndPlayParams& params) = 0;
+  virtual std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+                                                                     u32 sound_id,
+                                                                     s32 vol,
+                                                                     s32 pan,
+                                                                     SndPlayParams& params) = 0;
 
   virtual std::optional<std::string_view> get_name() { return std::nullopt; };
   virtual std::optional<u32> get_sound_by_name(const char* /*name*/) { return std::nullopt; };

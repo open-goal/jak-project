@@ -92,6 +92,19 @@ class blocksound_handler : public sound_handler {
     if (params.registers.has_value()) {
       m_registers = params.registers.value();
     }
+
+    // Figure this stuff out properly someday
+    // if (m_sfx.d.Flags & 2) {
+    //   fmt::print("solo flag\n");
+    //   m_done = true;
+    //   return;
+    // }
+
+    m_next_grain = 0;
+    m_countdown = m_sfx.grains[0]->delay();
+    while (m_countdown <= 0 && !m_done) {
+      do_grain();
+    }
   }
 
   ~blocksound_handler() override {
@@ -114,8 +127,6 @@ class blocksound_handler : public sound_handler {
   void set_pmod(s32 mod) override;
   void set_register(u8 reg, u8 value) override { m_registers.at(reg) = value; };
   void set_pbend(s32 bend) override;
-
-  void init();
 
   void do_grain();
 

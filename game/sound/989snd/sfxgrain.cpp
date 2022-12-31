@@ -158,7 +158,10 @@ s32 SFXGrain_StartChildSound::execute(blocksound_handler& handler) {
   s32 index = m_psp.sound_id;
 
   if (index >= 0) {
-    handler.m_children.emplace_front(block.make_handler(handler.m_vm, index, vol, pan, params));
+    auto child_handler = block.make_handler(handler.m_vm, index, vol, pan, params);
+    if (child_handler.has_value()) {
+      handler.m_children.emplace_front(std::move(child_handler.value()));
+    }
 
     return 0;
   }
