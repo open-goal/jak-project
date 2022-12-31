@@ -28,21 +28,19 @@ SFXBlock::SFXBlock(locator& loc, u32 id, BankTag* tag)
   }
 }
 
-std::unique_ptr<sound_handler> SFXBlock::make_handler(voice_manager& vm,
-                                                      u32 sound_id,
-                                                      s32 vol,
-                                                      s32 pan,
-                                                      SndPlayParams& params) {
+std::optional<std::unique_ptr<sound_handler>> SFXBlock::make_handler(voice_manager& vm,
+                                                                     u32 sound_id,
+                                                                     s32 vol,
+                                                                     s32 pan,
+                                                                     SndPlayParams& params) {
   auto& SFX = m_sounds[sound_id];
 
   if (SFX.grains.empty()) {
-    // fmt::print("skipping empty sfx\n");
-    return nullptr;
+    return std::nullopt;
   }
 
   auto handler =
       std::make_unique<blocksound_handler>(*this, m_sounds[sound_id], vm, vol, pan, params);
-  handler->init();
   return handler;
 }
 }  // namespace snd

@@ -10,21 +10,6 @@
 namespace snd {
 std::array<s8, 32> g_block_reg{};
 
-void blocksound_handler::init() {
-  m_next_grain = 0;
-  m_countdown = m_sfx.grains[0]->delay();
-
-  // if (m_sfx.d.Flags & 2) {
-  //   fmt::print("solo flag\n");
-  //   m_done = true;
-  //   return;
-  // }
-
-  while (m_countdown <= 0 && !m_done) {
-    do_grain();
-  }
-}
-
 bool blocksound_handler::tick() {
   m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
 
