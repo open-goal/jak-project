@@ -93,6 +93,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/foreground.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/lights.cpp
+        mips2c/jak2_functions/nav_control.cpp
+        mips2c/jak2_functions/nav_mesh.cpp
         mips2c/jak2_functions/sky.cpp
         mips2c/jak2_functions/sparticle.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp

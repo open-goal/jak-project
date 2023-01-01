@@ -70,7 +70,7 @@ bool run_build_level(const std::string& input_file,
   // vis infos
   // actors
   std::vector<EntityActor> actors;
-  add_actors_from_json(level_json.at("actors"), actors, 1234);
+  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
   file.actors = std::move(actors);
   // cameras
   // nodes
