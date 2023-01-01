@@ -812,10 +812,11 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
         auto int_constant = get_goal_integer_constant(frm, env);
         if (int_constant && u64_valid_for_float_constant(*int_constant)) {
           float flt;
-
           memcpy(&flt, &int_constant.value(), sizeof(float));
-          result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
-          return;
+          if (proper_float(flt)) {
+            result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+            return;
+          }
         }
       }
       // converting something else to an FPR, put an expression around it.
