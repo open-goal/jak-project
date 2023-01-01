@@ -6038,16 +6038,16 @@
     (activate-levels! (_type_) int 13)
     (debug-print-entities (_type_ symbol type) none 14)
     (debug-draw-actors (_type_ symbol) none 15)
-    (assign-draw-indices (_type_) none 16) ;; (level-update (_type_) int 16)
-    (actors-update (_type_) none 17) ;; (level-get-target-inside (_type_) level 17)
-    (level-group-method-18 (_type_) none 18) ;; (alloc-levels! (_type_ symbol) int 18)
-    (level-update (_type_) none 19) ;;
-    (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
+    (assign-draw-indices (_type_) none 16)
+    (actors-update (_type_) none 17)
+    (update-nav-meshes (_type_) none 18)
+    (level-update (_type_) none 19)
+    (level-get-target-inside (_type_) level 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
     (load-commands-set! (_type_ pair) none 22)
     (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23)
-    (alt-load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
-    (update-vis-volumes (_type_) none 25) ;; (level-status (_type_ symbol) symbol 25)
+    (alt-load-command-get-index (_type_ symbol int) pair 24)
+    (update-vis-volumes (_type_) none 25)
     (update-vis-volumes-from-nav-mesh (_type_) none 26)
     (print-volume-sizes (_type_) none 27)
     (level-status (_type_ symbol) symbol 28)
@@ -16107,7 +16107,7 @@
    (collide-with collide-spec           :offset-assert 20)
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    prim-type              :offset-assert 28)
-   (unused1      uint8        3       :offset-assert 29)
+   (unused1      uint8          3       :offset-assert 29)
    (quad         uint128        2       :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -16210,8 +16210,9 @@
 (defenum nav-flags
   :type uint8
   :bitfield #t
-  (nav-flags0 0)
-  (nav-flags1 1)
+  (has-root-sphere 0)
+  (has-extra-sphere 1)
+  (has-child-spheres 2)
   )
 ;; ---collide-shape-h:nav-flags
 
@@ -19691,7 +19692,7 @@
   :bitfield #t
   :type uint16
   (bit-0 0) ;; blocks birth
-  (bit-1 1)
+  (bit-1 1) ;; dead? error?
   (dead 2)
   (no-kill 3)
   (bit-4 4)
@@ -19800,7 +19801,7 @@
   :size-assert         #x38
   :flag-assert         #x1d00000038
   (:methods
-    (entity-nav-mesh-method-27 (_type_) none 27)
+    (initialize-nav-mesh! "Initialize the nav-mesh in this entity." (_type_) none 27)
     (debug-draw (_type_) none 28)
     )
   )
@@ -19834,8 +19835,8 @@
     (prev-actor (_type_) entity-actor 28)
     (debug-print (_type_ symbol type) none 29)
     (toggle-status (_type_ entity-perm-status symbol) none 30)
-    (entity-actor-method-31 (_type_ vector vector vector object float) nav-mesh 31)
-    (entity-actor-method-32 (_type_ vector vector nav-poly float) nav-poly 32)
+    (get-simple-travel-vector (_type_ vector vector vector object float) nav-mesh 31)
+    (project-point-to-nav-mesh (_type_ vector vector nav-poly float) nav-poly 32)
     )
   )
 
@@ -22313,7 +22314,7 @@
   )
 
 (deftype nav-poly (structure)
-  ((data         uint8   64       :offset-assert 0 :score -1)
+  ((data         uint8   64       :offset-assert 0 :score -10)
    (vertex       vector 4 :inline :offset 0) ;; changed to vector from uint8 in jak 1
    (vertex0      vector  :inline  :offset 0)
    (vertex1      vector  :inline  :offset 16)
@@ -22396,7 +22397,7 @@
   )
 
 (deftype clamp-travel-vector-to-mesh-return-info (structure)
-  ((found-boundary  basic            :offset-assert 0)
+  ((found-boundary  symbol            :offset-assert 0)
    (intersection    vector   :inline :offset-assert 16)
    (boundary-normal vector   :inline :offset-assert 32)
    (prev-normal     vector   :inline :offset-assert 48)
@@ -22453,48 +22454,44 @@
   :size-assert         #x70
   :flag-assert         #x2f00000070
   (:methods
-    (nav-mesh-method-9 (_type_) none 9) ;; (tri-centroid-world (_type_ nav-poly vector) vector 9)
-    (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly 10) ;; (tri-centroid-local (_type_ nav-poly vector) vector 10)
-    (nav-mesh-method-11 (_type_ nav-poly vector) vector 11) ;; (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly 11)
-    (nav-mesh-method-12 (_type_ nav-poly vector) none 12) ;; (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object 12)
-    (nav-mesh-method-13 (_type_ nav-poly nav-poly) nav-poly 13) ;; (initialize-mesh! (_type_) none 13)
-    (get-route-portal (_type_ nav-poly nav-poly nav-route-portal) (inline-array nav-vertex) 14) ;; (move-along-nav-ray! (_type_ nav-ray) none 14)
-    (initialize-mesh! (_type_) none 15) ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters 15)
-    (move-along-nav-ray! (_type_ nav-ray) none 16) ;; (TODO-RENAME-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none 16)
-    (try-move-along-ray (_type_ nav-poly vector vector float) meters 17) ;; (update-route-table (_type_) none 17)
-    (nav-mesh-method-18 (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none 18) ;; (dummy-18 (_type_ int vector int (pointer int8) int) none 18)
-    (nav-mesh-method-19 (_type_) none 19) ;; (compute-bounding-box (_type_ vector vector) none 19)
-    (nav-mesh-method-20 (_type_ clamp-travel-vector-to-mesh-return-info) none 20) ;; (debug-draw-poly (_type_ nav-poly rgba) none 20)
-    (find-adjacent-bounds-one (_type_ vector nav-poly int int) none 21) ;; (point-in-poly? (_type_ nav-poly vector) symbol 21)
-    (nav-mesh-method-22 (_type_ vector vector) none 22) ;; (find-opposite-vertices (_type_ nav-poly nav-poly) uint 22)
-    (nav-mesh-method-23 (_type_ entity-nav-mesh) none 23) ;; (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
-    (nav-mesh-method-24 (_type_) none 24) ;; (closest-point-on-boundary (_type_ nav-poly vector vector) vector 24)
-    (nav-mesh-method-25 (_type_) none 25) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) none 25)
-    (nav-mesh-method-26 (_type_) none 26) ;; (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
-    (new-nav-control (_type_ process-drawable int) nav-control 27) ;; (find-poly-fast (_type_ vector meters) nav-poly 27)
-    (nav-mesh-method-28 (_type_ object) none 28) ;; (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
-    (nav-mesh-method-29 (_type_ process-drawable symbol) nav-control 29) ;; (is-in-mesh? (_type_ vector float meters) symbol 29)
-    (nav-mesh-method-30 (_type_ process-drawable) none 30)
-    (change-to (_type_ process-drawable) none 31)
-    (nav-mesh-method-32 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) none 32)
-    (nav-mesh-method-33 "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint32) symbol 33)
-    (nav-mesh-method-34 (_type_ object vector float) none 34)
-    (nav-mesh-method-35
-      "TODO - Assertion failed: 'std::isfinite(value)'
-        Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90
-        Function: int __cdecl float_to_cstr(float, char *, bool)"
-      () none 35)
-    (nav-mesh-method-36 (_type_ nav-poly rgba) none 36)
+    (debug-draw (_type_) none 9)
+    (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly 10)
+    (poly-centroid (_type_ nav-poly vector) vector 11)
+    (poly-centroid-local (_type_ nav-poly vector) vector 12)
+    (lookup-poly-on-route-to-target (_type_ nav-poly nav-poly) nav-poly 13)
+    (get-route-portal (_type_ nav-poly nav-poly nav-route-portal) (inline-array nav-vertex) 14)
+    (initialize-mesh! (_type_) none 15)
+    (move-along-nav-ray! (_type_ nav-ray) none 16)
+    (try-move-along-ray (_type_ nav-poly vector vector float) meters 17)
+    (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none 18)
+    (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none 19)
+    (set-normals-from-adjacent-bounds (_type_ clamp-travel-vector-to-mesh-return-info) none 20)
+    (find-adjacent-bounds-one (_type_ vector nav-poly int int) none 21)
+    (compute-bounding-box-from-vertices (_type_ vector vector) none 22)
+    (init-from-entity "Initialize this mesh from an entity." (_type_ entity-nav-mesh) none 23)
+    (handle-birth "Handle the parent nav-mesh-entity birth." (_type_) none 24)
+    (handle-kill "Handle the parent nav-mesh-entity kill." (_type_) none 25)
+    (update-navigation (_type_) none 26)
+    (new-nav-control (_type_ process-drawable int) nav-control 27)
+    (remove-nav-control (_type_ nav-control) none 28)
+    (add-process-drawable-to-navmesh (_type_ process-drawable symbol) none 29)
+    (remove-process-drawable (_type_ process-drawable) none 30)
+    (change-to (_type_ process-drawable symbol) none 31)
+    (link-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 32)
+    (unlink-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 33)
+    (nav-mesh-method-34 (_type_ vector vector float) float 34)
+    (nav-mesh-method-35 (_type_ vector vector float) none 35)
+    (debug-draw-poly (_type_ nav-poly rgba) none 36)
     (point-in-poly? (_type_ nav-poly vector) symbol 37)
-    (nav-mesh-method-38 (_type_ nav-poly vector vector vector object) vector 38)
+    (nav-mesh-method-38 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector 38)
     (closest-point-on-boundary (_type_ nav-poly vector vector) none 39)
-    (nav-mesh-method-40 (_type_ nav-poly vector object vector) none 40)
+    (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none 40)
     (project-point-into-poly-2d (_type_ nav-poly vector vector) none 41)
-    (nav-mesh-method-42 (_type_ nav-find-poly-parms) nav-poly 42)
-    (nav-mesh-method-43 (_type_ nav-find-poly-parms) none 43)
-    (nav-mesh-method-44 (_type_ vector float float) symbol 44)
-    (nav-mesh-method-45 "TODO - asm expression building error" (_type_ entity-perm) none 45) ;; entity-perm is wrong
-    (nav-mesh-method-46 (_type_ object) none 46)
+    (find-poly-containing-point-local (_type_ nav-find-poly-parms) nav-poly 42)
+    (find-nearest-poly-to-point-local (_type_ nav-find-poly-parms) nav-find-poly-parms 43)
+    (is-in-mesh-local? (_type_ vector float float) symbol 44)
+    (link-to-other-mesh (_type_ nav-mesh-link) symbol 45)
+    (unlink-mesh (_type_ nav-mesh-link) none 46)
     )
   )
 
@@ -22602,18 +22599,18 @@
     (debug-draw (_type_) none 9)
     (nav-state-method-10
       "Virtual/Stub" (_type_) none 10)
-    (nav-state-method-11 (_type_ nav-gap-info) symbol 11)
-    (nav-state-method-12 (_type_ vector) vector 12)
-    (nav-state-method-13 (_type_ vector) vector 13)
-    (nav-state-method-14 (_type_ vector) vector 14)
-    (nav-state-method-15 (_type_ vector) vector 15)
+    (plan-over-pat1-polys-using-route (_type_ nav-gap-info) symbol 11)
+    (get-velocity (_type_ vector) vector 12)
+    (get-travel (_type_ vector) vector 13)
+    (get-heading (_type_ vector) vector 14)
+    (get-target-post (_type_ vector) vector 15)
     (get-speed
       "@returns `speed`"
       (_type_) meters 16)
     (get-rotation-rate
       "@returns `rotation-rate`"
       (_type_) float 17)
-    (nav-state-method-18 (_type_ vector object vector) none 18)
+    (try-projecting-to-current-poly (_type_ vector object vector) symbol 18)
     (get-current-poly
       "@returns `current-poly`"
       (_type_) nav-poly 19)
@@ -22623,37 +22620,37 @@
     (nav-state-method-21 () none 21)
     (nav-state-method-22 () none 22)
     (nav-state-method-23 () none 23)
-    (nav-state-method-24 (_type_) none 24)
-    (nav-state-method-25 (_type_) none 25)
-    (nav-state-method-26 (_type_) none 26)
-    (nav-state-method-27 (_type_) none 27)
-    (nav-state-method-28 (_type_) none 28)
+    (turn-and-navigate-to-destination (_type_) none 24)
+    (navigate-using-route-portals-wrapper (_type_) none 25)
+    (navigate-using-best-dir-recompute-avoid-spheres-1-wrapper (_type_) none 26)
+    (navigate-within-poly-wrapper (_type_) none 27)
+    (compute-travel-speed (_type_) none 28)
     (nav-state-method-29 (_type_) none 29)
     (nav-state-method-30 (_type_) none 30)
-    (nav-state-method-31 (_type_) none 31)
-    (nav-state-method-32 (_type_) none 32)
-    (nav-state-method-33 (_type_) none 33)
-    (nav-state-method-34 (_type_) none 34)
-    (nav-state-method-35 (_type_) none 35)
-    (nav-state-method-36 (_type_ vector) none 36)
-    (nav-state-method-37 (_type_) none 37)
+    (navigate-using-best-dir-recompute-avoid-spheres-2 (_type_) none 31)
+    (update-travel-dir-from-spheres (_type_) none 32)
+    (compute-speed-simple (_type_) none 33)
+    (navigate-v1! (_type_) none 34)
+    (reset-target! (_type_) none 35)
+    (add-offset-to-target! (_type_ vector) none 36)
+    (navigate-v2! (_type_) none 37)
     (set-current-poly! (_type_ nav-poly) none 38)
-    (nav-state-method-39 () none 39)
-    (nav-state-method-40 (_type_) none 40)
-    (nav-state-method-41 (_type_ vector) symbol 41)
-    (nav-state-method-42 (_type_ vector) none 42)
-    (nav-state-method-43 (_type_ vector) none 43)
+    (nav-state-method-39 (_type_) symbol 39)
+    (do-navigation-to-destination (_type_ vector) none 40)
+    (clamp-vector-to-mesh-cross-gaps (_type_ vector) symbol 41)
+    (set-target-post! (_type_ vector) none 42)
+    (set-travel! (_type_ vector) none 43)
     (set-velocity! (_type_ vector) none 44)
     (set-heading! (_type_ vector) none 45)
     (set-speed! (_type_ meters) none 46)
-    (nav-state-method-47 (_type_ nav-control) none 47)
+    (reset! (_type_ nav-control) none 47)
     (nav-state-method-48 () none 48)
-    (nav-state-method-49 (_type_ clamp-travel-vector-to-mesh-return-info) none 49)
+    (navigate-using-best-dir-use-existing-avoid-spheres (_type_ nav-avoid-spheres-params) none 49)
     (nav-state-method-50 "Virtual/Stub" (_type_) none 50)
-    (nav-state-method-51 "TODO - #1888" () none 51)
-    (nav-state-method-52 (_type_) none 52)
-    (nav-state-method-53 (_type_) none 53)
-    (nav-state-method-54 (_type_) none 54)
+    (navigate-using-route-portals (_type_) none 51)
+    (navigate-using-best-dir-recompute-avoid-spheres-1 (_type_) none 52)
+    (navigate-within-poly (_type_) none 53)
+    (clamp-travel-vector (_type_) none 54)
     )
   )
 
@@ -22702,45 +22699,45 @@
   (:methods
      ;; (new (symbol type collide-shape int float) _type_ 0)
     (debug-draw (_type_) none 9)
-    (point-in-bounds?
+    (point-in-bsphere?
       "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius"
       (_type_ vector) symbol 10)
-    (nav-control-method-11 "TODO" (_type_ vector) vector 11) ;; (dummy-11 (_type_ vector) vector 11)
-    (nav-control-method-12 (_type_ vector vector nav-poly) nav-poly 12) ;; (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
-    (find-poly "TODO" (_type_ vector) nav-poly 13) ;; (dummy-13 (_type_ vector vector) vector 13)
-    (nav-control-method-14 (_type_ nav-poly vector object vector) none 14) ;; (set-current-poly! (_type_ nav-poly) none 14)
-    (nav-control-method-15 "TODO - same as 11" (_type_ vector) none 15) ;; (set-target-pos! (_type_ vector) none 15)
-    (nav-control-method-16 (_type_ vector float) symbol 16) ;; (dummy-16 (_type_ vector) nav-poly 16)
-    (is-in-mesh? "TODO" (_type_ vector float) symbol 17) ;; (project-onto-nav-mesh (_type_ vector vector) vector 17)
-    (nav-control-method-18 () none 18) ;; (find-poly (_type_ vector) nav-poly 18)
-    (nav-control-method-19 () none 19) ;; (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
-    (nav-control-method-20 (_type_ vector nav-poly vector float symbol symbol) none 20) ;; (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
-    (nav-control-method-21 (_type_) none 21) ;; (TODO-RENAME-21 (_type_ vector) nav-poly 21)
-    (nav-control-method-22 (_type_ vector nav-avoid-spheres-params) float 22) ;; (TODO-RENAME-22 (_type_ vector float) symbol 22)
-    (nav-control-method-23 "TODO" (_type_) none 23) ;; (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
-    (nav-control-method-24 (_type_ vector int) none 24) ;; (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
-    (get-max-rotation-rate (_type_) float 25) ;; (is-in-mesh? (_type_ vector float) symbol 25)
-    (get-sphere-mask (_type_) none 26) ;; (TODO-RENAME-26 (_type_) none 26)
-    (get-target-speed (_type_) meters 27) ;; (TODO-RENAME-27 (_type_) none 27)
-    (nav-control-method-28 "TODO - Clears `nav-flags::1` on `shape`'s `flags`" (_type_) none 28) ;; (TODO-RENAME-28 (_type_ collide-kind) none 28)
-    (nav-control-method-29 "TODO - Sets `nav-flags::1` on `shape`'s `flags`" (_type_) none 29) ;; (should-display? (_type_) symbol 29)
-    (copy-extra-nav-sphere! "Copies the given [[sphere]] into `extra-nav-sphere`" (_type_ sphere) none 30) ;; (dummy-30 (_type_ vector vector vector) sphere 30)
-    (set-extra-nav-sphere! "Set the `extra-nav-sphere` with the data in the given [[sphere]]" (_type_ sphere) none 31) ;; (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
-    (set-extra-nav-sphere-radius! "Set's `extra-nav-sphere`'s radius" (_type_ float) none 32) ;; (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
-    (set-nearest-y-thres! "Set `nearest-y-threshold`" (_type_ float) none 33) ;; (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
-    (set-nav-cull-radius! "Set `nav-cull-radius`" (_type_ meters) none 34) ;; (dummy-34 () none 34)
-    (set-speed-scale! "Set `speed-scale`" (_type_ float) none 35) ;; (dummy-35 (_type_ vector vector vector vector float) none 35)
+    (find-poly-containing-point-1 "Find nav-poly containing this point." (_type_ vector) nav-poly 11)
+    (cloest-point-on-mesh (_type_ vector vector nav-poly) nav-poly 12)
+    (find-nearest-poly-to-point "Find the nav-poly closest to this point in the nav-mesh." (_type_ vector) nav-poly 13)
+    (project-point-onto-plane-of-poly "Move a point to the be on the plane containing the given nav-poly. Return the normal too" (_type_ nav-poly vector vector vector) none 14)
+    (find-poly-containing-point-2 "Find nav-poly containing this point - same as 1" (_type_ vector) nav-poly 15)
+    (is-above-poly-max-height? "Is the point in a poly, and lower than a max height?" (_type_ vector float) symbol 16)
+    (is-in-mesh? "Is this point in the mesh?" (_type_ vector float) symbol 17)
+    (avoid-spheres-1! (_type_ nav-avoid-spheres-params) symbol 18)
+    (avoid-spheres-2! (_type_ nav-avoid-spheres-params) symbol 19)
+    (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none 20)
+    (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none 21)
+    (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float 22)
+    (set-spheres-from-nav-ids "Set up spheres from sphere ids previously found by find-sphere-ids-from-sphere-hash" (_type_) none 23)
+    (add-root-sphere-to-hash! "Add our root sphere to the hash (if enabled with output-sphere-hash flag) at the given location." (_type_ vector int) none 24)
+    (get-max-rotation-rate (_type_) float 25)
+    (get-sphere-mask (_type_) uint 26)
+    (get-target-speed (_type_) meters 27)
+    (enable-extra-sphere! "Sets a flag indicating that this nav-control has an extra-nav-sphere." (_type_) none 28)
+    (disable-extra-sphere! "Clears a flag indicating that this nav-control has an extra-nav-sphere." (_type_) none 29)
+    (copy-extra-nav-sphere! "Copies the given [[sphere]] into `extra-nav-sphere`" (_type_ sphere) none 30)
+    (set-extra-nav-sphere-xyz! "Set the `extra-nav-sphere` with the data in the given [[sphere]]" (_type_ sphere) none 31)
+    (set-extra-nav-sphere-radius! "Set's `extra-nav-sphere`'s radius" (_type_ float) none 32)
+    (set-nearest-y-thres! "Set `nearest-y-threshold`" (_type_ float) none 33)
+    (set-nav-cull-radius! "Set `nav-cull-radius`" (_type_ meters) none 34)
+    (set-speed-scale! "Set `speed-scale`" (_type_ float) none 35)
     (set-target-speed! "Set `target-speed`" (_type_ meters) none 36)
     (set-acceleration! "Set `acceleration`" (_type_ meters) none 37)
     (set-turning-acceleration! "Set `turning-acceleration`" (_type_ meters) none 38)
     (set-max-rotation-rate! "Set `max-rotation-rate`" (_type_ float) none 39)
     (set-sphere-mask! "TODO - probably an enum - Set `sphere-mask`" (_type_ uint) none 40)
-    (nav-control-method-41 "TODO - calls nav-mesh::28" (_type_) none 41)
+    (remove! "Remove this nav-control from the nav-mesh it belongs to." (_type_) none 41)
     (init! "Initializes the [[nav-control]], setting `shape` with the provided [[collide-shape]]" (_type_ collide-shape) none 42)
     (display-marks? "Returns if navigation related marks should be displayed" (_type_) symbol 43)
     (nav-control-method-44 () none 44)
-    (nav-control-method-45 (_type_ vector vector vector) sphere 45)
-    (find-sphere "TODO" (_type_ symbol) none 46)
+    (find-first-sphere-intersecting-ray "Find the first sphere that this ray intersects" (_type_ vector vector vector) sphere 45)
+    (find-sphere-ids-from-sphere-hash "Use sphere-hash to look up navigation sphere IDs and save them." (_type_ symbol) none 46)
     )
   )
 
@@ -22788,7 +22785,7 @@
   :size-assert         #x58
   :flag-assert         #x1900000058
   (:methods
-    (new (symbol type int int) _type_ 0)
+    (new (symbol type int) _type_ 0) ;; TODO see top-level of nav-mesh, doesn't seem to be 2 ints?
     (update-grid-for-objects-in-box (_type_ int vector vector) none 9)
     (clear-bucket-array (_type_) none 10)
     (setup-search-box (_type_ int vector vector vector) none 11)
@@ -22816,7 +22813,7 @@
    (len         int16          :offset-assert 20)
    (max-len     int16          :offset-assert 22)
    (mask        uint8          :offset-assert 24)
-   (array       uint32         :offset-assert 28)
+   (array       (pointer uint8) :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -22840,8 +22837,8 @@
     (add-a-sphere-with-flag (_type_ vector int) int 27)
     (update-from-spheres (_type_) none 28)
     (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none 29)
-    (sphere-hash-method-30 (_type_ find-nav-sphere-ids-params) none 30)
-    (sphere-hash-method-31 (_type_ vector int int) none 31)
+    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params) none 30)
+    (add-sphere-with-mask-and-id (_type_ vector int int) none 31)
     (sphere-hash-method-32 (_type_ vector vector float int) symbol 32)
     (remove-by-id (_type_ sphere int) none 33)
     )
@@ -29802,9 +29799,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype nav-engine-spr-buffer (structure)
-  ((mem-addr  uint32  :offset-assert 0)
+  ((mem-addr  (pointer nav-mesh)  :offset-assert 0) ;; TODO - pretty sure these are wrong...
    (mem-nav   uint32  :offset 0)
-   (spr-addr  uint32  :offset-assert 4)
+   (spr-addr  (inline-array nav-control)  :offset-assert 4) ;; TODO - pretty sure these are wrong...
    (spr-nav   uint32  :offset 4)
    (q-size    uint32  :offset-assert 8)
    (i-nav     uint8   :offset-assert 12)
@@ -29831,7 +29828,7 @@
    (work-buf-array        nav-engine-spr-buffer       3 :inline :offset-assert 28)
    (spr-work              nav-mesh-work   :offset 4)
    (mem-work              nav-mesh-work   :offset-assert 76)
-   (spr-mesh              basic           :offset 8)
+   (spr-mesh              nav-mesh           :offset 8)
    (mem-mesh              nav-mesh           :offset-assert 80)
    (spr-poly-array        uint32          :offset 12)
    (mem-poly-array        (inline-array nav-poly)          :offset-assert 84)
@@ -29845,18 +29842,18 @@
   :flag-assert         #x1600000060
   (:methods
     (inc-spr-addr! "Adds the given integer to `spr-addr` and returns it" (_type_ uint) uint 9)
-    (nav-engine-method-10 (_type_ object) none 10)
-    (nav-engine-method-11 (_type_) none 11)
-    (nav-engine-method-12 (_type_ nav-mesh object) none 12)
-    (nav-engine-method-13 (_type_) none 13)
-    (nav-engine-method-14 (_type_) none 14)
-    (nav-engine-method-15 (_type_) none 15)
+    (lay-out-spad-memory (_type_ nav-mesh) none 10)
+    (set-up-mem-work (_type_) none 11)
+    (add-spheres-from-mesh-user-list (_type_ sphere-hash nav-mesh) none 12)
+    (add-all-spheres (_type_) none 13)
+    (do-sphere-lookups (_type_) none 14)
+    (update-nav-controls-pipelined-in-spr (_type_) none 15)
     (update-nav-controls-in-spr (_type_) none 16)
-    (nav-engine-method-17 (_type_ nav-engine-spr-buffer) none 17)
-    (nav-engine-method-18 (_type_ nav-engine-spr-buffer) none 18)
-    (nav-engine-method-19 (_type_ nav-engine-spr-buffer) none 19)
-    (nav-engine-method-20 () none 20)
-    (nav-engine-method-21 (_type_) none 21)
+    (upload-nav-to-spr (_type_ nav-engine-spr-buffer) none 17)
+    (download-nav-from-spr (_type_ nav-engine-spr-buffer) none 18)
+    (do-callbacks (_type_ nav-engine-spr-buffer) none 19)
+    (reloc-ptrs-to-spad (_type_ nav-engine-spr-buffer) none 20)
+    (reloc-ptrs-to-mem (_type_ nav-engine-spr-buffer) none 21)
     )
   )
 
@@ -29868,15 +29865,15 @@
 (define-extern *debug-offset* vector) ;; vector
 (define-extern *nav-mesh-work* nav-mesh-work)
 (define-extern *default-nav-mesh* nav-mesh) ;; nav-mesh
-(define-extern nav-mesh-connect-from-ent (function entity-nav-mesh none))
+(define-extern nav-mesh-connect-from-ent "Connect this process to the nav-mesh associate with the entity that spawned the process" (function process-drawable symbol))
 (define-extern connection-validate (function connection none))
 (define-extern connection-list-validate (function (inline-array connection) symbol))
-(define-extern nav-control-validate (function nav-control none))
+(define-extern nav-control-validate (function process-drawable none))
 (define-extern debug-validate-nav-poly (function nav-mesh-link nav-poly none))
-(define-extern nav-dma-send-to-spr-no-flush (function object object object none))
-(define-extern nav-dma-send-from-spr-no-flush (function none))
+(define-extern nav-dma-send-to-spr-no-flush (function pointer pointer int none))
+(define-extern nav-dma-send-from-spr-no-flush (function pointer pointer int none))
 (define-extern inc-mod3 "Increments and returns the provided [[int]], if the value exceeds `2`, wrap back to `0`" (function int int)) ;;
-(define-extern nav-state-patch-pointers (function none))
+(define-extern nav-state-patch-pointers (function nav-state int none))
 (define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;;
 (define-extern poly-in-height-range? (function nav-poly float float symbol))
 (define-extern init-ray-local (function nav-ray nav-poly vector vector none)) ;;
@@ -29889,12 +29886,8 @@
 (define-extern plane-height-at-xz-point (function plane vector float))
 (define-extern nav-normal-from-3-points (function vector vector vector vector none))
 (define-extern get-nav-mesh (function actor-id nav-mesh))
-(define-extern find-nearest-nav-mesh (function vector int nav-mesh))
-;; (define-extern point-to-poly-boundary
-;;   "TODO - assertion:
-;;    Assertion failed: 'std::isfinite(value)'
-;;         Source: C:/Users/xtvas/Repositories/opengoal/jak-project/common/util/print_float.cpp:90"
-;;   (function nav-poly object vector object none))
+(define-extern find-nearest-nav-mesh (function vector float nav-mesh))
+(define-extern point-to-poly-boundary (function nav-poly vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control                    ;;
@@ -29931,11 +29924,12 @@
 (define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol))
 (define-extern debug-report-nav-stats "Does nothing" (function none))
 (define-extern get-nav-control
-  "Given a [[process-drawable]] return the associated [[nav-control]] using either:
+  "Given a [[process-drawable]] get the associated [[nav-control]] using either:
    - the provided `nav-mesh` arg
    - the `nav-mesh` associated with the [[process-drawable]]'s [[entity]]
-   If no [[nav-mesh]] is set or found, set the [[entity]]'s [[entity-perm-status]] to TODO and return an error"
-  (function process-drawable nav-mesh nav-control))
+   If no [[nav-mesh]] is set or found, set the [[entity]]'s [[entity-perm-status]] to TODO and return an error.
+   Note that this doesn't actually return the nav-control, but instead adds this process-drawable to the nav-mesh."
+  (function process-drawable nav-mesh none))
 (define-extern add-nav-sphere
   "Adds the given [[sphere]] to the [[nav-control]]'s `sphere-array` so long as
    `max-spheres` is less than [[nav-control]]'s `sphere-count`"
@@ -35147,7 +35141,6 @@
 ;; hover-nav-control-h            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-network-adjacency (structure)
   ((index int32  :offset-assert 0)
    (dist  float  :offset-assert 4)
@@ -35156,21 +35149,14 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype nav-network-adjacency-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             nav-network-adjacency :inline :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype list-node (structure)
   ((next list-node  :offset-assert 0)
    (prev list-node  :offset-assert 4)
@@ -35179,45 +35165,48 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
+;; +++hover-nav-control-h:net-path-node-status
+(defenum net-path-node-status
+  :bitfield #t
+  :type uint16
+  (open)
+  (closed))
+;; ---hover-nav-control-h:net-path-node-status
+
 (deftype nav-network-path-node (list-node)
-  ()
+  (
+    (row-index     int32                 :offset-assert 8)
+    (status        net-path-node-status  :offset-assert 12)
+    (parent        nav-network-path-node :offset-assert 16)
+    (cost-to-start float                 :offset-assert 20)
+    (cost-to-end   float                 :offset-assert 24)
+  )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
-  ;; Failed to read fields.
   )
-|#
 
-#|
 (deftype nav-network-info (structure)
   ((index     int32                         :offset-assert 0)
    (pos       vector                :inline :offset-assert 16)
    (path-node nav-network-path-node :inline :offset-assert 32)
    (count     int32                         :offset-assert 60)
-   (adjacency uint32                        :offset-assert 64)
+   (adjacency (inline-array nav-network-adjacency) :offset-assert 64) ;; TODO - this is probably wrong and should instead be just `nav-network-adjacency-array`
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype nav-network-info-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             nav-network-info :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype hover-nav-sphere (list-node)
   ((sphere sphere :inline :offset-assert 16)
    (handle uint64         :offset-assert 32)
@@ -35227,25 +35216,21 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype hover-nav-path-segment (list-node)
   ((curve-matrix matrix  :inline :offset-assert 16)
-   (pos-index    UNKNOWN 2       :offset-assert 80)
+   (pos-index    int32   2       :offset-assert 80)
    (dist         float           :offset-assert 88)
-   (du           float           :offset-assert 92)
+   (du           float           :offset-assert 92) ;; TODO stands for...?
    )
   :method-count-assert 10
   :size-assert         #x60
   :flag-assert         #xa00000060
   (:methods
-    (hover-nav-path-segment-method-9 () none 9)
+    (hover-nav-path-segment-method-9 (_type_ float) none 9)
     )
   )
-|#
 
-#|
 (deftype hover-nav-path-info (structure)
   ((segment-list hover-nav-path-segment  :offset-assert 0)
    (tail-segment hover-nav-path-segment  :offset-assert 4)
@@ -35259,31 +35244,25 @@
     (hover-nav-path-info-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype path-index-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             hover-nav-path-info :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-network (basic)
   ((network           basic                          :offset-assert 4)
    (dummy             nav-network-info       :inline :offset-assert 16)
-   (control-handle    uint64                         :offset-assert 88)
-   (list-table        UNKNOWN                5       :offset-assert 96)
-   (open-list         nav-network-path-node          :offset-assert 96)
-   (closed-list       nav-network-path-node          :offset-assert 100)
-   (sphere-list       hover-nav-sphere               :offset-assert 108)
-   (free-segment-list hover-nav-path-segment         :offset-assert 104)
-   (free-sphere-list  hover-nav-sphere               :offset-assert 112)
+   (control-handle    handle                         :offset-assert 88)
+   (list-table        list-node              5       :offset-assert 96)
+   (open-list         nav-network-path-node          :offset 96)
+   (closed-list       nav-network-path-node          :offset 100)
+   (sphere-list       hover-nav-sphere               :offset 108)
+   (free-segment-list hover-nav-path-segment         :offset 104)
+   (free-sphere-list  hover-nav-sphere               :offset 112)
    (segment-pool      uint32                         :offset-assert 116)
    (sphere-pool       uint32                         :offset-assert 120)
    )
@@ -35291,35 +35270,33 @@
   :size-assert         #x7c
   :flag-assert         #x210000007c
   (:methods
-    (nav-network-method-9 () none 9)
-    (nav-network-method-10 () none 10)
-    (nav-network-method-11 () none 11)
-    (nav-network-method-12 () none 12)
-    (nav-network-method-13 () none 13)
-    (nav-network-method-14 () none 14)
-    (nav-network-method-15 () none 15)
-    (nav-network-method-16 () none 16)
-    (nav-network-method-17 () none 17)
-    (nav-network-method-18 () none 18)
-    (nav-network-method-19 () none 19)
-    (nav-network-method-20 () none 20)
-    (nav-network-method-21 () none 21)
-    (nav-network-method-22 () none 22)
-    (nav-network-method-23 () none 23)
-    (nav-network-method-24 () none 24)
-    (nav-network-method-25 () none 25)
-    (nav-network-method-26 () none 26)
-    (nav-network-method-27 () none 27)
-    (nav-network-method-28 () none 28)
-    (nav-network-method-29 () none 29)
-    (nav-network-method-30 () none 30)
+    (nav-network-method-9 (_type_) none 9)
+    (nav-network-method-10 (_type_ level (array nav-network-info)) none 10)
+    (nav-network-method-11 (_type_) none 11)
+    (nav-network-method-12 (_type_) none 12)
+    (nav-network-method-13 (_type_) none 13)
+    (nav-network-method-14 (_type_ int) none 14)
+    (nav-network-method-15 (_type_) none 15)
+    (nav-network-method-16 (_type_) none 16)
+    (nav-network-method-17 (_type_) nav-network-path-node 17)
+    (nav-network-method-18 (_type_) none 18)
+    (nav-network-method-19 (_type_) none 19)
+    (nav-network-method-20 (_type_) none 20)
+    (nav-network-method-21 (_type_) none 21)
+    (nav-network-method-22 (_type_) none 22)
+    (nav-network-method-23 (_type_) none 23)
+    (nav-network-method-24 (_type_) none 24)
+    (nav-network-method-25 (_type_) none 25)
+    (nav-network-method-26 (_type_) none 26)
+    (nav-network-method-27 (_type_) none 27)
+    (nav-network-method-28 (_type_) none 28)
+    (nav-network-method-29 (_type_) symbol 29)
+    (get-network (_type_) basic 30)
     (nav-network-method-31 () none 31)
     (nav-network-method-32 () none 32)
     )
   )
-|#
 
-#|
 (deftype hover-nav-params (structure)
   ((max-speed              float  :offset-assert 0)
    (max-acceleration       float  :offset-assert 4)
@@ -35330,9 +35307,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype hover-nav-control (basic)
   ((root                        basic                       :offset-assert 4)
    (nav                         basic                       :offset-assert 8)
@@ -35365,34 +35340,33 @@
   :size-assert         #xd8
   :flag-assert         #x20000000d8
   (:methods
-    (hover-nav-control-method-9 () none 9)
-    (hover-nav-control-method-10 () none 10)
-    (hover-nav-control-method-11 () none 11)
-    (hover-nav-control-method-12 () none 12)
-    (hover-nav-control-method-13 () none 13)
-    (hover-nav-control-method-14 () none 14)
-    (hover-nav-control-method-15 () none 15)
-    (hover-nav-control-method-16 () none 16)
-    (hover-nav-control-method-17 () none 17)
-    (hover-nav-control-method-18 () none 18)
-    (hover-nav-control-method-19 () none 19)
-    (hover-nav-control-method-20 () none 20)
-    (hover-nav-control-method-21 () none 21)
-    (hover-nav-control-method-22 () none 22)
-    (hover-nav-control-method-23 () none 23)
-    (hover-nav-control-method-24 () none 24)
-    (hover-nav-control-method-25 () none 25)
-    (hover-nav-control-method-26 () none 26)
-    (hover-nav-control-method-27 () none 27)
-    (hover-nav-control-method-28 () none 28)
-    (hover-nav-control-method-29 () none 29)
-    (hover-nav-control-method-30 () none 30)
-    (hover-nav-control-method-31 () none 31)
+    (hover-nav-control-method-9 (_type_) none 9)
+    (hover-nav-control-method-10 (_type_) none 10)
+    (hover-nav-control-method-11 (_type_) none 11)
+    (hover-nav-control-method-12 (_type_) none 12)
+    (hover-nav-control-method-13 (_type_) none 13)
+    (hover-nav-control-method-14 (_type_ float float) none 14)
+    (hover-nav-control-method-15 (_type_) none 15)
+    (hover-nav-control-method-16 (_type_) none 16)
+    (hover-nav-control-method-17 (_type_) none 17)
+    (hover-nav-control-method-18 (_type_) none 18)
+    (hover-nav-control-method-19 (_type_) none 19)
+    (hover-nav-control-method-20 (_type_) none 20)
+    (hover-nav-control-method-21 (_type_) none 21)
+    (hover-nav-control-method-22 (_type_) hover-nav-path-segment 22)
+    (hover-nav-control-method-23 (_type_) object 23)
+    (hover-nav-control-method-24 (_type_) none 24)
+    (hover-nav-control-method-25 (_type_) none 25)
+    (hover-nav-control-method-26 (_type_) none 26)
+    (hover-nav-control-method-27 (_type_) none 27)
+    (hover-nav-control-method-28 (_type_) none 28)
+    (hover-nav-control-method-29 (_type_) none 29)
+    (hover-nav-control-method-30 (_type_) float 30)
+    (hover-nav-control-method-31 (_type_) float 31)
     )
   )
-|#
 
-;; (define-extern *hover-nav-time-offset* object)
+(define-extern *hover-nav-time-offset* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-enemy-h                  ;;
@@ -35475,39 +35449,32 @@
 ;; hover-nav-network              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *drill-adjacency* array)
-;; (define-extern *fortress-adjacency* array)
-;; (define-extern *forest-adjacency* array)
-;; (define-extern *under-adjacency* array)
-;; (define-extern *nestb-adjacency* array)
+(define-extern *drill-adjacency* (array nav-network-info))
+(define-extern *fortress-adjacency* (array nav-network-info))
+(define-extern *forest-adjacency* (array nav-network-info))
+(define-extern *under-adjacency* (array nav-network-info))
+(define-extern *nestb-adjacency* (array nav-network-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-control              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-network-control (process)
-  ((nav-network basic  :offset-assert 124)
+  ((nav-network nav-network  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
   :flag-assert         #xf00100084
   (:methods
-    (nav-network-control-method-9 () none 9)
-    (nav-network-control-method-10 () none 10)
-    (nav-network-control-method-11 () none 11)
-    (nav-network-control-method-12 () none 12)
-    (nav-network-control-method-13 () none 13)
     (idle () _type_ :state 14)
     )
   )
-|#
 
-;; (define-extern *debug-hover* object)
-;; (define-extern nav-network-control-init-by-other function)
+(define-extern *debug-hover* symbol)
+(define-extern nav-network-control-init-by-other (function nav-network level none :behavior nav-network-control))
 ;; (define-extern detect-loop function)
 ;; (define-extern list-contains function)
-;; (define-extern *nav-network* object)
+(define-extern *nav-network* nav-network)
 ;; (define-extern hover-bounce-reaction function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42896,7 +42863,7 @@
 (define-extern movie-nest-metalkor-shot-draw-impact (function scene-player vector vector none))
 (define-extern nestb-login (function none))
 (define-extern nestb-deactivate (function none))
-(define-extern nestb-activate (function none))
+(define-extern nestb-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nestb-part                     ;;
