@@ -6933,11 +6933,11 @@
   (text-x22b #x022b)
   (text-x22c #x022c)
   (text-x22d #x022d)
-  (text-x22e #x022e)
-  (text-x22f #x022f)
+  (gungame-red-prompt #x022e)
+  (gungame-red-or-blue-prompt #x022f)
   (text-x230 #x0230)
-  (text-x231 #x0231)
-  (text-x232 #x0232)
+  (gungame-yellow-prompt #x0231)
+  (gungame-yellow-or-purple-prompt #x0232)
   (text-x233 #x0233)
   (text-x234 #x0234)
   (text-x235 #x0235)
@@ -12945,7 +12945,7 @@
     (give (_type_ symbol float handle) float 10)
     (task-complete? (_type_ game-task) symbol 11)
     (subtask-index-by-name (_type_ string) int 12)
-    (set-subtask-hook! (_type_ int int function) function 13)
+    (set-subtask-hook! (_type_ int int (function object :behavior task-manager)) (function object :behavior task-manager) 13)
     (actor-perm (_type_ actor-id) entity-perm 14)
     (task-perm-by-index (_type_ int) entity-perm 15)
     (copy-perms-from-level! (_type_ level) int 16)
@@ -15297,6 +15297,7 @@
    (speed-change-time    time-frame             :offset-assert 328)
    (speed-press-time     time-frame             :offset-assert 336)
    (speed-change-speed   float              :offset-assert 344)
+   (unknown-time         time-frame           :offset 344) ;; TODO - see attach-pod-part
    (subtitle-change-time time-frame             :offset-assert 352)
    (user-sound           sound-id    4       :offset-assert 360) ;; guess
    )
@@ -26495,7 +26496,7 @@
   (function int none))
 (define-extern draw-debug-text-box "Draws some lines" (function font-context none))
 (define-extern print-game-text-scaled "Print text, with a given scaling" (function string float font-context int none))
-(define-extern print-game-text "Print text." (function string font-context symbol int int float))
+(define-extern print-game-text "Print text." (function string font-context symbol int bucket-id float))
 (define-extern disable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
 (define-extern enable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
 
@@ -29721,16 +29722,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype actor-group (inline-array-class)
-  ()
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
-  ;; Failed to read fields.
-  )
-|#
 
 
 (deftype debug-actor-info (basic)
@@ -44847,11 +44838,11 @@
   :flag-assert         #x10003000b0
   )
 
-;; (define-extern race-birth-func-texture-lap-01 function)
-;; (define-extern race-birth-func-texture-lap-02 function)
-;; (define-extern race-birth-func-texture-position-01 function)
-;; (define-extern race-birth-func-texture-position-02 function)
-;; (define-extern race-birth-func-texture-position-word function)
+;; (define-extern race-birth-func-texture-lap-01 (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern race-birth-func-texture-lap-02 (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern race-birth-func-texture-position-01 (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern race-birth-func-texture-position-02 (function int sparticle-cpuinfo sparticle-launchinfo none))
+;; (define-extern race-birth-func-texture-position-word (function int sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadium-obs                    ;;
@@ -46243,7 +46234,7 @@
 ;; tomb-scenes                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern attach-pod-part function)
+(define-extern attach-pod-part (function none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; com-elevator                   ;;
@@ -46568,22 +46559,34 @@
 ;; gun-dummy                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype tpath-control-frame (UNKNOWN)
+(declare-type training-manager process)
+
+;; +++gun-dummy:tpath-control-frame-command
+(defenum tpath-control-frame-command
+  :type uint8
+  (begin) ;; kinda a guess
+  (tpath-control-frame-command-1)
+  (tpath-control-frame-command-2)
+  (tpath-control-frame-command-3)
+  (tpath-control-frame-command-4)
+  (tpath-control-frame-command-5)
+  (end) ;; kinda a guess
+  )
+;; ---gun-dummy:tpath-control-frame-command
+
+(deftype tpath-control-frame (structure)
   ((time      float  :offset-assert 0)
    (path-pos  uint8  :offset-assert 4)
-   (command   uint8  :offset-assert 5)
+   (command   tpath-control-frame-command  :offset-assert 5)
    (move-type uint8  :offset-assert 6)
    (path-num  uint8  :offset-assert 7)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype tpath-info (UNKNOWN)
+(deftype tpath-info (structure)
   ((s-time       float     :offset-assert 0)
    (num          uint16    :offset-assert 4)
    (ref-time-num int16     :offset-assert 6)
@@ -46591,218 +46594,228 @@
    (flags        uint8     :offset-assert 10)
    (num-anims    uint8     :offset-assert 11)
    (bonus-time   float     :offset-assert 12)
-   (list         basic     :offset-assert 16)
-   (anims        UNKNOWN 3 :offset-assert 20)
-   (anim1        uint32    :offset-assert 20)
-   (anim2        uint32    :offset-assert 24)
-   (anim3        uint32    :offset-assert 28)
+   (list         (array int32)     :offset-assert 16)
+   (anims        (inline-array tpath-control-frame)  3 :offset-assert 20 :score -100)
+   (anim1        (inline-array tpath-control-frame)    :offset 20)
+   (anim2        (inline-array tpath-control-frame)    :offset 24)
+   (anim3        (inline-array tpath-control-frame)    :offset 28)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-#|
-(deftype gun-dummy (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype gun-dummy (process-focusable)
+  (
+    (incoming-attack-id uint32 :offset-assert 204)
+    (train-man handle :offset-assert 208)
+    (info tpath-info :offset-assert 216)
+    (y-offset float :offset-assert 220)
+    (rot-y-offset float :offset-assert 224)
+    (quat quaternion :inline :offset-assert 240)
+    (hit-points int32 :offset-assert 256)
+    (score float :offset-assert 260)
+    (path-num uint32 :offset-assert 264)
+    (next-spark int64 :offset-assert 272)
+    (inout-percent float :offset-assert 280)
+    (quat-ground quaternion :inline :offset-assert 288)
+    (path-pos float :offset-assert 304)
+    (score-speed float :offset-assert 308)
+    (first-time-command symbol :offset-assert 312)
+    (current (inline-array tpath-control-frame) :offset-assert 316) ;; this contradicts the inspect method but...yeah, see (method 30 gun-dummy)
+    (impact vector :inline :offset-assert 320)
+    (done? symbol :inline :offset-assert 336)
+    (move-sound sound-id :offset-assert 340)
+    (turn-sound sound-id :offset-assert 344)
+    (spin-sound sound-id :offset-assert 348)
+    (last-combo-time time-frame :offset-assert 352)
   )
-|#
-
-#|
-(deftype gun-dummy-a (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 33
+  :size-assert         #x168
+  :flag-assert         #x2100f00168
+  (:methods
+    (idle () _type_ :state 27)
+    (gun-dummy-method-28 (_type_) none 28)
+    (gun-dummy-method-29 (_type_) symbol 29)
+    (gun-dummy-method-30 (_type_) float 30)
+    (gun-dummy-method-31 (_type_ tpath-info) none 31)
+    (gun-dummy-method-32 (_type_) none 32)
+    )
   )
-|#
 
-#|
-(deftype gun-dummy-b (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-a (gun-dummy) ())
 
-#|
-(deftype gun-dummy-c (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-b (gun-dummy) ())
 
-#|
-(deftype gun-dummy-big (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-c (gun-dummy) ())
 
-#|
-(deftype gun-dummy-gold (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-big (gun-dummy) ())
 
-#|
-(deftype gun-dummy-peace (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-gold (gun-dummy) ())
 
-#|
-(deftype gun-cit-a (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-dummy-peace (gun-dummy) ())
 
-#|
-(deftype gun-cit-b (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-cit-a (gun-dummy) ())
 
-#|
-(deftype gun-cit-c (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-cit-b (gun-dummy) ())
 
-#|
-(deftype gun-cit-d (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(deftype gun-cit-c (gun-dummy) ())
 
-;; (define-extern check-gungame-piece-ground function)
-;; (define-extern *tpath-rand* object)
-;; (define-extern *gun-dummy-a-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-dummy-b-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-dummy-c-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-dummy-big-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-dummy-gold-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-dummy-peace-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-cit-a-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-cit-b-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-cit-c-exploder-params* joint-exploder-static-params)
-;; (define-extern *gun-cit-d-exploder-params* joint-exploder-static-params)
-;; (define-extern gun-dummy-init-by-other function)
-;; (define-extern gun-dummy-a-init-by-other function)
-;; (define-extern gun-dummy-b-init-by-other function)
-;; (define-extern gun-dummy-c-init-by-other function)
-;; (define-extern gun-dummy-big-init-by-other function)
-;; (define-extern gun-dummy-gold-init-by-other function)
-;; (define-extern gun-dummy-peace-init-by-other function)
-;; (define-extern gun-cit-a-init-by-other function)
-;; (define-extern gun-cit-b-init-by-other function)
-;; (define-extern gun-cit-c-init-by-other function)
-;; (define-extern gun-cit-d-init-by-other function)
+(deftype gun-cit-d (gun-dummy) ())
+
+(define-extern check-gungame-piece-ground (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *tpath-rand* uint)
+(define-extern *gun-dummy-a-exploder-params* joint-exploder-static-params)
+(define-extern *gun-dummy-b-exploder-params* joint-exploder-static-params)
+(define-extern *gun-dummy-c-exploder-params* joint-exploder-static-params)
+(define-extern *gun-dummy-big-exploder-params* joint-exploder-static-params)
+(define-extern *gun-dummy-gold-exploder-params* joint-exploder-static-params)
+(define-extern *gun-dummy-peace-exploder-params* joint-exploder-static-params)
+(define-extern *gun-cit-a-exploder-params* joint-exploder-static-params)
+(define-extern *gun-cit-b-exploder-params* joint-exploder-static-params)
+(define-extern *gun-cit-c-exploder-params* joint-exploder-static-params)
+(define-extern *gun-cit-d-exploder-params* joint-exploder-static-params)
+(define-extern gun-dummy-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-a-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-b-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-c-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-big-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-gold-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-peace-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-a-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-b-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-c-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-d-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gungame-data                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype gungame-crate (UNKNOWN)
+(deftype gungame-crate (structure)
   ((pos   vector :inline :offset-assert 0)
-   (pos-x float          :offset-assert 0)
-   (pos-y float          :offset-assert 4)
-   (pos-z float          :offset-assert 8)
-   (angle float          :offset-assert 12)
+   (pos-x float          :offset 0)
+   (pos-y float          :offset 4)
+   (pos-z float          :offset 8)
+   (angle float          :offset 12)
    (ammo  int32          :offset-assert 16)
    (num   uint32         :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
-|#
 
-;; (define-extern *entrance-gungame-crates-pos* array)
-;; (define-extern *gungame-red-crates-pos* array)
-;; (define-extern *gungame-yellow-crates-pos* array)
-;; (define-extern *gungame-blue-crates-pos* array)
-;; (define-extern *gungame-peace-crates-pos* array)
-;; (define-extern *red-training-path-global-info* array)
-;; (define-extern *yellow-training-path-global-info* array)
-;; (define-extern *blue-training-path-global-info* array)
-;; (define-extern *peace-training-path-global-info* array)
+(define-extern *entrance-gungame-crates-pos* (array gungame-crate))
+(define-extern *gungame-red-crates-pos* (array gungame-crate))
+(define-extern *gungame-yellow-crates-pos* (array gungame-crate))
+(define-extern *gungame-blue-crates-pos* (array gungame-crate))
+(define-extern *gungame-peace-crates-pos* (array gungame-crate))
+(define-extern *red-training-path-global-info* (array tpath-info))
+(define-extern *yellow-training-path-global-info* (array tpath-info))
+(define-extern *blue-training-path-global-info* (array tpath-info))
+(define-extern *peace-training-path-global-info* (array tpath-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gungame-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype training-path (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype training-path (process-drawable)
+  (
+    (num uint32 :offset-assert 200)
   )
-|#
-
-#|
-(deftype training-manager (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xcc
+  :flag-assert         #x15005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype gungame-door (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype training-manager (process)
+  (
+    (actor-group (pointer actor-group) :offset-assert 128)
+    (actor-group-count int32 :offset-assert 132)
+    (start-time time-frame :offset-assert 136)
+    (score int32 :offset-assert 144)
+    (first-enemy-shown? symbol :offset-assert 148)
+    (first-citizen-shown? symbol :offset-assert 152)
+    (open-end? symbol :offset-assert 156)
+    (entrance-crates handle 32 :offset-assert 160)
+    (course-crates handle 32 :offset-assert 416)
+    (course (array tpath-info) :offset-assert 672)
+    (end-door uint32 :offset-assert 676)
+    (total-target uint32 :offset-assert 680)
+    (total-target-destroyed uint32 :offset-assert 684)
+    (total-bonus uint32 :offset-assert 688)
+    (total-bonus-destroyed uint32 :offset-assert 692)
+    (total-civilian uint32 :offset-assert 696)
+    (hud-score handle :offset-assert 704)
+    (hud-goal handle :offset-assert 712)
+    (in-out uint32 :offset-assert 720)
+    (combo-done? symbol :offset-assert 724)
+    (voicebox handle :offset-assert 728)
+    (last-sound-id sound-id :offset-assert 736)
+    (dummies handle 2 :offset-assert 744)
+    (task-gold uint16 :offset-assert 760)
+    (task-silver uint16 :offset-assert 762)
+    (task-bronze uint16 :offset-assert 764)
+    (game-score uint8 :offset-assert 766)
+    (training-goal float :offset-assert 768)
+    (training? symbol :offset-assert 772)
+    (egg-count int32 :offset-assert 776)
+    (medal int32 :offset-assert 780)
+    (gui-id sound-id :offset-assert 784)
   )
-|#
+  :method-count-assert 33
+  :size-assert         #x314
+  :flag-assert         #x2102a00314
+  (:methods
+    (wait () _type_ :state 14)
+    (course () _type_ :state 15)
+    (end-course () _type_ :state 16)
+    (red-training-intro () _type_ :state 17)
+    (red-training () _type_ :state 18)
+    (red-yellow-training () _type_ :state 19)
+    (yellow-training-intro () _type_ :state 20)
+    (training-manager-method-21 (_type_ handle) entity 21)
+    (training-manager-method-22 (_type_ symbol) symbol 22)
+    (training-manager-method-23 (_type_ (array gungame-crate)) symbol 23)
+    (training-manager-method-24 (_type_) symbol 24)
+    (training-manager-method-25 (_type_) symbol 25)
+    (training-manager-method-26 (_type_) int 26)
+    (training-manager-method-27 (_type_ (array tpath-info)) symbol 27)
+    (training-manager-method-28 (_type_) none 28)
+    (training-manager-method-29 (_type_ vector) vector 29)
+    (training-manager-method-30 (_type_ game-text-id) float 30)
+    (training-manager-method-31 (_type_) none 31)
+    (training-manager-method-32 (_type_) none 32)
+    )
+  (:states
+    yellow-training)
+  )
 
-;; (define-extern yellow-training state)
-;; (define-extern *yellow-training-path-combo-info* array)
+(deftype gungame-door (process-drawable)
+  (
+    (open-side symbol :offset-assert 200)
+    (close-sound sound-id :offset-assert 204)
+    (train handle :offset-assert 208)
+    (last-player-dist float :offset-assert 216)
+    (last-camera-dist float :offset-assert 220)
+    (close-state uint32 :offset-assert 224)
+  )
+  :method-count-assert 25
+  :size-assert         #xe4
+  :flag-assert         #x19007000e4
+  (:methods
+    (idle () _type_ :state 20)
+    (open () _type_ :state 21)
+    (close () _type_ :state 22)
+    (gungame-door-method-23 (_type_) symbol 23)
+    (gungame-door-method-24 (_type_) symbol 24)
+    )
+  )
+
+(define-extern *yellow-training-path-combo-info* (array tpath-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gungame-part                   ;;
