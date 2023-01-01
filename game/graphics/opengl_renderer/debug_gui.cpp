@@ -141,10 +141,6 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::EndMenu();
     }
-
-    if (ImGui::BeginMenu(fmt::format("WORK IN PROGRESS VERSION ({})!", GIT_VERSION).c_str())) {
-      ImGui::EndMenu();
-    }
   }
   ImGui::EndMainMenuBar();
 
