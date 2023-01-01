@@ -29956,206 +29956,168 @@
 ;; collectables                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype collectable (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(defenum collectable-flag
+  :type uint32
+  :bitfield #t
+  (bounce      0) ;; 1
+  (fadeout     1) ;; 2
+  (pickup      2) ;; 4
+  (do-fadeout  3)  ;; 8
+  (suck-in     4) ;; 16
+  (no-eco-blue 5) ;; 32
+  (no-bob      6) ;; 64
+  (no-distance-check-fadeout 7) ;; 128
   )
-|#
 
-#|
-(deftype eco (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype collectable (process-drawable)
+  ((root-override2     collide-shape-moving  :offset 128 :score 1000)
+   (pickup-type pickup-type :offset-assert 200)
+   (pickup-amount float :offset-assert 204)
+   (notify handle :offset-assert 208)
+   (old-base vector :inline :offset-assert 224)
+   (base vector :inline :offset-assert 240)
+   (extra-trans vector :inline :offset-assert 256)
+   (jump-pos vector :inline :offset-assert 272)
+   (flags collectable-flag :offset-assert 288)
+   (birth-time seconds :offset-assert 296)
+   (collect-timeout seconds :offset-assert 304)
+   (fadeout-timeout seconds :offset-assert 312)
+   (bob-offset seconds :offset-assert 320)
+   (bob-amount float :offset-assert 328)
+   (pickup-handle handle :offset-assert 336)
+   (actor-pause symbol :offset-assert 344)
+   (collect-effect basic :offset-assert 348)
+   (collect-effect2 basic :offset-assert 352)
+   (target handle :offset-assert 360)
+   (suck-time seconds :offset-assert 368)
+   (suck-y-offset float :offset-assert 376)
+   (speed vector :inline :offset-assert 384)
+   (movie-pos-index int32 :offset-assert 400)
+   )
+  :flag-assert         #x2401200194 ;; L802
+  (:methods
+    (blocked () _type_ :state 20)
+    (wait () _type_ :state 21)
+    (deploy () _type_ :state 22)
+    (suck (handle) _type_ :state 23)
+    (jump () _type_ :state 24)
+    (fade () _type_ :state 25)
+    (pickup (symbol handle) _type_ :state 26)
+    (die () _type_ :state 27)
+    (notice-blue (handle) _type_ :state 28)
+    (init-common (_type_ entity-actor pickup-type float) none 29) ;; seen it.
+    (initialize-effects (_type_ pickup-type) none 30)
+    (go-to-initial-state (_type_) none 31)
+    (initialize-options (_type_ int float fact-info) collectable 32)
+    (initialize-allocations (_type_) none 33)
+    (common-post (_type_) none 34)
+    (do-pickup (_type_ handle) none 35)
+    )
   )
-|#
 
-#|
-(deftype eco-yellow (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype eco (collectable)
+  (
+   (respan-delay seconds :offset-assert 408))
+  :flag-assert         #x24012001a0 ;; L803
   )
-|#
 
-#|
-(deftype eco-red (UNKNOWN)
+(deftype eco-yellow (eco)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x24012001a0 ;; L803
   )
-|#
 
-#|
-(deftype eco-blue (UNKNOWN)
+(deftype eco-red (eco)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x24012001a0 ;; L803
   )
-|#
 
-#|
-(deftype eco-green (UNKNOWN)
+(deftype eco-blue (eco)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x24012001a0 ;; L803
   )
-|#
 
-#|
-(deftype health (UNKNOWN)
+(deftype eco-green (eco)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x24012001a0 ;; L803
   )
-|#
 
-#|
-(deftype eco-pill (UNKNOWN)
+(deftype health (collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype money (UNKNOWN)
+(deftype eco-pill (collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype gem (UNKNOWN)
+(deftype money (collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype skill (UNKNOWN)
+(deftype gem (money)
+  ((roty-speed degrees :offset-assert 404)
+   (bounce-time seconds :offset-assert 408)
+   )
+  :flag-assert         #x24012001a0 ;; L803
+  )
+
+(deftype skill (money)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype fuel-cell (UNKNOWN)
+(deftype fuel-cell (process-hidden) ;; rip
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #xf00000080 ;; L801
   )
-|#
 
-#|
-(deftype trick-point (UNKNOWN)
+(deftype trick-point (collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype skate-point (UNKNOWN)
+(deftype skate-point (trick-point)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200194 ;; L802
   )
-|#
 
-#|
-(deftype ammo-collectable (UNKNOWN)
+(deftype ammo-collectable (collectable)
+  ((ammo-effect basic :offset-assert 404))
+  :flag-assert         #x2401200198 ;; L800
+  )
+
+(deftype ammo (ammo-collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200198 ;; L800
   )
-|#
 
-#|
-(deftype ammo (UNKNOWN)
+(deftype shield (ammo-collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200198 ;; L800
   )
-|#
 
-#|
-(deftype shield (UNKNOWN)
+(deftype upgrade-collectable (ammo-collectable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #x2401200198 ;; L800
   )
-|#
 
-#|
-(deftype upgrade-collectable (UNKNOWN)
+(deftype ecovent (process-hidden)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :flag-assert         #xf00000080 ;; L801
   )
-|#
 
-#|
-(deftype ecovent (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-;; (define-extern initialize-eco-by-other function) ;; (function vector vector fact-info none :behavior eco)
-;; (define-extern add-blue-shake function) ;; (function vector vector vector vector)
-;; (define-extern check-blue-suck function) ;; (function process-drawable none :behavior eco-collectable)
-;; (define-extern add-blue-motion function) ;; (function symbol symbol symbol symbol symbol :behavior eco-collectable)
-;; (define-extern collectable-standard-event-handler function)
-;; (define-extern money-init-by-other function) ;; (function vector vector fact-info entity-actor none :behavior money)
-;; (define-extern money-init-by-other-no-bob function) ;; (function vector vector fact-info float entity-actor none :behavior money)
-;; (define-extern *collectable-dummy-shadow-control* shadow-control)
-;; (define-extern initialize-ammo-by-other function)
-;; (define-extern initialize-upgrade-by-other function)
+(define-extern initialize-eco-by-other (function vector vector fact-info none :behavior eco))
+(define-extern add-blue-shake (function vector vector vector vector))
+(define-extern check-blue-suck (function process-drawable symbol :behavior eco))
+(define-extern add-blue-motion (function symbol symbol symbol symbol symbol :behavior eco))
+(define-extern collectable-standard-event-handler (function process int symbol event-message-block object :behavior collectable))
+(define-extern money-init-by-other (function vector vector fact-info entity-actor none :behavior money))
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity-actor none :behavior money))
+(define-extern *collectable-dummy-shadow-control* shadow-control)
+(define-extern initialize-ammo-by-other (function vector vector fact-info none :behavior ammo))
+(define-extern initialize-upgrade-by-other (function vector vector fact-info entity-actor none :behavior upgrade-collectable))
 (define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

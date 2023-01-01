@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "common/goos/Object.h"
+#include "common/util/print_float.h"
 
 #include "third-party/fmt/core.h"
 
@@ -24,9 +25,7 @@ const std::unordered_map<u32, std::string> const_floats = {{0x40490fda, "PI"},
 goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
-  u8 exp = (int_value >> 23) & 0xff;
-  u32 mant = int_value & 0x7fffff;
-  if ((exp == 0 && mant != 0) || exp == 0xff || !std::isfinite(value)) {
+  if (!proper_float(value)) {
     // lg::warn("PS2-incompatible float (0x{:08X}) detected! Writing as the-as cast.", int_value);
     return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
   } else if (const_floats.find(int_value) != const_floats.end()) {

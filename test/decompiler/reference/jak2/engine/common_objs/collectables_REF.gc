@@ -1,53 +1,35 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collectables.gc
-;; name in dgo: collectables
-;; dgos: ENGINE, GAME
-
-(defenum collectable-flag
-  :type uint32
-  :bitfield #t
-  (bounce      0) ;; 1
-  (fadeout     1) ;; 2
-  (pickup      2) ;; 4
-  (do-fadeout  3)  ;; 8
-  (suck-in     4) ;; 16
-  (no-eco-blue 5) ;; 32
-  (no-bob      6) ;; 64
-  (no-distance-check-fadeout 7) ;; 128
-  )
-
-(declare-type collectable process-drawable)
-(declare-type eco collectable)
-(declare-type ammo collectable)
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-health collectables 3 5
               ((4 (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :texture-level 6
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gem collectables 6 9
               ((7 (meters 20)) (8 (meters 999999)))
               :bounds (static-spherem 0 0 0 0.6)
               :texture-level 6
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gun-yellow-up yellow-barrel 0 2
               ((1 (meters 999999)))
               :bounds (static-spherem 0 1 0 1.6)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gun-dark-up dark-barrel 0 2
               ((1 (meters 999999)))
               :bounds (static-spherem 0 1 0 1.6)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-skill collectables 17 22
               ((18 (meters 20)) (19 (meters 40)) (20 (meters 999999)))
               :bounds (static-spherem 0 0 0 0.6)
@@ -56,6 +38,7 @@
               :shadow-joint-index 0
               )
 
+;; definition of type collectable
 (deftype collectable (process-drawable)
   ((root-override2  collide-shape-moving         :offset        128)
    (pickup-type     pickup-type                  :offset-assert 200)
@@ -105,7 +88,69 @@
     )
   )
 
+;; definition for method 3 of type collectable
+(defmethod inspect collectable ((obj collectable))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-20)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpickup-type: ~D~%" (-> obj pickup-type))
+  (format #t "~2Tpickup-amount: ~f~%" (-> obj pickup-amount))
+  (format #t "~2Tnotify: ~D~%" (-> obj notify))
+  (format #t "~2Told-base: ~`vector`P~%" (-> obj old-base))
+  (format #t "~2Tbase: ~`vector`P~%" (-> obj base))
+  (format #t "~2Textra-trans: ~`vector`P~%" (-> obj extra-trans))
+  (format #t "~2Tjump-pos: ~`vector`P~%" (-> obj jump-pos))
+  (format #t "~2Tflags: #x~X : (collectable-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (collectable-flag no-eco-blue)) (collectable-flag no-eco-blue))
+        (format #t "no-eco-blue ")
+        )
+    (if (= (logand s5-0 (collectable-flag suck-in)) (collectable-flag suck-in))
+        (format #t "suck-in ")
+        )
+    (if (= (logand s5-0 (collectable-flag bounce)) (collectable-flag bounce))
+        (format #t "bounce ")
+        )
+    (if (= (logand s5-0 (collectable-flag no-distance-check-fadeout)) (collectable-flag no-distance-check-fadeout))
+        (format #t "no-distance-check-fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag fadeout)) (collectable-flag fadeout))
+        (format #t "fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag no-bob)) (collectable-flag no-bob))
+        (format #t "no-bob ")
+        )
+    (if (= (logand s5-0 (collectable-flag do-fadeout)) (collectable-flag do-fadeout))
+        (format #t "do-fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag pickup)) (collectable-flag pickup))
+        (format #t "pickup ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~2Tbirth-time: ~D~%" (-> obj birth-time))
+  (format #t "~2Tcollect-timeout: ~D~%" (-> obj collect-timeout))
+  (format #t "~2Tfadeout-timeout: ~D~%" (-> obj fadeout-timeout))
+  (format #t "~2Tbob-offset: ~D~%" (-> obj bob-offset))
+  (format #t "~2Tbob-amount: ~f~%" (-> obj bob-amount))
+  (format #t "~2Tpickup-handle: ~D~%" (-> obj pickup-handle))
+  (format #t "~2Tactor-pause: ~A~%" (-> obj actor-pause))
+  (format #t "~2Tcollect-effect: ~A~%" (-> obj collect-effect))
+  (format #t "~2Tcollect-effect2: ~A~%" (-> obj collect-effect2))
+  (format #t "~2Ttarget: ~D~%" (-> obj target))
+  (format #t "~2Tsuck-time: ~D~%" (-> obj suck-time))
+  (format #t "~2Tsuck-y-offset: ~f~%" (-> obj suck-y-offset))
+  (format #t "~2Tspeed: ~`vector`P~%" (-> obj speed))
+  (format #t "~2Tmovie-pos-index: ~D~%" (-> obj movie-pos-index))
+  (label cfg-20)
+  obj
+  )
 
+;; definition for method 31 of type collectable
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-to-initial-state collectable ((obj collectable))
   (cond
@@ -122,6 +167,8 @@
   (none)
   )
 
+;; definition for method 32 of type collectable
+;; INFO: Used lq/sq
 (defmethod initialize-options collectable ((obj collectable) (arg0 int) (arg1 float) (arg2 fact-info))
   (with-pp
     (logclear! (-> obj mask) (process-mask crate enemy platform ambient))
@@ -194,6 +241,8 @@
     )
   )
 
+;; definition for method 33 of type collectable
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations collectable ((obj collectable))
   (stack-size-set! (-> obj main-thread) 128)
   (logior! (-> obj mask) (process-mask actor-pause))
@@ -224,6 +273,7 @@
   (none)
   )
 
+;; definition for method 30 of type collectable
 ;; WARN: Return type mismatch ambient-sound vs none.
 (defmethod initialize-effects collectable ((obj collectable) (arg0 pickup-type))
   (let ((s5-0 (the-as sparticle-launch-group #f))
@@ -300,6 +350,8 @@
   (none)
   )
 
+;; definition for function initialize-eco-by-other
+;; INFO: Used lq/sq
 (defbehavior initialize-eco-by-other eco ((arg0 vector) (arg1 vector) (arg2 fact-info))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
@@ -345,6 +397,8 @@
   (none)
   )
 
+;; definition for method 29 of type collectable
+;; INFO: Used lq/sq
 (defmethod init-common collectable ((obj collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
   (set! (-> obj pickup-amount) arg2)
   (set! (-> obj pickup-type) arg1)
@@ -360,6 +414,8 @@
   (none)
   )
 
+;; definition for method 34 of type collectable
+;; WARN: Return type mismatch int vs none.
 (defmethod common-post collectable ((obj collectable))
   (let ((s5-0 (-> obj part))
         (s4-0 (-> obj root-override2 root-prim prim-core))
@@ -378,6 +434,9 @@
   (none)
   )
 
+;; definition for method 35 of type collectable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod do-pickup collectable ((obj collectable) (arg0 handle))
   (set! (-> obj pickup-handle) arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -536,6 +595,7 @@
   (none)
   )
 
+;; definition for function add-blue-shake
 (defun add-blue-shake ((arg0 vector) (arg1 vector) (arg2 vector))
   (let* ((f0-0 (vector-vector-distance arg1 arg2))
          (f30-0 (lerp-scale 409.6 0.0 f0-0 (-> *FACT-bank* suck-suck-dist) (-> *FACT-bank* suck-bounce-dist)))
@@ -547,6 +607,7 @@
   arg0
   )
 
+;; definition for function check-blue-suck
 (defbehavior check-blue-suck eco ((arg0 process-drawable))
   (let ((v1-0 (if (type? arg0 process-drawable)
                   arg0
@@ -575,6 +636,7 @@
     )
   )
 
+;; definition for function add-blue-motion
 (defbehavior add-blue-motion eco ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol))
   (let* ((gp-0 (handle->process (-> self target)))
          (s2-0 (if (type? gp-0 process-drawable)
@@ -662,6 +724,8 @@
   #f
   )
 
+;; definition for function collectable-standard-event-handler
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 108]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 144]
@@ -820,6 +884,7 @@
           )
   )
 
+;; failed to figure out what this is:
 (defstate blocked (collectable)
   :virtual #t
   :trans (behavior ()
@@ -831,6 +896,7 @@
   :code (the-as (function none :behavior collectable) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate jump (collectable)
   :virtual #t
   :code (behavior ()
@@ -865,6 +931,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate deploy (collectable)
   :virtual #t
   :event collectable-standard-event-handler
@@ -943,6 +1010,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate suck (collectable)
   :virtual #t
   :event collectable-standard-event-handler
@@ -973,6 +1041,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait (collectable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1038,6 +1107,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate fade (collectable)
   :virtual #t
   :event collectable-standard-event-handler
@@ -1075,6 +1145,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate notice-blue (collectable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1135,6 +1206,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pickup (collectable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1191,6 +1263,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (collectable)
   :virtual #t
   :code (behavior ()
@@ -1199,6 +1272,7 @@
     )
   )
 
+;; definition of type eco
 (deftype eco (collectable)
   ((respan-delay seconds  :offset-assert 408)
    )
@@ -1208,7 +1282,22 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type eco
+(defmethod inspect eco ((obj eco))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Trespawn-delay: ~D~%" (-> obj respan-delay))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 33 of type eco
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations eco ((obj eco))
   (let ((t9-0 (method-of-type collectable initialize-allocations)))
     (t9-0 obj)
@@ -1220,6 +1309,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate die (eco)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1280,6 +1370,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pickup (eco)
   :virtual #t
   :code (behavior ((arg0 symbol) (arg1 handle))
@@ -1295,6 +1386,7 @@
     )
   )
 
+;; definition of type eco-yellow
 (deftype eco-yellow (eco)
   ()
   :heap-base #x120
@@ -1303,12 +1395,26 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type eco-yellow
+(defmethod inspect eco-yellow ((obj eco-yellow))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type eco-yellow
 (defmethod init-from-entity! eco-yellow ((obj eco-yellow) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type eco-yellow) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
+;; definition of type eco-red
 (deftype eco-red (eco)
   ()
   :heap-base #x120
@@ -1317,12 +1423,26 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type eco-red
+(defmethod inspect eco-red ((obj eco-red))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type eco-red
 (defmethod init-from-entity! eco-red ((obj eco-red) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type eco-red) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
+;; definition of type eco-blue
 (deftype eco-blue (eco)
   ()
   :heap-base #x120
@@ -1331,12 +1451,26 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type eco-blue
+(defmethod inspect eco-blue ((obj eco-blue))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type eco-blue
 (defmethod init-from-entity! eco-blue ((obj eco-blue) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type eco-blue) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
+;; definition of type eco-green
 (deftype eco-green (eco)
   ()
   :heap-base #x120
@@ -1345,12 +1479,26 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type eco-green
+(defmethod inspect eco-green ((obj eco-green))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type eco-green
 (defmethod init-from-entity! eco-green ((obj eco-green) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type eco-green) (-> *FACT-bank* eco-single-inc))
   (none)
   )
 
+;; definition of type health
 (deftype health (collectable)
   ()
   :heap-base #x120
@@ -1359,12 +1507,26 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type health
+(defmethod inspect health ((obj health))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type health
 (defmethod init-from-entity! health ((obj health) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type health) (-> *FACT-bank* health-default-inc))
   (none)
   )
 
+;; definition of type eco-pill
 (deftype eco-pill (collectable)
   ()
   :heap-base #x120
@@ -1373,7 +1535,20 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type eco-pill
+(defmethod inspect eco-pill ((obj eco-pill))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate wait (eco-pill)
   :virtual #t
   :trans (behavior ()
@@ -1399,17 +1574,21 @@
     )
   )
 
+;; definition for method 11 of type eco-pill
 (defmethod init-from-entity! eco-pill ((obj eco-pill) (arg0 entity-actor))
   (init-common obj arg0 (pickup-type eco-pill-green) (-> *FACT-bank* health-small-inc))
   (none)
   )
 
+;; definition for method 10 of type eco-pill
 (defmethod deactivate eco-pill ((obj eco-pill))
   (+! (-> *game-info* live-eco-pill-count) -1)
   ((method-of-type collectable deactivate) obj)
   (none)
   )
 
+;; definition for method 33 of type eco-pill
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations eco-pill ((obj eco-pill))
   (+! (-> *game-info* live-eco-pill-count) 1)
   (stack-size-set! (-> obj main-thread) 128)
@@ -1441,6 +1620,7 @@
   (none)
   )
 
+;; definition of type money
 (deftype money (collectable)
   ()
   :heap-base #x120
@@ -1449,7 +1629,20 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type money
+(defmethod inspect money ((obj money))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 12 of type money
 (defmethod run-logic? money ((obj money))
   (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> obj draw))
@@ -1464,6 +1657,7 @@
       )
   )
 
+;; definition for method 10 of type money
 (defmethod deactivate money ((obj money))
   (when (and (-> obj next-state) (= (-> obj next-state name) 'pickup))
     (case (-> obj pickup-type)
@@ -1484,6 +1678,7 @@
   (none)
   )
 
+;; definition for method 34 of type money
 (defmethod common-post money ((obj money))
   (with-pp
     (quaternion-rotate-y!
@@ -1518,6 +1713,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate notice-blue (money)
   :virtual #t
   :code (behavior ((arg0 handle))
@@ -1557,6 +1753,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pickup (money)
   :virtual #t
   :code (behavior ((arg0 symbol) (arg1 handle))
@@ -1565,6 +1762,8 @@
     )
   )
 
+;; definition for method 33 of type money
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations money ((obj money))
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -1616,6 +1815,7 @@
   (none)
   )
 
+;; definition for method 11 of type money
 (defmethod init-from-entity! money ((obj money) (arg0 entity-actor))
   (initialize-allocations obj)
   (process-drawable-from-entity! obj (-> obj entity))
@@ -1625,6 +1825,8 @@
   (none)
   )
 
+;; definition for function money-init-by-other
+;; INFO: Used lq/sq
 (defbehavior money-init-by-other money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
@@ -1662,6 +1864,8 @@
   (none)
   )
 
+;; definition for function money-init-by-other-no-bob
+;; INFO: Used lq/sq
 (defbehavior money-init-by-other-no-bob money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 float) (arg4 entity-actor))
   (process-entity-set! self arg4)
   (set! (-> self pickup-type) (the-as pickup-type arg2))
@@ -1687,6 +1891,7 @@
   (none)
   )
 
+;; definition of type gem
 (deftype gem (money)
   ((roty-speed  degrees  :offset-assert 404)
    (bounce-time seconds  :offset-assert 408)
@@ -1697,13 +1902,30 @@
   :flag-assert         #x24012001a0
   )
 
+;; definition for method 3 of type gem
+(defmethod inspect gem ((obj gem))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type money inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Troty-speed: (deg ~r)~%" (-> obj roty-speed))
+  (format #t "~2Tbounce-time: ~D~%" (-> obj bounce-time))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 10 of type gem
 (defmethod deactivate gem ((obj gem))
   (+! (-> *game-info* live-gem-count) -1)
   ((the-as (function gem none) (find-parent-method gem 10)) obj)
   (none)
   )
 
+;; definition for method 34 of type gem
+;; WARN: Return type mismatch int vs none.
 (defmethod common-post gem ((obj gem))
   (with-pp
     (seek! (-> obj roty-speed) 20024.889 (* 65536.0 (-> pp clock seconds-per-frame)))
@@ -1726,6 +1948,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate deploy (gem)
   :virtual #t
   :enter (behavior ()
@@ -1868,6 +2091,8 @@
     )
   )
 
+;; definition for method 33 of type gem
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations gem ((obj gem))
   (+! (-> *game-info* live-gem-count) 1)
   (stack-size-set! (-> obj main-thread) 128)
@@ -1927,6 +2152,7 @@
   (none)
   )
 
+;; definition for symbol *collectable-dummy-shadow-control*, type shadow-control
 (define *collectable-dummy-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :flags (shadow-flags disable-fade)
@@ -1937,6 +2163,7 @@
                                )
   )
 
+;; definition of type skill
 (deftype skill (money)
   ()
   :heap-base #x120
@@ -1945,7 +2172,20 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type skill
+(defmethod inspect skill ((obj skill))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type money inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate wait (skill)
   :virtual #t
   :code (behavior ()
@@ -1970,6 +2210,8 @@
     )
   )
 
+;; definition for method 33 of type skill
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations skill ((obj skill))
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -2030,6 +2272,7 @@
   (none)
   )
 
+;; definition of type fuel-cell
 (deftype fuel-cell (process-hidden)
   ()
   :method-count-assert 15
@@ -2037,7 +2280,145 @@
   :flag-assert         #xf00000080
   )
 
+;; definition for method 3 of type fuel-cell
+(defmethod inspect fuel-cell ((obj fuel-cell))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> obj mask))
+  (let ((s5-0 (-> obj mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "attackable ")
+        )
+    (if (= (logand (process-mask bit18) s5-0) (process-mask bit18))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand (process-mask no-track) s5-0) (process-mask no-track))
+        (format #t "no-track ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (shl #x8000 16))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> obj clock))
+  (format #t "~1Tparent: #x~X~%" (-> obj parent))
+  (format #t "~1Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~1Tchild: #x~X~%" (-> obj child))
+  (format #t "~1Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~1Tself: ~A~%" (-> obj self))
+  (format #t "~1Tpool: ~A~%" (-> obj pool))
+  (format #t "~1Tstatus: ~A~%" (-> obj status))
+  (format #t "~1Tpid: ~D~%" (-> obj pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~1Tentity: ~A~%" (-> obj entity))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "~1Tstate: ~A~%" (-> obj state))
+  (format #t "~1Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~1Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> obj stack))
+  (label cfg-68)
+  obj
+  )
 
+;; definition of type trick-point
 (deftype trick-point (collectable)
   ()
   :heap-base #x120
@@ -2046,7 +2427,20 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type trick-point
+(defmethod inspect trick-point ((obj trick-point))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type skate-point
 (deftype skate-point (trick-point)
   ()
   :heap-base #x120
@@ -2055,7 +2449,21 @@
   :flag-assert         #x2401200194
   )
 
+;; definition for method 3 of type skate-point
+(defmethod inspect skate-point ((obj skate-point))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type trick-point inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 33 of type trick-point
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations trick-point ((obj trick-point))
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -2089,6 +2497,7 @@
   (none)
   )
 
+;; definition for method 11 of type trick-point
 (defmethod init-from-entity! trick-point ((obj trick-point) (arg0 entity-actor))
   (initialize-allocations obj)
   (process-drawable-from-entity! obj (-> obj entity))
@@ -2098,6 +2507,7 @@
   (none)
   )
 
+;; definition of type ammo-collectable
 (deftype ammo-collectable (collectable)
   ((ammo-effect basic  :offset-assert 404)
    )
@@ -2107,7 +2517,22 @@
   :flag-assert         #x2401200198
   )
 
+;; definition for method 3 of type ammo-collectable
+(defmethod inspect ammo-collectable ((obj ammo-collectable))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tammo-effect: ~A~%" (-> obj ammo-effect))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 33 of type ammo-collectable
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize-allocations ammo-collectable ((obj ammo-collectable))
   (stack-size-set! (-> obj main-thread) 128)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -2157,6 +2582,7 @@
   (none)
   )
 
+;; definition for method 30 of type ammo-collectable
 ;; WARN: Return type mismatch object vs none.
 (defmethod initialize-effects ammo-collectable ((obj ammo-collectable) (arg0 pickup-type))
   (set! (-> obj fact pickup-type) arg0)
@@ -2250,6 +2676,8 @@
   (none)
   )
 
+;; definition for function initialize-ammo-by-other
+;; INFO: Used lq/sq
 (defbehavior initialize-ammo-by-other ammo ((arg0 vector) (arg1 vector) (arg2 fact-info))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
@@ -2272,6 +2700,8 @@
   (none)
   )
 
+;; definition for method 29 of type ammo-collectable
+;; INFO: Used lq/sq
 (defmethod init-common ammo-collectable ((obj ammo-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
   (set! (-> obj pickup-amount) arg2)
   (set! (-> obj pickup-type) arg1)
@@ -2284,6 +2714,8 @@
   (none)
   )
 
+;; definition for method 34 of type ammo-collectable
+;; WARN: Return type mismatch int vs none.
 (defmethod common-post ammo-collectable ((obj ammo-collectable))
   (with-pp
     (quaternion-rotate-y!
@@ -2297,6 +2729,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (ammo-collectable)
   :virtual #t
   :code (behavior ()
@@ -2305,6 +2738,7 @@
     )
   )
 
+;; definition of type ammo
 (deftype ammo (ammo-collectable)
   ()
   :heap-base #x120
@@ -2313,7 +2747,20 @@
   :flag-assert         #x2401200198
   )
 
+;; definition for method 3 of type ammo
+(defmethod inspect ammo ((obj ammo))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type shield
 (deftype shield (ammo-collectable)
   ()
   :heap-base #x120
@@ -2322,7 +2769,20 @@
   :flag-assert         #x2401200198
   )
 
+;; definition for method 3 of type shield
+(defmethod inspect shield ((obj shield))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type upgrade-collectable
 (deftype upgrade-collectable (ammo-collectable)
   ()
   :heap-base #x120
@@ -2331,7 +2791,21 @@
   :flag-assert         #x2401200198
   )
 
+;; definition for method 3 of type upgrade-collectable
+(defmethod inspect upgrade-collectable ((obj upgrade-collectable))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for function initialize-upgrade-by-other
+;; INFO: Used lq/sq
 (defbehavior initialize-upgrade-by-other upgrade-collectable ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
   (process-entity-set! self arg3)
   (let ((s3-0 (-> arg2 pickup-type))
@@ -2364,6 +2838,7 @@
   (none)
   )
 
+;; definition for method 11 of type eco
 (defmethod init-from-entity! eco ((obj eco) (arg0 entity-actor))
   (let ((v1-1 (res-lump-value (-> obj entity) 'eco-info uint128 :time -1000000000.0)))
     (set! (-> obj type) (cond
@@ -2407,6 +2882,14 @@
   (none)
   )
 
+;; definition for function birth-pickup-at-point
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 36 signed mismatch
+;; WARN: Stack slot offset 36 signed mismatch
+;; WARN: Stack slot offset 36 signed mismatch
+;; WARN: Stack slot offset 36 signed mismatch
+;; WARN: Stack slot offset 36 signed mismatch
+;; WARN: Stack slot offset 36 signed mismatch
 (defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
   (local-vars (sv-32 vector) (sv-36 float) (sv-40 (pointer process)) (sv-48 int) (sv-56 fact-info) (sv-64 int))
   (set! sv-32 (new-stack-vector0))
@@ -2586,6 +3069,8 @@
   sv-40
   )
 
+;; definition for method 9 of type fact-info
+;; INFO: Used lq/sq
 (defmethod drop-pickup fact-info ((obj fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
   (let ((s2-0 (the-as int (-> obj pickup-type)))
         (f30-0 (-> obj pickup-amount))
@@ -2743,9 +3228,155 @@
     )
   )
 
+;; definition of type ecovent
 (deftype ecovent (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   )
+
+;; definition for method 3 of type ecovent
+(defmethod inspect ecovent ((obj ecovent))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> obj mask))
+  (let ((s5-0 (-> obj mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "attackable ")
+        )
+    (if (= (logand (process-mask bit18) s5-0) (process-mask bit18))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand (process-mask no-track) s5-0) (process-mask no-track))
+        (format #t "no-track ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (shl #x8000 16))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> obj clock))
+  (format #t "~1Tparent: #x~X~%" (-> obj parent))
+  (format #t "~1Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~1Tchild: #x~X~%" (-> obj child))
+  (format #t "~1Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~1Tself: ~A~%" (-> obj self))
+  (format #t "~1Tpool: ~A~%" (-> obj pool))
+  (format #t "~1Tstatus: ~A~%" (-> obj status))
+  (format #t "~1Tpid: ~D~%" (-> obj pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~1Tentity: ~A~%" (-> obj entity))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (format #t "~1Tstate: ~A~%" (-> obj state))
+  (format #t "~1Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~1Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> obj heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> obj stack))
+  (label cfg-68)
+  obj
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
