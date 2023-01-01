@@ -2288,8 +2288,6 @@
 (copy-textures 1733 1735 1734 2405)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "gun-dummy-yellow-gun-ag"
   "gun-cit-d-ag"
   "gun-cit-a-ag"
@@ -4390,7 +4388,6 @@
   "levels/mars_tomb/tomb-obs.gc"
   "levels/mars_tomb/tomb-water.gc"
   "levels/mars_tomb/tomb-beetle.gc"
-  ;; "levels/common/entities/spydroid.gc"
   "levels/mars_tomb/widow-part.gc"
   "levels/mars_tomb/widow-baron.gc"
   "levels/mars_tomb/widow-extras.gc"
@@ -4399,14 +4396,11 @@
   "levels/mars_tomb/widow2.gc"
   "levels/mars_tomb/monster-frog.gc"
   "levels/mars_tomb/tomb-scenes.gc"
-  ;; "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
   )
 
 (copy-textures 1594 1595 1831 1467)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "water-anim-tomb-ag"
   "monster-frog-ag"
   "tomb-boss-door-ag"
