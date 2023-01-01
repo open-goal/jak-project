@@ -7,8 +7,6 @@ namespace Mips2C::jak2 {
 namespace nav_state_patch_pointers {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->lw(v1, 16, a0);                                // lw v1, 16(a0)
   c->daddu(a2, v1, a1);                             // daddu a2, v1, a1
   c->xor_(a3, v1, s7);                              // xor a3, v1, s7
@@ -179,7 +177,6 @@ namespace method_20_nav_engine {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lwu(v1, 8, a0);                                // lwu v1, 8(a0)
   c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
   c->lwu(a2, 80, a0);                               // lwu a2, 80(a0)
@@ -359,7 +356,6 @@ block_5:
     goto block_9;
   }
   
-block_7:
   c->lwc1(f2, 44, v1);                              // lwc1 f2, 44(v1)
   c->subs(f1, f2, f1);                              // sub.s f1, f2, f1
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
@@ -375,7 +371,6 @@ block_9:
     goto block_12;
   }
   
-block_11:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   c->lwu(a0, 24, sp);                               // lwu a0, 24(sp)
   c->lbu(a0, 13, a0);                               // lbu a0, 13(a0)
@@ -478,7 +473,6 @@ block_23:
     goto block_27;
   }
   
-block_25:
   c->lwc1(f2, 44, v1);                              // lwc1 f2, 44(v1)
   c->subs(f1, f2, f1);                              // sub.s f1, f2, f1
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
@@ -494,7 +488,6 @@ block_27:
     goto block_30;
   }
   
-block_29:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   c->lwu(a0, 48, sp);                               // lwu a0, 48(sp)
   c->lbu(a0, 13, a0);                               // lbu a0, 13(a0)
@@ -604,8 +597,6 @@ struct Cache {
 } cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->lui(v1, 4096);                                 // lui v1, 4096
   c->ori(v1, v1, 54272);                            // ori v1, v1, 54272
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
@@ -668,8 +659,6 @@ struct Cache {
 } cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->lui(v1, 4096);                                 // lui v1, 4096
   c->ori(v1, v1, 53248);                            // ori v1, v1, 53248
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
@@ -729,8 +718,6 @@ struct Cache {
 } cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->lwu(v1, 4, a1);                                // lwu v1, 4(a1)
   c->lwu(a2, 0, a1);                                // lwu a2, 0(a1)
   c->lwu(a0, 8, a1);                                // lwu a0, 8(a1)
@@ -793,8 +780,6 @@ struct Cache {
 } cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->lwu(a2, 0, a1);                                // lwu a2, 0(a1)
   c->lwu(v1, 4, a1);                                // lwu v1, 4(a1)
   c->lwu(a0, 8, a1);                                // lwu a0, 8(a1)
@@ -857,7 +842,6 @@ namespace method_21_nav_engine {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lwu(v1, 80, a0);                               // lwu v1, 80(a0)
   c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
   c->lwu(a2, 8, a0);                                // lwu a2, 8(a0)

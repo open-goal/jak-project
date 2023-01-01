@@ -8,7 +8,6 @@ namespace method_39_nav_state {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->swc1(f20, 80, sp);                             // swc1 f20, 80(sp)
