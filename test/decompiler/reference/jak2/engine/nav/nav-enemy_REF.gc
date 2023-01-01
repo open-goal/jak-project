@@ -1144,7 +1144,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-113 nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
-  (local-vars (r0-0 uint128) (v1-84 uint128) (a0-37 object) (a1-12 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (when (coin-flip? obj)
     (let ((a0-2 (-> obj node-list data 2)))
       (set! (-> a0-2 param0) (the-as (function cspace matrix none) cspace<-parented-matrix-joint-flip-z!))
@@ -1246,29 +1246,15 @@
         )
     (reset-to-collide-spec (-> obj focus) (the-as collide-spec a1-9))
     )
-  (set! sv-16 0)
-  (let ((v1-82 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-82 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-82 (begin
-                    (let ((a0-38 #t))
-                      (let ((a1-11 (the-as uint128 sv-16)))
-                        (.pcpyud a1-12 a1-11 r0-0)
-                        )
-                      (let ((a1-14 (the-as int (shr (* (the-as int a1-12) 2) 49))))
-                        (cmove-#f-zero a0-37 a1-14 a0-38)
-                        )
-                      )
-                    a0-37
-                    )
-            )
-       (set! (-> obj actor-group) (the-as actor-group v1-82))
-       (let ((v1-83 (the-as uint128 sv-16)))
-         (.pcpyud v1-84 v1-83 r0-0)
-         )
-       (set! (-> obj actor-group-count) (shr (* (the-as int v1-84) 2) 49))
+      ((and v1-82 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-82))
+       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) #f)
+        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
         (set! (-> obj actor-group-count) 0)
         0
         )
