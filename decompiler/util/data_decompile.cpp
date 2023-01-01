@@ -1547,8 +1547,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       for (int j = start; j < end; j++) {
         auto& word = words.at(label.target_segment).at(j / 4);
         if (word.kind() != LinkedWord::PLAIN_DATA) {
-          throw std::runtime_error(
-              fmt::format("Got bad word of kind {} in boxed array of values", word.kind()));
+          throw std::runtime_error(fmt::format("Got bad word of kind {} in boxed array of values",
+                                               fmt::underlying(word.kind())));
         }
         elt_bytes.push_back(word.get_byte(j % 4));
       }
@@ -1602,6 +1602,14 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
                                          (int)word.kind(), word.data));
   }
 }
+
+bool is_pointer_to_pair(const LinkedWord& word, const std::vector<DecompilerLabel>& labels) {
+  if (word.kind() != LinkedWord::PTR) {
+    return false;
+  }
+  auto& dest_label = labels.at(word.label_id());
+  return (dest_label.offset % 8) == 2;
+}
 }  // namespace
 
 goos::Object decompile_pair(const DecompilerLabel& label,
@@ -1651,7 +1659,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         }
       }
       // if pointer
-      if (cdr_word.kind() == LinkedWord::PTR) {
+      if (is_pointer_to_pair(cdr_word, labels)) {
         to_print = labels.at(cdr_word.label_id());
         continue;
       }
@@ -1664,21 +1672,8 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         return pretty_print::build_list(list_tokens);
       }
     } else {
-      if ((to_print.offset % 4) != 0) {
-        throw std::runtime_error(
-            fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
-      } else {
-        // improper
-        list_tokens.push_back(pretty_print::to_symbol("."));
-        list_tokens.push_back(
-            decompile_pair_elt(words.at(to_print.target_segment).at(to_print.offset / 4), labels,
-                               words, ts, file, version));
-        if (add_quote) {
-          return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
-        } else {
-          return pretty_print::build_list(list_tokens);
-        }
-      }
+      throw std::runtime_error(
+          fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
     }
   }
 }

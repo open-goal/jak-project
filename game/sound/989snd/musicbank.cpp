@@ -33,34 +33,33 @@ MusicBank::MusicBank(locator& loc, u32 id, BankTag* tag)
   bank_name = data->BankID;
 }
 
-std::unique_ptr<sound_handler> MusicBank::make_handler(voice_manager& vm,
-                                                       u32 sound_id,
-                                                       s32 vol,
-                                                       s32 pan,
-                                                       s32 pm,
-                                                       s32 pb) {
+std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(voice_manager& vm,
+                                                                      u32 sound_id,
+                                                                      s32 vol,
+                                                                      s32 pan,
+                                                                      s32 pm,
+                                                                      s32 pb) {
   auto& sound = m_sounds[sound_id];
-  std::unique_ptr<sound_handler> handler;
 
   if (sound.Type == 4) {  // midi
     auto midi = static_cast<MIDIBlockHeader*>(m_locator.get_midi(sound.MIDIID));
-    handler = std::make_unique<midi_handler>(midi, vm, sound, vol, pan, m_locator, *this);
+    return std::make_unique<midi_handler>(midi, vm, sound, vol, pan, m_locator, *this);
   } else if (sound.Type == 5) {  // ame
     auto midi = static_cast<MultiMIDIBlockHeader*>(m_locator.get_midi(sound.MIDIID));
-    handler = std::make_unique<ame_handler>(midi, vm, sound, vol, pan, m_locator, *this);
+    return std::make_unique<ame_handler>(midi, vm, sound, vol, pan, m_locator, *this);
   } else {
+    lg::error("Invalid music sound type");
+    return std::nullopt;
     // error
   }
-
-  return handler;
 }
 
-std::unique_ptr<sound_handler> MusicBank::make_handler(voice_manager& vm,
-                                                       u32 sound_id,
-                                                       s32 vol,
-                                                       s32 pan,
-                                                       SndPlayParams& params) {
-  return nullptr;
+std::optional<std::unique_ptr<sound_handler>> MusicBank::make_handler(voice_manager& vm,
+                                                                      u32 sound_id,
+                                                                      s32 vol,
+                                                                      s32 pan,
+                                                                      SndPlayParams& params) {
+  return std::nullopt;
 }
 
 }  // namespace snd

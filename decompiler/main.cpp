@@ -9,6 +9,7 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/os.h"
+#include "common/util/set_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions.h"
 
@@ -66,6 +67,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // Check if any banned objects are also in the allowed objects list
+  // if so, throw an error as this can be a confusing situation
+  auto intersection = set_util::intersection(config.allowed_objects, config.banned_objects);
+  if (!intersection.empty()) {
+    lg::error("Aborting - There is an overlap between 'allowed_objects' and 'banned_objects'");
+    return 1;
+  }
+
   in_folder = in_folder / config.game_name;
   // Verify the in_folder is correct
   if (!exists(in_folder)) {
@@ -118,6 +127,21 @@ int main(int argc, char** argv) {
   // build file database
   lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, config);
+
+  // Explicitly fail if a file in the 'allowed_objects' list wasn't found in the DB
+  // as this is another silent error that can be confusing
+  if (!config.allowed_objects.empty()) {
+    for (const auto& expected_obj : config.allowed_objects) {
+      if (db.obj_files_by_name.count(expected_obj) == 0) {
+        // TODO - this is wrong for jak1, fix eventually as this is now done in 3 places
+        lg::error(
+            "Expected to find '{}' in the ObjectFileDB but did not. Check "
+            "./decompiler/config/{}/inputs.jsonc",
+            expected_obj, config.game_name);
+        return 1;
+      }
+    }
+  }
 
   lg::info("[Mem] After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
 
