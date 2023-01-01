@@ -1668,7 +1668,7 @@
         )
       (set! (-> gp-0 flags) (font-flags shadow kerning))
       (format (clear *temp-string*) "~S / ~S ~D~%" (-> self mode) (-> self state name) (-> self which))
-      (print-game-text *temp-string* gp-0 #f 44 320)
+      (print-game-text *temp-string* gp-0 #f 44 (bucket-id progress))
       )
     )
   (when (and (= (-> self mode) 'auto-save) (not (and (-> self next-state) (= (-> self next-state name) 'done))))
@@ -1695,7 +1695,7 @@
         )
       (set! (-> gp-1 flags) (font-flags shadow kerning middle left large))
       (when (and (>= 1 (-> *game-info* auto-save-count)) (-> self next-state) (= (-> self next-state name) 'save))
-        (print-game-text (lookup-text! *common-text* (game-text-id text-x19f) #f) gp-1 #f 44 320)
+        (print-game-text (lookup-text! *common-text* (game-text-id text-x19f) #f) gp-1 #f 44 (bucket-id progress))
         (set! (-> gp-1 origin x) 20.0)
         (set! (-> gp-1 origin y) 130.0)
         (let ((v1-30 gp-1))
@@ -1706,7 +1706,7 @@
           )
         (let ((s5-2 print-game-text))
           (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-dont-remove) #f) 1)
-          (s5-2 *temp-string* gp-1 #f 44 320)
+          (s5-2 *temp-string* gp-1 #f 44 (bucket-id progress))
           )
         )
       )
@@ -2160,17 +2160,15 @@ auto-save-post
 (defstate error (auto-save)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'progress-allowed?)
-                        #t
-                        )
-                       ((= v1-0 'die)
-                        (deactivate self)
-                        )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('progress-allowed?)
+                      #t
+                      )
+                     (('die)
+                      (the-as symbol (deactivate self))
+                      )
+                     )
+            )
     )
   :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
@@ -2303,6 +2301,7 @@ auto-save-post
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
+;; WARN: Return type mismatch (pointer process) vs (pointer auto-save).
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree) (arg4 symbol))
   (format #t "AUTO SAVE COMMAND ~S~%" arg0)
   (process-spawn auto-save arg0 arg3 arg1 arg2 arg4 :to *target-pool* :stack *kernel-dram-stack*)

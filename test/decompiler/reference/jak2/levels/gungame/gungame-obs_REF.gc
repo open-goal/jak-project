@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gungame-obs.gc
-;; name in dgo: gungame-obs
-;; dgos: GGA
-
-;; DECOMP BEGINS
-
+;; definition of type training-path
 (deftype training-path (process-drawable)
   ((num uint32  :offset-assert 200)
    )
@@ -19,7 +14,21 @@
     )
   )
 
+;; definition for method 3 of type training-path
+(defmethod inspect training-path ((obj training-path))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tnum: ~D~%" (-> obj num))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type training-manager
 (deftype training-manager (process)
   ((actor-group            (pointer actor-group)    :offset-assert 128)
    (actor-group-count      int32                    :offset-assert 132)
@@ -84,7 +93,56 @@
     )
   )
 
+;; definition for method 3 of type training-manager
+(defmethod inspect training-manager ((obj training-manager))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
+  (dotimes (s5-0 (-> obj actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (format #t "~2Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~2Tscore: ~D~%" (-> obj score))
+  (format #t "~2Tfirst-enemy-shown?: ~A~%" (-> obj first-enemy-shown?))
+  (format #t "~2Tfirst-citizen-shown?: ~A~%" (-> obj first-citizen-shown?))
+  (format #t "~2Topen-end?: ~A~%" (-> obj open-end?))
+  (format #t "~2Tentrance-crates[32] @ #x~X~%" (-> obj entrance-crates))
+  (format #t "~2Tcourse-crates[32] @ #x~X~%" (-> obj course-crates))
+  (format #t "~2Tcourse: ~A~%" (-> obj course))
+  (format #t "~2Tend-door: ~D~%" (-> obj end-door))
+  (format #t "~2Ttotal-target: ~D~%" (-> obj total-target))
+  (format #t "~2Ttotal-target-destroyed: ~D~%" (-> obj total-target-destroyed))
+  (format #t "~2Ttotal-bonus: ~D~%" (-> obj total-bonus))
+  (format #t "~2Ttotal-bonus-destroyed: ~D~%" (-> obj total-bonus-destroyed))
+  (format #t "~2Ttotal-civilian: ~D~%" (-> obj total-civilian))
+  (format #t "~2Thud-score: ~D~%" (-> obj hud-score))
+  (format #t "~2Thud-goal: ~D~%" (-> obj hud-goal))
+  (format #t "~2Tin-out: ~D~%" (-> obj in-out))
+  (format #t "~2Tcombo-done?: ~A~%" (-> obj combo-done?))
+  (format #t "~2Tvoicebox: ~D~%" (-> obj voicebox))
+  (format #t "~2Tlast-sound-id: ~D~%" (-> obj last-sound-id))
+  (format #t "~2Tdummies[2] @ #x~X~%" (-> obj dummies))
+  (format #t "~2Ttask-gold: ~D~%" (-> obj task-gold))
+  (format #t "~2Ttask-silver: ~D~%" (-> obj task-silver))
+  (format #t "~2Ttask-bronze: ~D~%" (-> obj task-bronze))
+  (format #t "~2Tgame-score: ~D~%" (-> obj game-score))
+  (format #t "~2Ttraining-goal: ~f~%" (-> obj training-goal))
+  (format #t "~2Ttraining?: ~A~%" (-> obj training?))
+  (format #t "~2Tegg-count: ~D~%" (-> obj egg-count))
+  (format #t "~2Tmedal: ~D~%" (-> obj medal))
+  (format #t "~2Tgui-id: ~D~%" (-> obj gui-id))
+  (label cfg-7)
+  obj
+  )
 
+;; definition for method 32 of type training-manager
+;; WARN: Return type mismatch int vs none.
 (defmethod training-manager-method-32 training-manager ((obj training-manager))
   (when (handle->process (-> obj voicebox))
     (if (= (gui-control-method-17 *gui-control* (-> obj last-sound-id)) (gui-action none))
@@ -120,6 +178,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (training-path)
   :virtual #t
   :code (the-as (function none :behavior training-path) sleep-code)
@@ -144,6 +203,7 @@
     )
   )
 
+;; definition for method 10 of type training-manager
 (defmethod deactivate training-manager ((obj training-manager))
   (if (handle->process (-> obj voicebox))
       (send-event (handle->process (-> obj voicebox)) 'die)
@@ -154,6 +214,7 @@
   (none)
   )
 
+;; definition for method 11 of type training-path
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! training-path ((obj training-path) (arg0 entity-actor))
   (let ((s5-0 (length "training-path-"))
@@ -192,6 +253,8 @@
   (none)
   )
 
+;; definition for method 31 of type training-manager
+;; WARN: Return type mismatch int vs none.
 (defmethod training-manager-method-31 training-manager ((obj training-manager))
   (cond
     ((= (-> (level-get-target-inside *level*) name) 'gungame)
@@ -214,6 +277,7 @@
   (none)
   )
 
+;; definition for method 30 of type training-manager
 (defmethod training-manager-method-30 training-manager ((obj training-manager) (arg0 game-text-id))
   (when (= (gui-control-method-17 *gui-control* (-> obj gui-id)) (gui-action playing))
     (let ((s5-1 (new
@@ -246,6 +310,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate red-training-intro (training-manager)
   :virtual #t
   :enter (behavior ()
@@ -359,6 +424,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate red-training (training-manager)
   :virtual #t
   :enter (behavior ()
@@ -519,6 +585,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate yellow-training (training-manager)
   :enter (behavior ()
     (set! (-> self start-time) 0)
@@ -640,6 +707,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate red-yellow-training (training-manager)
   :virtual #t
   :enter (behavior ()
@@ -921,6 +989,7 @@
     )
   )
 
+;; definition for symbol *yellow-training-path-combo-info*, type (array tpath-info)
 (define *yellow-training-path-combo-info*
   (new 'static 'boxed-array :type tpath-info
     (new 'static 'tpath-info
@@ -957,6 +1026,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate yellow-training-intro (training-manager)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1097,6 +1167,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate course (training-manager)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1758,6 +1829,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate end-course (training-manager)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2003,6 +2075,7 @@
     )
   )
 
+;; definition for method 21 of type training-manager
 (defmethod training-manager-method-21 training-manager ((obj training-manager) (arg0 handle))
   (let ((s4-0 0)
         (v1-3 (+ (length (-> obj actor-group 0)) -1))
@@ -2033,6 +2106,7 @@
   (the-as entity #f)
   )
 
+;; definition for method 26 of type training-manager
 (defmethod training-manager-method-26 training-manager ((obj training-manager))
   (local-vars (s3-0 object))
   (let ((gp-0 0))
@@ -2063,6 +2137,8 @@
     )
   )
 
+;; definition for method 29 of type training-manager
+;; INFO: Used lq/sq
 (defmethod training-manager-method-29 training-manager ((obj training-manager) (arg0 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -2105,6 +2181,8 @@
     )
   )
 
+;; definition for method 22 of type training-manager
+;; INFO: Used lq/sq
 (defmethod training-manager-method-22 training-manager ((obj training-manager) (arg0 symbol))
   (local-vars (v1-28 symbol) (a0-18 symbol) (sv-48 process) (sv-64 process-tree) (sv-80 process-tree))
   (let ((s4-0 (new 'static 'fact-info :pickup-type (pickup-type ammo-red) :pickup-spawn-amount 20.0))
@@ -2169,6 +2247,7 @@
   #f
   )
 
+;; definition for method 25 of type training-manager
 (defmethod training-manager-method-25 training-manager ((obj training-manager))
   (dotimes (s5-0 (-> *entrance-gungame-crates-pos* length))
     (when (handle->process (-> obj entrance-crates s5-0))
@@ -2179,6 +2258,7 @@
   #f
   )
 
+;; definition for method 24 of type training-manager
 (defmethod training-manager-method-24 training-manager ((obj training-manager))
   (dotimes (s5-0 32)
     (when (handle->process (-> obj course-crates s5-0))
@@ -2189,6 +2269,8 @@
   #f
   )
 
+;; definition for method 23 of type training-manager
+;; INFO: Used lq/sq
 (defmethod training-manager-method-23 training-manager ((obj training-manager) (arg0 (array gungame-crate)))
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'static 'fact-info))
@@ -2219,6 +2301,7 @@
   #f
   )
 
+;; definition for method 27 of type training-manager
 (defmethod training-manager-method-27 training-manager ((obj training-manager) (arg0 (array tpath-info)))
   (dotimes (s5-0 (length arg0))
     (let ((v1-2 (-> arg0 s5-0)))
@@ -2250,6 +2333,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate wait (training-manager)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2263,6 +2347,7 @@
   :code (the-as (function none :behavior training-manager) sleep-code)
   )
 
+;; definition for method 28 of type training-manager
 ;; WARN: Return type mismatch object vs none.
 (defmethod training-manager-method-28 training-manager ((obj training-manager))
   (cond
@@ -2287,6 +2372,8 @@
   (none)
   )
 
+;; definition for method 11 of type training-manager
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! training-manager ((obj training-manager) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
@@ -2327,6 +2414,7 @@
   (none)
   )
 
+;; definition of type gungame-door
 (deftype gungame-door (process-drawable)
   ((open-side        symbol    :offset-assert 200)
    (close-sound      sound-id  :offset-assert 204)
@@ -2348,9 +2436,29 @@
     )
   )
 
+;; definition for method 3 of type gungame-door
+(defmethod inspect gungame-door ((obj gungame-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Topen-side: ~A~%" (-> obj open-side))
+  (format #t "~2Tclose-sound: ~D~%" (-> obj close-sound))
+  (format #t "~2Ttrain: ~D~%" (-> obj train))
+  (format #t "~2Tlast-player-dist: ~f~%" (-> obj last-player-dist))
+  (format #t "~2Tlast-camera-dist: ~f~%" (-> obj last-camera-dist))
+  (format #t "~2Tclose-state: ~D~%" (-> obj close-state))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gungame-door fort-entry-gate 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 3 0 10))
 
+;; failed to figure out what this is:
 (defstate idle (gungame-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2373,6 +2481,7 @@
   :post (the-as (function none :behavior gungame-door) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate open (gungame-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2435,6 +2544,7 @@
   :post (the-as (function none :behavior gungame-door) transform-post)
   )
 
+;; definition for method 23 of type gungame-door
 (defmethod gungame-door-method-23 gungame-door ((obj gungame-door))
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root trans)))
          (f26-0 (vector-dot (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)) s5-1))
@@ -2494,6 +2604,7 @@
   (!= (-> obj close-state) 2)
   )
 
+;; definition for method 24 of type gungame-door
 ;; WARN: disable def twice: 41. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod gungame-door-method-24 gungame-door ((obj gungame-door))
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root trans)))
@@ -2508,6 +2619,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate close (gungame-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2526,40 +2638,10 @@
     (set! (-> self close-sound) (sound-play "door-close-all"))
     (none)
     )
-  :code (behavior ()
-    (let ((gp-0 #t))
-      (until #f
-        (cond
-          ((gungame-door-method-23 self)
-           (if gp-0
-               (sound-play "door-stopped")
-               )
-           (sound-pause (-> self close-sound))
-           (set! gp-0 #f)
-           )
-          (else
-            (if (not gp-0)
-                (sound-continue (-> self close-sound))
-                )
-            (set! gp-0 #t)
-            (ja :num! (seek! 0.0))
-            )
-          )
-        (suspend)
-        (when (>= 0.0 (ja-frame-num 0))
-          (ja-no-eval :num! min)
-          (goto cfg-12)
-          )
-        )
-      )
-    #f
-    (label cfg-12)
-    (go-virtual idle)
-    (none)
-    )
   :post (the-as (function none :behavior gungame-door) transform-post)
   )
 
+;; definition for method 11 of type gungame-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! gungame-door ((obj gungame-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
@@ -2615,6 +2697,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   43
@@ -2645,6 +2728,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   43
@@ -2663,6 +2747,7 @@
                                  )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   177
@@ -2693,6 +2778,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   177
@@ -2711,6 +2797,7 @@
                                  )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-gungame-laser-beam
   :id 530
   :flags (unk-4)
@@ -2718,6 +2805,7 @@
   :parts ((sp-item 2329 :flags (bit6 bit7)) (sp-item 2330 :flags (bit6 bit7)) (sp-item 2331 :flags (is-3d bit6 bit7)))
   )
 
+;; failed to figure out what this is:
 (defpart 2330
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
     (sp-flt spt-num 1.0)
@@ -2736,6 +2824,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 2329
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
     (sp-flt spt-num 1.0)
@@ -2754,6 +2843,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 2331
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4c :page #xc))
     (sp-flt spt-num 3.0)
@@ -2813,6 +2903,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (scene-method-16
   (new 'static 'scene
     :name "city-get-yellow-gun"
@@ -2908,6 +2999,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (scene-method-16 (new 'static 'scene
                    :name "city-get-dark-gun"
                    :extra #f

@@ -753,6 +753,11 @@ const std::unordered_map<
              ArrayFieldDecompMeta(TypeSpec("uint32"),
                                   4,
                                   ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"tpath-info",
+           // TODO - should be able to just decompile the `anims` field
+           {{"anim1", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+            {"anim2", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+            {"anim3", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)}}},
           // kinda want to add regex support now...
           {"bigmap-compressed-layers",
            {{"layer0", ArrayFieldDecompMeta(TypeSpec("uint32"),
@@ -1515,9 +1520,9 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
         } else if (content_type == TypeSpec("type") && word.kind() == LinkedWord::TYPE_PTR) {
           result.push_back(pretty_print::to_symbol(word.symbol_name()));
         } else {
-          throw std::runtime_error(
-              fmt::format("Unknown content type in boxed array of references, word idx {}",
-                          first_elt_word_idx + elt));
+          throw std::runtime_error(fmt::format(
+              "Unknown content type in boxed array of references, word idx {} at label {}",
+              first_elt_word_idx + elt, label.name));
         }
       }
     }
