@@ -1597,7 +1597,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
 
 inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   sadr -= spad_addr_goal;
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);

@@ -4662,3 +4662,8 @@
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+
+(group "engine"
+       "$OUT/iso/KERNEL.CGO"
+       "$OUT/iso/GAME.CGO"
+       )
