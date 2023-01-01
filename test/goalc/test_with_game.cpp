@@ -766,6 +766,11 @@ TEST_F(WithGameTests, StaticLambda) {
                                           {"Add: 30 sub: -10\n0\n"});
 }
 
+TEST_F(WithGameTests, StaticLambdaArrayDraft) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-lambdas.gc",
+                                          {"2\n1\n0\n"});
+}
+
 TEST_F(WithGameTests, MethodReplace) {
   shared_compiler->runner.run_static_test(testCategory, "test-method-replace.gc",
                                           {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
