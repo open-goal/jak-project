@@ -1276,14 +1276,12 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      // jak 2 changed where frame-num is set, i'm pretty sure. annoying.
-      auto fn_to_use = env.version == GameVersion::Jak1 ? &set_fn2 : &set_fn;
-      if (*fn_to_use) {
-        auto obj_fn2 = (*fn_to_use)->to_form(env);
+      if (set_fn2) {
+        auto obj_fn2 = set_fn2->to_form(env);
         if (obj_fn2.is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("min");
         } else {
-          auto mr = match(matcher_max_num, *fn_to_use);
+          auto mr = match(matcher_max_num, set_fn2);
           if (mr.matched &&
               ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
                (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
@@ -1291,10 +1289,10 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
           } else {
             num_form = pool.form<GenericElement>(
                 GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
-                *fn_to_use);
+                set_fn2);
           }
         }
-        *fn_to_use = nullptr;
+        set_fn2 = nullptr;
       }
     } else if (prelim_num == "loop!" || prelim_num == "+!" || prelim_num == "-!") {
       if (set_p0) {
