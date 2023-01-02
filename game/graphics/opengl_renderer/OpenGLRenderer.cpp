@@ -184,6 +184,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 210
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS);
+  init_bucket_renderer<Merc2>("merc-l4-pris", BucketCategory::MERC, BucketId::MERC_L4_PRIS);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
@@ -214,6 +215,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 280
   init_bucket_renderer<TextureUploadHandler>("tex-l4-water", BucketCategory::TEX,
                                              BucketId::TEX_L4_WATER);
+  init_bucket_renderer<Merc2>("merc-l4-water", BucketCategory::MERC, BucketId::MERC_L4_WATER);
   // 290
   // 300
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
