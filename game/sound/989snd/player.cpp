@@ -14,6 +14,8 @@
 
 namespace snd {
 
+u8 g_global_excite = 0;
+
 player::player() : m_vmanager(m_synth, m_loader) {
   init_cubeb();
 }
