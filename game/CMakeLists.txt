@@ -167,7 +167,8 @@ set(RUNTIME_SOURCE
         graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp
-        tools/subtitles/subtitle_editor.cpp)
+        tools/subtitles/subtitle_editor.cpp
+        tools/filter_menu/filter_menu.cpp)
 
 find_package(Git)
 
@@ -212,5 +213,5 @@ else()
     target_link_libraries(runtime pthread dl)
 endif()
 
-add_executable(gk main.cpp)
+add_executable(gk main.cpp "tools/filter_menu/filter_menu.cpp" "tools/filter_menu/filter_menu.h")
 target_link_libraries(gk runtime)

@@ -543,6 +543,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     m_subtitle_editor.draw_window();
   }
 
+  if (settings.draw_filters_window) {
+    m_filters_menu.draw_window();
+  }
+
   if (settings.save_screenshot) {
     Fbo* screenshot_src;
     int read_buffer;
