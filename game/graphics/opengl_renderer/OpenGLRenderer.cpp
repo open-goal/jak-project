@@ -122,6 +122,11 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3>("tie-l3-tfrag", BucketCategory::TIE, BucketId::TIE_L3_TFRAG, 3);
   init_bucket_renderer<Merc2>("merc-l3-tfrag", BucketCategory::MERC, BucketId::MERC_L3_TFRAG);
   // 50
+  init_bucket_renderer<TextureUploadHandler>("tex-l4-tfrag", BucketCategory::TEX,
+                                             BucketId::TEX_L4_TFRAG);
+  init_bucket_renderer<TFragment>("tfrag-l4-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L4_TFRAG,
+                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 3);
+  init_bucket_renderer<Tie3>("tie-l4-tfrag", BucketCategory::TIE, BucketId::TIE_L4_TFRAG, 3);
   // 60
   // 70
   init_bucket_renderer<TextureUploadHandler>("tex-l0-shrub", BucketCategory::TEX,
@@ -139,7 +144,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L3_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l3-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L3_SHRUB);
+  init_bucket_renderer<TextureUploadHandler>("tex-l4-shrub", BucketCategory::TEX,
+                                             BucketId::TEX_L4_SHRUB);
   // 110
+  init_bucket_renderer<Shrub>("shrub-l4-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L4_SHRUB);
   // 120
   init_bucket_renderer<TextureUploadHandler>("tex-l0-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L0_ALPHA);
@@ -174,6 +182,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
                                              BucketId::TEX_L3_PRIS);
   // 210
+  init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
+                                             BucketId::TEX_L4_PRIS);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
@@ -202,6 +212,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l3-water", BucketCategory::TEX,
                                              BucketId::TEX_L3_WATER);
   // 280
+  init_bucket_renderer<TextureUploadHandler>("tex-l4-water", BucketCategory::TEX,
+                                             BucketId::TEX_L4_WATER);
   // 290
   // 300
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
