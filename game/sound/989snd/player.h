@@ -44,6 +44,7 @@ class player {
                          s32 pm,
                          s32 pb);
   void set_sound_reg(u32 sound_id, u8 reg, u8 value);
+  void set_global_excite(u8 value) { GlobalExcite = value; };
   bool sound_still_active(u32 sound_id);
   void set_master_volume(u32 group, s32 volume);
   void unload_bank(u32 bank_handle);

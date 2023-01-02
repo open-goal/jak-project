@@ -143,18 +143,18 @@ void ReplWrapper::init_default_settings() {
   // - https://github.com/ClickHouse/ClickHouse/blob/master/base/base/ReplxxLineReader.cpp#L366
   repl.set_word_break_characters(" \t");
   // Setup default keybinds
-  // (test-play) : Ctrl-P
+  // (test-play) : Ctrl-T
   repl.bind_key(Replxx::KEY::control('T'), commit_text_action("(test-play)"));
   // (e) : Ctrl-Q
   repl.bind_key(Replxx::KEY::control('Q'), commit_text_action("(e)"));
-  // (lt) : Ctrl-G
+  // (lt) : Ctrl-L
   repl.bind_key(Replxx::KEY::control('L'), commit_text_action("(lt)"));
-  /// (:stop) : Ctrl-H
+  /// (:stop) : Ctrl-W
   repl.bind_key(Replxx::KEY::control('W'), commit_text_action("(:stop)"));
-  // (dbgc) : Ctrl-F
+  // (dbgc) : Ctrl-G
   repl.bind_key(Replxx::KEY::control('G'), commit_text_action("(dbgc)"));
   // (:di) : Ctrl-B
   repl.bind_key(Replxx::KEY::control('B'), commit_text_action("(:di)"));
-  // (mi) : Ctrl-M
+  // (mi) : Ctrl-N
   repl.bind_key(Replxx::KEY::control('N'), commit_text_action("(mi)"));
 }

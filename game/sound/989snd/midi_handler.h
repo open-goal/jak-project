@@ -135,6 +135,7 @@ class midi_handler : public sound_handler {
 
   void note_on();
   void note_off();
+  void controller_change();
   void channel_pressure();
   void program_change();
   void meta_event();
