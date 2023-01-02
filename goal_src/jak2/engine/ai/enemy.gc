@@ -756,7 +756,7 @@
          (set! (-> obj incoming blue-juggle-count) (the-as uint 1))
          )
         (else
-          (set! (-> obj incoming blue-juggle-count) (the-as uint (+ (-> obj incoming blue-juggle-count) 1)))
+          (+! (-> obj incoming blue-juggle-count) 1)
           )
         )
       (set! (-> obj incoming attack-time) a0-4)
@@ -1100,11 +1100,11 @@
   (let ((v1-49 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-49 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj actor-group) (the-as actor-group v1-49))
+       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-49))
        (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) #f)
+        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
         (set! (-> obj actor-group-count) 0)
         0
         )
@@ -2248,7 +2248,7 @@
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (logclear! (-> self enemy-flags) (enemy-flag victory))
-    (logior! (-> self root-override2 nav-flags) (nav-flags nav-flags0))
+    (logior! (-> self root-override2 nav-flags) (nav-flags has-root-sphere))
     (none)
     )
   :code (the-as (function none :behavior enemy) sleep-code)
@@ -3132,7 +3132,7 @@
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
          (cond
-           ((>= (the-as uint 4) (the-as uint (-> obj incoming blue-juggle-count)))
+           ((>= (the-as uint 4) (-> obj incoming blue-juggle-count))
             (set! (-> arg0 y) (lerp (-> s5-0 knocked-blue-vy-lo) (-> s5-0 knocked-blue-vy-hi) f30-7))
             )
            (else

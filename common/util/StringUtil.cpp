@@ -1,8 +1,14 @@
 #include "StringUtil.h"
 
+#include <regex>
+
 namespace str_util {
 
 const std::string WHITESPACE = " \n\r\t\f\v";
+
+bool contains(const std::string& s, const std::string& substr) {
+  return s.find(substr) != std::string::npos;
+}
 
 bool starts_with(const std::string& s, const std::string& prefix) {
   return s.rfind(prefix) == 0;
@@ -30,5 +36,15 @@ int line_count(const std::string& str) {
     }
   }
   return result;
+}
+
+// NOTE - this won't work running within gk.exe!
+bool valid_regex(const std::string& regex) {
+  try {
+    std::regex re(regex);
+  } catch (const std::regex_error& e) {
+    return false;
+  }
+  return true;
 }
 }  // namespace str_util

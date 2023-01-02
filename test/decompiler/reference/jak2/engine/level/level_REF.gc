@@ -1,5 +1,7 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition for function lookup-level-info
 (defun lookup-level-info ((arg0 symbol))
   (let* ((v1-0 *level-load-list*)
          (a1-0 (car v1-0))
@@ -17,6 +19,8 @@
   default-level
   )
 
+;; definition for method 24 of type level-group
+;; WARN: Return type mismatch object vs pair.
 (defmethod alt-load-command-get-index level-group ((obj level-group) (arg0 symbol) (arg1 int))
   (let ((v1-1 (-> (lookup-level-info arg0) alt-load-commands)))
     (while (nonzero? arg1)
@@ -30,10 +34,12 @@
     )
   )
 
+;; definition for method 29 of type level-group
 (defmethod load-in-progress? level-group ((obj level-group))
   (!= (-> *level* loading-level) (-> *level* default-level))
   )
 
+;; definition for method 11 of type level-group
 (defmethod get-level-by-heap-ptr-and-status level-group ((obj level-group) (arg0 pointer) (arg1 symbol))
   (case arg1
     (('active)
@@ -66,6 +72,7 @@
   (the-as level #f)
   )
 
+;; definition for function remap-level-name
 (defun remap-level-name ((arg0 level-load-info))
   (if (-> *level* vis?)
       (-> arg0 visname)
@@ -73,6 +80,7 @@
       )
   )
 
+;; definition for method 21 of type level
 (defmethod get-art-group-by-name level ((obj level) (arg0 string))
   (countdown (s4-0 (-> obj art-group art-group-array length))
     (if (name= (-> obj art-group art-group-array s4-0 name) arg0)
@@ -82,6 +90,7 @@
   (the-as art-group #f)
   )
 
+;; definition for method 13 of type level
 (defmethod bsp-name level ((obj level))
   (if (and (!= (-> obj status) 'inactive) (-> obj bsp) (nonzero? (-> obj bsp name)))
       (-> obj bsp name)
@@ -89,6 +98,7 @@
       )
   )
 
+;; definition for function add-bsp-drawable
 (defun add-bsp-drawable ((arg0 bsp-header) (arg1 level) (arg2 symbol) (arg3 display-frame))
   (draw arg0 arg0 arg3)
   (if (nonzero? *display-strip-lines*)
@@ -97,11 +107,13 @@
   (none)
   )
 
+;; definition for method 2 of type level
 (defmethod print level ((obj level))
   (format #t "#<~A ~A ~S @ #x~X>" (-> obj type) (-> obj status) (-> obj name) obj)
   obj
   )
 
+;; definition for method 7 of type bsp-header
 (defmethod relocate bsp-header ((obj bsp-header) (arg0 int))
   (let ((s5-0 (-> *level* loading-level)))
     (when s5-0
@@ -140,6 +152,7 @@
     )
   )
 
+;; definition for method 27 of type level
 (defmethod load-required-packages level ((obj level))
   (when (not (or (not (-> obj bsp)) (= *kernel-boot-mode* 'debug-boot)))
     (if (not (null? (-> obj info packages)))
@@ -149,6 +162,9 @@
   obj
   )
 
+;; definition for method 29 of type level
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vis-clear level ((obj level))
   (countdown (v1-0 8)
     (nop!)
@@ -162,6 +178,8 @@
   (none)
   )
 
+;; definition for method 28 of type level
+;; WARN: Return type mismatch int vs none.
 (defmethod init-vis-from-bsp level ((obj level))
   (when (not (or (= (-> obj status) 'inactive) (not (-> obj bsp))))
     (set! (-> obj all-visible?) 'loading)
@@ -192,6 +210,7 @@
   (none)
   )
 
+;; definition for method 12 of type level-group
 (defmethod level-get-for-use level-group ((obj level-group) (arg0 symbol) (arg1 symbol))
   (local-vars (s5-1 level))
   (alloc-levels-if-needed obj #f)
@@ -239,6 +258,7 @@
   s5-1
   )
 
+;; definition for method 28 of type level-group
 (defmethod level-status level-group ((obj level-group) (arg0 symbol))
   (let ((v1-1 (level-get *level* arg0)))
     (if v1-1
@@ -247,6 +267,8 @@
     )
   )
 
+;; definition for method 26 of type level
+;; INFO: Used lq/sq
 (defmethod level-status-update! level ((obj level) (arg0 symbol))
   (case arg0
     (('inactive)
@@ -315,10 +337,14 @@
   obj
   )
 
+;; definition for symbol *login-state*, type login-state
 (define *login-state* (new 'global 'login-state))
 
+;; definition for symbol *print-login*, type symbol
 (define *print-login* #t)
 
+;; definition for function load-buffer-resize
+;; WARN: Return type mismatch int vs none.
 (defun load-buffer-resize ((arg0 level) (arg1 dgo-header))
   (case (-> arg0 load-buffer-mode)
     (((load-buffer-mode small-center))
@@ -341,6 +367,7 @@
   (none)
   )
 
+;; definition for method 17 of type level
 (defmethod load-continue level ((obj level))
   (local-vars (sv-16 symbol))
   (when (-> obj linking)
@@ -460,6 +487,7 @@
   obj
   )
 
+;; definition for method 18 of type level
 (defmethod load-begin level ((obj level))
   (local-vars (bits-to-use int) (borrow-from-lev level) (found-borrow symbol))
   (dotimes (v1-0 2)
@@ -738,6 +766,7 @@
   obj
   )
 
+;; definition for method 19 of type level
 (defmethod login-begin level ((obj level))
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
   (cond
@@ -787,6 +816,12 @@
   obj
   )
 
+;; definition for function level-update-after-load
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; INFO: Used lq/sq
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defun level-update-after-load ((lev level) (lstate login-state))
   (local-vars
     (current-time int)
@@ -984,7 +1019,7 @@
              (+! (-> lstate state) 1)
              )
             (else
-              (entity-nav-mesh-method-27 (-> lev-bsp nav-meshes (the-as uint login-state-pos)))
+              (initialize-nav-mesh! (-> lev-bsp nav-meshes (the-as uint login-state-pos)))
               (+! (-> lstate pos) 1)
               )
             )
@@ -1058,6 +1093,8 @@
   lev
   )
 
+;; definition for method 25 of type level
+;; INFO: Used lq/sq
 (defmethod birth level ((obj level))
   (local-vars (sv-96 int))
   (case (-> obj status)
@@ -1130,6 +1167,8 @@
   obj
   )
 
+;; definition for method 9 of type level
+;; INFO: Used lq/sq
 (defmethod deactivate level ((obj level))
   (case (-> obj status)
     (('active 'alive)
@@ -1174,6 +1213,8 @@
   obj
   )
 
+;; definition for method 12 of type level
+;; WARN: Using new Jak 2 rtype-of
 (defmethod unload! level ((obj level))
   (deactivate obj)
   (when (!= (-> obj status) 'inactive)
@@ -1335,6 +1376,8 @@
   obj
   )
 
+;; definition for method 10 of type level
+;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
 (defmethod is-object-visible? level ((obj level) (arg0 int))
   (local-vars (a0-1 int) (a0-3 int))
   (let ((v1-0 (-> obj vis-bits)))
@@ -1348,6 +1391,7 @@
     )
   )
 
+;; definition for method 15 of type level
 (defmethod inside-boxes-check level ((obj level) (arg0 vector))
   (cond
     ((not (-> obj bsp))
@@ -1362,6 +1406,8 @@
     )
   )
 
+;; definition for method 20 of type level
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-print-region-splitbox level ((obj level) (arg0 vector) (arg1 object))
   (cond
     ((or (not (-> obj bsp)) (zero? (-> obj bsp region-tree)))
@@ -1374,6 +1420,7 @@
   (none)
   )
 
+;; definition for method 8 of type level
 (defmethod mem-usage level ((obj level) (arg0 memory-usage-block) (arg1 int))
   (when (= (-> obj status) 'active)
     (set! (-> arg0 length) (max 67 (-> arg0 length)))
@@ -1428,6 +1475,8 @@
   obj
   )
 
+;; definition for method 21 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod alloc-levels-if-needed level-group ((obj level-group) (arg0 symbol))
   (when (zero? (-> *level* heap base))
     (kmemopen global "level-heaps")
@@ -1457,6 +1506,7 @@
   (none)
   )
 
+;; definition for method 10 of type level-group
 (defmethod level-get-with-status level-group ((obj level-group) (arg0 symbol))
   (dotimes (v1-0 (-> obj length))
     (if (= (-> obj level v1-0 status) arg0)
@@ -1466,6 +1516,7 @@
   (the-as level #f)
   )
 
+;; definition for method 30 of type level-group
 (defmethod level-get-most-disposable level-group ((obj level-group))
   (dotimes (v1-0 (-> obj length))
     (case (-> obj level v1-0 status)
@@ -1504,6 +1555,7 @@
     )
   )
 
+;; definition for method 9 of type level-group
 (defmethod level-get level-group ((obj level-group) (arg0 symbol))
   (dotimes (v1-0 (-> obj length))
     (if (and (!= (-> obj level v1-0 status) 'inactive)
@@ -1515,6 +1567,7 @@
   (the-as level #f)
   )
 
+;; definition for method 23 of type level-group
 (defmethod art-group-get-by-name level-group ((obj level-group) (arg0 string) (arg1 (pointer uint32)))
   (countdown (s4-0 7)
     (let ((s3-0 (-> *level* level s4-0)))
@@ -1533,6 +1586,7 @@
   (the-as art-group #f)
   )
 
+;; definition for method 13 of type level-group
 (defmethod activate-levels! level-group ((obj level-group))
   (dotimes (s5-0 (-> obj length))
     (level-status-update! (-> obj level s5-0) 'active)
@@ -1540,6 +1594,7 @@
   0
   )
 
+;; definition for method 20 of type level-group
 (defmethod level-get-target-inside level-group ((obj level-group))
   (let ((s5-0 (target-pos 0)))
     (let ((v1-1 (-> *load-state* vis-nick)))
@@ -1609,12 +1664,15 @@
     )
   )
 
+;; definition for method 22 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod load-commands-set! level-group ((obj level-group) (arg0 pair))
   (set! (-> obj load-commands) arg0)
   0
   (none)
   )
 
+;; definition for method 8 of type level-group
 (defmethod mem-usage level-group ((obj level-group) (arg0 memory-usage-block) (arg1 int))
   (dotimes (s3-0 (-> obj length))
     (mem-usage (-> obj level s3-0) arg0 arg1)
@@ -1622,6 +1680,9 @@
   obj
   )
 
+;; definition for function bg
+;; WARN: Return type mismatch int vs none.
+;; WARN: Using new Jak 2 rtype-of
 (defun bg ((arg0 symbol))
   (set! *cheat-mode* (if *debug-segment*
                          'debug
@@ -1688,6 +1749,7 @@
   (none)
   )
 
+;; definition for function play
 (defun play ((arg0 symbol) (arg1 symbol))
   (kmemopen global "level-boot")
   (when *kernel-boot-level*
@@ -1772,6 +1834,8 @@
   0
   )
 
+;; definition for function play-boot
+;; WARN: Return type mismatch int vs none.
 (defun play-boot ()
   (process-spawn-function
     process
@@ -1783,6 +1847,7 @@
   (none)
   )
 
+;; definition for function update-sound-banks
 (defun update-sound-banks ()
   (local-vars (v1-21 level-load-info) (v1-28 level-load-info) (a0-24 symbol))
   (if (or (nonzero? (rpc-busy? 1))
@@ -1906,6 +1971,7 @@
   0
   )
 
+;; definition for method 10 of type load-state
 (defmethod update! load-state ((obj load-state))
   (local-vars (all-levels-inactive symbol))
   (let ((discarded-level #f))
@@ -2089,6 +2155,8 @@
   0
   )
 
+;; definition for method 16 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod assign-draw-indices level-group ((obj level-group))
   (local-vars (t0-3 symbol))
   (set! (-> obj draw-level-count) 0)
@@ -2142,6 +2210,8 @@
   (none)
   )
 
+;; definition for method 19 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod level-update level-group ((obj level-group))
   (local-vars (v1-101 symbol))
   (camera-pos)
@@ -2421,6 +2491,7 @@
   (none)
   )
 
+;; definition (debug) for function show-level
 (defun-debug show-level ((arg0 symbol))
   (set! (-> *setting-control* user-default border-mode) #t)
   (let ((s5-0 (new 'stack-no-clear 'array 'symbol 10)))
@@ -2436,6 +2507,7 @@
   0
   )
 
+;; failed to figure out what this is:
 (when (zero? (-> *level* level0 art-group))
   (kmemopen global "level")
   (let ((gp-0 *level*))

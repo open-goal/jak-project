@@ -5,5 +5,264 @@
 ;; name in dgo: hover-nav-control-h
 ;; dgos: FOR, DMI, FRA, STR, NEB, D3A, UNB
 
+;; +++net-path-node-status
+(defenum net-path-node-status
+  :bitfield #t
+  :type uint16
+  (open)
+  (closed))
+;; ---net-path-node-status
+
+;; NOTE - for nestb-scenes
+(declare-type nav-network basic)
+(define-extern *nav-network* nav-network)
+
 ;; DECOMP BEGINS
 
+(deftype nav-network-adjacency (structure)
+  ((index int32  :offset-assert   0)
+   (dist  float  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype nav-network-adjacency-array (inline-array-class)
+  ((data nav-network-adjacency :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> nav-network-adjacency-array heap-base) (the-as uint 16))
+
+(deftype list-node (structure)
+  ((next list-node  :offset-assert   0)
+   (prev list-node  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype nav-network-path-node (list-node)
+  ((row-index     int32                  :offset-assert   8)
+   (status        net-path-node-status   :offset-assert  12)
+   (parent        nav-network-path-node  :offset-assert  16)
+   (cost-to-start float                  :offset-assert  20)
+   (cost-to-end   float                  :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(deftype nav-network-info (structure)
+  ((index     int32                                        :offset-assert   0)
+   (pos       vector                               :inline :offset-assert  16)
+   (path-node nav-network-path-node                :inline :offset-assert  32)
+   (count     int32                                        :offset-assert  60)
+   (adjacency (inline-array nav-network-adjacency)         :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+
+(deftype nav-network-info-array (inline-array-class)
+  ((data nav-network-info :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> nav-network-info-array heap-base) (the-as uint 80))
+
+(deftype hover-nav-sphere (list-node)
+  ((sphere sphere :inline :offset-assert  16)
+   (handle uint64         :offset-assert  32)
+   (timer  uint64         :offset-assert  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype hover-nav-path-segment (list-node)
+  ((curve-matrix matrix :inline :offset-assert  16)
+   (pos-index    int32  2       :offset-assert  80)
+   (dist         float          :offset-assert  88)
+   (du           float          :offset-assert  92)
+   )
+  :method-count-assert 10
+  :size-assert         #x60
+  :flag-assert         #xa00000060
+  (:methods
+    (hover-nav-path-segment-method-9 (_type_ float) none 9)
+    )
+  )
+
+
+(defmethod hover-nav-path-segment-method-9 hover-nav-path-segment ((obj hover-nav-path-segment) (arg0 float))
+  (set! (-> obj du) (/ arg0 (-> obj dist)))
+  0
+  (none)
+  )
+
+(deftype hover-nav-path-info (structure)
+  ((segment-list hover-nav-path-segment  :offset-assert   0)
+   (tail-segment hover-nav-path-segment  :offset-assert   4)
+   (curr-segment hover-nav-path-segment  :offset-assert   8)
+   (curr-u       float                   :offset-assert  12)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (hover-nav-path-info-method-9 () none 9)
+    )
+  )
+
+
+(deftype path-index-array (inline-array-class)
+  ((data hover-nav-path-info :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> path-index-array heap-base) (the-as uint 4))
+
+(deftype nav-network (basic)
+  ((network           basic                          :offset-assert   4)
+   (dummy             nav-network-info       :inline :offset-assert  16)
+   (control-handle    handle                         :offset-assert  88)
+   (list-table        list-node              5       :offset-assert  96)
+   (open-list         nav-network-path-node          :offset         96)
+   (closed-list       nav-network-path-node          :offset        100)
+   (sphere-list       hover-nav-sphere               :offset        108)
+   (free-segment-list hover-nav-path-segment         :offset        104)
+   (free-sphere-list  hover-nav-sphere               :offset        112)
+   (segment-pool      uint32                         :offset-assert 116)
+   (sphere-pool       uint32                         :offset-assert 120)
+   )
+  :method-count-assert 33
+  :size-assert         #x7c
+  :flag-assert         #x210000007c
+  (:methods
+    (nav-network-method-9 (_type_) none 9)
+    (nav-network-method-10 (_type_ level (array nav-network-info)) none 10)
+    (nav-network-method-11 (_type_) none 11)
+    (nav-network-method-12 (_type_) none 12)
+    (nav-network-method-13 (_type_) none 13)
+    (nav-network-method-14 (_type_ int) none 14)
+    (nav-network-method-15 (_type_) none 15)
+    (nav-network-method-16 (_type_) none 16)
+    (nav-network-method-17 (_type_) nav-network-path-node 17)
+    (nav-network-method-18 (_type_) none 18)
+    (nav-network-method-19 (_type_) none 19)
+    (nav-network-method-20 (_type_) none 20)
+    (nav-network-method-21 (_type_) none 21)
+    (nav-network-method-22 (_type_) none 22)
+    (nav-network-method-23 (_type_) none 23)
+    (nav-network-method-24 (_type_) none 24)
+    (nav-network-method-25 (_type_) none 25)
+    (nav-network-method-26 (_type_) none 26)
+    (nav-network-method-27 (_type_) none 27)
+    (nav-network-method-28 (_type_) none 28)
+    (nav-network-method-29 (_type_) symbol 29)
+    (get-network (_type_) basic 30)
+    (nav-network-method-31 () none 31)
+    (nav-network-method-32 () none 32)
+    )
+  )
+
+
+(defmethod get-network nav-network ((obj nav-network))
+  (-> obj network)
+  )
+
+(deftype hover-nav-params (structure)
+  ((max-speed              float  :offset-assert   0)
+   (max-acceleration       float  :offset-assert   4)
+   (friction               float  :offset-assert   8)
+   (nav-collide-prim-index int32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype hover-nav-control (basic)
+  ((root                        basic                       :offset-assert   4)
+   (nav                         basic                       :offset-assert   8)
+   (flags                       uint16                      :offset-assert  12)
+   (params                      hover-nav-params            :offset-assert  16)
+   (path-timer                  uint64                      :offset-assert  24)
+   (transvv                     vector              :inline :offset-assert  32)
+   (dest-pos                    vector              :inline :offset-assert  48)
+   (dest-vel                    vector              :inline :offset-assert  64)
+   (dest-move-dir               vector              :inline :offset-assert  80)
+   (dest-offset                 vector              :inline :offset-assert  96)
+   (move-dir                    vector              :inline :offset-assert 112)
+   (nav-collide-impulse         vector              :inline :offset-assert 128)
+   (nav-collide-impulse-len     float                       :offset-assert 144)
+   (dest-speed                  float                       :offset-assert 148)
+   (local-dist                  float                       :offset-assert 152)
+   (speed                       float                       :offset-assert 156)
+   (max-los-speed               float                       :offset-assert 160)
+   (target-speed                float                       :offset-assert 164)
+   (target-acceleration         float                       :offset-assert 168)
+   (speed-dest                  float                       :offset-assert 172)
+   (path-info                   hover-nav-path-info :inline :offset-assert 176)
+   (curr-dest-pt                int32                       :offset-assert 192)
+   (los-obstruction-distance    float                       :offset-assert 196)
+   (los-last-clear-time         time-frame                  :offset-assert 200)
+   (max-speed-multiplier        float                       :offset-assert 208)
+   (max-acceleration-multiplier float                       :offset-assert 212)
+   )
+  :method-count-assert 32
+  :size-assert         #xd8
+  :flag-assert         #x20000000d8
+  (:methods
+    (hover-nav-control-method-9 (_type_) none 9)
+    (hover-nav-control-method-10 (_type_) none 10)
+    (hover-nav-control-method-11 (_type_) none 11)
+    (hover-nav-control-method-12 (_type_) none 12)
+    (hover-nav-control-method-13 (_type_) none 13)
+    (hover-nav-control-method-14 (_type_ float float) none 14)
+    (hover-nav-control-method-15 (_type_) none 15)
+    (hover-nav-control-method-16 (_type_) none 16)
+    (hover-nav-control-method-17 (_type_) none 17)
+    (hover-nav-control-method-18 (_type_) none 18)
+    (hover-nav-control-method-19 (_type_) none 19)
+    (hover-nav-control-method-20 (_type_) none 20)
+    (hover-nav-control-method-21 (_type_) none 21)
+    (hover-nav-control-method-22 (_type_) hover-nav-path-segment 22)
+    (hover-nav-control-method-23 (_type_) object 23)
+    (hover-nav-control-method-24 (_type_) none 24)
+    (hover-nav-control-method-25 (_type_) none 25)
+    (hover-nav-control-method-26 (_type_) none 26)
+    (hover-nav-control-method-27 (_type_) none 27)
+    (hover-nav-control-method-28 (_type_) none 28)
+    (hover-nav-control-method-29 (_type_) none 29)
+    (hover-nav-control-method-30 (_type_) float 30)
+    (hover-nav-control-method-31 (_type_) float 31)
+    )
+  )
+
+
+(define *hover-nav-time-offset* 0)

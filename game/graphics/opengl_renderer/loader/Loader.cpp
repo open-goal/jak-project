@@ -101,66 +101,70 @@ std::vector<LevelData*> Loader::get_in_use_levels() {
  * This is used for file I/O and unpacking.
  */
 void Loader::loader_thread() {
-  while (!m_want_shutdown) {
-    std::unique_lock<std::mutex> lk(m_loader_mutex);
+  try {
+    while (!m_want_shutdown) {
+      std::unique_lock<std::mutex> lk(m_loader_mutex);
 
-    // this will keep us asleep until we've got a level to load.
-    m_loader_cv.wait(lk, [&] { return !m_level_to_load.empty() || m_want_shutdown; });
-    if (m_want_shutdown) {
-      return;
-    }
-    std::string lev = m_level_to_load;
-    // don't hold the lock while reading the file.
-    lk.unlock();
-
-    // simulate slower hard drive (so that the loader thread can lose to the game loads)
-    // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-
-    // load the fr3 file
-    Timer disk_timer;
-    auto data =
-        file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
-    double disk_load_time = disk_timer.getSeconds();
-
-    // the FR3 files are compressed
-    Timer decomp_timer;
-    auto decomp_data = compression::decompress_zstd(data.data(), data.size());
-    double decomp_time = decomp_timer.getSeconds();
-
-    // Read back into the tfrag3::Level structure
-    Timer import_timer;
-    auto result = std::make_unique<tfrag3::Level>();
-    Serializer ser(decomp_data.data(), decomp_data.size());
-    result->serialize(ser);
-    double import_time = import_timer.getSeconds();
-
-    // and finally "unpack", which creates the vertex data we'll upload to the GPU
-    Timer unpack_timer;
-    for (auto& tie_tree : result->tie_trees) {
-      for (auto& tree : tie_tree) {
-        tree.unpack();
+      // this will keep us asleep until we've got a level to load.
+      m_loader_cv.wait(lk, [&] { return !m_level_to_load.empty() || m_want_shutdown; });
+      if (m_want_shutdown) {
+        return;
       }
-    }
-    for (auto& t_tree : result->tfrag_trees) {
-      for (auto& tree : t_tree) {
-        tree.unpack();
+      std::string lev = m_level_to_load;
+      // don't hold the lock while reading the file.
+      lk.unlock();
+
+      // simulate slower hard drive (so that the loader thread can lose to the game loads)
+      // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+
+      // load the fr3 file
+      Timer disk_timer;
+      auto data =
+          file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
+      double disk_load_time = disk_timer.getSeconds();
+
+      // the FR3 files are compressed
+      Timer decomp_timer;
+      auto decomp_data = compression::decompress_zstd(data.data(), data.size());
+      double decomp_time = decomp_timer.getSeconds();
+
+      // Read back into the tfrag3::Level structure
+      Timer import_timer;
+      auto result = std::make_unique<tfrag3::Level>();
+      Serializer ser(decomp_data.data(), decomp_data.size());
+      result->serialize(ser);
+      double import_time = import_timer.getSeconds();
+
+      // and finally "unpack", which creates the vertex data we'll upload to the GPU
+      Timer unpack_timer;
+      for (auto& tie_tree : result->tie_trees) {
+        for (auto& tree : tie_tree) {
+          tree.unpack();
+        }
       }
-    }
+      for (auto& t_tree : result->tfrag_trees) {
+        for (auto& tree : t_tree) {
+          tree.unpack();
+        }
+      }
 
-    for (auto& shrub_tree : result->shrub_trees) {
-      shrub_tree.unpack();
-    }
-    fmt::print(
-        "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
-        disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());
+      for (auto& shrub_tree : result->shrub_trees) {
+        shrub_tree.unpack();
+      }
+      fmt::print(
+          "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
+          disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());
 
-    // grab the lock again
-    lk.lock();
-    // move this level to "initializing" state.
-    m_initializing_tfrag3_levels[lev] = std::make_unique<LevelData>();  // reset load state
-    m_initializing_tfrag3_levels[lev]->level = std::move(result);
-    m_level_to_load = "";
-    m_file_load_done_cv.notify_all();
+      // grab the lock again
+      lk.lock();
+      // move this level to "initializing" state.
+      m_initializing_tfrag3_levels[lev] = std::make_unique<LevelData>();  // reset load state
+      m_initializing_tfrag3_levels[lev]->level = std::move(result);
+      m_level_to_load = "";
+      m_file_load_done_cv.notify_all();
+    }
+  } catch (std::exception& e) {
+    ASSERT_MSG(false, fmt::format("Exception {} encountered in loader_thread", e.what()));
   }
 }
 

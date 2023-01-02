@@ -471,12 +471,14 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
       {
         auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
         if (is_other) {
-          if (exc == EXCEPTION_BREAKPOINT) {
-            out->kind = SignalInfo::BREAK;
-          } else {
-            // ignore exceptions outside goal thread
-            ignore_debug_event();
-          }
+          ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId,
+                             DBG_EXCEPTION_NOT_HANDLED);
+          // if (exc == EXCEPTION_BREAKPOINT) {
+          //   out->kind = SignalInfo::BREAK;
+          // } else {
+          //   // ignore exceptions outside goal thread
+          //   ignore_debug_event();
+          // }
         } else {
           switch (exc) {
             case EXCEPTION_BREAKPOINT:

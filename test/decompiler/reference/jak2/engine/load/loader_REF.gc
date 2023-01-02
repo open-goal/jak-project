@@ -558,9 +558,7 @@
     (let ((s3-0 (-> obj rec s4-0)))
       (when (-> s3-0 name)
         (dotimes (s2-0 2)
-          (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (the-as int (-> s3-0 parts)))
-                     (not (-> obj buffer s2-0 frame-lock))
-                     )
+          (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (-> s3-0 parts)) (not (-> obj buffer s2-0 frame-lock)))
             (set! (-> obj buffer s2-0 frame-lock) #t)
             (set! (-> s3-0 anim-name) (-> obj buffer s2-0))
             (set! (-> obj buffer s2-0 pending-load-file-owner) (-> s3-0 owner))
@@ -583,13 +581,7 @@
         (dotimes (s2-1 2)
           (when (not (-> obj buffer s2-1 frame-lock))
             (set! (-> obj buffer s2-1 frame-lock) #t)
-            (set-pending-file
-              (-> obj buffer s2-1)
-              (-> s3-1 name)
-              (the-as int (-> s3-1 parts))
-              (-> s3-1 owner)
-              (-> s3-1 priority)
-              )
+            (set-pending-file (-> obj buffer s2-1) (-> s3-1 name) (-> s3-1 parts) (-> s3-1 owner) (-> s3-1 priority))
             (set! (-> s3-1 anim-name) (-> obj buffer s2-1))
             (goto cfg-46)
             )
@@ -869,7 +861,7 @@
       (set! (-> s5-0 paused?) #f)
       )
     (let ((v1-7
-            (gui-control-method-15 *gui-control* self (gui-channel art-load) (-> gp-0 anim name) (new 'static 'sound-id))
+            (lookup-gui-connection *gui-control* self (gui-channel art-load) (-> gp-0 anim name) (new 'static 'sound-id))
             )
           )
       (if v1-7
@@ -884,7 +876,7 @@
     (talker-surpress!)
     (apply-settings *setting-control*)
     (when (or (and (-> *setting-control* user-current spooling)
-                   (or (< 2 (the-as int (-> gp-0 anim parts)))
+                   (or (< 2 (-> gp-0 anim parts))
                        (not (string= (-> *setting-control* user-current spool-anim name) (-> gp-0 anim name)))
                        )
                    )
@@ -903,7 +895,7 @@
           )
         )
       (while (or (and (-> *setting-control* user-current spooling)
-                      (or (< 2 (the-as int (-> gp-0 anim parts)))
+                      (or (< 2 (-> gp-0 anim parts))
                           (not (string= (-> *setting-control* user-current spool-anim name) (-> gp-0 anim name)))
                           )
                       )
@@ -934,7 +926,7 @@
     (set-setting! 'spool-anim (-> gp-0 anim) 0 0)
     (apply-settings *setting-control*)
     (set! (-> gp-0 old-time) (-> self clock frame-counter))
-    (while (< (-> gp-0 part) (the-as int (-> gp-0 anim parts)))
+    (while (< (-> gp-0 part) (-> gp-0 anim parts))
       (when (> (-> gp-0 part) 0)
         (while (let ((v1-99 (file-status *art-control* (-> gp-0 anim name) (-> gp-0 part))))
                  (not (or (= v1-99 'active) (= v1-99 'locked)))
@@ -1100,7 +1092,7 @@
                   -20.0
                   (-> gp-0 sid)
                   )
-                (if (< (+ (-> gp-0 part) 1) (the-as int (-> gp-0 anim parts)))
+                (if (< (+ (-> gp-0 part) 1) (-> gp-0 anim parts))
                     (gui-control-method-12
                       *gui-control*
                       self
@@ -1167,7 +1159,7 @@
 (defbehavior ja-abort-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 int))
   (let ((s3-0 (new 'static 'sound-id)))
     (let ((v1-1
-            (gui-control-method-15 *gui-control* self (gui-channel art-load) (-> arg0 name) (new 'static 'sound-id))
+            (lookup-gui-connection *gui-control* self (gui-channel art-load) (-> arg0 name) (new 'static 'sound-id))
             )
           )
       (when v1-1
@@ -1425,28 +1417,28 @@
   (let ((s5-0 format)
         (s4-0 #t)
         (s3-0 " ~6S <@ #x~A>")
-        (v1-3 (gui-control-method-17 *gui-control* (-> obj id)))
+        (v1-3 (get-status *gui-control* (-> obj id)))
         )
     (s5-0
       s4-0
       s3-0
       (cond
-        ((= v1-3 (gui-action play))
+        ((= v1-3 (gui-status ready))
          "ready"
          )
-        ((= v1-3 (gui-action playing))
+        ((= v1-3 (gui-status active))
          "active"
          )
-        ((= v1-3 (gui-action stopping))
+        ((= v1-3 (gui-status stop))
          "stop"
          )
-        ((= v1-3 (gui-action none))
+        ((= v1-3 (gui-status unknown))
          "unknown"
          )
-        ((= v1-3 (gui-action stop))
+        ((= v1-3 (gui-status hide))
          "hide"
          )
-        ((= v1-3 (gui-action queue))
+        ((= v1-3 (gui-status pending))
          "pending"
          )
         (else
@@ -1466,7 +1458,7 @@
   )
 
 ;; definition for method 15 of type gui-control
-(defmethod gui-control-method-15 gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel) (arg2 string) (arg3 sound-id))
+(defmethod lookup-gui-connection gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel) (arg2 string) (arg3 sound-id))
   (let ((s1-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
     (let ((s0-0 (-> s1-0 next0)))
@@ -1501,7 +1493,7 @@
   )
 
 ;; definition for method 14 of type gui-control
-(defmethod gui-control-method-14 gui-control ((obj gui-control) (arg0 string) (arg1 gui-channel) (arg2 gui-action))
+(defmethod lookup-gui-connection-id gui-control ((obj gui-control) (arg0 string) (arg1 gui-channel) (arg2 gui-action))
   (let ((s2-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
     (let ((s1-0 (-> s2-0 next0)))
@@ -1533,23 +1525,23 @@
   )
 
 ;; definition for method 20 of type gui-control
-(defmethod gui-control-method-20 gui-control ((obj gui-control) (arg0 sound-id) (arg1 symbol) (arg2 int) (arg3 int) (arg4 int))
+(defmethod set-falloff! gui-control ((obj gui-control) (arg0 sound-id) (arg1 symbol) (arg2 int) (arg3 int) (arg4 int))
   (when (nonzero? arg0)
-    (let ((v1-2 (gui-control-method-15 *gui-control* (the-as process #f) (gui-channel none) (the-as string #f) arg0)))
+    (let ((v1-2 (lookup-gui-connection *gui-control* (the-as process #f) (gui-channel none) (the-as string #f) arg0)))
       (when v1-2
         (if arg1
-            (logior! (-> v1-2 flags) 2)
+            (logior! (-> v1-2 flags) (gui-connection-flags gcf1))
             )
         (when (>= arg2 0)
-          (logior! (-> v1-2 flags) 8)
+          (logior! (-> v1-2 flags) (gui-connection-flags fo-min))
           (set! (-> v1-2 fo-min) arg2)
           )
         (when (>= arg3 0)
-          (logior! (-> v1-2 flags) 16)
+          (logior! (-> v1-2 flags) (gui-connection-flags fo-max))
           (set! (-> v1-2 fo-max) arg3)
           )
         (when (>= arg4 0)
-          (logior! (-> v1-2 flags) 4)
+          (logior! (-> v1-2 flags) (gui-connection-flags fo-curve))
           (set! (-> v1-2 fo-curve) arg4)
           )
         v1-2
@@ -1583,21 +1575,21 @@
   )
 
 ;; definition for method 23 of type gui-control
-(defmethod gui-control-method-23 gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-channel) (arg2 symbol) (arg3 gui-connection))
+(defmethod handle-command gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-channel) (arg2 symbol) (arg3 gui-connection))
   (let ((s5-0 (-> obj ids arg1)))
     (cond
       ((nonzero? s5-0)
        (case arg2
          (('wait)
-          (if (nonzero? (gui-control-method-17 obj s5-0))
+          (if (nonzero? (get-status obj s5-0))
               (return #f)
               )
           )
          (('stop 'priority-stop)
           (when (nonzero? (-> obj ids arg1))
-            (let ((s2-0 (gui-control-method-15 obj (the-as process #f) arg1 (the-as string #f) s5-0)))
+            (let ((s2-0 (lookup-gui-connection obj (the-as process #f) arg1 (the-as string #f) s5-0)))
               (when (and s2-0 (or (= arg2 'priority) (= s2-0 arg3) (and arg3 (< (-> arg3 priority) (-> s2-0 priority)))))
-                (gui-control-method-11 obj s2-0)
+                (stop-str obj s2-0)
                 (cond
                   ((= (shr (the-as int arg1) 4) 5)
                    (set! (-> obj times arg1)
@@ -1615,14 +1607,14 @@
                 )
               )
             )
-          (if (nonzero? (gui-control-method-17 obj s5-0))
+          (if (nonzero? (get-status obj s5-0))
               (return #f)
               )
           )
          (('hide)
-          (let ((v1-34 (gui-control-method-15 obj (the-as process #f) arg1 (the-as string #f) s5-0)))
+          (let ((v1-34 (lookup-gui-connection obj (the-as process #f) arg1 (the-as string #f) s5-0)))
             (when (and v1-34 (!= (-> v1-34 action) 8))
-              (gui-control-method-16
+              (set-action!
                 obj
                 (gui-action hide)
                 s5-0
@@ -1637,7 +1629,7 @@
                     )
               )
             )
-          (if (nonzero? (gui-control-method-17 obj s5-0))
+          (if (nonzero? (get-status obj s5-0))
               (return #f)
               )
           )
@@ -1655,7 +1647,7 @@
 
 ;; definition for method 19 of type gui-control
 ;; INFO: Used lq/sq
-(defmethod gui-control-method-19 gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-connection))
+(defmethod handle-command-list gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-connection))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int))
   (let ((gp-0 #t))
     (cond
@@ -1675,7 +1667,7 @@
                 (let ((s0-0 80))
                   (set! sv-16 90)
                   (while (>= (the-as uint sv-16) (the-as uint s0-0))
-                    (if (not (gui-control-method-23 obj arg0 (the-as gui-channel s0-0) (the-as symbol s1-0) arg1))
+                    (if (not (handle-command obj arg0 (the-as gui-channel s0-0) (the-as symbol s1-0) arg1))
                         (set! gp-0 #f)
                         )
                     (+! s0-0 1)
@@ -1686,7 +1678,7 @@
                 (let ((s0-1 66))
                   (set! sv-32 70)
                   (while (>= (the-as uint sv-32) (the-as uint s0-1))
-                    (if (not (gui-control-method-23 obj arg0 (the-as gui-channel s0-1) (the-as symbol s1-0) arg1))
+                    (if (not (handle-command obj arg0 (the-as gui-channel s0-1) (the-as symbol s1-0) arg1))
                         (set! gp-0 #f)
                         )
                     (+! s0-1 1)
@@ -1697,7 +1689,7 @@
                 (let ((s0-2 18))
                   (set! sv-48 32)
                   (while (>= (the-as uint sv-48) (the-as uint s0-2))
-                    (if (not (gui-control-method-23 obj arg0 (the-as gui-channel s0-2) (the-as symbol s1-0) arg1))
+                    (if (not (handle-command obj arg0 (the-as gui-channel s0-2) (the-as symbol s1-0) arg1))
                         (set! gp-0 #f)
                         )
                     (+! s0-2 1)
@@ -1705,7 +1697,7 @@
                   )
                 )
                (else
-                 (if (not (gui-control-method-23 obj arg0 a2-1 (the-as symbol s1-0) arg1))
+                 (if (not (handle-command obj arg0 a2-1 (the-as symbol s1-0) arg1))
                      (set! gp-0 #f)
                      )
                  )
@@ -1722,11 +1714,11 @@
   )
 
 ;; definition for method 17 of type gui-control
-;; WARN: Return type mismatch int vs gui-action.
-(defmethod gui-control-method-17 gui-control ((obj gui-control) (arg0 sound-id))
+;; WARN: Return type mismatch int vs gui-status.
+(defmethod get-status gui-control ((obj gui-control) (arg0 sound-id))
   (let ((gp-0 (the-as gui-connection #f)))
     (if (zero? arg0)
-        (return (gui-action none))
+        (return (gui-status unknown))
         )
     (let ((v1-4 (-> obj engine alive-list next0)))
       (-> obj engine)
@@ -1753,14 +1745,14 @@
       )
     (label cfg-15)
     (the-as
-      gui-action
+      gui-status
       (cond
         ((= (-> gp-0 channel) (gui-channel movie))
          (cond
            ((= (-> gp-0 id) (-> obj ids (-> gp-0 channel)))
             3
             )
-           ((gui-control-method-19 obj (-> gp-0 channel) gp-0)
+           ((handle-command-list obj (-> gp-0 channel) gp-0)
             2
             )
            (else
@@ -1788,16 +1780,16 @@
                              )
                     (cond
                       ((logtest? (-> *sound-iop-info* stream-status s4-0) (stream-status ststatus-four))
-                       (return (gui-action playing))
+                       (return (gui-status active))
                        )
                       ((logtest? (-> *sound-iop-info* stream-status s4-0) (stream-status ststatus-nine))
-                       (return (gui-action stopping))
+                       (return (gui-status stop))
                        )
-                      ((or (= (-> gp-0 id) (-> obj ids (-> gp-0 channel))) (gui-control-method-19 obj (-> gp-0 channel) gp-0))
-                       (return (gui-action play))
+                      ((or (= (-> gp-0 id) (-> obj ids (-> gp-0 channel))) (handle-command-list obj (-> gp-0 channel) gp-0))
+                       (return (gui-status ready))
                        )
                       (else
-                        (return (gui-action queue))
+                        (return (gui-status pending))
                         )
                       )
                     (the-as none 0)
@@ -1823,7 +1815,7 @@
                 3
                 )
             )
-           ((gui-control-method-19 obj (-> gp-0 channel) gp-0)
+           ((handle-command-list obj (-> gp-0 channel) gp-0)
             2
             )
            (else
@@ -1838,7 +1830,7 @@
                ((= (-> gp-0 id) (-> obj ids (-> gp-0 channel)))
                 3
                 )
-               ((gui-control-method-19 obj (-> gp-0 channel) gp-0)
+               ((handle-command-list obj (-> gp-0 channel) gp-0)
                 2
                 )
                (else
@@ -1857,15 +1849,15 @@
   )
 
 ;; definition for method 16 of type gui-control
-(defmethod gui-control-method-16 gui-control ((obj gui-control)
-                                            (arg0 gui-action)
-                                            (arg1 sound-id)
-                                            (arg2 gui-channel)
-                                            (arg3 gui-action)
-                                            (arg4 string)
-                                            (arg5 (function gui-connection symbol))
-                                            (arg6 process)
-                                            )
+(defmethod set-action! gui-control ((obj gui-control)
+                                  (arg0 gui-action)
+                                  (arg1 sound-id)
+                                  (arg2 gui-channel)
+                                  (arg3 gui-action)
+                                  (arg4 string)
+                                  (arg5 (function gui-connection symbol))
+                                  (arg6 process)
+                                  )
   (local-vars (sv-16 gui-action) (sv-17 gui-action) (sv-20 string) (sv-24 (function gui-connection symbol)))
   (set! sv-16 arg0)
   (set! sv-17 arg3)
@@ -1890,7 +1882,7 @@
              )
             (else
               (set! (-> s1-0 action) sv-16)
-              (if (and (= sv-16 'play) (gui-control-method-19 obj (-> s1-0 channel) s1-0))
+              (if (and (= sv-16 'play) (handle-command-list obj (-> s1-0 channel) s1-0))
                   (channel-id-set! obj s1-0 (-> s1-0 id))
                   )
               )
@@ -1908,14 +1900,14 @@
 ;; definition for method 9 of type gui-control
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs sound-id.
-(defmethod gui-control-method-9 gui-control ((obj gui-control)
-                                           (arg0 process)
-                                           (arg1 gui-channel)
-                                           (arg2 gui-action)
-                                           (arg3 string)
-                                           (arg4 float)
-                                           (arg5 time-frame)
-                                           )
+(defmethod add-process gui-control ((obj gui-control)
+                                  (arg0 process)
+                                  (arg1 gui-channel)
+                                  (arg2 gui-action)
+                                  (arg3 string)
+                                  (arg4 float)
+                                  (arg5 time-frame)
+                                  )
   (local-vars
     (sv-16 int)
     (sv-20 gui-connection)
@@ -1968,7 +1960,7 @@
                        (set! (-> sv-32 action) arg2)
                        (set! (-> sv-32 param2) (the-as int arg3))
                        (set! (-> sv-32 hold-time) arg5)
-                       (set! (-> sv-32 flags) (the-as uint 1))
+                       (set! (-> sv-32 flags) (gui-connection-flags gcf0))
                        (set! (-> sv-32 fade) (the-as uint 0))
                        (the-as int (-> (the-as gui-connection sv-32) id))
                        )
@@ -1982,7 +1974,7 @@
 
 ;; definition for method 10 of type gui-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod gui-control-method-10 gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel))
+(defmethod remove-process gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel))
   (let ((s3-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
     (let ((s2-0 (-> s3-0 next0)))
@@ -2048,7 +2040,7 @@
       (when (or (zero? (-> a0-15 id)) (not (handle->process (-> a0-15 handle))))
         (set! sv-16 a0-15)
         (set! (-> sv-16 param3) 0)
-        (set! (-> sv-16 flags) (the-as uint 0))
+        (set! (-> sv-16 flags) (gui-connection-flags))
         (goto cfg-44)
         )
       )
@@ -2058,7 +2050,7 @@
                      (sv-16
                        (when (zero? (-> (the-as gui-connection sv-16) id))
                          (when (zero? sv-20)
-                           (let ((v1-46 (gui-control-method-15 obj arg0 arg1 arg3 (new 'static 'sound-id))))
+                           (let ((v1-46 (lookup-gui-connection obj arg0 arg1 arg3 (new 'static 'sound-id))))
                              (if v1-46
                                  (set! sv-20 (the-as int (-> v1-46 id)))
                                  )
@@ -2176,10 +2168,10 @@
   )
 
 ;; definition for method 11 of type gui-control
-(defmethod gui-control-method-11 gui-control ((obj gui-control) (arg0 gui-connection))
+(defmethod stop-str gui-control ((obj gui-control) (arg0 gui-connection))
   (case (shr (the-as int (-> arg0 channel)) 4)
     ((1 2)
-     (if (= (gui-control-method-17 obj (-> arg0 id)) (gui-action playing))
+     (if (= (get-status obj (-> arg0 id)) (gui-status active))
          (str-play-stop (-> arg0 name) (-> arg0 id))
          )
      )
@@ -2201,7 +2193,9 @@
       (case (-> arg0 action)
         (((gui-action queue))
          (spool-push *art-control* (-> arg0 name) (the-as int (-> arg0 anim-part)) arg1 (-> arg0 priority))
-         (if (and (logtest? (-> arg0 flags) 1) (= (gui-control-method-17 obj (-> arg0 id)) (gui-action playing)))
+         (if (and (logtest? (-> arg0 flags) (gui-connection-flags gcf0))
+                  (= (get-status obj (-> arg0 id)) (gui-status active))
+                  )
              (set! (-> arg0 action) (gui-action playing))
              )
          )
@@ -2209,13 +2203,11 @@
       )
     (let ((v1-16 (-> arg0 action)))
       (b! (!= v1-16 (gui-action play)) cfg-39 :delay (empty-form))
-      (if (gui-control-method-19 obj (-> arg0 channel) arg0)
+      (if (handle-command-list obj (-> arg0 channel) arg0)
           (channel-id-set! obj arg0 (-> arg0 id))
           )
       (b!
-        (not (or (not (gui-control-method-18 obj (-> arg0 channel)))
-                 (= (gui-control-method-17 obj (-> arg0 id)) (gui-action stopping))
-                 )
+        (not (or (not (gui-control-method-18 obj (-> arg0 channel))) (= (get-status obj (-> arg0 id)) (gui-status stop)))
              )
         cfg-27
         :delay (empty-form)
@@ -2224,7 +2216,7 @@
           (channel-id-set! obj arg0 (new 'static 'sound-id))
           )
       (if (and arg2 (or (< (shr (the-as int (-> arg0 channel)) 4) (the-as uint 4))
-                        (= (gui-control-method-17 obj (-> arg0 id)) (gui-action stopping))
+                        (= (get-status obj (-> arg0 id)) (gui-status stop))
                         )
                )
           (move-to-dead arg0)
@@ -2234,8 +2226,8 @@
       (let ((v1-40 (-> arg0 id)))
         (b! (!= (-> obj ids (-> arg0 channel)) v1-40) cfg-38 :delay (empty-form))
         )
-      (let ((v1-43 (gui-control-method-17 obj (-> arg0 id))))
-        (b! (!= v1-43 (gui-action play)) cfg-36 :delay (empty-form))
+      (let ((v1-43 (get-status obj (-> arg0 id))))
+        (b! (!= v1-43 (gui-status ready)) cfg-36 :delay (empty-form))
         (case (shr (the-as int (-> arg0 channel)) 4)
           ((1 2)
            (if (not (paused?))
@@ -2245,7 +2237,7 @@
           )
         (b! #t cfg-38 :delay (nop!))
         (label cfg-36)
-        (b! (!= v1-43 (gui-action playing)) cfg-38 :delay (empty-form))
+        (b! (!= v1-43 (gui-status active)) cfg-38 :delay (empty-form))
         )
       (set! (-> arg0 action) (gui-action playing))
       (label cfg-38)
@@ -2253,7 +2245,7 @@
       (label cfg-39)
       (b! (not (or (= v1-16 (gui-action playing)) (= v1-16 (gui-action fade)))) cfg-117 :delay (empty-form))
       (b!
-        (not (and (= (gui-control-method-17 obj (-> arg0 id)) (gui-action playing))
+        (not (and (= (get-status obj (-> arg0 id)) (gui-status active))
                   (gui-control-method-18 obj (-> arg0 channel))
                   (or (= (-> arg0 action) (gui-action playing)) (< (-> arg0 fade) (the-as uint 30)))
                   )
@@ -2288,7 +2280,9 @@
       (label cfg-73)
       (cond
         ((not v1-66)
-         (when (and (logtest? (-> arg0 flags) 30) (logtest? (-> arg0 flags) 1))
+         (when (and (logtest? (-> arg0 flags) (gui-connection-flags gcf1 fo-curve fo-min fo-max))
+                    (logtest? (-> arg0 flags) (gui-connection-flags gcf0))
+                    )
            (let* ((s5-1 (get-process arg0))
                   (s4-1 (if (type? s5-1 process-drawable)
                             s5-1
@@ -2315,16 +2309,16 @@
                    (set! (-> s5-2 params fo-min) (-> arg0 fo-min))
                    (set! (-> s5-2 params fo-max) (-> arg0 fo-max))
                    (set! (-> s5-2 params mask) (the-as uint 0))
-                   (if (logtest? (-> arg0 flags) 2)
+                   (if (logtest? (-> arg0 flags) (gui-connection-flags gcf1))
                        (logior! (-> s5-2 params mask) 32)
                        )
-                   (if (logtest? (-> arg0 flags) 4)
+                   (if (logtest? (-> arg0 flags) (gui-connection-flags fo-curve))
                        (logior! (-> s5-2 params mask) 256)
                        )
-                   (if (logtest? (-> arg0 flags) 8)
+                   (if (logtest? (-> arg0 flags) (gui-connection-flags fo-min))
                        (logior! (-> s5-2 params mask) 64)
                        )
-                   (if (logtest? (-> arg0 flags) 16)
+                   (if (logtest? (-> arg0 flags) (gui-connection-flags fo-max))
                        (logior! (-> s5-2 params mask) 128)
                        )
                    )
@@ -2355,7 +2349,7 @@
           (let ((a0-75 (< (shr (the-as int (-> arg0 channel)) 4) (the-as uint 4))))
             (b! a0-75 cfg-113 :likely-delay (set! v1-143 a0-75))
             )
-          (set! v1-143 (= (gui-control-method-17 obj (-> arg0 id)) (gui-action stopping)))
+          (set! v1-143 (= (get-status obj (-> arg0 id)) (gui-status stop)))
           (label cfg-113)
           (if v1-143
               (move-to-dead arg0)
@@ -2366,7 +2360,7 @@
       (b! #t cfg-139 :delay (nop!))
       (label cfg-117)
       (b! (!= v1-16 (gui-action stop)) cfg-121 :delay (empty-form))
-      (gui-control-method-11 obj arg0)
+      (stop-str obj arg0)
       (if arg2
           (move-to-dead arg0)
           )
@@ -2386,9 +2380,9 @@
         ((= v1-16 (gui-action hidden))
          (cond
            ((or (< (shr (the-as int (-> arg0 channel)) 4) (the-as uint 4))
-                (= (gui-control-method-17 obj (-> arg0 id)) (gui-action stopping))
+                (= (get-status obj (-> arg0 id)) (gui-status stop))
                 )
-            (gui-control-method-11 obj arg0)
+            (stop-str obj arg0)
             (if arg2
                 (move-to-dead arg0)
                 )
