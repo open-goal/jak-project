@@ -213,5 +213,5 @@ else()
     target_link_libraries(runtime pthread dl)
 endif()
 
-add_executable(gk main.cpp "tools/filter_menu/filter_menu.cpp" "tools/filter_menu/filter_menu.h")
+add_executable(gk main.cpp)
 target_link_libraries(gk runtime)

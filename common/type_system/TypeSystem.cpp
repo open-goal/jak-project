@@ -954,8 +954,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
     int aligned_offset = align(offset, field_alignment);
     field.mark_as_user_placed();
     if (offset != aligned_offset) {
-      throw_typesystem_error("Tried to place field {} at {}, but it is not aligned correctly\n",
-                             field_name, offset);
+      throw_typesystem_error(
+          "Tried to place field {} at {}, but it is not aligned correctly, requires {}\n",
+          field_name, offset, field_alignment);
     }
   }
 
