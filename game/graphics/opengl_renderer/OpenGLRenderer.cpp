@@ -191,6 +191,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l1-water", BucketCategory::TEX,
                                              BucketId::TEX_L1_WATER);
   init_bucket_renderer<Merc2>("merc-l1-water", BucketCategory::MERC, BucketId::MERC_L1_WATER);
+  init_bucket_renderer<TFragment>("tfrag-w-l1-alpha", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_W_L1_WATER,
+                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 0);
 
   // 270
   init_bucket_renderer<TextureUploadHandler>("tex-l2-water", BucketCategory::TEX,
