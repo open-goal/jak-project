@@ -22473,11 +22473,11 @@
     (handle-birth "Handle the parent nav-mesh-entity birth." (_type_) none 24)
     (handle-kill "Handle the parent nav-mesh-entity kill." (_type_) none 25)
     (update-navigation (_type_) none 26)
-    (new-nav-control (_type_ process-drawable int) nav-control 27)
+    (new-nav-control (_type_ process-drawable) nav-control 27)
     (remove-nav-control (_type_ nav-control) none 28)
     (add-process-drawable-to-navmesh (_type_ process-drawable symbol) none 29)
     (remove-process-drawable (_type_ process-drawable) none 30)
-    (change-to (_type_ process-drawable symbol) none 31)
+    (change-to (_type_ process-drawable) none 31)
     (link-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 32)
     (unlink-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 33)
     (nav-mesh-method-34 (_type_ vector vector float) float 34)
@@ -32240,7 +32240,7 @@
   :flag-assert         #xb00000010
   (:methods
     (idle-control-method-9 (_type_ (pointer uint32)) none 9)
-    (idle-control-method-10 (_type_ process-drawable) none 10)
+    (idle-control-method-10 (_type_ process-drawable) none :behavior process-drawable 10)
     )
   )
 
@@ -32535,7 +32535,7 @@
    (jump-dest                   vector            :inline   :offset        368)
    (focus                       enemy-focus       :inline   :offset-assert 384)
    (incoming                    enemy-attack-info :inline   :offset-assert 416)
-   (actor-group                 actor-group                 :offset-assert 480)
+   (actor-group                 (pointer actor-group)                 :offset-assert 480)
    (actor-group-count           int32                       :offset-assert 484)
    (neck                        joint-mod                       :offset-assert 488)
    (on-notice                   symbol                      :offset-assert 492)
@@ -32751,6 +32751,7 @@
   :size-assert         #x25c
   :flag-assert         #xb201e0025c
   (:methods
+    (enemy-method-112 (_type_ nav-enemy-info) float :replace 112)
     (enemy-method-113 (_type_ nav-enemy-info) none :replace 113)
     (taunt () _type_ :state 137)
     (pacing () _type_ :state 138)
@@ -40399,56 +40400,51 @@
 ;; fodder                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fodder-anim-info (structure)
   ((anim-index int32  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype fodder-global-info (basic)
   ((prev-blue-hit int8      :offset-assert 4)
-   (blue-hit-anim UNKNOWN 3 :offset-assert 8)
+   (blue-hit-anim fodder-anim-info 3 :inline :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype fodder (nav-enemy)
-  ((left-eye           basic          :offset-assert 600)
-   (right-eye          basic          :offset-assert 604)
-   (look-at-other      uint64         :offset-assert 612)
-   (neck-away-from     basic          :offset-assert 620)
-   (look-at-other-time time-frame         :offset-assert 628)
-   (focus-pos          vector :inline :offset-assert 348)
-   (slow-timer         uint64         :offset-assert 652)
-   (fast-timer         uint64         :offset-assert 660)
-   (attack-type        uint64         :offset-assert 668)
-   (test-vec           vector :inline :offset-assert 684)
+  ((left-eye           joint-mod          :offset-assert 604)
+   (right-eye          joint-mod          :offset-assert 608)
+   (look-at-other      handle         :offset-assert 616)
+   (neck-away-from     basic          :offset-assert 624)
+   (look-at-other-time time-frame         :offset-assert 632)
+   (pad-iuj1n23i1      uint32 3 :offset-assert 640)
+   (slow-timer         time-frame         :offset-assert 656)
+   (fast-timer         time-frame         :offset-assert 664)
+   (attack-type        uint64         :offset-assert 672)
+   (test-vec           vector :inline :offset-assert 688)
    )
   :method-count-assert 183
   :size-assert         #x2c0
   :flag-assert         #xb7024002c0
   (:methods
-    (fodder-method-178 () none 178)
-    (fodder-method-179 () none 179)
-    (fodder-method-180 () none 180)
-    (fodder-method-181 () none 181)
-    (fodder-method-182 () none 182)
+    (fodder-method-178 (_type_) none 178)
+    (fodder-method-179 (_type_ vector) float 179)
+    (fodder-method-180 (_type_) symbol 180)
+    (fodder-method-181 (_type_ symbol) none 181)
+    (fodder-method-182 (_type_) float 182)
     )
   )
-|#
 
-;; (define-extern *fodder-global-info* fodder-global-info)
-;; (define-extern *fodder-nav-enemy-info* nav-enemy-info)
-;; (define-extern fodder-setup-eye-control function)
+(define-extern *fodder-global-info* fodder-global-info)
+(define-extern *fodder-nav-enemy-info* nav-enemy-info)
+(define-extern fodder-setup-eye-control (function joint-mod float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hal-h                          ;;
