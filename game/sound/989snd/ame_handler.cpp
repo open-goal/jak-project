@@ -137,6 +137,20 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
   bool done = false;
   bool cont = true;
 
+  // fmt::print("AME SCRIPT ----\n");
+  // u8* dbgstream = stream;
+  // while (!done) {
+  //   fmt::print("{:02x} ", *dbgstream);
+  //   dbgstream++;
+
+  //  if (*dbgstream == 0xf7) {
+  //    dbgstream++;
+  //    done = true;
+  //  }
+  //}
+  // done = false;
+  // fmt::print("\n -------\n");
+
   while (!done) {
     auto op = static_cast<u8>(*stream++);
     switch (op) {
@@ -213,12 +227,12 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         AME_BEGIN(op)
         cont = false;
         done = true;
-        start_segment(m_register[stream[0] - 1]);
+        start_segment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xe: {
         AME_BEGIN(op)
-        start_segment(m_register[stream[0] - 1]);
+        start_segment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xf: {
