@@ -18,14 +18,14 @@ void FiltersMenu::draw_window() {
   if (ImGui::TreeNode("Debug Text Filters")) {
     auto& current_filters = Gfx::g_debug_settings.debug_text_filters;
     // Iterate and display all current debug text filters
-    for (int i = 0; i < current_filters.size(); i++) {
+    for (size_t i = 0; i < current_filters.size(); i++) {
       std::string label = "contains?";
       if (current_filters[i].type == DebugTextFilter::Type::NOT_CONTAINS) {
         label = "not-contains?";
       } else if (current_filters[i].type == DebugTextFilter::Type::REGEX) {
         label = "regex?";
       }
-      ImGui::Text(label.c_str());
+      ImGui::Text("%s", label.c_str());
       ImGui::SameLine();
       ImGui::InputText(fmt::format("##filter-{}", i).c_str(), &current_filters[i].content);
     }
