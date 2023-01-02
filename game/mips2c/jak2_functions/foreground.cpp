@@ -324,6 +324,51 @@ struct Cache {
   void* merc_global_stats; // *merc-global-stats*
 } cache;
 
+/*
+(deftype merc-effect-bucket-info (structure)
+  ((color-fade     rgba   :offset-assert 0) ;; guessed by decompiler
+   (alpha uint8 :offset 3)
+   (merc-path      uint8  :offset-assert 4)
+   (ignore-alpha   uint8  :offset-assert 5)
+   (disable-draw   uint8  :offset-assert 6)
+   (disable-envmap uint8  :offset-assert 7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype merc-bucket-info (structure)
+  ((light                       vu-lights               :inline :offset-assert 0)
+   (needs-clip                  int32                           :offset-assert 112)
+   (need-mercprime-if-merc      int32                           :offset-assert 116)
+   (must-use-mercneric-for-clip int32                           :offset-assert 120)
+   (effect                      merc-effect-bucket-info 64 :inline      :offset-assert 124) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x27c
+  :flag-assert         #x90000027c
+  )
+ */
+
+struct MercEffectBucketInfo {
+  u8 color_fade[4];
+  u8 merc_path;
+  u8 ignore_alpha;
+  u8 disable_draw;
+  u8 disable_envmap;
+};
+
+struct MercBucketInfo {
+  u8 lights[0x70];
+  u32 needs_clip;
+  u32 mercprime;
+  u32 mercneric;
+  MercEffectBucketInfo effects[64];
+};
+static_assert(sizeof(MercBucketInfo) == 0x27c);
+
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -336,6 +381,7 @@ u64 execute(void* ctxt) {
   c->sq(s4, 80, sp);                                // sq s4, 80(sp)
   c->sq(s5, 96, sp);                                // sq s5, 96(sp)
   c->sq(gp, 112, sp);                               // sq gp, 112(sp)
+  const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(t1));
   c->mov64(t7, a3);                                 // or t7, a3, r0
   c->mov64(v1, t0);                                 // or v1, t0, r0
   c->lui(t0, 4096);                                 // lui t0, 4096
@@ -442,8 +488,16 @@ u64 execute(void* ctxt) {
 
   // pc hack
   {
-    u16 use_pc_merc_bits = UINT16_MAX;
-    u16 ignore_alpha_bits = UINT16_MAX;
+    u16 use_pc_merc_bits = 0;
+    u16 ignore_alpha_bits = 0;
+    for (int i = 0; i < 16; i++) {
+      if (!mbi->effects[i].disable_draw) {
+        use_pc_merc_bits |= (1 << i);
+      }
+      if (mbi->effects[i].ignore_alpha) {
+        ignore_alpha_bits |= (1 << i);
+      }
+    }
     memcpy(g_ee_main_mem + c->sgpr64(a2) + 28, &use_pc_merc_bits, 2);
     memcpy(g_ee_main_mem + c->sgpr64(a2) + 30, &ignore_alpha_bits, 2);
   }
