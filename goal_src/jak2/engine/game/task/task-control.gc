@@ -1415,7 +1415,7 @@
 
 (defmethod print-text fail-mission ((obj fail-mission))
   (when (and (not (logtest? (-> obj flags) (fail-mission-flags famflags-6)))
-             (= (gui-control-method-17 *gui-control* (the-as sound-id (-> obj message-id))) (gui-action playing))
+             (= (get-status *gui-control* (the-as sound-id (-> obj message-id))) (gui-status active))
              )
     (let ((gp-0 (new
                   'stack
@@ -1748,7 +1748,7 @@
   (set! (-> self fail-message) (the-as uint (-> arg0 fail-message)))
   (set-setting! 'allow-continue #f 0 0)
   (set-setting! 'minimap 'clear 0 128)
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)
@@ -1758,7 +1758,7 @@
     (the-as (function gui-connection symbol) #f)
     (the-as process #f)
     )
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)
@@ -1771,10 +1771,7 @@
   (when (not (logtest? (-> arg0 flags) (fail-mission-flags famflags-4)))
     (if (not (and *target* (logtest? (-> *target* focus-status) (focus-status dead)) (zero? (-> self message))))
         (set! (-> self stinger)
-              (the-as
-                uint
-                (gui-control-method-9 *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0)
-                )
+              (the-as uint (add-process *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0))
               )
         )
     )
@@ -1788,10 +1785,7 @@
           (= (-> self message) (fail-mission-message fammsg-1))
           )
       (set! (-> self message-id)
-            (the-as
-              uint
-              (gui-control-method-9 *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0)
-              )
+            (the-as uint (add-process *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0))
             )
       )
   (go-virtual idle)

@@ -158,7 +158,7 @@
 (defmethod scene-method-15 scene ((obj scene) (arg0 spool-anim))
   (set! (-> arg0 name) (-> obj anim))
   (set! (-> arg0 anim-name) (-> obj anim))
-  (set! (-> arg0 parts) (the-as int (-> obj parts)))
+  (set! (-> arg0 parts) (-> obj parts))
   (set! (-> arg0 command-list) (-> obj command-list))
   (none)
   )
@@ -1157,7 +1157,7 @@
                               (!= (-> *setting-control* user-current movie) (process->ppointer self))
                               )
                          *progress-process*
-                         (!= (gui-control-method-17 *gui-control* (the-as sound-id (-> self gui-id))) 3)
+                         (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3)
                          )
                      )
             (suspend)
@@ -1225,16 +1225,16 @@
                   (nonzero? (-> self anim anim-name))
                   (let ((v1-161 (file-status *art-control* (-> self anim name) 0)))
                     (or (not (or (= v1-161 'active) (= v1-161 'locked)))
-                        (let* ((a1-26 (gui-control-method-14
+                        (let* ((a1-26 (lookup-gui-connection-id
                                         *gui-control*
                                         (the-as string (-> self anim anim-name))
                                         (gui-channel none)
                                         (gui-action none)
                                         )
                                       )
-                               (v1-167 (gui-control-method-17 *gui-control* (the-as sound-id a1-26)))
+                               (v1-167 (get-status *gui-control* (the-as sound-id a1-26)))
                                )
-                          (not (or (= v1-167 (gui-action play)) (= v1-167 (gui-action playing))))
+                          (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active))))
                           )
                         )
                     )
@@ -1652,7 +1652,7 @@
     (process-drawable-draw-subtitles)
     (when (and (= *cheat-mode* 'debug) (-> self scene))
       (let ((gp-7
-              (gui-control-method-15 *gui-control* self (gui-channel art-load) (-> self scene name) (new 'static 'sound-id))
+              (lookup-gui-connection *gui-control* self (gui-channel art-load) (-> self scene name) (new 'static 'sound-id))
               )
             )
         (when (!= *external-cam-mode* 'pad-0)
@@ -1835,7 +1835,7 @@
       (set! (-> self scene) #f)
       )
     )
-  (set! (-> self gui-id) (the-as uint (gui-control-method-9
+  (set! (-> self gui-id) (the-as uint (add-process
                                         *gui-control*
                                         self
                                         (gui-channel movie)

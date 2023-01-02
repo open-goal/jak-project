@@ -3,12 +3,13 @@
 
 ;; definition of type hud-string
 (deftype hud-string (basic)
-  ((text  string           :offset-assert   4)
-   (scale float            :offset-assert   8)
-   (color uint32           :offset-assert  12)
-   (flags uint32           :offset-assert  16)
-   (pos   vector4w :inline :offset-assert  32)
+  ((text  string       :offset-assert   4)
+   (scale float        :offset-assert   8)
+   (color font-color   :offset-assert  12)
+   (flags font-flags   :offset-assert  16)
+   (pos   int32      4 :offset         32)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -34,6 +35,7 @@
 (deftype hud-sprite (structure)
   ((pos     vector4w :inline :offset-assert   0)
    (color   vector4w :inline :offset-assert  16)
+   (color2  int32    4       :offset         16)
    (flags   uint32           :offset-assert  32)
    (scale-x float            :offset-assert  36)
    (scale-y float            :offset-assert  40)
@@ -44,7 +46,7 @@
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (hud-sprite-method-9 (_type_ dma-buffer level) none 9)
+    (draw (_type_ dma-buffer level) none 9)
     (hud-sprite-method-10 (_type_) none 10)
     )
   )
@@ -57,7 +59,7 @@
     )
   (format #t "[~8x] ~A~%" obj 'hud-sprite)
   (format #t "~1Tpos: #<vector4w @ #x~X>~%" (-> obj pos))
-  (format #t "~1Tcolor: #<vector4w @ #x~X>~%" (-> obj color))
+  (format #t "~1Tcolor: #<vector4w @ #x~X>~%" (-> obj color2))
   (format #t "~1Tflags: ~D~%" (-> obj flags))
   (format #t "~1Tscale-x: ~f~%" (-> obj scale-x))
   (format #t "~1Tscale-y: ~f~%" (-> obj scale-y))
@@ -77,13 +79,13 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (hud-box-method-9 (_type_ dma-buffer) none 9)
-    (hud-box-method-10 () none 10)
-    (hud-box-method-11 () none 11)
-    (hud-box-method-12 () none 12)
-    (hud-box-method-13 (_type_ dma-buffer float) int 13)
-    (hud-box-method-14 (_type_) none 14)
-    (hud-box-method-15 (_type_) none 15)
+    (draw-box-prim-only (_type_ dma-buffer) none 9)
+    (draw-box-alpha-1 (_type_ dma-buffer) none 10)
+    (draw-box-alpha-2 (_type_ dma-buffer) none 11)
+    (draw-box-alpha-3 (_type_ dma-buffer) none 12)
+    (draw-scan-and-line (_type_ dma-buffer float) int 13)
+    (setup-scissor (_type_ dma-buffer) none 14)
+    (restore-scissor (_type_ dma-buffer) none 15)
     )
   )
 
@@ -103,11 +105,12 @@
 
 ;; definition of type hud-icon
 (deftype hud-icon (basic)
-  ((icon    (pointer manipy)         :offset-assert   4)
-   (pos     vector4w         :inline :offset-assert  16)
-   (scale-x float                    :offset-assert  32)
-   (scale-y float                    :offset-assert  36)
+  ((icon    (pointer manipy)   :offset-assert   4)
+   (pos     int32            4 :offset         16)
+   (scale-x float              :offset-assert  32)
+   (scale-y float              :offset-assert  36)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
@@ -135,7 +138,7 @@
    (flags   uint16  :offset-assert  12)
    (counter uint16  :offset-assert  14)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -162,11 +165,11 @@
    (last-hide-time time-frame            :offset-assert 136)
    (offset         float                 :offset-assert 144)
    (flags          hud-flags             :offset-assert 148)
-   (values         hud-value  8 :inline  :offset-assert 152)
-   (strings        hud-string 14 :inline :offset-assert 288)
-   (sprites        hud-sprite 30 :inline :offset-assert 960)
-   (icons          hud-icon   2 :inline  :offset-assert 2880)
-   (gui-id         sound-id              :offset-assert 2976)
+   (values         hud-value  8 :inline  :offset        148)
+   (strings        hud-string 14 :inline :offset        284)
+   (sprites        hud-sprite 30 :inline :offset        960)
+   (icons          hud-icon   2 :inline  :offset        2876)
+   (gui-id         sound-id              :offset        2976)
    )
   :heap-base #xb30
   :method-count-assert 27
@@ -174,18 +177,18 @@
   :flag-assert         #x1b0b300ba4
   (:methods
     (hidden? (_type_) symbol 14)
-    (hud-method-15 (_type_) none 15)
-    (hud-method-16 (_type_ int int) none 16)
-    (hud-method-17 (_type_) none 17)
-    (hud-method-18 (_type_) symbol 18)
+    (draw (_type_) none 15)
+    (update-values (_type_) none 16)
+    (init-callback (_type_) none 17)
+    (event-callback (_type_ process int symbol event-message-block) symbol 18)
     (hud-method-19 (_type_) none 19)
     (hud-method-20 (_type_) none 20)
     (hud-method-21 (_type_) none 21)
     (hud-method-22 (_type_) none 22)
     (hud-method-23 (_type_) none 23)
-    (hud-method-24 (_type_ symbol) none 24)
-    (hud-method-25 (_type_) none 25)
-    (hud-method-26 (_type_ int) none 26)
+    (check-ready-and-maybe-show (_type_ symbol) symbol 24)
+    (update-value-callback (_type_ int int) none 25)
+    (alloc-string-if-needed (_type_ int) none 26)
     )
   )
 
@@ -202,10 +205,10 @@
   (format #t "~2Tlast-hide-time: ~D~%" (-> obj last-hide-time))
   (format #t "~2Toffset: ~f~%" (-> obj offset))
   (format #t "~2Tflags: ~D~%" (-> obj flags))
-  (format #t "~2Tvalues[8] @ #x~X~%" (&-> obj values 0 type))
-  (format #t "~2Tstrings[14] @ #x~X~%" (&-> obj strings 0 type))
+  (format #t "~2Tvalues[8] @ #x~X~%" (-> obj values))
+  (format #t "~2Tstrings[14] @ #x~X~%" (-> obj strings))
   (format #t "~2Tsprites[30] @ #x~X~%" (-> obj sprites))
-  (format #t "~2Ticons[2] @ #x~X~%" (&-> obj stack 2752))
+  (format #t "~2Ticons[2] @ #x~X~%" (-> obj icons))
   (format #t "~2Tgui-id: ~D~%" (-> obj gui-id))
   (label cfg-4)
   obj
