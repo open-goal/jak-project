@@ -6,7 +6,7 @@ namespace str_util {
 
 const std::string WHITESPACE = " \n\r\t\f\v";
 
-bool contains(const std::string& s, const std::string substr) {
+bool contains(const std::string& s, const std::string& substr) {
   return s.find(substr) != std::string::npos;
 }
 
