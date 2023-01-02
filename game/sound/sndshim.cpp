@@ -242,6 +242,7 @@ void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val) {
 }
 
 void snd_SetGlobalExcite(u8 value) {
-  // TODO
-  lg::warn("Unimplemented snd_SetGlobalExcite\n");
+  if (player) {
+    player->set_global_excite(value);
+  }
 }

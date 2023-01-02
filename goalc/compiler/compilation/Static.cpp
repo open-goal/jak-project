@@ -883,6 +883,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
         throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
                              sr.constant().print(), arg_idx, content_type.print());
       }
+    }  // TODO - handle type case here as well
+    else if (sr.is_func()) {
+      ASSERT(deref_info.stride == 4);
+      structure->add_function_record(sr.function(), elt_offset);
     } else {
       ASSERT(false);
     }

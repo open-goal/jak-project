@@ -325,6 +325,28 @@ void midi_handler::meta_event() {
   m_seq_ptr += len + 2;
 }
 
+void midi_handler::controller_change() {
+  u8 channel = m_status & 0xf;
+  u8 controller = m_seq_ptr[0];
+  u8 value = m_seq_ptr[1];
+
+  switch (controller) {
+    // case 0x0: {} break; // TODO bank select
+    case 0x7: {
+      m_chanvol[channel] = static_cast<s8>(value);
+    } break;
+    case 0xa: {
+      m_chanpan[channel] = static_cast<s8>(value);
+    } break;
+    // case 0x40: {} break; // TODO damper
+    default:
+      throw midi_error(fmt::format("invalid midi controller change {}", controller));
+      break;
+  }
+
+  m_seq_ptr += 2;
+}
+
 void midi_handler::system_event() {
   // fmt::print("{}: system event {:02x}\n", m_time, *m_seq_ptr);
 
@@ -408,6 +430,9 @@ void midi_handler::step() {
         break;
       case 0x9:
         note_on();
+        break;
+      case 0xB:
+        controller_change();
         break;
       case 0xD:
         channel_pressure();
