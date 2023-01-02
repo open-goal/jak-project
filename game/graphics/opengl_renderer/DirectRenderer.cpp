@@ -797,7 +797,7 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, !adc);
 }
 
 void DirectRenderer::handle_xyz2_packed(const u8* data,
@@ -1090,7 +1090,7 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, true);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, true);
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {
@@ -1147,7 +1147,7 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
   v.rgba = rgba;
   v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
   v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
-  v.xyzf[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[2] = (float)vert[2] / (float)0xffffff;
   v.xyzf[3] = (float)vert[3];
   v.stq = st;
   v.tex_unit = unit;
