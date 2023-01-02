@@ -3066,20 +3066,20 @@
 ;; ;; LSACK
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LSACK.DGO" "lsack.gd")
+(cgo "LSACK.DGO" "lsack.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/misc/collection_task/collection-task.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/misc/collection_task/collection-task.gc"
+  )
 
-;; (copy-textures 2605)
+(copy-textures 2605)
 
-;; (copy-gos
-;;   "krew-moneybag-ag"
-;;   "lsack"
-;;   )
+(copy-gos
+  "krew-moneybag-ag"
+  "lsack"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LSAMERGD
