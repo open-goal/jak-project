@@ -9772,7 +9772,7 @@
    (data-int8 int8 32)
    (data-int32 int32 32)
    (data-float float 32)
-   (data-vector vector 32 :inline :offset-assert 800)
+   (data-vector vector 32 :inline :offset-assert 800 :score 100)
    (actor-group uint32 4 :offset-assert 1312)
    (minimap uint32 8 :offset-assert 1328)
    (hud handle 4 :offset-assert 1360)
@@ -18654,7 +18654,16 @@
 (deftype collide-query-with-vec (structure)
   "A custom type added because of weirdness discovered in task-arrow::23"
   ((cquery collide-query :inline)
-   (vec    vector :inline))
+   (vec    vector :inline)
+   )
+  )
+
+(deftype collide-query-with-2vec (structure)
+  "A custom type added because of weirdness discovered in krew-collection-item::22"
+  ((cquery collide-query :inline)
+   (vec    vector :inline)
+   (vec2   vector :inline)
+   )
   )
 
 (deftype do-push-aways-work (structure)
@@ -27970,7 +27979,7 @@
 
 (deftype pilot-info (basic)
   ((entity                  basic                    :offset-assert 4)
-   (vehicle                 uint64                   :offset-assert 8)
+   (vehicle                 handle                   :offset-assert 8)
    (left-right-interp       float                    :offset-assert 16)
    (front-back-interp       float                    :offset-assert 20)
    (up-down-interp          float                    :offset-assert 24)
@@ -51947,7 +51956,6 @@
 ;; collection-task                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype krew-collection-item (process-drawable)
   ()
   :method-count-assert 23
@@ -51956,13 +51964,12 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (krew-collection-item-method-22 () none 22)
+    (find-ground (_type_) symbol 22)
     )
   )
-|#
 
-;; (define-extern krew-collection-item-init-by-other function)
-;; (define-extern krew-collection-item-spawn function)
+(define-extern krew-collection-item-init-by-other (function vector krew-collection-item :behavior krew-collection-item))
+(define-extern krew-collection-item-spawn (function process vector krew-collection-item))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyasha-obs                    ;;
