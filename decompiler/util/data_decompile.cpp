@@ -817,7 +817,9 @@ const std::unordered_map<
           {"nav-mesh",
            {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
             {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
-          /*{"ai-task-pool", {{"tasks", ArrayFieldDecompMeta(TypeSpec("ai-task"), 48)}}}*/}}};
+          /*{"bot-course",
+           {{"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 12)}}}
+          {"ai-task-pool", {{"tasks", ArrayFieldDecompMeta(TypeSpec("ai-task"), 48)}}}*/}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
