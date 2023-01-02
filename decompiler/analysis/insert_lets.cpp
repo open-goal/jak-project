@@ -1276,7 +1276,16 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      if (set_fn2) {
+      if (env.version == GameVersion::Jak2 && set_fn && !set_fn2) {
+        // jak 2-specific made-up thing!
+        // this has only appeared once so far.
+        if (set_fn->to_form(env).is_float(0.0)) {
+          num_form = pool.form<ConstantTokenElement>("zero");
+          set_fn = nullptr;
+        } else {
+          return nullptr;
+        }
+      } else if (set_fn2) {
         auto obj_fn2 = set_fn2->to_form(env);
         if (obj_fn2.is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("min");
