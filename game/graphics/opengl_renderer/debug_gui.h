@@ -45,6 +45,7 @@ class OpenGlDebugGui {
   bool should_draw_render_debug() const { return m_draw_debug; }
   bool should_draw_profiler() const { return m_draw_profiler; }
   bool should_draw_subtitle_editor() const { return m_subtitle_editor; }
+  bool should_draw_filters_menu() const { return m_filters_menu; }
   const char* screenshot_name() const { return m_screenshot_save_name; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
@@ -74,6 +75,7 @@ class OpenGlDebugGui {
   bool m_draw_profiler = false;
   bool m_draw_debug = false;
   bool m_subtitle_editor = false;
+  bool m_filters_menu = false;
   bool m_want_screenshot = false;
   char m_screenshot_save_name[256] = "screenshot.png";
   float target_fps_input = 60.f;

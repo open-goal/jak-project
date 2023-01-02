@@ -154,12 +154,9 @@
   (set! (-> obj fire-sound) (the-as uint (new-sound-id)))
   (set! (-> obj trail-sound) (the-as uint (new-sound-id)))
   (set! (-> obj explode-sound)
-        (the-as
-          uint
-          (gui-control-method-9 *gui-control* obj (gui-channel background) (gui-action queue) "pmkrxplo" -99.0 0)
-          )
+        (the-as uint (add-process *gui-control* obj (gui-channel background) (gui-action queue) "pmkrxplo" -99.0 0))
         )
-  (gui-control-method-20 *gui-control* (the-as sound-id (-> obj explode-sound)) #t 50 150 11)
+  (set-falloff! *gui-control* (the-as sound-id (-> obj explode-sound)) #t 50 150 11)
   (set! (-> obj start-pilot?)
         (the-as basic (and *target* (logtest? (focus-status pilot) (-> *target* focus-status))))
         )
@@ -636,10 +633,10 @@
         (send-event (ppointer->process (-> self parent)) 'release)
         )
     (sound-stop (the-as sound-id (-> self trail-sound)))
-    (let ((v1-10 (gui-control-method-17 *gui-control* (the-as sound-id (-> self explode-sound)))))
+    (let ((v1-10 (get-status *gui-control* (the-as sound-id (-> self explode-sound)))))
       (cond
-        ((= v1-10 (gui-action play))
-         (gui-control-method-16
+        ((= v1-10 (gui-status ready))
+         (set-action!
            *gui-control*
            (gui-action play)
            (the-as sound-id (-> self explode-sound))
@@ -651,7 +648,7 @@
            )
          )
         (else
-          (gui-control-method-16
+          (set-action!
             *gui-control*
             (gui-action stop)
             (the-as sound-id (-> self explode-sound))
@@ -881,10 +878,9 @@
         )
       )
     (let ((gp-3 (-> self clock frame-counter)))
-      (while (or (-> self child)
-                 (and (nonzero? (gui-control-method-17 *gui-control* (the-as sound-id (-> self explode-sound))))
-                      (< (- (-> self clock frame-counter) gp-3) (seconds 10))
-                      )
+      (while (or (-> self child) (and (nonzero? (get-status *gui-control* (the-as sound-id (-> self explode-sound))))
+                                      (< (- (-> self clock frame-counter) gp-3) (seconds 10))
+                                      )
                  )
         (suspend)
         )

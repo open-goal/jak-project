@@ -6967,6 +6967,7 @@
   (text-x24d #x024d)
   (text-x24e #x024e)
   (text-x24f #x024f)
+  (text-x277 #x0277)
   (scene-subtitles-enabled #x30d)
   (scene-subtitles-disabled #x30e)
   (progress-unknown-continue #x310)
@@ -7426,19 +7427,19 @@
     (minimap-method-12 (_type_ process uint int vector int) connection-minimap 12)
     (minimap-method-13 () none 13)
     (minimap-method-14 () none 14)
-    (minimap-method-15 () none 15)
+    (minimap-method-15 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
     (minimap-method-16 () none 16)
     (minimap-method-17 () none 17)
     (minimap-method-18 () none 18)
     (minimap-method-19 () none 19)
-    (minimap-method-20 () none 20)
+    (minimap-method-20 (_type_) symbol 20)
     (minimap-method-21 () none 21)
     (minimap-method-22 () none 22)
     (minimap-method-23 () none 23)
-    (minimap-method-24 () none 24)
-    (minimap-method-25 () none 25)
+    (minimap-method-24 (_type_ dma-buffer vector4w symbol) none 24) ;; hud sprite 2 draw
+    (minimap-method-25 (_type_ texture float) none 25)
     (minimap-method-26 () none 26)
-    (minimap-method-27 () none 27)
+    (minimap-method-27 (_type_ float float) none 27)
     )
   )
 
@@ -12919,7 +12920,7 @@
    (race-total-lap-count   int32                :offset-assert 508)
    (race-position          int32                :offset-assert 512)
    (race-number-turbos     int32                :offset-assert 516)
-   (bot-health             uint32            3  :offset-assert 520)
+   (bot-health             float             3  :offset-assert 520)
    (demo-state             uint32               :offset-assert 532)
    (wanted-flash           basic                :offset-assert 536)
    (distance               float                :offset-assert 540)
@@ -12990,6 +12991,17 @@
   (fade 9)
   )
 
+(defenum gui-status
+  :type uint8 ;; not sure
+  :bitfield #f
+  (unknown 0)
+  (pending 1)
+  (ready 2)
+  (active 3)
+  (hide 4)
+  (stop 5)
+  )
+
 (defenum gui-channel
   :type uint8
   :bitfield #f
@@ -13040,12 +13052,22 @@
   (max 96)
   )
 
+(defenum gui-connection-flags
+  :type uint8
+  :bitfield #t
+  (gcf0 0)
+  (gcf1 1)
+  (fo-curve 2)
+  (fo-min 3)
+  (fo-max 4)
+  )
+
 (deftype gui-connection (connection)
   ((priority float :offset 16 :score 1)
    (action gui-action :offset 20)
    (channel gui-channel :offset 21)
    (anim-part uint8 :offset 22)
-   (flags uint8 :offset 23)
+   (flags gui-connection-flags :offset 23)
    (name string :offset 24)
    (id sound-id :offset 28)
    (handle handle :offset 0)
@@ -13082,21 +13104,21 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type int) _type_ 0)
-    (gui-control-method-9 (_type_ process gui-channel gui-action string float time-frame) sound-id 9)
-    (gui-control-method-10 (_type_ process gui-channel) none 10)
-    (gui-control-method-11 (_type_ gui-connection) int 11)
+    (add-process (_type_ process gui-channel gui-action string float time-frame) sound-id 9)
+    (remove-process (_type_ process gui-channel) none 10)
+    (stop-str (_type_ gui-connection) int 11)
     (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id 12)
     (update (_type_ symbol) int 13)
-    (gui-control-method-14 (_type_ string gui-channel gui-action) int 14)
-    (gui-control-method-15 (_type_ process gui-channel string sound-id) gui-connection 15)
-    (gui-control-method-16 (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int 16)
-    (gui-control-method-17 (_type_ sound-id) gui-action 17)
+    (lookup-gui-connection-id (_type_ string gui-channel gui-action) int 14)
+    (lookup-gui-connection (_type_ process gui-channel string sound-id) gui-connection 15)
+    (set-action! (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int 16)
+    (get-status (_type_ sound-id) gui-status 17)
     (gui-control-method-18 (_type_ gui-channel) symbol 18)
-    (gui-control-method-19 (_type_ gui-channel gui-connection) symbol 19)
-    (gui-control-method-20 (_type_ sound-id symbol int int int) gui-connection 20)
+    (handle-command-list (_type_ gui-channel gui-connection) symbol 19)
+    (set-falloff! (_type_ sound-id symbol int int int) gui-connection 20)
     (gui-control-method-21 (_type_ gui-connection vector) int 21)
     (gui-control-method-22 (_type_ gui-connection process symbol) none 22)
-    (gui-control-method-23 (_type_ gui-channel gui-channel symbol gui-connection) symbol 23)
+    (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol 23)
     (channel-id-set! (_type_ gui-connection sound-id) int 24)
     )
   )
@@ -14625,7 +14647,7 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type process-drawable pickup-type float) _type_ 0)
-    (get-gun-ammo (_type_ target) float 12)
+    (get-gun-ammo (_type_) float 12)
     )
   )
 
@@ -20906,10 +20928,12 @@
 (deftype hud-string (basic)
   ((text  string           :offset-assert 4)
    (scale float            :offset-assert 8)
-   (color uint32           :offset-assert 12)
-   (flags uint32           :offset-assert 16)
-   (pos   vector4w :inline :offset-assert 32)
+   (color font-color       :offset-assert 12)
+   (flags font-flags       :offset-assert 16)
+   ;(pos   vector4w :inline :offset-assert 32)
+   (pos int32 4 :offset 32)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -20918,6 +20942,7 @@
 (deftype hud-sprite (structure)
   ((pos     vector4w :inline :offset-assert 0)
    (color   vector4w :inline :offset-assert 16)
+   (color2 int32 4 :offset 16 :score 1)
    (flags   uint32           :offset-assert 32)
    (scale-x float            :offset-assert 36)
    (scale-y float            :offset-assert 40)
@@ -20928,7 +20953,7 @@
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (hud-sprite-method-9 (_type_ dma-buffer level) none 9)
+    (draw (_type_ dma-buffer level) none 9)
     (hud-sprite-method-10 (_type_) none 10)
     )
   )
@@ -20942,22 +20967,24 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (hud-box-method-9 (_type_ dma-buffer) none 9)
-    (hud-box-method-10 () none 10)
-    (hud-box-method-11 () none 11)
-    (hud-box-method-12 () none 12)
-    (hud-box-method-13 (_type_ dma-buffer float) int 13)
-    (hud-box-method-14 (_type_) none 14)
-    (hud-box-method-15 (_type_) none 15)
+    (draw-box-prim-only (_type_ dma-buffer) none 9)
+    (draw-box-alpha-1 (_type_ dma-buffer) none 10)
+    (draw-box-alpha-2 (_type_ dma-buffer) none 11)
+    (draw-box-alpha-3 (_type_ dma-buffer) none 12)
+    (draw-scan-and-line (_type_ dma-buffer float) int 13)
+    (setup-scissor (_type_ dma-buffer) none 14)
+    (restore-scissor (_type_ dma-buffer) none 15)
     )
   )
 
 (deftype hud-icon (basic)
   ((icon    (pointer manipy)         :offset-assert 4) ;; guessed by decompiler
-   (pos     vector4w         :inline :offset-assert 16)
+   ;(pos     vector4w         :inline :offset-assert 16)
+   (pos      int32 4                 :offset 16)
    (scale-x float                    :offset-assert 32)
    (scale-y float                    :offset-assert 36)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
@@ -20969,7 +20996,7 @@
    (flags   uint16  :offset-assert 12)
    (counter uint16  :offset-assert 14)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -20978,6 +21005,9 @@
 (defenum hud-flags
   :type uint32
   :bitfield #t
+  (disable 0)
+  (should-die 1)
+  (show 2)
   )
 
 (deftype hud (process)
@@ -20985,29 +21015,29 @@
    (last-hide-time time-frame      :offset-assert 136) ;; time-frame
    (offset         float       :offset-assert 144) ;; int32
    (flags          hud-flags   :offset-assert 148)
-   (values         hud-value  8 :inline :offset-assert 152 :score 999)
-   (strings        hud-string  14 :inline :offset-assert 288  :score 999)
-   (sprites        hud-sprite  30 :inline :offset-assert 960)
-   (icons          hud-icon 2  :inline :offset-assert 2880) ;; guessed by decompiler
-   (gui-id         sound-id      :offset-assert 2976)
+   (values         hud-value  8 :inline :offset 148)
+   (strings        hud-string  14 :inline :offset 284 :score 999)
+   (sprites        hud-sprite  30 :inline :offset 960 :score 999)
+   (icons          hud-icon 2  :inline :offset 2876) ;; guessed by decompiler
+   (gui-id         sound-id      :offset 2976)
    )
   :method-count-assert 27
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   (:methods
     (hidden? (_type_) symbol 14) ;; (hidden? (_type_) symbol 14)
-    (hud-method-15 (_type_) none 15) ;; (draw-hud (_type_) none 15)
-    (hud-method-16 (_type_ int int) none 16) ;; (tally-value (_type_ int int) none 16)
-    (hud-method-17 (_type_) none 17) ;; (draw-icons (_type_) none 17)
-    (hud-method-18 (_type_) symbol 18) ;; (draw-particles (_type_) none 18)
+    (draw (_type_) none 15) ;; (draw-hud (_type_) none 15)
+    (update-values (_type_) none 16) ;; (tally-value (_type_ int int) none 16)
+    (init-callback (_type_) none 17) ;; (draw-icons (_type_) none 17)
+    (event-callback (_type_ process int symbol event-message-block) symbol 18) ;; (draw-particles (_type_) none 18)
     (hud-method-19 (_type_) none 19) ;; (hud-update (_type_) none 19)
     (hud-method-20 (_type_) none 20) ;; (init-particles! (_type_ int) none 20)
     (hud-method-21 (_type_) none 21) ;; (get-icon-pos-x (_type_) int 21)
     (hud-method-22 (_type_) none 22) ;; (get-icon-pos-y (_type_) int 22)
     (hud-method-23 (_type_) none 23) ;; (dummy-23 (_type_) none 23)
-    (hud-method-24 (_type_ symbol) none 24) ;; (set-pos-and-scale (_type_ symbol symbol) none 24)
-    (hud-method-25 (_type_) none 25) ;; (get-icon-scale-x (_type_) float 25)
-    (hud-method-26 (_type_ int) none 26) ;; (get-icon-scale-y (_type_) float 26)
+    (check-ready-and-maybe-show "Is this element ready to be shown? If arg0 is set, show it now." (_type_ symbol) symbol 24)
+    (update-value-callback (_type_ int int) none 25) ;; (get-icon-scale-x (_type_) float 25)
+    (alloc-string-if-needed (_type_ int) none 26) ;; (get-icon-scale-y (_type_) float 26)
     )
   )
 
@@ -21495,7 +21525,7 @@
     (gone () _type_ :state 23) ;; (adjust-ratios (_type_ symbol symbol) none 23)
     (init-defaults "Initialize default menu settings." (_type_) connection 24) ;; (draw-fuel-cell-screen (_type_ int) none 24)
     (progress-method-25 (_type_) none 25) ;; (draw-money-screen (_type_ int) none 25)
-    (progress-method-26 (_type_) object 26) ;; (draw-buzzer-screen (_type_ int) none 26)
+    (is-gone (_type_) object 26) ;; (draw-buzzer-screen (_type_ int) none 26)
     (can-go-back? (_type_) symbol 27) ;; (draw-notice-screen (_type_) none 27)
     (progress-method-28 (_type_ symbol) symbol 28) ;; (draw-options (_type_ int int float) none 28)
     (progress-method-29 (_type_) int 29) ;; (respond-common (_type_) none 29)
@@ -21570,7 +21600,7 @@
 
 (deftype menu-slider-option (menu-option)
   ((value-to-modify pointer              :offset-assert 48)
-   (sprites         hud-sprite 5 :inline :offset-assert 64) ;; guess
+   (sprites         hud-sprite 5 :inline :offset 64) ;; guess
    )
   :method-count-assert 12
   :size-assert         #x180
@@ -21639,7 +21669,7 @@
   )
 
 (deftype menu-memcard-slot-option (menu-option)
-  ((sprites hud-sprite 5 :inline :offset-assert 48 :score 999) ;; total guess
+  ((sprites hud-sprite 5 :inline :offset 48 :score 999) ;; total guess
    (pad uint8 32)
    )
   :method-count-assert 12
@@ -21732,7 +21762,7 @@
   )
 
 (deftype menu-icon-info-option (menu-option)
-  ((sprites hud-sprite 2 :inline :offset-assert 48)
+  ((sprites hud-sprite 2 :inline :offset 48)
    )
   :method-count-assert 12
   :size-assert         #xb0
@@ -21862,7 +21892,7 @@
 
 (deftype menu-highscores-option (paged-menu-option)
   ((last-move uint64    :offset-assert 64)
-   (sprites   hud-sprite 2 :inline :offset-assert 80)
+   (sprites   hud-sprite 2 :inline :offset 80)
    )
   :method-count-assert 12
   :size-assert         #xd0
@@ -21891,7 +21921,7 @@
    (num-hero-items  int32     :offset-assert 60)
    (secret-items    (array secret-item-option)     :offset-assert 64)
    (last-move       uint64    :offset-assert 72)
-   (sprites         hud-sprite 2 :inline :offset-assert 80)
+   (sprites         hud-sprite 2 :inline :offset 80)
    )
   :method-count-assert 12
   :size-assert         #xd0
@@ -25211,7 +25241,7 @@
    (notify     handle                 :offset-assert 456)
    (force      symbol                 :offset-assert 464)
    (state-time time-frame             :offset-assert 472)
-   (icon       hud-sprite     :inline :offset-assert 480)
+   (icon       hud-sprite     :inline :offset 480)
    )
   :method-count-assert 23
   :size-assert         #x214
@@ -30344,7 +30374,8 @@
    (mask-tmpl   dma-gif-packet :inline :offset-assert 160)
    (line-tmpl   dma-gif-packet :inline :offset-assert 192)
    (scan-tmpl   dma-gif-packet :inline :offset-assert 224)
-   (line-color  vector4w :inline                 :offset-assert 256)
+   ;(line-color  vector4w :inline                 :offset-assert 256)
+   (line-color  gs-rgbaq)
    (scan-colors vector4w         32  :inline    :offset 272)
    (scanline    uint32                 :offset 784)
    )
@@ -30354,25 +30385,25 @@
   )
 
 (define-extern *hud-sprite-work* hud-sprite-work)
-(define-extern hud-create-icon (function none))
+(define-extern hud-create-icon (function hud int int (pointer manipy)))
 (define-extern hud-hidden (state hud)) ;; (state hud)
 (define-extern hud-arriving (state hud)) ;;
 (define-extern hud-in (state hud)) ;; (state hud)
-(define-extern hud-leaving (state int hud)) ;; (state int hud)
+(define-extern hud-leaving (state float hud)) ;; (state int hud)
 (define-extern hud-init-by-other (function object :behavior hud))
 (define-extern hide-hud (function symbol none))
-;; (define-extern enable-hud function) ;; (function none)
+(define-extern enable-hud (function none))
 (define-extern hide-hud-quick (function symbol none))
 (define-extern show-hud (function object none))
 (define-extern hud-hidden? (function symbol))
 (define-extern set-hud-piece-position! (function hud-sprite int int none))
-;; (define-extern set-as-offset-from! function)
+(define-extern set-as-offset-from! (function hud-sprite vector4w int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-classes                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *hud-skullgem* object)
+(define-extern *hud-skullgem* (pointer hud-skullgem))
 (define-extern activate-hud (function target none)) ;; (function process none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

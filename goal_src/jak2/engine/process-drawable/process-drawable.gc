@@ -219,7 +219,7 @@
   )
 
 (defmethod lod-set! draw-control ((obj draw-control) (arg0 int))
-  (let ((v1-1 (max 0 (min arg0 (the-as int (-> obj lod-set max-lod))))))
+  (let ((v1-1 (max 0 (min arg0 (-> obj lod-set max-lod)))))
     (set! (-> obj desired-lod) v1-1)
     (when (!= (-> obj cur-lod) v1-1)
       (set! (-> obj mgeo) (-> obj lod-set lod v1-1 geo))
@@ -235,7 +235,7 @@
 
 (defmethod lods-assign! draw-control ((obj draw-control) (arg0 lod-set))
   (mem-copy! (the-as pointer (-> obj lod-set)) (the-as pointer arg0) 49)
-  (let ((a1-2 (min (-> obj cur-lod) (the-as int (-> obj lod-set max-lod)))))
+  (let ((a1-2 (min (-> obj cur-lod) (-> obj lod-set max-lod))))
     (set! (-> obj cur-lod) -1)
     (lod-set! obj a1-2)
     )
@@ -275,8 +275,8 @@
   (let ((v1-0 (-> arg1 length))
         (s3-0 (-> arg0 max-lod))
         )
-    (set! (-> obj max-lod) (the-as int s3-0))
-    (dotimes (a0-1 (the-as int (+ s3-0 1)))
+    (set! (-> obj max-lod) s3-0)
+    (dotimes (a0-1 (+ s3-0 1))
       (when (or (< (-> arg0 mgeo a0-1) 0) (>= (-> arg0 mgeo a0-1) v1-0))
         (set! obj (the-as lod-set #f))
         (goto cfg-22)
@@ -519,7 +519,7 @@
       (let ((a2-3 *temp-string*))
         (add-debug-text-3d #t (bucket-id debug-no-zbuf1) a2-3 s3-0 (font-color blue-#003cf1) s5-0)
         )
-      (set! (-> s5-0 x) (the-as int (+ (-> s5-0 x) 10)))
+      (+! (-> s5-0 x) 10)
       )
     )
   (none)
@@ -569,13 +569,13 @@
 
 (defstate process-drawable-art-error (process-drawable)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'nav-mesh-kill)
-                       (deactivate self)
-                       #t
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('nav-mesh-kill)
+                      (deactivate self)
+                      #t
+                      )
+                     )
+            )
     )
   :code (behavior ((arg0 string))
           (format 0 "ART ERROR: ~A for ~A~%" arg0 self)

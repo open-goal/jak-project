@@ -36,7 +36,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
 
   // HACK - this is disabled for now. This probably works, but the expression pass needs
   // a way to get the decisions.
-  type.type = TP_Type::make_from_ts(out.front().result_type);
+  type.type = TP_Type::make_from_ts(coerce_to_reg_type(out.front().result_type));
   return;
 
   // see if we've tagged this instruction in a previous iteration..
@@ -51,7 +51,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       for (auto& sel : out) {
         if (sel.result_type == desired_type) {
           // found one, take it.
-          type.type = TP_Type::make_from_ts(desired_type);
+          type.type = TP_Type::make_from_ts(coerce_to_reg_type(desired_type));
           return;
         }
       }
@@ -59,11 +59,11 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       // use the first one (highest scored).
       lg::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
                 desired_type.print());
-      type.type = TP_Type::make_from_ts(out.front().result_type);
+      type.type = TP_Type::make_from_ts(coerce_to_reg_type(out.front().result_type));
       return;
     } else {
       // we've got a tag, but no info, just pick the first.
-      type.type = TP_Type::make_from_ts(out.front().result_type);
+      type.type = TP_Type::make_from_ts(coerce_to_reg_type(out.front().result_type));
       return;
     }
   } else {
@@ -81,7 +81,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       // don't think this should be possible
       lg::warn("Tag lock prevented the creation of a tag in types2_from_ambiguous_deref");
     }
-    type.type = TP_Type::make_from_ts(out.front().result_type);
+    type.type = TP_Type::make_from_ts(coerce_to_reg_type(out.front().result_type));
     return;
   }
 }

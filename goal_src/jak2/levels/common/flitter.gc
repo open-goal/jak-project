@@ -399,10 +399,10 @@
   )
 
 
-(defskelgroup skel-flitter flitter 0 -1
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+(defskelgroup skel-flitter flitter flitter-lod0-jg -1
+              ((flitter-lod0-mg (meters 20)) (flitter-lod1-mg (meters 40)) (flitter-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5.5)
-              :shadow 4
+              :shadow flitter-shadow-mg
               :origin-joint-index 3
               )
 
@@ -590,7 +590,7 @@
 (defmethod enemy-method-78 flitter ((obj flitter) (arg0 (pointer float)))
   (case (-> obj incoming knocked-type)
     (((knocked-type knocked-type-6))
-     (when (>= (the-as uint (-> obj incoming blue-juggle-count)) (the-as uint 2))
+     (when (>= (-> obj incoming blue-juggle-count) (the-as uint 2))
        (let ((v1-4 (-> obj skel root-channel 0)))
          (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> obj draw art-group data 22)))
          (set! (-> v1-4 param 0)
@@ -739,8 +739,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 10)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) frames num-frames) -1)))
+    (ja-no-eval :group! flitter-ambush-jump-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flitter-ambush-jump-ja) frames num-frames) -1)))
                 )
     (until #f
       (when (< (-> self base-height) (-> self root-override2 trans y))
@@ -814,8 +814,8 @@
       )
     #f
     (label cfg-26)
-    (ja-no-eval :group! (-> self draw art-group data 11)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+    (ja-no-eval :group! flitter-ambush-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flitter-ambush-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -979,7 +979,7 @@
           0
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.2))
-          (ja :group! (-> self draw art-group data 15))
+          (ja :group! flitter-turn-ja)
           (ja :num-func num-func-identity :frame-num 0.0)
           (until (enemy-method-96 self 1820.4445 #t)
             (ja-blend-eval)
@@ -1249,17 +1249,17 @@
   :code (behavior ()
     (ja-channel-push! 2 (seconds 0.1))
     (let ((f30-0 (flitter-method-183 self)))
-      (ja-no-eval :group! (-> self draw art-group data 16)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)) 0.8)
+      (ja-no-eval :group! flitter-attack-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flitter-attack-ja) frames num-frames) -1)) 0.8)
                   :frame-num 0.0
                   )
       (let ((a0-3 (-> self skel root-channel 1)))
         (set! (-> a0-3 frame-interp 1) f30-0)
         (set! (-> a0-3 frame-interp 0) f30-0)
-        (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
+        (set! (-> a0-3 frame-group) (the-as art-joint-anim flitter-attack-high-ja))
         (set! (-> a0-3 param 0) 0.0)
         (set! (-> a0-3 frame-num) 0.0)
-        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-chan)
+        (joint-control-channel-group! a0-3 (the-as art-joint-anim flitter-attack-high-ja) num-func-chan)
         )
       (until (ja-done? 0)
         (suspend)
@@ -1284,8 +1284,8 @@
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (dotimes (gp-1 (get-rand-int self 3))
-      (ja-no-eval :group! (-> self draw art-group data 5)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+      (ja-no-eval :group! flitter-idle-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flitter-idle-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
