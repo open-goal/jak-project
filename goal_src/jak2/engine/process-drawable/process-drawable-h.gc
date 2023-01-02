@@ -273,6 +273,7 @@
    - (chan channel) = copy frame from another channel.
    - min = the start of the animation.
    - max = the end of the animation.
+   - zero = frame zero.
    "
 
   (let* ((num-args (if (pair? num!) (cdr num!) '()))
@@ -281,7 +282,7 @@
               ((or (eq? num! 'identity)
                    (eq? num! 'min)
                    (eq? num! 'max)
-                   )
+                   (eq? num! 'zero))
                    'num-func-identity)
               ((eq? num! 'none) 'num-func-none)
               ((eq? num! '+!) 'num-func-+!)
@@ -313,11 +314,13 @@
                 (cond
                   ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
                   )))
-        (frame-num (if (eq? 'max frame-num) (if group!
+        (frame-num (cond
+                      ((eq? 'max frame-num) (if group!
                                                 `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
                                                 `(the float (1- (-> ja-ch frame-group frames num-frames)))
-                                                )
-                                            frame-num))
+                                                ))
+                      ((eq? 'zero frame-num) 0)
+                      (#t frame-num)))
         (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
       )
   `(let ((ja-ch (-> self skel root-channel ,chan)))
