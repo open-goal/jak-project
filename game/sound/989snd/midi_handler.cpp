@@ -325,6 +325,14 @@ void midi_handler::meta_event() {
   m_seq_ptr += len + 2;
 }
 
+static s16 midiTo360Pan(u8 pan) {
+  if (pan >= 64) {
+    return (s16)(90 * (pan - 64) / 63);
+  } else {
+    return (s16)(90 * pan / 64 + 270);
+  }
+}
+
 void midi_handler::controller_change() {
   u8 channel = m_status & 0xf;
   u8 controller = m_seq_ptr[0];
@@ -336,7 +344,7 @@ void midi_handler::controller_change() {
       m_chanvol[channel] = static_cast<s8>(value);
     } break;
     case 0xa: {
-      m_chanpan[channel] = static_cast<s8>(value);
+      m_chanpan[channel] = midiTo360Pan(static_cast<s8>(value));
     } break;
     // case 0x40: {} break; // TODO damper
     default:
