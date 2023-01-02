@@ -556,6 +556,9 @@ void InitMachine_PCPort() {
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
+  // debugging tools
+  make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
+
   // init ps2 VM
   if (VM::use) {
     make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
