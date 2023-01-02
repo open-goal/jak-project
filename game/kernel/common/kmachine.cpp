@@ -555,11 +555,11 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
   // Currently very dumb contains check
   for (const auto& filter : filters) {
     if (filter.type == DebugTextFilter::Type::CONTAINS) {
-      if (!str.empty() && !filter.content.empty() && str_util::contains(str, filter.content)) {
+      if (!str.empty() && !filter.content.empty() && !str_util::contains(str, filter.content)) {
         return s7.offset + true_symbol_offset(g_game_version);
       }
     } else if (filter.type == DebugTextFilter::Type::NOT_CONTAINS) {
-      if (!str.empty() && !filter.content.empty() && !str_util::contains(str, filter.content)) {
+      if (!str.empty() && !filter.content.empty() && str_util::contains(str, filter.content)) {
         return s7.offset + true_symbol_offset(g_game_version);
       }
     } else if (filter.type == DebugTextFilter::Type::REGEX) {

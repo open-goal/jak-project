@@ -41,6 +41,9 @@ void FiltersMenu::draw_window() {
       new_filter.type = DebugTextFilter::Type::NOT_CONTAINS;
       current_filters.push_back(new_filter);
     }
+    if (ImGui::Button("Clear Filters")) {
+      current_filters.clear();
+    }
     // TODO - can't use regexes because i can't check it it's a valid regex without using a
     // try-catch and this has issues running within gk
     //
