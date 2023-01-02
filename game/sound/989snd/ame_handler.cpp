@@ -10,6 +10,7 @@ namespace snd {
 
 // added!
 u64 SoundFlavaHack = 0;
+u8 GlobalExcite = 0;
 
 ame_handler::ame_handler(MultiMIDIBlockHeader* block,
                          voice_manager& vm,
@@ -137,26 +138,40 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
   bool done = false;
   bool cont = true;
 
+  // fmt::print("AME SCRIPT ----\n");
+  // u8* dbgstream = stream;
+  // while (!done) {
+  //   fmt::print("{:02x} ", *dbgstream);
+  //   dbgstream++;
+
+  //  if (*dbgstream == 0xf7) {
+  //    dbgstream++;
+  //    done = true;
+  //  }
+  //}
+  // done = false;
+  // fmt::print("\n -------\n");
+
   while (!done) {
     auto op = static_cast<u8>(*stream++);
     switch (op) {
       case 0x0: {
         AME_BEGIN(op)
-        if (m_excite <= (stream[0] + 1)) {
+        if (GlobalExcite <= (stream[0] + 1)) {
           skip = 1;
         }
         AME_END(1)
       } break;
       case 0x1: {
         AME_BEGIN(op)
-        if (m_excite != (stream[0] + 1)) {
+        if (GlobalExcite != (stream[0] + 1)) {
           skip = 1;
         }
         AME_END(1)
       } break;
       case 0x2: {
         AME_BEGIN(op)
-        if (m_excite > (stream[0] + 1)) {
+        if (GlobalExcite > (stream[0] + 1)) {
           skip = 1;
         }
         AME_END(1)
@@ -213,12 +228,12 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         AME_BEGIN(op)
         cont = false;
         done = true;
-        start_segment(m_register[stream[0] - 1]);
+        start_segment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xe: {
         AME_BEGIN(op)
-        start_segment(m_register[stream[0] - 1]);
+        start_segment(m_register[stream[0]] - 1);
         AME_END(1)
       } break;
       case 0xf: {
@@ -249,7 +264,7 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         u8 group = stream[0];
         u8 comp = 0;
         if (m_groups[group].basis == 0) {
-          comp = m_excite;
+          comp = GlobalExcite;
         } else {
           comp = m_register[m_groups[group].basis - 1];
         }
