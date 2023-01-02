@@ -104,6 +104,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
 
     if (ImGui::BeginMenu("Tools")) {
       ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      ImGui::MenuItem("Filters", nullptr, &m_filters_menu);
       ImGui::EndMenu();
     }
 
