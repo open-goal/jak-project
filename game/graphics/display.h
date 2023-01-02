@@ -80,7 +80,11 @@ class GfxDisplay {
   GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
   GfxDisplayMode fullscreen_mode() { return m_fullscreen_mode; }
   int fullscreen_screen() const { return m_fullscreen_screen; }
-  void set_imgui_visible(bool visible) { m_imgui_visible = visible; }
+  void set_imgui_visible(bool visible) {
+    m_imgui_visible = visible;
+    Gfx::g_debug_settings.show_imgui = visible;
+    Gfx::g_debug_settings.save_settings();
+  }
   bool is_imgui_visible() const { return m_imgui_visible; }
   bool windowed() { return fullscreen_mode() == GfxDisplayMode::Windowed; }
 

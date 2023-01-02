@@ -10,6 +10,7 @@
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
+#include "game/tools/filter_menu/filter_menu.h"
 #include "game/tools/subtitles/subtitle_editor.h"
 
 struct RenderOptions {
@@ -17,6 +18,7 @@ struct RenderOptions {
   bool draw_profiler_window = false;
   bool draw_small_profiler_window = false;
   bool draw_subtitle_editor_window = false;
+  bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
   int msaa_samples = 4;
@@ -136,6 +138,7 @@ class OpenGLRenderer {
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
   SubtitleEditor m_subtitle_editor;
+  FiltersMenu m_filters_menu;
 
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;
   std::vector<BucketCategory> m_bucket_categories;
