@@ -58,9 +58,11 @@ bool ame_handler::tick() {
 };
 
 void ame_handler::start_segment(u32 id) {
-  auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
-  m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
-                                                     m_locator, m_bank, this));
+  if (m_midis.find(id) == m_midis.end()) {
+    auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
+    m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
+                                                       m_locator, m_bank, this));
+  }
 }
 
 void ame_handler::stop() {
