@@ -2,6 +2,7 @@
 #include "XSocketServer.h"
 
 #include "common/cross_sockets/XSocket.h"
+#include "common/common_types.h"
 
 #include "third-party/fmt/core.h"
 
@@ -41,7 +42,7 @@ bool XSocketServer::init_server() {
     return false;
   }
 
-#ifdef __linux
+#ifdef OS_POSIX
   int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
 #elif _WIN32
   int server_socket_opt = SO_EXCLUSIVEADDRUSE;

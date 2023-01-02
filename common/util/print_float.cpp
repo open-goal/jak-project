@@ -208,3 +208,15 @@ int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
   }
   return i;
 }
+
+bool proper_float(float value) {
+  u32 int_value;
+  memcpy(&int_value, &value, 4);
+  u8 exp = (int_value >> 23) & 0xff;
+  u32 mant = int_value & 0x7fffff;
+  if ((exp == 0 && mant != 0) || exp == 0xff || !std::isfinite(value)) {
+    return false;
+  } else {
+    return true;
+  }
+}

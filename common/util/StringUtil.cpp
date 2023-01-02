@@ -1,5 +1,7 @@
 #include "StringUtil.h"
 
+#include <regex>
+
 #include "diff.h"
 
 namespace str_util {
@@ -26,6 +28,26 @@ std::string rtrim(const std::string& s) {
 
 std::string trim(const std::string& s) {
   return rtrim(ltrim(s));
+}
+
+int line_count(const std::string& str) {
+  int result = 0;
+  for (auto& c : str) {
+    if (c == '\n') {
+      result++;
+    }
+  }
+  return result;
+}
+
+// NOTE - this won't work running within gk.exe!
+bool valid_regex(const std::string& regex) {
+  try {
+    std::regex re(regex);
+  } catch (const std::regex_error& e) {
+    return false;
+  }
+  return true;
 }
 
 std::vector<std::string> split(const ::std::string& str, char delimiter) {

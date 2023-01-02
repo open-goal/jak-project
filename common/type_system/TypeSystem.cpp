@@ -7,6 +7,7 @@
 
 #include "TypeSystem.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 #include "common/log/log.h"
@@ -953,8 +954,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
     int aligned_offset = align(offset, field_alignment);
     field.mark_as_user_placed();
     if (offset != aligned_offset) {
-      throw_typesystem_error("Tried to place field {} at {}, but it is not aligned correctly\n",
-                             field_name, offset);
+      throw_typesystem_error(
+          "Tried to place field {} at {}, but it is not aligned correctly, requires {}\n",
+          field_name, offset, field_alignment);
     }
   }
 
@@ -1267,6 +1269,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
             "Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
       }
+      // TODO - crashes LSP
       ASSERT(field_type->is_reference());
       return field.array_size() * align(field_type->get_size_in_memory(),
                                         field_type->get_inline_array_stride_alignment());

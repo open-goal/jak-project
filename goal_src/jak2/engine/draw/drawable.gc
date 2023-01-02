@@ -7,13 +7,19 @@
 
 ;; DECOMP BEGINS
 
-;; TODO
-
 (defmacro spr-work ()
   `(the work-area *fake-scratchpad-data*))
 
+;;;;;;;;;;;;;;;;;;;;
+;; culling
+;;;;;;;;;;;;;;;;;;;;
+
+;; these functions check to see if objects are within view.
+;; these use the math-camera values, which is calculated based on the in-game camera position/settings.
+
 (defun sphere-cull ((arg0 vector))
-  "Is the given sphere in the view frustum?"
+  "Is the given sphere in the view frustum?
+   Uses the planes in vf16-vf19."
   (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -26,10 +32,10 @@
          )
         ;; modified for PC: these register would be loaded by the draw method of bsp.
         (let ((at-0 *math-camera*))
-          (.lvf vf16 (&-> at-0 guard-plane 0 quad))
-          (.lvf vf17 (&-> at-0 guard-plane 1 quad))
-          (.lvf vf18 (&-> at-0 guard-plane 2 quad))
-          (.lvf vf19 (&-> at-0 guard-plane 3 quad))
+          (.lvf vf16 (&-> at-0 plane 0 quad))
+          (.lvf vf17 (&-> at-0 plane 1 quad))
+          (.lvf vf18 (&-> at-0 plane 2 quad))
+          (.lvf vf19 (&-> at-0 plane 3 quad))
           )
     (init-vf0-vector)
     (.lvf vf10 (&-> arg0 quad))
@@ -37,6 +43,10 @@
     (.add.mul.y.vf acc vf17 vf10 acc)
     (.add.mul.z.vf acc vf18 vf10 acc)
     (.sub.mul.w.vf vf9 vf19 vf0 acc)
+
+    ;; checking to see if we are inside all 4 planes.
+
+    ;; using the inside part of the sphere
     (.add.w.vf vf9 vf9 vf10)
     (.mov v1-0 vf9)
     (.pcgtw v1-1 0 v1-0)
@@ -71,6 +81,10 @@
         (.add.mul.y.vf acc vf21 vf10 acc)
         (.add.mul.z.vf acc vf22 vf10 acc)
         (.sub.mul.w.vf vf9 vf23 vf0 acc)
+
+        ;; checking to see if we are outside any 1 of the 4 planes
+
+        ;; using the outside part of the sphere.
         (.sub.w.vf vf9 vf9 vf10)
         (.mov v1-0 vf9)
         (.pcgtw v1-1 0 v1-0)
@@ -81,8 +95,8 @@
 
 (defun sphere-in-view-frustum? ((arg0 sphere))
   "Is the given sphere in the view frustum?
-   Safe to use anywhere (unlike sphere-cull, which only works if service-mouse
-   registers are still set from draw bsp.)
+   Safe to use anywhere, uses planes from math-camera.
+   Unlike sphere-cull, which assumes that the register are setup.
    "
   (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
   (rlet ((acc :class vf)
@@ -115,7 +129,8 @@
   )
 
 (defun line-in-view-frustum? ((arg0 vector) (arg1 vector))
-  "Is the line segment at least partially in the view frustum?"
+  "Is the line segment at least partially in the view frustum?
+   Safe to use anywhere, uses planes in math-camera."
   (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128) (a0-1 uint128) (a0-2 uint128) (a0-3 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -152,6 +167,10 @@
     (zero? (logand (the-as int v1-3) (the-as int a0-3)))
     )
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; precomputed visibility
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun vis-cull ((id int))
   "Is this thing visible in the precomputed visiblity data? By draw-node id.
@@ -264,27 +283,565 @@
   arg1
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; instance system
+;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; instance debug
 (define *edit-instance* (the-as string #f))
 (when *debug-segment*
   (define *instance-mem-usage* (new 'debug 'memory-usage-block))
   )
 
-;; todo find-instance-by-name-level
+(defun find-instance-by-name-level ((arg0 string) (arg1 level))
+  "Look in the given level for prototypes with the given name.
+   Will find both tie and shrub.
+   Despite the name, returns the _prototype_, not the instance (the instances aren't named)."
+  (let ((s5-0 (-> arg1 bsp drawable-trees)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (let ((v1-3 (-> s5-0 trees s4-0)))
+        (case (-> v1-3 type)
+          ((drawable-tree-instance-shrub)
+           (let ((s3-0 (-> (the-as drawable-tree-instance-shrub v1-3) info prototype-inline-array-shrub)))
+             (dotimes (s2-0 (-> s3-0 length))
+               (if (string= arg0 (-> s3-0 data s2-0 name))
+                   (return (-> s3-0 data s2-0))
+                   )
+               )
+             )
+           )
+          ((drawable-tree-instance-tie)
+           (let ((s3-1 (-> (the-as drawable-tree-instance-tie v1-3) prototypes prototype-array-tie)))
+             (dotimes (s2-1 (-> s3-1 length))
+               (if (string= arg0 (-> s3-1 array-data s2-1 name))
+                   (return (-> s3-1 array-data s2-1))
+                   )
+               )
+             )
+           )
+          )
+        )
+      )
+    )
+  (the-as prototype-bucket #f)
+  )
 
-;; todo: hack
-(defun find-instance-by-name ((a0-0 string))
-  (the prototype-bucket #f))
+(defun find-instance-by-name ((arg0 string))
+  "Look in all levels for prototypes with the given name.
+   Will find both tie and shrub.
+   Despite the name, returns the _prototype_, not the instance (the instances aren't named)."
+  (dotimes (s5-0 (-> *level* length))
+    (let ((a1-0 (-> *level* level s5-0)))
+      (when (= (-> a1-0 status) 'active)
+        (let ((a0-4 (find-instance-by-name-level arg0 a1-0)))
+          (if a0-4
+              (return a0-4)
+              )
+          )
+        )
+      )
+    )
+  (the-as prototype-bucket #f)
+  )
 
-;; todo prototypes-game-visible-set!
-;; todo find-instance-by-index
-;; todo prototype-bucket-type
-;; todo prototype-bucket-recalc-fields
-;; todo print-prototype-list
-;; todo draw-instance-info
-;; todo set-shadow-by-name
-;; todo get-shadow-by-name
-;; todo teleport-camera-by-name
+(defun prototypes-game-visible-set! ((arg0 pair) (arg1 symbol))
+  "Set the visibility of the given prototypes, to hide stuff in levels that shouldn't appear.
+   Also disables collision."
+  (let ((a0-1 (car arg0)))
+    (while (not (null? arg0))
+      (let ((v1-0 (find-instance-by-name (the-as string a0-1))))
+        (when v1-0
+          (if arg1
+              (logclear! (-> v1-0 flags) (prototype-flags visible no-collide))
+              (logior! (-> v1-0 flags) (prototype-flags visible no-collide))
+              )
+          )
+        )
+      (set! arg0 (cdr arg0))
+      (set! a0-1 (car arg0))
+      )
+    )
+  0
+  )
+
+(defun-debug find-instance-by-index ((arg0 type) (arg1 int) (arg2 bsp-header))
+  "Find an instance by its index in the bsp's drawable-tree-instance array.
+   The type should be either drawable-tree-instance-shrub or drawable-tree-instance-tie.
+   If bsp-header isn't set, picks the first active level. Otherwise looks in the level with this bsp."
+  (dotimes (v1-0 (-> *level* length))
+    (let ((a3-3 (-> *level* level v1-0)))
+      (when (= (-> a3-3 status) 'active)
+        (let ((a3-4 (-> a3-3 bsp)))
+          (when (or (not arg2) (= a3-4 arg2))
+            (let ((a3-5 (-> a3-4 drawable-trees)))
+              (dotimes (t0-5 (-> a3-5 length))
+                (let ((t1-3 (-> a3-5 trees t0-5)))
+                  (case (-> t1-3 type)
+                    ((drawable-tree-instance-shrub)
+                     (when (= arg0 (-> t1-3 type))
+                       (let ((v1-2 (-> (the-as drawable-tree-instance-shrub t1-3) info prototype-inline-array-shrub)))
+                         (return (-> v1-2 data arg1))
+                         )
+                       )
+                     )
+                    ((drawable-tree-instance-tie)
+                     (when (= arg0 (-> t1-3 type))
+                       (let ((v1-5 (-> (the-as drawable-tree-instance-tie t1-3) prototypes prototype-array-tie)))
+                         (return (-> v1-5 array-data arg1))
+                         )
+                       )
+                     )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as prototype-bucket #f)
+  )
+
+(defun-debug prototype-bucket-type ((arg0 prototype-bucket))
+  "Get the instance type for this bucket. Will always be instance-shrubbery/instance-tie, doesn't
+   consider generic/billboard stuff."
+
+  ;; using 1 here to avoid generic stuff.
+  (case (-> arg0 geometry 1 type)
+    ((prototype-shrubbery shrubbery)
+     instance-shrubbery
+     )
+    ((prototype-tie prototype-tie tie-fragment)
+     instance-tie
+     )
+    )
+  )
+
+(defun-debug prototype-bucket-recalc-fields ((arg0 prototype-bucket))
+  "Recalculate the dists for a prototype (either tie or shrub) after it has been adjusted."
+  (case (prototype-bucket-type arg0)
+    ((instance-shrubbery)
+     (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists x))))
+     )
+    (else
+      (set! (-> arg0 dists z) (+ (-> arg0 dists x) (* 0.33333334 (- (-> arg0 dists w) (-> arg0 dists x)))))
+      (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists z) (-> arg0 dists x))))
+      )
+    )
+  (set! (-> arg0 rdists z) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists z))))
+  (set! (-> arg0 dists y) (* 0.5 (-> arg0 dists x)))
+  (set! (-> arg0 rdists y) (/ 1.0 (-> arg0 dists y)))
+  arg0
+  )
+
+(defun-debug print-prototype-list ()
+  "Print all prototypes in all loaded levels."
+  (local-vars (sv-16 (function prototype-bucket-shrub memory-usage-block int prototype-bucket-shrub)))
+  (dotimes (gp-0 (-> *level* length))
+    (let ((s5-0 (-> *level* level gp-0)))
+      (when (= (-> s5-0 status) 'active)
+        (format #t "-------- level ~S~%" (-> s5-0 name))
+        (let ((s5-1 (-> s5-0 bsp drawable-trees)))
+          (dotimes (s4-0 (-> s5-1 length))
+            (let ((v1-8 (-> s5-1 trees s4-0)))
+              (case (-> v1-8 type)
+                ((drawable-tree-instance-shrub)
+                 (let ((s3-0 (-> (the-as drawable-tree-instance-shrub v1-8) info prototype-inline-array-shrub)))
+                   (dotimes (s2-0 (-> s3-0 length))
+                     0
+                     (let ((s1-0 (-> s3-0 data s2-0)))
+                       (dotimes (s0-0 4)
+                         (reset! *instance-mem-usage*)
+                         (if (nonzero? (-> s1-0 geometry s0-0))
+                             (mem-usage (-> s1-0 geometry s0-0) *instance-mem-usage* 0)
+                             )
+                         )
+                       (let ((s0-1 s1-0))
+                         (set! sv-16 (method-of-object s0-1 mem-usage))
+                         (let ((a1-4 (reset! *instance-mem-usage*))
+                               (a2-2 0)
+                               )
+                           (sv-16 s0-1 a1-4 a2-2)
+                           )
+                         )
+                       (let ((v1-29 (calculate-total *instance-mem-usage*)))
+                         (format
+                           #t
+                           " ~-48S~4D   shrub ~5,,2fK   ~4,,2fK~%"
+                           (-> s1-0 name)
+                           (-> s1-0 in-level)
+                           (* 0.0009765625 (the float v1-29))
+                           (* 0.0009765625 (the float (* (the-as uint 80) (-> s1-0 in-level))))
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+                ((drawable-tree-instance-tie)
+                 (let ((s3-1 (-> (the-as drawable-tree-instance-tie v1-8) prototypes prototype-array-tie)))
+                   (dotimes (s2-1 (-> s3-1 length))
+                     0
+                     (let ((s1-1 (-> s3-1 array-data s2-1)))
+                       (reset! *instance-mem-usage*)
+                       (dotimes (s0-2 4)
+                         (when (nonzero? (-> s1-1 tie-geom s0-2))
+                           (let* ((a0-13 (-> s1-1 tie-geom s0-2))
+                                  (t9-8 (method-of-object a0-13 mem-usage))
+                                  (a1-7 *instance-mem-usage*)
+                                  (v1-47 s0-2)
+                                  )
+                             (t9-8 a0-13 a1-7 (logior (cond
+                                                        ((= v1-47 1)
+                                                         4
+                                                         )
+                                                        ((= v1-47 2)
+                                                         8
+                                                         )
+                                                        ((= v1-47 3)
+                                                         16
+                                                         )
+                                                        (else
+                                                          0
+                                                          )
+                                                        )
+                                                      2
+                                                      )
+                                   )
+                             )
+                           )
+                         )
+                       (mem-usage s1-1 *instance-mem-usage* 0)
+                       (let ((v1-54 (calculate-total *instance-mem-usage*)))
+                         (format
+                           #t
+                           " ~-48S~4D   tie   ~5,,2fK   ~4,,2fK~%"
+                           (-> s1-1 name)
+                           (-> s1-1 in-level)
+                           (* 0.0009765625 (the float v1-54))
+                           (* 0.0009765625 (the float (* (-> s1-1 in-level) 64)))
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug draw-instance-info ((arg0 string))
+  "Print info about a prototype."
+  (local-vars
+    (sv-16 uint)
+    (sv-32 uint32)
+    (sv-48 uint32)
+    (sv-64 int)
+    (sv-80 int)
+    (sv-96 int)
+    (sv-112 int)
+    (sv-128 int)
+    (sv-144 int)
+    )
+  (when (and *display-instance-info* *edit-instance*)
+    (let ((s5-0 (find-instance-by-name *edit-instance*)))
+      (when s5-0
+        (dotimes (s4-0 (-> *level* length))
+          (let ((v1-5 (-> *level* level s4-0)))
+            (when (= (-> v1-5 status) 'active)
+              (let ((s3-0 (-> v1-5 bsp drawable-trees)))
+                (dotimes (s2-0 (-> s3-0 length))
+                  (let ((v1-9 (-> s3-0 trees s2-0)))
+                    (case (-> v1-9 type)
+                      ((drawable-tree-instance-shrub)
+                       )
+                      ((drawable-tree-instance-tie)
+                       (let ((s1-0 (-> v1-9 data (+ (-> v1-9 length) -1))))
+                         (dotimes (s0-0 (-> (the-as drawable-inline-array-instance-tie s1-0) length))
+                           (if (string= (-> (the-as drawable-inline-array-instance-tie s1-0) data s0-0 bucket-ptr name) *edit-instance*)
+                               (add-debug-sphere
+                                 #t
+                                 (bucket-id debug-no-zbuf1)
+                                 (the-as
+                                   vector
+                                   (+ (the-as uint (-> (the-as drawable-inline-array-instance-tie s1-0) data 0 bsphere)) (* s0-0 64))
+                                   )
+                                 (-> (the-as drawable-inline-array-instance-tie s1-0) data s0-0 bsphere w)
+                                 (new 'static 'rgba :g #xff :a #x80)
+                                 )
+                               )
+                           )
+                         )
+                       )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (let ((s2-1 (prototype-bucket-type s5-0)))
+          (let ((s4-1 0))
+            0
+            (cond
+              ((= s2-1 instance-shrubbery)
+               (set! s4-1 80)
+               )
+              ((= s2-1 instance-tie)
+               (reset! *instance-mem-usage*)
+               (dotimes (s4-2 4)
+                 (when (nonzero? (-> s5-0 geometry s4-2))
+                   (let* ((a0-17 (-> s5-0 geometry s4-2))
+                          (t9-5 (method-of-object a0-17 mem-usage))
+                          (a1-6 *instance-mem-usage*)
+                          (v1-40 s4-2)
+                          )
+                     (t9-5 a0-17 a1-6 (logior (cond
+                                                ((= v1-40 1)
+                                                 4
+                                                 )
+                                                ((= v1-40 2)
+                                                 8
+                                                 )
+                                                ((= v1-40 3)
+                                                 16
+                                                 )
+                                                (else
+                                                  0
+                                                  )
+                                                )
+                                              2
+                                              )
+                           )
+                     )
+                   )
+                 )
+               (set! s4-1 (+ (calculate-total *instance-mem-usage*) 64))
+               )
+              )
+            (mem-usage s5-0 (reset! *instance-mem-usage*) 0)
+            (let ((v1-50 (calculate-total *instance-mem-usage*)))
+              (format
+                arg0
+                "~%~A ~A b @ #x~X ~,,2fK/~,,2fK~%"
+                s2-1
+                (-> s5-0 name)
+                s5-0
+                (* 0.0009765625 (the float v1-50))
+                (* 0.0009765625 (the float s4-1))
+                )
+              )
+            )
+          (format arg0 "near: ~m  mid: ~m  far: ~m~%" (-> s5-0 dists x) (-> s5-0 dists z) (-> s5-0 dists w))
+          (let ((s3-2 0)
+                (s4-3 0)
+                )
+            (cond
+              ((= s2-1 instance-shrubbery)
+               (let ((f30-0 0.0))
+                 (format
+                   arg0
+                   "usage: vis: ~D  shrub: ~D  trans-shrub ~D  bill: ~D   in level: ~D~%"
+                   (-> (the-as prototype-bucket-shrub s5-0) count 0)
+                   (-> (the-as prototype-bucket-shrub s5-0) count 1)
+                   (-> (the-as prototype-bucket-shrub s5-0) count 2)
+                   (-> (the-as prototype-bucket-shrub s5-0) count 3)
+                   (-> (the-as prototype-bucket-shrub s5-0) in-level)
+                   )
+                 (format arg0 "~%frag#     tris   dverts   strlen  tex~%")
+                 (let ((s1-2 (the-as prototype-shrubbery (-> (the-as prototype-bucket-shrub s5-0) geometry 1)))
+                       (s2-2 (+ (-> (the-as prototype-bucket-shrub s5-0) count 1) (-> (the-as prototype-bucket-shrub s5-0) count 2)))
+                       )
+                   (dotimes (s0-1 (-> s1-2 length))
+                     (set! sv-16 (shrub-num-tris (-> s1-2 data s0-1)))
+                     (set! sv-32 (-> s1-2 data s0-1 header data 2))
+                     (set! sv-48 (-> s1-2 data s0-1 header data 0))
+                     (format
+                       arg0
+                       "~5D     ~4D    ~5D   ~6f    ~D~%"
+                       s0-1
+                       sv-16
+                       sv-32
+                       (/ (* 2.0 (the float sv-16)) (the float (- sv-32 (the-as uint sv-16))))
+                       sv-48
+                       )
+                     (+! s3-2 sv-16)
+                     (+! s4-3 (the-as int sv-32))
+                     (set! f30-0
+                           (+ 29.0
+                              (* 5.5 (the float (- sv-32 (the-as uint sv-16))))
+                              (* 22.0 (the float sv-48))
+                              (* 8.0 (the float sv-32))
+                              (* 53.0 (the float (/ (+ s2-2 9) (the-as uint 10))))
+                              (* (the float s2-2) (+ 15.0 (* 5.0 (the float sv-48)) (* 13.5 (the float sv-32))))
+                              f30-0
+                              )
+                           )
+                     )
+                   (format
+                     arg0
+                     "total     ~4D    ~5D   ~6f    ~D  speed: ~f~%"
+                     s3-2
+                     s4-3
+                     (/ (* 2.0 (the float s3-2)) (the float (- s4-3 s3-2)))
+                     (-> s5-0 utextures)
+                     (/ f30-0 (* (the float s2-2) (the float s3-2)))
+                     )
+                   )
+                 )
+               )
+              ((= s2-1 instance-tie)
+               (set! sv-144 0)
+               (let ((s1-3 0)
+                     (s0-2 0)
+                     (s2-3 0)
+                     )
+                 (format arg0 "~%level   visible  frags   tris   dverts   strlen  tex  ttris~%")
+                 (set! sv-64 1)
+                 (set! sv-80 3)
+                 (while (>= sv-80 sv-64)
+                   (let ((v1-100 (-> (the-as prototype-bucket-tie s5-0) tie-geom sv-64)))
+                     (set! sv-96 0)
+                     (set! sv-112 0)
+                     (set! sv-128 0)
+                     (dotimes (a0-36 (-> v1-100 length))
+                       (set! sv-96 (+ sv-96 (-> v1-100 data a0-36 debug num-tris)))
+                       (set! sv-112 (+ sv-112 (-> v1-100 data a0-36 debug num-dverts)))
+                       (set! sv-128 (+ sv-128 (-> v1-100 data a0-36 tex-count)))
+                       )
+                     (set! sv-144 (+ sv-144 (the-as int (-> (the-as prototype-bucket-tie s5-0) count sv-64))))
+                     (format
+                       arg0
+                       "~5D  ~7D  ~5D   ~5D"
+                       sv-64
+                       (-> (the-as prototype-bucket-tie s5-0) count sv-64)
+                       (-> v1-100 length)
+                       sv-96
+                       )
+                     )
+                   (format
+                     arg0
+                     "    ~5D   ~6f  ~3D  ~5D~%"
+                     sv-112
+                     (/ (* 2.0 (the float sv-96)) (the float (- sv-112 sv-96)))
+                     sv-128
+                     (* (the-as uint sv-96) (the-as uint (-> (the-as prototype-bucket-tie s5-0) count sv-64)))
+                     )
+                   (+! s1-3 (* (the-as uint sv-96) (the-as uint (-> (the-as prototype-bucket-tie s5-0) count sv-64))))
+                   (+! s0-2 (* (the-as uint sv-112) (the-as uint (-> (the-as prototype-bucket-tie s5-0) count sv-64))))
+                   (+! s3-2 sv-96)
+                   (+! s4-3 sv-112)
+                   (+! s2-3 sv-128)
+                   (set! sv-64 (+ sv-64 1))
+                   )
+                 (let ((t9-20 format)
+                       (a0-52 arg0)
+                       (a1-28 "total  ~7D/~3D      ~5D")
+                       (a3-12 (-> s5-0 in-level))
+                       )
+                   (t9-20 a0-52 a1-28 sv-144 a3-12 s3-2)
+                   )
+                 (format
+                   arg0
+                   "    ~5D   ~6f  ~3D  ~5D~%"
+                   s4-3
+                   (/ (* 2.0 (the float s1-3)) (the float (- s0-2 s1-3)))
+                   s2-3
+                   s1-3
+                   )
+                 )
+               )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defun-debug set-shadow-by-name ((arg0 string) (arg1 int) (arg2 int))
+  "Update the shadow masks and values for an active process-drawable."
+  (let ((v1-0 (process-by-name arg0 *active-pool*)))
+    (when v1-0
+      (let ((v1-1 (-> (the-as process-drawable v1-0) draw)))
+        (cond
+          ((< arg2 16)
+           (logior! (-> v1-1 shadow-mask) (ash 1 arg1))
+           (logclear! (-> v1-1 shadow-values) (ash 15 (* arg1 4)))
+           (logior! (-> v1-1 shadow-values) (ash arg2 (* arg1 4)))
+           )
+          (else
+            (logclear! (-> v1-1 shadow-mask) (ash 1 arg1))
+            (logclear! (-> v1-1 shadow-values) (ash 15 (* arg1 4)))
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defun-debug get-shadow-by-name ((arg0 string))
+  "Get the current mask/values for an active process-drawable"
+  (let ((v1-0 (process-by-name arg0 *active-pool*)))
+    (when v1-0
+      (let ((s5-0 (-> (the-as process-drawable v1-0) draw)))
+        (format 0 "actor ~s {~%" arg0)
+        (format 0 " SHADOW_MASK(0x~02x)~%" (-> s5-0 shadow-mask))
+        (format 0 " SHADOW_VALUES(0x~08x)~%" (-> s5-0 shadow-values))
+        )
+      (format 0 "}~%")
+      )
+    )
+  (none)
+  )
+
+(defun-debug teleport-camera-by-name ((arg0 string))
+  "Send the camera to an entity, switch to string mode."
+  (let* ((gp-0 (entity-by-name arg0))
+         (v1-0 (if (type? gp-0 entity-actor)
+                   gp-0
+                   )
+               )
+         )
+    (if (and v1-0 *camera*)
+        (send-event *camera* 'teleport-to-vector-start-string (-> v1-0 trans))
+        )
+    )
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; foreground drawing system
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; processes will call ja-post, which adds them to the matrix engine
+;; the matrix engine runs (there's a few ways), it computes joints, then kicks out the process from the matrix engine
+;; all drawable processes belong to the foreground-draw-engine.
+;; - foreground-initialize-engines runs, preparing for the foreground engine run
+;; - foreground-engine-execute runs,
+;;   - foreground-init runs
+;;   - execute-connections runs on the foreground engine
+;;      it calls add-process-drawable which calls dma-add-func which is usually dma-add-process-drawable
+;;      - dma-add-process-drawable does culling, picking lights/shadow
+;;         - calls foreground-draw
+;;            picks merc/emerc/shadow/generic/effects, more light processing
+;;            adds the bone calculation, calls the foreground-<renderer> to generate dma
+;;   - foreground-wrapup runs, patching up merc/emerc stuff
+;;   - foreground-execute-cpu-vu0-engines runs
+;;      - does bone calcs for merc
+;;      - does VU0/CPU stuff for generic/shadow/lightning
+
 
 (defun dma-add-process-drawable ((pd process-drawable) (dc draw-control) (flag symbol) (dma-buf dma-buffer))
   "Draw a normal process-drawable. Set up lighting/shadow settings, then pass on to foreground renderer."
@@ -668,7 +1225,55 @@
 (set-vector! (-> *hud-lights* color 2) 0.5 0.5 0.5 1.0)
 (set-vector! (-> *hud-lights* ambient) 0.5 0.5 0.5 1.0)
 
-;; todo dma-add-process-drawable-hud
+(defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 float) (arg3 dma-buffer))
+  "Generate DMA for a foreground-hud process-drawable."
+  (local-vars (a3-4 uint128))
+
+  ;; clear old value of on-screen
+  (logclear! (-> arg1 status) (draw-control-status on-screen))
+
+  ;; only draw if we're enabled
+  (when (not (logtest? (-> arg1 status) (draw-control-status no-draw no-draw-temp uninited)))
+
+    ;; copy *hud-lights* to the scratchpad lights.
+    (let ((v1-6 (-> (scratchpad-object foreground-work) lights))
+          (a0-3 *hud-lights*)
+          )
+      (set! (-> v1-6 direction 0 quad) (-> a0-3 direction 0 quad))
+      (set! (-> v1-6 direction 1 quad) (-> a0-3 direction 1 quad))
+      (set! (-> v1-6 direction 2 quad) (-> a0-3 direction 2 quad))
+      (set! (-> v1-6 color 0 quad) (-> a0-3 color 0 quad))
+      (set! (-> v1-6 color 1 quad) (-> a0-3 color 1 quad))
+      (set! (-> v1-6 color 2 quad) (-> a0-3 color 2 quad))
+      (set! (-> v1-6 ambient quad) (-> a0-3 ambient quad))
+      )
+
+    ;; force lod0 and on-screen
+    (lod-set! arg1 0)
+    (logior! (-> arg1 status) (draw-control-status on-screen))
+
+    ;; send to foreground.
+    (foreground-draw-hud arg1 arg3 arg2)
+
+    ;; update textures.
+    (let ((v1-12 (-> *level* default-level))
+          (a0-8 (-> arg1 mgeo header texture-usage-group))
+          )
+      (dotimes (a1-9 7)
+        (let ((a2-1 (+ a1-9 11)))
+          (let ((a3-3 (-> v1-12 texture-mask a2-1 mask quad))
+                (t0-3 (-> a0-8 data a1-9 data 2 mask quad))
+                )
+            (.por a3-4 a3-3 t0-3)
+            )
+          (set! (-> v1-12 texture-mask a2-1 mask quad) a3-4)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
 
 (defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
   "Call the dma-add-func callback on a draw-control to draw it."
@@ -727,7 +1332,7 @@
           )
       )
     (execute-connections *debug-engine* #f)
-    ;(draw-instance-info *stdcon*)
+    (draw-instance-info *stdcon*)
     )
   (none)
   )
@@ -739,14 +1344,17 @@
 (define *generic-effect-mode* 0)
 
 (defun foreground-initialize-engines ()
+  "Called before dispatching foreground engine to set up."
+
+  ;; initialize shadow lists.
   (let ((v1-0 *shadow-globals*))
     (dotimes (a0-0 2)
       (let ((a1-2 (-> v1-0 bucket a0-0)))
         (set! (-> a1-2 first) (the-as uint 0))
         (set! (-> a1-2 next) (the-as uint 0))
         (set! (-> a1-2 shadow-color) (if (zero? a0-0)
-                                         (the-as uint #x80f0f0f0)
-                                         (the-as uint (-> *setting-control* user-current spotlight-color))
+                                         (new 'static 'rgba :r #xf0 :g #xf0 :b #xf0 :a #x80)
+                                         (the-as rgba (-> *setting-control* user-current spotlight-color))
                                          )
               )
         (set! (-> a1-2 constants) (the-as basic 0))
@@ -757,9 +1365,13 @@
   )
 
 (defun foreground-execute-cpu-vu0-engines ()
+  "Run the CPU/VU0 part of foreground. Happens after the foreground-engine-execute is done (first pass dma done).
+   Generates bone matrices for VU1 renderers and does leftover stuff that depends on bones."
   (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf)))
+    ;; do the bones
     (bones-init gp-0)
     (bones-mtx-calc-execute)
+    ;; generic-merc/shadow have VU0/CPU parts that need bones, run them here.
     ;;(generic-merc-execute-all gp-0)
     ;;(shadow-execute-all gp-0)
     )
@@ -769,6 +1381,7 @@
 
 
 (defun real-main-draw-hook ()
+  "Main function to run the drawable system, called from the display-loop in main.gc"
   (local-vars (a0-96 int) (a0-98 int))
   (with-pp
     (when *slow-frame-rate*
@@ -788,29 +1401,29 @@
     (set! (-> *texture-pool* texture-enable-user) (-> *texture-pool* texture-enable-user-menu))
 
     ;; display memory stats
-    ; (when *debug-segment*
-    ;   (when (and *stats-memory* (!= *master-mode* 'menu))
-    ;     (cond
-    ;       (*stats-memory-short*
-    ;         (dotimes (gp-0 (-> *level* length))
-    ;           (let ((s5-0 (-> *level* level gp-0)))
-    ;             (if (= (-> s5-0 status) 'active)
-    ;                 (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)
-    ;                 )
-    ;             )
-    ;           )
-    ;         )
-    ;       (else
-    ;         (let ((gp-1 (-> *level* level *stats-memory-level-index*)))
-    ;           (if (and gp-1 (= (-> gp-1 status) 'active))
-    ;               (print-mem-usage (compute-memory-usage gp-1 #f) gp-1 *stdcon*)
-    ;               )
-    ;           )
-    ;         )
-    ;       )
-    ;     )
-    ;   (reset! *dma-mem-usage*)
-    ;   )
+    (when *debug-segment*
+      (when (and *stats-memory* (!= *master-mode* 'menu))
+        (cond
+          (*stats-memory-short*
+            (dotimes (gp-0 (-> *level* length))
+              (let ((s5-0 (-> *level* level gp-0)))
+                (if (= (-> s5-0 status) 'active)
+                    (print-mem-usage (compute-memory-usage! s5-0 #f) s5-0 *stdcon*)
+                    )
+                )
+              )
+            )
+          (else
+            (let ((gp-1 (-> *level* level *stats-memory-level-index*)))
+              (if (and gp-1 (= (-> gp-1 status) 'active))
+                  (print-mem-usage (compute-memory-usage! gp-1 #f) gp-1 *stdcon*)
+                  )
+              )
+            )
+          )
+        )
+      (reset! *dma-mem-usage*)
+      )
 
     ;; set up foreground buckets
     (foreground-initialize-engines)
@@ -893,12 +1506,9 @@
       (actors-update *level*)
       )
 
-    ;; ??
     (with-profiler 'nav *profile-nav-color*
-      ;; ((method-of-object *level* level-group-method-18))
+      (update-nav-meshes *level*)
       )
-
-
 
     (with-profiler 'background *profile-background-color*
       ;; Run the background renderers!
@@ -926,6 +1536,7 @@
 
     (end-perf-stat-collection)
 
+    ;; background stats
     (when (and (!= *master-mode* 'menu) *stats-poly*)
       (dotimes (gp-13 (-> *level* length))
         (let ((v1-307 (-> *level* level gp-13)))
@@ -937,6 +1548,8 @@
       (print-terrain-stats)
       )
 
+
+    ;; perf and collide stats
     (when (not (paused?))
       (if (and (!= *master-mode* 'menu) *stats-perf*)
           (print-perf-stats)
@@ -1116,6 +1729,19 @@
   (none)
   )
 
+(defun-debug screen-shot-scale ((arg0 int) (arg1 string))
+  (set! (-> *screen-shot-work* size) arg0)
+  (set! (-> *screen-shot-work* name) arg1)
+  (set! *display-profile* #f)
+  0
+  (none)
+  )
+
+(defun-debug screen-shot ()
+  (screen-shot-scale 1 "image")
+  0
+  (none)
+  )
 
 (defun display-frame-start ((arg0 display) (arg1 int) (arg2 float))
   "Advance clocks, poll pads/mouse, set up buckets."
@@ -1186,7 +1812,7 @@
 
   (service-cpads)
   (service-mouse)
-  ; (execute-connections *pad-engine* #f)
+  (execute-connections *pad-engine* #f)
   (none)
   )
 
@@ -1586,5 +2212,3 @@
   (none)
   )
 
-
-(define-extern prototypes-game-visible-set! (function pair symbol int))

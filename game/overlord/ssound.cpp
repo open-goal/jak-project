@@ -13,7 +13,7 @@
 using namespace iop;
 
 Sound gSounds[64];
-Curve gCurve[12];  // TODO verify count
+Curve gCurve[16];
 VolumePair gPanTable[361];
 
 Vec3w gEarTrans[2];
@@ -285,15 +285,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   s32 min = fo_min << 8;
   s32 max = fo_max << 8;
 
-  if (max < xdiff) {
-    return 0;
-  }
-
-  if (max < ydiff) {
-    return 0;
-  }
-
-  if (max < zdiff) {
+  if (max < xdiff || max < ydiff || max < zdiff) {
     return 0;
   }
 
@@ -494,13 +486,13 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle) {
+void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam_angle) {
   s32 tick = snd_GetTick();
   u32 delta = tick - sLastTick;
   sLastTick = tick;
 
-  gEarTrans[0] = *ear_trans1;
-  gEarTrans[1] = *ear_trans2;
+  gEarTrans[0] = *ear_trans0;
+  gEarTrans[1] = *ear_trans1;
   gCamTrans = *cam_trans;
   gCamAngle = cam_angle;
 
@@ -543,10 +535,10 @@ void PrintActiveSounds() {
   }
 }
 
-void SetCurve(s32 curve, s32 fallof, s32 ease) {
-  gCurve[curve].unk1 = ease << 1;
-  gCurve[curve].unk2 = fallof + ease * -3;
-  gCurve[curve].unk3 = (ease - fallof) + -0x1000;
+void SetCurve(s32 curve, s32 falloff, s32 ease) {
+  gCurve[curve].unk1 = ease * 2;
+  gCurve[curve].unk2 = falloff - 3 * ease;
+  gCurve[curve].unk3 = ease - falloff - 0x1000;
   gCurve[curve].unk4 = 0x1000;
 }
 
