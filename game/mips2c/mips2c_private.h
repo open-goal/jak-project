@@ -1307,6 +1307,25 @@ struct ExecutionContext {
     }
   }
 
+  s32 float_to_int_sat(float f) {
+    if (f >= (float)INT32_MAX) {
+      return INT32_MAX;
+    } else if (f <= (float)INT32_MIN) {
+      return INT32_MIN;
+    } else {
+      return f;
+    }
+  }
+
+  void vftoi4_sat(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = float_to_int_sat(s.f[i] * 16.f);
+      }
+    }
+  }
+
   void vftoi0(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {

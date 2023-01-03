@@ -624,11 +624,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
       new_type->set_pack(true);
     }
     if (sr.allow_misaligned) {
-      lg::print(
-          "[TypeSystem] :allow-misaligned was set on {}, which is a basic and cannot "
-          "be misaligned\n",
-          name);
-      throw std::runtime_error("invalid pack option on basic");
+      new_type->set_allow_misalign(true);
     }
     if (sr.always_stack_singleton) {
       lg::print(
