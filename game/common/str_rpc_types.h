@@ -78,7 +78,7 @@ struct RPC_Play_Cmd_Jak2 {
   u32 section;
   u32 maxlen;
   u32 id[4];
-  SoundStreamName names[4];
+  SoundStreamName basename[4];
   u32 pad[8];
 };
 static_assert(sizeof(RPC_Play_Cmd_Jak2) == 256);

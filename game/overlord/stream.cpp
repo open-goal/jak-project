@@ -16,24 +16,31 @@
 #include "game/overlord/iso_api.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/srpc.h"
+#include "game/overlord/streamlist.h"
+#include "game/overlord/vag.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 
+#include "third-party/fmt/core.h"
+
 using namespace iop;
 
-static RPC_Str_Cmd_Jak1 sSTRBufJak1;
-static RPC_Str_Cmd_Jak2 sSTRBufJak2;
-static RPC_Play_Cmd_Jak1 sPLAYBufJak1[2];
-static RPC_Play_Cmd_Jak2 sPLAYBufJak2[2];
+static constexpr int STR_MSG_SIZE_J1 = 0x40;
+static constexpr int STR_MSG_SIZE_J2 = 0x50;
+static u8 sSTRBuf[STR_MSG_SIZE_J2];
+
+static constexpr int PLAY_MSG_SIZE_J1 = 0x40;
+static constexpr int PLAY_MSG_SIZE_J2 = 0x100;
+static u8 sPLAYBuf[PLAY_MSG_SIZE_J2 * 2];
+
+static u32 global_vag_count = 0;
 
 void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y);
 void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y);
+PerGameVersion<void* (*)(unsigned int, void*, int)> RPC_STR_Func = {RPC_STR_jak1, RPC_STR_jak2};
 void* RPC_PLAY_jak1(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY_jak2(unsigned int fno, void* _cmd, int y);
-
-static constexpr int PLAY_MSG_SIZE = 0x40;
-
-static u32 global_vag_count = 0;
+PerGameVersion<void* (*)(unsigned int, void*, int)> RPC_PLAY_Func = {RPC_PLAY_jak1, RPC_PLAY_jak2};
 
 /*!
  * We cache the chunk file headers so we can avoid seeking to the chunk header each time we
@@ -60,10 +67,8 @@ CacheEntryJ1 sCacheJ1[STR_INDEX_CACHE_SIZE];
 CacheEntryJ2 sCacheJ2[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
-  memset(&sSTRBufJak1, 0, sizeof(RPC_Str_Cmd_Jak1));
-  memset(&sSTRBufJak2, 0, sizeof(RPC_Str_Cmd_Jak2));
-  memset(&sPLAYBufJak1, 0, sizeof(RPC_Play_Cmd_Jak1) * 2);
-  memset(&sPLAYBufJak2, 0, sizeof(RPC_Play_Cmd_Jak2) * 2);
+  memset(sSTRBuf, 0, sizeof(sSTRBuf));
+  memset(sPLAYBuf, 0, sizeof(sPLAYBuf));
 }
 
 /*!
@@ -76,16 +81,9 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  if (g_game_version == GameVersion::Jak1) {
-    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak1, &sSTRBufJak1, nullptr,
-                      nullptr, &dq);
-  } else if (g_game_version == GameVersion::Jak2) {
-    sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_jak2, &sSTRBufJak2, nullptr,
-                      nullptr, &dq);
-  } else {
-    ASSERT_MSG(false, "unsupported game version in STRThread initialization!");
-  }
 
+  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR_Func[g_game_version], sSTRBuf,
+                    nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -98,17 +96,8 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  if (g_game_version == GameVersion::Jak1) {
-    sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY_jak1, sPLAYBufJak1, nullptr,
-                      nullptr, &dq);
-
-  } else if (g_game_version == GameVersion::Jak2) {
-    sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY_jak2, sPLAYBufJak2, nullptr,
-                      nullptr, &dq);
-
-  } else {
-    ASSERT_MSG(false, "unsupported game version in PLAYThread initialization!");
-  }
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY_Func[g_game_version], sPLAYBuf,
+                    nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -279,7 +268,7 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
 }
 
 void* RPC_PLAY_jak1([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
-  s32 n_messages = size / PLAY_MSG_SIZE;
+  s32 n_messages = size / PLAY_MSG_SIZE_J1;
   char namebuf[16];
 
   auto* cmd = (RPC_Play_Cmd_Jak1*)(_cmd);
@@ -335,39 +324,67 @@ void* RPC_PLAY_jak1([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   return _cmd;
 }
 
-/*!
- * This is just copied from Jak 1, and is totally wrong for jak 2.
- * It does nothing.
- */
 void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
-  s32 n_messages = size / PLAY_MSG_SIZE;
-  char namebuf[16];
+  s32 n_messages = size / PLAY_MSG_SIZE_J2;
+  VagStream stream;
+
+  ASSERT_MSG(false, fmt::format("Unhandled RPC Play command"));
 
   auto* cmd = (RPC_Play_Cmd_Jak2*)(_cmd);
-  while (n_messages > 0) {
-    if (cmd->names[0].chars[0] == '$') {
-      char* name_part = &cmd->names[0].chars[1];
-      size_t name_len = strlen(name_part);
-
-      if (name_len < 9) {
-        memset(namebuf, ' ', 8);
-        memcpy(namebuf, name_part, name_len);
-      } else {
-        memcpy(namebuf, name_part, 8);
-      }
-
-      // ASCII toupper
-      for (int i = 0; i < 8; i++) {
-        if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
-          namebuf[i] -= 0x20;
+  for (int i = 0; i < n_messages; i++, cmd++) {
+    auto cmd_type = static_cast<RPCPlayCommand>(cmd->result);
+    switch (cmd_type) {
+      case RPCPlayCommand::PlayAsync: {
+        s32 prio = 9;  // maybe
+        for (int i = 0; i < 4; i++) {
+          VagCommand2* vagcmd;
+          strncpy(stream.name, cmd->basename[i].chars, 48);
+          stream.id = cmd->id[i];
+          stream.unk0x44 = 0;
+          stream.unk0x54 = prio;
+          stream.unk0x48 = 0;
+          vagcmd = FindThisVagStream(cmd->basename[i].chars, cmd->id[i]);
+          if (!vagcmd || !vagcmd->unk0xd4) {
+            WaitSema(EEPlayList.sema);
+            if (!FindVagStreamInList(&stream, &EEPlayList)) {
+              VagStream* inserted = InsertVagStreamInList(&stream, &EEPlayList);
+              strncpy(inserted->name, stream.name, 48);
+              inserted->id = stream.id;
+              inserted->unk0x54 = stream.unk0x54;
+              inserted->unk0x48 = stream.unk0x48;
+              inserted->unk0x44 = stream.unk0x44;
+              inserted->unk0x4c = 0;
+              inserted->unk0x50 = 0;
+              inserted->unk0x5c = 0;
+            }
+            SignalSema(EEPlayList.sema);
+          }
+          if (prio == 8) {
+            prio = 2;
+          } else {
+            prio--;
+          }
         }
-      }
-    } else {
-      ISONameFromAnimationName(namebuf, cmd->names[0].chars);
-    }
+      } break;
+      case RPCPlayCommand::Stop: {
+        for (int i = 0; i < 4; i++) {
+          if (cmd->basename[i][0] != 0) {
+            strncpy(stream.name, cmd->basename[i].chars, 48);
+            stream.id = cmd->id[i];
 
-    n_messages--;
-    cmd++;
+            WaitSema(EEStreamsList.sema);
+            RemoveVagSreamFromList(&stream, &EEStreamsList);
+            SignalSema(EEStreamsList.sema);
+
+            WaitSema(EEPlayList.sema);
+            RemoveVagSreamFromList(&stream, &EEPlayList);
+            SignalSema(EEPlayList.sema);
+          }
+        }
+      } break;
+      case RPCPlayCommand::Queue: {
+      } break;
+    }
   }
 
   return _cmd;

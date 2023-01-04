@@ -198,7 +198,7 @@ s32 SFXGrain_StopChildSound::execute(blocksound_handler& handler) {
 SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain& grain) : Grain(grain) {}
 SFXGrain_PluginMessage::SFXGrain_PluginMessage(SFXGrain2& grain, u8* data) : Grain(grain) {}
 s32 SFXGrain_PluginMessage::execute(blocksound_handler& handler) {
-  // lg::warn("plugin message");
+  lg::warn("UNIMPLEMENTED Grain: Plugin message");
   //  TODO probably used
   return 0;
 }
