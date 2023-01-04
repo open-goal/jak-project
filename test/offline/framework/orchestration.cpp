@@ -43,7 +43,8 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   auto art_group_info = find_art_files(offline_config.game_name);
   for (const auto& [file_name, info] : art_group_info) {
     // Add the names of all art files to the allowed object list
-    // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not comprehensive
+    // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not
+    // comprehensive
     if (offline_config.game_name != "jak2") {
       object_files.insert(file_name);
     }
