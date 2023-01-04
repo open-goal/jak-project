@@ -83,7 +83,6 @@ int main(int argc, char* argv[]) {
   if (max_files > 0 && max_files < (int)source_files.size()) {
     source_files.erase(source_files.begin() + max_files, source_files.end());
   }
-  auto art_files = find_art_files(game_name, config.dgos);
 
   // Figure out the number of threads, prepare their statuses and start printing it
   if (num_threads < 1) {
@@ -94,7 +93,7 @@ int main(int argc, char* argv[]) {
 
   // Distribute the work amongst the threads, partitioning by DGO
   decompiler::init_opcode_info();
-  auto workers = distribute_work(config, source_files, art_files);
+  auto workers = distribute_work(config, source_files);
 
   // summarize results:
   OfflineTestThreadResult total;
