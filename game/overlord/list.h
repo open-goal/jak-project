@@ -10,7 +10,13 @@ struct ListElement {
 struct List {
   char name[8];
   s32 sema;
-  ListElement* l;
+  u32 elements;
+  int unk0x10;
+  int unk0x18;
+  ListElement* head;
+  u8* buf;
 };
+
+void InitList(List* list, u32 elements, u32 elm_size);
 
 #endif  // LIST_H_

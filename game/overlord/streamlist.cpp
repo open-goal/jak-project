@@ -10,7 +10,14 @@ VagStream* InsertVagStreamInList(VagStream* stream, List* list) {
   return nullptr;
 }
 
-void RemoveVagSreamFromList(VagStream* stream, List* list) {}
+void RemoveVagSreamFromList(VagStream* stream, List* list) {
+    VagStream *lstr = nullptr;
+
+    if (lstr) {
+
+
+    }
+}
 
 VagStream* FindVagStreamInList(VagStream* stream, List* list) {
   return nullptr;
