@@ -8,6 +8,8 @@
 #include "game/overlord/isocommon.h"
 
 struct VagCommand2 {
+  char name[48];
+    u32 id;
   char unk0xd4;
   char unk0xda;
   char unk0xe8;

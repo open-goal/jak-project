@@ -8,8 +8,6 @@
 
 #include <cstring>
 
-#include "common/util/Assert.h"
-
 #include "game/common/play_rpc_types.h"
 #include "game/common/str_rpc_types.h"
 #include "game/overlord/iso.h"
@@ -328,8 +326,6 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   s32 n_messages = size / PLAY_MSG_SIZE_J2;
   VagCommand2* vagcmd;
   VagStream stream;
-
-  ASSERT_MSG(false, fmt::format("Unhandled RPC Play command"));
 
   auto* cmd = (RPC_Play_Cmd_Jak2*)(_cmd);
   for (int i = 0; i < n_messages; i++, cmd++) {

@@ -119,6 +119,12 @@ set(RUNTIME_SOURCE
         overlord/srpc.cpp
         overlord/ssound.cpp
         overlord/stream.cpp
+        overlord/streamlfo.cpp
+        overlord/streamlist.cpp
+        overlord/spustreams.cpp
+        overlord/plugin.cpp
+        overlord/list.cpp
+        overlord/vag.cpp
         graphics/gfx.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
