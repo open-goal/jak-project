@@ -13,5 +13,6 @@ extern List PluginStreamsList;
 VagStream* InsertVagStreamInList(VagStream* stream, List* list);
 void RemoveVagSreamFromList(VagStream* stream, List* list);
 VagStream* FindVagStreamInList(VagStream* stream, List* list);
+void EmptyVagStreamList(List* list);
 
 #endif  // STREAMLIST_H_

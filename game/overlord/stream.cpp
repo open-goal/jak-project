@@ -326,6 +326,7 @@ void* RPC_PLAY_jak1([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
 void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   s32 n_messages = size / PLAY_MSG_SIZE_J2;
+  VagCommand2* vagcmd;
   VagStream stream;
 
   ASSERT_MSG(false, fmt::format("Unhandled RPC Play command"));
@@ -337,7 +338,9 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
       case RPCPlayCommand::PlayAsync: {
         s32 prio = 9;  // maybe
         for (int i = 0; i < 4; i++) {
-          VagCommand2* vagcmd;
+          if (cmd->basename[i].chars[0] == 0 || cmd->id[i]) {
+            continue;
+          }
           strncpy(stream.name, cmd->basename[i].chars, 48);
           stream.id = cmd->id[i];
           stream.unk0x44 = 0;
@@ -368,21 +371,54 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
       } break;
       case RPCPlayCommand::Stop: {
         for (int i = 0; i < 4; i++) {
-          if (cmd->basename[i][0] != 0) {
-            strncpy(stream.name, cmd->basename[i].chars, 48);
-            stream.id = cmd->id[i];
-
-            WaitSema(EEStreamsList.sema);
-            RemoveVagSreamFromList(&stream, &EEStreamsList);
-            SignalSema(EEStreamsList.sema);
-
-            WaitSema(EEPlayList.sema);
-            RemoveVagSreamFromList(&stream, &EEPlayList);
-            SignalSema(EEPlayList.sema);
+          if (cmd->basename[i].chars[0] == 0) {
+            continue;
           }
+          strncpy(stream.name, cmd->basename[i].chars, 48);
+          stream.id = cmd->id[i];
+
+          WaitSema(EEStreamsList.sema);
+          RemoveVagSreamFromList(&stream, &EEStreamsList);
+          SignalSema(EEStreamsList.sema);
+
+          WaitSema(EEPlayList.sema);
+          RemoveVagSreamFromList(&stream, &EEPlayList);
+          SignalSema(EEPlayList.sema);
         }
       } break;
       case RPCPlayCommand::Queue: {
+        WaitSema(EEStreamsList.sema);
+        EmptyVagStreamList(&EEStreamsList);
+        s32 prio = 9;  // maybe
+        for (int i = 0; i < 4; i++) {
+          if (cmd->basename[i].chars[0] == 0 || cmd->id[i]) {
+            continue;
+          }
+
+          strncpy(stream.name, cmd->basename[i].chars, 48);
+          stream.id = cmd->id[i];
+          stream.unk0x4c = (u8)cmd->address & (1 << i) & 0xf;
+          stream.unk0x54 = prio;
+          stream.unk0x48 = 0;
+          stream.unk0x50 = (u8)cmd->address & (16 << i) & 0xf0;
+          vagcmd = FindThisVagStream(stream.name, stream.id);
+          if (vagcmd) {
+            vagcmd->unk0x120 = stream.unk0x4c;
+            vagcmd->unk0x124 = stream.unk0x50;
+            if (vagcmd->unk0x120)
+              vagcmd->unk0xda = 1;
+            if (vagcmd->unk0x124)
+              vagcmd->unk0xe8 = 1;
+          }
+          InsertVagStreamInList(&stream, &EEStreamsList);
+          if (prio == 8) {
+            prio = 2;
+          } else {
+            prio--;
+          }
+        }
+
+        SignalSema(EEStreamsList.sema);
       } break;
     }
   }

@@ -9,6 +9,10 @@
 
 struct VagCommand2 {
   char unk0xd4;
+  char unk0xda;
+  char unk0xe8;
+  int unk0x120;
+  int unk0x124;
 };
 
 struct VagStream {
