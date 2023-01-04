@@ -212,6 +212,15 @@
   0
   )
 
+(define *sound-current-mirror* (sound-mirror-mode normal))
+(defun sound-set-mirror-mode ((mode sound-mirror-mode))
+  (when (!= mode *sound-current-mirror*)
+    (let ((cmd (the sound-rpc-set-mirror-mode (add-element *sound-loader-rpc*))))
+      (set! (-> cmd command) (sound-command set-mirror))
+      (set! (-> cmd mirror) mode))
+    (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+    (set! *sound-current-mirror* mode))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; sound playback
@@ -335,13 +344,6 @@
       (sound-trans-convert (-> cmd ear-trans) ear-trans)
       (sound-trans-convert (-> cmd cam-trans) cam-trans)
       (set! (-> cmd cam-angle) (sound-angle-convert cam-angle))
-      (#when PC_PORT
-        (when (pc-cheats? (-> *pc-settings* cheats) mirror)
-            ;; flip sound pan.
-            ;; this isn't really appropriate if there's front-back panning (surround)...
-            (+! (-> cmd cam-angle) 180)
-            )
-        )
       )
   0
   )

@@ -733,9 +733,13 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           }
           SignalSema(gSema);
         } break;
+        case Jak1SoundCommand::MIRROR_MODE: {
+          gMirrorMode = cmd->mirror.value;
+        } break;
         default:
-          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}",
-                                        magic_enum::enum_name(cmd->j1command)));
+          ASSERT_MSG(false,
+                     fmt::format("Unhandled RPC Loader command {} ({})",
+                                 magic_enum::enum_name(cmd->j1command), (int)cmd->j1command));
       }
       n_messages--;
       cmd++;

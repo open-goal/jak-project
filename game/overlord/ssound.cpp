@@ -27,6 +27,8 @@ s32 gMusicFadeDir = 0;
 u32 gStreamSRAM = 0;
 u32 gTrapSRAM = 0;
 
+u8 gMirrorMode = 0;
+
 s32 gSema;
 
 static u32 sLastTick;
@@ -351,6 +353,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
 s32 CalculateAngle(Vec3w* trans) {
   s32 diffX = gCamTrans.x - trans->x;
   s32 diffZ = gCamTrans.z - trans->z;
+  s32 angle;
 
   s32 lookupX = diffX;
   s32 lookupZ = diffZ;
@@ -367,7 +370,6 @@ s32 CalculateAngle(Vec3w* trans) {
     return 0;
   }
 
-  s32 angle;
   if (lookupZ >= lookupX) {
     angle = atan_table[(lookupX << 8) / lookupZ];
 
@@ -396,7 +398,13 @@ s32 CalculateAngle(Vec3w* trans) {
     }
   }
 
-  return (angle - gCamAngle + 720) % 360;
+  angle = (angle - gCamAngle + 720) % 360;
+
+  if (gMirrorMode) {
+    angle = ((180 - angle) + 180) % 360;
+  }
+
+  return angle;
 }
 
 s32 GetVolume(Sound* sound) {
