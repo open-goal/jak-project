@@ -2090,20 +2090,15 @@
 ;; ;; FOB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FOB.DGO" "fob.gd")
+(cgo "FOB.DGO" "fob.gd")
 
-;; (copy-textures 2280 2574 2281 3262 3417)
+(copy-textures 2280 2574 2281 3262 3417)
 
-;; (copy-gos
-;;   "youngsamos-forestb+0-ag"
-;;   "daxter-highres-ag"
-;;   "youngsamos-highres-ag"
-;;   "jak-highres-ag"
-;;   "crimson-guard-hover-ag"
-;;   "transport-ag"
-;;   "life-seed-ag"
-;;   "forestb-vis"
-;;   )
+(copy-gos
+  "youngsamos-forestb+0-ag"
+  "youngsamos-highres-ag"
+  "forestb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FOR

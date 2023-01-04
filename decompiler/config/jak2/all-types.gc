@@ -9747,7 +9747,7 @@
     )
   )
 
-
+(declare-type actor-group inline-array-class)
 (deftype task-manager (process)
   ((node-info game-task-node-info)
    (info task-manager-info)
@@ -9773,7 +9773,7 @@
    (data-int32 int32 32)
    (data-float float 32)
    (data-vector vector 32 :inline :offset-assert 800 :score 100)
-   (actor-group uint32 4 :offset-assert 1312)
+   (actor-group (pointer entity-actor) 4 :offset-assert 1312)
    (minimap uint32 8 :offset-assert 1328)
    (hud handle 4 :offset-assert 1360)
    (hud-timer handle :offset 1360)
@@ -14920,9 +14920,9 @@
     (initialize-skeleton (_type_ skeleton-group pair) draw-control 14)
     (initialize-skeleton-by-name (_type_ string) draw-control 15)
     (apply-alignment (_type_ align-opts transformq vector) trsqv 16)
-    (cleanup-for-death (_type_) none 17) ;; (do-joint-math! (_type_) none 17)
-    (relocate-nav (_type_ int) none 18) ;; ( (_type_) none 18)
-    (evaluate-joint-control (_type_) none 19) ;; (evaluate-joint-control (_type_) none 19)
+    (cleanup-for-death (_type_) none 17)
+    (relocate-nav (_type_ int) none 18)
+    (evaluate-joint-control (_type_) none 19)
     )
   )
 
@@ -32389,7 +32389,7 @@
    (jump-debug-draw                     symbol           :offset-assert 24)
    (move-to-ground                      symbol           :offset-assert 28)
    (hover-if-no-ground                  symbol           :offset-assert 32)
-   (idle-anim-script                    (pointer uint32)          :offset-assert 36) ;; TODO very likely WRONG, possible `script-form`s?
+   (idle-anim-script                    (pointer uint32)           :offset-assert 36) ;; TODO very likely WRONG, possible `script-form`s?
    (idle-anim                           int32           :offset-assert 40)
    (notice-anim                         int32           :offset-assert 44)
    (hostile-anim                        int32           :offset-assert 48)
@@ -35858,9 +35858,10 @@
 
 (deftype pegasus-path-info (structure)
   ((num-data     int32   :offset-assert 0)
-   (path-data    basic   :offset-assert 4)
-   (control-data uint32  :offset-assert 8)
+   (path-data    curve-control   :offset-assert 4)
+   (control-data (pointer float)  :offset-assert 8)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -35873,7 +35874,7 @@
    (tangent          vector  :inline :offset-assert 560)
    (run-blend-interp float           :offset-assert 576)
    (near-timer       int32           :offset-assert 580)
-   (far-time         time-frame          :offset-assert 584)
+   (far-time         time-frame      :offset-assert 584)
    (y-offset         float           :offset-assert 592)
    (y-offset-desired float           :offset-assert 596)
    (y-vel            float           :offset-assert 600)
@@ -35881,11 +35882,11 @@
    (timeout          uint64          :offset-assert 608)
    (ambient-possible uint64          :offset-assert 616)
    (ambient-expire   uint64          :offset-assert 624)
-   (can-run          basic           :offset-assert 632)
-   (on-ground        basic           :offset-assert 636)
-   (over-ground      basic           :offset-assert 640)
-   (allow-idle       basic           :offset-assert 644)
-   (path-info        pegasus-path-info 20      :offset-assert 648)
+   (can-run          symbol           :offset-assert 632)
+   (on-ground        symbol           :offset-assert 636)
+   (over-ground      symbol           :offset-assert 640)
+   (allow-idle       symbol           :offset-assert 644)
+   (path-info        pegasus-path-info 20     :inline :offset-assert 648)
    (previous-path    int32           :offset 968)
    (current-path     int32           :offset 972)
    (num-paths        int32           :offset 976)
@@ -35896,22 +35897,23 @@
   :size-assert         #x3e0
   :flag-assert         #x8a036003e0
   (:methods
-    (pegasus-method-137 () none 137)
+    (pegasus-method-137 (_type_) none 137)
     )
+  (:states
+    pegasus-debug
+    pegasus-tired)
   )
 
-;; (define-extern *pegasus-enemy-info* enemy-info)
-;; (define-extern pegasus-draw-section function)
-;; (define-extern pegasus-show-runs function)
-;; (define-extern pegasus-rotate function)
-;; (define-extern pegasus-loop-on-same-path function)
-;; (define-extern pegasus-choose-path function)
-;; (define-extern pegasus-move function)
-;; (define-extern pegasus-calc-speed function)
-;; (define-extern pegasus-calc-anim-speed function)
-;; (define-extern pegasus-debug state)
-;; (define-extern pegasus-fly-code function)
-;; (define-extern pegasus-tired state)
+(define-extern *pegasus-enemy-info* enemy-info)
+(define-extern pegasus-draw-section (function float float rgba none :behavior pegasus))
+(define-extern pegasus-show-runs (function symbol :behavior pegasus))
+(define-extern pegasus-rotate (function symbol float none :behavior pegasus))
+(define-extern pegasus-loop-on-same-path (function none :behavior pegasus))
+(define-extern pegasus-choose-path (function symbol :behavior pegasus))
+(define-extern pegasus-move (function float symbol symbol none :behavior pegasus))
+(define-extern pegasus-calc-speed (function float float float float symbol :behavior pegasus))
+(define-extern pegasus-calc-anim-speed (function float :behavior pegasus))
+(define-extern pegasus-fly-code (function int none :behavior pegasus))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wren                           ;;
