@@ -23,7 +23,7 @@ class OfflineTestConfig {
   u32 num_threads;
   bool dump_mode;
   bool fail_on_cmp = false;
-  bool fail_on_compile = false;
+  bool fail_on_compile = false;  // unused currently!
   bool pretty_print = false;
   std::vector<std::string> dgos;
   std::unordered_set<std::string> skip_compile_files;
