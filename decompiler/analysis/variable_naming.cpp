@@ -735,7 +735,8 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   if (function.ir2.env.version == GameVersion::Jak2) {
     event_handler_hack = function.guessed_name.is_event_handler() ||
                          function.guessed_name.to_string() == "target-generic-event-handler" ||
-                         function.guessed_name.to_string() == "target-standard-event-handler";
+                         function.guessed_name.to_string() == "target-standard-event-handler" ||
+                         function.guessed_name.to_string() == "(method 74 pegasus)";
   }
 
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
