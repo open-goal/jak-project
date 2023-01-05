@@ -18,6 +18,7 @@ extern s32 gMusicVol;
 extern VolumePair gPanTable[361];
 extern u32 gStreamSRAM;
 extern u32 gTrapSRAM;
+extern u8 gMirrorMode;
 
 struct Vec3w {
   s32 x;

@@ -40,8 +40,14 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   for (auto& file : work.work_collection.source_files) {
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
-  for (auto& file : work.work_collection.art_files) {
-    object_files.insert(file.unique_name);
+  auto art_group_info = find_art_files(offline_config.game_name);
+  for (const auto& [file_name, info] : art_group_info) {
+    // Add the names of all art files to the allowed object list
+    // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not
+    // comprehensive
+    if (offline_config.game_name != "jak2") {
+      object_files.insert(file_name);
+    }
   }
 
   dc.config->allowed_objects = object_files;
@@ -56,6 +62,13 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
                                                      std::vector<fs::path>{},
                                                      std::vector<fs::path>{}, *dc.config);
+
+  // Set the decompiler's art group info
+  // - NOTE - this omits *-vis files and tpage* files.  Is that a problem?
+  // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not comprehensive
+  if (offline_config.game_name != "jak2") {
+    dc.db->dts.art_group_info = art_group_info;
+  }
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -75,11 +88,6 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
             file.unique_name);
       }
     }
-    for (auto& file : work.work_collection.art_files) {
-      if (!db_files.count(file.unique_name)) {
-        lg::error("didn't find {}\n", file.unique_name);
-      }
-    }
     exit(1);
   }
 
@@ -88,8 +96,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
 
 std::vector<std::future<OfflineTestThreadResult>> distribute_work(
     const OfflineTestConfig& offline_config,
-    const std::vector<OfflineTestSourceFile>& files,
-    const std::vector<OfflineTestArtFile>& art_files) {
+    const std::vector<OfflineTestSourceFile>& files) {
   // First, group files by their DGO so they can be partitioned
   std::unordered_map<std::string, OfflineTestWorkCollection> work_colls = {};
 
@@ -98,13 +105,6 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
       work_colls[file.containing_dgo] = OfflineTestWorkCollection();
     }
     work_colls[file.containing_dgo].source_files.push_back(file);
-  }
-
-  for (const auto& file : art_files) {
-    if (work_colls.count(file.containing_dgo) == 0) {
-      work_colls[file.containing_dgo] = OfflineTestWorkCollection();
-    }
-    work_colls[file.containing_dgo].art_files.push_back(file);
   }
 
   // Now partition by DGO so that threads do not consume unnecessary or duplicate resources
@@ -126,21 +126,13 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
   // all DGOs, so assign consecutive files (likely to belong to the same dgo) to the same worker.
   int total_files = 0;
   for (const auto& [dgo, work] : work_colls) {
-    total_files += work.source_files.size() + work.art_files.size();
+    total_files += work.source_files.size();
   }
   int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
 
   // Divide up the work
   int file_idx = 0;
   for (const auto& [dgo, work] : work_colls) {
-    // art files
-    for (auto& art_file : work.art_files) {
-      auto& wg = work_groups.at(file_idx / divisor);
-      wg.dgo_set.insert(dgo);
-      wg.work_collection.art_files.push_back(art_file);
-      file_idx++;
-    }
-
     // source files
     for (auto& source_file : work.source_files) {
       auto& wg = work_groups.at(file_idx / divisor);
