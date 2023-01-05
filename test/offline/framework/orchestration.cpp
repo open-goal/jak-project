@@ -41,14 +41,6 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
   auto art_group_info = find_art_files(offline_config.game_name);
-  for (const auto& [file_name, info] : art_group_info) {
-    // Add the names of all art files to the allowed object list
-    // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not
-    // comprehensive
-    if (offline_config.game_name != "jak2") {
-      object_files.insert(file_name);
-    }
-  }
 
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
@@ -62,13 +54,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
                                                      std::vector<fs::path>{},
                                                      std::vector<fs::path>{}, *dc.config);
-
-  // Set the decompiler's art group info
-  // - NOTE - this omits *-vis files and tpage* files.  Is that a problem?
-  // TODO - skip this for jak2, it's not yet emitting *-ag files! / art-elts.gc is not comprehensive
-  if (offline_config.game_name != "jak2") {
-    dc.db->dts.art_group_info = art_group_info;
-  }
+  dc.db->dts.art_group_info = art_group_info;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
