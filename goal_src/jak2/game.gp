@@ -251,7 +251,17 @@
   "dma/dma-buffer.gc"
   "dma/dma-bucket.gc"
   "dma/dma-disasm.gc"
-  "ps2/pad.gc"
+  )
+
+(goal-src "engine/ps2/pad.gc" "pckernel-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/pad.o"
+  "$OUT/obj/dma-disasm.o")
   "gfx/hw/gs.gc"
   "gfx/hw/display-h.gc"
   "geometry/geometry.gc"
@@ -557,7 +567,18 @@
   "gfx/background/prototype.gc"
   "collide/main-collide.gc"
   "gfx/hw/video.gc"
-  "game/main.gc"
+  )
+
+(goal-src "engine/game/main.gc" "pckernel" "video")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/main.o"
+  "$OUT/obj/video.o")
+
   "collide/collide-cache.gc"
   "collide/collide-debug.gc"
   "entity/relocate.gc"
@@ -4652,6 +4673,10 @@
 (group-list "text"
  `("$OUT/iso/0COMMON.TXT")
  )
+
+;; Custom or Modified Code
+(goal-src "pc/pckernel-h.gc" "dma-buffer")
+(goal-src "pc/pckernel.gc" "video")
 
 ;; used for the type consistency test.
 (group-list "all-code"
