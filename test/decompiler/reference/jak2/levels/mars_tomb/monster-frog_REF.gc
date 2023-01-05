@@ -1,19 +1,15 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: monster-frog.gc
-;; name in dgo: monster-frog
-;; dgos: TOA
-
-;; DECOMP BEGINS
-
-(defskelgroup skel-monster-frog monster-frog monster-frog-lod0-jg monster-frog-idle0-ja
-              ((monster-frog-lod0-mg (meters 20)) (monster-frog-lod1-mg (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-monster-frog monster-frog 0 4
+              ((1 (meters 20)) (2 (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
-              :shadow monster-frog-shadow-mg
+              :shadow 3
               :origin-joint-index 12
               )
 
+;; definition of type monster-frog
 (deftype monster-frog (nav-enemy)
   ()
   :heap-base #x1e0
@@ -27,7 +23,20 @@
     )
   )
 
+;; definition for method 3 of type monster-frog
+(defmethod inspect monster-frog ((obj monster-frog))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *monster-frog-nav-enemy-info*, type nav-enemy-info
 (define *monster-frog-nav-enemy-info*
   (new 'static 'nav-enemy-info
     :use-die-falling #f
@@ -133,8 +142,10 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *monster-frog-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for function monster-frog-hop-slow-code
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior monster-frog-hop-slow-code monster-frog ()
   (until #f
@@ -147,12 +158,12 @@
       (cond
         ((zero? (get-rand-int self 4))
          (let ((v1-7 (ja-group)))
-           (if (not (and v1-7 (= v1-7 monster-frog-idle0-ja)))
+           (if (not (and v1-7 (= v1-7 (-> self draw art-group data 4))))
                (ja-channel-push! 1 (seconds 0.1))
                )
            )
-         (ja-no-eval :group! monster-frog-idle0-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-idle0-ja) frames num-frames) -1)))
+         (ja-no-eval :group! (-> self draw art-group data 4)
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
                      :frame-num 0.0
                      )
          (until (ja-done? 0)
@@ -162,12 +173,12 @@
          )
         (else
           (let ((v1-38 (ja-group)))
-            (if (not (and v1-38 (= v1-38 monster-frog-idle1-ja)))
+            (if (not (and v1-38 (= v1-38 (-> self draw art-group data 5))))
                 (ja-channel-push! 1 (seconds 0.1))
                 )
             )
-          (ja-no-eval :group! monster-frog-idle1-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-idle1-ja) frames num-frames) -1)))
+          (ja-no-eval :group! (-> self draw art-group data 5)
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -199,8 +210,8 @@
       (set! (-> v1-80 enemy-flags) (the-as enemy-flag (logclear (-> v1-80 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (ja-no-eval :group! monster-frog-hop-slow-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-start-ja) frames num-frames) -1)) 1.4)
+    (ja-no-eval :group! (-> self draw art-group data 16)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)) 1.4)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -208,8 +219,8 @@
       (ja :num! (seek! max 1.4))
       )
     (nav-enemy-method-167 self)
-    (ja-no-eval :group! monster-frog-hop-slow-end-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-end-ja) frames num-frames) -1)) 1.4)
+    (ja-no-eval :group! (-> self draw art-group data 17)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)) 1.4)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -220,12 +231,13 @@
   #f
   )
 
+;; definition for function monster-frog-hop-fast-code
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior monster-frog-hop-fast-code monster-frog ()
   (until #f
     (nav-enemy-method-166 self)
-    (ja-no-eval :group! monster-frog-hop-slow-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-start-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 16)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -233,8 +245,8 @@
       (ja :num! (seek!))
       )
     (nav-enemy-method-167 self)
-    (ja-no-eval :group! monster-frog-hop-slow-end-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-end-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 17)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -245,6 +257,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate ambush (monster-frog)
   :virtual #t
   :enter (behavior ()
@@ -285,8 +298,8 @@
         )
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (ja-no-eval :group! monster-frog-popup0-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-popup0-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 6)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -303,22 +316,29 @@
   :post (the-as (function none :behavior monster-frog) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate notice (monster-frog)
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (new 'stack-no-clear 'vector)
-      (ja-no-eval :group! monster-frog-notice0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-notice0-ja) frames num-frames) -1)) f30-0)
+      (ja-no-eval :group! (-> self draw art-group data 8)
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1))
+                    f30-0
+                    )
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
-      (ja-no-eval :group! monster-frog-notice0-jump-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-notice0-jump-ja) frames num-frames) -1)) f30-0)
+      (ja-no-eval :group! (-> self draw art-group data 9)
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1))
+                    f30-0
+                    )
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -335,8 +355,11 @@
         (suspend)
         (ja :num! (seek! max f30-0))
         )
-      (ja-no-eval :group! monster-frog-notice0-land-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-notice0-land-ja) frames num-frames) -1)) f30-0)
+      (ja-no-eval :group! (-> self draw art-group data 10)
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) frames num-frames) -1))
+                    f30-0
+                    )
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -349,6 +372,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (monster-frog)
   :virtual #t
   :code (behavior ()
@@ -356,8 +380,11 @@
       (until #f
         (nav-enemy-method-165 self)
         (ja-channel-push! 1 (seconds 0.2))
-        (ja-no-eval :group! monster-frog-hop-slow-start-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-start-ja) frames num-frames) -1)) f30-0)
+        (ja-no-eval :group! (-> self draw art-group data 16)
+                    :num! (seek!
+                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1))
+                      f30-0
+                      )
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -365,8 +392,11 @@
           (ja :num! (seek! max f30-0))
           )
         (nav-enemy-method-167 self)
-        (ja-no-eval :group! monster-frog-hop-slow-end-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-slow-end-ja) frames num-frames) -1)) f30-0)
+        (ja-no-eval :group! (-> self draw art-group data 17)
+                    :num! (seek!
+                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1))
+                      f30-0
+                      )
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -459,16 +489,19 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pacing (monster-frog)
   :virtual #t
   :code (the-as (function none :behavior monster-frog) monster-frog-hop-slow-code)
   )
 
+;; failed to figure out what this is:
 (defstate circling (monster-frog)
   :virtual #t
   :code (the-as (function none :behavior monster-frog) monster-frog-hop-slow-code)
   )
 
+;; failed to figure out what this is:
 (defstate stare (monster-frog)
   :virtual #t
   :enter (behavior ()
@@ -485,6 +518,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hostile (monster-frog)
   :virtual #t
   :enter (behavior ()
@@ -575,9 +609,9 @@
                   )
                 0
                 (ja-channel-push! 2 (seconds 0.01))
-                (ja-no-eval :group! monster-frog-hop-small-start-ja
+                (ja-no-eval :group! (-> self draw art-group data 14)
                             :num! (seek!
-                              (the float (+ (-> (the-as art-joint-anim monster-frog-hop-small-start-ja) frames num-frames) -1))
+                              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1))
                               f28-1
                               )
                             :frame-num 0.0
@@ -585,10 +619,10 @@
                 (let ((a0-15 (-> self skel root-channel 1)))
                   (set! (-> a0-15 frame-interp 1) f30-1)
                   (set! (-> a0-15 frame-interp 0) f30-1)
-                  (set! (-> a0-15 frame-group) (the-as art-joint-anim monster-frog-hop-slow-start-ja))
+                  (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
                   (set! (-> a0-15 param 0) 0.0)
                   (set! (-> a0-15 frame-num) 0.0)
-                  (joint-control-channel-group! a0-15 (the-as art-joint-anim monster-frog-hop-slow-start-ja) num-func-chan)
+                  (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> self draw art-group data 16)) num-func-chan)
                   )
                 (until (ja-done? 0)
                   (suspend)
@@ -601,17 +635,20 @@
                     )
                   )
                 (nav-enemy-method-167 self)
-                (ja-no-eval :group! monster-frog-hop-small-end-ja
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-hop-small-end-ja) frames num-frames) -1)) f28-1)
+                (ja-no-eval :group! (-> self draw art-group data 15)
+                            :num! (seek!
+                              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1))
+                              f28-1
+                              )
                             :frame-num 0.0
                             )
                 (let ((a0-21 (-> self skel root-channel 1)))
                   (set! (-> a0-21 frame-interp 1) f30-1)
                   (set! (-> a0-21 frame-interp 0) f30-1)
-                  (set! (-> a0-21 frame-group) (the-as art-joint-anim monster-frog-hop-slow-end-ja))
+                  (set! (-> a0-21 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
                   (set! (-> a0-21 param 0) 0.0)
                   (set! (-> a0-21 frame-num) 0.0)
-                  (joint-control-channel-group! a0-21 (the-as art-joint-anim monster-frog-hop-slow-end-ja) num-func-chan)
+                  (joint-control-channel-group! a0-21 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-chan)
                   )
                 (until (ja-done? 0)
                   (suspend)
@@ -638,6 +675,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate turn (monster-frog)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior monster-frog) enemy-event-handler)
@@ -647,8 +685,8 @@
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-0 enemy-flags))))
       )
     0
-    (ja-no-eval :group! monster-frog-rotate-left-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-rotate-left-start-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 11)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -659,8 +697,8 @@
       (set! (-> v1-26 enemy-flags) (the-as enemy-flag (logclear (-> v1-26 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (ja-no-eval :group! monster-frog-rotate-left-end-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-rotate-left-end-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 13)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -690,6 +728,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate attack (monster-frog)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior monster-frog) enemy-event-handler)
@@ -741,8 +780,8 @@
   :code (behavior ((arg0 vector))
     (ja-channel-push! 1 (seconds 0.04))
     (nav-enemy-method-166 self)
-    (ja-no-eval :group! monster-frog-attack0-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-attack0-start-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 20)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -760,6 +799,7 @@
   :post (the-as (function none :behavior monster-frog) nav-enemy-travel-post)
   )
 
+;; failed to figure out what this is:
 (defstate attack-recover (monster-frog)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior monster-frog) enemy-event-handler)
@@ -776,8 +816,8 @@
     (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! monster-frog-attack0-end-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-attack0-end-ja) frames num-frames) -1)))
+    (ja-no-eval :group! (-> self draw art-group data 21)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 21)) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -787,12 +827,12 @@
     (cond
       ((zero? (get-rand-int self 4))
        (let ((v1-28 (ja-group)))
-         (if (not (and v1-28 (= v1-28 monster-frog-idle0-ja)))
+         (if (not (and v1-28 (= v1-28 (-> self draw art-group data 4))))
              (ja-channel-push! 1 (seconds 0.1))
              )
          )
-       (ja-no-eval :group! monster-frog-idle0-ja
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-idle0-ja) frames num-frames) -1)))
+       (ja-no-eval :group! (-> self draw art-group data 4)
+                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
                    :frame-num 0.0
                    )
        (until (ja-done? 0)
@@ -802,12 +842,12 @@
        )
       (else
         (let ((v1-59 (ja-group)))
-          (if (not (and v1-59 (= v1-59 monster-frog-idle1-ja)))
+          (if (not (and v1-59 (= v1-59 (-> self draw art-group data 5))))
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (ja-no-eval :group! monster-frog-idle1-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim monster-frog-idle1-ja) frames num-frames) -1)))
+        (ja-no-eval :group! (-> self draw art-group data 5)
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -822,6 +862,7 @@
   :post (the-as (function none :behavior monster-frog) nav-enemy-simple-post)
   )
 
+;; definition for method 77 of type monster-frog
 (defmethod enemy-method-77 monster-frog ((obj monster-frog) (arg0 (pointer float)))
   (case (-> obj incoming knocked-type)
     (((knocked-type knocked-type-4))
@@ -882,6 +923,7 @@
     )
   )
 
+;; definition for method 78 of type monster-frog
 (defmethod enemy-method-78 monster-frog ((obj monster-frog) (arg0 (pointer float)))
   (case (-> obj incoming knocked-type)
     (((knocked-type knocked-type-4))
@@ -942,12 +984,15 @@
     )
   )
 
+;; definition for method 55 of type monster-frog
 (defmethod enemy-method-55 monster-frog ((obj monster-frog))
   (water-control-method-10 (-> obj water))
   ((method-of-type nav-enemy enemy-method-55) obj)
   (none)
   )
 
+;; definition for method 114 of type monster-frog
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-114 monster-frog ((obj monster-frog))
   "@abstract"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
@@ -1011,6 +1056,8 @@
   (none)
   )
 
+;; definition for method 115 of type monster-frog
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-115 monster-frog ((obj monster-frog))
   "@abstract"
   (initialize-skeleton
