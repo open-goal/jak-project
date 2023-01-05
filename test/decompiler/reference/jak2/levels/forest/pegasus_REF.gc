@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: pegasus.gc
-;; name in dgo: pegasus
-;; dgos: FOR
-
-;; DECOMP BEGINS
-
+;; definition of type pegasus-path-info
 (deftype pegasus-path-info (structure)
   ((num-data     int32            :offset-assert   0)
    (path-data    curve-control    :offset-assert   4)
@@ -18,7 +13,21 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type pegasus-path-info
+(defmethod inspect pegasus-path-info ((obj pegasus-path-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'pegasus-path-info)
+  (format #t "~1Tnum-data: ~D~%" (-> obj num-data))
+  (format #t "~1Tpath-data: ~A~%" (-> obj path-data))
+  (format #t "~1Tcontrol-data: #x~X~%" (-> obj control-data))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type pegasus
 (deftype pegasus (enemy)
   ((curve-position   float                        :offset-assert 532)
    (speed            float                        :offset-assert 536)
@@ -58,13 +67,51 @@
     )
   )
 
+;; definition for method 3 of type pegasus
+(defmethod inspect pegasus ((obj pegasus))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcurve-position: ~f~%" (-> obj curve-position))
+  (format #t "~2Tspeed: ~f~%" (-> obj speed))
+  (format #t "~2Tfacing: #<vector @ #x~X>~%" (-> obj facing))
+  (format #t "~2Ttangent: #<vector @ #x~X>~%" (-> obj tangent))
+  (format #t "~2Trun-blend-interp: ~f~%" (-> obj run-blend-interp))
+  (format #t "~2Tnear-timer: ~D~%" (-> obj near-timer))
+  (format #t "~2Tfar-time: ~D~%" (-> obj far-time))
+  (format #t "~2Ty-offset: ~f~%" (-> obj y-offset))
+  (format #t "~2Ty-offset-desired: ~f~%" (-> obj y-offset-desired))
+  (format #t "~2Ty-vel: ~f~%" (-> obj y-vel))
+  (format #t "~2Twater-height: ~f~%" (-> obj water-height))
+  (format #t "~2Ttimeout: ~D~%" (-> obj timeout))
+  (format #t "~2Tambient-possible: ~D~%" (-> obj ambient-possible))
+  (format #t "~2Tambient-expire: ~D~%" (-> obj ambient-expire))
+  (format #t "~2Tcan-run: ~A~%" (-> obj can-run))
+  (format #t "~2Ton-ground: ~A~%" (-> obj on-ground))
+  (format #t "~2Tover-ground: ~A~%" (-> obj over-ground))
+  (format #t "~2Tallow-idle: ~A~%" (-> obj allow-idle))
+  (format #t "~2Tpath-info[20] @ #x~X~%" (-> obj path-info))
+  (format #t "~2Tprevious-path: ~D~%" (-> obj previous-path))
+  (format #t "~2Tcurrent-path: ~D~%" (-> obj current-path))
+  (format #t "~2Tnum-paths: ~D~%" (-> obj num-paths))
+  (format #t "~2Tdisplay-path: ~D~%" (-> obj display-path))
+  (format #t "~2Ttargetted-timer: ~D~%" (-> obj targetted-timer))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-pegasus pegasus 0 5
               ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               :shadow 4
               )
 
+;; definition for symbol *pegasus-enemy-info*, type enemy-info
 (define *pegasus-enemy-info* (new 'static 'enemy-info
                                :use-die-falling #f
                                :use-victory #f
@@ -142,8 +189,10 @@
                                )
         )
 
+;; failed to figure out what this is:
 (set! (-> *pegasus-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for method 12 of type pegasus
 (defmethod run-logic? pegasus ((obj pegasus))
   (let ((f0-0 491520.0))
     (if (< (* f0-0 f0-0) (vector-vector-distance-squared (-> obj root-override2 trans) (camera-pos)))
@@ -153,6 +202,8 @@
     )
   )
 
+;; definition for method 137 of type pegasus
+;; WARN: Return type mismatch int vs none.
 (defmethod pegasus-method-137 pegasus ((obj pegasus))
   (with-pp
     (let ((v1-0 *target*))
@@ -177,6 +228,7 @@
     )
   )
 
+;; definition for method 57 of type pegasus
 ;; WARN: Return type mismatch int vs enemy-aware.
 (defmethod enemy-method-57 pegasus ((obj pegasus) (arg0 process-focusable) (arg1 enemy-best-focus))
   (with-pp
@@ -190,6 +242,7 @@
     )
   )
 
+;; definition for method 74 of type pegasus
 (defmethod enemy-method-74 pegasus ((obj pegasus) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
   (with-pp
     (case arg2
@@ -226,6 +279,7 @@
     )
   )
 
+;; definition for method 56 of type pegasus
 (defmethod enemy-method-56 pegasus ((obj pegasus) (arg0 process) (arg1 event-message-block))
   (with-pp
     (let ((v0-0 1))
@@ -246,6 +300,7 @@
     )
   )
 
+;; definition for function pegasus-draw-section
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior pegasus-draw-section pegasus ((arg0 float) (arg1 float) (arg2 rgba))
   (let ((gp-0 (new 'stack-no-clear 'vector))
@@ -258,6 +313,7 @@
   (none)
   )
 
+;; definition for function pegasus-show-runs
 ;; WARN: Return type mismatch none vs symbol.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 43]
 (defbehavior pegasus-show-runs pegasus ()
@@ -307,6 +363,8 @@
           )
   )
 
+;; definition for function pegasus-rotate
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defbehavior pegasus-rotate pegasus ((arg0 symbol) (arg1 float))
   (let ((s5-0 (new 'stack-no-clear 'matrix))
@@ -347,6 +405,7 @@
   (none)
   )
 
+;; definition for function pegasus-loop-on-same-path
 ;; WARN: Return type mismatch float vs none.
 (defbehavior pegasus-loop-on-same-path pegasus ()
   (cond
@@ -366,6 +425,7 @@
   (none)
   )
 
+;; definition for function pegasus-choose-path
 (defbehavior pegasus-choose-path pegasus ()
   (local-vars (f0-15 float) (f30-0 float))
   (while (begin (label cfg-61) (or (< 1.0 (-> self curve-position)) (< (-> self curve-position) 0.0)))
@@ -375,10 +435,7 @@
       0.0
       (set! f30-0
             (cond
-              ((or (>= (-> self current-path) (-> self num-paths))
-                   (< (-> self current-path) 0)
-                   (<= (-> s5-0 num-data) 0)
-                   )
+              ((or (>= (-> self current-path) (-> self num-paths)) (< (-> self current-path) 0) (<= (-> s5-0 num-data) 0))
                (format
                  0
                  "<GMJ>: ~A has path out of range cur ~D num ~D num-data ~D~%"
@@ -475,6 +532,9 @@
   #f
   )
 
+;; definition for function pegasus-move
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior pegasus-move pegasus ((arg0 float) (arg1 symbol) (arg2 symbol))
   (+! (-> self curve-position)
       (/ (the float (* (- (-> self clock frame-counter) (-> self clock old-frame-counter)) (the int (-> self speed))))
@@ -561,6 +621,7 @@
   (none)
   )
 
+;; definition for function pegasus-calc-speed
 (defbehavior pegasus-calc-speed pegasus ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self root-override2 trans) (target-pos 0)))
         (gp-1 #f)
@@ -617,6 +678,7 @@
     )
   )
 
+;; definition for function pegasus-calc-anim-speed
 (defbehavior pegasus-calc-anim-speed pegasus ()
   (let* ((f0-1 (fabs (-> self speed)))
          (f0-2 (* 0.07324219 f0-1))
@@ -627,6 +689,7 @@
     )
   )
 
+;; definition for method 55 of type pegasus
 (defmethod enemy-method-55 pegasus ((obj pegasus))
   (pegasus-method-137 obj)
   (pegasus-show-runs)
@@ -634,10 +697,12 @@
   (none)
   )
 
+;; definition for method 99 of type pegasus
 (defmethod enemy-method-99 pegasus ((obj pegasus) (arg0 process-focusable))
   #t
   )
 
+;; failed to figure out what this is:
 (defstate pegasus-debug (pegasus)
   :code (behavior ()
     (until #f
@@ -680,6 +745,7 @@
   :post (the-as (function none :behavior pegasus) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate die (pegasus)
   :virtual #t
   :code (behavior ()
@@ -757,6 +823,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate stare (pegasus)
   :virtual #t
   :trans (behavior ()
@@ -811,6 +878,7 @@
   :post (the-as (function none :behavior pegasus) enemy-simple-post)
   )
 
+;; definition for function pegasus-fly-code
 (defbehavior pegasus-fly-code pegasus ((arg0 int))
   (local-vars (a2-3 object))
   (let ((f30-0 (pegasus-calc-anim-speed)))
@@ -1025,6 +1093,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate pegasus-tired (pegasus)
   :event (the-as (function process int symbol event-message-block object :behavior pegasus) enemy-event-handler)
   :enter (behavior ()
@@ -1085,6 +1154,7 @@
   :post (-> (method-of-type enemy flee) post)
   )
 
+;; failed to figure out what this is:
 (defstate flee (pegasus)
   :virtual #t
   :enter (behavior ()
@@ -1146,6 +1216,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (pegasus)
   :virtual #t
   :code (behavior ()
@@ -1177,6 +1248,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate notice (pegasus)
   :virtual #t
   :enter (behavior ()
@@ -1256,6 +1328,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (pegasus)
   :virtual #t
   :post (behavior ()
@@ -1270,9 +1343,10 @@
     )
   )
 
+;; definition for method 114 of type pegasus
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-114 pegasus ((obj pegasus))
   "@abstract"
-  (stack-size-set! (-> obj main-thread) 512)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1324,15 +1398,18 @@
   (none)
   )
 
+;; definition for method 60 of type pegasus
 (defmethod coin-flip? pegasus ((obj pegasus))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
+;; definition for method 108 of type pegasus
 (defmethod enemy-method-108 pegasus ((obj pegasus) (arg0 enemy) (arg1 event-message-block))
   0
   )
 
+;; definition for method 7 of type pegasus
 ;; WARN: Return type mismatch enemy vs pegasus.
 (defmethod relocate pegasus ((obj pegasus) (arg0 int))
   (countdown (v1-0 20)
@@ -1343,6 +1420,9 @@
   (the-as pegasus ((method-of-type enemy relocate) obj arg0))
   )
 
+;; definition for method 115 of type pegasus
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-115 pegasus ((obj pegasus))
   "@abstract"
   (local-vars (sv-16 res-tag))
@@ -1439,6 +1519,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   107
@@ -1465,6 +1546,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   107
@@ -1499,6 +1581,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   107
