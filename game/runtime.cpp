@@ -390,5 +390,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   }
   lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
+  Discord_Shutdown();
   return MasterExit;
 }
