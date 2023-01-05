@@ -1,19 +1,12 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: mech.gc
-;; name in dgo: mech
-;; dgos: DRILLMTN, UNB, RUI
-
-(declare-type mech process-drawable)
-(define-extern mech-init (function entity-actor matrix3 handle float none :behavior mech))
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (if (not (nmember "mechp" *kernel-packages*))
     (set! *kernel-packages* (cons "mechp" *kernel-packages*))
     )
 
+;; definition of type mech
 (deftype mech (process-drawable)
   ((root-override     collide-shape-moving         :offset        128)
    (extra-trans       vector               :inline :offset-assert 208)
@@ -37,7 +30,28 @@
     )
   )
 
+;; definition for method 3 of type mech
+(defmethod inspect mech ((obj mech))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Textra-trans: ~`vector`P~%" (-> obj extra-trans))
+  (format #t "~2Tcondition: ~D~%" (-> obj condition))
+  (format #t "~2Tshadow-backup: ~A~%" (-> obj shadow-backup))
+  (format #t "~2Trider: ~D~%" (-> obj rider))
+  (format #t "~2Tshield-value: ~f~%" (-> obj shield-value))
+  (format #t "~2Tnav-sphere-handle: ~D~%" (-> obj nav-sphere-handle))
+  (format #t "~2Tprobe-time: ~D~%" (-> obj probe-time))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 24 of type mech
+;; WARN: Return type mismatch int vs none.
 (defmethod mech-method-24 mech ((obj mech))
   (if (nonzero? (-> obj part))
       (spawn (-> obj part) (-> obj root-override trans))
@@ -47,6 +61,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-start (mech)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -118,6 +133,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (mech)
   :virtual #t
   :event (-> (method-of-type mech wait-for-start) event)
@@ -145,7 +161,7 @@
   :code (behavior ()
     (change-parent self *entity-pool*)
     (ja-channel-set! 1)
-    (ja :group! mech-mech-idle-ja)
+    (ja :group! (-> self draw art-group data 3))
     (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
     (set! (-> self root-override penetrated-by) (penetrate))
     0.0
@@ -222,13 +238,14 @@
   :post (the-as (function none :behavior mech) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate pickup (mech)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('draw)
        (ja-channel-set! 1)
-       (ja :group! mech-mech-idle-ja)
+       (ja :group! (-> self draw art-group data 3))
        (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
        (set! (-> self root-override penetrated-by) (penetrate))
        (transform-post)
@@ -292,6 +309,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-return (mech)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -326,6 +344,8 @@
     )
   )
 
+;; definition for function mech-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior mech-init mech ((arg0 entity-actor) (arg1 matrix3) (arg2 handle) (arg3 float))
   (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
@@ -398,11 +418,13 @@
   (none)
   )
 
+;; definition for method 11 of type mech
 (defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
   (mech-init arg0 (the-as matrix3 #f) (the-as handle #f) 100.0)
   (none)
   )
 
+;; definition of type mech-target
 (deftype mech-target (process-drawable)
   ()
   :heap-base #x50
@@ -415,12 +437,23 @@
     )
   )
 
+;; definition for method 3 of type mech-target
+(defmethod inspect mech-target ((obj mech-target))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-mech-target mech mech-target-lod0-jg mech-target-idle-ja
-              ((mech-target-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+;; failed to figure out what this is:
+(defskelgroup skel-mech-target mech 42 44 ((43 (meters 999999))) :bounds (static-spherem 0 0 0 4))
 
+;; failed to figure out what this is:
 (defstate idle (mech-target)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -456,6 +489,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (mech-target)
   :virtual #t
   :event (-> (method-of-type mech-target idle) event)
@@ -500,6 +534,8 @@
     )
   )
 
+;; definition for function mech-target-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior mech-target-init mech ((arg0 vector) (arg1 quaternion) (arg2 entity-actor))
   (process-entity-set! self arg2)
@@ -517,6 +553,12 @@
   (none)
   )
 
+;; definition for function mech-target-spawn
+;; WARN: Return type mismatch (pointer process) vs (pointer mech-target).
 (defun mech-target-spawn ((arg0 vector) (arg1 target) (arg2 quaternion) (arg3 entity-actor))
   (process-spawn mech-target :init mech-target-init arg0 arg2 arg3 :to arg1)
   )
+
+
+
+

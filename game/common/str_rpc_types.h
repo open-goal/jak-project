@@ -74,15 +74,24 @@ constexpr int STR_RPC_RESULT_DONE = 0;
 constexpr int SECTOR_TABLE_SIZE = 64;
 
 // the header of a chunked file
-struct StrFileHeader {
+struct StrFileHeaderJ1 {
   u32 sectors[SECTOR_TABLE_SIZE];  // start of chunk, in sectors. including this sector.
   u32 sizes[SECTOR_TABLE_SIZE];    // size of chunk, in bytes. always an integer number of sectors
 };
 
 // the first sector of a chunked file.
-struct StrFileHeaderSector : StrFileHeader {
+struct StrFileHeaderSector : StrFileHeaderJ1 {
   u32 pad[512 - 128];  // all zero
 };
 
-static_assert(sizeof(StrFileHeader) == 0x200, "Sector header size");
+static_assert(sizeof(StrFileHeaderJ1) == 0x200, "Sector header size");
 static_assert(sizeof(StrFileHeaderSector) == SECTOR_SIZE, "Sector header size");
+
+constexpr int SECTOR_TABLE_SIZE_J2 = 512;
+
+struct StrFileHeaderJ2 {
+  u32 sectors[SECTOR_TABLE_SIZE_J2];  // start of chunk, in sectors. including this sector.
+  u32 sizes[SECTOR_TABLE_SIZE_J2];  // size of chunk, in bytes. always an integer number of sectors
+};
+
+static_assert(sizeof(StrFileHeaderJ2) == 0x1000, "Sector header size");
