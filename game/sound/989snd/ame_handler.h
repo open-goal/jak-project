@@ -15,6 +15,8 @@ namespace snd {
 // added!
 extern u64 SoundFlavaHack;
 
+extern u8 GlobalExcite;
+
 class midi_handler;
 class ame_handler : public sound_handler {
   friend class midi_handler;
@@ -72,7 +74,6 @@ class ame_handler : public sound_handler {
 
   std::unordered_map<u32, std::unique_ptr<midi_handler>> m_midis;
 
-  u8 m_excite{0};
   std::array<GroupDescription, 16> m_groups{};
   std::array<u8, 16> m_register{};
   std::array<u8*, 16> m_macro{};

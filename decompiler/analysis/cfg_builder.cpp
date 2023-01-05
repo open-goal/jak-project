@@ -574,7 +574,8 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
     ASSERT(ir->entries.at(i).branch_delay.has_value());
     bool is_and = delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay);
     bool is_or = delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay);
-    ASSERT_MSG(is_and != is_or, fmt::format("bad nested sc in {}", func.name()));
+    ASSERT_MSG(is_and != is_or,
+               fmt::format("bad nested sc in {}: {}", func.name(), ir->to_string(func.ir2.env)));
 
     if (first_different == -1) {
       // haven't seen a change yet.

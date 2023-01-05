@@ -90,9 +90,7 @@
                               (the-as uint (rand-vu-int-range (the-as int (-> s5-1 min-delay)) (the-as int (-> s5-1 max-delay))))
                               )
                         (set! (-> s5-1 delay) (-> obj delay))
-                        (set! (-> obj id)
-                              (gui-control-method-9 *gui-control* s4-0 (-> obj gui-channel) (gui-action play) s3-1 -99.0 0)
-                              )
+                        (set! (-> obj id) (add-process *gui-control* s4-0 (-> obj gui-channel) (gui-action play) s3-1 -99.0 0))
                         )
                       (speech-channel-method-12 obj)
                       (logior! (-> obj flags) (speech-channel-flag disable))
@@ -137,7 +135,7 @@
              )
            )
           (else
-            (gui-control-method-16
+            (set-action!
               *gui-control*
               (gui-action stop)
               (-> obj id)
@@ -152,10 +150,10 @@
             )
           )
         )
-      (case (gui-control-method-17 *gui-control* (-> obj id))
-        (((gui-action queue))
+      (case (get-status *gui-control* (-> obj id))
+        (((gui-status pending))
          (when (>= (- (-> pp clock frame-counter) (-> obj start-time)) (seconds 1))
-           (gui-control-method-16
+           (set-action!
              *gui-control*
              (gui-action stop)
              (-> obj id)
@@ -169,7 +167,7 @@
            (set! (-> obj end-time) (-> obj update-time))
            )
          )
-        (((gui-action none))
+        (((gui-status unknown))
          (set! (-> obj id) (new 'static 'sound-id))
          (set! (-> obj last-request handle) (the-as handle #f))
          (set! (-> obj end-time) (-> obj update-time))
@@ -207,7 +205,7 @@
 
 (defmethod speech-channel-method-10 speech-channel ((obj speech-channel) (arg0 handle))
   (when (= arg0 (handle->process (-> obj last-request handle)))
-    (gui-control-method-16
+    (set-action!
       *gui-control*
       (gui-action stop)
       (-> obj id)
@@ -299,7 +297,7 @@
   )
 
 (defmethod speech-control-method-16 speech-control ((obj speech-control))
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)
@@ -309,7 +307,7 @@
     (the-as (function gui-connection symbol) #f)
     (the-as process #f)
     )
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)

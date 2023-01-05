@@ -57,10 +57,10 @@
   )
 
 ;; definition for method 13 of type game-info
-(defmethod set-subtask-hook! game-info ((obj game-info) (arg0 int) (arg1 int) (arg2 function))
+(defmethod set-subtask-hook! game-info ((obj game-info) (arg0 int) (arg1 int) (arg2 (function object)))
   (let ((subtask (-> obj sub-task-list arg0)))
     (if (and subtask (-> subtask info))
-        (set! (-> subtask info hooks arg1) (the-as (function object) arg2))
+        (set! (-> subtask info hooks arg1) arg2)
         )
     )
   arg2
@@ -773,24 +773,21 @@
              (let ((s3-0 (new 'stack-no-clear 'vector4w)))
                (set! (-> s3-0 quad) (the-as uint128 0))
                (when (transform-point-qword! s3-0 (the-as vector arg0))
-                 (let ((s5-0
-                         (new
-                           'stack
-                           'font-context
-                           *font-default-matrix*
-                           (+ (the int (/ (the float (+ (/ (the-as int (-> s3-0 x)) 16) -1792)) (-> *video-params* relative-x-scale)))
-                              -48
-                              )
-                           (the-as int (+ (/ (the-as int (-> s3-0 y)) 16) -1855))
-                           0.0
-                           (font-color gold-#ba9200)
-                           (font-flags shadow kerning)
-                           )
-                         )
+                 (let ((s5-0 (new
+                               'stack
+                               'font-context
+                               *font-default-matrix*
+                               (+ (the int (/ (the float (+ (/ (-> s3-0 x) 16) -1792)) (-> *video-params* relative-x-scale))) -48)
+                               (+ (/ (-> s3-0 y) 16) -1855)
+                               0.0
+                               (font-color gold-#ba9200)
+                               (font-flags shadow kerning)
+                               )
+                             )
                        )
                    (set! (-> s5-0 scale) (lerp-scale 0.6 1.0 (the-as float arg1) 50.0 8000.0))
                    (let ((v1-9 s5-0))
-                     (set! (-> v1-9 origin z) (the float (/ (the-as int (-> s3-0 z)) 16)))
+                     (set! (-> v1-9 origin z) (the float (/ (-> s3-0 z) 16)))
                      )
                    (set! (-> s5-0 flags) (font-flags shadow kerning large))
                    (let ((s3-1 (-> self clock frame-counter)))
@@ -798,7 +795,7 @@
                        (+! (-> s5-0 origin y) (* -120.0 (-> self clock seconds-per-frame)))
                        (let ((s2-0 print-game-text))
                          (format (clear *temp-string*) "~4,,0f" arg1)
-                         (s2-0 *temp-string* s5-0 #f 44 318)
+                         (s2-0 *temp-string* s5-0 #f 44 (bucket-id debug-no-zbuf1))
                          )
                        (suspend)
                        )
@@ -809,7 +806,7 @@
                        (+! (-> s5-0 origin y) (* -120.0 (-> self clock seconds-per-frame)))
                        (let ((s3-2 print-game-text))
                          (format (clear *temp-string*) "~4,,0f" arg1)
-                         (s3-2 *temp-string* s5-0 #f 44 318)
+                         (s3-2 *temp-string* s5-0 #f 44 (bucket-id debug-no-zbuf1))
                          )
                        (suspend)
                        )

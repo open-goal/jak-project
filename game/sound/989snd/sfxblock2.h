@@ -92,11 +92,11 @@ struct SFX2 {
 class SFXBlock2 : public SoundBank {
  public:
   SFXBlock2(locator& loc, u32 handle, BankTag* tag);
-  std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
-                                              u32 sound_id,
-                                              s32 vol,
-                                              s32 pan,
-                                              SndPlayParams& params) override;
+  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+                                                             u32 sound_id,
+                                                             s32 vol,
+                                                             s32 pan,
+                                                             SndPlayParams& params) override;
 
   std::optional<std::string_view> get_name() override { return m_name; };
   std::optional<u32> get_sound_by_name(const char* name) override;

@@ -10,10 +10,12 @@
 #include <memory>
 
 #include "common/common_types.h"
+#include "common/util/FileUtil.h"
 #include "common/versions.h"
 
 #include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"
+#include "game/tools/filter_menu/filter_menu.h"
 
 // forward declarations
 struct GfxSettings;
@@ -122,6 +124,19 @@ namespace Gfx {
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 
+struct DebugSettings {
+  bool show_imgui = false;
+  bool ignore_imgui_hide_keybind = false;
+  std::vector<DebugTextFilter> debug_text_filters = {};
+  bool debug_text_check_range = false;
+  float debug_text_max_range = 0;
+
+  void load_settings(const ghc::filesystem::path& filepath);
+  void save_settings();
+};
+
+extern DebugSettings g_debug_settings;
+
 const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init(GameVersion version);
@@ -159,7 +174,6 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
-bool get_debug_menu_visible_on_startup();
 
 int PadIsPressed(Pad::Button button, int port);
 int PadGetAnalogValue(Pad::Analog analog, int port);

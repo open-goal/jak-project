@@ -93,6 +93,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/foreground.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/lights.cpp
+        mips2c/jak2_functions/nav_control.cpp
+        mips2c/jak2_functions/nav_mesh.cpp
         mips2c/jak2_functions/sky.cpp
         mips2c/jak2_functions/sparticle.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp
@@ -165,7 +167,8 @@ set(RUNTIME_SOURCE
         graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp
-        tools/subtitles/subtitle_editor.cpp)
+        tools/subtitles/subtitle_editor.cpp
+        tools/filter_menu/filter_menu.cpp)
 
 find_package(Git)
 

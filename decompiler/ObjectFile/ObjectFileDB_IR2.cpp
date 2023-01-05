@@ -1057,7 +1057,9 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.mips2c_output) {
+    result += ";;-*-MIPS2C-Start-*-\n";
     result += *func.mips2c_output;
+    result += ";;-*-MIPS2C-End-*-\n";
   }
 
   result += "\n";

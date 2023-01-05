@@ -1415,7 +1415,7 @@
 
 (defmethod print-text fail-mission ((obj fail-mission))
   (when (and (not (logtest? (-> obj flags) (fail-mission-flags famflags-6)))
-             (= (gui-control-method-17 *gui-control* (the-as sound-id (-> obj message-id))) (gui-action playing))
+             (= (get-status *gui-control* (the-as sound-id (-> obj message-id))) (gui-status active))
              )
     (let ((gp-0 (new
                   'stack
@@ -1434,10 +1434,10 @@
         (set! (-> v1-7 scale) 0.7)
         )
       (let ((v1-8 gp-0))
-        (set! (-> v1-8 width) (the float (the-as float #x12c)))
+        (set! (-> v1-8 width) (the float 300))
         )
       (let ((v1-9 gp-0))
-        (set! (-> v1-9 height) (the float (the-as float #x23)))
+        (set! (-> v1-9 height) (the float 35))
         )
       (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
       (let ((s4-0 (if (logtest? (-> obj flags) (fail-mission-flags famflags-2))
@@ -1449,24 +1449,24 @@
         (when (nonzero? s4-0)
           (let ((s3-0 print-game-text))
             (format (clear *temp-string*) (lookup-text! *common-text* (the-as game-text-id s4-0) #f) 1)
-            (s3-0 *temp-string* gp-0 #f 44 320)
+            (s3-0 *temp-string* gp-0 #f 44 (bucket-id progress))
             )
           )
         )
       (when (= (-> obj message) (fail-mission-message fammsg-1))
         (let ((v1-17 gp-0))
-          (set! (-> v1-17 height) (the float (the-as float #x5f)))
+          (set! (-> v1-17 height) (the float 95))
           )
         (let ((s5-1 print-game-text))
           (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id text-x18a) #f) 1)
-          (s5-1 *temp-string* gp-0 #f 44 320)
+          (s5-1 *temp-string* gp-0 #f 44 (bucket-id progress))
           )
         (let ((v1-19 gp-0))
-          (set! (-> v1-19 height) (the float (the-as float #x9b)))
+          (set! (-> v1-19 height) (the float 155))
           )
         (let ((s5-2 print-game-text))
           (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id text-x180) #f) 1)
-          (s5-2 *temp-string* gp-0 #f 44 320)
+          (s5-2 *temp-string* gp-0 #f 44 (bucket-id progress))
           )
         )
       )
@@ -1645,21 +1645,19 @@
 (defstate resetting (fail-mission)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'reset)
-                        #t
+    (the-as object (case event-type
+                     (('reset)
+                      #t
+                      )
+                     (('query)
+                      (case (-> event param 0)
+                        (('reset)
+                         #t
+                         )
                         )
-                       ((= v1-0 'query)
-                        (case (-> event param 0)
-                          (('reset)
-                           #t
-                           )
-                          )
-                        )
-                       )
-              )
-      )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     '()
@@ -1750,7 +1748,7 @@
   (set! (-> self fail-message) (the-as uint (-> arg0 fail-message)))
   (set-setting! 'allow-continue #f 0 0)
   (set-setting! 'minimap 'clear 0 128)
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)
@@ -1760,7 +1758,7 @@
     (the-as (function gui-connection symbol) #f)
     (the-as process #f)
     )
-  (gui-control-method-16
+  (set-action!
     *gui-control*
     (gui-action stop)
     (the-as sound-id 1)
@@ -1773,10 +1771,7 @@
   (when (not (logtest? (-> arg0 flags) (fail-mission-flags famflags-4)))
     (if (not (and *target* (logtest? (-> *target* focus-status) (focus-status dead)) (zero? (-> self message))))
         (set! (-> self stinger)
-              (the-as
-                uint
-                (gui-control-method-9 *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0)
-                )
+              (the-as uint (add-process *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0))
               )
         )
     )
@@ -1790,10 +1785,7 @@
           (= (-> self message) (fail-mission-message fammsg-1))
           )
       (set! (-> self message-id)
-            (the-as
-              uint
-              (gui-control-method-9 *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0)
-              )
+            (the-as uint (add-process *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0))
             )
       )
   (go-virtual idle)
@@ -1912,7 +1904,7 @@
     (set! (-> obj minimap v1-8) (the-as uint #f))
     )
   (countdown (v1-11 4)
-    (set! (-> obj actor-group v1-11) (the-as uint #f))
+    (set! (-> obj actor-group v1-11) (the-as (pointer entity-actor) #f))
     )
   (set! (-> obj fail-now) #f)
   (set! (-> obj retry-now) #f)
@@ -2201,8 +2193,7 @@
   :virtual #t
   :event task-manager-event-handler
   :exit (behavior ()
-    ;; todo
-    ; (disable *screen-filter*)
+    (disable *screen-filter*)
     (none)
     )
   :code (behavior ()

@@ -626,7 +626,9 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           snd_SetGlobalExcite(cmd->midi_reg.value);
         } else {
           Sound* sound = LookupSound(666);
-          snd_SetMIDIRegister(sound->sound_handle, cmd->midi_reg.reg, cmd->midi_reg.value);
+          if (sound != nullptr) {
+            snd_SetMIDIRegister(sound->sound_handle, cmd->midi_reg.reg, cmd->midi_reg.value);
+          }
         }
       } break;
       case Jak2SoundCommand::set_reverb: {
@@ -731,9 +733,13 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           }
           SignalSema(gSema);
         } break;
+        case Jak1SoundCommand::MIRROR_MODE: {
+          gMirrorMode = cmd->mirror.value;
+        } break;
         default:
-          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}",
-                                        magic_enum::enum_name(cmd->j1command)));
+          ASSERT_MSG(false,
+                     fmt::format("Unhandled RPC Loader command {} ({})",
+                                 magic_enum::enum_name(cmd->j1command), (int)cmd->j1command));
       }
       n_messages--;
       cmd++;
@@ -751,7 +757,7 @@ static void UnLoadMusic(s32* handle) {
   *handle = 0;
 }
 
-void* RPC_Loader2(unsigned int fno, void* data, int size) {
+void* RPC_Loader2(unsigned int /*fno*/, void* data, int size) {
   int n_messages = size / SRPC_MESSAGE_SIZE;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
   if (!gSoundEnable) {
