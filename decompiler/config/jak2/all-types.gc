@@ -44711,7 +44711,6 @@
 ;; onin-game                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype onin-game-event (structure)
   ((min-count  uint16  :offset-assert 0)
    (max-count  uint16  :offset-assert 2)
@@ -44726,16 +44725,14 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype onin-game-bubble (process-drawable)
-  ((bubble-type       int32   :offset-assert 196)
-   (bubble-start-time time-frame  :offset-assert 204)
-   (gravity           meters  :offset-assert 212)
-   (dead?             basic   :offset-assert 216)
-   (angle             float   :offset-assert 220)
-   (height            float   :offset-assert 224)
+  ((bubble-type       int32   :offset-assert 200)
+   (bubble-start-time time-frame  :offset-assert 208)
+   (gravity           meters  :offset-assert 216)
+   (dead?             symbol   :offset-assert 220)
+   (angle             float   :offset-assert 224)
+   (height            float   :offset-assert 228)
    )
   :method-count-assert 22
   :size-assert         #xe8
@@ -44745,7 +44742,6 @@
     (fall () _type_ :state 21)
     )
   )
-|#
 
 (deftype onin-game (process-drawable)
   ((wave            int32   :offset-assert 200)
@@ -44755,12 +44751,12 @@
    (wave-length     uint64  :offset-assert 224)
    (event-time      time-frame  :offset-assert 232)
    (event-length    uint64  :offset-assert 240)
-   (hud-score       uint64  :offset-assert 248)
-   (hud-goal        uint64  :offset-assert 256)
-   (hud-miss        uint64  :offset-assert 264)
+   (hud-score       handle  :offset-assert 248)
+   (hud-goal        handle  :offset-assert 256)
+   (hud-miss        handle  :offset-assert 264)
    (score           float   :offset-assert 272)
    (score-time      time-frame  :offset-assert 280)
-   (game            uint32  :offset-assert 288)
+   (game            onin-game-event  :offset-assert 288)
    (miss-max        int32   :offset-assert 292)
    (miss-count      int32   :offset-assert 296)
    (point-win       float   :offset-assert 300)
@@ -44776,20 +44772,20 @@
   (:methods
     (hide () _type_ :state 20)
     (wait-for-start () _type_ :state 21)
-    (active () _type_ :state 22)
+    (active (symbol) _type_ :state 22)
     (lose () _type_ :state 23)
     (win () _type_ :state 24)
-    (onin-game-method-25 () none 25)
-    (onin-game-method-26 () none 26)
-    (onin-game-method-27 () none 27)
+    (onin-game-method-25 (_type_) none 25)
+    (onin-game-method-26 (_type_) none 26)
+    (onin-game-method-27 "TODO - bubble type" (_type_ int) none 27)
     )
   )
 
-;; (define-extern *onin-game-data* array)
-;; (define-extern birth-func-onin-bubble-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern birth-func-onin-bubble-birth-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern onin-game-bubble-init function)
-(define-extern onin-game-init (function entity none))
+(define-extern *onin-game-data* (array (inline-array onin-game-event)))
+(define-extern birth-func-onin-bubble-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-onin-bubble-birth-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern onin-game-bubble-init "TODO - bubble type enum" (function vector int meters float float none :behavior onin-game-bubble))
+(define-extern onin-game-init (function entity none :behavior onin-game))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-texture               ;;
