@@ -208,7 +208,13 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
     }
   });
 
-  m_listener.connect_to_target(m_target_connect_attempts, ip, port);
+  auto connected = m_listener.connect_to_target(m_target_connect_attempts, ip, port);
+  // TODO - reload startup.gc incase it's changed
+  if (connected && !m_run_on_listen_lines.empty()) {
+    for (const auto& line : m_run_on_listen_lines) {
+      handle_repl_string(line);
+    }
+  }
   return get_none();
 }
 

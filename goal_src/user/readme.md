@@ -17,3 +17,33 @@ Additionally, you can provide a `repl-config.json` to set various REPL settings:
 - `numConnectToTargetAttempts` - the number of times the REPL will attempt to connect to the target on an `(lt)`
 
 And a `startup.gc` where each line will be executed upon startup
+
+## Re-running certain commands upon listening to the target
+
+A common workflow that you might want in your `startup.gc` is something like the following:
+
+```clj
+(mi)
+(lt)
+(dbgc)
+(test-play)
+```
+
+This builds the game, connects to the game, attaches the debugger, and runs it.
+
+However, when you crash you ideally want to just be able to:
+- stop the game via `(:stop)` or the respective keybind
+- fix the code, rebuild just that file
+- re-launch the game and re-connect
+
+Upon which you'd probably want to run all or some of the above startup again.  But how can you accomplish this without re-launching the REPL completely?  Like so:
+
+```clj
+(mi)
+(lt)
+;; og:run-below-on-listen
+(dbgc)
+(test-play)
+```
+
+As the comment suggests, upon a succesful `(lt)` it will run any lines below it again.
