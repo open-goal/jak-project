@@ -1308,6 +1308,14 @@ int TypeSystem::get_size_in_type(const Field& field) const {
   }
 }
 
+std::vector<std::string> TypeSystem::get_all_type_names() {
+  std::vector<std::string> results = {};
+  for (const auto& [type_name, type_info] : m_types) {
+    results.push_back(type_name);
+  }
+  return results;
+}
+
 std::vector<std::string> TypeSystem::search_types_by_parent_type(
     const std::string& parent_type,
     const std::vector<std::string>& existing_matches) {
