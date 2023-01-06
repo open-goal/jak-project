@@ -96,6 +96,9 @@ class Compiler {
   MakeSystem& make_system() { return m_make; }
   void update_via_config_file(const std::string& json,
                               const std::optional<std::string> game_name = {});
+  void set_run_on_listen_lines(const std::vector<std::string> lines) {
+    m_run_on_listen_lines = lines;
+  }
 
  private:
   GameVersion m_version;
@@ -120,6 +123,7 @@ class Compiler {
   // Configurable fields
   int m_target_connect_attempts = 30;
   std::vector<std::string> m_asm_file_search_dirs = {};
+  std::vector<std::string> m_run_on_listen_lines = {};
 
   struct DebugStats {
     int num_spills = 0;

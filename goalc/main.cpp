@@ -22,6 +22,8 @@ void setup_logging() {
   lg::initialize();
 }
 
+#include "common/util/StringUtil.h"
+
 int main(int argc, char** argv) {
   bool auto_listen = false;
   bool auto_debug = false;
@@ -70,6 +72,7 @@ int main(int argc, char** argv) {
   }
 
   std::vector<std::string> user_startup_commands = {};
+  std::vector<std::string> run_on_listen_lines = {};
   std::optional<std::string> repl_config = {};
 
   if (auto_find_user) {
@@ -96,8 +99,16 @@ int main(int argc, char** argv) {
         if (file_util::file_exists(startup_file_path)) {
           auto data = file_util::read_text_file(startup_file_path);
           auto startup_cmds = split_string(data);
+          bool found_run_on_listen_line = false;
           for (const auto& cmd : startup_cmds) {
-            user_startup_commands.push_back(cmd);
+            if (found_run_on_listen_line) {
+              run_on_listen_lines.push_back(cmd);
+            } else {
+              user_startup_commands.push_back(cmd);
+            }
+            if (str_util::contains(cmd, "og:run-below-on-listen")) {
+              found_run_on_listen_line = true;
+            }
           }
         }
         // Check for a `repl-config.json` file, so things can be configured without tons of flags
@@ -135,6 +146,9 @@ int main(int argc, char** argv) {
     compiler = std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
     if (repl_config) {
       compiler->update_via_config_file(repl_config.value(), game);
+    }
+    if (!run_on_listen_lines.empty()) {
+      compiler->set_run_on_listen_lines(run_on_listen_lines);
     }
     // Start nREPL Server
     if (repl_server_ok) {
@@ -181,6 +195,9 @@ int main(int argc, char** argv) {
             std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
         if (repl_config) {
           compiler->update_via_config_file(repl_config.value(), game);
+        }
+        if (!run_on_listen_lines.empty()) {
+          compiler->set_run_on_listen_lines(run_on_listen_lines);
         }
         if (!startup_cmd.empty()) {
           compiler->handle_repl_string(startup_cmd);
