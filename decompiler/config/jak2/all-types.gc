@@ -15428,6 +15428,7 @@
    (start-time time-frame  :offset-assert 16) ;; time-frame
    (value      float   :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 13
   :size-assert         #x1c
   :flag-assert         #xd0000001c
@@ -15447,6 +15448,7 @@
    (damping float  :offset-assert 16)
    (accel   float  :offset-assert 20)
    )
+  :allow-misaligned
   :method-count-assert 11
   :size-assert         #x18
   :flag-assert         #xb00000018
@@ -15463,6 +15465,7 @@
    (elasticity float                     :offset-assert 32)
    (state      int32                     :offset-assert 36)
    )
+  :allow-misaligned
   :method-count-assert 13
   :size-assert         #x28
   :flag-assert         #xd00000028
@@ -36216,10 +36219,9 @@
 ;; dig-digger                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dig-clasp (process-drawable)
-  ((b    basic               :offset-assert 196)
-   (conn connection-minimap  :offset-assert 200)
+  ((b    basic               :offset-assert 200)
+   (conn connection-minimap  :offset-assert 204)
    )
   :method-count-assert 24
   :size-assert         #xd0
@@ -36228,49 +36230,36 @@
     (broken () _type_ :state 20)
     (break-it () _type_ :state 21)
     (idle () _type_ :state 22)
-    (dig-clasp-method-23 () none 23)
+    (dig-clasp-method-23 (_type_ vector) vector 23)
     )
   )
-|#
 
-#|
-(deftype dig-clasp-b (dig-clasp)
-  ()
-  :method-count-assert 24
-  :size-assert         #xd0
-  :flag-assert         #x18005000d0
-  (:methods
-    )
-  )
-|#
+(deftype dig-clasp-b (dig-clasp) ())
 
-#|
 (deftype dig-tether-chain (structure)
   ((position  vector :inline :offset-assert 0)
    (velocity  vector :inline :offset-assert 16)
-   (joint-mod basic          :offset-assert 32)
+   (joint-mod joint-mod          :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype dig-tether (process-drawable)
-  ((clasp             basic                       :offset-assert 196)
-   (clasp-info-ok     basic                       :offset-assert 200)
-   (clasp-pos         vector              :inline :offset-assert 204)
-   (digger-pos        vector              :inline :offset-assert 220)
-   (digger-vertical   vector              :inline :offset-assert 236)
-   (frame             oscillating-float   :inline :offset-assert 252)
-   (frame-kicker      delayed-rand-float  :inline :offset-assert 276)
-   (old-dist          float                       :offset-assert 304)
-   (chain-joints      UNKNOWN             8       :offset-assert 316)
-   (chain-offset-rand delayed-rand-vector :inline :offset-assert 700)
-   (chain-offset      oscillating-vector  :inline :offset-assert 748)
-   (joint-one         basic                       :offset-assert 808)
-   (snapped-look      lod-set             :inline :offset-assert 812)
+  ((clasp             entity-actor                       :offset-assert 200)
+   (clasp-info-ok     symbol                       :offset-assert 204)
+   (clasp-pos         vector              :inline :offset-assert 208)
+   (digger-pos        vector              :inline :offset-assert 224)
+   (digger-vertical   vector              :inline :offset-assert 240)
+   (frame             oscillating-float   :inline :offset-assert 256)
+   (frame-kicker      delayed-rand-float  :inline :offset-assert 280)
+   (old-dist          float                       :offset-assert 308)
+   (chain-joints      dig-tether-chain             8     :inline  :offset-assert 320)
+   (chain-offset-rand delayed-rand-vector :inline :offset-assert 704)
+   (chain-offset      oscillating-vector  :inline :offset-assert 752)
+   (joint-one         joint-mod                       :offset-assert 812)
+   (snapped-look      lod-set             :inline :offset-assert 816)
    )
   :method-count-assert 25
   :size-assert         #x361
@@ -36278,17 +36267,15 @@
   (:methods
     (broken () _type_ :state 20)
     (idle () _type_ :state 21)
-    (dig-tether-method-22 () none 22)
-    (dig-tether-method-23 () none 23)
-    (dig-tether-method-24 () none 24)
+    (dig-tether-method-22 (_type_) none 22)
+    (dig-tether-method-23 (_type_) none 23)
+    (dig-tether-method-24 (_type_) none 24)
     )
   )
-|#
 
-#|
 (deftype dig-digger-tether-info (structure)
   ((rp       int32   :offset-assert 0)
-   (handle   uint64  :offset-assert 8)
+   (handle   handle  :offset-assert 8)
    (broken-x float   :offset-assert 16)
    (broken-z float   :offset-assert 20)
    )
@@ -36296,31 +36283,45 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype dig-digger (process-drawable)
-  ()
+  (
+    (actor-group       (pointer actor-group)       :offset-assert 200)
+    (actor-group-count int32                       :offset-assert 204)
+    (tethers           dig-digger-tether-info 24             :inline     :offset-assert 208) ;; elt size: 32
+    (vertical          oscillating-vector :inline  :offset-assert 976)
+    (vertical-rand     delayed-rand-vector :inline :offset-assert 1040)
+    (start-y           float                       :offset-assert 1088)
+    (y-offset          bouncing-float :inline      :offset-assert 1092)
+    (y-offset-kicker   delayed-rand-float :inline  :offset-assert 1136)
+    (twist             oscillating-float :inline   :offset-assert 1164)
+    (twist-kicker      delayed-rand-float :inline  :offset-assert 1192)
+    (smoke-part        sparticle-launch-control                      :offset-assert 1220)
+    (motor-sound       uint32                      :offset-assert 1224)
+    (bit-sound         uint32                      :offset-assert 1228)
+    (movie-handle      handle                      :offset-assert 1232)
+    (hud-counter       handle                      :offset-assert 1240)
+    (speech-time       time-frame                  :offset-assert 1248)
+    (speech-count      int32                       :offset-assert 1256)
+  )
   :method-count-assert 25
   :size-assert         #x4ec
   :flag-assert         #x19047004ec
-  ;; Failed to read fields.
   (:methods
     (idle () _type_ :state 20)
     (hidden () _type_ :state 21)
-    (dig-digger-method-22 () none 22)
-    (dig-digger-method-23 () none 23)
-    (dig-digger-method-24 () none 24)
+    (dig-digger-method-22 (_type_ int) entity 22)
+    (dig-digger-method-23 (_type_) none 23)
+    (dig-digger-method-24 (_type_) none 24)
     )
   )
-|#
 
-;; (define-extern birth-func-dig-digger-collide function)
-;; (define-extern check-drop-level-dig-digger-rubble-sparks (function sparticle-system sparticle-cpuinfo vector none))
-;; (define-extern *dig-clasp-exploder-params* joint-exploder-static-params)
-;; (define-extern dig-tether-handler function)
-;; (define-extern dig-tether-init-by-other function)
-;; (define-extern bustclasp function)
+(define-extern birth-func-dig-digger-collide (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern check-drop-level-dig-digger-rubble-sparks (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *dig-clasp-exploder-params* joint-exploder-static-params)
+(define-extern dig-tether-handler (function process int symbol event-message-block object :behavior dig-tether))
+(define-extern dig-tether-init-by-other (function vector entity none :behavior dig-tether))
+(define-extern bustclasp (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dig-obs                        ;;

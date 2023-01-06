@@ -1813,31 +1813,19 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/dig/dig-digger.gc"
-  ;; "levels/dig/dig-obs.gc"
   "levels/dig/dig1-obs.gc"
-  ;; "levels/dig/dig2-obs.gc"
-  ;; "levels/dig/dig3-obs.gc"
-  ;; "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
-  ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
-  ;; "levels/common/enemy/metalhead_brown/metalmonk.gc"
-  ;; "levels/dig/dig-texture.gc"
-  ;; "levels/dig/dig-scenes.gc"
-  ;; "levels/dig/dig-part.gc"
   )
 
 (copy-textures 2282 2284 2283 2419 2844)
 
 (copy-gos
   "dig-digger-ag"
-  ;; "crimson-guard-ag"
   "dig-bomb-crate-ag"
   "dig-conveyor-ag"
   "dig-clasp-ag"
   "dig-tether-ag"
   "dig-jump-pad-ag"
   "dig-breakable-door-ag"
-  ;; "dig-sinking-plat-ag"
   "dig-clasp-b-ag"
   "dig-bomb-crate-cylinder-ag"
   "dig1-vis"
