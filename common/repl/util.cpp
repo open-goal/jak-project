@@ -1,8 +1,8 @@
 #include "util.h"
 
 #include "common/util/FileUtil.h"
-#include "common/util/StringUtil.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 #include "common/versions.h"
 
 #include "third-party/fmt/color.h"
@@ -234,6 +234,6 @@ REPL::Config load_repl_config(const std::string& username, const GameVersion gam
       REPL::Config config(game_version);
     }
   }
-  REPL::Config config(game_version);
+  return REPL::Config(game_version);
 }
 }  // namespace REPL

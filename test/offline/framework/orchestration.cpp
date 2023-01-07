@@ -311,11 +311,11 @@ void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig
   fmt::print("\x1b[{}A", lines_to_clear);  // move n lines up
   fmt::print("\e[?25l");                   // hide the cursor
   int threads_shown = 0;
-  for (int i = 0; i < statuses.size() && threads_shown < threads_to_display; i++) {
+  for (int i = 0; i < (int)statuses.size() && threads_shown < threads_to_display; i++) {
     const auto& status = statuses.at(i);
     // Skip completed threads if there are potential in-progress ones to show
     if (threads_hidden != 0 && !status->in_progress() &&
-        (statuses.size() - i) > threads_to_display) {
+        ((int)statuses.size() - i) > threads_to_display) {
       continue;
     }
 

@@ -5,8 +5,8 @@
 #include "common/repl/nrepl/ReplServer.h"
 #include "common/repl/util.h"
 #include "common/util/FileUtil.h"
-#include "common/util/StringUtil.h"
 #include "common/util/diff.h"
+#include "common/util/string_util.h"
 #include "common/versions.h"
 
 #include "goalc/compiler/Compiler.h"
