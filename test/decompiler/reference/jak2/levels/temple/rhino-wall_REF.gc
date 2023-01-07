@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rhino-wall.gc
-;; name in dgo: rhino-wall
-;; dgos: MTN
-
-;; DECOMP BEGINS
-
+;; definition of type rhino-wall
 (deftype rhino-wall (process-focusable)
   ((anim     spool-anim  :offset-assert 204)
    (art-name string      :offset-assert 208)
@@ -24,17 +19,35 @@
     )
   )
 
+;; definition for method 3 of type rhino-wall
+(defmethod inspect rhino-wall ((obj rhino-wall))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tanim: ~A~%" (-> obj anim))
+  (format #t "~2Tart-name: ~A~%" (-> obj art-name))
+  (format #t "~2Tid: ~D~%" (-> obj id))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-rhino-wall-1 rhino-wall rhino-wall-1-lod0-jg rhino-wall-1-idle-ja
               ((rhino-wall-1-lod0-mg (meters 999999)))
               :bounds (static-spherem 0.3 9 -3 11)
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-rhino-wall-2 rhino-wall rhino-wall-2-lod0-jg rhino-wall-2-idle-ja
               ((rhino-wall-2-lod0-mg (meters 999999)))
               :bounds (static-spherem 0.3 13.5 0 14.5)
               )
 
+;; definition for method 30 of type rhino-wall
 ;; WARN: Return type mismatch vector vs none.
 (defmethod rhino-wall-method-30 rhino-wall ((obj rhino-wall))
   (let ((v1-1 (-> obj root-override root-prim)))
@@ -69,6 +82,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate unbroken (rhino-wall)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -88,51 +102,18 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hit (rhino-wall)
   :virtual #t
-  :code (behavior ()
-    (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (rhino-wall-method-30 self)
-    (set! (-> self draw bounds w) 573440.0)
-    (let* ((gp-0 (-> self draw art-group))
-           (s5-0 (method-of-object gp-0 get-art-by-name-method))
-           )
-      (format (clear *temp-string*) "~S-end" (-> self art-name))
-      (let ((a2-3 (s5-0 gp-0 *temp-string* art-joint-anim)))
-        ;; added cast
-        (ja-play-spooled-anim (-> self anim) (ja-group) (the-as art-joint-anim a2-3) (the-as (function process-drawable symbol) false-func))
-        )
-      )
-    (go-virtual broken)
-    (none)
-    )
   :post (the-as (function none :behavior rhino-wall) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate broken (rhino-wall)
   :virtual #t
-  :code (behavior ()
-    (rhino-wall-method-30 self)
-    (let* ((gp-0 (-> self draw art-group))
-           (s5-0 (method-of-object gp-0 get-art-by-name-method))
-           )
-      (format (clear *temp-string*) "~S-end" (-> self art-name))
-      (let ((gp-1 (s5-0 gp-0 *temp-string* art-joint-anim)))
-        (ja-channel-set! 1)
-        ;; added cast
-        (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim gp-1))
-        )
-      )
-    (logior! (-> self skel status) (joint-control-status sync-math))
-    (transform-post)
-    (logclear! (-> self skel status) (joint-control-status sync-math))
-    (suspend)
-    (transform-post)
-    (sleep-code)
-    (none)
-    )
   )
 
+;; definition for method 11 of type rhino-wall
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! rhino-wall ((obj rhino-wall) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
