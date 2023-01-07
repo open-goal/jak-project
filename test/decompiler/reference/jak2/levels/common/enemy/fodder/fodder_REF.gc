@@ -2,10 +2,10 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(defskelgroup skel-fodder fodder 0 -1
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-fodder fodder fodder-lod0-jg -1
+              ((fodder-lod0-mg (meters 20)) (fodder-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2)
-              :shadow 3
+              :shadow fodder-shadow-mg
               :origin-joint-index 12
               )
 
@@ -440,11 +440,8 @@
           (until (not #f)
             (ja-no-eval :num! (loop!))
             (ja-channel-push! 1 (seconds 0.25))
-            (ja-no-eval :group! (-> self draw art-group data 4)
-                        :num! (seek!
-                          (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1))
-                          f30-0
-                          )
+            (ja-no-eval :group! fodder-idle-ja
+                        :num! (seek! (the float (+ (-> (the-as art-joint-anim fodder-idle-ja) frames num-frames) -1)) f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -455,11 +452,8 @@
             (ja-no-eval :num! (loop!))
             (ja-channel-push! 1 (seconds 0.25))
             (dotimes (gp-0 (rand-vu-int-range 4 7))
-              (ja-no-eval :group! (-> self draw art-group data 6)
-                          :num! (seek!
-                            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1))
-                            f30-0
-                            )
+              (ja-no-eval :group! fodder-chew-ja
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim fodder-chew-ja) frames num-frames) -1)) f30-0)
                           :frame-num 0.0
                           )
               (until (ja-done? 0)
@@ -719,7 +713,7 @@
                  (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
                  )
                 ((= v1-55 1)
-                 (ja :group! (-> self draw art-group data 10))
+                 (ja :group! fodder-jump-chomp-ja)
                  (logior! (-> self focus-status) (focus-status dangerous))
                  (let* ((v1-64 *game-info*)
                         (a0-30 (+ (-> v1-64 attack-id) 1))
@@ -729,7 +723,7 @@
                    )
                  )
                 (else
-                  (ja :group! (-> self draw art-group data 11))
+                  (ja :group! fodder-jump-kick-ja)
                   (logior! (-> self focus-status) (focus-status dangerous))
                   (let* ((v1-70 *game-info*)
                          (a0-35 (+ (-> v1-70 attack-id) 1))
@@ -817,7 +811,7 @@
               (when (and (< f30-0 (* f0-20 f0-20))
                          (>= (- (-> self clock frame-counter) (-> self look-at-other-time)) (seconds 0.125))
                          )
-                (let ((v1-117 (ja-channel-float! (the-as art-joint-anim (-> self draw art-group data 15)) 0.0 0.0 0.0)))
+                (let ((v1-117 (ja-channel-float! (the-as art-joint-anim fodder-snap-ja) 0.0 0.0 0.0)))
                   (when v1-117
                     (set! (-> self skel interp-select 0) #xe00010)
                     (set! (-> self skel interp-select 1) 0)

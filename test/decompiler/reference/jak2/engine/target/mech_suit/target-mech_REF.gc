@@ -1,38 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-mech.gc
-;; name in dgo: target-mech
-;; dgos: DRILLMTN, UNB, RUI
-
-(define-extern target-mech-start (state handle target))
-(define-extern target-mech-stance (state target))
-(define-extern target-mech-walk (state target))
-(define-extern target-mech-punch-pick (function symbol int :behavior target))
-(define-extern target-mech-punch (state target))
-(define-extern target-mech-falling (state symbol target))
-(define-extern target-mech-jump (state float float surface target))
-(define-extern target-mech-hit-ground (state symbol target))
-(define-extern target-mech-hit (state symbol attack-info target))
-(define-extern target-mech-death (state symbol target))
-(define-extern target-mech-carry-update (function none :behavior target))
-(define-extern target-mech-carry-post (function none :behavior target))
-(define-extern target-mech-carry-pickup (state target))
-(define-extern target-mech-carry-drop (state target))
-(define-extern target-mech-carry-stance (state target))
-(define-extern target-mech-carry-walk (state target))
-(define-extern target-mech-carry-drag (state target))
-(define-extern target-mech-carry-falling (state target))
-(define-extern target-mech-carry-hit-ground (state symbol target))
-(define-extern target-mech-carry-jump (state float float target))
-(define-extern target-mech-carry-throw (state target))
-(define-extern target-mech-get-on (state handle target))
-(define-extern target-mech-get-off (state target))
-(define-extern target-mech-grab (state target))
-(define-extern target-mech-clone-anim (state handle target))
-
-;; DECOMP BEGINS
-
+;; definition for method 15 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
 (defmethod draw hud-heatmeter ((obj hud-heatmeter))
   (set-hud-piece-position!
     (the-as hud-sprite (-> obj sprites))
@@ -52,6 +22,8 @@
   (none)
   )
 
+;; definition for method 16 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
 (defmethod update-values hud-heatmeter ((obj hud-heatmeter))
   (set! (-> obj values 0 target) (the int (* 1000.0 (-> *game-info* distance))))
   (logclear! (-> obj flags) (hud-flags disable))
@@ -60,6 +32,8 @@
   (none)
   )
 
+;; definition for method 17 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
 (defmethod init-callback hud-heatmeter ((obj hud-heatmeter))
   (set! (-> obj gui-id)
         (add-process *gui-control* obj (gui-channel hud-upper-center-2) (gui-action hidden) (-> obj name) 81920.0 0)
@@ -77,6 +51,7 @@
   (none)
   )
 
+;; definition for symbol *mech-stance-mods*, type surface
 (define *mech-stance-mods*
   (new 'static 'surface
     :name 'run
@@ -131,6 +106,7 @@
     )
   )
 
+;; definition for symbol *mech-walk-mods*, type surface
 (define *mech-walk-mods*
   (new 'static 'surface
     :name 'run
@@ -191,6 +167,7 @@
     )
   )
 
+;; definition for symbol *mech-jump-mods*, type surface
 (define *mech-jump-mods* (new 'static 'surface
                            :name 'jump
                            :turnv 131072.0
@@ -224,6 +201,7 @@
                            )
         )
 
+;; definition for symbol *mech-punch-mods*, type surface
 (define *mech-punch-mods* (new 'static 'surface
                             :name 'punch
                             :turnv 131072.0
@@ -251,6 +229,7 @@
                             )
         )
 
+;; definition for symbol *mech-pickup-mods*, type surface
 (define *mech-pickup-mods* (new 'static 'surface
                              :name 'run
                              :turnv 16384.0
@@ -282,6 +261,7 @@
                              )
         )
 
+;; definition for symbol *mech-carry-walk-mods*, type surface
 (define *mech-carry-walk-mods* (new 'static 'surface
                                  :name 'run
                                  :turnv 16384.0
@@ -315,8 +295,10 @@
                                  )
         )
 
+;; failed to figure out what this is:
 (set! (-> *mech-carry-walk-mods* mult-hook) (-> *mech-walk-mods* mult-hook))
 
+;; definition for symbol *mech-carry-drag-mods*, type surface
 (define *mech-carry-drag-mods* (new 'static 'surface
                                  :name 'run
                                  :tiltv 65536.0
@@ -341,6 +323,7 @@
                                  )
         )
 
+;; definition for symbol *mech-carry-jump-mods*, type surface
 (define *mech-carry-jump-mods* (new 'static 'surface
                                  :name 'jump
                                  :turnv 131072.0
@@ -374,11 +357,16 @@
                                  )
         )
 
+;; definition for function target-mech-falling-anim-trans
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-falling-anim-trans target ()
   0
   (none)
   )
 
+;; definition for function target-mech-mech-effect
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-mech-effect mech ((arg0 target))
   (when (!= (-> arg0 mech thruster-flame-length) 0.0)
     (let ((f30-0 0.0))
@@ -472,10 +460,12 @@
   (none)
   )
 
+;; definition for function mech-on-ground?
 (defbehavior mech-on-ground? target ()
   (logtest? (-> self control status) (collide-status on-surface))
   )
 
+;; definition for function target-mech-get-off?
 (defbehavior target-mech-get-off? target ()
   (when (and (mech-on-ground?)
              (< (-> self mech no-get-off-time) (-> self clock frame-counter))
@@ -524,6 +514,8 @@
     )
   )
 
+;; definition for function target-mech-handler
+;; INFO: Used lq/sq
 (defbehavior target-mech-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-0 object) (a0-18 symbol) (sv-96 target) (sv-112 process))
   (cond
@@ -784,6 +776,8 @@
     )
   )
 
+;; definition for function target-mech-bonk-event-handler
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs object.
 (defbehavior target-mech-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
@@ -858,6 +852,8 @@
     )
   )
 
+;; definition for function mech-leg-ik-callback
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 (defbehavior mech-leg-ik-callback target ((arg0 joint-mod-ik) (arg1 matrix) (arg2 matrix) (arg3 vector))
   (rlet ((acc :class vf)
@@ -952,6 +948,9 @@
     )
   )
 
+;; definition for function mech-update-ik
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior mech-update-ik target ()
   (local-vars (sv-720 vector))
   (rlet ((acc :class vf)
@@ -1102,6 +1101,8 @@
     )
   )
 
+;; definition for function target-mech-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior target-mech-init target ((arg0 handle) (arg1 float) (arg2 symbol))
   (local-vars
@@ -1310,6 +1311,8 @@
   (none)
   )
 
+;; definition for function target-mech-exit
+;; INFO: Used lq/sq
 (defbehavior target-mech-exit target ()
   (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
                                          (or (= v1-3 'target-mech-stance)
@@ -1379,6 +1382,8 @@
   (none)
   )
 
+;; definition for function target-mech-effect
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-effect target ()
   (sound-play "mech-pulse" :id (the-as sound-id (-> self mech engine-sound-id)))
   (set! (-> self game distance) (/ (-> self mech shield-value) (-> self mech shield-max)))
@@ -1386,6 +1391,8 @@
   (none)
   )
 
+;; definition for function target-mech-add-thrust
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior target-mech-add-thrust target ()
   (let ((s5-0 (-> self control target-transv))
@@ -1468,6 +1475,9 @@
   (none)
   )
 
+;; definition for function target-mech-collision
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-collision target ()
   (cond
     ((and (-> self next-state) (= (-> self next-state name) 'target-mech-carry-drag))
@@ -1638,6 +1648,9 @@
   (none)
   )
 
+;; definition for function target-mech-real-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-real-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -1769,7 +1782,12 @@
   (none)
   )
 
+;; definition for function target-mech-post
 (defbehavior target-mech-post target ()
   (target-mech-real-post)
   (none)
   )
+
+
+
+

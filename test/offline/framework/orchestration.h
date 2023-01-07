@@ -93,6 +93,7 @@ class OfflineTestThreadStatus {
   void update_stage(Stage new_stage);
   void update_curr_file(const std::string& _curr_file);
   void complete_step();
+  bool in_progress();
 };
 
 struct OfflineTestWorkCollection {
@@ -109,9 +110,13 @@ struct OfflineTestWorkGroup {
 
 class OfflineTestThreadManager {
  public:
-  void print_current_test_status(const OfflineTestConfig& config);
-
   std::vector<std::shared_ptr<OfflineTestThreadStatus>> statuses = {};
+
+  int num_threads_pending();
+  int num_threads_succeeded();
+  int num_threads_failed();
+
+  void print_current_test_status(const OfflineTestConfig& config);
 
  private:
   std::mutex print_lock;
