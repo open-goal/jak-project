@@ -36,7 +36,7 @@
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (new (symbol type int int) _type_ 0)
+    (new (symbol type process-drawable int) _type_ 0)
     (amphibian-joint-mod-method-9 (_type_) none 9)
     )
   )
@@ -273,27 +273,21 @@
 
 (defun amphibian-joint-mod-callback ((arg0 cspace) (arg1 transformq))
   (cspace<-parented-transformq-joint! arg0 arg1)
-  (let ((s3-0 (new 'stack-no-clear 'bone))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'matrix 3))
         (s2-0 (-> arg0 param1))
         (s5-0 (-> arg0 bone transform))
         (s4-0 (-> arg0 parent bone transform))
         )
-    (vector-! (the-as vector (-> s3-0 transform)) (-> (the-as amphibian-joint-mod s2-0) target) (-> s4-0 trans))
-    (let ((f30-0
-            (fmin (vector-length (the-as vector (-> s3-0 transform))) (-> (the-as amphibian-joint-mod s2-0) max-length))
-            )
-          )
-      (vector-normalize! (the-as vector (-> s3-0 transform)) 1.0)
+    (vector-! (the-as vector (-> s3-0 0)) (-> (the-as amphibian-joint-mod s2-0) target) (-> s4-0 trans))
+    (let ((f30-0 (fmin (vector-length (the-as vector (-> s3-0 0))) (-> (the-as amphibian-joint-mod s2-0) max-length))))
+      (vector-normalize! (the-as vector (-> s3-0 0)) 1.0)
       (quaternion-from-two-vectors!
-        (the-as quaternion (-> s3-0 transform vector 1))
+        (the-as quaternion (-> s3-0 0 vector 1))
         (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 2) 1.0)
-        (the-as vector (-> s3-0 transform))
+        (the-as vector (-> s3-0 0))
         )
-      (quaternion->matrix
-        (the-as matrix (-> s3-0 transform vector 2))
-        (the-as quaternion (-> s3-0 transform vector 1))
-        )
-      (matrix*! s5-0 s5-0 (the-as matrix (-> s3-0 transform vector 2)))
+      (quaternion->matrix (the-as matrix (-> s3-0 0 vector 2)) (the-as quaternion (-> s3-0 0 vector 1)))
+      (matrix*! s5-0 s5-0 (the-as matrix (-> s3-0 0 vector 2)))
       (vector-normalize-copy!
         (-> s5-0 trans)
         (-> s5-0 vector 2)
@@ -316,9 +310,9 @@
   (none)
   )
 
-(defmethod new amphibian-joint-mod ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
+(defmethod new amphibian-joint-mod ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 proc) (the-as process-drawable arg0))
+    (set! (-> v0-0 proc) arg0)
     (set! (-> v0-0 joint-index) arg1)
     v0-0
     )
@@ -1824,7 +1818,7 @@
     (the-as pair 0)
     )
   (enemy-method-113 obj *amphibian-nav-enemy-info*)
-  (set! (-> obj tongue-mod) (new 'process 'amphibian-joint-mod (the-as int obj) 14))
+  (set! (-> obj tongue-mod) (new 'process 'amphibian-joint-mod obj 14))
   (let ((v1-6 (-> obj neck)))
     (set! (-> v1-6 up) (the-as uint 1))
     (set! (-> v1-6 nose) (the-as uint 2))
