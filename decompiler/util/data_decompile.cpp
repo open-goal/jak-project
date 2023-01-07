@@ -519,7 +519,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
     switch (word.kind()) {
       case LinkedWord::PLAIN_DATA:
-        ASSERT(word.get_byte(pad_byte_idx) == 0);
+        ASSERT(word.get_byte(pad_byte_idx % 4) == 0);
         break;
       case LinkedWord::TYPE_PTR:
         break;
@@ -828,7 +828,23 @@ const std::unordered_map<
           {"lightning-probe-vars", {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
           {"nav-mesh",
            {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
-            {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}}}}};
+            {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
+          {"trail-conn-hash",
+           {{"cell", ArrayFieldDecompMeta(TypeSpec("trail-conn-hash-cell"), 4)},
+            {"conn-ids", ArrayFieldDecompMeta(TypeSpec("uint16"),
+                                              2,
+                                              ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"trail-graph",
+           {{"node", ArrayFieldDecompMeta(TypeSpec("trail-node"), 18)},
+            {"conn", ArrayFieldDecompMeta(TypeSpec("trail-conn"), 8)},
+            {"conn-ids", ArrayFieldDecompMeta(TypeSpec("uint16"),
+                                              2,
+                                              ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+            {"visgroup", ArrayFieldDecompMeta(TypeSpec("trail-conn-hash-cell"), 4)},
+            {"visnode-ids",
+             ArrayFieldDecompMeta(TypeSpec("uint16"),
+                                  2,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
@@ -897,6 +913,7 @@ goos::Object decompile_structure(const TypeSpec& type,
   }
 
   int word_count = (type_info->get_size_in_memory() + 3) / 4;
+  int byte_count = type_info->get_size_in_memory();
 
   // check alignment
   if (offset_location % 8) {
@@ -930,24 +947,17 @@ goos::Object decompile_structure(const TypeSpec& type,
   // status of each byte.
   enum ByteStatus : u8 { ZERO_UNREAD, HAS_DATA_UNREAD, ZERO_READ, HAS_DATA_READ };
   std::vector<int> field_status_per_byte;
-  for (int i = 0; i < word_count; i++) {
-    auto& w = obj_words.at(i);
+  for (int i = 0; i < byte_count; i++) {
+    auto& w = obj_words.at(i / 4);
     switch (w.kind()) {
       case LinkedWord::TYPE_PTR:
       case LinkedWord::PTR:
       case LinkedWord::SYM_PTR:
       case LinkedWord::EMPTY_PTR:
         field_status_per_byte.push_back(HAS_DATA_UNREAD);
-        field_status_per_byte.push_back(HAS_DATA_UNREAD);
-        field_status_per_byte.push_back(HAS_DATA_UNREAD);
-        field_status_per_byte.push_back(HAS_DATA_UNREAD);
         break;
       case LinkedWord::PLAIN_DATA: {
-        u8 bytes[4];
-        memcpy(bytes, &w.data, 4);
-        for (auto b : bytes) {
-          field_status_per_byte.push_back(b ? HAS_DATA_UNREAD : ZERO_UNREAD);
-        }
+        field_status_per_byte.push_back(w.get_byte(i % 4) ? HAS_DATA_UNREAD : ZERO_UNREAD);
       } break;
       default:
         throw std::runtime_error("Unsupported word in static data");
