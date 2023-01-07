@@ -331,6 +331,7 @@ void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig
   // [DECOMP] ▰▰▰▰▰▰▱▱▱▱ (PRI, RUI, FOR, +3 more)
   //   [1/30] - target-turret-shot // MUTED TEXT
   fmt::print("\x1b[{}A", lines_to_clear);  // move n lines up
+  fmt::print("\e[?25l"); // hide the cursor
   int threads_shown = 0;
   for (int i = 0; i < statuses.size() && threads_shown < threads_to_display; i++) {
     const auto& status = statuses.at(i);
@@ -360,4 +361,5 @@ void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig
         fmt::styled(g_offline_test_thread_manager.num_threads_succeeded(),
                     fmt::fg(fmt::color::light_green)));
   }
+  fmt::print("\e[?25h"); // show the cursor
 }
