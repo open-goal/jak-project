@@ -185,6 +185,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Merc2>("merc-l2-pris", BucketCategory::MERC, BucketId::MERC_L2_PRIS);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
                                              BucketId::TEX_L3_PRIS);
+  init_bucket_renderer<Merc2>("merc-l3-pris", BucketCategory::MERC, BucketId::MERC_L3_PRIS);
   // 210
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS);

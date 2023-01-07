@@ -129,6 +129,7 @@ enum class BucketId {
   TEX_L2_PRIS = 204,
   MERC_L2_PRIS = 205,
   TEX_L3_PRIS = 208,
+  MERC_L3_PRIS = 209,
   TEX_L4_PRIS = 212,
   MERC_L4_PRIS = 213,
   TEX_LCOM_PRIS = 220,
