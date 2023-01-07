@@ -160,7 +160,7 @@ HeapObject* Interpreter::intern_ptr(const std::string& name) {
 /*!
  * Display the REPL, which will run until the user executes exit.
  */
-void Interpreter::execute_repl(ReplWrapper& repl) {
+void Interpreter::execute_repl(REPL::Wrapper& repl) {
   want_exit = false;
   while (!want_exit) {
     try {

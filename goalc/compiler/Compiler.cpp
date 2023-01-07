@@ -20,7 +20,7 @@ using namespace goos;
 
 Compiler::Compiler(GameVersion version,
                    const std::string& user_profile,
-                   std::unique_ptr<ReplWrapper> repl)
+                   std::unique_ptr<REPL::Wrapper> repl)
     : m_version(version),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
@@ -63,9 +63,9 @@ Compiler::Compiler(GameVersion version,
     m_repl->load_history();
     // init repl
     m_repl->print_welcome_message();
-    auto examples = m_repl->examples;
-    auto regex_colors = m_repl->regex_colors;
-    m_repl->init_default_settings();
+    auto& examples = m_repl->examples;
+    auto& regex_colors = m_repl->regex_colors;
+    m_repl->init_settings();
     using namespace std::placeholders;
     m_repl->get_repl().set_completion_callback(std::bind(
         &Compiler::find_symbols_or_object_file_by_prefix, this, _1, _2, std::cref(examples)));
@@ -397,7 +397,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
     if (file_path.empty()) {
       lg::print("ERROR - can't load a file without a providing a path\n");
       return;
-    } else if (m_asm_file_search_dirs.empty()) {
+    } else if (m_repl && m_repl->repl_config.asm_file_search_dirs.empty()) {
       lg::print(
           "ERROR - can't load a file that doesn't exist - '{}' and no search dirs are defined\n",
           file_path);
@@ -406,14 +406,17 @@ void Compiler::asm_file(const CompilationOptions& options) {
     std::string base_name = file_util::base_name_no_ext(file_path);
     // Attempt the find the full path of the file (ignore extension)
     std::vector<fs::path> candidate_paths = {};
-    for (const auto& dir : m_asm_file_search_dirs) {
-      std::string base_dir = file_util::get_file_path({dir});
-      const auto& results = file_util::find_files_recursively(
-          base_dir, std::regex(fmt::format("^{}(\\..*)?$", base_name)));
-      for (const auto& result : results) {
-        candidate_paths.push_back(result);
+    if (m_repl) {
+      for (const auto& dir : m_repl->repl_config.asm_file_search_dirs) {
+        std::string base_dir = file_util::get_file_path({dir});
+        const auto& results = file_util::find_files_recursively(
+            base_dir, std::regex(fmt::format("^{}(\\..*)?$", base_name)));
+        for (const auto& result : results) {
+          candidate_paths.push_back(result);
+        }
       }
     }
+
     if (candidate_paths.empty()) {
       lg::print("ERROR - attempt to find object file automatically, but found nothing\n");
       return;
