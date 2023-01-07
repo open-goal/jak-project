@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include "common/versions.h"
+
 #include "third-party/fmt/core.h"
 
 namespace REPL {
@@ -9,10 +11,6 @@ void to_json(json& j, const Config& obj) {
       {"asmFileSearchDirs", obj.asm_file_search_dirs},
       {"keybinds", obj.keybinds},
   };
-  // Add game specific config if it exists
-  for (const auto& [game_name, cfg] : obj.game_specific_cfg) {
-    j[version_to_game_name(game_name)] = cfg;
-  }
 }
 
 void from_json(const json& j, Config& obj) {
@@ -49,10 +47,9 @@ void from_json(const json& j, Config& obj) {
       obj.keybinds = keybinds;
     }
   }
-  for (const auto& name : valid_game_version_names()) {
-    if (j.contains(name)) {
-      obj.game_specific_cfg.emplace(game_name_to_version(name), j.at(name).get<Config>());
-    }
+  // if there is game specific configuration, override any values we just set
+  if (j.contains(version_to_game_name(obj.game_version))) {
+    from_json(j.at(version_to_game_name(obj.game_version)), obj);
   }
 }
 

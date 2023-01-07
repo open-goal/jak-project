@@ -27,6 +27,9 @@ void to_json(json& j, const KeyBind& obj);
 void from_json(const json& j, KeyBind& obj);
 
 struct Config {
+  GameVersion game_version;
+  Config(GameVersion _game_version) : game_version(_game_version){};
+
   // this is the default REPL configuration
   int target_connect_attempts = 30;
   std::vector<std::string> asm_file_search_dirs = {};
@@ -40,7 +43,6 @@ struct Config {
       {KeyBind::Modifier::CTRL, "G", "Attach the debugger to the process", "(dbgc)"},
       {KeyBind::Modifier::CTRL, "B", "Displays the most recently caught backtrace", "(:di)"},
       {KeyBind::Modifier::CTRL, "N", "Full build of the game", "(mi)"}};
-  std::unordered_map<GameVersion, Config> game_specific_cfg = {};
 };
 void to_json(json& j, const Config& obj);
 void from_json(const json& j, Config& obj);
