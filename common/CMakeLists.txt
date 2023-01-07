@@ -19,11 +19,12 @@ add_library(common
         goos/PrettyPrinter2.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
-        goos/ReplUtils.cpp
+        repl/config.cpp
+        repl/util.cpp
         log/log.cpp
         math/geometry.cpp
-        nrepl/ReplClient.cpp
-        nrepl/ReplServer.cpp
+        repl/nrepl/ReplClient.cpp
+        repl/nrepl/ReplServer.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp

@@ -107,8 +107,8 @@ std::optional<std::string> ReplServer::get_msg() {
       auto req_bytes = read_from_socket(sock, header_buffer.data(), header_buffer.size());
       if (req_bytes == 0) {
         // Socket disconnected
-        // TODO - add a queue of messages in the ReplWrapper so we can print _BEFORE_ the prompt is
-        // output
+        // TODO - add a queue of messages in the REPL::Wrapper so we can print _BEFORE_ the prompt
+        // is output
         fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
                    ntohs(addr.sin_port), sock);
 
