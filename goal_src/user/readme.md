@@ -5,6 +5,8 @@ e.g. for username `mark` make a directory called `mark`
 Inside that directory, create `user.gs` and `user.gc` files.
 These are your own user scripts, loaded after the GOOS library and GOAL library respectively.
 
+> Alternatively, if you only have a single folder in `goal_src/user/` it will be assumed to be your user folder
+
 The rest of the directory can be used however you please!
 
 To automatically log in as a specific user, create a `user.txt` file in this directory
@@ -13,8 +15,31 @@ modify multiple scripts when you want to change users.
 
 If you want to make your profile public, edit the .gitignore in this directory.
 
-Additionally, you can provide a `repl-config.json` to set various REPL settings:
-- `numConnectToTargetAttempts` - the number of times the REPL will attempt to connect to the target on an `(lt)`
+Additionally, you can provide a `repl-config.json` to set various REPL settings, an example configuration:
+```json
+{
+  "numConnectToTargetAttempts": 1,
+  "jak1": {
+    "asmFileSearchDirs": [
+      "goal_src/jak1"
+    ]
+  },
+  "jak2": {
+    "asmFileSearchDirs": [
+      "goal_src/jak2"
+    ]
+  },
+  "appendKeybinds": true,
+  "keybinds": [
+    {
+      "modifier": "ctrl",
+      "key": "S",
+      "description": "Test Bind",
+      "command": "(format 0 \"hello world\")"
+    }
+  ]
+}
+```
 
 And a `startup.gc` where each line will be executed upon startup
 

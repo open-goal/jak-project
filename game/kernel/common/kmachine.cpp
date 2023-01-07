@@ -4,8 +4,8 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
-#include "common/util/StringUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/Ptr.h"

@@ -550,4 +550,14 @@ std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std
   return files;
 }
 
+std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
+  std::vector<fs::path> dirs = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_directory()) {
+      dirs.push_back(p.path());
+    }
+  }
+  return dirs;
+}
+
 }  // namespace file_util

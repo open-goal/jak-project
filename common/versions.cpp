@@ -29,3 +29,7 @@ std::string version_to_game_name(GameVersion v) {
       ASSERT_MSG(false, fmt::format("no game_name for version: {} found", fmt::underlying(v)));
   }
 }
+
+std::vector<std::string> valid_game_version_names() {
+  return {game_version_names[GameVersion::Jak1], game_version_names[GameVersion::Jak2]};
+}
