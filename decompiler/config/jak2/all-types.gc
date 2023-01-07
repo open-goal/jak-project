@@ -8555,7 +8555,7 @@
    (joint-num int16     :offset-assert 8)
    (geo       drawable     :offset-assert 12)
    (bone      bone      :offset-assert 16)
-   (param0    (function cspace matrix none)  :offset-assert 20) ;; guessed by decompiler
+   (param0    (function cspace transformq none)  :offset-assert 20) ;; guessed by decompiler
    (param1    basic     :offset-assert 24)
    (param2    basic     :offset-assert 28)
    )
@@ -43960,10 +43960,9 @@
 ;; fort-floor-spike               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype spike-row-info (structure)
   ((sync      sync-linear :inline :offset-assert 0)
-   (table-ptr uint32              :offset-assert 16)
+   (table-ptr (inline-array vector)              :offset-assert 16)
    (on-ratio  float               :offset-assert 20)
    (state     int32               :offset-assert 24)
    )
@@ -43971,74 +43970,37 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype spike-row-info-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
+  ((data             spike-row-info :inline :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype fort-floor-spike (process-drawable)
-  ((pos-table        uint32    :offset-assert 196)
-   (spike-row        basic     :offset-assert 200)
-   (spike-dim        UNKNOWN 2 :offset-assert 204)
-   (attack-id        int32     :offset-assert 212)
-   (no-overlap-timer uint64    :offset-assert 220)
+  ((pos-table        (inline-array vector)    :offset-assert 200)
+   (spike-row        spike-row-info-array     :offset-assert 204)
+   (spike-dim        basic 2 :offset-assert 208)
+   (attack-id        int32     :offset-assert 216)
+   (no-overlap-timer uint64    :offset-assert 224)
    )
   :method-count-assert 24
   :size-assert         #xe8
   :flag-assert         #x18007000e8
   (:methods
     (idle () _type_ :state 20)
-    (fort-floor-spike-method-21 () none 21)
-    (fort-floor-spike-method-22 () none 22)
-    (fort-floor-spike-method-23 () none 23)
+    (fort-floor-spike-method-21 (_type_) none 21)
+    (fort-floor-spike-method-22 (_type_) collide-shape-moving 22)
+    (fort-floor-spike-method-23 (_type_) symbol 23)
     )
   )
-|#
 
-#|
-(deftype fort-floor-spike-a (fort-floor-spike)
-  ()
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
-  (:methods
-    )
-  )
-|#
+(deftype fort-floor-spike-a (fort-floor-spike) ())
+(deftype fort-floor-spike-b (fort-floor-spike) ())
+(deftype fort-floor-spike-c (fort-floor-spike) ())
 
-#|
-(deftype fort-floor-spike-b (fort-floor-spike)
-  ()
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
-  (:methods
-    )
-  )
-|#
-
-#|
-(deftype fort-floor-spike-c (fort-floor-spike)
-  ()
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
-  (:methods
-    )
-  )
-|#
-
-;; (define-extern joint-mod-set-y-callback function)
+(define-extern joint-mod-set-y-callback "TODO - investigate weird casting" (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forrescb-part                  ;;
