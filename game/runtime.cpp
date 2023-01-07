@@ -29,6 +29,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
+#include "game/discord.h"
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
@@ -329,6 +330,10 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
     }
   }
 
+  // set up discord stuff
+  gStartTime = time(nullptr);
+  init_discord_rpc();
+
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
   if (enable_display) {
@@ -385,5 +390,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   }
   lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
+  Discord_Shutdown();
   return MasterExit;
 }

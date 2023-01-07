@@ -3,8 +3,6 @@
 #include "common/common_types.h"
 // Discord RPC
 struct DiscordRichPresence;
-extern int gDiscordRpcEnabled;
-extern int64_t gStartTime;
 namespace jak1 {
 /*!
  * Initialize global variables based on command line parameters
