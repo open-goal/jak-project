@@ -1,6 +1,8 @@
-#include "StringUtil.h"
+#include "string_util.h"
 
 #include <regex>
+
+#include "common/util/diff.h"
 
 namespace str_util {
 
@@ -46,5 +48,13 @@ bool valid_regex(const std::string& regex) {
     return false;
   }
   return true;
+}
+
+std::string diff(const std::string& lhs, const std::string& rhs) {
+  return google_diff::diff_strings(lhs, rhs);
+}
+/// Default splits on \n characters
+std::vector<std::string> split(const ::std::string& str, char delimiter) {
+  return google_diff::split_string(str, delimiter);
 }
 }  // namespace str_util

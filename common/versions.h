@@ -6,6 +6,7 @@
  */
 
 #include <string>
+#include <vector>
 
 #include "common/common_types.h"
 
@@ -55,3 +56,4 @@ constexpr PerGameVersion<const char*> game_version_names = {"jak1", "jak2"};
 GameVersion game_name_to_version(const std::string& name);
 bool valid_game_version(const std::string& name);
 std::string version_to_game_name(GameVersion v);
+std::vector<std::string> valid_game_version_names();

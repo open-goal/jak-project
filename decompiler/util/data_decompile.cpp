@@ -744,12 +744,15 @@ const std::unordered_map<
            {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"),
                                           16,
                                           ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
-          {
-              "xz-height-map",
-              {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
-                                             1,
-                                             ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}},
-          },
+          {"xz-height-map",
+           {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
+                                          1,
+                                          ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"enemy-info",
+           {{"idle-anim-script",
+             ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                  4,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           {"nav-enemy-info",
            {{"idle-anim-script",
              ArrayFieldDecompMeta(TypeSpec("uint32"),
@@ -1037,10 +1040,6 @@ goos::Object decompile_structure(const TypeSpec& type,
         auto stride = ts.get_size_in_type(field) / len;
         ASSERT(stride == field_type_info->get_size_in_memory());
 
-        if (field.type().base_type() == "uint128") {
-          lg::error("Decompiling an array of uint128's for field {} of type {}\n", type.print(),
-                    field.name());
-        }
         field_defs_out.emplace_back(
             field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
                                                 field_start, obj_words, ts));

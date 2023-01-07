@@ -11,9 +11,8 @@
 
 #include "Reader.h"
 
-#include "ReplUtils.h"
-
 #include "common/log/log.h"
+#include "common/repl/util.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
 
@@ -195,7 +194,7 @@ bool Reader::is_valid_source_char(char c) const {
 /*!
  * Prompt the user and read the result.
  */
-std::optional<Object> Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
+std::optional<Object> Reader::read_from_stdin(const std::string& prompt, REPL::Wrapper& repl) {
   // escape code will make sure that we remove any color
   std::string prompt_full = "\033[0m" + prompt;
 

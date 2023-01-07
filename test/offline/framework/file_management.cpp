@@ -82,64 +82,16 @@ std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_nam
   return result;
 }
 
-std::vector<OfflineTestArtFile> find_art_files(const std::string& game_name,
-                                               const std::vector<std::string>& dgos) {
-  // TODO - Jak 2
-  if (game_name != "jak1") {
-    return {};
+std::unordered_map<std::string, std::unordered_map<int, std::string>> find_art_files(
+    const std::string& game_name) {
+  // Pull from the json database of all art file data
+  // this is generated via 'dump_art_group_info' in the config file
+  auto file_name = file_util::get_jak_project_dir() / "test" / "offline" / "data" / game_name /
+                   "art-group-info.min.json";
+  if (!file_util::file_exists(file_name.string())) {
+    lg::error("couldn't locate {}, exiting", file_name.string());
   }
-
-  std::vector<OfflineTestArtFile> result;
-
-  // use the all_objs.json file to place them in the correct build order
-  auto obj_json = parse_commented_json(
-      file_util::read_text_file(
-          (file_util::get_jak_project_dir() / "goal_src" / game_name / "build" / "all_objs.json")
-              .string()),
-      "all_objs.json");
-
-  for (const auto& x : obj_json) {
-    auto unique_name = x[0].get<std::string>();
-    auto version = x[2].get<int>();
-
-    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
-    if (version == 4) {
-      bool skip_file = false;
-
-      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
-      // If not BLOW UP
-      std::optional<std::string> containing_dgo = {};
-      for (int i = 0; i < (int)dgoList.size(); i++) {
-        std::string& dgo = dgoList.at(i);
-        if (dgo == "NO-XGO") {
-          skip_file = true;
-          break;
-        }
-        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
-        // TODO - Jak 2 folder may structure will be different!
-        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
-          containing_dgo = dgo;
-          break;
-        }
-      }
-      if (skip_file) {
-        continue;
-      }
-      if (!containing_dgo) {
-        lg::error(
-            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
-            "it!",
-            unique_name, fmt::join(dgoList, ", "));
-        exit(1);
-      }
-
-      OfflineTestArtFile file(containing_dgo.value(), x[1], unique_name);
-      result.push_back(file);
-    }
-  }
-
-  return result;
+  auto art_group_info =
+      parse_commented_json(file_util::read_text_file(file_name), "art-group-info.min.json");
+  return art_group_info;
 }
