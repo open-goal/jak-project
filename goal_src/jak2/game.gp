@@ -2123,50 +2123,36 @@
 ;; ;; FORDUMPC
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FORDUMPC.DGO" "fordumpc.gd")
+(cgo "FORDUMPC.DGO" "fordumpc.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/fortress/ammo_dump/fordumpa-texture.gc"
-;;   "levels/fortress/ammo_dump/fort-robotank-turret.gc"
-;;   "levels/fortress/ammo_dump/fort-robotank.gc"
-;;   "levels/fortress/ammo_dump/fordumpc-part.gc"
-;;   "levels/fortress/ammo_dump/fordumpc-obs.gc"
-;;   "levels/fortress/ammo_dump/fortress-scenes.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/fortress/ammo_dump/fordumpc-part.gc"
+  "levels/fortress/ammo_dump/fordumpc-obs.gc"
+  "levels/fortress/ammo_dump/fortress-scenes.gc"
+  )
 
-;; (copy-textures 1570 1573 1571 2917 2847)
+(copy-textures 1570 1573 1571 2917 2847)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "fort-robotank-ag"
-;;   "fort-missile-target-ag"
-;;   "fort-robotank-top-ag"
-;;   "fort-roboscreen-ag"
-;;   "fort-missile-ag"
-;;   "fort-robotank-sight-ag"
-;;   "fort-dump-bomb-a-ag"
-;;   "particleman-ag"
-;;   "fordumpc"
-;;   )
+(copy-gos
+  "fort-missile-target-ag"
+  "fort-missile-ag"
+  "fort-dump-bomb-a-ag"
+  "fordumpc"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FORDUMPD
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FORDUMPD.DGO" "fordumpd.gd")
+(cgo "FORDUMPD.DGO" "fordumpd.gd")
 
-;; (copy-textures 1574)
+(copy-textures 1574)
 
-;; (copy-gos
-;;   "crimson-guard-highres-ag"
-;;   "crimson-guard-lowres-ag"
-;;   "grunt-fma-ag"
-;;   "palmpilot-ag"
-;;   "fordumpd"
-;;   )
+(copy-gos
+  "fordumpd"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FRA
@@ -2212,10 +2198,8 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/entities/fort-floor-spike.gc"
   "levels/fortress/rescue/forrescb-part.gc"
   "levels/fortress/rescue/forrescb-obs.gc"
-  ;; "levels/fortress/fort-turret.gc"
   "levels/common/entities/spydroid.gc"
   )
 
@@ -2223,8 +2207,6 @@
 
 (copy-gos
   "spydroid-ag"
-  ;; "fort-turret-ag"
-  ;; "cty-guard-turret-button-ag"
   "fort-elec-belt-ag"
   "forrescb-vis"
   )
