@@ -41753,9 +41753,10 @@
 ;; fordumpc-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fort-dump-bomb-a (process-drawable)
-  ()
+  (
+    (root-override collide-shape :offset 128 :score 100)
+  )
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
@@ -41764,12 +41765,11 @@
     (die () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype fort-missile-target (process-drawable)
-  ((part-mat UNKNOWN 2 :offset-assert 204)
-   (sound-id uint32    :offset-assert 332)
+  ((root-override collide-shape-moving :offset 128 :score 100)
+   (part-mat matrix 2 :inline :offset-assert 208) ;; a total guess
+   (sound-id uint32    :offset-assert 336)
    )
   :method-count-assert 22
   :size-assert         #x154
@@ -41779,19 +41779,18 @@
     (die () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype fort-missile (process-drawable)
-  ((part-doom          basic     :offset-assert 196)
-   (hud                uint64    :offset-assert 204)
-   (door-actor         UNKNOWN 2 :offset-assert 212)
-   (tank-actor         basic     :offset-assert 220)
-   (bomb               UNKNOWN 4 :offset-assert 228)
-   (bomb-count         uint32    :offset-assert 260)
-   (attack-id          uint32    :offset-assert 264)
-   (explosion-sound-id uint32    :offset-assert 268)
-   (alarm-sound-id     uint32    :offset-assert 272)
+  ((root-override      collide-shape :offset 128 :score 100)
+   (part-doom          sparticle-launch-control     :offset-assert 200)
+   (hud                handle    :offset-assert 208)
+   (door-actor         entity-actor 2 :offset-assert 216)
+   (tank-actor         entity-actor     :offset-assert 224)
+   (bomb               handle 4 :offset-assert 232)
+   (bomb-count         uint32    :offset-assert 264)
+   (attack-id          uint32    :offset-assert 268)
+   (explosion-sound-id uint32    :offset-assert 272)
+   (alarm-sound-id     uint32    :offset-assert 276)
    )
   :method-count-assert 25
   :size-assert         #x118
@@ -41804,10 +41803,9 @@
     (dormant () _type_ :state 24)
     )
   )
-|#
 
-;; (define-extern *fort-missile-target-exploder-params* joint-exploder-static-params)
-;; (define-extern fort-missile-target-init-by-other function)
+(define-extern *fort-missile-target-exploder-params* joint-exploder-static-params)
+(define-extern fort-missile-target-init-by-other (function vector vector none :behavior fort-missile-target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fortress-scenes                ;;
