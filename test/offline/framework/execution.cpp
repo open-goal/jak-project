@@ -1,7 +1,7 @@
 #include "execution.h"
 
-#include "common/util/string_util.h"
 #include "common/util/diff.h"
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "test/offline/config/config.h"

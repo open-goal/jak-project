@@ -98,7 +98,6 @@ class OfflineTestThreadStatus {
 
 struct OfflineTestWorkCollection {
   std::vector<OfflineTestSourceFile> source_files;
-  std::vector<OfflineTestArtFile> art_files;
 };
 
 struct OfflineTestWorkGroup {
@@ -106,9 +105,7 @@ struct OfflineTestWorkGroup {
   OfflineTestWorkCollection work_collection;
   std::shared_ptr<OfflineTestThreadStatus> status;
 
-  int work_size() const {
-    return work_collection.source_files.size() + work_collection.art_files.size();
-  }
+  int work_size() const { return work_collection.source_files.size(); }
 };
 
 class OfflineTestThreadManager {
@@ -129,5 +126,4 @@ extern OfflineTestThreadManager g_offline_test_thread_manager;
 
 std::vector<std::future<OfflineTestThreadResult>> distribute_work(
     const OfflineTestConfig& offline_config,
-    const std::vector<OfflineTestSourceFile>& files,
-    const std::vector<OfflineTestArtFile>& art_files);
+    const std::vector<OfflineTestSourceFile>& files);

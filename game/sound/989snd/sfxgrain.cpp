@@ -106,8 +106,8 @@ s32 SFXGrain_LfoSettings::execute(blocksound_handler& handler) {
       lfo.m_next_step = m_lfop.start_offset << 16;
     }
 
-    lg::info("starting LFO type {} for {}", magic_enum::enum_name(lfo.m_type),
-             magic_enum::enum_name(lfo.m_target));
+    // lg::info("starting LFO type {} for {}", magic_enum::enum_name(lfo.m_type),
+    //          magic_enum::enum_name(lfo.m_target));
     lfo.init();
   } else {
     lfo.m_type = lfo_type::OFF;

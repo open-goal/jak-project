@@ -64,6 +64,7 @@ Config read_config_file(const fs::path& path_to_config_file, const std::string& 
   config.process_game_text = cfg.at("process_game_text").get<bool>();
   config.process_game_count = cfg.at("process_game_count").get<bool>();
   config.process_art_groups = cfg.at("process_art_groups").get<bool>();
+  config.dump_art_group_info = cfg.at("dump_art_group_info").get<bool>();
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
   config.find_functions = cfg.at("find_functions").get<bool>();

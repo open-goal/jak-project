@@ -54,6 +54,40 @@ namespace Gfx {
 std::function<void()> vsync_callback;
 GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
+DebugSettings g_debug_settings;
+
+void DebugSettings::load_settings(const ghc::filesystem::path& filepath) {
+  auto file_txt = file_util::read_text_file(filepath);
+  auto json = parse_commented_json(file_txt, filepath.string());
+
+  if (json.contains("show_imgui")) {
+    show_imgui = json["show_imgui"].get<bool>();
+  }
+  if (json.contains("ignore_imgui_hide_keybind")) {
+    ignore_imgui_hide_keybind = json["ignore_imgui_hide_keybind"].get<bool>();
+  }
+  if (json.contains("debug_text_check_range")) {
+    debug_text_check_range = json["debug_text_check_range"].get<bool>();
+  }
+  if (json.contains("debug_text_max_range")) {
+    debug_text_max_range = json["debug_text_max_range"].get<float>();
+  }
+  // TODO - not loading filters because they aren't being persisted
+}
+
+void DebugSettings::save_settings() {
+  nlohmann::json json;
+  json["show_imgui"] = show_imgui;
+  json["ignore_imgui_hide_keybind"] = ignore_imgui_hide_keybind;
+  json["debug_text_check_range"] = debug_text_check_range;
+  json["debug_text_max_range"] = debug_text_max_range;
+  // TODO - persist the filters as well, not doing it yet because i havn't added a way to remove em
+  // via the UI
+  auto debug_settings_filename =
+      file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
+  file_util::create_dir_if_needed_for_file(debug_settings_filename);
+  file_util::write_text_file(debug_settings_filename, json.dump(2));
+}
 
 Pad::MappingInfo& get_button_mapping() {
   return g_settings.pad_mapping_info;
@@ -84,15 +118,8 @@ const std::pair<std::string, Pad::Analog> analog_map[] = {
     {"Right Y Axis", Pad::Analog::Right_Y},
 };
 
-bool g_is_debug_menu_visible_on_startup = false;
-
-bool get_debug_menu_visible_on_startup() {
-  return g_is_debug_menu_visible_on_startup;
-}
-
 void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
-  json["Debug Menu Visibility"] = false;  // Assume start up debug display is disabled
   auto& peripherals_json = json["Peripherals"];
   json["Use Mouse"] = g_settings.pad_mapping_info.use_mouse;
 
@@ -151,10 +178,6 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
   lg::info("reading {}", filepath.string());
   auto file_txt = file_util::read_text_file(filepath);
   auto configuration = parse_commented_json(file_txt, filepath.string());
-
-  if (configuration.find("Debug Menu Visibility") != configuration.end()) {
-    g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
-  }
 
   if (configuration.find("Use Mouse") != configuration.end()) {
     g_settings.pad_mapping_info.use_mouse = configuration["Use Mouse"].get<bool>();
@@ -224,14 +247,28 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
 }
 
 void LoadSettings() {
-  auto filename = (file_util::get_user_config_dir() / "controller" / "controller-settings.json");
-  if (fs::exists(filename)) {
-    LoadPeripheralSettings(filename);
-    lg::info("Loaded graphics configuration file.");
-    return;
+  // load controller settings
+  // TODO - make this game specific as well
+  auto controller_settings_filename =
+      file_util::get_user_config_dir() / "controller" / "controller-settings.json";
+  if (fs::exists(controller_settings_filename)) {
+    LoadPeripheralSettings(controller_settings_filename);
+    lg::info("Loaded controller configuration file.");
   } else {
     SavePeripheralSettings();
-    lg::info("Couldn't find controller-settings.json creating new controller settings file.");
+    lg::info(
+        "Couldn't find $USER/controller/controller-settings.json creating new controller settings "
+        "file.");
+  }
+  // load debug settings
+  auto debug_settings_filename =
+      file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
+  if (fs::exists(debug_settings_filename)) {
+    g_debug_settings.load_settings(debug_settings_filename);
+    lg::info("Loaded debug settings file.");
+  } else {
+    lg::info("Couldn't find $USER/misc/debug-settings.json creating new controller settings file.");
+    g_debug_settings.save_settings();
   }
 }
 
