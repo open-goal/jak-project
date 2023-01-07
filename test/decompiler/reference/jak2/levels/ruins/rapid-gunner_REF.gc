@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rapid-gunner.gc
-;; name in dgo: rapid-gunner
-;; dgos: RUI
-
-;; DECOMP BEGINS
-
+;; definition of type rapid-gunner
 (deftype rapid-gunner (nav-enemy)
   ((los              los-control :inline :offset-assert 608)
    (joint            joint-mod           :offset-assert 756)
@@ -45,13 +40,46 @@
     )
   )
 
+;; definition for method 3 of type rapid-gunner
+(defmethod inspect rapid-gunner ((obj rapid-gunner))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tlos: #<los-control @ #x~X>~%" (-> obj los))
+  (format #t "~2Tjoint: ~A~%" (-> obj joint))
+  (format #t "~2Tjoint-blend: ~f~%" (-> obj joint-blend))
+  (format #t "~2Tjoint-enable: ~A~%" (-> obj joint-enable))
+  (format #t "~2Tshot-timer: ~D~%" (-> obj shot-timer))
+  (format #t "~2Tpredict-timer: ~D~%" (-> obj predict-timer))
+  (format #t "~2Ttarget-prev-pos: #<vector @ #x~X>~%" (-> obj target-prev-pos))
+  (format #t "~2Ttarget-next-pos: #<vector @ #x~X>~%" (-> obj target-next-pos))
+  (format #t "~2Tfocus-dir: #<vector @ #x~X>~%" (-> obj focus-dir))
+  (format #t "~2Ty-diff: ~f~%" (-> obj y-diff))
+  (format #t "~2Tshots-fired: ~D~%" (-> obj shots-fired))
+  (format #t "~2Tspin-up-angle: ~f~%" (-> obj spin-up-angle))
+  (format #t "~2Tspin-up-timer: ~D~%" (-> obj spin-up-timer))
+  (format #t "~2Tshoot-anim-index: ~D~%" (-> obj shoot-anim-index))
+  (format #t "~2Tstatus-flags: ~D~%" (-> obj status-flags))
+  (format #t "~2Tstart-pos: #<vector @ #x~X>~%" (-> obj start-pos))
+  (format #t "~2Tdest-pos: #<vector @ #x~X>~%" (-> obj dest-pos))
+  (format #t "~2Thop-dir: #<vector @ #x~X>~%" (-> obj hop-dir))
+  (format #t "~2Troam-radius: ~f~%" (-> obj roam-radius))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-rapid-gunner rapid-gunner 0 5
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-rapid-gunner rapid-gunner rapid-gunner-lod0-jg rapid-gunner-idle-ja
+              ((rapid-gunner-lod0-mg (meters 20)) (rapid-gunner-lod1-mg (meters 40)) (rapid-gunner-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 1.5 0 7)
-              :shadow 4
+              :shadow rapid-gunner-shadow-mg
               )
 
+;; definition for symbol *rapid-gunner-nav-enemy-info*, type nav-enemy-info
 (define *rapid-gunner-nav-enemy-info*
   (new 'static 'nav-enemy-info
     :use-die-falling #t
@@ -158,8 +186,10 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *rapid-gunner-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for method 74 of type rapid-gunner
 (defmethod enemy-method-74 rapid-gunner ((obj rapid-gunner) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('hit 'hit-flinch)
@@ -189,6 +219,7 @@
     )
   )
 
+;; definition for method 77 of type rapid-gunner
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: Using new Jak 2 rtype-of
 ;; WARN: Using new Jak 2 rtype-of
@@ -315,6 +346,7 @@
     )
   )
 
+;; definition for method 52 of type rapid-gunner
 (defmethod enemy-method-52 rapid-gunner ((obj rapid-gunner) (arg0 vector))
   (cond
     ((> (-> obj hit-points) 0)
@@ -335,6 +367,7 @@
   (none)
   )
 
+;; definition for method 78 of type rapid-gunner
 (defmethod enemy-method-78 rapid-gunner ((obj rapid-gunner) (arg0 (pointer float)))
   (case (-> obj incoming knocked-type)
     (((knocked-type knocked-type-6))
@@ -385,6 +418,7 @@
     )
   )
 
+;; definition for method 98 of type rapid-gunner
 (defmethod enemy-method-98 rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 vector))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-98)))
     (and (t9-0 obj arg0 arg1)
@@ -397,6 +431,9 @@
     )
   )
 
+;; definition for method 185 of type rapid-gunner
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 185 rapid-gunner) has a return type of none, but the expression builder found a return statement.
 (defmethod rapid-gunner-method-185 rapid-gunner ((obj rapid-gunner) (arg0 vector) (arg1 float))
   (if (not (-> obj joint-enable))
@@ -442,6 +479,7 @@
   (none)
   )
 
+;; definition for function vector-average-copy!
 (defun vector-average-copy! ((arg0 vector) (arg1 vector) (arg2 float))
   (let ((f0-1 (- 1.0 arg2)))
     (set! (-> arg0 x) (+ (* f0-1 (-> arg0 x)) (* arg2 (-> arg1 x))))
@@ -452,8 +490,12 @@
   arg0
   )
 
+;; definition for symbol *aim-pos*, type vector
 (define *aim-pos* (new 'static 'vector))
 
+;; definition for function rapid-gunner-common-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior rapid-gunner-common-post rapid-gunner ()
   (let ((a0-1 (handle->process (-> self focus handle))))
     (cond
@@ -484,6 +526,8 @@
   (none)
   )
 
+;; definition for method 55 of type rapid-gunner
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-55 rapid-gunner ((obj rapid-gunner))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
     (t9-0 obj)
@@ -493,10 +537,12 @@
   (none)
   )
 
+;; definition for method 96 of type rapid-gunner
 (defmethod enemy-method-96 rapid-gunner ((obj rapid-gunner) (arg0 float) (arg1 symbol))
   (enemy-method-95 obj (-> obj target-next-pos) arg0)
   )
 
+;; definition for method 184 of type rapid-gunner
 (defmethod rapid-gunner-method-184 rapid-gunner ((obj rapid-gunner) (arg0 float))
   (let* ((s4-0 (-> obj node-list data 18))
          (v1-1 (vector<-cspace! (new 'stack-no-clear 'vector) s4-0))
@@ -511,12 +557,14 @@
     )
   )
 
+;; definition for method 67 of type rapid-gunner
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-stare rapid-gunner ((obj rapid-gunner))
   (go (method-of-object obj hostile))
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate notice (rapid-gunner)
   :virtual #t
   :enter (behavior ()
@@ -611,6 +659,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate attack (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -724,7 +773,7 @@
           )
         0
         (ja-channel-push! 1 (seconds 0.2))
-        (ja :group! (-> self draw art-group data 17))
+        (ja :group! rapid-gunner-shoot-track-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
         (until (enemy-method-96 self 910.2222 #t)
           (ja-blend-eval)
@@ -737,7 +786,7 @@
         0
         )
       (let ((v1-23 (ja-group)))
-        (if (not (and v1-23 (or (= v1-23 (-> self draw art-group data 14)) (= v1-23 (-> self draw art-group data 15)))))
+        (if (not (and v1-23 (or (= v1-23 rapid-gunner-shoot-ja) (= v1-23 rapid-gunner-shoot1-ja))))
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
@@ -778,6 +827,7 @@
     )
   )
 
+;; definition for method 186 of type rapid-gunner
 ;; WARN: Return type mismatch art-element vs none.
 (defmethod rapid-gunner-method-186 rapid-gunner ((obj rapid-gunner) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
   (local-vars (v1-1 int))
@@ -796,6 +846,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate hop (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -884,8 +935,8 @@
           )
         0
         (ja-channel-push! 2 (seconds 0.1))
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+        (ja-no-eval :group! rapid-gunner-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-idle-ja) frames num-frames) -1)))
                     :frame-num 0.0
                     )
         (let ((a0-17 (-> self skel root-channel 1)))
@@ -893,13 +944,13 @@
             (set! (-> a0-17 frame-interp 1) f0-7)
             (set! (-> a0-17 frame-interp 0) f0-7)
             )
-          (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
+          (set! (-> a0-17 frame-group) (the-as art-joint-anim rapid-gunner-idle-ja))
           (set! (-> a0-17 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
+                (the float (+ (-> (the-as art-joint-anim rapid-gunner-idle-ja) frames num-frames) -1))
                 )
           (set! (-> a0-17 param 1) 1.0)
           (set! (-> a0-17 frame-num) 0.0)
-          (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
+          (joint-control-channel-group! a0-17 (the-as art-joint-anim rapid-gunner-idle-ja) num-func-seek!)
           )
         (until (ja-done? 0)
           (let ((s5-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) gp-0 (-> self root-override2 quat))))
@@ -927,6 +978,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hop-turn (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -972,8 +1024,8 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 7)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+      (ja-no-eval :group! rapid-gunner-turn-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-turn-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1005,6 +1057,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate cool-down (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -1023,8 +1076,8 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 12)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
+      (ja-no-eval :group! rapid-gunner-aim-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-aim-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1042,6 +1095,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate reload (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -1061,8 +1115,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 19)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1)) 0.5)
+    (ja-no-eval :group! rapid-gunner-reload-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-reload-ja) frames num-frames) -1)) 0.5)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1083,6 +1137,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hostile (rapid-gunner)
   :virtual #t
   :enter (behavior ()
@@ -1158,7 +1213,7 @@
         )
       0
       (ja-channel-push! 1 (seconds 0.2))
-      (ja :group! (-> self draw art-group data 17))
+      (ja :group! rapid-gunner-shoot-track-ja)
       (ja :num-func num-func-identity :frame-num 0.0)
       (until (enemy-method-96 self 910.2222 #t)
         (ja-blend-eval)
@@ -1171,9 +1226,9 @@
       0
       )
     (let ((v1-23 (ja-group)))
-      (when (not (and v1-23 (= v1-23 (-> self draw art-group data 12))))
+      (when (not (and v1-23 (= v1-23 rapid-gunner-aim-ja)))
         (let ((v1-29 (ja-group)))
-          (if (and v1-29 (= v1-29 (-> self draw art-group data 17)))
+          (if (and v1-29 (= v1-29 rapid-gunner-shoot-track-ja))
               (ja-channel-push! 1 (seconds 0.067))
               (ja-channel-push! 1 (seconds 0.2))
               )
@@ -1182,11 +1237,8 @@
       )
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 12)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1))
-                      f30-0
-                      )
+        (ja-no-eval :group! rapid-gunner-aim-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-aim-ja) frames num-frames) -1)) f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -1206,6 +1258,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate spin-attack (rapid-gunner)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior rapid-gunner) enemy-event-handler)
@@ -1246,8 +1299,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.135))
-    (ja-no-eval :group! (-> self draw art-group data 18)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
+    (ja-no-eval :group! rapid-gunner-spin-attack-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-spin-attack-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1277,6 +1330,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (rapid-gunner)
   :virtual #t
   :enter (behavior ()
@@ -1313,11 +1367,14 @@
   :post (the-as (function none :behavior rapid-gunner) nav-enemy-simple-post)
   )
 
+;; definition for method 142 of type rapid-gunner
+;; WARN: Return type mismatch int vs none.
 (defmethod nav-enemy-method-142 rapid-gunner ((obj rapid-gunner) (arg0 nav-control))
   0
   (none)
   )
 
+;; definition for method 63 of type rapid-gunner
 ;; WARN: Return type mismatch none vs symbol.
 (defmethod enemy-method-63 rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 symbol))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
@@ -1328,6 +1385,8 @@
     )
   )
 
+;; definition for method 114 of type rapid-gunner
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-114 rapid-gunner ((obj rapid-gunner))
   "@abstract"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
@@ -1407,6 +1466,7 @@
   (none)
   )
 
+;; definition for method 7 of type rapid-gunner
 ;; WARN: Return type mismatch process-focusable vs rapid-gunner.
 (defmethod relocate rapid-gunner ((obj rapid-gunner) (arg0 int))
   (if (nonzero? (-> obj joint))
@@ -1418,6 +1478,9 @@
     )
   )
 
+;; definition for method 115 of type rapid-gunner
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-115 rapid-gunner ((obj rapid-gunner))
   "@abstract"
   (local-vars (sv-48 int))
@@ -1496,6 +1559,7 @@
     )
   )
 
+;; definition of type shield-gunner
 (deftype shield-gunner (rapid-gunner)
   ()
   :heap-base #x330
@@ -1503,3 +1567,19 @@
   :size-assert         #x3a4
   :flag-assert         #xbb033003a4
   )
+
+;; definition for method 3 of type shield-gunner
+(defmethod inspect shield-gunner ((obj shield-gunner))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rapid-gunner inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

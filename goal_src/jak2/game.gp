@@ -175,6 +175,9 @@
              :out `(,out-name))
     out-name))
 
+(defmacro copy-strs (&rest strs)
+  `(begin ,@(apply (lambda (x) `(set! *all-str* (cons (copy-iso-file ,x "STR/" ".STR") *all-str*))) strs)))
+
 (defmacro copy-sbk-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
 
@@ -1936,28 +1939,28 @@
 ;; ;; DRI
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "DRI.DGO" "dri.gd")
+(cgo "DRI.DGO" "dri.gd")
 
-;; (copy-textures 1204 1205 1239 1203 1206)
+(copy-textures 1204 1205 1239 1203 1206)
 
-;; (copy-gos
-;;   "centurion-ag"
-;;   "drill-turret-ext-ag"
-;;   "mech-ag"
-;;   "port-turret-ag"
-;;   "ginsu-ag"
-;;   "drill-elevator-ag"
-;;   "drill-plat-falling-ag"
-;;   "drill-bridge-shot-ag"
-;;   "warp-gate-ag"
-;;   "drill-elevator-base-ag"
-;;   "drill-wall-ag"
-;;   "drill-metalhead-eggs-c-ag"
-;;   "drill-metalhead-eggs-b-ag"
-;;   "drill-metalhead-eggs-a-ag"
-;;   "drill-turret-int-ag"
-;;   "drill-vis"
-;;   )
+(copy-gos
+  "centurion-ag"
+  ;; "drill-turret-ext-ag"
+  ;; "mech-ag"
+  ;; "port-turret-ag"
+  "ginsu-ag"
+  "drill-elevator-ag"
+  "drill-plat-falling-ag"
+  "drill-bridge-shot-ag"
+  ;; "warp-gate-ag"
+  "drill-elevator-base-ag"
+  ;; "drill-wall-ag"
+  ;; "drill-metalhead-eggs-c-ag"
+  ;; "drill-metalhead-eggs-b-ag"
+  ;; "drill-metalhead-eggs-a-ag"
+  ;; "drill-turret-int-ag"
+  "drill-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DRILLMTN
@@ -2117,7 +2120,12 @@
 
 (copy-gos
   "youngsamos-forestb+0-ag"
+  ;; "daxter-highres-ag"
   "youngsamos-highres-ag"
+  ;; "jak-highres-ag"
+  ;; "crimson-guard-hover-ag"
+  ;; "transport-ag"
+  ;; "life-seed-ag"
   "forestb-vis"
   )
 
@@ -3459,36 +3467,38 @@
 ;; ;; MTX
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "MTX.DGO" "mtx.gd")
+(cgo "MTX.DGO" "mtx.gd")
 
-;; (copy-textures 1719 1721 1720 1722 3506)
+(copy-textures 1719 1721 1720 1722 3506)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "mtn-gear-device-ag"
-;;   "mtn-step-plat-rocks-ag"
-;;   "metalmonk-ag"
-;;   "centurion-ag"
-;;   "rhino-ag"
-;;   "mtn-plat-buried-rocks-ag"
-;;   "rhino-wall-ag"
-;;   "hopper-ag"
-;;   "water-anim-mountain-dark-eco-ag"
-;;   "mtn-aval-rocks-ag"
-;;   "mtn-dice-ag"
-;;   "plat-buried-ag"
-;;   "plat-return-ag"
-;;   "iris-door-ag"
-;;   "seal-of-mar-ag"
-;;   "mtn-dice-button-ag"
-;;   "mtn-plat-eject-ag"
-;;   "mtn-button-ag"
-;;   "gear-device-gear-ag"
-;;   "mtn-lens-ag"
-;;   "particleman-ag"
-;;   "mtnext-vis"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  "mtn-gear-device-ag"
+  "mtn-step-plat-rocks-ag"
+  ;; "metalmonk-ag"
+  ;; "centurion-ag"
+  "rhino-ag"
+  "mtn-plat-buried-rocks-ag"
+  "rhino-wall-ag"
+  "hopper-ag"
+  "water-anim-mountain-dark-eco-ag"
+  "mtn-aval-rocks-ag"
+  "mtn-dice-ag"
+  ;; "plat-buried-ag"
+  ;; "plat-return-ag"
+  ;; "iris-door-ag"
+  "seal-of-mar-ag"
+  "mtn-dice-button-ag"
+  "mtn-plat-eject-ag"
+  "mtn-button-ag"
+  ;; "gear-device-gear-ag"
+  ;; "mtn-lens-ag"
+  ;; "particleman-ag"
+  "mtnext-vis"
+  )
+
+(copy-strs "RHW1" "RHW2")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; NEB
@@ -3906,24 +3916,24 @@
 ;; ;; SAG
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "SAG.DGO" "sag.gd")
+(cgo "SAG.DGO" "sag.gd")
 
-;; (copy-textures 881 1131 882 880)
+(copy-textures 881 1131 882 880)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "torn-highres-ag"
-;;   "ruins-tower-a-ag"
-;;   "ruins-tower-c-ag"
-;;   "ruins-tower-e-ag"
-;;   "ruins-tower-b-ag"
-;;   "ruins-tower-f-ag"
-;;   "ruins-tower-d-ag"
-;;   "life-seed-ag"
-;;   "ruins-tower-rp-ag"
-;;   "sagehut-vis"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  "torn-highres-ag"
+  "ruins-tower-a-ag"
+  "ruins-tower-c-ag"
+  "ruins-tower-e-ag"
+  "ruins-tower-b-ag"
+  "ruins-tower-f-ag"
+  "ruins-tower-d-ag"
+  ;; "life-seed-ag"
+  "ruins-tower-rp-ag"
+  "sagehut-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SEB
@@ -4431,51 +4441,51 @@
 ;; ;; TOB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TOB.DGO" "tob.gd")
+(cgo "TOB.DGO" "tob.gd")
 
-;; (copy-textures 1596 1597)
+(copy-textures 1596 1597)
 
-;; (copy-gos
-;;   "jak-pole+0-ag"
-;;   "tomb-stair-block-ag"
-;;   "tomb-baby-spider-ag"
-;;   "water-anim-tomb-dark-eco-ag"
-;;   "tomb-elevator-ag"
-;;   "tomb-plat-wall-ag"
-;;   "tomb-button-ag"
-;;   "tomb-stair-block-spikes-ag"
-;;   "tomb-boulder-door-ag"
-;;   "tomb-move-swing-pole-ag"
-;;   "tombb-vis"
-;;   )
+(copy-gos
+  ;; "jak-pole+0-ag"
+  "tomb-stair-block-ag"
+  "tomb-baby-spider-ag"
+  "water-anim-tomb-dark-eco-ag"
+  "tomb-elevator-ag"
+  "tomb-plat-wall-ag"
+  "tomb-button-ag"
+  "tomb-stair-block-spikes-ag"
+  "tomb-boulder-door-ag"
+  "tomb-move-swing-pole-ag"
+  "tombb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOC
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TOC.DGO" "toc.gd")
+(cgo "TOC.DGO" "toc.gd")
 
-;; (copy-textures 1598 1599 1832)
+(copy-textures 1598 1599 1832)
 
-;; (copy-gos
-;;   "water-anim-tomb-ag"
-;;   "tomb-baby-spider-ag"
-;;   "tomb-beetle-ag"
-;;   "tomb-door-ag"
-;;   "tomb-vibe-ag"
-;;   "tomb-simon-button-ag"
-;;   "tomb-plat-simon-ag"
-;;   "tomb-wing-door-ag"
-;;   "tomb-button-ag"
-;;   "tomb-beetle-door-ag"
-;;   "tombc-vis"
-;;   )
+(copy-gos
+  ;; "water-anim-tomb-ag"
+  ;; "tomb-baby-spider-ag"
+  "tomb-beetle-ag"
+  "tomb-door-ag"
+  "tomb-vibe-ag"
+  ;; "tomb-simon-button-ag"
+  "tomb-plat-simon-ag"
+  ;; "tomb-wing-door-ag"
+  ;; "tomb-button-ag"
+  "tomb-beetle-door-ag"
+  "tombc-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOD
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TOD.DGO" "tod.gd")
+(cgo "TOD.DGO" "tod.gd")
 
 ;; (goal-src-sequence
 ;;   ""
@@ -4483,21 +4493,21 @@
 ;;   "levels/common/entities/com-elevator.gc"
 ;;   )
 
-;; (copy-textures 1626 1627 3275)
+(copy-textures 1626 1627 3275)
 
-;; (copy-gos
-;;   "youngsamos-tombd+0-ag"
-;;   "kid-tombd+0-ag"
-;;   "daxter-highres-ag"
-;;   "youngsamos-highres-ag"
-;;   "jak-highres-ag"
-;;   "crocadog-highres-ag"
-;;   "kor-highres-ag"
-;;   "kid-highres-ag"
-;;   "tomb-mar-door-ag"
-;;   "com-elevator-ag"
-;;   "tombd-vis"
-;;   )
+(copy-gos
+  "youngsamos-tombd+0-ag"
+  ;; "kid-tombd+0-ag"
+  ;; "daxter-highres-ag"
+  ;; "youngsamos-highres-ag"
+  ;; "jak-highres-ag"
+  ;; "crocadog-highres-ag"
+  ;; "kor-highres-ag"
+  ;; "kid-highres-ag"
+  ;; "tomb-mar-door-ag"
+  ;; "com-elevator-ag"
+  "tombd-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOE
