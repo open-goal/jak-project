@@ -584,7 +584,7 @@
    (heap-cur pointer :offset-assert 104)
    (stack-frame-top stack-frame :offset-assert 108)
    (connection-list connectable :inline :offset-assert 112)
-   (stack uint8 :dynamic :offset-assert 128)
+   (stack uint8 :dynamic :offset-assert 128 :score -1)
    )
   (:methods
     (new (symbol type string int) _type_ 0)
@@ -41513,100 +41513,142 @@
 ;; fordumpa-texture               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *fortress-pris-texture-anim-array* texture-anim-array)
-;; (define-extern *fortress-warp-texture-anim-array* texture-anim-array)
-;; (define-extern set-roboscreen-alpha! function)
+(define-extern *fortress-pris-texture-anim-array* texture-anim-array)
+(define-extern *fortress-warp-texture-anim-array* texture-anim-array)
+(define-extern set-roboscreen-alpha! (function float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fort-robotank-turret           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype fort-robotank-turret (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype fort-robotank-turret (process-focusable)
+  (
+    (los                 los-control :inline :offset-assert 208)
+    (reticle             handle               :offset-assert 360)
+    (screen              handle               :offset-assert 368)
+    (tank-quat           quaternion :inline  :offset-assert 384)
+    (tank-quat-vibe-only quaternion :inline  :offset-assert 400)
+    (rotate-quat         quaternion :inline  :offset-assert 416)
+    (rotate-rate         float               :offset-assert 432)
+    (rotate-mult         float               :offset-assert 436)
+    (shot-range          float               :offset-assert 440)
+    (fov-mult            float               :offset-assert 444)
+    (offset              vector :inline      :offset-assert 448)
+    (sight-pos           vector :inline      :offset-assert 464)
+    (firing-sight-pos    vector :inline      :offset-assert 480)
+    (aim-pos             vector 3 :inline    :offset-assert 496) ;; elt size: 16
+    (aim-pos-2           vector   :inline    :offset 512) ;; added TODO - shouldn't have had to do this
+    (aim-pos-1           vector   :inline    :offset 528) ;; added TODO - shouldn't have had to do this
+    (gun-timer           time-frame          :offset-assert 544)
+    (gun-elev-jmod       joint-mod              :offset-assert 552)
+    (gun-elev            float               :offset-assert 556)
+    (gun-elev-cam        float               :offset-assert 560)
+    (gun-joint-l         joint-mod 2           :offset-assert 564) ;; elt size: 4
+    (gun-joint-r         joint-mod 2           :offset-assert 572) ;; elt size: 4
+    (gun-spread          float               :offset-assert 580)
+    (gun-index           int32               :offset-assert 584)
+    (flags               uint16              :offset-assert 588)
+    (turn-sound-id       uint32              :offset-assert 592)
   )
-|#
-
-#|
-(deftype fort-robotank-reticle (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 35
+  :size-assert         #x254 ;; 596
+  :flag-assert         #x2301e00254
+  (:methods
+    (idle () _type_ :state 27)
+    (ready () _type_ :state 28)
+    (fire () _type_ :state 29)
+    (die () _type_ :state 30)
+    (fort-robotank-turret-method-31 (_type_) none 31)
+    (fort-robotank-turret-method-32 (_type_) none 32)
+    (fort-robotank-turret-method-33 (_type_) none 33)
+    (fort-robotank-turret-method-34 (_type_ vector float) none 34))
   )
-|#
 
-#|
-(deftype fort-roboscreen (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype fort-robotank-reticle (process-drawable)
+  (
+    (shadow-jmod  joint-mod         :offset-assert 200)
+    (sight-jmod   joint-mod         :offset-assert 204)
+    (ring-jmod    joint-mod 3      :offset-assert 208) ;; elt size: 5.333333333333333
+    (ring-timer   time-frame     :offset-assert 224)
+    (sight-scale  vector :inline :offset-assert 240)
+    (collide-dist float          :offset-assert 256)
   )
-|#
-
-#|
-(deftype fort-robotank-shot (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 22
+  :size-assert         #x104 ;; 260
+  :flag-assert         #x1600900104
+  (:methods
+    (idle () _type_ :state 20)
+    (lock () _type_ :state 21))
   )
-|#
 
-;; (define-extern fort-roboscreen-init-by-other function)
-;; (define-extern fort-robotank-reticle-post function)
-;; (define-extern fort-robotank-reticle-handler function)
-;; (define-extern fort-robotank-reticle-init-by-other function)
-;; (define-extern draw-2d-hud function)
-;; (define-extern turret-post function)
-;; (define-extern robotank-turret-handler function)
-;; (define-extern fort-robotank-turret-init-by-other function)
+(deftype fort-roboscreen (process-drawable)
+  (
+    (anim-frame float  :offset-assert 200)
+    (transition float  :offset-assert 204)
+    (gui-id-1   uint32 :offset-assert 208)
+    (gui-id-2   uint32 :offset-assert 212)
+  )
+  :method-count-assert 25
+  :size-assert         #xd8 ;; 216
+  :flag-assert         #x19006000d8
+  (:methods
+    (idle () _type_ :state 20)
+    (active () _type_ :state 21)
+    (deactive () _type_ :state 22)
+    (die() _type_ :state 23)
+    (fort-roboscreen-method-24 (_type_) none 24))
+  )
+
+(deftype fort-robotank-shot (guard-shot)
+  ()
+  :method-count-assert 40
+  :size-assert         #x1f0 ;; 496
+  :flag-assert         #x28017001f0
+  )
+
+(define-extern fort-roboscreen-init-by-other (function vector quaternion none :behavior fort-roboscreen))
+(define-extern fort-robotank-reticle-post (function none :behavior fort-robotank-reticle))
+(define-extern fort-robotank-reticle-handler (function process int symbol event-message-block object :behavior fort-robotank-reticle))
+(define-extern fort-robotank-reticle-init-by-other (function vector none :behavior fort-robotank-reticle))
+(define-extern draw-2d-hud (function vector none))
+(define-extern turret-post (function none :behavior fort-robotank-turret))
+(define-extern robotank-turret-handler (function process int symbol event-message-block object :behavior fort-robotank-turret))
+(define-extern fort-robotank-turret-init-by-other (function vector quaternion vector float none :behavior fort-robotank-turret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fort-robotank                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype fort-robotank-segment-event (UNKNOWN)
-  ((source     uint64  :offset-assert 0)
-   (event-type basic   :offset-assert 8)
-   (actor      basic   :offset-assert 12)
+(declare-type fort-robotank process-drawable)
+(deftype fort-robotank-segment-event (structure)
+  ((source     handle  :offset-assert 0)
+   (event-type symbol   :offset-assert 8)
+   (actor      string   :offset-assert 12)
    (pos-norm   float   :offset-assert 16)
-   (param      basic   :offset-assert 20)
+   (param-obj      object :offset-assert 20) ;; TODO - to make the compiler happy
+   (param-func      (function fort-robotank none)   :offset 20)
+   (param-sym      symbol :offset 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field param uses ~A with a signed load
+  :method-count-assert 9
+  :size-assert         #x18 ;; 24
+  :flag-assert         #x900000018
   )
-|#
 
-#|
-(deftype fort-robotank-segment (UNKNOWN)
+(deftype fort-robotank-segment (structure)
   ((flags              uint16  :offset-assert 0)
    (max-speed          float   :offset-assert 4)
    (next-segment       int32   :offset-assert 8)
    (next-segment-start float   :offset-assert 12)
    (event-count        int32   :offset-assert 16)
-   (event-tbl          uint32  :offset-assert 20)
+   (event-tbl          (inline-array fort-robotank-segment-event)  :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x18 ;; 24
+  :flag-assert         #x900000018
   )
-|#
 
-#|
-(deftype fort-robotank-path-info (UNKNOWN)
-  ((path          basic          :offset-assert 0)
+(deftype fort-robotank-path-info (structure)
+  ((path          path-control          :offset-assert 0)
    (dir           vector :inline :offset-assert 16)
    (u             float          :offset-assert 32)
    (du            float          :offset-assert 36)
@@ -41617,62 +41659,82 @@
    (dir-y-angle   float          :offset-assert 56)
    (start-y-angle float          :offset-assert 60)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x40 ;; 64
+  :flag-assert         #x900000040
   )
-|#
 
-#|
-(deftype fort-robotank-path-info-array (UNKNOWN)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+(deftype fort-robotank-path-info-array (inline-array-class)
+  ((data             fort-robotank-path-info :inline :dynamic :offset-assert 16))
+  :method-count-assert 9
+  :size-assert         #x10 ;; 16
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype fort-robotank-wheel-info (UNKNOWN)
-  ((jmod   basic  :offset-assert 0)
+(deftype fort-robotank-wheel-info (structure)
+  ((jmod   joint-mod-spinner  :offset-assert 0)
    (radius float  :offset-assert 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8 ;; 8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype fort-robotank-tread-info (UNKNOWN)
-  ((wheel         UNKNOWN      7       :offset-assert 0)
+(deftype fort-robotank-tread-info (structure)
+  ((wheel         fort-robotank-wheel-info      7 :inline      :offset-assert 0)
    (texture       texture-anim         :offset-assert 112)
    (locator-joint int32                :offset-assert 116)
    (pos           vector       :inline :offset-assert 128)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x90 ;; 144
+  :flag-assert         #x900000090
   )
-|#
 
-#|
-(deftype fort-robotank (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype fort-robotank (process-drawable)
+  (
+    (root-override      collide-shape-moving :offset 128 :score 100)
+    (barrel-part        sparticle-launch-control     :offset-assert 200)
+    (roller-jmod        joint-mod     :offset-assert 204)
+    (vibe-jmod          joint-mod     :offset-assert 208)
+    (tread              fort-robotank-tread-info 2 :inline :offset-assert 224 :score 100) ;; elt size: 144
+    (path-info          fort-robotank-path-info-array     :offset-assert 512)
+    (segment-table      (inline-array fort-robotank-segment)    :offset-assert 516)
+    (flags              uint16     :offset-assert 520)
+    (pov-cam-offset     vector 2 :inline  :offset-assert 528) ;; elt size: 16
+    (turret             handle      :offset-assert 560)
+    (no-collision-timer time-frame :offset-assert 568)
+    (buzz-timer         time-frame :offset-assert 576)
+    (player-u           float      :offset-assert 584)
+    (player-prev-u      float      :offset-assert 588)
+    (roller-spin-rate   float      :offset-assert 592)
+    (engine-vibe-rate   float      :offset-assert 596)
+    (engine-vibe-amp    float      :offset-assert 600)
+    (attack-id          uint32     :offset-assert 604)
+    (path-index         int32      :offset-assert 608)
+    (path-count         int32      :offset-assert 612)
+    (continue-index     int32      :offset-assert 616)
+    (idle-sound         ambient-sound     :offset-assert 620)
+    (barrel-sound       ambient-sound     :offset-assert 624)
   )
-|#
+  :method-count-assert 28
+  :size-assert         #x274 ;; 628
+  :flag-assert         #x1c02000274
+  (:methods
+    (idle () _type_ :state 20)
+    (turning () _type_ :state 21)
+    (moving () _type_ :state 22)
+    (pause () _type_ :state 23)
+    (die () _type_ :state 24)
+    (fort-robotank-method-25 (_type_) event-message-block 25)
+    (fort-robotank-method-26 (_type_ int float float) symbol 26)
+    (fort-robotank-method-27 (_type_) none 27))
+  )
 
-;; (define-extern *fort-robotank-1-segment-table* object)
-;; (define-extern *fort-robotank-2-segment-table* object)
-;; (define-extern fort-robotank-post function)
-;; (define-extern fort-robotank-handler function)
+(define-extern *fort-robotank-1-segment-table* (inline-array fort-robotank-segment))
+(define-extern *fort-robotank-2-segment-table* (inline-array fort-robotank-segment))
+(define-extern fort-robotank-post (function none :behavior fort-robotank))
+(define-extern fort-robotank-handler (function process int symbol event-message-block none :behavior fort-robotank))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fordumpc-part                  ;;
