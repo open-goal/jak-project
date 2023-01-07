@@ -1,6 +1,6 @@
 #include "execution.h"
 
-#include "common/util/StringUtil.h"
+#include "common/util/string_util.h"
 #include "common/util/diff.h"
 
 #include "goalc/compiler/Compiler.h"

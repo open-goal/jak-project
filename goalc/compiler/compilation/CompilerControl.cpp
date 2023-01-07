@@ -9,7 +9,7 @@
 #include "common/goos/ReplUtils.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
-#include "common/util/StringUtil.h"
+#include "common/util/string_util.h"
 #include "common/util/Timer.h"
 
 #include "goalc/compiler/Compiler.h"
