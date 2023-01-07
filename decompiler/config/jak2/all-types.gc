@@ -41540,11 +41540,11 @@
     (aim-pos-2           vector   :inline    :offset 512) ;; added TODO - shouldn't have had to do this
     (aim-pos-1           vector   :inline    :offset 528) ;; added TODO - shouldn't have had to do this
     (gun-timer           time-frame          :offset-assert 544)
-    (gun-elev-jmod       joint-mod              :offset-assert 552)
+    (gun-elev-jmod       joint-mod-set-local              :offset-assert 552)
     (gun-elev            float               :offset-assert 556)
     (gun-elev-cam        float               :offset-assert 560)
-    (gun-joint-l         joint-mod 2           :offset-assert 564) ;; elt size: 4
-    (gun-joint-r         joint-mod 2           :offset-assert 572) ;; elt size: 4
+    (gun-joint-l         int32 2           :offset-assert 564) ;; elt size: 4
+    (gun-joint-r         int32 2           :offset-assert 572) ;; elt size: 4
     (gun-spread          float               :offset-assert 580)
     (gun-index           int32               :offset-assert 584)
     (flags               uint16              :offset-assert 588)
@@ -41558,10 +41558,10 @@
     (ready () _type_ :state 28)
     (fire () _type_ :state 29)
     (die () _type_ :state 30)
-    (fort-robotank-turret-method-31 (_type_) none 31)
-    (fort-robotank-turret-method-32 (_type_) none 32)
+    (fort-robotank-turret-method-31 (_type_ vector vector) none 31)
+    (fort-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer process) 32)
     (fort-robotank-turret-method-33 (_type_) none 33)
-    (fort-robotank-turret-method-34 (_type_ vector float) none 34))
+    (fort-robotank-turret-method-34 (_type_ vector float) symbol 34))
   )
 
 (deftype fort-robotank-reticle (process-drawable)
@@ -41606,11 +41606,11 @@
   :flag-assert         #x28017001f0
   )
 
-(define-extern fort-roboscreen-init-by-other (function vector quaternion none :behavior fort-roboscreen))
+(define-extern fort-roboscreen-init-by-other (function vector quaternion entity-actor none :behavior fort-roboscreen))
 (define-extern fort-robotank-reticle-post (function none :behavior fort-robotank-reticle))
 (define-extern fort-robotank-reticle-handler (function process int symbol event-message-block object :behavior fort-robotank-reticle))
 (define-extern fort-robotank-reticle-init-by-other (function vector none :behavior fort-robotank-reticle))
-(define-extern draw-2d-hud (function vector none))
+(define-extern draw-2d-hud "Unused but, maybe useful? TODO - dma buffer casting" (function vector symbol))
 (define-extern turret-post (function none :behavior fort-robotank-turret))
 (define-extern robotank-turret-handler (function process int symbol event-message-block object :behavior fort-robotank-turret))
 (define-extern fort-robotank-turret-init-by-other (function vector quaternion vector float none :behavior fort-robotank-turret))
@@ -43289,26 +43289,25 @@
 ;; fort-turret                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fort-turret (enemy)
-  ((gun-tilt-jm     basic               :offset-assert 528)
-   (gun-shadow-jm   basic               :offset-assert 532)
-   (aim-pos         vector      :inline :offset-assert 540)
-   (target-bullseye vector      :inline :offset-assert 556)
-   (gun-twist       float               :offset-assert 572)
-   (gun-tilt        float               :offset-assert 576)
-   (desired-twist   float               :offset-assert 580)
-   (desired-tilt    float               :offset-assert 584)
-   (los-clear       basic               :offset-assert 588)
-   (flash-state     basic               :offset-assert 592)
-   (flash-index     uint32              :offset-assert 596)
-   (can-shoot       basic               :offset-assert 600)
-   (last-hit-time   time-frame              :offset-assert 604)
-   (init-mat        matrix      :inline :offset-assert 620)
-   (target-timeout  uint64              :offset-assert 684)
-   (beam-intersect  basic               :offset-assert 692)
-   (sync            sync-linear :inline :offset-assert 700)
-   (invincible      basic               :offset-assert 716)
+  ((gun-tilt-jm     joint-mod               :offset-assert 532)
+   (gun-shadow-jm   joint-mod               :offset-assert 536)
+   (aim-pos         vector      :inline :offset-assert 544)
+   (target-bullseye vector      :inline :offset-assert 560)
+   (gun-twist       float               :offset-assert 576)
+   (gun-tilt        float               :offset-assert 580)
+   (desired-twist   float               :offset-assert 584)
+   (desired-tilt    float               :offset-assert 588)
+   (los-clear       basic               :offset-assert 592)
+   (flash-state     basic               :offset-assert 596)
+   (flash-index     uint32              :offset-assert 600)
+   (can-shoot       symbol               :offset-assert 604)
+   (last-hit-time   time-frame              :offset-assert 608)
+   (init-mat        matrix      :inline :offset-assert 624)
+   (target-timeout  uint64              :offset-assert 688)
+   (beam-intersect  basic               :offset-assert 696)
+   (sync            sync-linear :inline :offset-assert 704)
+   (invincible      symbol               :offset-assert 720)
    )
   :method-count-assert 143
   :size-assert         #x2d4
@@ -43316,18 +43315,17 @@
   (:methods
     (attack () _type_ :state 137)
     (sweep () _type_ :state 138)
-    (fort-turret-method-139 () none 139)
-    (fort-turret-method-140 () none 140)
-    (fort-turret-method-141 () none 141)
-    (fort-turret-method-142 () none 142)
+    (fort-turret-method-139 (_type_) none 139)
+    (fort-turret-method-140 (_type_ float float) quaternion 140)
+    (fort-turret-method-141 (_type_) vector 141)
+    (fort-turret-method-142 (_type_ symbol int) symbol 142)
     )
   )
-|#
 
-;; (define-extern fort-turret-draw-laser-spot function)
-;; (define-extern fort-turret-draw-laser function)
-;; (define-extern *fort-turret-exploder-params* joint-exploder-static-params)
-;; (define-extern *fort-turret-enemy-info* enemy-info)
+(define-extern fort-turret-draw-laser-spot (function vector object symbol none))
+(define-extern fort-turret-draw-laser (function vector vector none))
+(define-extern *fort-turret-exploder-params* joint-exploder-static-params)
+(define-extern *fort-turret-enemy-info* enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; whack                          ;;
