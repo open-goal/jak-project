@@ -1,6 +1,5 @@
 #include "execution.h"
 
-#include "common/util/diff.h"
 #include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -36,7 +35,7 @@ void decompile(OfflineTestDecompiler& dc,
 std::string clean_decompilation_code(const std::string& in, const bool leave_comments = false) {
   std::string out = in;
   if (!leave_comments) {
-    std::vector<std::string> lines = split_string(in);
+    std::vector<std::string> lines = str_util::split(in);
     // Remove all lines that are comments
     // comments are added only by us, meaning this _should_ be consistent
     std::vector<std::string>::iterator line_itr = lines.begin();
@@ -82,7 +81,7 @@ OfflineTestCompareResult compare(OfflineTestDecompiler& dc,
     compare_result.total_files++;
     compare_result.total_lines += str_util::line_count(result);
     if (result != ref) {
-      compare_result.failing_files.push_back({file.unique_name, diff_strings(ref, result)});
+      compare_result.failing_files.push_back({file.unique_name, str_util::diff(ref, result)});
       compare_result.total_pass = false;
       if (config.dump_mode) {
         auto failure_dir = file_util::get_jak_project_dir() / "failures";
