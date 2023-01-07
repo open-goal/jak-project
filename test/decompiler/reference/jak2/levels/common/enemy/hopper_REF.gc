@@ -66,10 +66,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-hopper hopper 0 4
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-hopper hopper hopper-lod0-jg hopper-idle-ja
+              ((hopper-lod0-mg (meters 20)) (hopper-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 2.25 -0.7 6.5)
-              :shadow 3
+              :shadow hopper-shadow-mg
               )
 
 ;; definition of type hopper-anim-info
@@ -684,11 +684,8 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 4)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1))
-                      f30-0
-                      )
+        (ja-no-eval :group! hopper-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim hopper-idle-ja) frames num-frames) -1)) f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -712,8 +709,8 @@
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (if (zero? (get-rand-int self 2))
-          (ja :group! (-> self draw art-group data 7))
-          (ja :group! (-> self draw art-group data 8))
+          (ja :group! hopper-notice-ja)
+          (ja :group! hopper-notice-alt-ja)
           )
       (ja-no-eval :group! (ja-group)
                   :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)

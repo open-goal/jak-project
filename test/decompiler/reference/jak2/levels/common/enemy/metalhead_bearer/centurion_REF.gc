@@ -258,10 +258,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-centurion centurion 0 6
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-centurion centurion centurion-lod0-jg centurion-idle-ja
+              ((centurion-lod0-mg (meters 20)) (centurion-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 2.25 -0.7 6.5)
-              :shadow 3
+              :shadow centurion-shadow-mg
               )
 
 ;; definition of type centurion-anim-info
@@ -696,11 +696,8 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 6)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1))
-                      f30-0
-                      )
+        (ja-no-eval :group! centurion-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-idle-ja) frames num-frames) -1)) f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -839,11 +836,8 @@
           )
         )
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! (-> self draw art-group data 29)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 29)) frames num-frames) -1))
-                    f30-0
-                    )
+      (ja-no-eval :group! centurion-shoot-start-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-start-ja) frames num-frames) -1)) f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -879,7 +873,7 @@
           )
         )
       (centurion-method-180 self)
-      (ja-no-eval :group! (-> self draw art-group data 30) :num! (seek! 2.0) :frame-num 0.0)
+      (ja-no-eval :group! centurion-shoot-loop-ja :num! (seek! 2.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! 2.0))
@@ -888,7 +882,7 @@
       (when (handle->process (-> self focus handle))
         )
       (centurion-method-180 self)
-      (ja-no-eval :group! (-> self draw art-group data 30) :num! (seek! 2.0) :frame-num 0.0)
+      (ja-no-eval :group! centurion-shoot-loop-ja :num! (seek! 2.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! 2.0))
@@ -897,8 +891,8 @@
       (when (handle->process (-> self focus handle))
         )
       (centurion-method-180 self)
-      (ja-no-eval :group! (-> self draw art-group data 30)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 30)) frames num-frames) -1)) 0.4)
+      (ja-no-eval :group! centurion-shoot-loop-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-loop-ja) frames num-frames) -1)) 0.4)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -908,11 +902,8 @@
       (set! (-> self can-take-damage?) #f)
       (set! (-> self root-override2 root-prim specific 0) (-> self root-override2 root-prim specific 1))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! (-> self draw art-group data 31)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 31)) frames num-frames) -1))
-                    f30-0
-                    )
+      (ja-no-eval :group! centurion-shoot-end-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-end-ja) frames num-frames) -1)) f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -959,8 +950,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 24)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1)))
+    (ja-no-eval :group! centurion-hit-away-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-hit-away-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1309,23 +1300,23 @@
             (ja-channel-push! 1 (seconds 0.1))
             (cond
               ((< f28-0 -24576.0)
-               (ja :group! (-> self draw art-group data 28))
+               (ja :group! centurion-walk-forward-ja)
                (set! f30-1 -1.0)
                )
               ((< f28-0 -8192.0)
-               (ja :group! (-> self draw art-group data 25))
+               (ja :group! centurion-side-stepR-ja)
                (set! f30-1 -1.0)
                )
               ((< f28-0 8192.0)
-               (ja :group! (-> self draw art-group data 28))
+               (ja :group! centurion-walk-forward-ja)
                (set! f30-1 1.0)
                )
               ((< f28-0 24576.0)
-               (ja :group! (-> self draw art-group data 25))
+               (ja :group! centurion-side-stepR-ja)
                (set! f30-1 1.0)
                )
               ((< f28-0 40960.0)
-               (ja :group! (-> self draw art-group data 28))
+               (ja :group! centurion-walk-forward-ja)
                (set! f30-1 -1.0)
                )
               )

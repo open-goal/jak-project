@@ -37,10 +37,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-grenadier grenadier 0 -1
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+(defskelgroup skel-grenadier grenadier grenadier-lod0-jg -1
+              ((grenadier-lod0-mg (meters 20)) (grenadier-lod1-mg (meters 40)) (grenadier-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
-              :shadow 4
+              :shadow grenadier-shadow-mg
               :origin-joint-index 4
               )
 
@@ -631,8 +631,8 @@
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 13)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
+      (ja-no-eval :group! grenadier-run-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-run-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -698,8 +698,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.135))
-    (ja-no-eval :group! (-> self draw art-group data 21)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 21)) frames num-frames) -1)))
+    (ja-no-eval :group! grenadier-spin-kick-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-spin-kick-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -899,11 +899,8 @@
           0
           (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
           (logior! (-> self status-flags) 2)
-          (ja-no-eval :group! (-> self draw art-group data 15)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1))
-                        f30-0
-                        )
+          (ja-no-eval :group! grenadier-run-to-throw-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-run-to-throw-ja) frames num-frames) -1)) f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -926,11 +923,8 @@
       (cond
         ((logtest? (-> self status-flags) 1)
          (ja-channel-push! 1 (seconds 0.135))
-         (ja-no-eval :group! (-> self draw art-group data 20)
-                     :num! (seek!
-                       (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1))
-                       f30-0
-                       )
+         (ja-no-eval :group! grenadier-throw-quick-ja
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw-quick-ja) frames num-frames) -1)) f30-0)
                      :frame-num 0.0
                      )
          (until (ja-done? 0)
@@ -946,7 +940,7 @@
               )
             0
             (ja-channel-push! 1 (seconds 0.2))
-            (ja :group! (-> self draw art-group data 16))
+            (ja :group! grenadier-throw-turn-in-place-ja)
             (ja :num-func num-func-identity :frame-num 0.0)
             (until (enemy-method-96 self 910.2222 #t)
               (ja-blend-eval)
@@ -973,11 +967,8 @@
                     )
                 (cond
                   ((< 102400.0 f0-14)
-                   (ja-no-eval :group! (-> self draw art-group data 18)
-                               :num! (seek!
-                                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1))
-                                 f30-0
-                                 )
+                   (ja-no-eval :group! grenadier-throw-ja
+                               :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw-ja) frames num-frames) -1)) f30-0)
                                :frame-num 0.0
                                )
                    (until (ja-done? 0)
@@ -986,11 +977,8 @@
                      )
                    )
                   (else
-                    (ja-no-eval :group! (-> self draw art-group data 19)
-                                :num! (seek!
-                                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1))
-                                  f30-0
-                                  )
+                    (ja-no-eval :group! grenadier-throw1-ja
+                                :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw1-ja) frames num-frames) -1)) f30-0)
                                 :frame-num 0.0
                                 )
                     (until (ja-done? 0)
@@ -1146,11 +1134,8 @@
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (cond
         ((zero? (rand-vu-int-range 0 1))
-         (ja-no-eval :group! (-> self draw art-group data 22)
-                     :num! (seek!
-                       (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 22)) frames num-frames) -1))
-                       f30-0
-                       )
+         (ja-no-eval :group! grenadier-victory-ja
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-victory-ja) frames num-frames) -1)) f30-0)
                      :frame-num 0.0
                      )
          (until (ja-done? 0)
@@ -1159,11 +1144,8 @@
            )
          )
         (else
-          (ja-no-eval :group! (-> self draw art-group data 11)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1))
-                        f30-0
-                        )
+          (ja-no-eval :group! grenadier-notice-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-notice-ja) frames num-frames) -1)) f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
