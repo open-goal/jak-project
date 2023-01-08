@@ -230,12 +230,12 @@
 
 ;; definition of type sew-valve
 (deftype sew-valve (process-drawable)
-  ((joint             joint-mod              :offset-assert 200)
-   (actor-group       (pointer actor-group)  :offset-assert 204)
-   (actor-group-count int32                  :offset-assert 208)
-   (water-height      float                  :offset-assert 212)
-   (spin              float                  :offset-assert 216)
-   (spin-rate         float                  :offset-assert 220)
+  ((joint             joint-mod-rotate-local  :offset-assert 200)
+   (actor-group       (pointer actor-group)   :offset-assert 204)
+   (actor-group-count int32                   :offset-assert 208)
+   (water-height      float                   :offset-assert 212)
+   (spin              float                   :offset-assert 216)
+   (spin-rate         float                   :offset-assert 220)
    )
   :heap-base #x60
   :method-count-assert 22
@@ -298,7 +298,7 @@
 (defstate turn (sew-valve)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self joint mode) (the-as joint-mod-mode #t))
+    (set! (-> self joint enable) #t)
     (set! (-> self spin-rate) 196608.0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (sound-play "sew-valve")
@@ -322,7 +322,7 @@
     (none)
     )
   :exit (behavior ()
-    (set! (-> self joint mode) (the-as joint-mod-mode #f))
+    (set! (-> self joint enable) #f)
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
@@ -336,7 +336,7 @@
   :post (behavior ()
     (seek! (-> self spin-rate) 0.0 (* 81920.0 (-> self clock seconds-per-frame)))
     (+! (-> self spin) (* (-> self spin-rate) (-> self clock seconds-per-frame)))
-    (quaternion-axis-angle! (the-as quaternion (-> self joint target)) 0.0 0.0 1.0 (-> self spin))
+    (quaternion-axis-angle! (-> self joint rotation) 0.0 0.0 1.0 (-> self spin))
     (let* ((f0-8 (- (get-base-height *ocean-map-sewer*) (-> self water-height)))
            (f30-0 f0-8)
            (f28-0 (seek-ease
@@ -377,7 +377,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-valve ((obj sew-valve) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (a0-17 object) (a1-13 uint128) (sv-16 res-tag) (sv-32 int))
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -408,29 +408,15 @@
     )
   (set! (-> obj spin) 0.0)
   (set! (-> obj spin-rate) 0.0)
-  (set! (-> obj joint) (the-as joint-mod (new 'process 'joint-mod-rotate-local obj 4 #f)))
+  (set! (-> obj joint) (new 'process 'joint-mod-rotate-local obj 4 #f))
   (set! sv-16 (new 'static 'res-tag))
   (set! (-> obj actor-group)
         (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))
         )
   (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
-  (set! sv-32 0)
-  (let ((v1-22
-          (res-lump-data (-> obj entity) 'extra-float-param pointer :tag-ptr (the-as (pointer res-tag) (& sv-32)))
-          )
-        )
-    (if (and v1-22 (begin
-                     (let ((a0-18 #t))
-                       (let ((a1-12 (the-as uint128 sv-32)))
-                         (.pcpyud a1-13 a1-12 r0-0)
-                         )
-                       (let ((a1-15 (the-as int (shr (* (the-as int a1-13) 2) 49))))
-                         (cmove-#f-zero a0-17 a1-15 a0-18)
-                         )
-                       )
-                     a0-17
-                     )
-             )
+  (set! sv-32 (new 'static 'res-tag))
+  (let ((v1-22 (res-lump-data (-> obj entity) 'extra-float-param pointer :tag-ptr (& sv-32))))
+    (if (and v1-22 (nonzero? (-> sv-32 elt-count)))
         (set! (-> obj water-height) (-> (the-as (pointer float) v1-22)))
         (set! (-> obj water-height) 0.0)
         )
