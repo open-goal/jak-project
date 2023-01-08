@@ -40637,12 +40637,11 @@
 ;; jinx-bomb                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jinx-bomb (process-focusable)
-  ((fuse-delay    uint32  :offset-assert 200)
-   (attack-id     uint32  :offset-assert 204)
-   (shake-screen? basic   :offset-assert 208)
-   (explode-func  basic   :offset-assert 212)
+  ((fuse-delay    uint32  :offset-assert 204)
+   (attack-id     uint32  :offset-assert 208)
+   (shake-screen? symbol  :offset-assert 212)
+   (explode-func  basic   :offset-assert 216)
    )
   :method-count-assert 29
   :size-assert         #xdc
@@ -40652,9 +40651,8 @@
     (explode () _type_ :state 28)
     )
   )
-|#
 
-;; (define-extern jinx-bomb-init-by-other function)
+(define-extern jinx-bomb-init-by-other (function vector quaternion none :behavior jinx-bomb))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jinx                           ;;
@@ -41193,8 +41191,8 @@
 ;; (define-extern hosehead-fake-event-handler function)
 ;; (define-extern hosehead-fake-init-by-other function)
 ;; (define-extern *hosehead-fakes* array)
-;; (define-extern spawn-hosehead-fakes function)
-;; (define-extern hosehead-fake-trigger function)
+(define-extern spawn-hosehead-fakes (function none))
+(define-extern hosehead-fake-trigger (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gator                          ;;
@@ -41322,85 +41320,78 @@
 ;; sewer-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fake-jinx-bomb-info (basic)
-  ((handle uint64  :offset-assert 8)
+  ((handle handle  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *fake-jinx-bomb-info* fake-jinx-bomb-info)
+(define-extern *fake-jinx-bomb-info* fake-jinx-bomb-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sew-gunturret                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-turret-params (structure)
-  ((normal-sg    basic     :offset-assert 0)
-   (explode-sg   basic     :offset-assert 4)
-   (enemy-info   basic     :offset-assert 8)
+  ((normal-sg    skeleton-group     :offset-assert 0)
+   (explode-sg   skeleton-group     :offset-assert 4)
+   (enemy-info   enemy-info     :offset-assert 8)
    (idle-anim    int32     :offset-assert 12)
    (shoot-anim   int32     :offset-assert 16)
    (track-joint  int32     :offset-assert 20)
    (barrel-joint int32     :offset-assert 24)
    (gun-joint    int32     :offset-assert 28)
-   (hole-joints  UNKNOWN 8 :offset-assert 32)
+   (hole-joints  int32   8 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sew-gunturret (enemy)
-  ((gun-tilt-jm       basic                     :offset-assert 528)
-   (params            gun-turret-params         :offset-assert 532)
-   (aim-pos           vector            :inline :offset-assert 540)
-   (gun-twist         float                     :offset-assert 556)
-   (gun-tilt          float                     :offset-assert 560)
-   (desired-twist     float                     :offset-assert 564)
-   (desired-tilt      float                     :offset-assert 568)
-   (los-clear         basic                     :offset-assert 572)
-   (smoke-part        basic                     :offset-assert 576)
-   (casing-part       basic                     :offset-assert 580)
-   (flash-state       basic                     :offset-assert 584)
-   (can-shoot         basic                     :offset-assert 588)
-   (last-hit-time     time-frame                    :offset-assert 596)
-   (init-mat          matrix            :inline :offset-assert 604)
-   (activate-distance float                     :offset-assert 668)
+  ((gun-tilt-jm       joint-mod                     :offset-assert 532)
+   (params            gun-turret-params         :offset-assert 536)
+   (aim-pos           vector            :inline :offset-assert 544)
+   (gun-twist         float                     :offset-assert 560)
+   (gun-tilt          float                     :offset-assert 564)
+   (desired-twist     float                     :offset-assert 568)
+   (desired-tilt      float                     :offset-assert 572)
+   (los-clear         basic                     :offset-assert 576)
+   (smoke-part        sparticle-launch-control                     :offset-assert 580)
+   (casing-part       sparticle-launch-control                     :offset-assert 584)
+   (flash-state       basic                     :offset-assert 588)
+   (can-shoot         symbol                     :offset-assert 592)
+   (last-hit-time     time-frame                    :offset-assert 600)
+   (init-mat          matrix            :inline :offset-assert 608)
+   (activate-distance float                     :offset-assert 672)
    )
   :method-count-assert 142
   :size-assert         #x2a4
   :flag-assert         #x8e023002a4
   (:methods
-    (sew-gunturret-method-137 () none 137)
-    (sew-gunturret-method-138 () none 138)
-    (sew-gunturret-method-139 () none 139)
-    (sew-gunturret-method-140 () none 140)
-    (sew-gunturret-method-141 () none 141)
+    (sew-gunturret-method-137 (_type_ symbol) none 137)
+    (sew-gunturret-method-138 (_type_) none 138)
+    (sew-gunturret-method-139 (_type_) none 139)
+    (sew-gunturret-method-140 (_type_ symbol) none 140)
+    (sew-gunturret-method-141 (_type_) none 141)
     )
   )
-|#
 
-#|
 (deftype pal-gun-turret (sew-gunturret)
   ()
   :method-count-assert 142
   :size-assert         #x2a4
   :flag-assert         #x8e023002a4
   (:methods
+    (pal-gun-turret-method-140 (_type_ symbol) float :replace 140)
     )
   )
-|#
 
-;; (define-extern *sew-gunturret-exploder-params* joint-exploder-static-params)
-;; (define-extern *sew-gunturret-enemy-info* enemy-info)
-;; (define-extern *pal-gun-turret-enemy-info* enemy-info)
+(define-extern *sew-gunturret-exploder-params* joint-exploder-static-params)
+(define-extern *sew-gunturret-enemy-info* enemy-info)
+(define-extern *pal-gun-turret-enemy-info* enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctypower                       ;;
