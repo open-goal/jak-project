@@ -18,6 +18,7 @@
    (anim-index-front int32   :offset          0)
    (anim-index-back  int32   :offset          4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -39,17 +40,17 @@
 
 ;; definition of type guard-level-global-info
 (deftype guard-level-global-info (basic)
-  ((prev-yellow-hit         int8     :offset-assert   4)
-   (prev-blue-hit           int8     :offset-assert   5)
-   (knocked                 int32  2 :offset-assert   8)
-   (anim-knocked-front      int32    :offset          8)
-   (anim-knocked-back       int32    :offset         12)
-   (knocked-land            int32  2 :offset-assert  16)
-   (anim-knocked-front-land int32    :offset         16)
-   (anim-knocked-back-land  int32    :offset         20)
-   (yellow-hit-anim         handle 2 :offset-assert  24)
-   (yellow-land-anim        handle 2 :offset-assert  40)
-   (blue-hit-anim           handle 1 :offset-assert  56)
+  ((prev-yellow-hit         int8                            :offset-assert   4)
+   (prev-blue-hit           int8                            :offset-assert   5)
+   (knocked                 guard-level-anim-info :inline   :offset-assert   8)
+   (anim-knocked-front      int32                           :offset          8)
+   (anim-knocked-back       int32                           :offset         12)
+   (knocked-land            guard-level-anim-info :inline   :offset-assert  16)
+   (anim-knocked-front-land int32                           :offset         16)
+   (anim-knocked-back-land  int32                           :offset         20)
+   (yellow-hit-anim         guard-level-anim-info 2 :inline :offset-assert  24)
+   (yellow-land-anim        guard-level-anim-info 2 :inline :offset-assert  40)
+   (blue-hit-anim           guard-level-anim-info 1 :inline :offset-assert  56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -67,10 +68,10 @@
   (format #t "~1Tprev-blue-hit: ~D~%" (-> obj prev-blue-hit))
   (format #t "~1Tknocked[2] @ #x~X~%" (-> obj knocked))
   (format #t "~1Tknocked-land[2] @ #x~X~%" (-> obj knocked-land))
-  (format #t "~1Tanim-knocked-front: ~D~%" (-> obj anim-knocked-front))
-  (format #t "~1Tanim-knocked-back: ~D~%" (-> obj anim-knocked-back))
-  (format #t "~1Tanim-knocked-front-land: ~D~%" (-> obj anim-knocked-front-land))
-  (format #t "~1Tanim-knocked-back-land: ~D~%" (-> obj anim-knocked-back-land))
+  (format #t "~1Tanim-knocked-front: ~D~%" (-> obj knocked anim-index-front))
+  (format #t "~1Tanim-knocked-back: ~D~%" (-> obj knocked anim-index-back))
+  (format #t "~1Tanim-knocked-front-land: ~D~%" (-> obj knocked-land anim-index-front))
+  (format #t "~1Tanim-knocked-back-land: ~D~%" (-> obj knocked-land anim-index-back))
   (format #t "~1Tyellow-hit-anim[2] @ #x~X~%" (-> obj yellow-hit-anim))
   (format #t "~1Tyellow-land-anim[2] @ #x~X~%" (-> obj yellow-land-anim))
   (format #t "~1Tblue-hit-anim[1] @ #x~X~%" (-> obj blue-hit-anim))
@@ -107,17 +108,19 @@
 ;; definition for symbol *crimson-guard-level-global-info*, type guard-level-global-info
 (define *crimson-guard-level-global-info*
   (new 'static 'guard-level-global-info
-    :knocked (new 'static 'array int32 2 31 8)
-    :knocked-land (new 'static 'array int32 2 32 9)
-    :yellow-hit-anim (new 'static 'array handle 2
-      (new 'static 'handle :process #xd :pid #xf :u64 #xf0000000d)
-      (new 'static 'handle :process #xf :pid #xd :u64 #xd0000000f)
+    :knocked (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 31 8))
+    :knocked-land (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 32 9))
+    :yellow-hit-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 13 15))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 15 13))
       )
-    :yellow-land-anim (new 'static 'array handle 2
-      (new 'static 'handle :process #xe :pid #x10 :u64 #x100000000e)
-      (new 'static 'handle :process #x10 :pid #xe :u64 #xe00000010)
+    :yellow-land-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 14 16))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 16 14))
       )
-    :blue-hit-anim (new 'static 'array handle 1 (new 'static 'handle :process #xa :pid #xa :u64 #xa0000000a))
+    :blue-hit-anim (new 'static 'inline-array guard-level-anim-info 1
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 10 10))
+      )
     )
   )
 
@@ -3414,7 +3417,7 @@
   (cond
     ((<= (-> obj hit-points) 0)
      (ja-channel-push! 1 (seconds 0.01))
-     (let ((a1-2 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+     (let ((a1-2 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
            (a0-5 (-> obj skel root-channel 0))
            )
        (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-2))
@@ -3448,7 +3451,7 @@
               )
             )
            (else
-             (let ((a1-9 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+             (let ((a1-9 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
                    (a0-21 (-> obj skel root-channel 0))
                    )
                (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-9))
@@ -3474,7 +3477,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (let ((a1-13 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+          (let ((a1-13 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
                 (a0-29 (-> obj skel root-channel 0))
                 )
             (set! (-> a0-29 frame-group) (the-as art-joint-anim a1-13))
@@ -3523,7 +3526,7 @@
 (defmethod enemy-method-78 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
   (cond
     ((<= (-> obj hit-points) 0)
-     (let ((a1-1 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+     (let ((a1-1 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
            (a0-4 (-> obj skel root-channel 0))
            )
        (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-1))
@@ -3560,7 +3563,7 @@
             #t
             )
            (else
-             (let ((a1-7 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+             (let ((a1-7 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
                    (a0-19 (-> obj skel root-channel 0))
                    )
                (set! (-> a0-19 frame-group) (the-as art-joint-anim a1-7))
@@ -3589,7 +3592,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (let ((a1-11 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+          (let ((a1-11 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
                 (a0-27 (-> obj skel root-channel 0))
                 )
             (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-11))
