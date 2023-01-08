@@ -17,10 +17,13 @@
               )
 
 (deftype guard-level-anim-info (structure)
-  ((anim-index       int32 2 :offset-assert   0)
-   (anim-index-front int32   :offset          0)
-   (anim-index-back  int32   :offset          4)
+  ((anim-index                int32  2 :offset-assert   0)
+   (anim-index-front          int32    :offset          0)
+   (anim-index-back           int32    :offset          4)
+   (unsigned-anim-index-front uint32   :offset          0)
+   (unsigned-anim-index-back  uint32   :offset          4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -28,17 +31,17 @@
 
 
 (deftype guard-level-global-info (basic)
-  ((prev-yellow-hit         int8     :offset-assert   4)
-   (prev-blue-hit           int8     :offset-assert   5)
-   (knocked                 int32  2 :offset-assert   8)
-   (anim-knocked-front      int32    :offset          8)
-   (anim-knocked-back       int32    :offset         12)
-   (knocked-land            int32  2 :offset-assert  16)
-   (anim-knocked-front-land int32    :offset         16)
-   (anim-knocked-back-land  int32    :offset         20)
-   (yellow-hit-anim         handle 2 :offset-assert  24)
-   (yellow-land-anim        handle 2 :offset-assert  40)
-   (blue-hit-anim           handle 1 :offset-assert  56)
+  ((prev-yellow-hit         int8                            :offset-assert   4)
+   (prev-blue-hit           int8                            :offset-assert   5)
+   (knocked                 guard-level-anim-info :inline   :offset-assert   8)
+   (anim-knocked-front      int32                           :offset          8)
+   (anim-knocked-back       int32                           :offset         12)
+   (knocked-land            guard-level-anim-info :inline   :offset-assert  16)
+   (anim-knocked-front-land int32                           :offset         16)
+   (anim-knocked-back-land  int32                           :offset         20)
+   (yellow-hit-anim         guard-level-anim-info 2 :inline :offset-assert  24)
+   (yellow-land-anim        guard-level-anim-info 2 :inline :offset-assert  40)
+   (blue-hit-anim           guard-level-anim-info 1 :inline :offset-assert  56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -60,17 +63,19 @@
 
 (define *crimson-guard-level-global-info*
   (new 'static 'guard-level-global-info
-    :knocked (new 'static 'array int32 2 31 8)
-    :knocked-land (new 'static 'array int32 2 32 9)
-    :yellow-hit-anim (new 'static 'array handle 2
-      (new 'static 'handle :process #xd :pid #xf :u64 #xf0000000d)
-      (new 'static 'handle :process #xf :pid #xd :u64 #xd0000000f)
+    :knocked (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 31 8))
+    :knocked-land (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 32 9))
+    :yellow-hit-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 13 15))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 15 13))
       )
-    :yellow-land-anim (new 'static 'array handle 2
-      (new 'static 'handle :process #xe :pid #x10 :u64 #x100000000e)
-      (new 'static 'handle :process #x10 :pid #xe :u64 #xe00000010)
+    :yellow-land-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 14 16))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 16 14))
       )
-    :blue-hit-anim (new 'static 'array handle 1 (new 'static 'handle :process #xa :pid #xa :u64 #xa0000000a))
+    :blue-hit-anim (new 'static 'inline-array guard-level-anim-info 1
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 10 10))
+      )
     )
   )
 
@@ -614,8 +619,7 @@
    (anim-get-up-front       int32                             :offset-assert 612)
    (anim-get-up-back        int32                             :offset-assert 616)
    (small-hit               int32                             :offset-assert 620)
-   (yellow-anim             uint32                            :offset-assert 624)
-   (pad-jh1b23              int32                             :offset-assert 628)
+   (yellow-anim             guard-level-anim-info   :inline   :offset-assert 624)
    (flags                   int64                             :offset-assert 632)
    (weapon                  int32                             :offset-assert 640)
    (pad-kjh1n23             int32                             :offset-assert 644)
@@ -3251,7 +3255,6 @@
     )
   )
 
-;; WARN: Failed load: (set! v1-27 (l.w (+ v1-26 20))) at op 90
 (defmethod enemy-method-77 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
   (let ((v1-1 (-> obj root-override2 transv)))
     (cond
@@ -3267,7 +3270,7 @@
   (cond
     ((<= (-> obj hit-points) 0)
      (ja-channel-push! 1 (seconds 0.01))
-     (let ((a1-2 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+     (let ((a1-2 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
            (a0-5 (-> obj skel root-channel 0))
            )
        (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-2))
@@ -3283,14 +3286,20 @@
          (ja-channel-push! 1 (seconds 0.01))
          (cond
            ((= (-> obj small-hit) 1)
-            (set! (-> obj yellow-anim) (the-as uint (get-rand-int obj 2)))
-            (let ((a1-8 (-> obj
-                            draw
-                            art-group
-                            data
-                            (l.w (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim) 8)) (the-as uint (-> obj info)) 20))
+            (set! (-> obj yellow-anim anim-index-front) (get-rand-int obj 2))
+            (let ((a1-8
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            2
                             )
                         )
+                    )
                   (a0-17 (-> obj skel root-channel 0))
                   )
               (set! (-> a0-17 frame-group) (the-as art-joint-anim a1-8))
@@ -3301,7 +3310,7 @@
               )
             )
            (else
-             (let ((a1-9 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+             (let ((a1-9 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
                    (a0-21 (-> obj skel root-channel 0))
                    )
                (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-9))
@@ -3327,7 +3336,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (let ((a1-13 (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+          (let ((a1-13 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
                 (a0-29 (-> obj skel root-channel 0))
                 )
             (set! (-> a0-29 frame-group) (the-as art-joint-anim a1-13))
@@ -3370,11 +3379,10 @@
   (none)
   )
 
-;; WARN: Failed load: (set! v1-20 (l.w (+ v1-19 36))) at op 62
 (defmethod enemy-method-78 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
   (cond
     ((<= (-> obj hit-points) 0)
-     (let ((a1-1 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+     (let ((a1-1 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
            (a0-4 (-> obj skel root-channel 0))
            )
        (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-1))
@@ -3392,13 +3400,19 @@
          (ja-channel-push! 1 (seconds 0.1))
          (cond
            ((= (-> obj small-hit) 1)
-            (let ((a1-6 (-> obj
-                            draw
-                            art-group
-                            data
-                            (l.w (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim) 8)) (the-as uint (-> obj info)) 36))
+            (let ((a1-6
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            6
                             )
                         )
+                    )
                   (a0-15 (-> obj skel root-channel 0))
                   )
               (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-6))
@@ -3411,7 +3425,7 @@
             #t
             )
            (else
-             (let ((a1-7 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+             (let ((a1-7 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
                    (a0-19 (-> obj skel root-channel 0))
                    )
                (set! (-> a0-19 frame-group) (the-as art-joint-anim a1-7))
@@ -3440,7 +3454,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (let ((a1-11 (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+          (let ((a1-11 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
                 (a0-27 (-> obj skel root-channel 0))
                 )
             (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-11))

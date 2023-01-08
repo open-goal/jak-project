@@ -14,9 +14,11 @@
 
 ;; definition of type guard-level-anim-info
 (deftype guard-level-anim-info (structure)
-  ((anim-index       int32 2 :offset-assert   0)
-   (anim-index-front int32   :offset          0)
-   (anim-index-back  int32   :offset          4)
+  ((anim-index                int32  2 :offset-assert   0)
+   (anim-index-front          int32    :offset          0)
+   (anim-index-back           int32    :offset          4)
+   (unsigned-anim-index-front uint32   :offset          0)
+   (unsigned-anim-index-back  uint32   :offset          4)
    )
   :pack-me
   :method-count-assert 9
@@ -675,8 +677,7 @@
    (anim-get-up-front       int32                             :offset-assert 612)
    (anim-get-up-back        int32                             :offset-assert 616)
    (small-hit               int32                             :offset-assert 620)
-   (yellow-anim             uint32                            :offset-assert 624)
-   (pad-jh1b23              int32                             :offset-assert 628)
+   (yellow-anim             guard-level-anim-info   :inline   :offset-assert 624)
    (flags                   int64                             :offset-assert 632)
    (weapon                  int32                             :offset-assert 640)
    (pad-kjh1n23             int32                             :offset-assert 644)
@@ -757,7 +758,7 @@
   (format #t "~2Tanim-get-up-front: ~D~%" (-> obj anim-get-up-front))
   (format #t "~2Tanim-get-up-back: ~D~%" (-> obj anim-get-up-back))
   (format #t "~2Tsmall-hit: ~D~%" (-> obj small-hit))
-  (format #t "~2Tyellow-anim: ~D~%" (-> obj yellow-anim))
+  (format #t "~2Tyellow-anim: ~D~%" (-> obj yellow-anim unsigned-anim-index-front))
   (format #t "~2Tflags: ~D~%" (-> obj flags))
   (format #t "~2Tweapon: ~D~%" (-> obj weapon))
   (format #t "~2Tlast-time-see-target: ~D~%" (-> obj last-time-see-target))
@@ -3401,7 +3402,6 @@
   )
 
 ;; definition for method 77 of type crimson-guard-level
-;; WARN: Failed load: (set! v1-27 (l.w (+ v1-26 20))) at op 90
 (defmethod enemy-method-77 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
   (let ((v1-1 (-> obj root-override2 transv)))
     (cond
@@ -3433,14 +3433,20 @@
          (ja-channel-push! 1 (seconds 0.01))
          (cond
            ((= (-> obj small-hit) 1)
-            (set! (-> obj yellow-anim) (the-as uint (get-rand-int obj 2)))
-            (let ((a1-8 (-> obj
-                            draw
-                            art-group
-                            data
-                            (l.w (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim) 8)) (the-as uint (-> obj info)) 20))
+            (set! (-> obj yellow-anim anim-index-front) (get-rand-int obj 2))
+            (let ((a1-8
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            2
                             )
                         )
+                    )
                   (a0-17 (-> obj skel root-channel 0))
                   )
               (set! (-> a0-17 frame-group) (the-as art-joint-anim a1-8))
@@ -3522,7 +3528,6 @@
   )
 
 ;; definition for method 78 of type crimson-guard-level
-;; WARN: Failed load: (set! v1-20 (l.w (+ v1-19 36))) at op 62
 (defmethod enemy-method-78 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
   (cond
     ((<= (-> obj hit-points) 0)
@@ -3544,13 +3549,19 @@
          (ja-channel-push! 1 (seconds 0.1))
          (cond
            ((= (-> obj small-hit) 1)
-            (let ((a1-6 (-> obj
-                            draw
-                            art-group
-                            data
-                            (l.w (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim) 8)) (the-as uint (-> obj info)) 36))
+            (let ((a1-6
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            6
                             )
                         )
+                    )
                   (a0-15 (-> obj skel root-channel 0))
                   )
               (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-6))
