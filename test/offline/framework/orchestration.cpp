@@ -5,8 +5,9 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/util/StringUtil.h"
 #include "common/util/diff.h"
+#include "common/util/string_util.h"
+#include "common/util/term_util.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "test/offline/config/config.h"
@@ -40,9 +41,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   for (auto& file : work.work_collection.source_files) {
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
-  for (auto& file : work.work_collection.art_files) {
-    object_files.insert(file.unique_name);
-  }
+  auto art_group_info = find_art_files(offline_config.game_name);
 
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
@@ -56,6 +55,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
                                                      std::vector<fs::path>{},
                                                      std::vector<fs::path>{}, *dc.config);
+  dc.db->dts.art_group_info = art_group_info;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -75,11 +75,6 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
             file.unique_name);
       }
     }
-    for (auto& file : work.work_collection.art_files) {
-      if (!db_files.count(file.unique_name)) {
-        lg::error("didn't find {}\n", file.unique_name);
-      }
-    }
     exit(1);
   }
 
@@ -88,8 +83,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
 
 std::vector<std::future<OfflineTestThreadResult>> distribute_work(
     const OfflineTestConfig& offline_config,
-    const std::vector<OfflineTestSourceFile>& files,
-    const std::vector<OfflineTestArtFile>& art_files) {
+    const std::vector<OfflineTestSourceFile>& files) {
   // First, group files by their DGO so they can be partitioned
   std::unordered_map<std::string, OfflineTestWorkCollection> work_colls = {};
 
@@ -98,13 +92,6 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
       work_colls[file.containing_dgo] = OfflineTestWorkCollection();
     }
     work_colls[file.containing_dgo].source_files.push_back(file);
-  }
-
-  for (const auto& file : art_files) {
-    if (work_colls.count(file.containing_dgo) == 0) {
-      work_colls[file.containing_dgo] = OfflineTestWorkCollection();
-    }
-    work_colls[file.containing_dgo].art_files.push_back(file);
   }
 
   // Now partition by DGO so that threads do not consume unnecessary or duplicate resources
@@ -126,21 +113,13 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
   // all DGOs, so assign consecutive files (likely to belong to the same dgo) to the same worker.
   int total_files = 0;
   for (const auto& [dgo, work] : work_colls) {
-    total_files += work.source_files.size() + work.art_files.size();
+    total_files += work.source_files.size();
   }
   int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
 
   // Divide up the work
   int file_idx = 0;
   for (const auto& [dgo, work] : work_colls) {
-    // art files
-    for (auto& art_file : work.art_files) {
-      auto& wg = work_groups.at(file_idx / divisor);
-      wg.dgo_set.insert(dgo);
-      wg.work_collection.art_files.push_back(art_file);
-      file_idx++;
-    }
-
     // source files
     for (auto& source_file : work.source_files) {
       auto& wg = work_groups.at(file_idx / divisor);
@@ -223,6 +202,14 @@ void OfflineTestThreadStatus::complete_step() {
   g_offline_test_thread_manager.print_current_test_status(config);
 }
 
+bool OfflineTestThreadStatus::in_progress() {
+  return stage == OfflineTestThreadStatus::Stage::IDLE ||
+         stage == OfflineTestThreadStatus::Stage::COMPARING ||
+         stage == OfflineTestThreadStatus::Stage::COMPILING ||
+         stage == OfflineTestThreadStatus::Stage::DECOMPILING ||
+         stage == OfflineTestThreadStatus::Stage::PREPARING;
+}
+
 std::tuple<fmt::color, std::string> thread_stage_to_str(OfflineTestThreadStatus::Stage stage) {
   switch (stage) {
     case OfflineTestThreadStatus::Stage::IDLE:
@@ -276,23 +263,81 @@ std::string thread_progress_bar(u32 curr_step, u32 total_steps) {
   return progress_bar;
 }
 
+int OfflineTestThreadManager::num_threads_pending() {
+  int count = 0;
+  for (const auto& status : statuses) {
+    if (status->in_progress()) {
+      count++;
+    }
+  }
+  return count;
+}
+int OfflineTestThreadManager::num_threads_succeeded() {
+  int count = 0;
+  for (const auto& status : statuses) {
+    if (status->stage == OfflineTestThreadStatus::Stage::FINISHED) {
+      count++;
+    }
+  }
+  return count;
+}
+int OfflineTestThreadManager::num_threads_failed() {
+  int count = 0;
+  for (const auto& status : statuses) {
+    if (status->stage == OfflineTestThreadStatus::Stage::FAILED) {
+      count++;
+    }
+  }
+  return count;
+}
+
 void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig& config) {
   if (!config.pretty_print) {
     return;
   }
+
+  std::lock_guard<std::mutex> guard(print_lock);
+
+  // Handle terminal height
+  auto rows_available = term_util::row_count();
+  // Truncate any threads we can't display
+  // - we need to leave 1 row to say how much we are hiding
+  int threads_to_display = ((rows_available - 2) / 2);
+  int threads_hidden = statuses.size() - threads_to_display;
+  int lines_to_clear = (threads_to_display * 2) + (threads_hidden == 0 ? 0 : 1);
+
   // [DECOMP] ▰▰▰▰▰▰▱▱▱▱ (PRI, RUI, FOR, +3 more)
   //   [1/30] - target-turret-shot // MUTED TEXT
-  std::lock_guard<std::mutex> guard(print_lock);
-  fmt::print("\x1b[{}A", g_offline_test_thread_manager.statuses.size() * 2);  // move n lines up
-  for (const auto& status : g_offline_test_thread_manager.statuses) {
+  fmt::print("\x1b[{}A", lines_to_clear);  // move n lines up
+  fmt::print("\e[?25l");                   // hide the cursor
+  int threads_shown = 0;
+  for (int i = 0; i < (int)statuses.size() && threads_shown < threads_to_display; i++) {
+    const auto& status = statuses.at(i);
+    // Skip completed threads if there are potential in-progress ones to show
+    if (threads_hidden != 0 && !status->in_progress() &&
+        ((int)statuses.size() - i) > threads_to_display) {
+      continue;
+    }
+
     // first line
     const auto [color, stage_text] = thread_stage_to_str(status->stage);
     fmt::print(
-        "\33[2K\r[{:>12}] {} ({})\n", fmt::styled(stage_text, fmt::fg(color)),
+        "\33[2K\r[{:>12}] {} ({}) [{}]\n", fmt::styled(stage_text, fmt::fg(color)),
         fmt::styled(thread_progress_bar(status->curr_step, status->total_steps), fmt::fg(color)),
-        thread_dgos_to_str(status->dgos));
+        thread_dgos_to_str(status->dgos), fmt::styled(i, fmt::fg(fmt::color::gray)));
     // second line
     fmt::print(fmt::fg(fmt::color::gray), "\33[2K\r{:>14} - {}\n",
                fmt::format("[{}/{}]", status->curr_step, status->total_steps), status->curr_file);
+    threads_shown++;
   }
+  if (threads_hidden != 0) {
+    fmt::print(
+        fmt::fg(fmt::color::gray), "\33[2K\r+{} other threads. [{} | {} | {}]\n", threads_hidden,
+        fmt::styled(g_offline_test_thread_manager.num_threads_pending(),
+                    fmt::fg(fmt::color::orange)),
+        fmt::styled(g_offline_test_thread_manager.num_threads_failed(), fmt::fg(fmt::color::red)),
+        fmt::styled(g_offline_test_thread_manager.num_threads_succeeded(),
+                    fmt::fg(fmt::color::light_green)));
+  }
+  fmt::print("\e[?25h");  // show the cursor
 }
