@@ -26,7 +26,7 @@ class blocksound_handler : public sound_handler {
                      s32 sfx_vol,
                      s32 sfx_pan,
                      SndPlayParams& params)
-      : m_sfx(sfx), m_vm(vm), m_bank(bank) {
+      : m_group(sfx.d.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
     s32 vol, pan, pitch_mod, pitch_bend;
     if (sfx_vol == -1) {
       sfx_vol = sfx.d.Vol;
