@@ -29,8 +29,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
-#include "game/discord.h"
-#include "game/graphics/gfx.h"
+//#include "game/graphics/gfx.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
@@ -41,12 +40,13 @@
 #include "game/kernel/common/kmemcard.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/kernel/jak1/kboot.h"
-#include "game/kernel/jak1/klisten.h"
-#include "game/kernel/jak1/kscheme.h"
-#include "game/kernel/jak2/kboot.h"
-#include "game/kernel/jak2/klisten.h"
-#include "game/kernel/jak2/kscheme.h"
+//#include "game/kernel/jak1/kboot.h"
+//#include "game/kernel/jak1/klisten.h"
+//#include "game/kernel/jak1/kscheme.h"
+//#include "game/kernel/jak2/kboot.h"
+//#include "game/kernel/jak2/klisten.h"
+//#include "game/kernel/jak2/kscheme.h"
+#include "game/Game.h"
 #include "game/overlord/dma.h"
 #include "game/overlord/fake_iso.h"
 #include "game/overlord/iso.h"
@@ -70,10 +70,13 @@
 
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
+#ifndef CUSTOM_OPENGOAL
 GameVersion g_game_version = GameVersion::Jak1;
+#endif
 
 namespace {
 
+Game* g_game = nullptr;
 int g_argc = 0;
 char** g_argv = nullptr;
 
@@ -164,8 +167,7 @@ void ee_runner(SystemThreadInterface& iface) {
   // this may not work well on systems with a page size > 1 MB.
   mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
   fileio_init_globals();
-  jak1::kboot_init_globals();
-  jak2::kboot_init_globals();
+  g_game->Boot().init_globals();
 
   kboot_init_globals_common();
   kdgo_init_globals();
@@ -173,14 +175,10 @@ void ee_runner(SystemThreadInterface& iface) {
   klink_init_globals();
 
   kmachine_init_globals_common();
-  jak1::kscheme_init_globals();
-  jak2::kscheme_init_globals();
   kscheme_init_globals_common();
   kmalloc_init_globals_common();
 
   klisten_init_globals();
-  jak1::klisten_init_globals();
-  jak2::klisten_init_globals();
 
   kmemcard_init_globals();
   kprint_init_globals_common();
@@ -188,16 +186,8 @@ void ee_runner(SystemThreadInterface& iface) {
   // Added for OpenGOAL's debugger
   xdbg::allow_debugging();
 
-  switch (g_game_version) {
-    case GameVersion::Jak1:
-      jak1::goal_main(g_argc, g_argv);
-      break;
-    case GameVersion::Jak2:
-      jak2::goal_main(g_argc, g_argv);
-      break;
-    default:
-      ASSERT_MSG(false, "Unsupported game version");
-  }
+  g_game->Boot().goal_main(g_argc,g_argv);
+
   lg::debug("[EE] Done!");
 
   //  // kill the IOP todo
@@ -216,7 +206,7 @@ void iop_runner(SystemThreadInterface& iface) {
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
-  Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
+  g_game->Gfx().register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   // todo!
   dma_init_globals();
@@ -265,7 +255,7 @@ void iop_runner(SystemThreadInterface& iface) {
     iop.wait_run_iop(iop.kernel.dispatch());
   }
 
-  Gfx::clear_vsync_callback();
+  g_game->Gfx().clear_vsync_callback();
 }
 }  // namespace
 
@@ -311,12 +301,16 @@ void dmac_runner(SystemThreadInterface& iface) {
  * GOAL kernel arguments are currently ignored.
  */
 RuntimeExitStatus exec_runtime(int argc, char** argv) {
+  g_game = Game::getInstance();
+  g_game->Init();
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
   // parse opengoal arguments
+  #ifndef CUSTOM_OPENGOAL
   g_game_version = GameVersion::Jak1;
+  #endif
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
     if (std::string("-nodisplay") == argv[i]) {  // disable video display
@@ -325,19 +319,18 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
       VM::use = true;
     } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
       VM::use = false;
-    } else if (std::string("-jak2") == argv[i]) {
+    }
+    #ifndef CUSTOM_OPENGOAL
+    else if (std::string("-jak2") == argv[i]) {
       g_game_version = GameVersion::Jak2;
     }
+    #endif
   }
-
-  // set up discord stuff
-  gStartTime = time(nullptr);
-  init_discord_rpc();
 
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
   if (enable_display) {
-    Gfx::Init(g_game_version);
+    g_game->Gfx().Init();
   }
 
   // step 1: sce library prep
@@ -365,7 +358,7 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
   if (enable_display) {
-    Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
+    g_game->Gfx().Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
   }
 
   // hack to make the IOP die quicker if it's loading/unloading music
@@ -386,10 +379,9 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // kill renderer after all threads are stopped.
   // this makes sure the std::shared_ptr<Display> is destroyed in the main thread.
   if (enable_display) {
-    Gfx::Exit();
+    g_game->Gfx().Exit();
   }
   lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
-  Discord_Shutdown();
   return MasterExit;
 }

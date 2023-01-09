@@ -6,6 +6,7 @@ set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSION
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
+        Game.cpp
         runtime.cpp
         discord.cpp
         system/SystemThread.cpp
@@ -37,6 +38,7 @@ set(RUNTIME_SOURCE
         kernel/common/ksocket.cpp
         kernel/common/ksound.cpp
         kernel/jak1/fileio.cpp
+        kernel/jak1/JaksBoot.cpp
         kernel/jak1/kboot.cpp
         kernel/jak1/kdgo.cpp
         kernel/jak1/klink.cpp
@@ -116,6 +118,7 @@ set(RUNTIME_SOURCE
         overlord/srpc.cpp
         overlord/ssound.cpp
         overlord/stream.cpp
+        graphics/JaksGfx.cpp
         graphics/gfx.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
