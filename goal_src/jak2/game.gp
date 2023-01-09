@@ -3407,8 +3407,6 @@
 (copy-textures 3341 3343 3342 3344 3471)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "ctypal-baron-statue-break-ag"
   "mincan-cogs-ag"
   "ctypal-break-wall-ag"
@@ -3418,7 +3416,6 @@
   "shard-ag"
   "gear-device-gear-ag"
   "mtn-lens-ag"
-  ;; "particleman-ag"
   "mincan-vis"
   )
 
@@ -3468,12 +3465,8 @@
 (copy-textures 1719 1721 1720 1722 3506)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "mtn-gear-device-ag"
   "mtn-step-plat-rocks-ag"
-  ;; "metalmonk-ag"
-  ;; "centurion-ag"
   "rhino-ag"
   "mtn-plat-buried-rocks-ag"
   "rhino-wall-ag"
@@ -3481,16 +3474,10 @@
   "water-anim-mountain-dark-eco-ag"
   "mtn-aval-rocks-ag"
   "mtn-dice-ag"
-  ;; "plat-buried-ag"
-  ;; "plat-return-ag"
-  ;; "iris-door-ag"
   "seal-of-mar-ag"
   "mtn-dice-button-ag"
   "mtn-plat-eject-ag"
   "mtn-button-ag"
-  ;; "gear-device-gear-ag"
-  ;; "mtn-lens-ag"
-  ;; "particleman-ag"
   "mtnext-vis"
   )
 
