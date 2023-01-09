@@ -3407,8 +3407,6 @@
 (copy-textures 3341 3343 3342 3344 3471)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "ctypal-baron-statue-break-ag"
   "mincan-cogs-ag"
   "ctypal-break-wall-ag"
@@ -3418,7 +3416,6 @@
   "shard-ag"
   "gear-device-gear-ag"
   "mtn-lens-ag"
-  ;; "particleman-ag"
   "mincan-vis"
   )
 
@@ -4196,19 +4193,6 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/enemy/hover/hover-formation-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control-h.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-h.gc"
-  ;; "levels/common/enemy/hover/hover-nav-network.gc"
-  ;; "levels/common/enemy/hover/hover-nav-control.gc"
-  ;; "levels/common/enemy/hover/hover-enemy.gc"
-  ;; "levels/common/enemy/hover/hover-enemy-battle.gc"
-  ;; "levels/common/enemy/hover/hover-formation.gc"
-  ;; "levels/common/enemy/hover/hover-nav-edit.gc"
-  ;; "levels/common/enemy/hover/wasp-part.gc"
-  ;; "levels/common/enemy/hover/wasp.gc"
-  ;; "levels/common/enemy/hover/crimson-guard-hover.gc"
-  ;; "levels/common/enemy/hover/flamer.gc"
   "levels/strip/strip-scenes.gc"
   "levels/strip/strip-part.gc"
   "levels/strip/strip-ocean.gc"
@@ -4221,8 +4205,6 @@
 (copy-textures 787 789 788 786 1272 2854)
 
 (copy-gos
-  ;; "grunt-ag"
-  ;; "flitter-ag"
   "flamer-ag"
   "water-anim-strip-dark-eco-ag"
   "cranecrate-ag"
@@ -4233,7 +4215,6 @@
   "lgconveyor-ag"
   "pitspikes-ag"
   "grunt-egg-b-ag"
-  ;; "warp-gate-ag"
   "grunt-egg-a-ag"
   "grunt-egg-d-ag"
   "crane-ag"
