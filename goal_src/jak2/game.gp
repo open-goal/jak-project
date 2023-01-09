@@ -3438,9 +3438,7 @@
   "levels/temple/mountain-obs2.gc"
   "levels/temple/mountain-scenes.gc"
   "levels/temple/mountain-part.gc"
-  ;; "levels/common/enemy/metalhead_bearer/centurion.gc"
   "levels/common/enemy/hopper.gc"
-  ;; "levels/common/enemy/metalhead_brown/metalmonk.gc"
   )
 
 (copy-textures 1254 1256 1255 1253 1257 3470 1275)
@@ -3449,10 +3447,8 @@
   "plat-buried-ag"
   "plat-return-ag"
   "water-anim-mountain-ag"
-  ;; "shard-ag"
   "mtn-gate-ag"
   "mtn-lens-base-ag"
-  ;; "warp-gate-ag"
   "mtn-plat-long-ag"
   "iris-door-ag"
   "mtn-plat-elevator-ag"
