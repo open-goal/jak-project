@@ -34,10 +34,10 @@ void JaksGfx::set_window_lock(bool lock) {
   Gfx::set_window_lock(lock);
 }
 void JaksGfx::get_screen_size(s64 vmode_idx, s32* w, s32* h) {
-  Gfx::get_screen_size(vmode_idx, w, h);
+  return Gfx::get_screen_size(vmode_idx, w, h);
 }
 int JaksGfx::get_screen_rate(s64 vmode_idx) {
-  Gfx::get_screen_rate(vmode_idx);
+  return Gfx::get_screen_rate(vmode_idx);
 }
 int JaksGfx::get_screen_vmode_count(void) {
   return Gfx::get_screen_vmode_count();

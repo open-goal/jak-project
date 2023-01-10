@@ -1,3 +1,5 @@
+#pragma once
+
 #include "game/IBoot.h"
 
 class JaksBoot : public IBoot {
