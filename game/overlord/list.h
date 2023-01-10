@@ -5,7 +5,7 @@
 
 struct ListElement {
   ListElement *next, *prev;
-  u32 unk;
+  u32 unk0x8;
 };
 
 struct List {

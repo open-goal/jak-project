@@ -20,11 +20,10 @@ void InitList(List* list, u32 elements, u32 elm_size) {
   list->head = (ListElement*)list->buf;
 
   ListElement* elm = list->head;
-  ListElement* prev = elm->prev;
 
   if (elements) {
     for (int i = 0; i < elements; i++) {
-      prev->prev = nullptr;
+      elm->unk0x8 = 0;
 
       if (i >= elements - 1) {
         elm->next = nullptr;
@@ -33,12 +32,11 @@ void InitList(List* list, u32 elements, u32 elm_size) {
       }
 
       if (i > 0) {
-        prev->next = (ListElement*)((uintptr_t)elm - elm_size);
+        elm->prev = (ListElement*)((uintptr_t)elm - elm_size);
       } else {
-        prev->next = nullptr;
+        elm->prev = nullptr;
       }
 
-      prev = (ListElement*)((uintptr_t)prev + elm_size);
       elm = (ListElement*)((uintptr_t)elm + elm_size);
     }
   }

@@ -20,7 +20,7 @@ static void resetVagStream(VagStream* stream) {
   stream->unk0x5c = 0;
   stream->unk0x60 = 0;
   stream->unk0x64 = 0;
-  stream->l.unk = 0;
+  stream->l.unk0x8 = 0;
 }
 
 static VagStream* getFreeVagStreamEntry(List* list) {
