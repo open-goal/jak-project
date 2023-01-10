@@ -16423,6 +16423,7 @@
 
 (declare-type collide-query structure)
 (declare-type control-info basic)
+(declare-type rigid-body structure)
 (deftype collide-shape-moving (collide-shape)
   ((rider-time         time-frame                                                                      :offset-assert 200)
    (rider-last-move    vector                                                                  :inline :offset-assert 208)
@@ -16466,7 +16467,7 @@
     (move-to-ground (_type_ float float symbol collide-spec) none 60)
     (move-to-ground-point (_type_ vector vector vector) none 61)
     (compute-acc-due-to-gravity (_type_ vector float) vector 62)
-    (collide-shape-moving-method-63 () none 63) ;; ( 63)
+    (collide-shape-moving-method-63 (_type_ rigid-body float) none 63)
     (try-snap-to-surface (_type_ vector float float float) symbol 64)
     (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol 65)
     (step-collison! (_type_ vector vector float int) float 66)
@@ -33126,7 +33127,7 @@
     (rigid-body-object-method-42 (_type_) none :behavior rigid-body-object 42)
     (rigid-body-object-method-43 (_type_) none 43)
     (rigid-body-object-method-44 (_type_ float) none 44)
-    (rigid-body-object-method-45 () none 45)
+    (rigid-body-object-method-45 (_type_ rigid-body-object-constants) sound-id 45)
     (rigid-body-object-method-46 (_type_ process-drawable int symbol event-message-block) none :behavior rigid-body-object 46)
     (rigid-body-object-method-47 (_type_ process-drawable attack-info object penetrate) symbol 47)
     (rigid-body-object-method-48 (_type_ object object) none 48)
@@ -36329,16 +36330,15 @@
 ;; dig-obs                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dig-sinking-plat (rigid-body-platform)
-  ((anchor-point      vector      :inline :offset-assert 380)
-   (sync              sync-linear :inline :offset-assert 396)
-   (last-ridden-time  time-frame              :offset-assert 412)
-   (prev-pos          float               :offset-assert 420)
-   (path-pos          float               :offset-assert 424)
-   (surface-height    float               :offset-assert 428)
-   (once              basic               :offset-assert 432)
-   (bubbling-sound-id uint32              :offset-assert 436)
+  ((anchor-point      vector      :inline :offset-assert 384)
+   (sync              sync-linear :inline :offset-assert 400)
+   (last-ridden-time  time-frame              :offset-assert 416)
+   (prev-pos          float               :offset-assert 424)
+   (path-pos          float               :offset-assert 428)
+   (surface-height    float               :offset-assert 432)
+   (once              basic               :offset-assert 436)
+   (bubbling-sound-id uint32              :offset-assert 440)
    )
   :method-count-assert 57
   :size-assert         #x1bc
@@ -36346,26 +36346,23 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype dig-log-button-info (basic)
-  ((cam-ret-mode basic          :offset-assert 4)
+  ((cam-ret-mode symbol         :offset-assert 4)
    (cam-ret-dir  vector :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype dig-log (process-drawable)
-  ((pressed-count  int8    :offset-assert 196)
-   (total-buttons  int8    :offset-assert 197)
-   (last-button-id int8    :offset-assert 198)
-   (base-y         float   :offset-assert 200)
-   (hud-handle     uint64  :offset-assert 204)
+  ((pressed-count  int8    :offset-assert 200)
+   (total-buttons  int8    :offset-assert 201)
+   (last-button-id int8    :offset-assert 202)
+   (base-y         float   :offset-assert 204)
+   (hud-handle     handle  :offset-assert 208)
+   (pad-ihj1bn234i1b int32 2 :offset-assert 216)
    )
   :method-count-assert 23
   :size-assert         #xe0
@@ -36373,14 +36370,12 @@
   (:methods
     (idle () _type_ :state 20)
     (moving () _type_ :state 21)
-    (dig-log-method-22 () none 22)
+    (dig-log-method-22 (_type_ symbol) symbol 22)
     )
   )
-|#
 
-#|
 (deftype dig-button (process-drawable)
-  ((down-y float  :offset-assert 196)
+  ((down-y float  :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xcc
@@ -36391,21 +36386,19 @@
     (idle-down () _type_ :state 22)
     )
   )
-|#
 
-;; (define-extern *dig-sinking-platform-constants* object)
-;; (define-extern *dig-log-button-infos* array)
-;; (define-extern *dig-log-heights* object)
-;; (define-extern dig-log-event-handler function)
-;; (define-extern dig3-login function)
-;; (define-extern dig3-activate function)
-;; (define-extern dig3-deactivate function)
+(define-extern *dig-sinking-platform-constants* rigid-body-object-constants)
+(define-extern *dig-log-button-infos* (array dig-log-button-info))
+(define-extern *dig-log-heights* (inline-array vector))
+(define-extern dig-log-event-handler (function process int symbol event-message-block object :behavior dig-log))
+(define-extern dig3-login (function none))
+(define-extern dig3-activate (function none))
+(define-extern dig3-deactivate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dig1-obs                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dig-conveyor (conveyor)
   ()
   :method-count-assert 28
@@ -36414,13 +36407,11 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype dig-bomb-crate-cylinder (rigid-body-object)
-  ((flash-counter int8    :offset-assert 268)
-   (attack-id     uint32  :offset-assert 272)
-   (wait-time     time-frame  :offset-assert 276)
+  ((flash-counter int8    :offset-assert 272)
+   (attack-id     uint32  :offset-assert 276)
+   (wait-time     time-frame  :offset-assert 280)
    )
   :method-count-assert 54
   :size-assert         #x120
@@ -36429,9 +36420,7 @@
     (die () _type_ :state 53)
     )
   )
-|#
 
-#|
 (deftype dig-bomb-crate-cylinder-spawn-params (structure)
   ((pos  vector     :inline :offset-assert 0)
    (vel  vector     :inline :offset-assert 16)
@@ -36442,9 +36431,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype dig-bomb-crate (process-focusable)
   ()
   :method-count-assert 30
@@ -36453,12 +36440,10 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (dig-bomb-crate-method-29 () none 29)
+    (dig-bomb-crate-method-29 (_type_ vector) none 29)
     )
   )
-|#
 
-#|
 (deftype dig-jump-pad (bouncer)
   ()
   :method-count-assert 25
@@ -36467,13 +36452,12 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *dig-bomb-crate-cylinder-constants* object)
-;; (define-extern dig-bomb-crate-cylinder-init-by-other function)
-;; (define-extern dig-bomb-crate-cylinder-spawn function)
-;; (define-extern *dig-bomb-crate-exploder-params* joint-exploder-static-params)
-;; (define-extern *dig-bomb-crate-array* object)
+(define-extern *dig-bomb-crate-cylinder-constants* rigid-body-object-constants)
+(define-extern dig-bomb-crate-cylinder-init-by-other (function dig-bomb-crate-cylinder-spawn-params entity-actor none :behavior dig-bomb-crate-cylinder))
+(define-extern dig-bomb-crate-cylinder-spawn (function process-tree dig-bomb-crate-cylinder-spawn-params entity-actor (pointer process)))
+(define-extern *dig-bomb-crate-exploder-params* joint-exploder-static-params)
+(define-extern *dig-bomb-crate-array* (inline-array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dig2-obs                       ;;

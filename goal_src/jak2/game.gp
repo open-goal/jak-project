@@ -1760,7 +1760,6 @@
   "levels/common/enemy/hover/flamer.gc"
   "levels/dig/dig-digger.gc"
   "levels/dig/dig-obs.gc"
-  ;; "levels/dig/dig1-obs.gc"
   "levels/dig/dig2-obs.gc"
   "levels/dig/dig3-obs.gc"
   "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
