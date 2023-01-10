@@ -10,8 +10,6 @@ List EEStreamsList;
 List EEPlayList;
 List PluginStreamsList;
 
-void InitVagStreamList(List* list, u32 elements, const char* listName) {}
-
 static void resetVagStream(VagStream* stream) {
   strncpy(stream->name, "free", sizeof(stream->name));
   stream->id = 0;
@@ -25,13 +23,13 @@ static void resetVagStream(VagStream* stream) {
   stream->l.unk = 0;
 }
 
-VagStream* FindVagStreamInList(VagStream* stream, List* list) {
+static VagStream* getFreeVagStreamEntry(List* list) {
   VagStream* elem = (VagStream*)list->head;
   VagStream* found = nullptr;
 
   if (list->elements) {
     for (int i = 0; i < list->elements; i++) {
-      if (elem->id == stream->id && !strncmp(elem->name, stream->name, sizeof(elem->name))) {
+      if (!elem->id) {
         found = elem;
         break;
       }
@@ -43,13 +41,23 @@ VagStream* FindVagStreamInList(VagStream* stream, List* list) {
   return found;
 }
 
-static VagStream* getFreeVagStreamEntry(List* list) {
+void InitVagStreamList(List* list, u32 elements, const char* listName) {
+  strncpy(list->name, listName, sizeof(list->name));
+  InitList(list, elements, sizeof(VagStream));
+
+  // Probably not actually inlined?
+  // this function doesn't normally set list->unk0x10
+  // TODO does it matter?
+  EmptyVagStreamList(list);
+}
+
+VagStream* FindVagStreamInList(VagStream* stream, List* list) {
   VagStream* elem = (VagStream*)list->head;
   VagStream* found = nullptr;
 
   if (list->elements) {
     for (int i = 0; i < list->elements; i++) {
-      if (!elem->id) {
+      if (elem->id == stream->id && !strncmp(elem->name, stream->name, sizeof(elem->name))) {
         found = elem;
         break;
       }
