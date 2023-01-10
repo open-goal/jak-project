@@ -125,8 +125,8 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
       }
 
       auto volume = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
-      auto left = m_vm.adjust_vol_to_group(volume.left, m_sfx.d.VolGroup);
-      auto right = m_vm.adjust_vol_to_group(volume.right, m_sfx.d.VolGroup);
+      auto left = m_vm.adjust_vol_to_group(volume.left, m_group);
+      auto right = m_vm.adjust_vol_to_group(volume.right, m_group);
 
       voice->set_volume(left >> 1, right >> 1);
     }
