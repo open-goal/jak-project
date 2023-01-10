@@ -337,7 +337,7 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
           if (cmd->basename[i].chars[0] == 0 || cmd->id[i]) {
             continue;
           }
-          strncpy(stream.name, cmd->basename[i].chars, 48);
+          strncpy(stream.name, cmd->basename[i].chars, sizeof(stream.name));
           stream.id = cmd->id[i];
           stream.unk0x44 = 0;
           stream.unk0x54 = prio;
@@ -347,7 +347,7 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             WaitSema(EEPlayList.sema);
             if (!FindVagStreamInList(&stream, &EEPlayList)) {
               VagStream* inserted = InsertVagStreamInList(&stream, &EEPlayList);
-              strncpy(inserted->name, stream.name, 48);
+              strncpy(inserted->name, stream.name, sizeof(inserted->name));
               inserted->id = stream.id;
               inserted->unk0x54 = stream.unk0x54;
               inserted->unk0x48 = stream.unk0x48;
@@ -370,7 +370,7 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
           if (cmd->basename[i].chars[0] == 0) {
             continue;
           }
-          strncpy(stream.name, cmd->basename[i].chars, 48);
+          strncpy(stream.name, cmd->basename[i].chars, sizeof(stream.name));
           stream.id = cmd->id[i];
 
           WaitSema(EEStreamsList.sema);
@@ -391,7 +391,7 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             continue;
           }
 
-          strncpy(stream.name, cmd->basename[i].chars, 48);
+          strncpy(stream.name, cmd->basename[i].chars, sizeof(stream.name));
           stream.id = cmd->id[i];
           stream.unk0x4c = (u8)cmd->address & (1 << i) & 0xf;
           stream.unk0x54 = prio;
