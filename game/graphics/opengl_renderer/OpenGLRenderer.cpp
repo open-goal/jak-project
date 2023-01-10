@@ -161,7 +161,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   BucketId::TFRAG_T_L1_ALPHA,
                                   std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 1);
   // 140
+  init_bucket_renderer<TextureUploadHandler>("tex-l2-alpha", BucketCategory::TEX,
+                                             BucketId::TEX_L2_ALPHA);
   // 150
+  init_bucket_renderer<Merc2>("merc-l2-alpha", BucketCategory::MERC, BucketId::MERC_L2_ALPHA);
   // 160
   // 170
   // 180
