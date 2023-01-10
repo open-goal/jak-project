@@ -748,6 +748,11 @@ const std::unordered_map<
            {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
                                           1,
                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"enemy-info",
+           {{"idle-anim-script",
+             ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                  4,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           {"nav-enemy-info",
            {{"idle-anim-script",
              ArrayFieldDecompMeta(TypeSpec("uint32"),
@@ -824,9 +829,13 @@ const std::unordered_map<
           {"nav-mesh",
            {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
             {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
+
+          {"predator-graph",
+           {{"node", ArrayFieldDecompMeta(TypeSpec("predator-node"), 48)},
+            {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}},
           /*{"bot-course",
            {{"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 12)}}}
-          {"ai-task-pool", {{"tasks", ArrayFieldDecompMeta(TypeSpec("ai-task"), 48)}}}*/}}};
+            {"ai-task-pool", {{"tasks", ArrayFieldDecompMeta(TypeSpec("ai-task"), 48)}}}*/}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

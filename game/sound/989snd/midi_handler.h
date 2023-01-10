@@ -108,7 +108,7 @@ class midi_handler : public sound_handler {
 
   std::array<bool, 16> m_mute_state{};
   std::array<s8, 16> m_chanvol{};
-  std::array<s8, 16> m_chanpan{};
+  std::array<s16, 16> m_chanpan{};
   std::array<s16, 16> m_pitch_bend{};
   u8* m_sample_data{nullptr};
 

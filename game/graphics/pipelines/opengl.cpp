@@ -216,7 +216,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   }
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
-  display->set_imgui_visible(Gfx::get_debug_menu_visible_on_startup());
+  display->set_imgui_visible(Gfx::g_debug_settings.show_imgui);
   display->update_cursor_visibility(window, display->is_imgui_visible());
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
@@ -326,7 +326,8 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
     switch (key) {
       case GLFW_KEY_LEFT_ALT:
       case GLFW_KEY_RIGHT_ALT:
-        if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+        if (glfwGetWindowAttrib(window, GLFW_FOCUSED) &&
+            !Gfx::g_debug_settings.ignore_imgui_hide_keybind) {
           set_imgui_visible(!is_imgui_visible());
           update_cursor_visibility(window, is_imgui_visible());
         }
@@ -459,6 +460,7 @@ void render_game_frame(int game_width,
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
+    options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;

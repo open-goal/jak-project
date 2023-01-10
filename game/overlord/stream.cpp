@@ -36,18 +36,25 @@ static u32 global_vag_count = 0;
  * We cache the chunk file headers so we can avoid seeking to the chunk header each time we
  * need to load another chunk, even if we load chunks out of order.
  */
-struct CacheEntry {
+struct CacheEntryJ1 {
   // the record for the chunk file described.
   FileRecord* fr = nullptr;
   // counts down from INT32_MAX - 1 each time we have a cache miss.
   s32 countdown = 0;
   // the actual cached data.
-  StrFileHeader header;
+  StrFileHeaderJ1 header;
+};
+
+struct CacheEntryJ2 {
+  FileRecord* fr = nullptr;
+  s32 countdown = 0;
+  StrFileHeaderJ2 header;
 };
 
 // the actual header cache.
 constexpr int STR_INDEX_CACHE_SIZE = 4;
-CacheEntry sCache[STR_INDEX_CACHE_SIZE];
+CacheEntryJ1 sCacheJ1[STR_INDEX_CACHE_SIZE];
+CacheEntryJ2 sCacheJ2[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
   memset(&sSTRBufJak1, 0, sizeof(RPC_Str_Cmd_Jak1));
@@ -135,11 +142,11 @@ void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y) {
       int cache_entry = 0;
       int oldest = INT32_MAX;
       int oldest_idx = -1;
-      while (cache_entry < STR_INDEX_CACHE_SIZE && sCache[cache_entry].fr != file_record) {
-        sCache[cache_entry].countdown--;
-        if (sCache[cache_entry].countdown < oldest) {
+      while (cache_entry < STR_INDEX_CACHE_SIZE && sCacheJ1[cache_entry].fr != file_record) {
+        sCacheJ1[cache_entry].countdown--;
+        if (sCacheJ1[cache_entry].countdown < oldest) {
           oldest_idx = cache_entry;
-          oldest = sCache[cache_entry].countdown;
+          oldest = sCacheJ1[cache_entry].countdown;
         }
         cache_entry++;
       }
@@ -147,9 +154,9 @@ void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y) {
       if (cache_entry == STR_INDEX_CACHE_SIZE) {
         // cache miss, we need to load the header to the header cache on the IOP
         cache_entry = oldest_idx;
-        sCache[oldest_idx].fr = file_record;
-        sCache[oldest_idx].countdown = INT32_MAX - 1;
-        if (!LoadISOFileToIOP(file_record, &sCache[oldest_idx].header, sizeof(StrFileHeader))) {
+        sCacheJ1[oldest_idx].fr = file_record;
+        sCacheJ1[oldest_idx].countdown = INT32_MAX - 1;
+        if (!LoadISOFileToIOP(file_record, &sCacheJ1[oldest_idx].header, sizeof(StrFileHeaderJ1))) {
           printf("[OVERLORD STR] Failed to load chunk file header for animation %s\n", cmd->name);
           cmd->result = 1;
           return cmd;
@@ -158,14 +165,14 @@ void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y) {
 
       // load data, using the cached header to find the location of the chunk.
       if (!LoadISOFileChunkToEE(file_record, cmd->ee_addr,
-                                sCache[cache_entry].header.sizes[cmd->chunk_id],
-                                sCache[cache_entry].header.sectors[cmd->chunk_id])) {
+                                sCacheJ1[cache_entry].header.sizes[cmd->chunk_id],
+                                sCacheJ1[cache_entry].header.sectors[cmd->chunk_id])) {
         printf("[OVERLORD STR] Failed to load chunk %d for animation %s\n", cmd->chunk_id,
                cmd->name);
         cmd->result = 1;
       } else {
         // successful load!
-        cmd->length = sCache[cache_entry].header.sizes[cmd->chunk_id];
+        cmd->length = sCacheJ1[cache_entry].header.sizes[cmd->chunk_id];
         cmd->result = 0;
       }
     }
@@ -202,9 +209,55 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
       }
     }
   } else {
-    // TODO - not yet implemented
-    ASSERT_MSG(false, "this branch of RPC_STR has not yet been implemented!");
-    cmd->result = STR_RPC_RESULT_ERROR;
+    // it's a chunked file. These are only animations - these have a separate naming scheme.
+    char animation_iso_name[128];
+    ISONameFromAnimationName(animation_iso_name, cmd->basename);
+    auto file_record = isofs->find_in(animation_iso_name);
+
+    if (!file_record) {
+      // didn't find the file
+      printf("[OVERLORD STR] Failed to find animation %s\n", cmd->basename);
+      cmd->result = STR_RPC_RESULT_ERROR;
+    } else {
+      // found it! See if we've cached this animation's header.
+      int cache_entry = 0;
+      int oldest = INT32_MAX;
+      int oldest_idx = -1;
+      while (cache_entry < STR_INDEX_CACHE_SIZE && sCacheJ2[cache_entry].fr != file_record) {
+        sCacheJ2[cache_entry].countdown--;
+        if (sCacheJ2[cache_entry].countdown < oldest) {
+          oldest_idx = cache_entry;
+          oldest = sCacheJ2[cache_entry].countdown;
+        }
+        cache_entry++;
+      }
+
+      if (cache_entry == STR_INDEX_CACHE_SIZE) {
+        // cache miss, we need to load the header to the header cache on the IOP
+        cache_entry = oldest_idx;
+        sCacheJ2[oldest_idx].fr = file_record;
+        sCacheJ2[oldest_idx].countdown = INT32_MAX - 1;
+        if (!LoadISOFileToIOP(file_record, &sCacheJ2[oldest_idx].header, sizeof(StrFileHeaderJ2))) {
+          printf("[OVERLORD STR] Failed to load chunk file header for animation %s\n",
+                 cmd->basename);
+          cmd->result = 1;
+          return cmd;
+        }
+      }
+
+      // load data, using the cached header to find the location of the chunk.
+      if (!LoadISOFileChunkToEE(file_record, cmd->address,
+                                sCacheJ2[cache_entry].header.sizes[cmd->section],
+                                sCacheJ2[cache_entry].header.sectors[cmd->section])) {
+        printf("[OVERLORD STR] Failed to load chunk %d for animation %s\n", cmd->section,
+               cmd->basename);
+        cmd->result = 1;
+      } else {
+        // successful load!
+        cmd->maxlen = sCacheJ2[cache_entry].header.sizes[cmd->section];
+        cmd->result = 0;
+      }
+    }
   }
 
   return cmd;

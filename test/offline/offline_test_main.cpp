@@ -2,6 +2,7 @@
 #include <string>
 
 #include "common/log/log.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
 #include "config/config.h"
@@ -11,17 +12,6 @@
 
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/format.h"
-
-// TODO - move this into a common lib eventually
-void clear_terminal() {
-#if defined _WIN32
-  system("cls");
-#elif defined(__LINUX__) || defined(__gnu_linux__) || defined(__linux__)
-  system("clear");
-#elif defined(__APPLE__)
-  // system("clear");
-#endif
-}
 
 int main(int argc, char* argv[]) {
   ArgumentGuard u8_guard(argc, argv);
@@ -61,7 +51,7 @@ int main(int argc, char* argv[]) {
 
   if (pretty_print) {
     lg::set_stdout_level(lg::level::off);
-    clear_terminal();
+    term_util::clear();
   }
   lg::initialize();
 
@@ -83,7 +73,6 @@ int main(int argc, char* argv[]) {
   if (max_files > 0 && max_files < (int)source_files.size()) {
     source_files.erase(source_files.begin() + max_files, source_files.end());
   }
-  auto art_files = find_art_files(game_name, config.dgos);
 
   // Figure out the number of threads, prepare their statuses and start printing it
   if (num_threads < 1) {
@@ -94,7 +83,7 @@ int main(int argc, char* argv[]) {
 
   // Distribute the work amongst the threads, partitioning by DGO
   decompiler::init_opcode_info();
-  auto workers = distribute_work(config, source_files, art_files);
+  auto workers = distribute_work(config, source_files);
 
   // summarize results:
   OfflineTestThreadResult total;

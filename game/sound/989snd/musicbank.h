@@ -57,6 +57,11 @@ struct MIDISound {
   /*  18 */ /*void**/ u32 MIDIBlock;
 };
 
+// Annoyingly enough we need some data out of this struct
+struct MIDISoundHandler {
+  u32 OwnerID;
+};
+
 struct Prog;
 class MusicBank : public SoundBank {
  public:

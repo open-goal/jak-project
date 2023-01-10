@@ -886,9 +886,9 @@ int BasicType::get_offset() const {
 }
 
 int BasicType::get_inline_array_start_alignment() const {
-  if (m_pack) {
+  if (m_pack || m_allow_misalign) {
     // make elements of inline array the minimum allowable alignment.
-    int alignment = 8;
+    int alignment = m_allow_misalign ? 4 : 8;
     // TODO - I don't know if GOAL actually did this check, maybe packed inline arrays could
     // violate these?
     for (const auto& field : m_fields) {

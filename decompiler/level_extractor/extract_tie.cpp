@@ -2056,7 +2056,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         for (auto& vert : strip.verts) {
           tree.packed_vertices.vertices.push_back(
               {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
-          lg::warn("SKIPPING ASSERT in extract_tie! TODO!");
+          if (vert.tex.z() != 1.0) {
+            lg::warn("SKIPPING ASSERT in extract_tie! TODO!");
+          }
           // ASSERT(vert.tex.z() == 1.);
         }
         int end = tree.packed_vertices.vertices.size();

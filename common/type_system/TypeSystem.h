@@ -263,6 +263,7 @@ class TypeSystem {
     m_types_allowed_to_be_redefined.push_back(type_name);
   }
 
+  std::vector<std::string> get_all_type_names();
   std::vector<std::string> search_types_by_parent_type(
       const std::string& parent_type,
       const std::vector<std::string>& existing_matches = {});
