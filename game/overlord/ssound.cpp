@@ -7,6 +7,7 @@
 
 #include "game/overlord/iso.h"
 #include "game/overlord/srpc.h"
+#include "game/overlord/streamlist.h"
 #include "game/runtime.h"
 #include "game/sound/sndshim.h"
 
@@ -30,6 +31,7 @@ u32 gTrapSRAM = 0;
 u8 gMirrorMode = 0;
 
 s32 gSema;
+s32 StreamThread;
 
 static u32 sLastTick;
 static s32 sqrt_table[256] = {
@@ -158,9 +160,35 @@ void InitSound_Overlord() {
 
   gSema = CreateSema(&sema);
   if (gSema < 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP: ssound InitSound: can't create semaphore\n");
+    printf("IOP: ======================================================================\n");
     while (true)
       ;
   }
+  // Init989Plugins();
+  // InitStreamLfoHandler();
+  InitVagStreamList(&PluginStreamsList, 4, "plugin");
+  InitVagStreamList(&EEStreamsList, 4, "ee");
+  InitVagStreamList(&EEPlayList, 8, "play");
+  InitVagStreamList(&RequestedStreamsList, 8, "streams");
+  InitVagStreamList(&NewStreamsList, 4, "new");
+
+  ThreadParam thread;
+  thread.attr = TH_C;
+  thread.entry = (void*)StreamListThread;
+  thread.initPriority = 120;
+  thread.stackSize = 0x1000;
+  thread.option = 0;
+  StreamThread = CreateThread(&thread);
+  if (StreamThread <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP: ssound InitSound: can't create streamlist thread\n");
+    printf("IOP: ======================================================================\n");
+    while (true)
+      ;
+  }
+  StartThread(StreamThread, 0);
 }
 
 Sound* LookupSound(s32 id) {

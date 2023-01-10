@@ -10,9 +10,13 @@ extern List EEStreamsList;
 extern List EEPlayList;
 extern List PluginStreamsList;
 
+void InitVagStreamList(List* list, u32 elements, const char* listName);
+void StreamListThread();
 VagStream* FindVagStreamInList(VagStream* stream, List* list);
 VagStream* InsertVagStreamInList(VagStream* stream, List* list);
 void RemoveVagSreamFromList(VagStream* stream, List* list);
 void EmptyVagStreamList(List* list);
+void MergeVagStreamLists(List* l1, List* l2);
+void CheckPlayList(List* list);
 
 #endif  // STREAMLIST_H_

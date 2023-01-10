@@ -2,11 +2,15 @@
 
 #include <cstring>
 
+using namespace iop;
+
 List RequestedStreamsList;
 List NewStreamsList;
 List EEStreamsList;
 List EEPlayList;
 List PluginStreamsList;
+
+void InitVagStreamList(List* list, u32 elements, const char* listName) {}
 
 static void resetVagStream(VagStream* stream) {
   strncpy(stream->name, "free", sizeof(stream->name));
@@ -90,4 +94,39 @@ void EmptyVagStreamList(List* list) {
   }
 
   list->unk0x10 = 1;
+}
+
+void MergeVagStreamLists(List* l1, List* l2) {}
+
+void CheckPlayList(List* list) {}
+
+void StreamListThread() {
+  while (true) {
+    while (RequestedStreamsList.unk0x18) {
+      SleepThread();
+    }
+
+    WaitSema(RequestedStreamsList.sema);
+    EmptyVagStreamList(&RequestedStreamsList);
+    RequestedStreamsList.unk0x10 = 0;
+
+    WaitSema(PluginStreamsList.sema);
+    MergeVagStreamLists(&PluginStreamsList, &RequestedStreamsList);
+    SignalSema(PluginStreamsList.sema);
+
+    WaitSema(EEStreamsList.sema);
+    MergeVagStreamLists(&EEStreamsList, &RequestedStreamsList);
+    SignalSema(EEStreamsList.sema);
+
+    RequestedStreamsList.unk0x18 = 1;
+    SignalSema(RequestedStreamsList.sema);
+
+    WaitSema(EEPlayList.sema);
+    CheckPlayList(&EEPlayList);
+    SignalSema(EEPlayList.sema);
+
+    // WaitSema(LfoList.sema);
+    // CheckLfoList(&LfoList);
+    // SignalSema(LfoList.sema);
+  }
 }
