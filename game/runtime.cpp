@@ -29,6 +29,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
+#include "game/Game.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
@@ -39,7 +40,6 @@
 #include "game/kernel/common/kmemcard.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/Game.h"
 #include "game/overlord/dma.h"
 #include "game/overlord/fake_iso.h"
 #include "game/overlord/iso.h"
@@ -179,7 +179,7 @@ void ee_runner(SystemThreadInterface& iface) {
   // Added for OpenGOAL's debugger
   xdbg::allow_debugging();
 
-  g_game->Boot().goal_main(g_argc,g_argv);
+  g_game->Boot().goal_main(g_argc, g_argv);
 
   lg::debug("[EE] Done!");
 
@@ -300,10 +300,10 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  // parse opengoal arguments
-  #ifndef CUSTOM_OPENGOAL
+// parse opengoal arguments
+#ifndef CUSTOM_OPENGOAL
   g_game_version = GameVersion::Jak1;
-  #endif
+#endif
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
     if (std::string("-nodisplay") == argv[i]) {  // disable video display
@@ -313,11 +313,11 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
     } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
       VM::use = false;
     }
-    #ifndef CUSTOM_OPENGOAL
+#ifndef CUSTOM_OPENGOAL
     else if (std::string("-jak2") == argv[i]) {
       g_game_version = GameVersion::Jak2;
     }
-    #endif
+#endif
   }
 
   // initialize graphics first - the EE code will upload textures during boot and we

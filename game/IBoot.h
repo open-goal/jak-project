@@ -3,10 +3,9 @@
 #include "common/common_types.h"
 
 class IBoot {
-public:
+ public:
+  virtual ~IBoot() = default;
 
-    virtual ~IBoot() = default;
-
-    virtual s32 goal_main(int argc, const char* const* argv) = 0;
-    virtual void init_globals(void) = 0;
+  virtual s32 goal_main(int argc, const char* const* argv) = 0;
+  virtual void init_globals(void) = 0;
 };
