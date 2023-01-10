@@ -1795,16 +1795,13 @@
 ;; ;; D3B
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "D3B.DGO" "d3b.gd")
+(cgo "D3B.DGO" "d3b.gd")
 
-;; (copy-textures 2406 2407 3548)
+(copy-textures 2406 2407 3548)
 
-;; (copy-gos
-;;   "jak-pole+0-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "dig3b-vis"
-;;   )
+(copy-gos
+  "dig3b-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DEMO
