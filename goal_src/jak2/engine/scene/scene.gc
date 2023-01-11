@@ -870,6 +870,10 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
+    ;; HACK TO NOT GET STUCK WAITING FOR SCENE TO LOAD
+    ;; progress from cutscenes however is handled by the command-list on the load-state cleanup
+    (go-virtual release)
+    ;; END HACK - REMOVE ME EVENTUALLY
     (set! (-> self state-time) (-> self clock frame-counter))
     (when (or (-> self scene) (-> self preload-continue))
       (let ((gp-0 (scene-decode-continue (the-as basic (if (-> self scene)
@@ -1610,7 +1614,7 @@
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
   (process-entity-set! self (the-as entity-actor #f))
-  (stack-size-set! (-> self main-thread) 512)
+  (stack-size-set! (-> self main-thread) 1024)
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)
     ((array)
