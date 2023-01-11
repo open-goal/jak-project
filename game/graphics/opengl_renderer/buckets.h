@@ -84,6 +84,7 @@ enum class BucketId {
   SPECIAL_BUCKET_2 = 2,
   TEX_LCOM_SKY_PRE = 4,
   SKY_DRAW = 5,
+  OCEAN = 6,
   TEX_L0_TFRAG = 7,
   TFRAG_L0_TFRAG = 8,
   TIE_L0_TFRAG = 9,
