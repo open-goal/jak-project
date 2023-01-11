@@ -924,6 +924,8 @@ s32 VBlank_HandlerJ2(void*) {
   if (!gSoundEnable)
     return 1;
 
+  iWakeupThread(StreamThread);
+
   updateMusicFade();
 
   if (!gInfoEE)

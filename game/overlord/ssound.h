@@ -19,6 +19,7 @@ extern VolumePair gPanTable[361];
 extern u32 gStreamSRAM;
 extern u32 gTrapSRAM;
 extern u8 gMirrorMode;
+extern s32 StreamThread;
 
 struct Vec3w {
   s32 x;

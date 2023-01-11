@@ -104,6 +104,7 @@ s32 CreateThread(ThreadParam* param);
 s32 ExitThread();
 s32 StartThread(s32 thid, u32 arg);
 s32 WakeupThread(s32 thid);
+s32 iWakeupThread(s32 thid);
 
 void sceSifInitRpc(int mode);
 void sceSifInitRpc(unsigned int mode);
