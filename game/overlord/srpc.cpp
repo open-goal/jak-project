@@ -17,6 +17,7 @@
 #include "game/common/player_rpc_types.h"
 #include "game/graphics/gfx.h"
 #include "game/overlord/soundcommon.h"
+#include "game/overlord/vag.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
@@ -848,10 +849,7 @@ void* RPC_Loader2(unsigned int /*fno*/, void* data, int size) {
 
 static s32 dmaid = 0;
 
-s32 VBlank_Handler(void*) {
-  if (!gSoundEnable)
-    return 1;
-
+static void updateMusicFade() {
   if (gMusicFadeDir > 0) {
     gMusicFade += (0x10000 / 64);
     if (gMusicFade > 0x10000 || (gMusicFadeHack & 1)) {
@@ -865,6 +863,13 @@ s32 VBlank_Handler(void*) {
       gMusicFadeDir = 0;
     }
   }
+}
+
+s32 VBlank_HandlerJ1(void*) {
+  if (!gSoundEnable)
+    return 1;
+
+  updateMusicFade();
 
   if (!gInfoEE)
     return 1;
@@ -909,6 +914,70 @@ s32 VBlank_Handler(void*) {
   dma.data = &info;
   dma.addr = (void*)(uintptr_t)gInfoEE;
   dma.size = 0x110;
+  dma.mode = 0;
+  dmaid = sceSifSetDma(&dma, 1);
+
+  return 1;
+}
+
+s32 VBlank_HandlerJ2(void*) {
+  if (!gSoundEnable)
+    return 1;
+
+  updateMusicFade();
+
+  if (!gInfoEE)
+    return 1;
+
+  gFrameNum++;
+
+  for (int i = 0; i < 4; i++) {
+    info.stream_status[i] = 0;
+    for (int j = 0; j < 25; j++) {
+      if (gVagCmds[i].stat_arr[j]) {
+        info.stream_status[i] |= (1 << j);
+      }
+
+      if (gVagCmds[i].unk0xd6 && !gVagCmds[i].unk0xd2) {
+        gVagCmds[i].unk0xc0 += CalculateVAGPitch(0x400, gVagCmds[i].unk0x100) / gFPS;
+      }
+
+      if (gVagCmds[i].unk0xd1 && !gVagCmds[i].unk0xd5) {
+        info.stream_pos[i] = gVagCmds[i].unk0xc8;
+      } else {
+        info.stream_pos[i] = 0;
+      }
+
+      // added for fun
+      strncpy(info.stream_name[i], gVagCmds[i].name, sizeof(info.stream_name[i]));
+
+      info.stream_id[i] = gVagCmds[i].id;
+    }
+  }
+
+  // TODO
+  // info.iop_ticks = IsoThreadCounter;
+  info.frame = gFrameNum;
+  info.freemem = gFreeMem;
+  info.freemem2 = QueryTotalFreeMemSize();
+  info.nocd = 0;
+  info.dirtycd = 0;
+
+  for (int i = 0; i < 48; i++) {
+    if (snd_GetVoiceStatus(i) == 1) {
+      info.chinfo[i] = -1;
+    } else {
+      info.chinfo[i] = 0;
+    }
+  }
+
+  // why?
+  LookupSound(666);
+
+  sceSifDmaData dma;
+  dma.data = &info;
+  dma.addr = (void*)(uintptr_t)gInfoEE;
+  dma.size = 0x250;
   dma.mode = 0;
   dmaid = sceSifSetDma(&dma, 1);
 

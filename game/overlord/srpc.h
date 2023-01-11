@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
+
 #include "ssound.h"
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
 void srpc_init_globals();
 
@@ -243,7 +246,17 @@ struct SoundIopInfo {
   s32 dupseg;
   u32 times[41];
   u32 times_seq;
-  u8 pad[10];  // pad up to transfer size
+
+  // jak 2 additions
+  u32 iop_ticks;
+  u8 pad[8];
+  u32 stream_pos[4];
+  u32 stream_status[4];
+  char stream_name[4][48];
+  u32 stream_id[4];
+  u8 music_register[17];
+  u8 ramdisk_name[48];
+  u8 pad_end[15];  // pad out to transfer size
 };
 
 extern MusicTweaks gMusicTweakInfo;
@@ -252,7 +265,9 @@ extern s32 gMusicTweak;
 u32 Thread_Loader();
 u32 Thread_Player();
 
-s32 VBlank_Handler(void*);
+s32 VBlank_HandlerJ1(void*);
+s32 VBlank_HandlerJ2(void*);
+static PerGameVersion<s32 (*)(void*)> VBlank_Func = {VBlank_HandlerJ1, VBlank_HandlerJ2};
 
 // added for PC port
 extern u32 gMusicFadeHack;
