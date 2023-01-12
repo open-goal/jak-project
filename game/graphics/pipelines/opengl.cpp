@@ -357,6 +357,9 @@ void GLDisplay::on_mouse_key(GLFWwindow* /*window*/, int button, int action, int
 }
 
 void GLDisplay::on_cursor_position(GLFWwindow* /*window*/, double xposition, double yposition) {
+  double xoffset = xposition - last_cursor_x_position;
+  double yoffset = yposition - last_cursor_y_position;
+
   last_cursor_x_position = xposition;
   last_cursor_y_position = yposition;
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
@@ -373,9 +376,6 @@ void GLDisplay::on_cursor_position(GLFWwindow* /*window*/, double xposition, dou
     is_cursor_position_valid = true;
     return;
   }
-
-  double xoffset = xposition - last_cursor_x_position;
-  double yoffset = yposition - last_cursor_y_position;
 
   Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
   Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
