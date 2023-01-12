@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: minimap.gc
-;; name in dgo: minimap
-;; dgos: ENGINE, GAME
-
-;; TODO - for gungame-obs
-(define-extern *minimap-class-list* (inline-array minimap-class-node))
-
-;; DECOMP BEGINS
-
+;; definition of type minimap-texture-name-array
 (deftype minimap-texture-name-array (structure)
   ((data string 35 :offset-assert   0)
    )
@@ -18,7 +10,19 @@
   :flag-assert         #x90000008c
   )
 
+;; definition for method 3 of type minimap-texture-name-array
+(defmethod inspect minimap-texture-name-array ((obj minimap-texture-name-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'minimap-texture-name-array)
+  (format #t "~1Tdata[35] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type minimap-corner-array
 (deftype minimap-corner-array (structure)
   ((data vector 35 :inline :offset-assert   0)
    )
@@ -27,7 +31,19 @@
   :flag-assert         #x900000230
   )
 
+;; definition for method 3 of type minimap-corner-array
+(defmethod inspect minimap-corner-array ((obj minimap-corner-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'minimap-corner-array)
+  (format #t "~1Tdata[35] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *minimap-texture-name-array*, type minimap-texture-name-array
 (define *minimap-texture-name-array*
   (new 'static 'minimap-texture-name-array :data (new 'static 'array string 35
                                                    #f
@@ -69,6 +85,7 @@
                                            )
   )
 
+;; definition for symbol *minimap-corner-array*, type minimap-corner-array
 (define *minimap-corner-array*
   (new 'static 'minimap-corner-array :data (new 'static 'inline-array vector 35
                                              (new 'static 'vector :x -4456448.0 :z -4456448.0 :w 1.0)
@@ -110,6 +127,7 @@
                                      )
   )
 
+;; definition for symbol *minimap*, type minimap
 (define *minimap*
   (new 'static 'minimap
     :draw-tmpl (new 'static 'dma-gif-packet
@@ -269,6 +287,7 @@
     )
   )
 
+;; definition for symbol *minimap-class-list*, type (inline-array minimap-class-node)
 (define *minimap-class-list* (new 'static 'inline-array minimap-class-node 71
                                (new 'static 'minimap-class-node
                                  :default-position (new 'static 'vector :w 1.0)
@@ -833,6 +852,7 @@
                                )
         )
 
+;; failed to figure out what this is:
 (let ((gp-0 *minimap*))
   (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* 64 connection-minimap))
   (countdown (v1-7 6)
@@ -840,6 +860,8 @@
     )
   )
 
+;; definition for method 9 of type minimap
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw minimap ((obj minimap))
   (with-pp
     (when *trail-graph*
@@ -889,6 +911,8 @@
     )
   )
 
+;; definition for method 14 of type minimap
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defmethod update-trails minimap ((obj minimap))
   "Main function to do trail search per-frame"
@@ -1002,6 +1026,7 @@
     )
   )
 
+;; definition for method 10 of type minimap
 (defmethod get-trail-for-connection minimap ((obj minimap) (arg0 connection-minimap) (arg1 symbol))
   "Get a trail for connection. If arg1 is set, allow allocating a new one."
   (local-vars (gp-0 minimap-trail))
@@ -1032,6 +1057,8 @@
   gp-0
   )
 
+;; definition for method 13 of type minimap
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 13 minimap) has a return type of none, but the expression builder found a return statement.
 (defmethod free-trail-by-connection minimap ((obj minimap) (arg0 connection-minimap))
   "Free the trail associated with this connection."
@@ -1048,6 +1075,8 @@
   (none)
   )
 
+;; definition for method 10 of type minimap-trail
+;; WARN: Return type mismatch int vs none.
 (defmethod reset minimap-trail ((obj minimap-trail))
   (set! (-> obj node-count) -1)
   (set! (-> obj search-id) (the-as uint 0))
@@ -1056,6 +1085,8 @@
   (none)
   )
 
+;; definition for method 11 of type minimap
+;; INFO: Used lq/sq
 (defmethod get-icon-draw-pos minimap ((obj minimap) (arg0 connection-minimap) (arg1 minimap-trail) (arg2 vector) (arg3 float) (arg4 vector))
   "Follow the path from the start until it reaches the border of the map, then get this position."
   (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 4)))
@@ -1098,6 +1129,7 @@
   #f
   )
 
+;; definition for method 9 of type minimap-trail
 (defmethod get-distance-with-path minimap-trail ((obj minimap-trail) (arg0 vector) (arg1 vector))
   "Assuming we go from a to b, using this path in the middle, how long is it?"
   0.0
@@ -1121,6 +1153,7 @@
     )
   )
 
+;; definition for method 2 of type connection-minimap
 (defmethod print connection-minimap ((obj connection-minimap))
   (format
     #t
@@ -1133,7 +1166,25 @@
   obj
   )
 
+;; definition for method 3 of type engine-minimap
+(defmethod inspect engine-minimap ((obj engine-minimap))
+  ((the-as (function engine-minimap engine-minimap) (find-parent-method engine-minimap 3)) obj)
+  (let ((s5-0 0)
+        (s4-0 (the-as connection-pers (-> *minimap* engine alive-list-override)))
+        )
+    (while s4-0
+      (let ((a3-0 s4-0))
+        (format #t "~2T~3D: ~`connection-minimap`P~%" s5-0 a3-0)
+        )
+      (+! s5-0 1)
+      (set! s4-0 (-> s4-0 next))
+      )
+    )
+  obj
+  )
 
+;; definition for method 14 of type engine-minimap
+;; WARN: Return type mismatch int vs none.
 (defmethod run-pending-updates! engine-minimap ((obj engine-minimap) (arg0 time-frame))
   (with-pp
     (let ((s2-0 (the-as (pointer connection-pers) (&-> obj alive-list-override)))
@@ -1206,6 +1257,8 @@
     )
   )
 
+;; definition for method 12 of type minimap
+;; INFO: Used lq/sq
 (defmethod add-icon! minimap ((obj minimap) (arg0 process) (arg1 uint) (arg2 int) (arg3 vector) (arg4 int))
   "Add an icon to the map!"
   (when (not arg2)
@@ -1243,6 +1296,7 @@
     )
   )
 
+;; definition for method 10 of type engine-minimap
 ;; WARN: Function (method 10 engine-minimap) has a return type of none, but the expression builder found a return statement.
 (defmethod kill-callback engine-minimap ((obj engine-minimap) (arg0 connection-pers))
   (if (not arg0)
@@ -1256,6 +1310,8 @@
   (none)
   )
 
+;; definition for function lookup-minimap-texture-by-name
+;; INFO: Used lq/sq
 (defun lookup-minimap-texture-by-name ((arg0 string) (arg1 string) (arg2 (pointer texture-page)))
   (local-vars (sv-16 texture-page))
   (dotimes (s3-0 7)
@@ -1281,6 +1337,8 @@
   (the-as texture #f)
   )
 
+;; definition for method 20 of type minimap
+;; INFO: Used lq/sq
 (defmethod update! minimap ((obj minimap))
   (with-pp
     (set! (-> obj ctywide) (level-get *level* 'ctywide))
@@ -1362,6 +1420,8 @@
     )
   )
 
+;; definition for method 23 of type minimap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
 (defmethod draw-racer-2 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
@@ -1481,6 +1541,14 @@
   (none)
   )
 
+;; definition for method 26 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
 ;; WARN: Return type mismatch pointer vs none.
 (defmethod draw-racer-1 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap) (arg2 float) (arg3 float) (arg4 float))
   (local-vars
@@ -1604,6 +1672,8 @@
   (none)
   )
 
+;; definition for method 17 of type minimap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
 (defmethod draw-frustum-1 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
@@ -1759,6 +1829,8 @@
     )
   )
 
+;; definition for method 18 of type minimap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
 (defmethod draw-frustum-2 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
@@ -1849,7 +1921,7 @@
             (the-as int (-> a3-13 a))
             )
           )
-        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 3) (the-as int a2-6) (the-as int a1-12) 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 3) a2-6 a1-12 0 0)
         (set-vector!
           (-> (the-as (inline-array vector4w) sv-208) 4)
           (the int (* 16.0 (-> arg0 corner 0 x)))
@@ -1857,7 +1929,7 @@
           0
           0
           )
-        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 5) (the-as int a2-6) (the-as int a0-43) 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 5) a2-6 a0-43 0 0)
         (set-vector!
           (-> (the-as (inline-array vector4w) sv-208) 6)
           (the int (* 16.0 (-> arg0 corner 1 x)))
@@ -1865,7 +1937,7 @@
           0
           0
           )
-        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 7) (the-as int v1-54) (the-as int a1-12) 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 7) v1-54 a1-12 0 0)
         (set-vector!
           (-> (the-as (inline-array vector4w) sv-208) 8)
           (the int (* 16.0 (-> arg0 corner 2 x)))
@@ -1873,7 +1945,7 @@
           0
           0
           )
-        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 9) (the-as int v1-54) (the-as int a0-43) 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 9) v1-54 a0-43 0 0)
         )
       (set-vector!
         (-> (the-as (inline-array vector4w) sv-208) 10)
@@ -1888,6 +1960,9 @@
   (none)
   )
 
+;; definition for method 21 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod sub-draw-1-1 minimap ((obj minimap) (arg0 minimap-draw-work))
   (with-pp
     (let ((s5-0 (-> arg0 buf)))
@@ -2124,6 +2199,9 @@
     )
   )
 
+;; definition for method 19 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod sub-draw-1-2 minimap ((obj minimap) (arg0 minimap-draw-work))
   (local-vars (a3-4 int) (t0-4 int) (sv-48 vector) (sv-52 matrix) (sv-56 vector))
   (let ((s5-0 (-> arg0 buf)))
@@ -2359,6 +2437,8 @@
   (none)
   )
 
+;; definition for method 16 of type minimap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
 (defmethod draw-connection minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (with-pp
@@ -2587,7 +2667,7 @@
                   (the-as int (-> a0-70 b))
                   (the-as int (-> a0-70 a))
                   )
-                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 3) (the-as int a3-1) (the-as int t0-1) 0 0)
+                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 3) a3-1 t0-1 0 0)
                 (set-vector!
                   (-> (the-as (inline-array vector4w) v1-115) 4)
                   (the int (* 16.0 (-> arg0 corner 0 x)))
@@ -2595,7 +2675,7 @@
                   #xffffff
                   0
                   )
-                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 5) (the-as int a1-61) (the-as int a2-14) 0 0)
+                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 5) a1-61 a2-14 0 0)
                 )
               )
             (set-vector!
@@ -2614,6 +2694,9 @@
     )
   )
 
+;; definition for method 15 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-1 minimap ((obj minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
   (local-vars (v1-19 uint128))
   (with-pp
@@ -2665,6 +2748,9 @@
     )
   )
 
+;; definition for method 24 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-sprite2 minimap ((obj minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
   (local-vars (v1-24 uint128) (a0-8 uint128) (a3-5 int) (t0-4 int))
   (when (-> obj race-tex)
@@ -2777,6 +2863,8 @@
   (none)
   )
 
+;; definition for method 25 of type minimap
+;; WARN: Return type mismatch int vs none.
 (defmethod set-race-texture minimap ((obj minimap) (arg0 texture) (arg1 float) (arg2 level))
   (set! (-> obj race-tex) arg0)
   (set! (-> obj race-scale) arg1)
@@ -2785,6 +2873,8 @@
   (none)
   )
 
+;; definition for method 27 of type minimap
+;; WARN: Return type mismatch int vs none.
 (defmethod set-race-corner minimap ((obj minimap) (arg0 float) (arg1 float))
   (set! (-> obj race-corner x) arg0)
   (set! (-> obj race-corner z) arg1)
@@ -2792,8 +2882,15 @@
   (none)
   )
 
+;; definition for method 22 of type minimap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod set-color minimap ((obj minimap) (arg0 vector))
   (set! (-> obj color quad) (-> arg0 quad))
   0
   (none)
   )
+
+
+
+
