@@ -106,6 +106,7 @@ enum class BucketId {
   TIE_L4_TFRAG = 53,
   TEX_L0_SHRUB = 73,
   SHRUB_L0_SHRUB = 74,
+  MERC_L0_SHRUB = 79,
   TEX_L1_SHRUB = 82,
   SHRUB_L1_SHRUB = 83,
   TEX_L2_SHRUB = 91,
