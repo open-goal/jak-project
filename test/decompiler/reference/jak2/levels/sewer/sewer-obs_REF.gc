@@ -1143,7 +1143,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-light-switch ((obj sew-light-switch) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (v1-8 uint128) (a0-7 object) (a1-7 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (sew-light-switch-method-22 obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1152,26 +1152,12 @@
     (the-as pair 0)
     )
   (process-entity-status! obj (entity-perm-status no-kill) #t)
-  (set! sv-16 0)
-  (let ((v1-6 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-6 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-6 (begin
-                   (let ((a0-8 #t))
-                     (let ((a1-6 (the-as uint128 sv-16)))
-                       (.pcpyud a1-7 a1-6 r0-0)
-                       )
-                     (let ((a1-9 (the-as int (shr (* (the-as int a1-7) 2) 49))))
-                       (cmove-#f-zero a0-7 a1-9 a0-8)
-                       )
-                     )
-                   a0-7
-                   )
-            )
+      ((and v1-6 (nonzero? (-> sv-16 elt-count)))
        (set! (-> obj actor-group) (the-as (pointer actor-group) v1-6))
-       (let ((v1-7 (the-as uint128 sv-16)))
-         (.pcpyud v1-8 v1-7 r0-0)
-         )
-       (set! (-> obj actor-group-count) (shr (* (the-as int v1-8) 2) 49))
+       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
         (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
