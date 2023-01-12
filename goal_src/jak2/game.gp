@@ -1760,7 +1760,6 @@
   "levels/common/enemy/hover/flamer.gc"
   "levels/dig/dig-digger.gc"
   "levels/dig/dig-obs.gc"
-  ;; "levels/dig/dig1-obs.gc"
   "levels/dig/dig2-obs.gc"
   "levels/dig/dig3-obs.gc"
   "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
@@ -1796,16 +1795,13 @@
 ;; ;; D3B
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "D3B.DGO" "d3b.gd")
+(cgo "D3B.DGO" "d3b.gd")
 
-;; (copy-textures 2406 2407 3548)
+(copy-textures 2406 2407 3548)
 
-;; (copy-gos
-;;   "jak-pole+0-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "dig3b-vis"
-;;   )
+(copy-gos
+  "dig3b-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DEMO
@@ -1837,31 +1833,19 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/dig/dig-digger.gc"
-  ;; "levels/dig/dig-obs.gc"
   "levels/dig/dig1-obs.gc"
-  ;; "levels/dig/dig2-obs.gc"
-  ;; "levels/dig/dig3-obs.gc"
-  ;; "levels/common/enemy/baby_spider/tomb-baby-spider.gc"
-  ;; "levels/common/enemy/metalhead_slinger/grenadier.gc"
-  ;; "levels/common/enemy/metalhead_brown/metalmonk.gc"
-  ;; "levels/dig/dig-texture.gc"
-  ;; "levels/dig/dig-scenes.gc"
-  ;; "levels/dig/dig-part.gc"
   )
 
 (copy-textures 2282 2284 2283 2419 2844)
 
 (copy-gos
   "dig-digger-ag"
-  ;; "crimson-guard-ag"
   "dig-bomb-crate-ag"
   "dig-conveyor-ag"
   "dig-clasp-ag"
   "dig-tether-ag"
   "dig-jump-pad-ag"
   "dig-breakable-door-ag"
-  ;; "dig-sinking-plat-ag"
   "dig-clasp-b-ag"
   "dig-bomb-crate-cylinder-ag"
   "dig1-vis"
@@ -2164,50 +2148,36 @@
 ;; ;; FORDUMPC
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FORDUMPC.DGO" "fordumpc.gd")
+(cgo "FORDUMPC.DGO" "fordumpc.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/fortress/ammo_dump/fordumpa-texture.gc"
-;;   "levels/fortress/ammo_dump/fort-robotank-turret.gc"
-;;   "levels/fortress/ammo_dump/fort-robotank.gc"
-;;   "levels/fortress/ammo_dump/fordumpc-part.gc"
-;;   "levels/fortress/ammo_dump/fordumpc-obs.gc"
-;;   "levels/fortress/ammo_dump/fortress-scenes.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/fortress/ammo_dump/fordumpc-part.gc"
+  "levels/fortress/ammo_dump/fordumpc-obs.gc"
+  "levels/fortress/ammo_dump/fortress-scenes.gc"
+  )
 
-;; (copy-textures 1570 1573 1571 2917 2847)
+(copy-textures 1570 1573 1571 2917 2847)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "fort-robotank-ag"
-;;   "fort-missile-target-ag"
-;;   "fort-robotank-top-ag"
-;;   "fort-roboscreen-ag"
-;;   "fort-missile-ag"
-;;   "fort-robotank-sight-ag"
-;;   "fort-dump-bomb-a-ag"
-;;   "particleman-ag"
-;;   "fordumpc"
-;;   )
+(copy-gos
+  "fort-missile-target-ag"
+  "fort-missile-ag"
+  "fort-dump-bomb-a-ag"
+  "fordumpc"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FORDUMPD
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "FORDUMPD.DGO" "fordumpd.gd")
+(cgo "FORDUMPD.DGO" "fordumpd.gd")
 
-;; (copy-textures 1574)
+(copy-textures 1574)
 
-;; (copy-gos
-;;   "crimson-guard-highres-ag"
-;;   "crimson-guard-lowres-ag"
-;;   "grunt-fma-ag"
-;;   "palmpilot-ag"
-;;   "fordumpd"
-;;   )
+(copy-gos
+  "fordumpd"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FRA
@@ -2253,10 +2223,8 @@
 (goal-src-sequence
   ""
   :deps ("$OUT/obj/los-control.o")
-  ;; "levels/common/entities/fort-floor-spike.gc"
   "levels/fortress/rescue/forrescb-part.gc"
   "levels/fortress/rescue/forrescb-obs.gc"
-  ;; "levels/fortress/fort-turret.gc"
   "levels/common/entities/spydroid.gc"
   )
 
@@ -2264,8 +2232,6 @@
 
 (copy-gos
   "spydroid-ag"
-  ;; "fort-turret-ag"
-  ;; "cty-guard-turret-button-ag"
   "fort-elec-belt-ag"
   "forrescb-vis"
   )
