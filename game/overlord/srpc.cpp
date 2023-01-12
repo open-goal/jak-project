@@ -799,7 +799,7 @@ void* RPC_Loader2(unsigned int /*fno*/, void* data, int size) {
         if (!bank->unk4) {
           bank->in_use = false;
         }
-        bank->in_use = 0;
+        bank->in_use = false;
         snd_UnloadBank(handle);
         snd_ResolveBankXREFS();
       } break;

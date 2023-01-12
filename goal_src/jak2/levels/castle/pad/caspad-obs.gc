@@ -7,3 +7,205 @@
 
 ;; DECOMP BEGINS
 
+(deftype cpad-elevator (elevator)
+  ((sound-id sound-id  :offset-assert 368)
+   )
+  :heap-base #x100
+  :method-count-assert 50
+  :size-assert         #x174
+  :flag-assert         #x3201000174
+  (:methods
+    (cpad-elevator-method-49 (_type_ symbol) none 49)
+    )
+  )
+
+
+(defskelgroup skel-cpad-elevator cpad-elevator 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 18))
+
+(defmethod get-art-group cpad-elevator ((obj cpad-elevator))
+  "@returns The associated [[art-group]]"
+  (art-group-get-by-name *level* "skel-cpad-elevator" (the-as (pointer uint32) #f))
+  )
+
+(defmethod elevator-method-43 cpad-elevator ((obj cpad-elevator) (arg0 vector) (arg1 float) (arg2 float))
+  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> obj root-override trans))
+        )
+    (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
+      (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (and (< (fabs (-> s4-2 x)) 49152.0) (< (fabs (-> s4-2 z)) 49152.0))
+        )
+      )
+    )
+  )
+
+(defmethod elevator-method-45 cpad-elevator ((obj cpad-elevator))
+  "@returns Stub, or always returns [[#t]]"
+  (let* ((gp-0 *target*)
+         (a0-2 (if (type? gp-0 process-focusable)
+                   gp-0
+                   )
+               )
+         )
+    (when a0-2
+      (let* ((v1-1 (get-trans a0-2 0))
+             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> obj root-override trans)))
+             )
+        (vector-inv-orient-by-quat! gp-2 gp-2 (-> obj root-override quat))
+        (and (< (fabs (-> gp-2 x)) 40960.0) (< (fabs (-> gp-2 z)) 40960.0))
+        )
+      )
+    )
+  )
+
+(defmethod cpad-elevator-method-49 cpad-elevator ((obj cpad-elevator) (arg0 symbol))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> obj root-override root-prim)) child 1)))
+    (cond
+      (arg0
+        (set! (-> v1-3 prim-core collide-as) (collide-spec obstacle pusher))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec jak player-list))
+        )
+      (else
+        (set! (-> v1-3 prim-core collide-as) (collide-spec))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec))
+        0
+        )
+      )
+    )
+  (none)
+  )
+
+(defstate running (cpad-elevator)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator running) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (logtest? (-> self elevator-status) (elevator-status elevator-status-0))
+      (cpad-elevator-method-49 self #t)
+      (set-setting! 'jump #f 0 0)
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (sound-play "dig-elevate-end")
+    (let ((t9-3 (-> (method-of-type elevator running) exit)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((gp-0 (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
+        (suspend)
+        )
+      )
+    (logior! (-> self elevator-status) (elevator-status elevator-status-1))
+    (until #f
+      (sound-play "dig-elevate" :id (-> self sound-id))
+      (suspend)
+      (if (= (-> self path-pos) 1.0)
+          (logclear! (-> self elevator-status) (elevator-status elevator-status-1))
+          )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate arrived (cpad-elevator)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator arrived) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (logtest? (-> self elevator-status) (elevator-status elevator-status-0))
+      (cpad-elevator-method-49 self #f)
+      (remove-setting! 'jump)
+      )
+    (none)
+    )
+  )
+
+(defmethod elevator-method-40 cpad-elevator ((obj cpad-elevator))
+  "TODO - need to figure out some flags to be confident about this"
+  (if (task-node-closed? (game-task-node dig-knock-down-introduction))
+      (go (method-of-object obj arrived))
+      (go (method-of-object obj dormant))
+      )
+  )
+
+(defmethod deactivate cpad-elevator ((obj cpad-elevator))
+  (sound-stop (-> obj sound-id))
+  ((the-as (function elevator none) (find-parent-method cpad-elevator 10)) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch ambient-sound vs none.
+(defmethod clear-ambient-sound! cpad-elevator ((obj cpad-elevator))
+  "Might be a virtual function, but clears the object's [[ambient-sound]]"
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "cpad-elevator-l" :fo-max 70) (-> obj root-override trans))
+        )
+  (none)
+  )
+
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod base-plat-method-33 cpad-elevator ((obj cpad-elevator))
+  (let ((s5-0 (+ (-> obj path curve num-cverts) -1)))
+    (calc-dist-between-points! obj 0 s5-0)
+    (calc-dist-between-points! obj s5-0 0)
+    )
+  (set! (-> obj sound-id) (new-sound-id))
+  (none)
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod base-plat-method-31 cpad-elevator ((obj cpad-elevator))
+  "TODO - collision stuff"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 73728.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 73728.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 3)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 73728.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-20 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  (none)
+  )
