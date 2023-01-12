@@ -132,6 +132,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l0-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L0_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L0_SHRUB);
+  init_bucket_renderer<Merc2>("merc-l0-shrub", BucketCategory::MERC, BucketId::MERC_L0_SHRUB);
   // 80
   init_bucket_renderer<TextureUploadHandler>("tex-l1-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L1_SHRUB);
@@ -184,6 +185,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Merc2>("merc-l2-pris", BucketCategory::MERC, BucketId::MERC_L2_PRIS);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
                                              BucketId::TEX_L3_PRIS);
+  init_bucket_renderer<Merc2>("merc-l3-pris", BucketCategory::MERC, BucketId::MERC_L3_PRIS);
   // 210
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS);

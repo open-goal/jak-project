@@ -2726,7 +2726,7 @@
               (vector-flatten! s5-3 (-> self butt-vector) (-> *camera* local-down))
               )
              (else
-               (vector-flatten! s5-3 (the-as vector (&-> *camera* stack 256)) (-> *camera* local-down))
+               (vector-flatten! s5-3 (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
                )
              )
            )
@@ -2746,7 +2746,7 @@
         )
       (when (logtest? (-> *camera* settings slave-options) (cam-slave-options BIKE_MODE))
         (vector-normalize-copy! gp-3 (-> self view-flat) 1.0)
-        (vector-flatten! s5-3 (the-as vector (&-> *camera* stack 256)) (-> *camera* local-down))
+        (vector-flatten! s5-3 (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
         (vector-normalize! s5-3 -1.0)
         (let ((f0-97 (acos (vector-dot s5-3 gp-3))))
           (when (and (< (-> self max-angle-offset) f0-97) (< f0-97 32585.955))
@@ -3604,7 +3604,7 @@
             ((logtest? (-> self options) (cam-slave-options-u32 BUTT_CAM))
              (set-vector! s5-0 0.0 0.0 1.0 1.0)
              (vector-normalize-copy! s5-0 (-> self view-flat) 1.0)
-             (set! (-> s3-0 quad) (-> (the-as vector (&-> *camera* stack 256)) quad))
+             (set! (-> s3-0 quad) (-> (the-as vector (-> *camera* tgt-rot-mat vector 2)) quad))
              (vector-flatten! s3-0 s3-0 (-> *camera* local-down))
              (vector-negate! s3-0 s3-0)
              (set! (-> s4-0 quad) (-> s5-0 quad))
@@ -3670,7 +3670,7 @@
 
 ;; definition for function cam-calc-bike-follow!
 (defbehavior cam-calc-bike-follow! camera-slave ((arg0 cam-rotation-tracker) (arg1 vector) (arg2 symbol))
-  (vector-float*! (-> arg0 follow-off) (the-as vector (&-> *camera* stack 320)) 155648.0)
+  (vector-float*! (-> arg0 follow-off) (-> *camera* tgt-face-mat vector 2) 155648.0)
   (vector+! (-> arg0 follow-pt) (-> *camera* tpos-curr-adj) (-> arg0 follow-off))
   (vector--float*!
     (-> arg0 follow-pt)
@@ -3689,7 +3689,7 @@
           (s5-0 (new-stack-vector0))
           )
       (vector-normalize-copy! gp-0 (-> self view-flat) 1.0)
-      (vector-flatten! s5-0 (the-as vector (&-> *camera* stack 256)) (-> *camera* local-down))
+      (vector-flatten! s5-0 (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
       (vector-normalize! s5-0 -1.0)
       (matrix-from-two-vectors-partial-linear! s4-0 gp-0 s5-0 0.2)
       )
