@@ -35928,22 +35928,21 @@
 ;; wren                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wren (process-drawable)
-  ((move-dest      vector  :inline :offset-assert 204)
-   (fly-curve      UNKNOWN 2       :offset-assert 220)
-   (fly-index      uint32          :offset-assert 228)
-   (fly-speed      float           :offset-assert 232)
-   (fly-y-rate     float           :offset-assert 236)
-   (fly-interp     float           :offset-assert 240)
-   (path-u         float           :offset-assert 244)
-   (path-du        float           :offset-assert 248)
-   (path-du-mod    float           :offset-assert 252)
-   (bob-level      float           :offset-assert 256)
-   (bob-level-seek float           :offset-assert 260)
-   (bank-angle     float           :offset-assert 264)
-   (peck-timer     uint64          :offset-assert 268)
-   (flags          uint16          :offset-assert 276)
+  ((move-dest      vector  :inline :offset-assert 208)
+   (fly-curve      curve-control 2 :offset-assert 224)
+   (fly-index      uint32          :offset-assert 232)
+   (fly-speed      float           :offset-assert 236)
+   (fly-y-rate     float           :offset-assert 240)
+   (fly-interp     float           :offset-assert 244)
+   (path-u         float           :offset-assert 248)
+   (path-du        float           :offset-assert 252)
+   (path-du-mod    float           :offset-assert 256)
+   (bob-level      float           :offset-assert 260)
+   (bob-level-seek float           :offset-assert 264)
+   (bank-angle     float           :offset-assert 268)
+   (peck-timer     uint64          :offset-assert 272)
+   (flags          uint16          :offset-assert 280)
    )
   :method-count-assert 28
   :size-assert         #x11a
@@ -35955,19 +35954,32 @@
     (land () _type_ :state 23)
     (on-branch () _type_ :state 24)
     (die () _type_ :state 25)
-    (wren-method-26 () none 26)
-    (wren-method-27 () none 27)
+    (spooked?
+      "@returns a [[symbol]] indicating if Jak is considered close enough to the wren to spook it.
+       If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
+      (_type_) symbol 26)
+    (debug-draw-path
+      "Draws the associated [[curve-control]]s associated with this wren"
+      (_type_) symbol 27)
     )
   )
-|#
 
-;; (define-extern fly-post function)
+(define-extern fly-post (function none :behavior wren))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fish                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++fish:fish-type
+(defenum fish-type
+  :type int32
+  :bitfield #f
+  (red 0)
+  (blue 1)
+  (green 2)
+  (yellow 3))
+;; ---fish:fish-type
+
 (deftype minnow (process-drawable)
   ()
   :method-count-assert 21
@@ -35977,9 +35989,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype fish (structure)
   ((pos       vector :inline :offset-assert 0)
    (vel       vector :inline :offset-assert 16)
@@ -35988,17 +35998,15 @@
    (wander    float          :offset-assert 64)
    (max-speed float          :offset-assert 68)
    (speed     float          :offset-assert 72)
-   (handle    uint64         :offset-assert 80)
+   (handle    handle         :offset-assert 80)
    )
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype fish-manager (process-drawable)
-  ((fishes UNKNOWN 12 :offset-assert 204)
+  ((fishes fish 12 :inline :offset-assert 208)
    )
   :method-count-assert 21
   :size-assert         #x550
@@ -36007,9 +36015,8 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern minnow-init-by-other function)
+(define-extern minnow-init-by-other "TODO - fish type" (function object fish-type none :behavior minnow))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; predator-h                     ;;
