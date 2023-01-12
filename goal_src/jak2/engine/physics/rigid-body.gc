@@ -313,7 +313,8 @@
     )
   (rigid-body-method-13 obj)
   (if (logtest? (-> obj flags) (rigid-body-flag enable-collision))
-      ((method-of-object arg0 collide-shape-moving-method-63))
+      ;; TODO - method 63!
+      ;; ((method-of-object arg0 collide-shape-moving-method-63))
       (rigid-body-method-14 obj arg1)
       )
   0
@@ -725,9 +726,9 @@
   (none)
   )
 
-(defmethod rigid-body-object-method-45 rigid-body-object ()
-  0
-  (none)
+;; WARN: Return type mismatch int vs sound-id.
+(defmethod rigid-body-object-method-45 rigid-body-object ((obj rigid-body-object) (arg0 rigid-body-object-constants))
+  (the-as sound-id 0)
   )
 
 (defmethod rigid-body-object-method-49 rigid-body-object ((obj rigid-body-object) (arg0 matrix) (arg1 touching-shapes-entry))
@@ -835,8 +836,8 @@
             )
           )
         )
+      (rigid-body-object-method-45 obj (the-as rigid-body-object-constants s5-0))
       )
-    ((method-of-object obj rigid-body-object-method-45))
     (if (and (-> obj next-state) (= (-> obj next-state name) 'idle))
         (rigid-body-object-method-43 obj)
         )
@@ -849,11 +850,12 @@
 (defmethod rigid-body-object-method-46 rigid-body-object ((obj rigid-body-object) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('impact-impulse)
-     (-> arg3 param 0)
-     (if (!= obj arg0)
-         (rigid-body-object-method-42 obj)
-         )
-     ((method-of-object obj rigid-body-object-method-45))
+     (let ((s5-1 (-> arg3 param 0)))
+       (if (!= obj arg0)
+           (rigid-body-object-method-42 obj)
+           )
+       (rigid-body-object-method-45 obj (the-as rigid-body-object-constants s5-1))
+       )
      (if (and (-> obj next-state) (= (-> obj next-state name) 'idle))
          (rigid-body-object-method-43 obj)
          )
