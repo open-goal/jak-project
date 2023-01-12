@@ -843,10 +843,9 @@ const std::unordered_map<
                                               2,
                                               ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
             {"visgroup", ArrayFieldDecompMeta(TypeSpec("trail-conn-hash-cell"), 4)},
-            {"visnode-ids",
-             ArrayFieldDecompMeta(TypeSpec("uint16"),
-                                  2,
-                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+            {"visnode-ids", ArrayFieldDecompMeta(TypeSpec("uint16"),
+                                                 2,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           {"predator-graph",
            {{"node", ArrayFieldDecompMeta(TypeSpec("predator-node"), 48)},
             {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}}}}};
