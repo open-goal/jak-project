@@ -46,7 +46,7 @@
 
 (deftype strip-hazard (process-drawable)
   ((root-override      collide-shape-moving         :offset        128)
-   (sync               sync-linear          :inline :offset-assert 208)
+   (sync               sync-linear          :inline :offset-assert 200)
    (shove-vec          vector               :inline :offset-assert 224)
    (no-collision-timer uint64                       :offset-assert 240)
    (attack-id          uint32                       :offset-assert 248)
@@ -143,10 +143,7 @@
   :trans strip-trans
   :code (behavior ()
     (until #f
-      (let ((f0-1 (* ((method-of-type sync-linear get-current-phase-no-mod) (the-as sync-linear (&-> self stack 72)))
-                     (the float (+ (-> (ja-group) frames num-frames) -1))
-                     )
-                  )
+      (let ((f0-1 (* (get-current-phase-no-mod (-> self sync)) (the float (+ (-> (ja-group) frames num-frames) -1))))
             (a0-1 (-> self skel root-channel 0))
             )
         (let ((v1-14 (ja-group)))
@@ -195,8 +192,8 @@
     (set! (-> s4-0 entity) arg0)
     (set! (-> s4-0 period) (the-as uint s3-0))
     (set! (-> s4-0 percent) 0.0)
-    ((method-of-type sync-linear initialize!) (the-as sync-linear (&-> obj stack 72)) s4-0)
-    ((method-of-type sync-linear sync-now!) (the-as sync-linear (&-> obj stack 72)) f30-0)
+    (initialize! (-> obj sync) s4-0)
+    (sync-now! (-> obj sync) f30-0)
     )
   (none)
   )
@@ -1452,7 +1449,7 @@
         (let ((s5-0 (-> (&+ (-> self actor-group 0) (* gp-0 8)) 3)))
           (when s5-0
             (toggle-status s5-0 (entity-perm-status subtask-complete) #f)
-            (minimap-method-12 *minimap* self (the-as uint 16) (the-as int #f) (the-as vector s5-0) 0)
+            (add-icon! *minimap* self (the-as uint 16) (the-as int #f) (the-as vector s5-0) 0)
             )
           )
         )
@@ -1639,11 +1636,7 @@
     )
   :code (behavior ()
     (until #f
-      (let ((f0-1 (* ((method-of-type sync-linear get-current-phase-no-mod) (the-as sync-linear (&-> self stack 72)))
-                     (the float (+ (-> (ja-group) frames num-frames) -1))
-                     )
-                  )
-            )
+      (let ((f0-1 (* (get-current-phase-no-mod (-> self sync)) (the float (+ (-> (ja-group) frames num-frames) -1)))))
         (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num f0-1)
         )
       (let ((f0-5 (/ (* 2.0 (ja-frame-num 0)) (the float (ja-num-frames 0)))))
