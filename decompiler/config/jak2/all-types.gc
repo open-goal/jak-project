@@ -6465,7 +6465,7 @@
 (define-extern vblank-handler (function int))
 (define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
 (define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
-(define-extern reset-display-gs-state (function display dma-buffer int display))
+(define-extern reset-display-gs-state (function display dma-buffer display))
 (define-extern *vu0-dma-list* dma-buffer)
 (define-extern *display* display)
 
@@ -7056,6 +7056,14 @@
 ;; trail-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum trail-node-flag
+  :type uint8
+  :bitfield #t
+  (tnf0 0) ;; unused??
+  (tnf1 1)
+  )
+(declare-type trail-graph basic)
+
 (deftype trail-node (structure)
   ((next-id         int16   :offset-assert 0)
    (prev-id         int16   :offset-assert 2)
@@ -7065,16 +7073,17 @@
    (first-conn      uint16  :offset-assert 10)
    (cost-from-start uint16  :offset-assert 12)
    (cost-to-goal    uint16  :offset-assert 14)
-   (flags           uint8   :offset-assert 16)
+   (flags           trail-node-flag   :offset-assert 16)
    (conn-count      uint8   :offset-assert 17)
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x12
   :flag-assert         #xc00000012
   (:methods
-    (trail-node-method-9 () none 9)
-    (trail-node-method-10 () none 10)
-    (trail-node-method-11 () none 11)
+    (get-dist-score (_type_ vector) uint 9)
+    (debug-draw (_type_ int) none 10)
+    (get-position "Unpack the position to a vector" (_type_ vector) vector 11)
     )
   )
 
@@ -7088,19 +7097,28 @@
   :flag-assert         #x900000004
   )
 
+(defenum conn-flag
+  :type uint8
+  :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  )
 
 (deftype trail-conn (structure)
   ((head-id     uint16  :offset-assert 0)
    (tail-id     uint16  :offset-assert 2)
-   (flags       uint8   :offset-assert 4)
+   (flags       conn-flag   :offset-assert 4)
    (visgroup-id uint8   :offset-assert 5)
    (cost        uint16  :offset-assert 6)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
   (:methods
-    (trail-conn-method-9 () none 9)
+    (debug-draw (_type_ trail-graph int) none 9)
     )
   )
 
@@ -7109,6 +7127,7 @@
    (conn-count uint8   :offset-assert 2)
    (pad        uint8   :offset-assert 3)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -7136,8 +7155,8 @@
 (deftype trail-conn-hash (basic)
   ((cell-width meters         :offset-assert 4)
    (origin     vector :inline :offset-assert 16)
-   (cell       uint32         :offset-assert 32)
-   (conn-ids   uint32         :offset-assert 36)
+   (cell       (inline-array trail-conn-hash-cell) :offset-assert 32)
+   (conn-ids   (pointer uint16)         :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -7165,12 +7184,12 @@
    (node-count     uint16          :offset-assert 18)
    (conn-count     uint16          :offset-assert 20)
    (conn-mask      uint8           :offset-assert 22)
-   (node           uint32          :offset-assert 24)
-   (conn           uint32          :offset-assert 28)
-   (conn-ids       uint32          :offset-assert 32)
-   (visgroup       uint32          :offset-assert 36)
-   (visnode-ids    uint32          :offset-assert 40)
-   (conn-hash      basic           :offset-assert 44)
+   (node           (inline-array trail-node)          :offset-assert 24)
+   (conn           (inline-array trail-conn)          :offset-assert 28)
+   (conn-ids       (pointer uint16)          :offset-assert 32)
+   (visgroup       (inline-array trail-conn-hash-cell)          :offset-assert 36)
+   (visnode-ids    (pointer uint16)          :offset-assert 40)
+   (conn-hash      trail-conn-hash           :offset-assert 44)
    (orig-start-pos vector  :inline :offset-assert 48)
    (orig-goal-pos  vector  :inline :offset-assert 64)
    (conn-start-pos vector  :inline :offset-assert 80)
@@ -7184,26 +7203,26 @@
   :size-assert         #x130
   :flag-assert         #x1d00000130
   (:methods
-    (trail-graph-method-9 () none 9)
-    (trail-graph-method-10 () none 10)
-    (trail-graph-method-11 () none 11)
-    (trail-graph-method-12 () none 12)
-    (trail-graph-method-13 () none 13)
-    (trail-graph-method-14 () none 14)
-    (trail-graph-method-15 () none 15)
+    (trail-graph-method-9 (_type_ int) none 9)
+    (trail-graph-method-10 (_type_ int) none 10)
+    (trail-graph-method-11 (_type_ int int) trail-node 11)
+    (debug-draw (_type_) none 12)
+    (debug-draw-cell (_type_ int) none 13)
+    (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol 14)
+    (do-path (_type_ vector vector) int 15)
     (trail-graph-method-16 () none 16)
-    (trail-graph-method-17 () none 17)
-    (trail-graph-method-18 () none 18)
-    (trail-graph-method-19 () none 19)
-    (trail-graph-method-20 () none 20)
-    (trail-graph-method-21 () none 21)
-    (trail-graph-method-22 () none 22)
-    (trail-graph-method-23 () none 23)
-    (trail-graph-method-24 () none 24)
-    (trail-graph-method-25 () none 25)
-    (trail-graph-method-26 () none 26)
-    (trail-graph-method-27 () none 27)
-    (trail-graph-method-28 () none 28)
+    (get-node-location-by-id "Get the location of the node with the given ID" (_type_ uint vector) vector 17)
+    (get-path-to-root "Get the path from goal to root, following parent-id" (_type_ (pointer uint16) int (pointer int32) (pointer float)) int 18)
+    (trail-graph-method-19 (_type_ int int) symbol 19)
+    (try-initialize "Init and verify that constants are good." (_type_) symbol 20)
+    (update-node-flags-for-conn "Set arg1, clear arg2" (_type_ int trail-node-flag trail-node-flag) none 21)
+    (trail-graph-method-22 (_type_ int) none 22)
+    (reset-search-state "Reset the search/goal." (_type_) none 23)
+    (get-next-to-explore (_type_) int 24)
+    (trail-graph-method-25 (_type_ trail-conn-search int int) none 25)
+    (do-search! (_type_ vector vector trail-cached-search-info) none 26)
+    (do-some-work (_type_) int 27)
+    (run-until-done-or-timeout (_type_ int) none 28)
     )
   )
 
@@ -7320,6 +7339,7 @@
    (scale float :offset-assert 28)
    (color rgba :offset-assert 32)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
@@ -7329,7 +7349,7 @@
 
 (deftype connection-minimap (connection-pers)
   ((handle handle :offset 8 :score 50) ;; override
-   (position vector :offset 16)
+   (position object :offset 16)
    (alpha float :offset 20)
    (class minimap-class-node :offset 24)
    (flags minimap-flag :offset 28)
@@ -7369,19 +7389,19 @@
   :size-assert         #xd0
   :flag-assert         #xb000000d0
   (:methods
-    (minimap-trail-method-9 (_type_ vector vector) float 9)
-    (minimap-trail-method-10 () none 10)
+    (get-distance-with-path "Assuming we go from a to b, using this path in the middle, how long is it?" (_type_ vector vector) float 9)
+    (reset (_type_) none 10)
     )
   )
 
 
 
 (deftype minimap-draw-work (structure)
-  ((buf           basic            :offset-assert 0)
-   (justify-right basic            :offset-assert 4)
+  ((buf           dma-buffer       :offset-assert 0)
+   (justify-right symbol           :offset-assert 4)
    (draw-pos      vector4w :inline :offset-assert 16)
    (mat           matrix   :inline :offset-assert 32)
-   (corner        vector4w  4 :inline       :offset-assert 96)
+   (corner        vector  4 :inline       :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #xa0
@@ -7398,20 +7418,20 @@
    (color            vector4w       :inline :offset-assert 192)
    (offset           vector         :inline :offset-assert 208)
    (minimap-corner   vector         :inline :offset-assert 224)
-   (last-name        basic                  :offset-assert 240)
+   (last-name        string                 :offset-assert 240)
    (last-tex         basic                  :offset-assert 244)
    (target-inv-scale float                  :offset-assert 248)
    (map-bits         uint64                 :offset-assert 256)
-   (level            basic                  :offset-assert 264)
-   (ctywide          basic                  :offset-assert 268)
+   (level            level                  :offset-assert 264)
+   (ctywide          level                  :offset-assert 268)
    (inv-scale        float                  :offset 212)
    (fade             float                  :offset 220)
    (engine           engine-minimap         :offset-assert 272)
    (engine-key       uint32                 :offset-assert 276)
    (trail           minimap-trail 6 :inline :offset-assert 288)
-   (race-tex         basic                  :offset-assert 1536)
+   (race-tex         texture                  :offset-assert 1536)
    (race-scale       float                  :offset-assert 1540)
-   (race-level       basic                  :offset-assert 1544)
+   (race-level       level                  :offset-assert 1544)
    (sprite2-tmpl     dma-gif-packet :inline :offset-assert 1552)
    (race-corner      vector         :inline :offset-assert 1584)
    (goal-time        float                  :offset-assert 1600)
@@ -7421,25 +7441,26 @@
   :size-assert         #x648
   :flag-assert         #x1c00000648
   (:methods
-    (minimap-method-9 () none 9)
-    (minimap-method-10 (_type_ connection-minimap minimap-trail) minimap-trail 10)
-    (minimap-method-11 () none 11)
-    (minimap-method-12 (_type_ process uint int vector int) connection-minimap 12)
-    (minimap-method-13 () none 13)
-    (minimap-method-14 () none 14)
-    (minimap-method-15 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
-    (minimap-method-16 () none 16)
-    (minimap-method-17 () none 17)
-    (minimap-method-18 () none 18)
-    (minimap-method-19 () none 19)
-    (minimap-method-20 (_type_) symbol 20)
-    (minimap-method-21 () none 21)
-    (minimap-method-22 () none 22)
-    (minimap-method-23 () none 23)
-    (minimap-method-24 (_type_ dma-buffer vector4w symbol) none 24) ;; hud sprite 2 draw
-    (minimap-method-25 (_type_ texture float) none 25)
-    (minimap-method-26 () none 26)
-    (minimap-method-27 (_type_ float float) none 27)
+    (debug-draw (_type_) none 9)
+    (get-trail-for-connection "Get a trail for connection. If arg1 is set, allow allocating a new one." (_type_ connection-minimap symbol) minimap-trail 10)
+    (get-icon-draw-pos "Follow the path from the start until it reaches the border of the map, then get this position."
+                       (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
+    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12)
+    (free-trail-by-connection "Free the trail associated with this connection." (_type_ connection-minimap) none 13)
+    (update-trails "Main function to do trail search per-frame" (_type_) none 14)
+    (draw-1 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
+    (draw-connection (_type_ minimap-draw-work connection-minimap) none 16)
+    (draw-frustum-1 (_type_ minimap-draw-work connection-minimap) none 17)
+    (draw-frustum-2 (_type_ minimap-draw-work connection-minimap) none 18)
+    (sub-draw-1-2 (_type_ minimap-draw-work) none 19)
+    (update! (_type_) symbol 20)
+    (sub-draw-1-1 (_type_ minimap-draw-work) none 21)
+    (set-color (_type_ vector) none 22)
+    (draw-racer-2 (_type_ minimap-draw-work connection-minimap) none 23) ;; not done
+    (draw-sprite2 (_type_ dma-buffer vector4w symbol) none 24) ;; hud sprite 2 draw
+    (set-race-texture (_type_ texture float level) none 25)
+    (draw-racer-1 (_type_  minimap-draw-work connection-minimap float float float) none 26)
+    (set-race-corner (_type_ float float) none 27)
     )
   )
 
@@ -30714,7 +30735,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype minimap-texture-name-array (structure)
-  ((data object 35 :offset-assert 0)
+  ((data string 35 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8c
@@ -30722,7 +30743,7 @@
   )
 
 (deftype minimap-corner-array (structure)
-  ((data uint128 35 :offset-assert 0)
+  ((data vector 35 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x230
@@ -30733,7 +30754,7 @@
 (define-extern *minimap-corner-array* minimap-corner-array)
 (define-extern *minimap* minimap)
 (define-extern *minimap-class-list* (inline-array minimap-class-node))
-;; (define-extern lookup-minimap-texture-by-name function)
+(define-extern lookup-minimap-texture-by-name (function string string (pointer texture-page) texture))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bigmap-data                    ;;
@@ -50894,20 +50915,18 @@
 ;; trail                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype trail-vis-work (structure)
   ((best-count    uint32          :offset-assert 0)
    (best-dist     float           :offset-assert 4)
    (start-conn-id uint32          :offset-assert 8)
    (p0            vector  :inline :offset-assert 16)
    (p1            vector  :inline :offset-assert 32)
-   (best-node-id  UNKNOWN 64      :offset-assert 48)
+   (best-node-id  uint16 64      :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
-|#
 
 ;; (define-extern *trail-graph* object)
 
