@@ -26,18 +26,14 @@ void sbank_init_globals() {
 }
 
 void InitBanks() {
-  for (auto& gBank : gBanks) {
-    gBank->bank_handle = 0;
-    gBank->sound_count = 0;
+  for (auto bank : gBanks) {
+    bank->bank_handle = 0;
+    bank->sound_count = 0;
 
-    gBank->in_use = false;
-    gBank->unk4 = 0;
+    bank->in_use = false;
+    bank->unk4 = 0;
 
-    // paper over bank allocation differences
-    if (g_game_version == GameVersion::Jak1)
-      gBank->in_use = 1;
-
-    strcpy(gBank->name, "<unused>");
+    strcpy(bank->name, "<unused>");
   }
 
   if (g_game_version == GameVersion::Jak2) {
@@ -46,24 +42,24 @@ void InitBanks() {
     gBanks[0]->spu_size = 0xAFCC0;
 
     strncpy(gBanks[1]->name, "gun", 16);
-    gBanks[0]->spu_loc = 0x131740;
-    gBanks[0]->spu_size = 0;
+    gBanks[1]->spu_loc = 0x131740;
+    gBanks[1]->spu_size = 0;
 
     strncpy(gBanks[2]->name, "board", 16);
-    gBanks[0]->spu_loc = 0x131740;
-    gBanks[0]->spu_size = 0;
+    gBanks[2]->spu_loc = 0x131740;
+    gBanks[2]->spu_size = 0;
 
     strncpy(gBanks[3]->name, "level0", 16);
-    gBanks[0]->spu_loc = 0x131740;
-    gBanks[0]->spu_size = 0x42800;
+    gBanks[3]->spu_loc = 0x131740;
+    gBanks[3]->spu_size = 0x42800;
 
     strncpy(gBanks[4]->name, "level1", 16);
-    gBanks[0]->spu_loc = 0x173f40;
-    gBanks[0]->spu_size = 0x42800;
+    gBanks[4]->spu_loc = 0x173f40;
+    gBanks[4]->spu_size = 0x42800;
 
     strncpy(gBanks[5]->name, "level2", 16);
-    gBanks[0]->spu_loc = 0x1B6740;
-    gBanks[0]->spu_size = 0x42800;
+    gBanks[5]->spu_loc = 0x1B6740;
+    gBanks[5]->spu_size = 0x42800;
   }
 }
 
@@ -132,11 +128,17 @@ SoundBank* LookupBank(const char* name) {
     if (idx < 0) {
       return nullptr;  // not found.
     }
-    auto& bank = gBanks[idx];
+    auto bank = gBanks[idx];
     // they had some weird stuff here that took advantage of the fact that this region was
     // 16-byte aligned, so it probably wasn't a memcmp, but this is easier.
-    if ((memcmp(bank->name, name, 16) == 0) && bank->in_use) {
-      return bank;
+    if (g_game_version == GameVersion::Jak1) {
+      if ((memcmp(bank->name, name, 16) == 0)) {
+        return bank;
+      }
+    } else {
+      if ((memcmp(bank->name, name, 16) == 0) && bank->in_use) {
+        return bank;
+      }
     }
     idx--;
   }

@@ -190,39 +190,48 @@
     )
   )
 
+;; WARN: Return type mismatch none vs object.
 (defmethod enemy-method-74 pegasus ((obj pegasus) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
   (with-pp
-    (case arg2
-      (('track)
-       )
-      (('hit 'hit-knocked)
-       (cond
-         ((zero? (-> obj hit-points))
-          (logclear! (-> obj mask) (process-mask actor-pause))
-          (logclear! (-> obj focus-status) (focus-status dangerous))
-          (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-          (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-          (logior! (-> obj focus-status) (focus-status hit))
-          (if (zero? (-> obj hit-points))
-              (logior! (-> obj focus-status) (focus-status dead))
-              )
-          (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-          (enemy-method-62 obj)
-          (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
-          (process-contact-action arg0)
-          (send-event arg0 'get-attack-count 1)
-          (enemy-method-73 obj)
-          )
-         (else
-           (set! (-> obj targetted-timer) (the-as uint (-> pp clock frame-counter)))
+    (let ((v1-0 arg2))
+      (the-as
+        object
+        (cond
+          ((= v1-0 'track)
+           #f
            )
-         )
-       )
-      (else
-        ((method-of-type enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((or (= v1-0 'hit) (= v1-0 'hit-knocked))
+           (cond
+             ((zero? (-> obj hit-points))
+              (logclear! (-> obj mask) (process-mask actor-pause))
+              (logclear! (-> obj focus-status) (focus-status dangerous))
+              (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
+              (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
+              (logior! (-> obj focus-status) (focus-status hit))
+              (if (zero? (-> obj hit-points))
+                  (logior! (-> obj focus-status) (focus-status dead))
+                  )
+              (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+              (enemy-method-62 obj)
+              (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+              (process-contact-action arg0)
+              (send-event arg0 'get-attack-count 1)
+              (the-as object (enemy-method-73 obj))
+              )
+             (else
+               (let ((v0-0 (the-as object (-> pp clock frame-counter))))
+                 (set! (-> obj targetted-timer) (the-as uint v0-0))
+                 v0-0
+                 )
+               )
+             )
+           )
+          (else
+            ((method-of-type enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+            )
+          )
         )
       )
-    (none)
     )
   )
 
@@ -375,10 +384,7 @@
       0.0
       (set! f30-0
             (cond
-              ((or (>= (-> self current-path) (-> self num-paths))
-                   (< (-> self current-path) 0)
-                   (<= (-> s5-0 num-data) 0)
-                   )
+              ((or (>= (-> self current-path) (-> self num-paths)) (< (-> self current-path) 0) (<= (-> s5-0 num-data) 0))
                (format
                  0
                  "<GMJ>: ~A has path out of range cur ~D num ~D num-data ~D~%"

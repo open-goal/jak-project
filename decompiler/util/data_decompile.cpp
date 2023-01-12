@@ -736,6 +736,8 @@ const std::unordered_map<
           {"nav-network-info",
            {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
           {"sig-path", {{"samples", ArrayFieldDecompMeta(TypeSpec("sig-path-sample"), 64)}}},
+          {"fort-robotank-segment",
+           {{"event-tbl", ArrayFieldDecompMeta(TypeSpec("fort-robotank-segment-event"), 32)}}},
           {"race-info",
            {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
             {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
@@ -844,7 +846,10 @@ const std::unordered_map<
             {"visnode-ids",
              ArrayFieldDecompMeta(TypeSpec("uint16"),
                                   2,
-                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+          {"predator-graph",
+           {{"node", ArrayFieldDecompMeta(TypeSpec("predator-node"), 48)},
+            {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
