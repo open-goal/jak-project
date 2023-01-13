@@ -12,7 +12,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
-#include "common/nrepl/ReplServer.h"
+#include "common/repl/nrepl/ReplServer.h"
 
 #include "third-party/fmt/core.h"
 // clang-format on

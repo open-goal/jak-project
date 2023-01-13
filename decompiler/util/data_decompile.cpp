@@ -828,7 +828,10 @@ const std::unordered_map<
           {"lightning-probe-vars", {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
           {"nav-mesh",
            {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
-            {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}}}}};
+            {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
+          {"predator-graph",
+           {{"node", ArrayFieldDecompMeta(TypeSpec("predator-node"), 48)},
+            {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

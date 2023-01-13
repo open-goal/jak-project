@@ -32,6 +32,15 @@
 
 ;; og:ignore-form:all-texture-tweak-adjust
 
+(defmacro dm-lambda-boolean-flag (val)
+  "helper macro for making boolean buttons that don't just access symbols directly"
+  `,(lambda (arg (msg debug-menu-msg))
+                            (if (= msg (debug-menu-msg press))
+                                (not! ,val)
+                                )
+                            ,val)
+  )
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -5890,6 +5899,17 @@
       )
     (debug-menu-append-item s5-0 (debug-menu-make-task-menu arg0))
     (debug-menu-append-item s5-0 (debug-menu-make-play-menu arg0))
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "PC Settings"
+           (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
+           (function "Save" #f ,(lambda () (commit-to-file *pc-settings*)))
+           )
+        )
+      )
     )
   arg0
   )

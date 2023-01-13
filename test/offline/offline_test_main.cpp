@@ -2,6 +2,7 @@
 #include <string>
 
 #include "common/log/log.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
 #include "config/config.h"
@@ -11,17 +12,6 @@
 
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/format.h"
-
-// TODO - move this into a common lib eventually
-void clear_terminal() {
-#if defined _WIN32
-  system("cls");
-#elif defined(__LINUX__) || defined(__gnu_linux__) || defined(__linux__)
-  system("clear");
-#elif defined(__APPLE__)
-  // system("clear");
-#endif
-}
 
 int main(int argc, char* argv[]) {
   ArgumentGuard u8_guard(argc, argv);
@@ -61,7 +51,7 @@ int main(int argc, char* argv[]) {
 
   if (pretty_print) {
     lg::set_stdout_level(lg::level::off);
-    clear_terminal();
+    term_util::clear();
   }
   lg::initialize();
 

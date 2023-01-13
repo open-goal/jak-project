@@ -29,6 +29,7 @@
   ("dma-buffer.o" "dma-buffer")
   ("dma-bucket.o" "dma-bucket")
   ("dma-disasm.o" "dma-disasm")
+  ("pckernel-h.o" "pckernel-h") ;; added
   ("pad.o" "pad")
   ("gs.o" "gs")
   ("display-h.o" "display-h")
@@ -231,6 +232,7 @@
   ("game-task.o" "game-task")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood-tables2.o" "mood-tables2")
   ("mood.o" "mood")
