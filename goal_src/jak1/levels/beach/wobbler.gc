@@ -7,7 +7,9 @@
 
 ;; DECOMP BEGINS
 
-(deftype wobbler (basic)
+(defclass wobbler (basic)
+ "Simulates the motion of a dampened spring. 
+  This is used to make the flutflut egg wobble when being hit."
   ((posx    float  :offset-assert   4)
    (posy    float  :offset-assert   8)
    (velx    float  :offset-assert  12)
@@ -16,64 +18,62 @@
    (damping float  :offset-assert  24)
    (height  float  :offset-assert  28)
    )
-  :method-count-assert 13
-  :size-assert         #x20
-  :flag-assert         #xd00000020
   (:methods
-    (reset! (_type_ float float float) none 9)
-    (inc-xy-vel! (_type_ float float) none 10)
-    (move! (_type_) none 11)
-    (TODO-RENAME-12 (_type_ quaternion) none 12)
+    (reset! ((spring float) (damping float) (height float)) (none) 
+      "Resets position and velocity.
+       Sets the spring constant, damping factor, and height."
+      (set! (-> self posx) 0.0)
+      (set! (-> self posy) 0.0)
+      (set! (-> self velx) 0.0)
+      (set! (-> self vely) 0.0)
+      (set! (-> self spring) spring)
+      (set! (-> self damping) damping)
+      (set! (-> self height) height)
+      0
+      (none)
+     )
+
+    (inc-xy-vel! ((x float) (y float)) (none)
+      (+! (-> self velx) x)
+      (+! (-> self vely) y)
+      0
+      (none)
+     )
+
+    (wobble! () (none)
+      "Simulates a frame of a dampened spring, resulting in wobbling.
+       Updates the wobbler position and velocity based on the current position and velocity."
+      (+! (-> self posx) (* (-> self velx) (-> *display* seconds-per-frame)))
+      (+! (-> self posy) (* (-> self vely) (-> *display* seconds-per-frame)))
+      (set! (-> self velx) (* (-> self velx) (-> self damping)))
+      (set! (-> self vely) (* (-> self vely) (-> self damping)))
+      (+! (-> self velx) (* -1.0 (-> self posx) (-> self spring)))
+      (+! (-> self vely) (* -1.0 (-> self posy) (-> self spring)))
+      0
+      (none)
+     )
+
+    (reorient-quat! ((quat quaternion)) (none)
+      "Reorients a quaternion to point in the direction of the current wobbler position.
+       The quaternion is also rotated to point up or down based on the current position."
+      (let ((pos (new 'stack-no-clear 'vector)))
+        (set! (-> pos x) (-> self posy))
+        (set! (-> pos y) 0.0)
+        (set! (-> pos z) (- (-> self posx)))
+        (vector-normalize! pos 1.0)
+        (let* ((distance (/ (sqrtf (+ (* (-> self posx) (-> self posx)) (* (-> self posy) (-> self posy)))) (-> self height)))
+              (angle (atan distance 1.0))
+              )
+          (quaternion-vector-angle! quat pos angle)
+         )
+       )
+      0
+      (none)
+     )
     )
+  (:options
+    :method-count-assert 13
+    :size-assert         #x20
+    :flag-assert         #xd00000020
+   )
   )
-
-
-(defmethod reset! wobbler ((obj wobbler) (arg0 float) (arg1 float) (arg2 float))
-  (set! (-> obj posx) 0.0)
-  (set! (-> obj posy) 0.0)
-  (set! (-> obj velx) 0.0)
-  (set! (-> obj vely) 0.0)
-  (set! (-> obj spring) arg0)
-  (set! (-> obj damping) arg1)
-  (set! (-> obj height) arg2)
-  0
-  (none)
-  )
-
-(defmethod inc-xy-vel! wobbler ((obj wobbler) (arg0 float) (arg1 float))
-  (+! (-> obj velx) arg0)
-  (+! (-> obj vely) arg1)
-  0
-  (none)
-  )
-
-(defmethod move! wobbler ((obj wobbler))
-  (+! (-> obj posx) (* (-> obj velx) (-> *display* seconds-per-frame)))
-  (+! (-> obj posy) (* (-> obj vely) (-> *display* seconds-per-frame)))
-  (set! (-> obj velx) (* (-> obj velx) (-> obj damping)))
-  (set! (-> obj vely) (* (-> obj vely) (-> obj damping)))
-  (+! (-> obj velx) (* -1.0 (-> obj posx) (-> obj spring)))
-  (+! (-> obj vely) (* -1.0 (-> obj posy) (-> obj spring)))
-  0
-  (none)
-  )
-
-(defmethod TODO-RENAME-12 wobbler ((obj wobbler) (arg0 quaternion))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 x) (-> obj posy))
-    (set! (-> s5-0 y) 0.0)
-    (set! (-> s5-0 z) (- (-> obj posx)))
-    (vector-normalize! s5-0 1.0)
-    (let* ((f0-8 (/ (sqrtf (+ (* (-> obj posx) (-> obj posx)) (* (-> obj posy) (-> obj posy)))) (-> obj height)))
-           (f0-9 (atan f0-8 1.0))
-           )
-      (quaternion-vector-angle! arg0 s5-0 f0-9)
-      )
-    )
-  0
-  (none)
-  )
-
-
-
-
