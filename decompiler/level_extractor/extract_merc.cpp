@@ -940,6 +940,7 @@ void extract_merc(const ObjectFileData& ag_data,
             if (tex_it == tex_db.textures.end()) {
               lg::error("failed to find texture: 0x{:x} for {}\n",
                         draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name);
+              idx_in_level_texture = 0;
             } else {
               idx_in_level_texture = out.textures.size();
               auto& new_tex = out.textures.emplace_back();

@@ -365,7 +365,13 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
   if (enable_display) {
-    Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
+    try {
+      Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
+    } catch (std::exception& e) {
+      fmt::print("Exception thrown from graphics loop: {}\n", e.what());
+      fmt::print("Everything will crash now. good luck\n");
+      throw;
+    }
   }
 
   // hack to make the IOP die quicker if it's loading/unloading music
