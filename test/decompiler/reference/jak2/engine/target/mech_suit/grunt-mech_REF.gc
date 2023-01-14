@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: grunt-mech.gc
-;; name in dgo: grunt-mech
-;; dgos: DRILLMTN, UNB, RUI
-
-;; DECOMP BEGINS
-
+;; definition of type grunt-mech-hold
 (deftype grunt-mech-hold (structure)
   ((reserve-mask uint8          :offset-assert   0)
    (lower-hold   int8           :offset-assert   1)
@@ -22,7 +17,26 @@
   :flag-assert         #x9000000c0
   )
 
+;; definition for method 3 of type grunt-mech-hold
+(defmethod inspect grunt-mech-hold ((obj grunt-mech-hold))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'grunt-mech-hold)
+  (format #t "~1Treserve-mask: ~D~%" (-> obj reserve-mask))
+  (format #t "~1Tlower-hold: ~D~%" (-> obj lower-hold))
+  (format #t "~1Tgrunt-handle: ~D~%" (-> obj grunt-handle))
+  (format #t "~1Ttimeout: ~D~%" (-> obj timeout))
+  (format #t "~1Tlocal-pos: #<vector @ #x~X>~%" (-> obj local-pos))
+  (format #t "~1Tlocal-rot: #<vector @ #x~X>~%" (-> obj local-rot))
+  (format #t "~1Tlocal-mat: #<matrix @ #x~X>~%" (-> obj local-mat))
+  (format #t "~1Tworld-mat: #<matrix @ #x~X>~%" (-> obj world-mat))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type grunt-mech-info
 (deftype grunt-mech-info (basic)
   ((reserved-mask    uint8                     :offset-assert   4)
    (last-update-time time-frame                :offset-assert   8)
@@ -37,7 +51,21 @@
     )
   )
 
+;; definition for method 3 of type grunt-mech-info
+(defmethod inspect grunt-mech-info ((obj grunt-mech-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Treserved-mask: ~D~%" (-> obj reserved-mask))
+  (format #t "~1Tlast-update-time: ~D~%" (-> obj last-update-time))
+  (format #t "~1Tholds[6] @ #x~X~%" (-> obj holds))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *grunt-mech-info*, type grunt-mech-info
 (define *grunt-mech-info*
   (new 'static 'grunt-mech-info :holds (new 'static 'inline-array grunt-mech-hold 6
                                          (new 'static 'grunt-mech-hold
@@ -80,6 +108,7 @@
                                 )
   )
 
+;; failed to figure out what this is:
 (let ((gp-0 *grunt-mech-info*))
   (set! (-> gp-0 last-update-time) 0)
   (set! (-> gp-0 reserved-mask) (the-as uint 0))
@@ -93,6 +122,8 @@
     )
   )
 
+;; definition for method 10 of type grunt-mech-info
+;; WARN: Return type mismatch int vs none.
 (defmethod grunt-mech-info-method-10 grunt-mech-info ((obj grunt-mech-info))
   (with-pp
     (let ((s5-0 (-> pp clock frame-counter)))
@@ -144,6 +175,7 @@
     )
   )
 
+;; definition for method 9 of type grunt-mech-info
 (defmethod grunt-mech-info-method-9 grunt-mech-info ((obj grunt-mech-info) (arg0 int) (arg1 process) (arg2 symbol))
   (with-pp
     (grunt-mech-info-method-10 obj)
@@ -171,6 +203,7 @@
     )
   )
 
+;; definition of type grunt-mech
 (deftype grunt-mech (grunt)
   ((hold-id       int8           :offset-assert 692)
    (dismount-dest vector :inline :offset-assert 704)
@@ -193,13 +226,31 @@
     )
   )
 
+;; definition for method 3 of type grunt-mech
+(defmethod inspect grunt-mech ((obj grunt-mech))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type grunt inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Thold-id: ~D~%" (-> obj hold-id))
+  (format #t "~2Tdismount-dest: #<vector @ #x~X>~%" (-> obj dismount-dest))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 55 of type grunt-mech
+;; WARN: Return type mismatch int vs none.
 (defmethod enemy-method-55 grunt-mech ((obj grunt-mech))
   ((method-of-type grunt enemy-method-55) obj)
   0
   (none)
   )
 
+;; definition for method 193 of type grunt-mech
+;; INFO: Used lq/sq
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
@@ -229,9 +280,9 @@
                       (f4-0 (-> s0-0 y))
                       (f5-0 (-> s0-0 z))
                       )
-                  ;; (.mula.s f0-2 f3-0)
-                  ;; (.madda.s f1-0 f4-0)
-                  ;; (.madd.s f0-3 f2-0 f5-0)
+                  (.mula.s f0-2 f3-0)
+                  (.madda.s f1-0 f4-0)
+                  (.madd.s f0-3 f2-0 f5-0)
                   )
                 )
               (when (>= f0-3 0.0)
@@ -284,6 +335,7 @@
     )
   )
 
+;; definition for method 184 of type grunt-mech
 (defmethod grunt-method-184 grunt-mech ((obj grunt-mech) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
@@ -337,6 +389,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate mech-lunge (grunt-mech)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
@@ -403,6 +456,8 @@
   :post (the-as (function none :behavior grunt-mech) nav-enemy-simple-post)
   )
 
+;; definition for function grunt-mech-hold-post
+;; INFO: Used lq/sq
 (defbehavior grunt-mech-hold-post grunt-mech ()
   (let ((gp-0 *grunt-mech-info*))
     (grunt-mech-info-method-10 gp-0)
@@ -417,6 +472,8 @@
   (none)
   )
 
+;; definition for method 195 of type grunt-mech
+;; INFO: Used lq/sq
 (defmethod grunt-mech-method-195 grunt-mech ((obj grunt-mech) (arg0 vector) (arg1 vector) (arg2 vector))
   (local-vars (v1-13 float))
   (rlet ((acc :class vf)
@@ -474,6 +531,7 @@
     )
   )
 
+;; definition for method 192 of type grunt-mech
 (defmethod grunt-mech-method-192 grunt-mech ((obj grunt-mech))
   (do-navigation-to-destination (-> obj nav state) (-> obj root-override2 trans))
   (let ((a1-1 *target*))
@@ -532,6 +590,7 @@
   #f
   )
 
+;; definition for method 194 of type grunt-mech
 ;; WARN: Return type mismatch object vs none.
 (defmethod grunt-mech-method-194 grunt-mech ((obj grunt-mech))
   (with-pp
@@ -556,6 +615,7 @@
     )
   )
 
+;; definition for method 191 of type grunt-mech
 ;; WARN: Return type mismatch object vs none.
 (defmethod grunt-mech-method-191 grunt-mech ((obj grunt-mech))
   (with-pp
@@ -566,6 +626,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate mech-hold (grunt-mech)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
@@ -711,6 +772,7 @@
   :post grunt-mech-hold-post
   )
 
+;; failed to figure out what this is:
 (defstate mech-dismount (grunt-mech)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
@@ -803,6 +865,7 @@
   :post (the-as (function none :behavior grunt-mech) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate mech-post-circling (grunt-mech)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
@@ -867,6 +930,7 @@
   :post (-> (method-of-type grunt circling) post)
   )
 
+;; failed to figure out what this is:
 (defstate mech-pre-circling (grunt-mech)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
@@ -881,3 +945,7 @@
   :code (-> (method-of-type grunt-mech mech-post-circling) code)
   :post (-> (method-of-type grunt-mech mech-post-circling) post)
   )
+
+
+
+
