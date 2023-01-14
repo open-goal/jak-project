@@ -3401,9 +3401,7 @@
   "levels/temple/mountain-obs2.gc"
   "levels/temple/mountain-scenes.gc"
   "levels/temple/mountain-part.gc"
-  ;; "levels/common/enemy/metalhead_bearer/centurion.gc"
   "levels/common/enemy/hopper.gc"
-  ;; "levels/common/enemy/metalhead_brown/metalmonk.gc"
   )
 
 (copy-textures 1254 1256 1255 1253 1257 3470 1275)
@@ -3412,10 +3410,8 @@
   "plat-buried-ag"
   "plat-return-ag"
   "water-anim-mountain-ag"
-  ;; "shard-ag"
   "mtn-gate-ag"
   "mtn-lens-base-ag"
-  ;; "warp-gate-ag"
   "mtn-plat-long-ag"
   "iris-door-ag"
   "mtn-plat-elevator-ag"
@@ -3435,12 +3431,8 @@
 (copy-textures 1719 1721 1720 1722 3506)
 
 (copy-gos
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "mtn-gear-device-ag"
   "mtn-step-plat-rocks-ag"
-  ;; "metalmonk-ag"
-  ;; "centurion-ag"
   "rhino-ag"
   "mtn-plat-buried-rocks-ag"
   "rhino-wall-ag"
@@ -3448,16 +3440,10 @@
   "water-anim-mountain-dark-eco-ag"
   "mtn-aval-rocks-ag"
   "mtn-dice-ag"
-  ;; "plat-buried-ag"
-  ;; "plat-return-ag"
-  ;; "iris-door-ag"
   "seal-of-mar-ag"
   "mtn-dice-button-ag"
   "mtn-plat-eject-ag"
   "mtn-button-ag"
-  ;; "gear-device-gear-ag"
-  ;; "mtn-lens-ag"
-  ;; "particleman-ag"
   "mtnext-vis"
   )
 
@@ -3948,32 +3934,27 @@
 ;; ;; SEW
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "SEW.DGO" "sew.gd")
+(cgo "SEW.DGO" "sew.gd")
 
-;; (copy-textures 1059 1060 1066 2270 3479)
+(copy-textures 1059 1060 1066 2270 3479)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "grunt-ag"
-;;   "jak-highres-ag"
-;;   "amphibian-ag"
-;;   "sew-catwalk-ag"
-;;   "sew-multi-blade-ag"
-;;   "fodder-ag"
-;;   "sew-gunturret-ag"
-;;   "mar-statue-ag"
-;;   "sew-twist-blade-ag"
-;;   "sew-tri-blade-ag"
-;;   "sew-single-blade-ag"
-;;   "mine-a-ag"
-;;   "sew-valve-ag"
-;;   "mine-b-ag"
-;;   "sew-arm-blade-ag"
-;;   "gold-key-ag"
-;;   "light-switch-ag"
-;;   "grill-ag"
-;;   "sewer-vis"
-;;   )
+(copy-gos
+  "sew-catwalk-ag"
+  "sew-multi-blade-ag"
+  "sew-gunturret-ag"
+  "mar-statue-ag"
+  "sew-twist-blade-ag"
+  "sew-tri-blade-ag"
+  "sew-single-blade-ag"
+  "mine-a-ag"
+  "sew-valve-ag"
+  "mine-b-ag"
+  "sew-arm-blade-ag"
+  "gold-key-ag"
+  "light-switch-ag"
+  "grill-ag"
+  "sewer-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SKA
@@ -4198,84 +4179,31 @@
 ;; ;; SWB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "SWB.DGO" "swb.gd")
+(cgo "SWB.DGO" "swb.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/undefined/ruf-h.gc"
-;;   "levels/undefined/ruf-task.gc"
-;;   "levels/undefined/ruf.gc"
-;;   "levels/undefined/ruf-states.gc"
-;;   "levels/sewer/escort/jinx-h.gc"
-;;   "levels/sewer/escort/jinx-shot.gc"
-;;   "levels/sewer/escort/jinx-bomb.gc"
-;;   "levels/sewer/escort/jinx.gc"
-;;   "levels/sewer/escort/jinx-states.gc"
-;;   "levels/sewer/escort/mog-h.gc"
-;;   "levels/sewer/escort/mog.gc"
-;;   "levels/sewer/escort/grim-h.gc"
-;;   "levels/sewer/escort/grim.gc"
-;;   "levels/sewer/sewer-part.gc"
-;;   "levels/sewer/sewer-ocean.gc"
-;;   "levels/sewer/sewer-obs.gc"
-;;   "levels/sewer/sewer-obs2.gc"
-;;   "levels/sewer/hosehead.gc"
-;;   "levels/sewer/hosehead-fake.gc"
-;;   "levels/common/enemy/amphibian/amphibian.gc"
-;;   "levels/sewer/gator.gc"
-;;   "levels/common/enemy/fodder/fodder.gc"
-;;   "levels/sewer/hal2-course.gc"
-;;   "levels/sewer/mog2-course.gc"
-;;   "levels/sewer/jinx2-course.gc"
-;;   "levels/sewer/grim2-course.gc"
-;;   "levels/sewer/sewer-scenes.gc"
-;;   "levels/common/entities/sew-gunturret.gc"
-;;   )
+(copy-textures 1372 1373 1458)
 
-;; (copy-textures 1372 1373 1458)
-
-;; (copy-gos
-;;   "com-airlock-inner-ag"
-;;   "sew-elevator-ag"
-;;   "sewescb-vis"
-;;   )
+(copy-gos
+  "sewescb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SWE
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "SWE.DGO" "swe.gd")
+(cgo "SWE.DGO" "swe.gd")
 
-;; (copy-textures 1370 1387 1371 2293 3478 3415)
+(copy-textures 1370 1387 1371 2293 3478 3415)
 
-;; (copy-gos
-;;   "jinx-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "hosehead-ag"
-;;   "sew-wall-ag"
-;;   "sew-mar-statue-explode-ag"
-;;   "sew-multi-blade-ag"
-;;   "mar-statue-ag"
-;;   "sew-twist-blade-ag"
-;;   "heart-of-mar-ag"
-;;   "mine-a-ag"
-;;   "mine-b-ag"
-;;   "sew-arm-blade-ag"
-;;   "light-switch-ag"
-;;   "jinx-bomb-ag"
-;;   "grill-ag"
-;;   "particleman-ag"
-;;   "sewesc-vis"
-;;   )
+(copy-gos
+  "jinx-ag"
+  "hosehead-ag"
+  "sew-wall-ag"
+  "sew-mar-statue-explode-ag"
+  "heart-of-mar-ag"
+  "jinx-bomb-ag"
+  "sewesc-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TBO
