@@ -848,7 +848,21 @@ const std::unordered_map<
                                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           {"predator-graph",
            {{"node", ArrayFieldDecompMeta(TypeSpec("predator-node"), 48)},
-            {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}}}}};
+            {"edge", ArrayFieldDecompMeta(TypeSpec("predator-edge"), 4)}}},
+          {"sig0-course",
+           {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+            {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+            {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+            {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+          {"ashelin-course",
+           {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+            {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+            {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+            {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+          {"ai-task-pool",
+           {{"tasks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                           4,
+                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

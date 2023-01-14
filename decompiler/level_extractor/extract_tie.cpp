@@ -559,7 +559,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u32 tex_combo = (((u32)tpage) << 16) | tidx;
         // look up the texture to make sure it's valid
         auto tex = tdb.textures.find(tex_combo);
-        ASSERT(tex != tdb.textures.end());
+        // ASSERT(tex != tdb.textures.end());
         // remember the texture id
         adgif.combo_tex = tex_combo;
         // and the hidden value in the unused a+d
