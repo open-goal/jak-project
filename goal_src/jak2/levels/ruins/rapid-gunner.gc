@@ -46,10 +46,10 @@
   )
 
 
-(defskelgroup skel-rapid-gunner rapid-gunner 0 5
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+(defskelgroup skel-rapid-gunner rapid-gunner rapid-gunner-lod0-jg rapid-gunner-idle-ja
+              ((rapid-gunner-lod0-mg (meters 20)) (rapid-gunner-lod1-mg (meters 40)) (rapid-gunner-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 1.5 0 7)
-              :shadow 4
+              :shadow rapid-gunner-shadow-mg
               )
 
 (define *rapid-gunner-nav-enemy-info*
@@ -61,7 +61,12 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 4 #x1010501 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command #x1 :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 5
     :notice-anim 6
     :hostile-anim -1
@@ -724,7 +729,7 @@
           )
         0
         (ja-channel-push! 1 (seconds 0.2))
-        (ja :group! (-> self draw art-group data 17))
+        (ja :group! rapid-gunner-shoot-track-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
         (until (enemy-method-96 self 910.2222 #t)
           (ja-blend-eval)
@@ -737,7 +742,7 @@
         0
         )
       (let ((v1-23 (ja-group)))
-        (if (not (and v1-23 (or (= v1-23 (-> self draw art-group data 14)) (= v1-23 (-> self draw art-group data 15)))))
+        (if (not (and v1-23 (or (= v1-23 rapid-gunner-shoot-ja) (= v1-23 rapid-gunner-shoot1-ja))))
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
@@ -884,8 +889,8 @@
           )
         0
         (ja-channel-push! 2 (seconds 0.1))
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+        (ja-no-eval :group! rapid-gunner-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-idle-ja) frames num-frames) -1)))
                     :frame-num 0.0
                     )
         (let ((a0-17 (-> self skel root-channel 1)))
@@ -893,13 +898,13 @@
             (set! (-> a0-17 frame-interp 1) f0-7)
             (set! (-> a0-17 frame-interp 0) f0-7)
             )
-          (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
+          (set! (-> a0-17 frame-group) (the-as art-joint-anim rapid-gunner-idle-ja))
           (set! (-> a0-17 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
+                (the float (+ (-> (the-as art-joint-anim rapid-gunner-idle-ja) frames num-frames) -1))
                 )
           (set! (-> a0-17 param 1) 1.0)
           (set! (-> a0-17 frame-num) 0.0)
-          (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
+          (joint-control-channel-group! a0-17 (the-as art-joint-anim rapid-gunner-idle-ja) num-func-seek!)
           )
         (until (ja-done? 0)
           (let ((s5-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) gp-0 (-> self root-override2 quat))))
@@ -972,8 +977,8 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 7)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+      (ja-no-eval :group! rapid-gunner-turn-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-turn-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1023,8 +1028,8 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 12)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
+      (ja-no-eval :group! rapid-gunner-aim-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-aim-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1061,8 +1066,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 19)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1)) 0.5)
+    (ja-no-eval :group! rapid-gunner-reload-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-reload-ja) frames num-frames) -1)) 0.5)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1158,7 +1163,7 @@
         )
       0
       (ja-channel-push! 1 (seconds 0.2))
-      (ja :group! (-> self draw art-group data 17))
+      (ja :group! rapid-gunner-shoot-track-ja)
       (ja :num-func num-func-identity :frame-num 0.0)
       (until (enemy-method-96 self 910.2222 #t)
         (ja-blend-eval)
@@ -1171,9 +1176,9 @@
       0
       )
     (let ((v1-23 (ja-group)))
-      (when (not (and v1-23 (= v1-23 (-> self draw art-group data 12))))
+      (when (not (and v1-23 (= v1-23 rapid-gunner-aim-ja)))
         (let ((v1-29 (ja-group)))
-          (if (and v1-29 (= v1-29 (-> self draw art-group data 17)))
+          (if (and v1-29 (= v1-29 rapid-gunner-shoot-track-ja))
               (ja-channel-push! 1 (seconds 0.067))
               (ja-channel-push! 1 (seconds 0.2))
               )
@@ -1182,11 +1187,8 @@
       )
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 12)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1))
-                      f30-0
-                      )
+        (ja-no-eval :group! rapid-gunner-aim-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-aim-ja) frames num-frames) -1)) f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -1246,8 +1248,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.135))
-    (ja-no-eval :group! (-> self draw art-group data 18)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
+    (ja-no-eval :group! rapid-gunner-spin-attack-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim rapid-gunner-spin-attack-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)

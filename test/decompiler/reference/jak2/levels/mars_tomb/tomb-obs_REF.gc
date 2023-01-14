@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: tomb-obs.gc
-;; name in dgo: tomb-obs
-;; dgos: TOA
-
-(define-extern *indax-bounce-mods* surface)
-
-;; DECOMP BEGINS
-
+;; definition of type tomb-plat-wall
 (deftype tomb-plat-wall (plat)
   ((position vector :inline :offset-assert 336)
    (last-pos float          :offset-assert 352)
@@ -19,18 +12,35 @@
   :flag-assert         #x2500f00164
   )
 
+;; definition for method 3 of type tomb-plat-wall
+(defmethod inspect tomb-plat-wall ((obj tomb-plat-wall))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tposition: #<vector @ #x~X>~%" (-> obj position))
+  (format #t "~2Tlast-pos: ~f~%" (-> obj last-pos))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-plat-wall tomb-plat-wall 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-plat-wall tomb-plat-wall tomb-plat-wall-lod0-jg tomb-plat-wall-idle-ja
+              ((tomb-plat-wall-lod0-mg (meters 20)) (tomb-plat-wall-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 -5 4 8.5)
               :origin-joint-index 3
               )
 
+;; definition for method 30 of type tomb-plat-wall
 (defmethod get-art-group tomb-plat-wall ((obj tomb-plat-wall))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-plat-wall" (the-as (pointer uint32) #f))
   )
 
+;; failed to figure out what this is:
 (defstate plat-idle (tomb-plat-wall)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior tomb-plat-wall) plat-event)
@@ -107,11 +117,15 @@
   :post (the-as (function none :behavior tomb-plat-wall) plat-post)
   )
 
+;; definition for method 32 of type tomb-plat-wall
+;; WARN: Return type mismatch int vs none.
 (defmethod base-plat-method-32 tomb-plat-wall ((obj tomb-plat-wall))
   0
   (none)
   )
 
+;; definition for method 31 of type tomb-plat-wall
+;; WARN: Return type mismatch int vs none.
 (defmethod base-plat-method-31 tomb-plat-wall ((obj tomb-plat-wall))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -136,6 +150,8 @@
   (none)
   )
 
+;; definition for method 11 of type tomb-plat-wall
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-wall ((obj tomb-plat-wall) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
@@ -173,6 +189,7 @@
   (none)
   )
 
+;; definition of type tomb-stair-block-spikes
 (deftype tomb-stair-block-spikes (process-drawable)
   ((root-override collide-shape-moving  :offset 128)
    )
@@ -185,12 +202,26 @@
     )
   )
 
+;; definition for method 3 of type tomb-stair-block-spikes
+(defmethod inspect tomb-stair-block-spikes ((obj tomb-stair-block-spikes))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-stair-block-spikes tomb-stair-block-spikes 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-stair-block-spikes tomb-stair-block-spikes tomb-stair-block-spikes-lod0-jg tomb-stair-block-spikes-idle-ja
+              ((tomb-stair-block-spikes-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               )
 
+;; definition for function tomb-stair-block-collision
 ;; WARN: Return type mismatch int vs object.
 (defbehavior tomb-stair-block-collision tomb-stair-block-spikes ((arg0 symbol))
   (let ((v1-1 (-> self root-override root-prim)))
@@ -212,6 +243,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-stair-block-spikes)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -257,6 +289,8 @@
   :post (the-as (function none :behavior tomb-stair-block-spikes) transform-post)
   )
 
+;; definition for function tomb-stair-block-spikes-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior tomb-stair-block-spikes-init-by-other tomb-stair-block-spikes ((arg0 vector))
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape))
@@ -325,6 +359,7 @@
   (none)
   )
 
+;; definition of type tomb-stair-block-spike-info
 (deftype tomb-stair-block-spike-info (structure)
   ((spike    handle  :offset-assert   0)
    (joint    int32   :offset-assert   8)
@@ -337,7 +372,23 @@
   :flag-assert         #x900000018
   )
 
+;; definition for method 3 of type tomb-stair-block-spike-info
+(defmethod inspect tomb-stair-block-spike-info ((obj tomb-stair-block-spike-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'tomb-stair-block-spike-info)
+  (format #t "~1Tspike: ~D~%" (-> obj spike))
+  (format #t "~1Tjoint: ~D~%" (-> obj joint))
+  (format #t "~1Ty-offset: ~f~%" (-> obj y-offset))
+  (format #t "~1Tup: ~A~%" (-> obj up))
+  (format #t "~1Tsounded: ~A~%" (-> obj sounded))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type tomb-stair-block
 (deftype tomb-stair-block (process-drawable)
   ((root-override collide-shape-moving                  :offset        128)
    (initial-y     float                                 :offset-assert 200)
@@ -359,12 +410,32 @@
     )
   )
 
+;; definition for method 3 of type tomb-stair-block
+(defmethod inspect tomb-stair-block ((obj tomb-stair-block))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinitial-y: ~f~%" (-> obj initial-y))
+  (format #t "~2Tspike-info[4] @ #x~X~%" (-> obj spike-info))
+  (format #t "~2Tcamera-state: ~D~%" (-> obj camera-state))
+  (format #t "~2Tsink-sound: ~D~%" (-> obj sink-sound))
+  (format #t "~2Trise-sound: ~D~%" (-> obj rise-sound))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-stair-block tomb-stair-block 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-stair-block tomb-stair-block tomb-stair-block-lod0-jg tomb-stair-block-idle-ja
+              ((tomb-stair-block-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 32 0 58)
               )
 
+;; definition for function lift-pool
+;; INFO: Used lq/sq
 (defbehavior lift-pool tomb-stair-block ((arg0 int))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -390,6 +461,8 @@
     )
   )
 
+;; definition for function drop-pool
+;; INFO: Used lq/sq
 (defbehavior drop-pool tomb-stair-block ((arg0 int))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -419,6 +492,7 @@
     )
   )
 
+;; definition for function position-spikes
 (defbehavior position-spikes tomb-stair-block ((arg0 int))
   (let ((s5-0 (and (nonzero? arg0) (< (mod (-> self clock frame-counter) arg0) (/ arg0 2))))
         (s4-0 (and (nonzero? arg0) (< (mod (+ (-> self clock frame-counter) (seconds 0.75)) arg0) (/ arg0 2))))
@@ -459,6 +533,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate sunk (tomb-stair-block)
   :virtual #t
   :enter (behavior ()
@@ -484,6 +559,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate sink (tomb-stair-block)
   :virtual #t
   :enter (behavior ()
@@ -569,6 +645,7 @@
   :post (the-as (function none :behavior tomb-stair-block) rider-post)
   )
 
+;; failed to figure out what this is:
 (defstate moving (tomb-stair-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -673,6 +750,7 @@
   :post (the-as (function none :behavior tomb-stair-block) rider-post)
   )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-stair-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -738,6 +816,7 @@
   :post (the-as (function none :behavior tomb-stair-block) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-pools (tomb-stair-block)
   :virtual #t
   :trans (behavior ()
@@ -783,6 +862,7 @@
   :code (the-as (function none :behavior tomb-stair-block) sleep-code)
   )
 
+;; definition for method 11 of type tomb-stair-block
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-stair-block ((obj tomb-stair-block) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -897,8 +977,13 @@
   (none)
   )
 
-(defskelgroup skel-tomb-bounce-web tomb-bounce-web 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-bounce-web tomb-bounce-web tomb-bounce-web-lod0-jg tomb-bounce-web-idle-ja
+              ((tomb-bounce-web-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
+;; definition of type tomb-bounce-web
 (deftype tomb-bounce-web (bouncer)
   ()
   :heap-base #x60
@@ -907,7 +992,21 @@
   :flag-assert         #x19006000d4
   )
 
+;; definition for method 3 of type tomb-bounce-web
+(defmethod inspect tomb-bounce-web ((obj tomb-bounce-web))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type bouncer inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 23 of type tomb-bounce-web
+;; WARN: Return type mismatch int vs none.
 (defmethod init-skeleton! tomb-bounce-web ((obj tomb-bounce-web))
   (initialize-skeleton
     obj
@@ -919,6 +1018,8 @@
   (none)
   )
 
+;; definition for method 24 of type tomb-bounce-web
+;; WARN: Return type mismatch int vs none.
 (defmethod bouncer-method-24 tomb-bounce-web ((obj tomb-bounce-web))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -970,6 +1071,7 @@
   (none)
   )
 
+;; definition of type tomb-plat-pillar
 (deftype tomb-plat-pillar (plat)
   ()
   :heap-base #xd0
@@ -978,22 +1080,39 @@
   :flag-assert         #x2500d00144
   )
 
+;; definition for method 3 of type tomb-plat-pillar
+(defmethod inspect tomb-plat-pillar ((obj tomb-plat-pillar))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type plat inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-plat-pillar tomb-plat-pillar 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-plat-pillar tomb-plat-pillar tomb-plat-pillar-lod0-jg tomb-plat-pillar-idle-ja
+              ((tomb-plat-pillar-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -7 0 8)
               )
 
+;; definition for method 30 of type tomb-plat-pillar
 (defmethod get-art-group tomb-plat-pillar ((obj tomb-plat-pillar))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-plat-pillar" (the-as (pointer uint32) #f))
   )
 
+;; definition for method 32 of type tomb-plat-pillar
+;; WARN: Return type mismatch int vs none.
 (defmethod base-plat-method-32 tomb-plat-pillar ((obj tomb-plat-pillar))
   0
   (none)
   )
 
+;; definition for method 31 of type tomb-plat-pillar
 ;; WARN: Return type mismatch collide-shape vs none.
 (defmethod base-plat-method-31 tomb-plat-pillar ((obj tomb-plat-pillar))
   "TODO - collision stuff"
@@ -1018,6 +1137,7 @@
   (none)
   )
 
+;; definition of type tomb-elevator
 (deftype tomb-elevator (elevator)
   ((last-pos vector :inline :offset-assert 368)
    (speed    float          :offset-assert 384)
@@ -1028,9 +1148,28 @@
   :flag-assert         #x3101100184
   )
 
+;; definition for method 3 of type tomb-elevator
+(defmethod inspect tomb-elevator ((obj tomb-elevator))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elevator inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tlast-pos: #<vector @ #x~X>~%" (-> obj last-pos))
+  (format #t "~2Tspeed: ~f~%" (-> obj speed))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-elevator tomb-elevator 0 3 ((1 (meters 999999))) :bounds (static-spherem 4 0 4 7))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-elevator tomb-elevator tomb-elevator-lod0-jg tomb-elevator-idle-ja
+              ((tomb-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 4 0 4 7)
+              )
 
+;; failed to figure out what this is:
 (defstate running (tomb-elevator)
   :virtual #t
   :enter (behavior ()
@@ -1068,6 +1207,8 @@
     )
   )
 
+;; definition for method 41 of type tomb-elevator
+;; WARN: Return type mismatch int vs none.
 (defmethod init-defaults! tomb-elevator ((obj tomb-elevator))
   "Initializes default settings related to the [[elevator]]:
        - `elevator-xz-threshold`
@@ -1083,11 +1224,13 @@
   (none)
   )
 
+;; definition for method 30 of type tomb-elevator
 (defmethod get-art-group tomb-elevator ((obj tomb-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-elevator" (the-as (pointer uint32) #f))
   )
 
+;; definition for method 31 of type tomb-elevator
 ;; WARN: Return type mismatch collide-shape vs none.
 (defmethod base-plat-method-31 tomb-elevator ((obj tomb-elevator))
   "TODO - collision stuff"
@@ -1112,6 +1255,8 @@
   (none)
   )
 
+;; definition for method 42 of type tomb-elevator
+;; WARN: Return type mismatch int vs none.
 (defmethod clear-ambient-sound! tomb-elevator ((obj tomb-elevator))
   "Might be a virtual function, but clears the object's [[ambient-sound]]"
   (set! (-> obj sound)
@@ -1121,12 +1266,14 @@
   (none)
   )
 
-(defskelgroup skel-tomb-boss-door tomb-boss-door 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-boss-door tomb-boss-door tomb-boss-door-lod0-jg tomb-boss-door-idle-ja
+              ((tomb-boss-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 21 0 60)
               :origin-joint-index 3
               )
 
+;; definition of type tomb-boss-door
 (deftype tomb-boss-door (com-airlock)
   ()
   :heap-base #x100
@@ -1135,10 +1282,22 @@
   :flag-assert         #x1c01000174
   )
 
+;; definition for method 3 of type tomb-boss-door
+(defmethod inspect tomb-boss-door ((obj tomb-boss-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type com-airlock inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type tomb-boss-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-boss-door ((obj tomb-boss-door) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1181,6 +1340,7 @@
   (none)
   )
 
+;; definition of type water-anim-tomb
 (deftype water-anim-tomb (water-anim)
   ()
   :heap-base #x80
@@ -1189,7 +1349,20 @@
   :flag-assert         #x1d00800100
   )
 
+;; definition for method 3 of type water-anim-tomb
+(defmethod inspect water-anim-tomb ((obj water-anim-tomb))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type water-anim inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol ripple-for-water-anim-tomb, type ripple-wave-set
 (define ripple-for-water-anim-tomb (new 'static 'ripple-wave-set
                                      :count 3
                                      :converted #f
@@ -1203,6 +1376,7 @@
                                      )
         )
 
+;; definition for method 24 of type water-anim-tomb
 ;; WARN: Return type mismatch ripple-wave-set vs none.
 (defmethod art-init! water-anim-tomb ((obj water-anim-tomb))
   "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience."
@@ -1220,11 +1394,13 @@
   (none)
   )
 
-(defskelgroup skel-tomb-wing-door tomb-wing-door 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-wing-door tomb-wing-door tomb-wing-door-lod0-jg tomb-wing-door-idle-ja
+              ((tomb-wing-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -10 0 20)
               )
 
+;; definition of type tomb-wing-door
 (deftype tomb-wing-door (com-airlock)
   ()
   :heap-base #x100
@@ -1233,10 +1409,22 @@
   :flag-assert         #x1c01000174
   )
 
+;; definition for method 3 of type tomb-wing-door
+(defmethod inspect tomb-wing-door ((obj tomb-wing-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type com-airlock inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type tomb-wing-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-wing-door ((obj tomb-wing-door) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
@@ -1289,12 +1477,14 @@
   (none)
   )
 
-(defskelgroup skel-tomb-boulder-door tomb-boulder-door 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-boulder-door tomb-boulder-door tomb-boulder-door-lod0-jg tomb-boulder-door-idle-ja
+              ((tomb-boulder-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 7 0 10)
               :origin-joint-index 3
               )
 
+;; definition of type tomb-boulder-door
 (deftype tomb-boulder-door (process-drawable)
   ((root-override collide-shape-moving  :offset 128)
    )
@@ -1308,7 +1498,20 @@
     )
   )
 
+;; definition for method 3 of type tomb-boulder-door
+(defmethod inspect tomb-boulder-door ((obj tomb-boulder-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate close (tomb-boulder-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1333,6 +1536,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate open (tomb-boulder-door)
   :virtual #t
   :event (-> (method-of-type tomb-boulder-door close) event)
@@ -1346,6 +1550,7 @@
     )
   )
 
+;; definition for method 11 of type tomb-boulder-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-boulder-door ((obj tomb-boulder-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -1378,6 +1583,7 @@
   (none)
   )
 
+;; definition of type tomb-plat-return
 (deftype tomb-plat-return (base-plat)
   ((intro-path path-control  :offset-assert 272)
    (ride-timer time-frame    :offset-assert 280)
@@ -1400,12 +1606,33 @@
     )
   )
 
+;; definition for method 3 of type tomb-plat-return
+(defmethod inspect tomb-plat-return ((obj tomb-plat-return))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tintro-path: ~A~%" (-> obj intro-path))
+  (format #t "~2Tride-timer: ~D~%" (-> obj ride-timer))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
+  (format #t "~2Tdest-pos: ~f~%" (-> obj dest-pos))
+  (format #t "~2Tpath-speed: ~f~%" (-> obj path-speed))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-plat-return tomb-plat-return 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-plat-return tomb-plat-return tomb-plat-return-lod0-jg tomb-plat-return-idle-ja
+              ((tomb-plat-return-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4.8)
               )
 
+;; failed to figure out what this is:
 (defstate hidden (tomb-plat-return)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1422,6 +1649,7 @@
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate run-intro (tomb-plat-return)
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior tomb-plat-return) plat-event)
@@ -1464,6 +1692,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate waiting (tomb-plat-return)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1503,6 +1732,7 @@
   :post (the-as (function none :behavior tomb-plat-return) plat-post)
   )
 
+;; failed to figure out what this is:
 (defstate running (tomb-plat-return)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1544,6 +1774,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate waiting-for-no-player (tomb-plat-return)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1578,6 +1809,7 @@
   :post (the-as (function none :behavior tomb-plat-return) plat-post)
   )
 
+;; definition for method 7 of type tomb-plat-return
 ;; WARN: Return type mismatch process-drawable vs tomb-plat-return.
 (defmethod relocate tomb-plat-return ((obj tomb-plat-return) (arg0 int))
   (if (nonzero? (-> obj intro-path))
@@ -1586,12 +1818,15 @@
   (the-as tomb-plat-return ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 10 of type tomb-plat-return
 (defmethod deactivate tomb-plat-return ((obj tomb-plat-return))
   (sound-stop (the-as sound-id (-> obj sound-id)))
   ((the-as (function process-drawable none) (find-parent-method tomb-plat-return 10)) obj)
   (none)
   )
 
+;; definition for method 31 of type tomb-plat-return
+;; WARN: Return type mismatch int vs none.
 (defmethod base-plat-method-31 tomb-plat-return ((obj tomb-plat-return))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -1616,6 +1851,7 @@
   (none)
   )
 
+;; definition for method 11 of type tomb-plat-return
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-return ((obj tomb-plat-return) (arg0 entity-actor))
   (base-plat-method-31 obj)
@@ -1667,6 +1903,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defpart 3159
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x83 :page #xc))
     (sp-func spt-birth-func 'birth-func-set-quat)
@@ -1682,6 +1919,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 3160
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
     (sp-flt spt-num 1.0)
@@ -1701,6 +1939,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 3161
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbc :page #xc))
     (sp-flt spt-num 1.0)
@@ -1720,6 +1959,8 @@
     )
   )
 
+;; definition for function tomb-sphinx-draw-beam
+;; INFO: Used lq/sq
 (defun tomb-sphinx-draw-beam ((arg0 vector) (arg1 vector))
   (let ((a2-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0)))
     (set! (-> *part-id-table* 3159 init-specs 4 initial-valuef) (vector-length a2-1))
@@ -1744,6 +1985,7 @@
   (none)
   )
 
+;; definition of type tomb-sphinx
 (deftype tomb-sphinx (process-drawable)
   ((root-override collide-shape-moving  :offset        128)
    (target-actor  entity-actor          :offset-assert 200)
@@ -1761,7 +2003,24 @@
     )
   )
 
+;; definition for method 3 of type tomb-sphinx
+(defmethod inspect tomb-sphinx ((obj tomb-sphinx))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttarget-actor: ~A~%" (-> obj target-actor))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~2Tmove-dir: ~f~%" (-> obj move-dir))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-sphinx)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1774,6 +2033,7 @@
   :code (the-as (function none :behavior tomb-sphinx) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate active (tomb-sphinx)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1848,6 +2108,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate doors-open (tomb-sphinx)
   :virtual #t
   :enter (behavior ()
@@ -1930,17 +2191,20 @@
     )
   )
 
+;; definition for method 7 of type tomb-sphinx
 ;; WARN: Return type mismatch process-drawable vs tomb-sphinx.
 (defmethod relocate tomb-sphinx ((obj tomb-sphinx) (arg0 int))
   (the-as tomb-sphinx ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 10 of type tomb-sphinx
 (defmethod deactivate tomb-sphinx ((obj tomb-sphinx))
   (sound-stop (the-as sound-id (-> obj sound-id)))
   ((the-as (function process-drawable none) (find-parent-method tomb-sphinx 10)) obj)
   (none)
   )
 
+;; definition for method 11 of type tomb-sphinx
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-sphinx ((obj tomb-sphinx) (arg0 entity-actor))
   (set! (-> obj root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
@@ -1956,3 +2220,7 @@
       )
   (none)
   )
+
+
+
+
