@@ -299,7 +299,14 @@
     (new (symbol type string) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
+    (init-from-entity!
+      "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+       This commonly includes things such as:
+       - stack size
+       - collision information
+       - loading the skeleton group / bones
+       - sounds"
+      (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (process-tree-method-13 () none 13)
     )
@@ -7445,7 +7452,7 @@
     (get-trail-for-connection "Get a trail for connection. If arg1 is set, allow allocating a new one." (_type_ connection-minimap symbol) minimap-trail 10)
     (get-icon-draw-pos "Follow the path from the start until it reaches the border of the map, then get this position."
                        (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
-    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12)
+    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12) ;; int can be #f / vector can be a symbol
     (free-trail-by-connection "Free the trail associated with this connection." (_type_ connection-minimap) none 13)
     (update-trails "Main function to do trail search per-frame" (_type_) none 14)
     (draw-1 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
@@ -9764,7 +9771,7 @@
   :flag-assert #xa00000010
   (:methods
     (new (symbol type game-task-actor) _type_ 0)
-    (game-task-control-method-9 (_type_) game-task-event 9)
+    (get-current-task-event (_type_) game-task-event 9)
     )
   )
 
@@ -28821,6 +28828,9 @@
   )
 
 (deftype task-arrow (process-drawable)
+  "Despite the name, these are actually the beams of light that highlight
+   various objections.  Such as the flag in the first ruins mission
+   or collectable items on the ground (jetboard / weapon upgrades / etc)"
   ((pos              vector             :inline :offset-assert 208)
    (theta            float                      :offset-assert 224)
    (phi              float                      :offset-assert 228)
@@ -49174,6 +49184,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype xz-height-map (structure)
+  "TODO - not terribly well understood yet, but this is used for the traffic height map
+   this is primarily used to store a massive amount of bytes in the `data` field
+   all initialized from static data."
   ((offset        float   3 :offset-assert 0)
    (x-offset      float     :offset 0)
    (y-offset      float     :offset 4)
@@ -51616,6 +51629,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype flag (process-drawable)
+  "The flag in the ruins mission.
+   The scale will be linearly-interpolated based on the distance from the camera"
   ()
   :method-count-assert 21
   :size-assert         #xc8
@@ -51626,6 +51641,8 @@
   )
 
 (deftype ruins-precipice (process-drawable)
+  "The edge of the ruins tower that the flag stands on
+   Touching it flips the `play?` field which will trigger the cutscene"
   ((play? symbol  :offset-assert 200)
    )
   :method-count-assert 21
@@ -51636,7 +51653,11 @@
     )
   )
 
-(define-extern ruins-slide-sparks (function object vector none))
+(define-extern ruins-slide-sparks
+  "Generates simple sparks (2D particles) at the location specified. This is used in the cutscene.
+   @param position The position to render the sparks at
+   TODO - first arg type?"
+  (function object vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mechtest-obs                   ;;
@@ -51699,11 +51720,14 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-ruins-rubble (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern ruins-bird-bob-func (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern sparticle-ruins-bird-moon (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-ruins-tower-userdata-nosplat (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-ruins-tower-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ruins-rubble "TODO docs" (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern ruins-bird-bob-func
+  "Move the bird particles up and down, on a sinusoidal period with a wavelength of 300 frames
+   TODO - check argument types / what birds?"
+  (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern sparticle-ruins-bird-moon "TODO - investigate, what even is this?" (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ruins-tower-userdata-nosplat "TODO - docs" (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-ruins-tower-userdata "TODO - docs" (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; breakable-wall                 ;;
@@ -51898,12 +51922,22 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground
+      "TODO - understand the collision query stuff more
+      @returns whether or not the [[self]] is above the ground"
+      (_type_) symbol 22)
     )
   )
 
-(define-extern krew-collection-item-init-by-other (function vector krew-collection-item :behavior krew-collection-item))
-(define-extern krew-collection-item-spawn (function process vector krew-collection-item))
+(define-extern krew-collection-item-init-by-other
+  "Given a [[vector]] defining it's position, create a [[krew-collection-item]]
+   @param position The intended position of the item"
+  (function vector none :behavior krew-collection-item))
+(define-extern krew-collection-item-spawn
+  "Given a [[vector]] defining it's position, create a [[krew-collection-item]] via [[process-spawn]]
+   @param proc The [[process]] that is used to spawn the new item
+   @param position The intended position of the item"
+  (function process vector krew-collection-item))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyasha-obs                    ;;
@@ -52116,6 +52150,7 @@
   )
 
 (deftype hiphog-mirror-wf-pt (structure)
+  "@unused seemingly not used, but probably stood for hiphog-mirror-waveform-point"
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
    )
@@ -52124,11 +52159,29 @@
   :flag-assert         #x900000008
   )
 
-(define-extern birth-func-rotate-minute (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern birth-func-rotate-hour (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern birth-func-rotate-second (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern *hiphog-mirror-sheen-waveform* (inline-array ripple-wave))
-(define-extern hiphog-mirror-sheen-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-rotate-minute
+  "Determines the position of the minute hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   Every real second is 1 minute in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-hour
+  "Determines the position of the hour hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   Every real minute is 1 hour in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-second
+  "Determines the position of the second hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   The clock actually only has 2 hands, this one does not appear to have been used?
+   Every real second is 1/60th of a second in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *hiphog-mirror-sheen-waveform*
+  "A collection of [[ripple-wave]]'s used to apply the effect to the hiphog's mirror"
+  (inline-array ripple-wave))
+(define-extern hiphog-mirror-sheen-func
+  "Handles the effect on the hiphogs mirror, which involves using [[*hiphog-mirror-sheen-waveform*]]
+   TODO on args and some more documentation"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hiphog-scenes                  ;;
