@@ -271,6 +271,7 @@ struct Cache {
   void* sewerb; // sewerb
   void* upload_vu0_program; // upload-vu0-program
   void* vu_lights_light_group; // vu-lights<-light-group!
+  void* ocean_generate_verts_vector;
 } cache;
 
 void vcallms0(ExecutionContext* c) {
@@ -608,6 +609,7 @@ block_19:
 
 block_20:
   // daddiu v1, fp, L18                                // daddiu v1, fp, L18
+  c->load_symbol2(v1, cache.ocean_generate_verts_vector); // HACK
   c->daddiu(a2, s4, 8192);                          // daddiu a2, s4, 8192
   c->daddiu(a0, s4, 8192);                          // daddiu a0, s4, 8192
   c->mov64(a1, v1);                                 // or a1, v1, r0
@@ -850,6 +852,7 @@ void link() {
   cache.sewerb = intern_from_c("sewerb").c();
   cache.upload_vu0_program = intern_from_c("upload-vu0-program").c();
   cache.vu_lights_light_group = intern_from_c("vu-lights<-light-group!").c();
+  cache.ocean_generate_verts_vector = intern_from_c("*ocean-generate-verts-vector*").c();
   gLinkedFunctionTable.reg("(method 16 ocean)", execute, 128);
 }
 
