@@ -5,5 +5,453 @@
 ;; name in dgo: traffic-engine-h
 ;; dgos: CWI
 
+;; +++vis-cell-flag
+(defenum vis-cell-flag
+  :type uint8
+  :bitfield #t
+  (active-vehicle)
+  (active-pedestrian)
+  (suppress)
+  )
+;; ---vis-cell-flag
+
+
+;; +++traffic-target-flag
+(defenum traffic-target-flag
+  :type uint8
+  :bitfield #t
+  (visible-now)
+  (visible-recently)
+  (visible-ever)
+  (updated)
+  (force-visible)
+  )
+;; ---traffic-target-flag
+
+
+;; +++traffic-alert-flag
+(defenum traffic-alert-flag
+  :type uint8
+  :bitfield #t
+  (alert-ending)
+  (alarm-on)
+  (guard-multi-focus)
+  (sticky-guard-settings)
+  (disable-pursuit-control)
+  (target-jak)
+  )
+;; ---traffic-alert-flag
+
+(declare-type traffic-find-segment-struct structure)
+
 ;; DECOMP BEGINS
 
+(deftype nav-segment (structure)
+  ((vertex        vector     2 :inline :offset-assert   0)
+   (length        float                :offset         12)
+   (spawn-spacing float                :offset         28)
+   (branch        nav-branch           :offset-assert  32)
+   (nav-mesh-id   uint32               :offset-assert  36)
+   (id            uint16               :offset-assert  40)
+   (cell-id       uint16               :offset-assert  42)
+   (from-cell-id  uint16               :offset-assert  44)
+   (tracker-id    int8                 :offset-assert  46)
+   (pad0          int8                 :offset-assert  47)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype vis-cell (structure)
+  ((sphere                 sphere                     :inline :offset-assert   0)
+   (segment-array          (inline-array nav-segment)         :offset-assert  16)
+   (vis-id                 uint16                             :offset-assert  20)
+   (id                     uint16                             :offset-assert  22)
+   (incoming-segment-count int8                               :offset-assert  24)
+   (segment-count          int8                               :offset-assert  25)
+   (flags                  vis-cell-flag                      :offset-assert  26)
+   (alloc-segment-count    int8                               :offset         26)
+   (prev-flags             vis-cell-flag                      :offset-assert  27)
+   (pad0                   uint32                             :offset         28)
+   )
+  :method-count-assert 11
+  :size-assert         #x20
+  :flag-assert         #xb00000020
+  (:methods
+    (vis-cell-method-9 (_type_) none 9)
+    (vis-cell-method-10 (_type_) none 10)
+    )
+  )
+
+
+(deftype vis-grid-pos (structure)
+  ((data int8 3 :offset-assert   0)
+   (x    int8   :offset          0)
+   (y    int8   :offset          1)
+   (z    int8   :offset          2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x3
+  :flag-assert         #x900000003
+  )
+
+
+(deftype vis-grid-box (structure)
+  ((min vis-grid-pos :inline :offset-assert   0)
+   (max vis-grid-pos :inline :offset-assert   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+
+(deftype vis-ray (structure)
+  ((pos      vector       :inline :offset-assert   0)
+   (dir      vector       :inline :offset-assert  16)
+   (dest-pos vector       :inline :offset-assert  32)
+   (plane    plane        :inline :offset-assert  48)
+   (grid-pos vis-grid-pos :inline :offset-assert  64)
+   (len      float                :offset-assert  68)
+   (cell     vis-cell             :offset-assert  72)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+
+(deftype grid-info (structure)
+  ((axis-scale      float        3       :offset-assert   0)
+   (dimension-array int8         3       :offset-assert  12)
+   (pad0            uint8        1       :offset-assert  15)
+   (box             bounding-box :inline :offset-assert  16)
+   (cell-size       vector       :inline :offset-assert  48)
+   )
+  :method-count-assert 14
+  :size-assert         #x40
+  :flag-assert         #xe00000040
+  (:methods
+    (grid-info-method-9 (_type_) none 9)
+    (grid-info-method-10 (_type_ vis-grid-pos vector) none 10)
+    (grid-info-method-11 (_type_) none 11)
+    (grid-info-method-12 (_type_ rgba) none 12)
+    (grid-info-method-13 (_type_ vis-grid-pos rgba) none 13)
+    )
+  )
+
+
+(deftype city-level-info (structure)
+  ((grid-info      grid-info               :inline :offset-assert   0)
+   (cell-array     (inline-array vis-cell)         :offset-assert  64)
+   (segment-count  int16                           :offset-assert  68)
+   (cell-count     uint16                          :offset-assert  70)
+   (segment-array  uint32                          :offset-assert  72)
+   (nav-graph      nav-graph                       :offset-assert  76)
+   (camera-ceiling meters                          :offset-assert  80)
+   (pad-array      int8                    56      :offset-assert  84)
+   )
+  :method-count-assert 19
+  :size-assert         #x8c
+  :flag-assert         #x130000008c
+  (:methods
+    (city-level-info-method-9 (_type_) none 9)
+    (city-level-info-method-10 (_type_ vis-ray vector vector) none 10)
+    (city-level-info-method-11 (_type_) none 11)
+    (city-level-info-method-12 (_type_) none 12)
+    (city-level-info-method-13 (_type_ vector) none 13)
+    (city-level-info-method-14 (_type_) none 14)
+    (city-level-info-method-15 (_type_) none 15)
+    (city-level-info-method-16 (_type_) none 16)
+    (city-level-info-method-17 (_type_) none 17)
+    (city-level-info-method-18 (_type_) none 18)
+    )
+  )
+
+
+(deftype traffic-level-data (structure)
+  ((city-info               city-level-info         :offset-assert   0)
+   (active-cell-count       uint8                   :offset-assert   4)
+   (newly-active-cell-count uint8                   :offset-assert   5)
+   (active-cell-list        vis-cell        255     :offset-assert   8)
+   (newly-active-cell-list  vis-cell        255     :offset-assert 1028)
+   (active-cell-box         bounding-box    :inline :offset-assert 2048)
+   )
+  :method-count-assert 15
+  :size-assert         #x820
+  :flag-assert         #xf00000820
+  (:methods
+    (traffic-level-data-method-9 (_type_) none 9)
+    (traffic-level-data-method-10 (_type_ vis-cell) none 10)
+    (traffic-level-data-method-11 (_type_ int) none 11)
+    (traffic-level-data-method-12 (_type_ vis-cell) none 12)
+    (traffic-level-data-method-13 (_type_) none 13)
+    (traffic-level-data-method-14 (_type_) none 14)
+    )
+  )
+
+
+(deftype traffic-suppression-box (structure)
+  ((data     uint8        32      :offset-assert   0)
+   (bbox     bounding-box :inline :offset          0)
+   (flags    uint8                :offset         12)
+   (duration uint32               :offset         28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype traffic-guard-type-info (structure)
+  ((object-type      uint8  :offset-assert   0)
+   (max-target-count int8   :offset-assert   1)
+   (min-target-count int8   :offset-assert   2)
+   (target-count     int8   :offset-assert   3)
+   (count            int8   :offset-assert   4)
+   (change-to-type   uint8  :offset-assert   5)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+
+(deftype traffic-guard-type-settings (structure)
+  ((target-count    int8    :offset-assert   0)
+   (inaccuracy      float   :offset-assert   4)
+   (acquire-delay   uint16  :offset-assert   8)
+   (shot-delay      uint16  :offset-assert  10)
+   (burst-delay     uint16  :offset-assert  12)
+   (shot-count      int8    :offset-assert  14)
+   (rand-shot-count int8    :offset-assert  15)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype traffic-alert-state-settings (structure)
+  ((guard-settings-array traffic-guard-type-settings 6 :inline :offset-assert   0)
+   (ped-tazer            traffic-guard-type-settings :inline   :offset          0)
+   (ped-rifle            traffic-guard-type-settings :inline   :offset         16)
+   (ped-grenade          traffic-guard-type-settings :inline   :offset         32)
+   (ped-roboguard        traffic-guard-type-settings :inline   :offset         48)
+   (bike-turret          traffic-guard-type-settings :inline   :offset         64)
+   (hellcat-turret       traffic-guard-type-settings :inline   :offset         80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+
+(deftype traffic-target-status (structure)
+  ((flags          traffic-target-flag         :offset-assert   0)
+   (handle         handle                      :offset-assert   8)
+   (last-seen-time time-frame                  :offset-assert  16)
+   (position       vector              :inline :offset-assert  32)
+   (velocity       vector              :inline :offset-assert  48)
+   (move-position  vector              :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype traffic-alert-state (structure)
+  ((flags                            traffic-alert-flag                     :offset-assert   0)
+   (level                            uint8                                  :offset-assert   1)
+   (max-level                        uint8                                  :offset-assert   2)
+   (guards-in-sight-of-target        int8                                   :offset-assert   3)
+   (guard-aim-count                  int8                                   :offset-assert   4)
+   (guard-inaccuracy-factor          float                                  :offset-assert   8)
+   (guard-target-level               float                                  :offset-assert  12)
+   (duration                         uint32                                 :offset-assert  16)
+   (start-time                       time-frame                             :offset-assert  24)
+   (notify-time                      time-frame                             :offset-assert  32)
+   (alarm-sound-id                   uint32                                 :offset-assert  40)
+   (target-status-array              traffic-target-status        3 :inline :offset-assert  48)
+   (settings                         traffic-alert-state-settings :inline   :offset-assert 288)
+   (guard-type-info-array            traffic-guard-type-info      6 :inline :offset-assert 384)
+   (guard-type-mask-from-object-type uint32                       126       :offset-assert 480)
+   )
+  :method-count-assert 10
+  :size-assert         #x3d8
+  :flag-assert         #xa000003d8
+  (:methods
+    (traffic-alert-state-method-9 (_type_) none 9)
+    )
+  )
+
+
+(deftype traffic-object-type-info (structure)
+  ((flags             uint8             :offset-assert   0)
+   (target-count      int8              :offset-assert   1)
+   (active-count      int8              :offset-assert   2)
+   (inactive-count    int8              :offset-assert   3)
+   (reserve-count     uint16            :offset-assert   4)
+   (killed-count      uint16            :offset-assert   6)
+   (want-count        int8              :offset-assert   8)
+   (tracker-index     uint8             :offset-assert   9)
+   (parking-spot-prob uint8             :offset-assert  10)
+   (guard-type        uint8             :offset-assert  11)
+   (array             (pointer handle)  :offset-assert  12)
+   (level             level             :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(deftype traffic-suppressor (structure)
+  ((flags uint8                              :offset-assert   0)
+   (bbox  bounding-box            :inline    :offset-assert  16)
+   (array traffic-suppression-box 16 :inline :offset-assert  48)
+   )
+  :method-count-assert 14
+  :size-assert         #x230
+  :flag-assert         #xe00000230
+  (:methods
+    (traffic-suppressor-method-9 (_type_) none 9)
+    (traffic-suppressor-method-10 (_type_ traffic-suppression-params) none 10)
+    (traffic-suppressor-method-11 (_type_ traffic-suppression-params) none 11)
+    (traffic-suppressor-method-12 (_type_ traffic-suppression-params) none 12)
+    (traffic-suppressor-method-13 (_type_) none 13)
+    )
+  )
+
+
+(deftype traffic-tracker (structure)
+  ((traffic                 traffic-engine     :offset-assert   0)
+   (object-hash             spatial-hash       :offset-assert   4)
+   (rand                    float              :offset-assert   8)
+   (id                      uint8              :offset-assert  12)
+   (active-object-count     uint8              :offset-assert  13)
+   (inactive-object-count   int8               :offset-assert  14)
+   (active-object-list      handle         126 :offset-assert  16)
+   (active-object-type-list uint8          126 :offset-assert 1024)
+   )
+  :method-count-assert 27
+  :size-assert         #x47e
+  :flag-assert         #x1b0000047e
+  (:methods
+    (traffic-tracker-method-9 (_type_) none 9)
+    (traffic-tracker-method-10 (_type_) none 10)
+    (traffic-tracker-method-11 (_type_) none 11)
+    (traffic-tracker-method-12 (_type_ uint handle) none 12)
+    (traffic-tracker-method-13 (_type_ int) handle 13)
+    (traffic-tracker-method-14 (_type_ int handle) none 14)
+    (traffic-tracker-method-15 (_type_ int) handle 15)
+    (traffic-tracker-method-16 (_type_ int handle) handle 16)
+    (traffic-tracker-method-17 (_type_ int handle) none 17)
+    (traffic-tracker-method-18 (_type_ process) none 18)
+    (traffic-tracker-method-19 (_type_ handle) none 19)
+    (traffic-tracker-method-20 (_type_ int symbol) none 20)
+    (traffic-tracker-method-21 (_type_ traffic-object-spawn-params) none 21)
+    (traffic-tracker-method-22 (_type_ object nav-segment int) none 22)
+    (traffic-tracker-method-23 (_type_ traffic-object-spawn-params) none 23)
+    (traffic-tracker-method-24 (_type_ uint traffic-engine) none 24)
+    (traffic-tracker-method-25 (_type_ (function process-focusable traffic-object-type-info none)) none 25)
+    (traffic-tracker-method-26 (_type_ int (function process-tree none)) none 26)
+    )
+  )
+
+
+(deftype traffic-engine (basic)
+  ((object-hash            spatial-hash                        :offset-assert   4)
+   (manager                uint64                              :offset-assert   8)
+   (inv-density-factor     float                               :offset-assert  16)
+   (sync-clock             uint8                               :offset-assert  20)
+   (sync-mask-8            uint8                               :offset-assert  21)
+   (sync-mask-16           uint16                              :offset-assert  22)
+   (sync-mask-32           uint32                              :offset-assert  24)
+   (sync-array             uint8                    4          :offset-assert  28)
+   (flags                  uint8                               :offset-assert  32)
+   (alert-state            traffic-alert-state      :inline    :offset-assert  48)
+   (level-data-array       traffic-level-data       2 :inline  :offset-assert 1040)
+   (object-type-info-array traffic-object-type-info 21 :inline :offset-assert 5200)
+   (tracker-array          traffic-tracker          2 :inline  :offset-assert 5872)
+   (inactive-object-array  uint64                   420        :offset-assert 8176)
+   (suppressor             traffic-suppressor       :inline    :offset-assert 11536)
+   (danger-sphere-count    int8                                :offset-assert 12096)
+   (pad                    int8                     15         :offset-assert 12097)
+   (danger-sphere-array    traffic-danger-info      4 :inline  :offset-assert 12112)
+   )
+  :method-count-assert 74
+  :size-assert         #x3050
+  :flag-assert         #x4a00003050
+  (:methods
+    (traffic-engine-method-9 (_type_) none 9)
+    (traffic-engine-method-10 (_type_ process) none 10)
+    (traffic-engine-method-11 (_type_) none 11)
+    (traffic-engine-method-12 (_type_) none 12)
+    (add-object (_type_ int process) none 13)
+    (traffic-engine-method-14 (_type_ object object) symbol 14)
+    (traffic-engine-method-15 (_type_ object int) none 15)
+    (traffic-engine-method-16 (_type_ object int) none 16)
+    (traffic-engine-method-17 (_type_ nav-branch) symbol 17)
+    (child-killed (_type_ process) none 18)
+    (traffic-engine-method-19 (_type_ object) none 19)
+    (traffic-engine-method-20 (_type_ vector vector int) nav-segment 20)
+    (traffic-engine-method-21 (_type_ vector int traffic-find-segment-struct function) none 21)
+    (add-danger-sphere (_type_ traffic-danger-info) none 22)
+    (traffic-engine-method-23 (_type_) none 23)
+    (set-target-level (_type_ float) none 24)
+    (set-guard-target-level (_type_ float) none 25)
+    (deactivate-all (_type_) none 26)
+    (deactivate-by-type (_type_ object) none 27)
+    (traffic-engine-method-28 (_type_) symbol 28)
+    (restore-default-settings (_type_) none 29)
+    (increase-alert-level (_type_ object target) none 30)
+    (decrease-alert-level (_type_ object) none 31)
+    (set-alert-level (_type_ object) none 32)
+    (set-max-alert-level (_type_ object) none 33)
+    (set-alert-duration (_type_ object) none 34)
+    (get-alert-level (_type_) none 35)
+    (get-target (_type_) target 36)
+    (set-object-target-level (_type_ int float) none 37)
+    (set-object-target-count (_type_ int int) none 38)
+    (set-object-reserve-count (_type_ int uint) none 39)
+    (get-object-reserve-count (_type_ int) none 40)
+    (get-object-remaining-count (_type_ int) none 41)
+    (activate-object (_type_ object) none 42)
+    (traffic-engine-method-43 (_type_) none 43)
+    (traffic-engine-method-44 (_type_ int float) none 44)
+    (traffic-engine-method-45 (_type_) int 45)
+    (new-suppression-box (_type_ object) none 46)
+    (traffic-engine-method-47 (_type_ traffic-suppression-params) none 47)
+    (update-suppression-box (_type_ traffic-suppression-params) none 48)
+    (traffic-engine-method-49 (_type_ object int traffic-target-status) traffic-target-status 49)
+    (traffic-engine-method-50 (_type_ process-drawable int) process-focusable 50)
+    (traffic-engine-method-51 (_type_ (function none)) none 51)
+    (traffic-engine-method-52 (_type_) none 52)
+    (end-pursuit-by-type (_type_ int) none 53)
+    (get-traffic-guard-type-settings (_type_ int) traffic-guard-type-settings 54)
+    (get-guard-type-for-traffic-obj (_type_ int) uint 55)
+    (get-traffic-guard-change-to-type (_type_ int) uint 56)
+    (set-guard-target-count-range (_type_ int int int) none 57)
+    (set-object-auto-activate (_type_ object object) none 58)
+    (traffic-engine-method-59 (_type_ object int) none 59)
+    (kill-traffic-sphere (_type_ object) none 60)
+    (level-loaded (_type_ object) none 61)
+    (level-killed (_type_) none 62)
+    (traffic-engine-method-63 (_type_) none 63)
+    (traffic-engine-method-64 (_type_) none 64)
+    (traffic-engine-method-65 (_type_ vis-cell) none 65)
+    (traffic-engine-method-66 (_type_) none 66)
+    (traffic-engine-method-67 (_type_) none 67)
+    (traffic-engine-method-68 (_type_) none 68)
+    (traffic-engine-method-69 (_type_) none 69)
+    (traffic-engine-method-70 (_type_) none 70)
+    (traffic-engine-method-71 (_type_) none 71)
+    (traffic-engine-method-72 (_type_) none 72)
+    (traffic-engine-method-73 (_type_) none 73)
+    )
+  )
