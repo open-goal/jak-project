@@ -1,77 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bot-h.gc
-;; name in dgo: bot-h
-;; dgos: ATE, SEB, SWB, LKIDDOGE, UNB, CTYKORA, CTYASHA
-
-;; +++bot-h:speech-flags
-(defenum speech-flags
-  :type uint16
-  :bitfield #t
-  (playing)
-  (sf01)
-  (sf02)
-  (sf03)
-  (sf04)
-  (sf05)
-  (sf06)
-  (sf08)
-  (sf09)
-  (sf10)
-  (sf11)
-  (sf12)
-  (sf13)
-  (sf14)
-  (sf15)
-  )
-;; ---bot-h:speech-flags
-
-;; +++bot-h:bot-flags
-(defenum bot-flags
-  :type uint32
-  :bitfield #t
-  (bf00 0)
-  (failed 1)
-  (bf02 2)
-  (bf03 3)
-  (bf04 4)
-  (bf05 5)
-  (bf06 6)
-  (attacked 7)
-  (too-far-fail 8) ;; not sure
-  (bf09 9)
-  (bf10 10)
-  (bf11 11)
-  (bf12 12)
-  (bf13 13)
-  (bf14 14)
-  (bf15 15)
-  (bf16 16)
-  (bf17 17)
-  (bf18 18)
-  (bf19 19)
-  (bf20 20)
-  (bf21 21)
-  (bf22 22)
-  (bf23 23)
-  (bf24 24)
-  (bf25 25)
-  (bf26 26)
-  (bf27 27)
-  (bf28 28)
-  (bf29 29)
-  (bf30 30)
-  (bf31 31)
-  )
-;; ---bot-h:bot-flags
-
-(declare-type bot nav-enemy)
-(declare-type bot-speech-list basic)
-(declare-type bot-speech-list-shuffle bot-speech-list)
-
-;; DECOMP BEGINS
-
+;; definition of type bot-focus-info
 (deftype bot-focus-info (structure)
   ((max-los-dist     float                     :offset-assert   0)
    (fproc            process-focusable         :offset-assert   4)
@@ -91,7 +21,30 @@
   :flag-assert         #x900000070
   )
 
+;; definition for method 3 of type bot-focus-info
+(defmethod inspect bot-focus-info ((obj bot-focus-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bot-focus-info)
+  (format #t "~1Tmax-los-dist: ~f~%" (-> obj max-los-dist))
+  (format #t "~1Tfproc: ~A~%" (-> obj fproc))
+  (format #t "~1Tbullseye-xz-dist: ~f~%" (-> obj bullseye-xz-dist))
+  (format #t "~1Try-diff: ~f~%" (-> obj ry-diff))
+  (format #t "~1Tmy-facing-ry: ~f~%" (-> obj my-facing-ry))
+  (format #t "~1Tbullseye-ry: ~f~%" (-> obj bullseye-ry))
+  (format #t "~1Tlos: ~D~%" (-> obj los))
+  (format #t "~1Tupdate-time: ~D~%" (-> obj update-time))
+  (format #t "~1Tbullseye: #<vector @ #x~X>~%" (-> obj bullseye))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~1Tmy-facing-xz-dir: #<vector @ #x~X>~%" (-> obj my-facing-xz-dir))
+  (format #t "~1Tbullseye-xz-dir: #<vector @ #x~X>~%" (-> obj bullseye-xz-dir))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-turn-info
 (deftype bot-turn-info (structure)
   ((facing-ry          float              :offset-assert   0)
    (targ-ry            float              :offset-assert   4)
@@ -108,7 +61,27 @@
   :flag-assert         #x900000060
   )
 
+;; definition for method 3 of type bot-turn-info
+(defmethod inspect bot-turn-info ((obj bot-turn-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bot-turn-info)
+  (format #t "~1Tfacing-ry: ~f~%" (-> obj facing-ry))
+  (format #t "~1Ttarg-ry: ~f~%" (-> obj targ-ry))
+  (format #t "~1Try-diff: ~f~%" (-> obj ry-diff))
+  (format #t "~1Tpredicted-ry-diff: ~f~%" (-> obj predicted-ry-diff))
+  (format #t "~1Tpredicted-targ-ry: ~f~%" (-> obj predicted-targ-ry))
+  (format #t "~1Tfacing-dir: #<vector @ #x~X>~%" (-> obj facing-dir))
+  (format #t "~1Ttarg-pos: #<vector @ #x~X>~%" (-> obj targ-pos))
+  (format #t "~1Tpredicted-targ-pos: #<vector @ #x~X>~%" (-> obj predicted-targ-pos))
+  (format #t "~1Tsrc-quat: #<quaternion @ #x~X>~%" (-> obj src-quat))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-speech-tuning
 (deftype bot-speech-tuning (structure)
   ((fo-min   int32   :offset-assert   0)
    (fo-max   int32   :offset-assert   4)
@@ -120,7 +93,22 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type bot-speech-tuning
+(defmethod inspect bot-speech-tuning ((obj bot-speech-tuning))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bot-speech-tuning)
+  (format #t "~1Tfo-min: ~D~%" (-> obj fo-min))
+  (format #t "~1Tfo-max: ~D~%" (-> obj fo-max))
+  (format #t "~1Tfo-curve: ~D~%" (-> obj fo-curve))
+  (format #t "~1Ttrans?: ~A~%" (-> obj trans?))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-speech-info
 (deftype bot-speech-info (structure)
   ((flags     speech-flags  :offset-assert   0)
    (hold-time uint16        :offset-assert   2)
@@ -133,7 +121,23 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type bot-speech-info
+(defmethod inspect bot-speech-info ((obj bot-speech-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bot-speech-info)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Thold-time: ~D~%" (-> obj hold-time))
+  (format #t "~1Tslave-id: ~D~%" (-> obj slave-id))
+  (format #t "~1Ttuning-id: ~D~%" (-> obj tuning-id))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-spot
 (deftype bot-spot (structure)
   ((center          vector :inline :offset-assert   0)
    (center-x        float          :offset          0)
@@ -147,7 +151,24 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type bot-spot
+(defmethod inspect bot-spot ((obj bot-spot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bot-spot)
+  (format #t "~1Tcenter: #<vector @ #x~X>~%" (-> obj center))
+  (format #t "~1Tcenter-x: ~f~%" (-> obj center x))
+  (format #t "~1Tcenter-y: ~f~%" (-> obj center y))
+  (format #t "~1Tcenter-z: ~f~%" (-> obj center z))
+  (format #t "~1Tinside-xz-dist: ~f~%" (-> obj center w))
+  (format #t "~1Tblocked-xz-dist: ~f~%" (-> obj blocked-xz-dist))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-waypoint
 (deftype bot-waypoint (basic)
   ((waypoint-id      int16                :offset-assert   4)
    (nav-mesh-index   int8                 :offset-assert   6)
@@ -164,7 +185,27 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type bot-waypoint
+(defmethod inspect bot-waypoint ((obj bot-waypoint))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twaypoint-id: ~D~%" (-> obj waypoint-id))
+  (format #t "~1Tnav-mesh-index: ~D~%" (-> obj nav-mesh-index))
+  (format #t "~1Tskip-to: ~D~%" (-> obj skip-to))
+  (format #t "~1Ton-set: ~A~%" (-> obj on-set))
+  (format #t "~1Ton-update: ~A~%" (-> obj on-update))
+  (format #t "~1Ton-skipping-here: ~A~%" (-> obj on-skipping-here))
+  (format #t "~1Tcheck-too-far: ~A~%" (-> obj check-too-far))
+  (format #t "~1Twarn-dist: ~f~%" (-> obj warn-dist))
+  (format #t "~1Tfail-dist-delta: ~f~%" (-> obj fail-dist-delta))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot-course
 (deftype bot-course (basic)
   ((course-id              uint8                             :offset-assert   4)
    (speech-count           uint16                            :offset-assert   6)
@@ -185,7 +226,31 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type bot-course
+(defmethod inspect bot-course ((obj bot-course))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tcourse-id: ~D~%" (-> obj course-id))
+  (format #t "~1Tspeech-count: ~D~%" (-> obj speech-count))
+  (format #t "~1Tspot-count: ~D~%" (-> obj spot-count))
+  (format #t "~1Tretry-cookie: ~D~%" (-> obj retry-cookie))
+  (format #t "~1Ttoo-far-warn-speeches: ~A~%" (-> obj too-far-warn-speeches))
+  (format #t "~1Ttoo-far-fail-speeches: ~A~%" (-> obj too-far-fail-speeches))
+  (format #t "~1Tattack-player-speeches: ~A~%" (-> obj attack-player-speeches))
+  (format #t "~1Tdefault-check-too-far: ~A~%" (-> obj default-check-too-far))
+  (format #t "~1Twaypoints: ~A~%" (-> obj waypoints))
+  (format #t "~1Tspeeches: #x~X~%" (-> obj speeches))
+  (format #t "~1Tspeech-tunings: #x~X~%" (-> obj speech-tunings))
+  (format #t "~1Tdirs: #x~X~%" (-> obj dirs))
+  (format #t "~1Tspots: #x~X~%" (-> obj spots))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type bot
 (deftype bot (nav-enemy)
   ((bot-flags                       bot-flags                      :offset-assert 604)
    (min-speed                       float                          :offset-assert 608)
@@ -295,7 +360,72 @@
     )
   )
 
+;; definition for method 3 of type bot
+(defmethod inspect bot ((obj bot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tbot-flags: ~D~%" (-> obj bot-flags))
+  (format #t "~2Tmin-speed: ~f~%" (-> obj min-speed))
+  (format #t "~2Tmax-speed: ~f~%" (-> obj max-speed))
+  (format #t "~2Tfollow-offset: ~f~%" (-> obj follow-offset))
+  (format #t "~2Ttoo-far-warn-dist: ~f~%" (-> obj too-far-warn-dist))
+  (format #t "~2Ttoo-far-fail-dist-delta: ~f~%" (-> obj too-far-fail-dist-delta))
+  (format #t "~2Ttoo-far-warn-dist-default: ~f~%" (-> obj too-far-warn-dist-default))
+  (format #t "~2Ttoo-far-fail-dist-delta-default: ~f~%" (-> obj too-far-fail-dist-delta-default))
+  (format #t "~2Ttravel-prev-ry: ~f~%" (-> obj travel-prev-ry))
+  (format #t "~2Ttravel-prev-ry1: ~f~%" (-> obj travel-prev-ry1))
+  (format #t "~2Tplayer-blocking: ~f~%" (-> obj player-blocking))
+  (format #t "~2Tai-ctrl: ~A~%" (-> obj ai-ctrl))
+  (format #t "~2Tcourse: ~A~%" (-> obj course))
+  (format #t "~2Twaypoint: ~A~%" (-> obj waypoint))
+  (format #t "~2Twaypoint-bits: ~D~%" (-> obj waypoint-bits))
+  (format #t "~2Twaypoint-int32a: ~D~%" (-> obj waypoint-int32a))
+  (format #t "~2Tbot-task-bits: ~D~%" (-> obj bot-task-bits))
+  (format #t "~2Thit-invuln-ignore-me-delay: ~D~%" (-> obj hit-invuln-ignore-me-delay))
+  (format #t "~2Thit-invuln-focus-disable-delay: ~D~%" (-> obj hit-invuln-focus-disable-delay))
+  (format #t "~2Twarn-to-fail-timeout: ~D~%" (-> obj warn-to-fail-timeout))
+  (format #t "~2Twarn-min-delay: ~D~%" (-> obj warn-min-delay))
+  (format #t "~2Twarn-max-delay: ~D~%" (-> obj warn-max-delay))
+  (format #t "~2Tspot-color: ~D~%" (-> obj spot-color))
+  (format #t "~2Twaypoint-request: ~D~%" (-> obj waypoint-request))
+  (format #t "~2Thit-by-enemy-count: ~D~%" (-> obj hit-by-enemy-count))
+  (format #t "~2Thit-by-player-count: ~D~%" (-> obj hit-by-player-count))
+  (format #t "~2Tnotice-enemy-dist: ~f~%" (-> obj notice-enemy-dist))
+  (format #t "~2Tchannel: ~D~%" (-> obj channel))
+  (format #t "~2Tfocus-mode: ~D~%" (-> obj focus-mode))
+  (format #t "~2Tnav-mesh-index: ~D~%" (-> obj nav-mesh-index))
+  (format #t "~2Tdelay-too-far-check: ~D~%" (-> obj delay-too-far-check))
+  (format #t "~2Tslave-id: ~D~%" (-> obj slave-id))
+  (format #t "~2Tvehicle-seat-index: ~D~%" (-> obj vehicle-seat-index))
+  (format #t "~2Tbot-health-index: ~D~%" (-> obj bot-health-index))
+  (format #t "~2Ttask: ~A~%" (-> obj task))
+  (format #t "~2Tswivel-joint-mod: ~A~%" (-> obj swivel-joint-mod))
+  (format #t "~2Thealth-handle: ~D~%" (-> obj health-handle))
+  (format #t "~2Tpoi-handle: ~D~%" (-> obj poi-handle))
+  (format #t "~2Tmy-simple-focus: #x~X~%" (-> obj my-simple-focus))
+  (format #t "~2Tattacker-handle: ~D~%" (-> obj attacker-handle))
+  (format #t "~2Tscene-player-handle: ~D~%" (-> obj scene-player-handle))
+  (format #t "~2Tmaster-handle: ~D~%" (-> obj master-handle))
+  (format #t "~2Tvehicle-handle: ~D~%" (-> obj vehicle-handle))
+  (format #t "~2Thit-invuln-starting-time: ~D~%" (-> obj hit-invuln-starting-time))
+  (format #t "~2Tdanger-time: ~D~%" (-> obj danger-time))
+  (format #t "~2Tattacker-time: ~D~%" (-> obj attacker-time))
+  (format #t "~2Tstarted-warning-time: ~D~%" (-> obj started-warning-time))
+  (format #t "~2Twaypoint-time0: ~D~%" (-> obj waypoint-time0))
+  (format #t "~2Tnext-too-far-warn-time: ~D~%" (-> obj next-too-far-warn-time))
+  (format #t "~2Tspot: #<bot-spot @ #x~X>~%" (-> obj spot))
+  (format #t "~2Tfollow-dir: #<vector @ #x~X>~%" (-> obj follow-dir))
+  (format #t "~2Tfocus-info: #<bot-focus-info @ #x~X>~%" (-> obj focus-info))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *bot-task-pool*, type ai-task-pool
 (define *bot-task-pool* (new 'static 'ai-task-pool
                           :anchor #f
                           :tasks (new 'static 'array uint32 240
@@ -544,8 +674,10 @@
                           )
         )
 
+;; failed to figure out what this is:
 (ai-task-pool-method-11 *bot-task-pool*)
 
+;; definition of type bot-speech-list
 (deftype bot-speech-list (basic)
   ((flags            uint8          :offset-assert   4)
    (retry-cookie     uint8          :offset-assert   5)
@@ -561,7 +693,23 @@
     )
   )
 
+;; definition for method 3 of type bot-speech-list
+(defmethod inspect bot-speech-list ((obj bot-speech-list))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tretry-cookie: ~D~%" (-> obj retry-cookie))
+  (format #t "~1Tlast-local-index: ~D~%" (-> obj last-local-index))
+  (format #t "~1Tspeech-indexes: ~A~%" (-> obj speech-indexes))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 10 of type bot-speech-list
+;; WARN: Return type mismatch int vs none.
 (defmethod reset-index bot-speech-list ((obj bot-speech-list) (arg0 symbol))
   (if arg0
       (set! (-> obj flags) (logand -2 (-> obj flags)))
@@ -570,6 +718,7 @@
   (none)
   )
 
+;; definition for method 9 of type bot-speech-list
 ;; WARN: new jak 2 until loop case, check carefully
 (defmethod bot-speech-list-method-9 bot-speech-list ((sp-list bot-speech-list) (bot bot) (sp-info (inline-array bot-speech-info)) (arg3 speech-flags))
   (let ((v1-1 (-> bot course retry-cookie)))
@@ -618,6 +767,7 @@
   -1
   )
 
+;; definition of type bot-speech-list-shuffle
 (deftype bot-speech-list-shuffle (bot-speech-list)
   ((history-mask      uint64  :offset-assert  16)
    (history-mask-full uint64  :offset-assert  24)
@@ -627,7 +777,25 @@
   :flag-assert         #xb00000020
   )
 
+;; definition for method 3 of type bot-speech-list-shuffle
+(defmethod inspect bot-speech-list-shuffle ((obj bot-speech-list-shuffle))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tretry-cookie: ~D~%" (-> obj retry-cookie))
+  (format #t "~1Tlast-local-index: ~D~%" (-> obj last-local-index))
+  (format #t "~1Tspeech-indexes: ~A~%" (-> obj speech-indexes))
+  (format #t "~1Thistory-mask: ~D~%" (-> obj history-mask))
+  (format #t "~1Thistory-mask-full: ~D~%" (-> obj history-mask-full))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 10 of type bot-speech-list-shuffle
+;; WARN: Return type mismatch int vs none.
 (defmethod reset-index bot-speech-list-shuffle ((obj bot-speech-list-shuffle) (arg0 symbol))
   (let ((t9-0 (method-of-type bot-speech-list reset-index)))
     (t9-0 obj arg0)
@@ -647,6 +815,24 @@
   (none)
   )
 
+;; definition for method 9 of type bot-speech-list-shuffle
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: new jak 2 until loop case, check carefully
 (defmethod bot-speech-list-method-9 bot-speech-list-shuffle ((obj bot-speech-list-shuffle) (bot bot) (sp-info (inline-array bot-speech-info)) (sp-flags speech-flags))
   (local-vars (sv-16 int))
@@ -701,6 +887,7 @@
   -1
   )
 
+;; definition of type bot-course-table
 (deftype bot-course-table (basic)
   ((course bot-course 18 :offset-assert   4)
    )
@@ -709,5 +896,21 @@
   :flag-assert         #x90000004c
   )
 
+;; definition for method 3 of type bot-course-table
+(defmethod inspect bot-course-table ((obj bot-course-table))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tcourse[18] @ #x~X~%" (-> obj course))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *bot-course-table*, type bot-course-table
 (define *bot-course-table* (new 'static 'bot-course-table))
+
+
+
+

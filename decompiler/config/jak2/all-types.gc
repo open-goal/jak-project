@@ -8439,7 +8439,20 @@
   (all-off 0)
   (course-spots 1)
   (task-spots 2)
-  (all-on 3))
+  (all-on 3)
+  (bmc04 4)
+  (bmc05 5)
+  (bmc06 6)
+  (bmc07 7)
+  (bmc08 8)
+  (bmc09 9)
+  (bmc10 10)
+  (bmc11 11)
+  (bmc12 12)
+  (bmc13 13)
+  (bmc14 14)
+  (bmc15 15)
+  (bmc16 16))
 ;; ---main-h:bot-marks-controls
 
 (define-extern *display-bot-marks* bot-marks-controls)
@@ -32606,7 +32619,7 @@
    (jump-dest                   vector            :inline   :offset        368)
    (focus                       enemy-focus       :inline   :offset-assert 384)
    (incoming                    enemy-attack-info :inline   :offset-assert 416)
-   (actor-group                 (pointer actor-group)                 :offset-assert 480)
+   (actor-group                 (pointer actor-group)       :offset-assert 480)
    (actor-group-count           int32                       :offset-assert 484)
    (neck                        joint-mod                       :offset-assert 488)
    (on-notice                   symbol                      :offset-assert 492)
@@ -38526,28 +38539,29 @@
 ;; ai-task-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type ai-task-pool basic)
+(declare-type bot nav-enemy)
+
 (deftype ai-task (basic)
-  ((next        basic      :offset-assert 4)
-   (prev        basic      :offset-assert 8)
-   (pool        basic      :offset-assert 12)
-   (unique-id   uint32     :offset-assert 16)
-   (pad-ik1n231 uint32 3   :offset-assert 20)
-   (bytes       int8    16 :offset-assert 32)
+  ((next      ai-task      :offset-assert 4)
+   (prev      ai-task      :offset-assert 8)
+   (pool      ai-task-pool :offset-assert 12)
+   (unique-id uint32       :offset-assert 16)
+   (bytes     uint8 16     :offset 32)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (ai-task-method-9 () none 9)
-    (ai-task-method-10 () none 10)
-    (ai-task-method-11 () none 11)
+    (reset-task! "Virtual" (_type_) none 9)
+    (ai-task-method-10 "Virtual" (_type_ bot) none 10)
+    (ai-task-method-11 "Virtual" (_type_ bot) none 11)
     )
   )
 
-#|
 (deftype ai-task-pool (basic)
-  ((anchor       basic   :offset-assert 4)
-   (tasks        uint32  :offset-assert 8)
+  ((anchor       ai-task :offset-assert 4)
+   (tasks        (pointer uint32) :offset-assert 8) ;; this is VERY likely an (inline-array ai-task), but the static data for *bot-task-pool* has no type pointers
    (tasks-length uint32  :offset-assert 12)
    (unique-id    uint32  :offset-assert 16)
    )
@@ -38555,34 +38569,33 @@
   :size-assert         #x14
   :flag-assert         #xc00000014
   (:methods
-    (ai-task-pool-method-9 () none 9)
-    (ai-task-pool-method-10 () none 10)
-    (ai-task-pool-method-11 () none 11)
+    (assign-ids! "Assign unique IDs to the [[ai-task-pool]] and its `anchor`s `next`" (_type_ type) ai-task 9)
+    (set-next-task! "Set the next task in the [[ai-task-pool]] to the specified [[ai-task]]." (_type_ ai-task) none 10)
+    (ai-task-pool-method-11 (_type_) ai-task 11)
     )
   )
-|#
 
-#|
+
 (deftype ai-task-control (basic)
-  ((anchor basic  :offset-assert 4)
-   (pool   basic  :offset-assert 8)
+  ((anchor ai-task      :offset-assert 4)
+   (pool   ai-task-pool :offset-assert 8)
    )
   :method-count-assert 18
   :size-assert         #xc
   :flag-assert         #x120000000c
   (:methods
-    (ai-task-control-method-9 () none 9)
-    (ai-task-control-method-10 () none 10)
-    (ai-task-control-method-11 () none 11)
-    (ai-task-control-method-12 () none 12)
-    (ai-task-control-method-13 () none 13)
-    (ai-task-control-method-14 () none 14)
-    (ai-task-control-method-15 () none 15)
-    (ai-task-control-method-16 () none 16)
-    (ai-task-control-method-17 () none 17)
+    (new (symbol type ai-task-pool) _type_ 0)
+    (ai-task-control-method-9 (_type_) none 9)
+    (ai-task-control-method-10 (_type_ bot) none 10)
+    (get-task-by-type (_type_ type bot) ai-task 11)
+    (ai-task-control-method-12 (_type_ bot) symbol 12)
+    (ai-task-control-method-13 (_type_ ai-task bot) ai-task 13)
+    (ai-task-control-method-14 (_type_ ai-task bot) none 14)
+    (init-task! "Initialize a task of the given type in the [[ai-task-control]]'s pool." (_type_ type bot) ai-task 15)
+    (set-next-task-for-pool! (_type_ ai-task) none 16)
+    (set-next-task! "Set `next` of this [[ai-task-control]]'s `anchor` to the given [[ai-task]]." (_type_ ai-task) none 17)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38591,13 +38604,13 @@
 
 (deftype bot-focus-info (structure)
   ((max-los-dist     float          :offset-assert 0)
-   (fproc            basic          :offset-assert 4)
+   (fproc            process-focusable :offset-assert 4)
    (bullseye-xz-dist float          :offset-assert 8)
    (ry-diff          float          :offset-assert 12)
    (my-facing-ry     float          :offset-assert 16)
    (bullseye-ry      float          :offset-assert 20)
    (los              int8           :offset-assert 24)
-   (update-time      time-frame         :offset-assert 32)
+   (update-time      time-frame     :offset-assert 32)
    (bullseye         vector :inline :offset-assert 48)
    (pos              vector :inline :offset-assert 64)
    (my-facing-xz-dir vector :inline :offset-assert 80)
@@ -38608,7 +38621,6 @@
   :flag-assert         #x900000070
   )
 
-#|
 (deftype bot-turn-info (structure)
   ((facing-ry          float              :offset-assert 0)
    (targ-ry            float              :offset-assert 4)
@@ -38624,34 +38636,51 @@
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype bot-speech-tuning (structure)
   ((fo-min   int32  :offset-assert 0)
    (fo-max   int32  :offset-assert 4)
    (fo-curve int8   :offset-assert 8)
-   (trans?   basic  :offset-assert 12)
+   (trans?   symbol :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; +++bot-h:speech-flags
+(defenum speech-flags
+  :type uint16
+  :bitfield #t
+  (playing)
+  (sf01)
+  (sf02)
+  (sf03)
+  (sf04)
+  (sf05)
+  (sf06)
+  (sf08)
+  (sf09)
+  (sf10)
+  (sf11)
+  (sf12)
+  (sf13)
+  (sf14)
+  (sf15)
+  )
+;; ---bot-h:speech-flags
+
 (deftype bot-speech-info (structure)
-  ((flags     uint16  :offset-assert 0)
+  ((flags     speech-flags  :offset-assert 0)
    (hold-time uint16  :offset-assert 2)
    (slave-id  int8    :offset-assert 4)
    (tuning-id int8    :offset-assert 5)
-   (name      basic   :offset-assert 8)
+   (name      string  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 (deftype bot-spot (structure)
   ((center          vector :inline :offset-assert 0)
@@ -38666,15 +38695,14 @@
   :flag-assert         #x900000014
   )
 
-#|
 (deftype bot-waypoint (basic)
   ((waypoint-id      int16  :offset-assert 4)
    (nav-mesh-index   int8   :offset-assert 6)
    (skip-to          int8   :offset-assert 7)
-   (on-set           basic  :offset-assert 8)
-   (on-update        basic  :offset-assert 12)
-   (on-skipping-here basic  :offset-assert 16)
-   (check-too-far    basic  :offset-assert 20)
+   (on-set           (function bot none)  :offset-assert 8)
+   (on-update        (function bot none)  :offset-assert 12)
+   (on-skipping-here (function bot none)  :offset-assert 16)
+   (check-too-far    symbol  :offset-assert 20)
    (warn-dist        float  :offset-assert 24)
    (fail-dist-delta  float  :offset-assert 28)
    )
@@ -38683,22 +38711,23 @@
   :flag-assert         #x900000020
   ;; field check-too-far uses ~A with a signed load
   )
-|#
 
+(declare-type bot-speech-list basic)
+(declare-type bot-speech-list-shuffle bot-speech-list)
 (deftype bot-course (basic)
-  ((course-id              uint8   :offset-assert 4)
-   (speech-count           uint16  :offset-assert 6)
-   (spot-count             uint16  :offset-assert 8)
-   (retry-cookie           uint8   :offset-assert 10)
-   (too-far-warn-speeches  basic   :offset-assert 12)
-   (too-far-fail-speeches  basic   :offset-assert 16)
-   (attack-player-speeches basic   :offset-assert 20)
-   (default-check-too-far  basic   :offset-assert 24)
-   (waypoints              basic   :offset-assert 28)
-   (speeches               uint32  :offset-assert 32)
-   (speech-tunings         uint32  :offset-assert 36)
-   (dirs                   uint32  :offset-assert 40)
-   (spots                  uint32  :offset-assert 44)
+  ((course-id              uint8                            :offset-assert 4)
+   (speech-count           uint16                           :offset-assert 6)
+   (spot-count             uint16                           :offset-assert 8)
+   (retry-cookie           uint8                            :offset-assert 10)
+   (too-far-warn-speeches  bot-speech-list-shuffle          :offset-assert 12)
+   (too-far-fail-speeches  bot-speech-list-shuffle          :offset-assert 16)
+   (attack-player-speeches bot-speech-list                  :offset-assert 20)
+   (default-check-too-far  symbol                           :offset-assert 24)
+   (waypoints              (array bot-waypoint)             :offset-assert 28)
+   (speeches               (inline-array bot-speech-info)   :offset-assert 32)
+   (speech-tunings         (inline-array bot-speech-tuning) :offset-assert 36)
+   (dirs                   (inline-array vector)            :offset-assert 40)
+   (spots                  (inline-array bot-spot)          :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -38706,8 +38735,47 @@
   ;; field default-check-too-far uses ~A with a signed load
   )
 
+;; +++bot-h:bot-flags
+(defenum bot-flags
+  :type uint32
+  :bitfield #t
+  (bf00 0)
+  (failed 1)
+  (bf02 2)
+  (bf03 3)
+  (bf04 4)
+  (bf05 5)
+  (bf06 6)
+  (attacked 7)
+  (too-far-fail 8) ;; not sure
+  (bf09 9)
+  (bf10 10)
+  (bf11 11)
+  (bf12 12)
+  (bf13 13)
+  (bf14 14)
+  (bf15 15)
+  (bf16 16)
+  (bf17 17)
+  (bf18 18)
+  (bf19 19)
+  (bf20 20)
+  (bf21 21)
+  (bf22 22)
+  (bf23 23)
+  (bf24 24)
+  (bf25 25)
+  (bf26 26)
+  (bf27 27)
+  (bf28 28)
+  (bf29 29)
+  (bf30 30)
+  (bf31 31)
+  )
+;; ---bot-h:bot-flags
+
 (deftype bot (nav-enemy)
-  ((bot-flags                       uint32                 :offset-assert 604)
+  ((bot-flags                       bot-flags              :offset-assert 604)
    (min-speed                       float                  :offset-assert 608)
    (max-speed                       float                  :offset-assert 612)
    (follow-offset                   float                  :offset-assert 616)
@@ -38718,9 +38786,9 @@
    (travel-prev-ry                  float                  :offset-assert 636)
    (travel-prev-ry1                 float                  :offset-assert 640)
    (player-blocking                 float                  :offset-assert 644)
-   (ai-ctrl                         basic                  :offset-assert 648)
-   (course                          basic                  :offset-assert 652)
-   (waypoint                        basic                  :offset-assert 656)
+   (ai-ctrl                         ai-task-control        :offset-assert 648)
+   (course                          bot-course             :offset-assert 652)
+   (waypoint                        bot-waypoint           :offset-assert 656)
    (waypoint-bits                   uint32                 :offset-assert 660)
    (waypoint-int32a                 int32                  :offset-assert 664)
    (bot-task-bits                   uint32                 :offset-assert 668)
@@ -38741,21 +38809,21 @@
    (slave-id                        int8                   :offset-assert 712)
    (vehicle-seat-index              int8                   :offset-assert 713)
    (bot-health-index                int8                   :offset-assert 714)
-   (task                            basic                  :offset-assert 716)
-   (swivel-joint-mod                basic                  :offset-assert 720)
-   (health-handle                   uint64                 :offset-assert 728)
-   (poi-handle                      uint64                 :offset-assert 736)
-   (my-simple-focus                 uint32                 :offset-assert 744)
-   (attacker-handle                 uint64                 :offset-assert 752)
-   (scene-player-handle             uint64                 :offset-assert 760)
-   (master-handle                   uint64                 :offset-assert 768)
-   (vehicle-handle                  uint64                 :offset-assert 776)
-   (hit-invuln-starting-time        time-frame                 :offset-assert 784)
-   (danger-time                     time-frame                 :offset-assert 792)
-   (attacker-time                   time-frame                 :offset-assert 800)
-   (started-warning-time            time-frame                 :offset-assert 808)
-   (waypoint-time0                  uint64                 :offset-assert 816)
-   (next-too-far-warn-time          time-frame                 :offset-assert 824)
+   (task                            game-task-control      :offset-assert 716)
+   (swivel-joint-mod                joint-mod              :offset-assert 720)
+   (health-handle                   handle                 :offset-assert 728)
+   (poi-handle                      handle                 :offset-assert 736)
+   (my-simple-focus                 (pointer simple-focus) :offset-assert 744)
+   (attacker-handle                 handle                 :offset-assert 752)
+   (scene-player-handle             handle                 :offset-assert 760)
+   (master-handle                   handle                 :offset-assert 768)
+   (vehicle-handle                  handle                 :offset-assert 776)
+   (hit-invuln-starting-time        time-frame             :offset-assert 784)
+   (danger-time                     time-frame             :offset-assert 792)
+   (attacker-time                   time-frame             :offset-assert 800)
+   (started-warning-time            time-frame             :offset-assert 808)
+   (waypoint-time0                  time-frame             :offset-assert 816)
+   (next-too-far-warn-time          time-frame             :offset-assert 824)
    (spot                            bot-spot       :inline :offset-assert 832)
    (follow-dir                      vector         :inline :offset-assert 864)
    (focus-info                      bot-focus-info :inline :offset-assert 880)
@@ -38764,74 +38832,74 @@
   :size-assert         #x3e0
   :flag-assert         #xe1036003e0
   (:methods
-    (bot-method-178 () none 178)
-    (bot-method-179 () none 179)
-    (bot-method-180 () none 180)
-    (bot-method-181 () none 181)
-    (bot-method-182 () none 182)
-    (bot-method-183 () none 183)
-    (bot-method-184 () none 184)
-    (bot-method-185 () none 185)
-    (bot-method-186 () none 186)
-    (bot-method-187 () none 187)
-    (bot-method-188 () none 188)
-    (bot-method-189 () none 189)
-    (bot-method-190 () none 190)
-    (bot-method-191 () none 191)
-    (bot-method-192 () none 192)
-    (bot-method-193 () none 193)
-    (bot-method-194 () none 194)
-    (bot-method-195 () none 195)
-    (bot-method-196 () none 196)
-    (bot-method-197 () none 197)
-    (bot-method-198 () none 198)
-    (bot-method-199 () none 199)
-    (bot-method-200 () none 200)
-    (bot-method-201 () none 201)
-    (bot-method-202 () none 202)
-    (bot-method-203 () none 203)
-    (bot-method-204 () none 204)
-    (bot-method-205 () none 205)
-    (bot-method-206 () none 206)
-    (bot-method-207 () none 207)
-    (bot-method-208 () none 208)
-    (bot-method-209 () none 209)
-    (bot-method-210 () none 210)
-    (bot-method-211 () none 211)
-    (bot-method-212 () none 212)
-    (bot-method-213 () none 213)
-    (bot-method-214 () none 214)
-    (bot-method-215 () none 215)
-    (bot-method-216 () none 216)
-    (bot-method-217 () none 217)
-    (bot-method-218 () none 218)
-    (bot-method-219 () none 219)
-    (bot-method-220 () none 220)
-    (bot-method-221 () none 221)
-    (bot-method-222 () none 222)
-    (bot-method-223 () none 223)
-    (bot-method-224 () none 224)
+    (failed () _type_ :state 178)
+    (hidden () _type_ :state 179)
+    (clear-poi-and-focus! "Clear our point of interest and focus handles." (_type_) none 180)
+    (bot-method-181 (_type_ vector vector vector vector vector float) none 181)
+    (turn-to-target (_type_ bot-turn-info process-focusable float) none 182)
+    (alive? (_type_) symbol 183)
+    (bot-debug-draw-spot-id (_type_) none 184)
+    (bot-debug-draw-sphere (_type_ vector rgba) none 185)
+    (bot-debug-draw-spot-sphere (_type_ int (pointer uint) int) none 186)
+    (reset-attacker! (_type_) none 187)
+    (scene-release? (_type_) symbol 188)
+    (select-focus! "Find enemies around our `notice-enemy-dist` and choose a target." (_type_) process 189)
+    (bot-method-190 (_type_) symbol 190)
+    (bot-method-191 (_type_) none 191)
+    (bot-method-192 (_type_) none 192)
+    (bot-method-193 (_type_) symbol 193)
+    (outside-spot-radius? "Are we outside of the given [[bot-spot]] radius?" (_type_ bot-spot vector symbol) symbol 194)
+    (attacked-by-player? "Were we attacked by the player?" (_type_ process-focusable) symbol 195)
+    (bot-method-196 (_type_) none 196)
+    (fail-mission! (_type_) none 197)
+    (set-cam-height! (_type_ vector) meters 198)
+    (cam-move-to-bot (_type_) none 199)
+    (fail-falling (_type_) none 200)
+    (set-next-focus! (_type_ enemy enemy-best-focus) none 201)
+    (choose-spot "Choose the closest [[bot-spot]] that is not blocked by the player." (_type_ int (pointer uint)) int 202)
+    (play-attacked-speech (_type_) none 203)
+    (play-too-far-warn-speech (_type_) symbol 204)
+    (scene-play "Spawn a [[scene-player]] process for the given scene." (_type_ string symbol) symbol 205)
+    (play-speech (_type_ int) none 206)
+    (play-death-sound "Play one of our death sounds." (_type_ string) none 207)
+    (bot-method-208 (_type_) symbol 208)
+    (channel-active? "Is the given [[gui-channel]] active?" (_type_ uint) symbol 209)
+    (init! "Set defaults for various fields." (_type_) none 210)
+    (clear-speech-flags! "Clear the `playing` flag for all of our speeches." (_type_) none 211)
+    (reset-warn-time! (_type_) none 212)
+    (go-to-waypoint! "Start moving to the given [[bot-waypoint]]." (_type_ int symbol) object 213)
+    (bot-method-214 (_type_) symbol 214)
+    (skip-waypoint (_type_) none 215)
+    (bot-method-216 (_type_) none 216)
+    (speech-ended? "Is the given speech active?" (_type_ int) symbol 217)
+    (speech-playing? "Is the given speech playing?" (_type_ int) symbol 218)
+    (player-blocking-spot? (_type_ bot-spot) symbol 219)
+    (stop-speech (_type_ uint symbol) none 220)
+    (bot-method-221 (_type_) quaternion 221)
+    (bot-method-222 (_type_ vector) none 222)
+    (bot-method-223 (_type_ symbol) none 223)
+    (bot-check-too-far
+      "Call the current [[bot-waypoint]]'s `check-too-far` function if available, otherwise use the default `course` one.
+      If the player is too far, play a warning speech."
+      (_type_) symbol 224)
     )
   )
 
-#|
 (deftype bot-speech-list (basic)
-  ((flags            uint8  :offset-assert 4)
-   (retry-cookie     uint8  :offset-assert 5)
-   (last-local-index int16  :offset-assert 6)
-   (speech-indexes   basic  :offset-assert 8)
+  ((flags            uint8         :offset-assert 4)
+   (retry-cookie     uint8         :offset-assert 5)
+   (last-local-index int16         :offset-assert 6)
+   (speech-indexes   (array int16) :offset-assert 8)
    )
   :method-count-assert 11
   :size-assert         #xc
   :flag-assert         #xb0000000c
   (:methods
-    (bot-speech-list-method-9 () none 9)
-    (bot-speech-list-method-10 () none 10)
+    (bot-speech-list-method-9 (_type_ bot (inline-array bot-speech-info) speech-flags) int 9)
+    (reset-index (_type_ symbol) none 10)
     )
   )
-|#
 
-#|
 (deftype bot-speech-list-shuffle (bot-speech-list)
   ((history-mask      uint64  :offset-assert 16)
    (history-mask-full uint64  :offset-assert 24)
@@ -38842,27 +38910,24 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype bot-course-table (basic)
-  ((course UNKNOWN 18 :offset-assert 4)
+  ((course bot-course 18 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-;; (define-extern *bot-task-pool* ai-task-pool)
-;; (define-extern *bot-course-table* bot-course-table)
+(define-extern *bot-task-pool* ai-task-pool)
+(define-extern *bot-course-table* bot-course-table)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bot                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern bot-simple-check-too-far function)
-;; (define-extern bot-check-too-far-always-okay function)
+(define-extern bot-simple-check-too-far (function bot int))
+(define-extern bot-check-too-far-always-okay (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bot-states                     ;;
@@ -38878,19 +38943,20 @@
    (level            float   :offset-assert 4)
    (min-level        float   :offset-assert 8)
    (charge-speed     float   :offset-assert 12)
-   (powerup-sound-id uint32  :offset-assert 16)
-   (plasma-sound-id  uint32  :offset-assert 20)
+   (powerup-sound-id sound-id  :offset-assert 16)
+   (plasma-sound-id  sound-id  :offset-assert 20)
    )
   :method-count-assert 15
+  :pack-me
   :size-assert         #x18
   :flag-assert         #xf00000018
   (:methods
-    (sig-plasma-method-9 () none 9)
-    (sig-plasma-method-10 () none 10)
-    (sig-plasma-method-11 () none 11)
-    (sig-plasma-method-12 () none 12)
-    (sig-plasma-method-13 () none 13)
-    (sig-plasma-method-14 () none 14)
+    (sig-plasma-method-9 (_type_) none 9)
+    (sig-plasma-method-10 (_type_) symbol 10)
+    (sig-plasma-method-11 (_type_ symbol) none 11)
+    (sig-plasma-method-12 (_type_) none 12)
+    (sig-plasma-method-13 (_type_) symbol 13)
+    (sig-plasma-method-14 (_type_ process-focusable) none 14)
     )
   )
 
@@ -38921,68 +38987,65 @@
   :flag-assert         #x90000000c
   )
 
-#|
 (deftype sig (bot)
-  ((fired-gun-count     uint32             :offset-assert 988)
-   (sig-path            basic              :offset-assert 992)
-   (sig-path-clock      basic              :offset-assert 996)
-   (travel-anim-interp  float              :offset-assert 1000)
-   (platform-index      uint8              :offset-assert 1004)
-   (played-unjam-time   time-frame             :offset-assert 1012)
-   (sig-path-start-time time-frame             :offset-assert 1020)
-   (sig-path-cur-time   time-frame             :offset-assert 1028)
-   (sig-path-prev-time  time-frame             :offset-assert 1036)
-   (plasma              sig-plasma :inline :offset-assert 1044)
-   (sig-path-prev-pos   vector     :inline :offset-assert 364)
+  ((fired-gun-count     uint32             :offset-assert 992)
+   (sig-path            sig-path           :offset-assert 996)
+   (sig-path-clock      clock              :offset-assert 1000)
+   (travel-anim-interp  float              :offset-assert 1004)
+   (platform-index      uint8              :offset-assert 1008)
+   (played-unjam-time   time-frame             :offset-assert 1016)
+   (sig-path-start-time time-frame             :offset-assert 1024)
+   (sig-path-cur-time   time-frame             :offset-assert 1032)
+   (sig-path-prev-time  time-frame             :offset-assert 1040)
+   (plasma              sig-plasma :inline :offset 1048)
+   (sig-path-prev-pos   vector     :inline :offset 368)
    )
   :method-count-assert 259
   :size-assert         #x430
   :flag-assert         #x10303b00430
   (:methods
-    (sig-method-225 () none 225)
-    (sig-method-226 () none 226)
-    (sig-method-227 () none 227)
-    (sig-method-228 () none 228)
-    (sig-method-229 () none 229)
-    (sig-method-230 () none 230)
-    (sig-method-231 () none 231)
-    (sig-method-232 () none 232)
-    (sig-method-233 () none 233)
-    (sig-method-234 () none 234)
-    (sig-method-235 () none 235)
-    (sig-method-236 () none 236)
-    (sig-method-237 () none 237)
-    (sig-method-238 () none 238)
-    (sig-method-239 () none 239)
-    (sig-method-240 () none 240)
-    (sig-method-241 () none 241)
-    (sig-method-242 () none 242)
-    (sig-method-243 () none 243)
-    (sig-method-244 () none 244)
-    (sig-method-245 () none 245)
-    (sig-method-246 () none 246)
-    (sig-method-247 () none 247)
-    (sig-method-248 () none 248)
-    (sig-method-249 () none 249)
-    (sig-method-250 () none 250)
-    (sig-method-251 () none 251)
-    (sig-method-252 () none 252)
-    (sig-method-253 () none 253)
-    (sig-method-254 () none 254)
-    (sig-method-255 () none 255)
-    (sig-method-256 () none 256)
-    (sig-method-257 () none 257)
-    (sig-method-258 () none 258)
+    (whip () _type_ :state 225)
+    (blast () _type_ :state 226)
+    (chase () _type_ :state 227)
+    (chase-attack () _type_ :state 228)
+    (traveling () _type_ :state 229)
+    (traveling-blocked () _type_ :state 230)
+    (waiting-far () _type_ :state 231)
+    (waiting-close () _type_ :state 232)
+    (waiting-turn () _type_ :state 233)
+    (waiting-crouched () _type_ :state 234)
+    (charge-plasma () _type_ :state 235)
+    (gun-jam () _type_ :state 236)
+    (repair-gun () _type_ :state 237)
+    (clean-gun () _type_ :state 238)
+    (sig-path-run () _type_ :state 239)
+    (sig-path-jump () _type_ :state 240)
+    (sig-path-jump-land () _type_ :state 241)
+    (sig-path-shoot-jump () _type_ :state 242)
+    (sig-path-shoot-jump-land () _type_ :state 243)
+    (sig-path-idle () _type_ :state 244)
+    (sig-method-245 (_type_) symbol 245)
+    (sig-method-246 (_type_) symbol 246)
+    (fire-gun "Increase gun fired counter and spawn projectile." (_type_ vector) (pointer process) 247)
+    (sig-method-248 (_type_ sig-path-sample) none 248)
+    (sig-method-249 (_type_ sig-path) none 249)
+    (sig-method-250 (_type_) symbol 250)
+    (sig-method-251 (_type_) symbol 251)
+    (sig-method-252 (_type_) symbol 252)
+    (sig-method-253 (_type_) none 253)
+    (sig-method-254 (_type_) symbol 254)
+    (sig-method-255 (_type_) symbol 255)
+    (sig-method-256 (_type_) none 256)
+    (sig-method-257 (_type_) symbol 257)
+    (sig-method-258 (_type_) none 258)
     )
   )
-|#
 
-#|
 (deftype sigt-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   (function sigt-wait-spot sig symbol) :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes uint8 6   :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -38990,50 +39053,44 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype sigt-choose-piston (ai-task)
-  ((check-done    basic     :offset-assert 32)
-   (which-spot    int8      :offset-assert 36)
-   (num-spots     uint8     :offset-assert 37)
-   (spot-indexes  UNKNOWN 4 :offset-assert 38)
-   (actor-indexes UNKNOWN 4 :offset-assert 42)
+  ((check-done    (function sigt-choose-piston sig symbol)    :offset 32)
+   (which-spot    int8      :offset 36)
+   (num-spots     uint8     :offset 37)
+   (spot-indexes  uint8 4   :offset 38)
+   (actor-indexes uint8 4   :offset 42)
    )
   :method-count-assert 15
   :size-assert         #x30
   :flag-assert         #xf00000030
   (:methods
-    (sigt-choose-piston-method-12 () none 12)
-    (sigt-choose-piston-method-13 () none 13)
-    (sigt-choose-piston-method-14 () none 14)
+    (sigt-choose-piston-method-12 (_type_ sig) symbol 12)
+    (sigt-choose-piston-method-13 (_type_ sig) none 13)
+    (sigt-choose-piston-method-14 (_type_ sig int) symbol 14)
     )
   )
-|#
 
-#|
 (deftype sigt-riding-piston (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 4 :offset-assert 38)
+  ((check-done   (function sigt-riding-piston sig symbol)    :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes uint8 4   :offset 38)
    )
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
   (:methods
-    (sigt-riding-piston-method-12 () none 12)
+    (sigt-riding-piston-method-12 (_type_ sig) symbol 12)
     )
   )
-|#
 
-#|
 (deftype sigt-charge-plasma (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 4 :offset-assert 38)
-   (actor-index  uint8     :offset-assert 42)
+  ((check-done   (function sigt-charge-plasma sig symbol)    :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes uint8 4   :offset 38)
+   (actor-index  uint8     :offset 42)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -39041,9 +39098,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype sigt-fight-focus (ai-task)
   ()
   :method-count-assert 12
@@ -39052,9 +39107,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype sigt-repair-gun (ai-task)
   ()
   :method-count-assert 12
@@ -39063,7 +39116,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39075,10 +39127,9 @@
 ;; sig-shot                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sig-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 476)
-   (hit-pos  vector :inline :offset-assert 492)
+  ((tail-pos vector :inline :offset-assert 480)
+   (hit-pos  vector :inline :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x200
@@ -39086,43 +39137,39 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern sig-shot-move function)
+(define-extern sig-shot-move (function sig-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig-plasma                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sparticle-sig-plasma-lightning function)
+(define-extern sparticle-sig-plasma-lightning (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sig-anim-info (structure)
   ((anim-index int32  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype sig-global-info (basic)
   ((prev-blue-hit int8      :offset-assert 4)
-   (blue-hit-anim UNKNOWN 3 :offset-assert 8)
+   (blue-hit-anim sig-anim-info 3 :inline :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-;; (define-extern *sig-global-info* sig-global-info)
-;; (define-extern *sig-nav-enemy-info* nav-enemy-info)
+(define-extern *sig-global-info* sig-global-info)
+(define-extern *sig-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig-states                     ;;
@@ -39133,67 +39180,63 @@
 ;; ash-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ashelin-course (bot-course)
-  ((ouch-speeches    basic  :offset-assert 48)
-   (victory-speeches basic  :offset-assert 52)
+  ((ouch-speeches    bot-speech-list-shuffle :offset-assert 48)
+   (victory-speeches bot-speech-list-shuffle :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   ;; field default-check-too-far uses ~A with a signed load
   )
-|#
 
-#|
 (deftype ashelin (bot)
-  ((knocked-anim        basic          :offset-assert 988)
-   (travel-anim-interp  float          :offset-assert 992)
-   (fired-gun-count     uint32         :offset-assert 996)
-   (last-fire-time      time-frame         :offset-assert 1004)
-   (victory-speech-time time-frame         :offset-assert 1012)
-   (frontline           plane  :inline :offset-assert 1020)
+  ((ash-course          ashelin-course :offset 652 :score 1) ;; added, overrides course field
+   (knocked-anim        art-joint-anim :offset-assert 992)
+   (travel-anim-interp  float          :offset-assert 996)
+   (fired-gun-count     uint32         :offset-assert 1000)
+   (last-fire-time      time-frame     :offset-assert 1008)
+   (victory-speech-time time-frame     :offset-assert 1016)
+   (frontline           plane  :inline :offset-assert 1024)
    )
   :method-count-assert 251
   :size-assert         #x410
   :flag-assert         #xfb03900410
   (:methods
-    (ashelin-method-225 () none 225)
-    (ashelin-method-226 () none 226)
-    (ashelin-method-227 () none 227)
-    (ashelin-method-228 () none 228)
-    (ashelin-method-229 () none 229)
-    (ashelin-method-230 () none 230)
-    (ashelin-method-231 () none 231)
-    (ashelin-method-232 () none 232)
-    (ashelin-method-233 () none 233)
-    (ashelin-method-234 () none 234)
-    (ashelin-method-235 () none 235)
-    (ashelin-method-236 () none 236)
-    (ashelin-method-237 () none 237)
-    (ashelin-method-238 () none 238)
-    (ashelin-method-239 () none 239)
-    (ashelin-method-240 () none 240)
-    (ashelin-method-241 () none 241)
-    (ashelin-method-242 () none 242)
-    (ashelin-method-243 () none 243)
-    (ashelin-method-244 () none 244)
-    (ashelin-method-245 () none 245)
-    (ashelin-method-246 () none 246)
-    (ashelin-method-247 () none 247)
-    (ashelin-method-248 () none 248)
-    (ashelin-method-249 () none 249)
-    (ashelin-method-250 () none 250)
+    (back-spring () _type_ :state 225)
+    (cartwheel-left () _type_ :state 226)
+    (tumble-right () _type_ :state 227)
+    (chase () _type_ :state 228)
+    (traveling () _type_ :state 229)
+    (traveling-blocked () _type_ :state 230)
+    (waiting-idle () _type_ :state 231)
+    (standing-idle () _type_ :state 232)
+    (standing-turn () _type_ :state 233)
+    (standing-blast () _type_ :state 234)
+    (ashelin-method-235 (_type_ symbol) symbol 235)
+    (ashelin-method-236 (_type_ vector float float float float) symbol 236)
+    (fire-projectile (_type_ vector) none 237)
+    (ashelin-method-238 (_type_ symbol symbol) symbol 238)
+    (ashelin-method-239 (_type_) none 239)
+    (ashelin-method-240 (_type_ int) none 240)
+    (ashelin-method-241 (_type_) int 241)
+    (ashelin-method-242 (_type_) int 242)
+    (ashelin-method-243 (_type_ float) int 243)
+    (ashelin-method-244 (_type_) none 244)
+    (ashelin-method-245 (_type_) none 245)
+    (ashelin-method-246 (_type_) int 246)
+    (ashelin-method-247 (_type_) symbol 247)
+    (ashelin-method-248 (_type_) symbol 248)
+    (ashelin-method-249 (_type_) none 249)
+    (ashelin-method-250 (_type_ symbol) none 250)
     )
   )
-|#
 
-#|
 (deftype asht-wait-spot (ai-task)
-  ((check-done   basic     :offset-assert 32)
-   (which-spot   int8      :offset-assert 36)
-   (num-spots    uint8     :offset-assert 37)
-   (spot-indexes UNKNOWN 6 :offset-assert 38)
+  ((check-done   (function asht-wait-spot ashelin symbol) :offset 32)
+   (which-spot   int8      :offset 36)
+   (num-spots    uint8     :offset 37)
+   (spot-indexes uint8 6   :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -39201,9 +39244,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype asht-fight-focus (ai-task)
   ()
   :method-count-assert 12
@@ -39212,8 +39253,6 @@
   (:methods
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash-task                       ;;
@@ -39224,10 +39263,9 @@
 ;; ash-shot                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ashelin-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 476)
-   (hit-pos  vector :inline :offset-assert 492)
+  ((tail-pos vector :inline :offset-assert 480)
+   (hit-pos  vector :inline :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x200
@@ -39235,38 +39273,34 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern ashelin-shot-move function)
+(define-extern ashelin-shot-move (function ashelin-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ashelin-anim-info (structure)
   ((anim-index int32  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype ashelin-global-info (basic)
   ((prev-blue-hit      int8      :offset-assert 4)
-   (blue-hit-anim      UNKNOWN 6 :offset-assert 8)
-   (blue-hit-land-anim UNKNOWN 6 :offset-assert 32)
+   (blue-hit-anim      int32 6   :offset-assert 8)
+   (blue-hit-land-anim int32 6   :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-;; (define-extern *ashelin-global-info* ashelin-global-info)
-;; (define-extern *ashelin-nav-enemy-info* nav-enemy-info)
+(define-extern *ashelin-global-info* ashelin-global-info)
+(define-extern *ashelin-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash-states                     ;;
@@ -39277,65 +39311,54 @@
 ;; sig0-course                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype sig-atoll (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
+(declare-type sig0-course bot-course)
 
-#|
-(deftype sig0-course (UNKNOWN)
-  ((course-id               uint8   :offset-assert 4)
-   (speech-count            uint16  :offset-assert 6)
-   (spot-count              uint16  :offset-assert 8)
-   (retry-cookie            uint8   :offset-assert 10)
-   (too-far-warn-speeches   basic   :offset-assert 12)
-   (too-far-fail-speeches   basic   :offset-assert 16)
-   (attack-player-speeches  basic   :offset-assert 20)
-   (default-check-too-far   basic   :offset-assert 24)
-   (waypoints               basic   :offset-assert 28)
-   (speeches                uint32  :offset-assert 32)
-   (speech-tunings          uint32  :offset-assert 36)
-   (dirs                    uint32  :offset-assert 40)
-   (spots                   uint32  :offset-assert 44)
-   (liftcat-speech-index    int8    :offset-assert 48)
-   (first-liftcat-speeches  basic   :offset-assert 52)
-   (second-liftcat-speeches basic   :offset-assert 56)
+(deftype sig-atoll (sig)
+  ((sig-course sig0-course :offset 652 :score 1)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 260
+  :size-assert         #x430
+  :flag-assert         #x10403b00430
+  (:methods
+    (sig-atoll-method-259 (_type_) symbol 259)
+    )
+  )
+
+(deftype sig0-course (bot-course)
+  ((liftcat-speech-index    int8          :offset-assert 48)
+   (first-liftcat-speeches  (array int16) :offset-assert 52)
+   (second-liftcat-speeches (array int16) :offset-assert 56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   ;; field default-check-too-far uses ~A with a signed load
   )
-|#
 
-;; (define-extern sig0-first-battle-too-far function)
-;; (define-extern sig0-tank-check-too-far function)
-;; (define-extern sig0-gangway-check-too-far function)
-;; (define-extern sig0-final-snipers-check-too-far function)
-;; (define-extern sig0-say-look-out-if-should function)
-;; (define-extern sig-say-waste-the-suckers-if-should function)
-;; (define-extern *sig0-course* sig0-course)
+(define-extern sig0-first-battle-too-far (function sig-atoll int))
+(define-extern sig0-tank-check-too-far (function sig-atoll int))
+(define-extern sig0-gangway-check-too-far (function sig-atoll int))
+(define-extern sig0-final-snipers-check-too-far (function sig-atoll int))
+(define-extern sig0-say-look-out-if-should (function sig-atoll none))
+(define-extern sig-say-waste-the-suckers-if-should (function sig-atoll none))
+(define-extern *sig0-course* sig0-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash1-course                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ashelin-battle (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype ashelin-battle (ashelin)
+  ((player-in-bounds-time time-frame :offset-assert 1040)
+   )
+  :method-count-assert 252
+  :size-assert         #x418
+  :flag-assert         #xfc03a00418
+  (:methods
+    (set-frontline-dist! (_type_) none 251)
+    )
   )
-|#
 
-;; (define-extern *ash1-course* ashelin-course)
+(define-extern *ash1-course* ashelin-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-tank                     ;;
@@ -43263,70 +43286,72 @@
 ;; whack                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype hip-mole-event (UNKNOWN)
-  ((min-time uint16  :offset-assert 0)
-   (max-time uint16  :offset-assert 2)
-   (mode     uint8   :offset-assert 4)
+(deftype hip-mole-event (structure)
+  ((min-time uint16  :offset 0)
+   (max-time uint16  :offset 2)
+   (mode     uint8   :offset 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :size-assert         #x5
+  :flag-assert         #x900000005
   )
-|#
 
-#|
-(deftype hip-mole (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype hip-mole (process-drawable)
+  ((cabinet  handle :offset-assert 200)
+   (index    int32  :offset-assert 208)
+   (mode     uint8  :offset-assert 212)
+   (sound-id uint32 :offset-assert 216)
+   (abort?   symbol :offset-assert 220)
+   )
+  :method-count-assert 22
+  :size-assert         #xe0
+  :flag-assert         #x16006000e0
+  (:methods
+    (idle () _type_ :state 20)
+    (active (time-frame uint) _type_ :state 21)
+    )
   )
-|#
 
 (deftype whack-a-metal (process-drawable)
-  (
-    (cabinet handle :offset-assert 200)
-    (bopper uint32 :offset-assert 208)
-    (mole object 8 :offset-assert 212)
-    (score-part basic 2 :offset-assert 244)
-    (wave int32 :offset-assert 252)
-    (event int32 :offset-assert 256)
-    (event-time time-frame :offset-assert 264)
-    (event-length time-frame :offset-assert 272)
-    (hud-score int64 :offset-assert 280)
-    (hud-goal int64 :offset-assert 288)
-    (score float :offset-assert 296)
-    (score-time time-frame :offset-assert 304)
-    (dizzy? symbol :offset-assert 312)
-    (miss-count int32 :offset-assert 316)
-    (air-attack-count int32 :offset-assert 320)
-    (slot-buffer int32 4 :offset-assert 324)
-    (speech-time time-frame :offset-assert 344)
-    (speech-count int32 :offset-assert 352)
-    (speech-last basic 4 :offset-assert 356)
-  )
+  ((cabinet          handle               :offset-assert 200)
+   (bopper           (pointer process)    :offset-assert 208)
+   (mole             (pointer hip-mole) 8 :offset-assert 212)
+   (score-part       sparticle-launch-control 2 :offset-assert 244)
+   (wave             int32                :offset-assert 252)
+   (event            int32                :offset-assert 256)
+   (event-time       time-frame           :offset-assert 264)
+   (event-length     time-frame           :offset-assert 272)
+   (hud-score        handle               :offset-assert 280)
+   (hud-goal         handle               :offset-assert 288)
+   (score            float                :offset-assert 296)
+   (score-time       time-frame           :offset-assert 304)
+   (dizzy?           symbol               :offset-assert 312)
+   (miss-count       int32                :offset-assert 316)
+   (air-attack-count int32                :offset-assert 320)
+   (slot-buffer      int32 4              :offset-assert 324)
+   (speech-time      time-frame           :offset-assert 344)
+   (speech-count     int32                :offset-assert 352)
+   (speech-last      int32 4              :offset-assert 356)
+   )
   :method-count-assert 30
   :size-assert         #x174
   :flag-assert         #x1e01000174
   (:methods
-    (whack-a-metal-method-21 () none 20)
-    (whack-a-metal-method-22 () none 21)
-    (whack-a-metal-method-23 () none 22)
-    (whack-a-metal-method-24 () none 23)
-    (whack-a-metal-method-25 () none 24)
-    (whack-a-metal-method-26 () none 25)
-    (whack-a-metal-method-27 () none 26)
-    (whack-a-metal-method-28 () none 27)
-    (whack-a-metal-method-29 () none 28)
-    (whack-a-metal-method-30 () none 29)
+    (hide () _type_ :state 20)
+    (wait-for-start () _type_ :state 21)
+    (active (symbol int) _type_ :state 22)
+    (attack (int) _type_ :state 23)
+    (lose () _type_ :state 24)
+    (win () _type_ :state 25)
+    (whack-a-metal-method-26 (_type_) integer 26)
+    (whack-a-metal-method-27 (_type_) none 27)
+    (whack-a-metal-method-28 (_type_) none 28)
+    (whack-a-metal-method-29 (_type_ int int) int 29)
     )
   )
 
-;; (define-extern birth-func-whack-score (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern *mole-data* array)
-;; (define-extern hip-mole-init function)
+(define-extern birth-func-whack-score (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *mole-data* (array (array hip-mole-event)))
+(define-extern hip-mole-init (function handle int none :behavior hip-mole))
 (define-extern whack-a-metal-init (function entity-actor none :behavior whack-a-metal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51492,11 +51517,10 @@
 ;; kid-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kid (bot)
-  ((travel-anim-interp  float   :offset-assert 988)
-   (arrest-attempt-time time-frame  :offset-assert 996)
-   (arrestor-handle     uint64  :offset-assert 1004)
+  ((travel-anim-interp  float   :offset-assert 992)
+   (arrest-attempt-time time-frame  :offset-assert 1000)
+   (arrestor-handle     uint64  :offset-assert 1008)
    )
   :method-count-assert 235
   :size-assert         #x3f8
@@ -51514,7 +51538,6 @@
     (kid-method-234 () none 234)
     )
   )
-|#
 
 #|
 (deftype kidt-wait-spot (ai-task)
