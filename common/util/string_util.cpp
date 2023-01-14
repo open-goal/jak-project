@@ -16,6 +16,14 @@ bool starts_with(const std::string& s, const std::string& prefix) {
   return s.rfind(prefix) == 0;
 }
 
+bool ends_with(const std::string& s, const std::string& suffix) {
+  if (s.length() >= suffix.length()) {
+    return !s.compare(s.length() - suffix.length(), suffix.length(), suffix);
+  } else {
+    return false;
+  }
+}
+
 std::string ltrim(const std::string& s) {
   size_t start = s.find_first_not_of(WHITESPACE);
   return (start == std::string::npos) ? "" : s.substr(start);

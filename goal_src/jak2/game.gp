@@ -2846,24 +2846,24 @@
 ;;   "loutcstb"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LPACKAGE
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LPACKAGE
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LPACKAGE.DGO" "lpackage.gd")
+(cgo "LPACKAGE.DGO" "lpackage.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/misc/delivery/delivery-task.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/misc/delivery/delivery-task.gc"
+  )
 
-;; (copy-textures 2459)
+(copy-textures 2459)
 
-;; (copy-gos
-;;   "krew-package-ag"
-;;   "lpackage"
-;;   )
+(copy-gos
+  "krew-package-ag"
+  "lpackage"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LPORTRUN
@@ -3222,16 +3222,16 @@
 ;; ;; LTRNYSAM
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LTRNYSAM.DGO" "ltrnysam.gd")
+(cgo "LTRNYSAM.DGO" "ltrnysam.gd")
 
-;; (copy-textures 1774 3255)
+(copy-textures 1774 3255)
 
-;; (copy-gos
-;;   "youngsamos-ltrnysam+0-ag"
-;;   "youngsamos-highres-ag"
-;;   "torn-highres-ag"
-;;   "ltrnysam"
-;;   )
+(copy-gos
+  "youngsamos-ltrnysam+0-ag"
+  ; "youngsamos-highres-ag"
+  ; "torn-highres-ag"
+  "ltrnysam"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LWHACK

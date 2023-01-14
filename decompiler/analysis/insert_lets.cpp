@@ -2047,7 +2047,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   last_part = dynamic_cast<LetElement*>(in->body()->at(in->body()->size() - 1));
   if (!last_part) {
-    lg::error("NO LAST PART AHH wtf!!");
+    // lg::error("NO LAST PART AHH wtf!!");
     return nullptr;
   }
 

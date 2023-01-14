@@ -481,7 +481,6 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
  */
 void update_proto_info(std::vector<TieProtoInfo>* out,
                        const std::vector<level_tools::TextureRemap>& map,
-                       const TextureDB& tdb,
                        const std::vector<level_tools::PrototypeBucketTie>& protos,
                        int geo) {
   out->resize(std::max(out->size(), protos.size()));
@@ -557,10 +556,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         u32 tpage = new_tex >> 20;
         u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
         u32 tex_combo = (((u32)tpage) << 16) | tidx;
-        // look up the texture to make sure it's valid
-        auto tex = tdb.textures.find(tex_combo);
-        // ASSERT(tex != tdb.textures.end());
-        // remember the texture id
+        // remember the texture id (may be invalid, will be checked later)
         adgif.combo_tex = tex_combo;
         // and the hidden value in the unused a+d
         memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
@@ -2056,9 +2052,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         for (auto& vert : strip.verts) {
           tree.packed_vertices.vertices.push_back(
               {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
-          if (vert.tex.z() != 1.0) {
-            lg::warn("SKIPPING ASSERT in extract_tie! TODO!");
-          }
+          // TODO: check if this means anything.
           // ASSERT(vert.tex.z() == 1.);
         }
         int end = tree.packed_vertices.vertices.size();
@@ -2105,33 +2099,40 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           }
 
           if (idx_in_lev_data == UINT32_MAX) {
-            // didn't find it, have to add a new one texture.
-            auto tex_it = tdb.textures.find(combo_tex);
-            if (tex_it == tdb.textures.end()) {
-              bool ok_to_miss = false;  // for TIE, there's no missing textures.
-              if (ok_to_miss) {
-                // we're missing a texture, just use the first one.
-                tex_it = tdb.textures.begin();
-              } else {
-                ASSERT_MSG(
-                    false,
-                    fmt::format(
-                        "texture {} wasn't found. make sure it is loaded somehow. You may need to "
-                        "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
-                        "textures. tpage is {}. id is {} (0x{:x})",
-                        combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
+            if (combo_tex == 0) {
+              lg::warn("unhandled texture 0 case in extract_tie for {} {}", lev.level_name,
+                       proto.name);
+              idx_in_lev_data = 0;
+            } else {
+              // didn't find it, have to add a new one texture.
+              auto tex_it = tdb.textures.find(combo_tex);
+              if (tex_it == tdb.textures.end()) {
+                bool ok_to_miss = false;  // for TIE, there's no missing textures.
+                if (ok_to_miss) {
+                  // we're missing a texture, just use the first one.
+                  tex_it = tdb.textures.begin();
+                } else {
+                  ASSERT_MSG(
+                      false,
+                      fmt::format(
+                          "texture {} wasn't found. make sure it is loaded somehow. You may need "
+                          "to "
+                          "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                          "textures. tpage is {}. id is {} (0x{:x})",
+                          combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
+                }
               }
+              // add a new texture to the level data
+              idx_in_lev_data = lev.textures.size();
+              lev.textures.emplace_back();
+              auto& new_tex = lev.textures.back();
+              new_tex.combo_id = combo_tex;
+              new_tex.w = tex_it->second.w;
+              new_tex.h = tex_it->second.h;
+              new_tex.debug_name = tex_it->second.name;
+              new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+              new_tex.data = tex_it->second.rgba_bytes;
             }
-            // add a new texture to the level data
-            idx_in_lev_data = lev.textures.size();
-            lev.textures.emplace_back();
-            auto& new_tex = lev.textures.back();
-            new_tex.combo_id = combo_tex;
-            new_tex.w = tex_it->second.w;
-            new_tex.h = tex_it->second.h;
-            new_tex.debug_name = tex_it->second.name;
-            new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-            new_tex.data = tex_it->second.rgba_bytes;
           }
 
           // determine the draw mode
@@ -2339,7 +2340,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     // convert level format data to a nicer format
     auto info =
         collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data, geo);
-    update_proto_info(&info, tex_map, tex_db, tree->prototypes.prototype_array_tie.data, geo);
+    update_proto_info(&info, tex_map, tree->prototypes.prototype_array_tie.data, geo);
     if (version != GameVersion::Jak2) {
       check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
     }

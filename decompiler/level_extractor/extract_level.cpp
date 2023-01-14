@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
@@ -21,7 +22,8 @@ namespace decompiler {
 /*!
  * Look through files in a DGO and find the bsp-header file (the level)
  */
-std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records) {
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records,
+                                             const std::string& dgo_name) {
   std::optional<ObjectFileRecord> result;
   bool found = false;
   for (auto& file : records) {
@@ -29,6 +31,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
       ASSERT(!found);
       found = true;
       result = file;
+    }
+  }
+
+  if (!result) {
+    if (str_util::ends_with(dgo_name, ".DGO") || str_util::ends_with(dgo_name, ".CGO")) {
+      auto expected_name = dgo_name.substr(0, dgo_name.length() - 4);
+      for (auto& c : expected_name) {
+        c = tolower(c);
+      }
+      if (!records.empty() && expected_name == records.back().name) {
+        return records.back();
+      }
     }
   }
   return result;
@@ -116,7 +130,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
                                                               const DecompileHacks& hacks,
                                                               bool extract_collision,
                                                               tfrag3::Level& level_data) {
-  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
+  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
   if (!bsp_rec) {
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
