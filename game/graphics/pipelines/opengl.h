@@ -65,7 +65,7 @@ class GLDisplay : public GfxDisplay {
   double last_cursor_x_position = 0;
   double last_cursor_y_position = 0;
 
-  static constexpr int MAX_VMODES = 128;
+  static constexpr int MAX_VMODES = 256;
 
   struct VMode {
     void set(const GLFWvidmode* vmode);
