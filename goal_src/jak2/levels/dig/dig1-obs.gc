@@ -376,7 +376,7 @@
 (define *dig-bomb-crate-cylinder-constants* (new 'static 'rigid-body-object-constants
                                               :mass 1.0
                                               :inv-mass 1.0
-                                              :cm-joint-w 1.0
+                                              :cm-joint (new 'static 'vector :w 1.0)
                                               :linear-damping 0.99
                                               :angular-damping 0.9
                                               :bounce-factor 0.5
@@ -628,7 +628,12 @@
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod rigid-body-object-method-47 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder) (arg0 process-drawable) (arg1 attack-info) (arg2 object) (arg3 penetrate))
+(defmethod rigid-body-object-method-47 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder)
+                                                              (arg0 process-drawable)
+                                                              (arg1 attack-info)
+                                                              (arg2 touching-shapes-entry)
+                                                              (arg3 penetrate)
+                                                              )
   (the-as
     symbol
     (cond
@@ -647,12 +652,13 @@
     )
   )
 
-(defmethod rigid-body-object-method-45 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder) (arg0 rigid-body-object-constants))
-  (let* ((f0-0 (-> arg0 info inv-inertial-tensor vector 0 x))
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod rigid-body-object-method-45 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder) (arg0 rigid-body-impact))
+  (let* ((f0-0 (-> arg0 impulse))
          (f1-0 28672.0)
          (f30-0 (* f0-0 (/ 1.0 f1-0) (-> obj info inv-mass)))
          )
-    (if (< (* 28672.0 (-> obj info mass)) (-> arg0 info inv-inertial-tensor vector 0 x))
+    (if (< (* 28672.0 (-> obj info mass)) (-> arg0 impulse))
         (sound-play-by-name
           (static-sound-name "barrel-bomb-hit")
           (new-sound-id)
@@ -664,6 +670,7 @@
           )
         )
     )
+  (none)
   )
 
 (defmethod rigid-body-object-method-37 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder))
@@ -780,6 +787,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch (pointer process) vs (pointer dig-bomb-crate-cylinder).
 (defun dig-bomb-crate-cylinder-spawn ((arg0 process-tree) (arg1 dig-bomb-crate-cylinder-spawn-params) (arg2 entity-actor))
   (process-spawn dig-bomb-crate-cylinder arg1 arg2 :to arg0)
   )
