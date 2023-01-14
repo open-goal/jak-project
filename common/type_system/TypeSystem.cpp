@@ -1318,12 +1318,12 @@ std::vector<std::string> TypeSystem::get_all_type_names() {
 
 std::vector<std::string> TypeSystem::search_types_by_parent_type(
     const std::string& parent_type,
-    const std::vector<std::string>& existing_matches) {
+    const std::optional<std::vector<std::string>>& existing_matches) {
   std::vector<std::string> results = {};
   // If we've been given a list of already matched types, narrow it down from there, otherwise
   // iterate through the entire map
-  if (!existing_matches.empty()) {
-    for (const auto& type_name : existing_matches) {
+  if (existing_matches) {
+    for (const auto& type_name : existing_matches.value()) {
       if (typecheck_base_types(parent_type, type_name, false)) {
         results.push_back(type_name);
       }
@@ -1345,12 +1345,12 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
 
 std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
     const int minimum_method_id,
-    const std::vector<std::string>& existing_matches) {
+    const std::optional<std::vector<std::string>>& existing_matches) {
   std::vector<std::string> results = {};
   // If we've been given a list of already matched types, narrow it down from there, otherwise
   // iterate through the entire map
-  if (!existing_matches.empty()) {
-    for (const auto& type_name : existing_matches) {
+  if (existing_matches) {
+    for (const auto& type_name : existing_matches.value()) {
       if (get_type_method_count(type_name) - 1 >= minimum_method_id) {
         results.push_back(type_name);
       }
@@ -1366,14 +1366,18 @@ std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
 }
 
 std::vector<std::string> TypeSystem::search_types_by_size(
-    const int search_size,
-    const std::vector<std::string>& existing_matches) {
+    const int min_size,
+    const std::optional<int> max_size,
+    const std::optional<std::vector<std::string>>& existing_matches) {
   std::vector<std::string> results = {};
   // If we've been given a list of already matched types, narrow it down from there, otherwise
   // iterate through the entire map
-  if (!existing_matches.empty()) {
-    for (const auto& type_name : existing_matches) {
-      if (m_types[type_name]->get_size_in_memory() == search_size) {
+  if (existing_matches) {
+    for (const auto& type_name : existing_matches.value()) {
+      const auto size_of_type = m_types[type_name]->get_size_in_memory();
+      if (max_size && size_of_type <= max_size && size_of_type >= min_size) {
+        results.push_back(type_name);
+      } else if (!max_size && size_of_type == min_size) {
         results.push_back(type_name);
       }
     }
@@ -1383,7 +1387,10 @@ std::vector<std::string> TypeSystem::search_types_by_size(
       if (!type_info->has_parent()) {
         continue;
       }
-      if (type_info->get_size_in_memory() == search_size) {
+      const auto size_of_type = m_types[type_name]->get_size_in_memory();
+      if (max_size && size_of_type <= max_size && size_of_type >= min_size) {
+        results.push_back(type_name);
+      } else if (!max_size && size_of_type == min_size) {
         results.push_back(type_name);
       }
     }
@@ -1394,11 +1401,11 @@ std::vector<std::string> TypeSystem::search_types_by_size(
 
 std::vector<std::string> TypeSystem::search_types_by_fields(
     const std::vector<TypeSearchFieldInput>& search_fields,
-    const std::vector<std::string>& existing_matches) {
+    const std::optional<std::vector<std::string>>& existing_matches) {
   // TODO - maybe support partial matches eventually
   std::vector<std::string> results = {};
-  if (!existing_matches.empty()) {
-    for (const auto& type_name : existing_matches) {
+  if (existing_matches) {
+    for (const auto& type_name : existing_matches.value()) {
       // For each type, look at it's fields
       if (dynamic_cast<StructureType*>(m_types[type_name].get()) != nullptr) {
         bool type_valid = true;
