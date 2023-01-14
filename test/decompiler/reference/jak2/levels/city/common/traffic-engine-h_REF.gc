@@ -1,51 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: traffic-engine-h.gc
-;; name in dgo: traffic-engine-h
-;; dgos: CWI
-
-;; +++vis-cell-flag
-(defenum vis-cell-flag
-  :type uint8
-  :bitfield #t
-  (active-vehicle)
-  (active-pedestrian)
-  (suppress)
-  )
-;; ---vis-cell-flag
-
-
-;; +++traffic-target-flag
-(defenum traffic-target-flag
-  :type uint8
-  :bitfield #t
-  (visible-now)
-  (visible-recently)
-  (visible-ever)
-  (updated)
-  (force-visible)
-  )
-;; ---traffic-target-flag
-
-
-;; +++traffic-alert-flag
-(defenum traffic-alert-flag
-  :type uint8
-  :bitfield #t
-  (alert-ending)
-  (alarm-on)
-  (guard-multi-focus)
-  (sticky-guard-settings)
-  (disable-pursuit-control)
-  (target-jak)
-  )
-;; ---traffic-alert-flag
-
-(declare-type traffic-find-segment-struct structure)
-
-;; DECOMP BEGINS
-
+;; definition of type nav-segment
 (deftype nav-segment (structure)
   ((vertex        vector     2 :inline :offset-assert   0)
    (length        float                :offset         12)
@@ -63,7 +19,28 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type nav-segment
+(defmethod inspect nav-segment ((obj nav-segment))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'nav-segment)
+  (format #t "~1Tvertex[2] @ #x~X~%" (-> obj vertex))
+  (format #t "~1Tlength: ~f~%" (-> obj length))
+  (format #t "~1Tspawn-spacing: ~f~%" (-> obj spawn-spacing))
+  (format #t "~1Tbranch: #<nav-branch @ #x~X>~%" (-> obj branch))
+  (format #t "~1Tnav-mesh-id: ~D~%" (-> obj nav-mesh-id))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tcell-id: ~D~%" (-> obj cell-id))
+  (format #t "~1Tfrom-cell-id: ~D~%" (-> obj from-cell-id))
+  (format #t "~1Ttracker-id: ~D~%" (-> obj tracker-id))
+  (format #t "~1Tpad0: ~D~%" (-> obj pad0))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type vis-cell
 (deftype vis-cell (structure)
   ((sphere                 sphere                     :inline :offset-assert   0)
    (segment-array          (inline-array nav-segment)         :offset-assert  16)
@@ -85,7 +62,52 @@
     )
   )
 
+;; definition for method 3 of type vis-cell
+(defmethod inspect vis-cell ((obj vis-cell))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-16)
+    )
+  (format #t "[~8x] ~A~%" obj 'vis-cell)
+  (format #t "~1Tsphere: #<sphere @ #x~X>~%" (-> obj sphere))
+  (format #t "~1Tsegment-array: #x~X~%" (-> obj segment-array))
+  (format #t "~1Tvis-id: ~D~%" (-> obj vis-id))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tincoming-segment-count: ~D~%" (-> obj incoming-segment-count))
+  (format #t "~1Tsegment-count: ~D~%" (-> obj segment-count))
+  (format #t "~1Tflags: #x~X : (vis-cell-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (vis-cell-flag active-pedestrian)) (vis-cell-flag active-pedestrian))
+        (format #t "active-pedestrian ")
+        )
+    (if (= (logand s5-0 (vis-cell-flag suppress)) (vis-cell-flag suppress))
+        (format #t "suppress ")
+        )
+    (if (= (logand s5-0 (vis-cell-flag active-vehicle)) (vis-cell-flag active-vehicle))
+        (format #t "active-vehicle ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tprev-flags: #x~X : (vis-cell-flag " (-> obj prev-flags))
+  (let ((s5-1 (-> obj prev-flags)))
+    (if (= (logand s5-1 (vis-cell-flag active-pedestrian)) (vis-cell-flag active-pedestrian))
+        (format #t "active-pedestrian ")
+        )
+    (if (= (logand s5-1 (vis-cell-flag suppress)) (vis-cell-flag suppress))
+        (format #t "suppress ")
+        )
+    (if (= (logand s5-1 (vis-cell-flag active-vehicle)) (vis-cell-flag active-vehicle))
+        (format #t "active-vehicle ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Talloc-segment-count: ~D~%" (-> obj alloc-segment-count))
+  (format #t "~1Tpad0: ~D~%" (-> obj pad0))
+  (label cfg-16)
+  obj
+  )
 
+;; definition of type vis-grid-pos
 (deftype vis-grid-pos (structure)
   ((data int8 3 :offset-assert   0)
    (x    int8   :offset          0)
@@ -98,7 +120,22 @@
   :flag-assert         #x900000003
   )
 
+;; definition for method 3 of type vis-grid-pos
+(defmethod inspect vis-grid-pos ((obj vis-grid-pos))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vis-grid-pos)
+  (format #t "~1Tdata[3] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type vis-grid-box
 (deftype vis-grid-box (structure)
   ((min vis-grid-pos :inline :offset-assert   0)
    (max vis-grid-pos :inline :offset-assert   3)
@@ -108,7 +145,20 @@
   :flag-assert         #x900000006
   )
 
+;; definition for method 3 of type vis-grid-box
+(defmethod inspect vis-grid-box ((obj vis-grid-box))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vis-grid-box)
+  (format #t "~1Tmin: #<vis-grid-pos @ #x~X>~%" (-> obj min))
+  (format #t "~1Tmax: #<vis-grid-pos @ #x~X>~%" (-> obj max))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type vis-ray
 (deftype vis-ray (structure)
   ((pos      vector       :inline :offset-assert   0)
    (dir      vector       :inline :offset-assert  16)
@@ -123,7 +173,25 @@
   :flag-assert         #x90000004c
   )
 
+;; definition for method 3 of type vis-ray
+(defmethod inspect vis-ray ((obj vis-ray))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vis-ray)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~1Tdir: #<vector @ #x~X>~%" (-> obj dir))
+  (format #t "~1Tdest-pos: #<vector @ #x~X>~%" (-> obj dest-pos))
+  (format #t "~1Tplane: #<plane @ #x~X>~%" (-> obj plane))
+  (format #t "~1Tgrid-pos: #<vis-grid-pos @ #x~X>~%" (-> obj grid-pos))
+  (format #t "~1Tlen: ~f~%" (-> obj len))
+  (format #t "~1Tcell: #<vis-cell @ #x~X>~%" (-> obj cell))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type grid-info
 (deftype grid-info (structure)
   ((axis-scale      float        3       :offset-assert   0)
    (dimension-array int8         3       :offset-assert  12)
@@ -143,7 +211,23 @@
     )
   )
 
+;; definition for method 3 of type grid-info
+(defmethod inspect grid-info ((obj grid-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'grid-info)
+  (format #t "~1Taxis-scale[3] @ #x~X~%" (-> obj axis-scale))
+  (format #t "~1Tdimension-array[3] @ #x~X~%" (-> obj dimension-array))
+  (format #t "~1Tpad0[1] @ #x~X~%" (-> obj pad0))
+  (format #t "~1Tbox: #<bounding-box @ #x~X>~%" (-> obj box))
+  (format #t "~1Tcell-size: #<vector @ #x~X>~%" (-> obj cell-size))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type city-level-info
 (deftype city-level-info (structure)
   ((grid-info      grid-info               :inline :offset-assert   0)
    (cell-array     (inline-array vis-cell)         :offset-assert  64)
@@ -171,7 +255,26 @@
     )
   )
 
+;; definition for method 3 of type city-level-info
+(defmethod inspect city-level-info ((obj city-level-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'city-level-info)
+  (format #t "~1Tgrid-info: #<grid-info @ #x~X>~%" (-> obj grid-info))
+  (format #t "~1Tcell-array: #x~X~%" (-> obj cell-array))
+  (format #t "~1Tsegment-count: ~D~%" (-> obj segment-count))
+  (format #t "~1Tcell-count: ~D~%" (-> obj cell-count))
+  (format #t "~1Tsegment-array: #x~X~%" (-> obj segment-array))
+  (format #t "~1Tnav-graph: ~A~%" (-> obj nav-graph))
+  (format #t "~1Tcamera-ceiling: (meters ~m)~%" (-> obj camera-ceiling))
+  (format #t "~1Tpad-array[56] @ #x~X~%" (-> obj pad-array))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-level-data
 (deftype traffic-level-data (structure)
   ((city-info               city-level-info         :offset-assert   0)
    (active-cell-count       uint8                   :offset-assert   4)
@@ -193,7 +296,24 @@
     )
   )
 
+;; definition for method 3 of type traffic-level-data
+(defmethod inspect traffic-level-data ((obj traffic-level-data))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-level-data)
+  (format #t "~1Tcity-info: #<city-level-info @ #x~X>~%" (-> obj city-info))
+  (format #t "~1Tactive-cell-count: ~D~%" (-> obj active-cell-count))
+  (format #t "~1Tnewly-active-cell-count: ~D~%" (-> obj newly-active-cell-count))
+  (format #t "~1Tactive-cell-list[255] @ #x~X~%" (-> obj active-cell-list))
+  (format #t "~1Tnewly-active-cell-list[255] @ #x~X~%" (-> obj newly-active-cell-list))
+  (format #t "~1Tactive-cell-box: #<bounding-box @ #x~X>~%" (-> obj active-cell-box))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-suppression-box
 (deftype traffic-suppression-box (structure)
   ((data     uint8        32      :offset-assert   0)
    (bbox     bounding-box :inline :offset          0)
@@ -205,7 +325,22 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type traffic-suppression-box
+(defmethod inspect traffic-suppression-box ((obj traffic-suppression-box))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-suppression-box)
+  (format #t "~1Tdata[32] @ #x~X~%" (-> obj bbox))
+  (format #t "~1Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tduration: ~D~%" (-> obj bbox max w))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-guard-type-info
 (deftype traffic-guard-type-info (structure)
   ((object-type      uint8  :offset-assert   0)
    (max-target-count int8   :offset-assert   1)
@@ -219,7 +354,24 @@
   :flag-assert         #x900000006
   )
 
+;; definition for method 3 of type traffic-guard-type-info
+(defmethod inspect traffic-guard-type-info ((obj traffic-guard-type-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-guard-type-info)
+  (format #t "~1Tobject-type: ~D~%" (-> obj object-type))
+  (format #t "~1Tmax-target-count: ~D~%" (-> obj max-target-count))
+  (format #t "~1Tmin-target-count: ~D~%" (-> obj min-target-count))
+  (format #t "~1Ttarget-count: ~D~%" (-> obj target-count))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tchange-to-type: ~D~%" (-> obj change-to-type))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-guard-type-settings
 (deftype traffic-guard-type-settings (structure)
   ((target-count    int8    :offset-assert   0)
    (inaccuracy      float   :offset-assert   4)
@@ -234,7 +386,25 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type traffic-guard-type-settings
+(defmethod inspect traffic-guard-type-settings ((obj traffic-guard-type-settings))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-guard-type-settings)
+  (format #t "~1Ttarget-count: ~D~%" (-> obj target-count))
+  (format #t "~1Tinaccuracy: ~f~%" (-> obj inaccuracy))
+  (format #t "~1Tacquire-delay: ~D~%" (-> obj acquire-delay))
+  (format #t "~1Tshot-delay: ~D~%" (-> obj shot-delay))
+  (format #t "~1Tburst-delay: ~D~%" (-> obj burst-delay))
+  (format #t "~1Tshot-count: ~D~%" (-> obj shot-count))
+  (format #t "~1Trand-shot-count: ~D~%" (-> obj rand-shot-count))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-alert-state-settings
 (deftype traffic-alert-state-settings (structure)
   ((guard-settings-array traffic-guard-type-settings 6 :inline :offset-assert   0)
    (ped-tazer            traffic-guard-type-settings :inline   :offset          0)
@@ -249,7 +419,25 @@
   :flag-assert         #x900000060
   )
 
+;; definition for method 3 of type traffic-alert-state-settings
+(defmethod inspect traffic-alert-state-settings ((obj traffic-alert-state-settings))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-alert-state-settings)
+  (format #t "~1Tguard-settings-array[6] @ #x~X~%" (-> obj ped-tazer))
+  (format #t "~1Tped-tazer: #<traffic-guard-type-settings @ #x~X>~%" (-> obj ped-tazer))
+  (format #t "~1Tped-rifle: #<traffic-guard-type-settings @ #x~X>~%" (-> obj ped-rifle))
+  (format #t "~1Tped-grenade: #<traffic-guard-type-settings @ #x~X>~%" (-> obj ped-grenade))
+  (format #t "~1Tped-roboguard: #<traffic-guard-type-settings @ #x~X>~%" (-> obj ped-roboguard))
+  (format #t "~1Tbike-turret: #<traffic-guard-type-settings @ #x~X>~%" (-> obj bike-turret))
+  (format #t "~1Thellcat-turret: #<traffic-guard-type-settings @ #x~X>~%" (-> obj hellcat-turret))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-target-status
 (deftype traffic-target-status (structure)
   ((flags          traffic-target-flag         :offset-assert   0)
    (handle         handle                      :offset-assert   8)
@@ -263,7 +451,42 @@
   :flag-assert         #x900000050
   )
 
+;; definition for method 3 of type traffic-target-status
+(defmethod inspect traffic-target-status ((obj traffic-target-status))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-14)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-target-status)
+  (format #t "~1Tflags: #x~X : (traffic-target-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (traffic-target-flag visible-now)) (traffic-target-flag visible-now))
+        (format #t "visible-now ")
+        )
+    (if (= (logand s5-0 (traffic-target-flag visible-ever)) (traffic-target-flag visible-ever))
+        (format #t "visible-ever ")
+        )
+    (if (= (logand s5-0 (traffic-target-flag force-visible)) (traffic-target-flag force-visible))
+        (format #t "force-visible ")
+        )
+    (if (= (logand s5-0 (traffic-target-flag visible-recently)) (traffic-target-flag visible-recently))
+        (format #t "visible-recently ")
+        )
+    (if (= (logand s5-0 (traffic-target-flag updated)) (traffic-target-flag updated))
+        (format #t "updated ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "~1Tlast-seen-time: ~D~%" (-> obj last-seen-time))
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> obj position))
+  (format #t "~1Tvelocity: #<vector @ #x~X>~%" (-> obj velocity))
+  (format #t "~1Tmove-position: #<vector @ #x~X>~%" (-> obj move-position))
+  (label cfg-14)
+  obj
+  )
 
+;; definition of type traffic-alert-state
 (deftype traffic-alert-state (structure)
   ((flags                            traffic-alert-flag                     :offset-assert   0)
    (level                            uint8                                  :offset-assert   1)
@@ -289,7 +512,54 @@
     )
   )
 
+;; definition for method 3 of type traffic-alert-state
+(defmethod inspect traffic-alert-state ((obj traffic-alert-state))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-16)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-alert-state)
+  (format #t "~1Tflags: #x~X : (traffic-alert-flag " (-> obj flags))
+  (let ((s5-0 (-> obj flags)))
+    (if (= (logand s5-0 (traffic-alert-flag disable-pursuit-control)) (traffic-alert-flag disable-pursuit-control))
+        (format #t "disable-pursuit-control ")
+        )
+    (if (= (logand s5-0 (traffic-alert-flag sticky-guard-settings)) (traffic-alert-flag sticky-guard-settings))
+        (format #t "sticky-guard-settings ")
+        )
+    (if (= (logand s5-0 (traffic-alert-flag alarm-on)) (traffic-alert-flag alarm-on))
+        (format #t "alarm-on ")
+        )
+    (if (= (logand s5-0 (traffic-alert-flag alert-ending)) (traffic-alert-flag alert-ending))
+        (format #t "alert-ending ")
+        )
+    (if (= (logand s5-0 (traffic-alert-flag target-jak)) (traffic-alert-flag target-jak))
+        (format #t "target-jak ")
+        )
+    (if (= (logand s5-0 (traffic-alert-flag guard-multi-focus)) (traffic-alert-flag guard-multi-focus))
+        (format #t "guard-multi-focus ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tlevel: ~D~%" (-> obj level))
+  (format #t "~1Tmax-level: ~D~%" (-> obj max-level))
+  (format #t "~1Tguards-in-sight-of-target: ~D~%" (-> obj guards-in-sight-of-target))
+  (format #t "~1Tguard-aim-count: ~D~%" (-> obj guard-aim-count))
+  (format #t "~1Tguard-inaccuracy-factor: ~f~%" (-> obj guard-inaccuracy-factor))
+  (format #t "~1Tguard-target-level: ~f~%" (-> obj guard-target-level))
+  (format #t "~1Tduration: ~D~%" (-> obj duration))
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tnotify-time: ~D~%" (-> obj notify-time))
+  (format #t "~1Talarm-sound-id: ~D~%" (-> obj alarm-sound-id))
+  (format #t "~1Ttarget-status-array[3] @ #x~X~%" (-> obj target-status-array))
+  (format #t "~1Tsettings: #<traffic-alert-state-settings @ #x~X>~%" (-> obj settings))
+  (format #t "~1Tguard-type-info-array[6] @ #x~X~%" (-> obj guard-type-info-array))
+  (format #t "~1Tguard-type-mask-from-object-type[126] @ #x~X~%" (-> obj guard-type-mask-from-object-type))
+  (label cfg-16)
+  obj
+  )
 
+;; definition of type traffic-object-type-info
 (deftype traffic-object-type-info (structure)
   ((flags             uint8             :offset-assert   0)
    (target-count      int8              :offset-assert   1)
@@ -309,7 +579,30 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type traffic-object-type-info
+(defmethod inspect traffic-object-type-info ((obj traffic-object-type-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-object-type-info)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Ttarget-count: ~D~%" (-> obj target-count))
+  (format #t "~1Tactive-count: ~D~%" (-> obj active-count))
+  (format #t "~1Tinactive-count: ~D~%" (-> obj inactive-count))
+  (format #t "~1Treserve-count: ~D~%" (-> obj reserve-count))
+  (format #t "~1Tkilled-count: ~D~%" (-> obj killed-count))
+  (format #t "~1Twant-count: ~D~%" (-> obj want-count))
+  (format #t "~1Ttracker-index: ~D~%" (-> obj tracker-index))
+  (format #t "~1Tparking-spot-prob: ~D~%" (-> obj parking-spot-prob))
+  (format #t "~1Tguard-type: ~D~%" (-> obj guard-type))
+  (format #t "~1Tarray: #x~X~%" (-> obj array))
+  (format #t "~1Tlevel: ~A~%" (-> obj level))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-suppressor
 (deftype traffic-suppressor (structure)
   ((flags uint8                              :offset-assert   0)
    (bbox  bounding-box            :inline    :offset-assert  16)
@@ -327,7 +620,21 @@
     )
   )
 
+;; definition for method 3 of type traffic-suppressor
+(defmethod inspect traffic-suppressor ((obj traffic-suppressor))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-suppressor)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
+  (format #t "~1Tarray[16] @ #x~X~%" (-> obj array))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-tracker
 (deftype traffic-tracker (structure)
   ((traffic                 traffic-engine     :offset-assert   0)
    (object-hash             spatial-hash       :offset-assert   4)
@@ -363,7 +670,26 @@
     )
   )
 
+;; definition for method 3 of type traffic-tracker
+(defmethod inspect traffic-tracker ((obj traffic-tracker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'traffic-tracker)
+  (format #t "~1Ttraffic: ~A~%" (-> obj traffic))
+  (format #t "~1Tobject-hash: ~A~%" (-> obj object-hash))
+  (format #t "~1Trand: ~f~%" (-> obj rand))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tactive-object-count: ~D~%" (-> obj active-object-count))
+  (format #t "~1Tinactive-object-count: ~D~%" (-> obj inactive-object-count))
+  (format #t "~1Tactive-object-list[126] @ #x~X~%" (-> obj active-object-list))
+  (format #t "~1Tactive-object-type-list[126] @ #x~X~%" (-> obj active-object-type-list))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type traffic-engine
 (deftype traffic-engine (basic)
   ((object-hash            spatial-hash                        :offset-assert   4)
    (manager                uint64                              :offset-assert   8)
@@ -455,3 +781,34 @@
     (traffic-engine-method-73 (_type_) none 73)
     )
   )
+
+;; definition for method 3 of type traffic-engine
+(defmethod inspect traffic-engine ((obj traffic-engine))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tobject-hash: ~A~%" (-> obj object-hash))
+  (format #t "~1Tmanager: ~D~%" (-> obj manager))
+  (format #t "~1Tinv-density-factor: ~f~%" (-> obj inv-density-factor))
+  (format #t "~1Tsync-clock: ~D~%" (-> obj sync-clock))
+  (format #t "~1Tsync-mask-8: ~D~%" (-> obj sync-mask-8))
+  (format #t "~1Tsync-mask-16: ~D~%" (-> obj sync-mask-16))
+  (format #t "~1Tsync-mask-32: ~D~%" (-> obj sync-mask-32))
+  (format #t "~1Tsync-array[4] @ #x~X~%" (-> obj sync-array))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Talert-state: #<traffic-alert-state @ #x~X>~%" (-> obj alert-state))
+  (format #t "~1Tlevel-data-array[2] @ #x~X~%" (-> obj level-data-array))
+  (format #t "~1Tobject-type-info-array[21] @ #x~X~%" (-> obj object-type-info-array))
+  (format #t "~1Ttracker-array[2] @ #x~X~%" (-> obj tracker-array))
+  (format #t "~1Tinactive-object-array[420] @ #x~X~%" (-> obj inactive-object-array))
+  (format #t "~1Tsuppressor: #<traffic-suppressor @ #x~X>~%" (-> obj suppressor))
+  (format #t "~1Tdanger-sphere-count: ~D~%" (-> obj danger-sphere-count))
+  (format #t "~1Tdanger-sphere-array[4] @ #x~X~%" (-> obj danger-sphere-array))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

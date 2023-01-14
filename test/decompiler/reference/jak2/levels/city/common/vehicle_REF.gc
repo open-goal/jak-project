@@ -1,16 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: vehicle.gc
-;; name in dgo: vehicle
-;; dgos: CWI
-
-;; TODO - for vehicle
-(define-extern *race-rigid-body-queue* rigid-body-queue)
-(define-extern *traffic-rigid-body-queue* rigid-body-queue)
-
-;; DECOMP BEGINS
-
+;; definition for function string-word-wrap
+;; WARN: Return type mismatch int vs none.
 (defun string-word-wrap ((arg0 string) (arg1 int))
   (let ((v1-0 (-> arg0 data)))
     (label cfg-1)
@@ -39,6 +31,7 @@
   (none)
   )
 
+;; definition of type debug-vehicle-work
 (deftype debug-vehicle-work (basic)
   ((impact-time  time-frame                :offset-assert   8)
    (impact       rigid-body-impact :inline :offset-assert  16)
@@ -50,14 +43,31 @@
   :flag-assert         #x900000070
   )
 
+;; definition for method 3 of type debug-vehicle-work
+(defmethod inspect debug-vehicle-work ((obj debug-vehicle-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Timpact-time: ~D~%" (-> obj impact-time))
+  (format #t "~1Timpact: #<rigid-body-impact @ #x~X>~%" (-> obj impact))
+  (format #t "~1Tprim-sphere1: #<sphere @ #x~X>~%" (-> obj prim-sphere1))
+  (format #t "~1Tprim-sphere2: #<sphere @ #x~X>~%" (-> obj prim-sphere2))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *debug-vehicle-work*, type debug-vehicle-work
 (define *debug-vehicle-work* (new 'static 'debug-vehicle-work))
 
-(defskelgroup skel-vehicle-explosion vehicle-explosion 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-vehicle-explosion vehicle-explosion vehicle-explosion-lod0-jg vehicle-explosion-idle-ja
+              ((vehicle-explosion-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               )
 
+;; definition for symbol *vehicle-shadow-control*, type shadow-control
 (define *vehicle-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :flags (shadow-flags disable-fade shdf03)
@@ -68,6 +78,7 @@
                                )
   )
 
+;; definition for symbol *vehicle-shadow-control-disabled*, type shadow-control
 (define *vehicle-shadow-control-disabled*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :flags (shadow-flags disable-fade shdf03 disable-draw)
@@ -78,6 +89,9 @@
                                )
   )
 
+;; definition for method 45 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-45 vehicle ((obj vehicle) (arg0 rigid-body-impact))
   (local-vars (v1-63 float))
   (rlet ((acc :class vf)
@@ -188,6 +202,8 @@
     )
   )
 
+;; definition for method 104 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-104 vehicle ((obj vehicle))
   (with-pp
     (when (= (-> obj controller traffic sync-mask-8) (ash 1 (logand (-> obj traffic-priority-id) 7)))
@@ -232,6 +248,9 @@
     )
   )
 
+;; definition for method 93 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-93 vehicle ((obj vehicle))
   (with-pp
     (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -290,6 +309,8 @@
     )
   )
 
+;; definition for method 95 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-95 vehicle ((obj vehicle) (arg0 vector))
   (with-pp
     (seek! (-> obj controls steering) (-> arg0 x) (* 8.0 (-> pp clock seconds-per-frame)))
@@ -359,6 +380,8 @@
     )
   )
 
+;; definition for method 94 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-94 vehicle ((obj vehicle))
   (cond
     ((or (logtest? (rigid-body-object-flag player-grabbed) (-> obj flags))
@@ -405,6 +428,8 @@
   (none)
   )
 
+;; definition for method 96 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-96 vehicle ((obj vehicle))
   (with-pp
     (when (and *target* (logtest? (rigid-body-object-flag ignition) (-> obj flags)))
@@ -578,6 +603,9 @@
     )
   )
 
+;; definition for method 97 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-97 vehicle ((obj vehicle))
   (local-vars (v1-88 float) (v1-98 float))
   (with-pp
@@ -730,6 +758,9 @@
     )
   )
 
+;; definition for method 120 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-120 vehicle ((obj vehicle))
   (with-pp
     (let ((s5-0 (-> obj draw shadow-ctrl)))
@@ -811,6 +842,9 @@
     )
   )
 
+;; definition for method 51 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-51 vehicle ((obj vehicle))
   (with-pp
     (let ((s5-0 (new 'stack-no-clear 'collide-query)))
@@ -874,6 +908,9 @@
     )
   )
 
+;; definition for method 52 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-52 vehicle ((obj vehicle))
   (with-pp
     (let ((v1-0 (new 'stack-no-clear 'vehicle-control-point)))
@@ -977,6 +1014,8 @@
     )
   )
 
+;; definition for method 121 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-121 vehicle ((obj vehicle))
   (with-pp
     (if (>= (- (-> pp clock frame-counter) (-> obj player-touch-time)) (seconds 0.1))
@@ -999,6 +1038,8 @@
     )
   )
 
+;; definition for method 37 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-37 vehicle ((obj vehicle))
   (local-vars (a0-14 int) (a0-16 int) (a0-19 int) (a0-21 int))
   (let* ((v1-1 (-> *perf-stats* data 37))
@@ -1088,6 +1129,8 @@
   (none)
   )
 
+;; definition for method 123 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-123 vehicle ((obj vehicle))
   (local-vars (v1-4 symbol) (a0-21 int) (a0-23 int))
   (with-pp
@@ -1192,6 +1235,9 @@
     )
   )
 
+;; definition for method 122 of type vehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-122 vehicle ((obj vehicle))
   (local-vars (a0-23 int) (a0-25 int) (a0-35 int) (a0-37 int) (a0-40 int) (a0-42 int))
   (with-pp
@@ -1349,6 +1395,8 @@
     )
   )
 
+;; definition for method 124 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-124 vehicle ((obj vehicle))
   (vehicle-method-94 obj)
   (vehicle-method-121 obj)
@@ -1357,6 +1405,8 @@
   (none)
   )
 
+;; definition for method 31 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-31 vehicle ((obj vehicle) (arg0 rigid-body-vehicle-constants))
   (if (logtest? (-> arg0 flags) 8)
       (iterate-prims
@@ -1491,6 +1541,8 @@
   (none)
   )
 
+;; definition for method 47 of type vehicle
+;; INFO: Used lq/sq
 (defmethod rigid-body-object-method-47 vehicle ((obj vehicle) (arg0 process-drawable) (arg1 attack-info) (arg2 touching-shapes-entry) (arg3 penetrate))
   (local-vars (f0-2 float) (sv-96 vector))
   (with-pp
@@ -1644,6 +1696,8 @@
     )
   )
 
+;; definition for method 48 of type vehicle
+;; INFO: Used lq/sq
 (defmethod rigid-body-object-method-48 vehicle ((obj vehicle) (arg0 process-focusable) (arg1 touching-shapes-entry))
   (local-vars (v1-2 symbol) (v1-30 symbol) (a0-19 object))
   (with-pp
@@ -1763,6 +1817,8 @@
     )
   )
 
+;; definition for method 46 of type vehicle
+;; INFO: Used lq/sq
 (defmethod rigid-body-object-method-46 vehicle ((obj vehicle) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (when (and (= arg2 'touched) arg0 (logtest? (process-mask bit18) (-> arg0 mask)))
     (dotimes (s1-0 4)
@@ -1884,11 +1940,15 @@
   (none)
   )
 
+;; definition for method 135 of type vehicle
+;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-135 vehicle ()
   0
   (none)
   )
 
+;; definition for function vehicle-init-by-other
+;; INFO: Used lq/sq
 (defbehavior vehicle-init-by-other vehicle ((arg0 traffic-object-spawn-params))
   (stack-size-set! (-> self main-thread) 16)
   (set! (-> self mask) (logior (process-mask vehicle) (-> self mask)))
