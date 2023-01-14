@@ -1,12 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: strip-obs.gc
-;; name in dgo: strip-obs
-;; dgos: STR
-
-;; DECOMP BEGINS
-
+;; definition for method 15 of type hud-plasmite
+;; WARN: Return type mismatch int vs none.
 (defmethod draw hud-plasmite ((obj hud-plasmite))
   (set-hud-piece-position!
     (the-as hud-sprite (-> obj sprites))
@@ -20,6 +16,8 @@
   (none)
   )
 
+;; definition for method 16 of type hud-plasmite
+;; WARN: Return type mismatch int vs none.
 (defmethod update-values hud-plasmite ((obj hud-plasmite))
   (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) obj)
@@ -27,6 +25,8 @@
   (none)
   )
 
+;; definition for method 17 of type hud-plasmite
+;; WARN: Return type mismatch int vs none.
 (defmethod init-callback hud-plasmite ((obj hud-plasmite))
   (set! (-> obj level) (level-get *level* 'strip))
   (set! (-> obj gui-id)
@@ -44,6 +44,7 @@
   (none)
   )
 
+;; definition of type strip-hazard
 (deftype strip-hazard (process-drawable)
   ((root-override      collide-shape-moving         :offset        128)
    (sync               sync-linear          :inline :offset-assert 200)
@@ -60,7 +61,25 @@
     )
   )
 
+;; definition for method 3 of type strip-hazard
+(defmethod inspect strip-hazard ((obj strip-hazard))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tshove-vec: #<vector @ #x~X>~%" (-> obj shove-vec))
+  (format #t "~2Tno-collision-timer: ~D~%" (-> obj no-collision-timer))
+  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for function strip-handler
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior strip-handler strip-hazard ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (the-as
@@ -116,6 +135,7 @@
     )
   )
 
+;; definition for function strip-trans
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior strip-trans strip-hazard ()
   (when (and (nonzero? (-> self no-collision-timer))
@@ -137,6 +157,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (strip-hazard)
   :virtual #t
   :event strip-handler
@@ -161,6 +182,8 @@
   :post (the-as (function none :behavior strip-hazard) transform-post)
   )
 
+;; definition for method 11 of type strip-hazard
+;; INFO: Used lq/sq
 (defmethod init-from-entity! strip-hazard ((obj strip-hazard) (arg0 entity-actor))
   (local-vars (sv-64 res-tag))
   (set-vector! (-> obj shove-vec) 0.0 12288.0 24576.0 1.0)
@@ -198,6 +221,7 @@
   (none)
   )
 
+;; definition of type fencespikes
 (deftype fencespikes (strip-hazard)
   ((start-quat   quaternion :inline :offset-assert 256)
    (spin         float              :offset-assert 272)
@@ -210,12 +234,30 @@
   :flag-assert         #x1500a0011c
   )
 
+;; definition for method 3 of type fencespikes
+(defmethod inspect fencespikes ((obj fencespikes))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type strip-hazard inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tstart-quat: #<quaternion @ #x~X>~%" (-> obj start-quat))
+  (format #t "~2Tspin: ~f~%" (-> obj spin))
+  (format #t "~2Toffset: ~f~%" (-> obj offset))
+  (format #t "~2Tsparks-group: #x~X~%" (-> obj sparks-group))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-fencespikes fencespikes 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-fencespikes fencespikes fencespikes-lod0-jg fencespikes-idle-ja
+              ((fencespikes-lod0-mg (meters 20)) (fencespikes-lod1-mg (meters 999999)))
               :bounds (static-spherem 12 0 0 10.5)
               )
 
+;; failed to figure out what this is:
 (defstate idle (fencespikes)
   :virtual #t
   :trans (behavior ()
@@ -244,6 +286,7 @@
     )
   )
 
+;; definition for method 11 of type fencespikes
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! fencespikes ((obj fencespikes) (arg0 entity-actor))
   (local-vars (sv-16 string))
@@ -306,6 +349,7 @@
   (none)
   )
 
+;; definition of type pitspikes
 (deftype pitspikes (strip-hazard)
   ((spinner basic  :offset-assert 252)
    )
@@ -315,14 +359,30 @@
   :flag-assert         #x1500800100
   )
 
+;; definition for method 3 of type pitspikes
+(defmethod inspect pitspikes ((obj pitspikes))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type strip-hazard inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspinner: ~A~%" (-> obj spinner))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-pitspikes pitspikes 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-pitspikes pitspikes pitspikes-lod0-jg pitspikes-idle-ja
+              ((pitspikes-lod0-mg (meters 20)) (pitspikes-lod1-mg (meters 999999)))
               :bounds (static-spherem 8 0 0 12)
               )
 
+;; definition for symbol *pitspikes-rotate-pos*, type vector
 (define *pitspikes-rotate-pos* (new 'static 'vector))
 
+;; definition for function pitspikes-birth-func
 (defun pitspikes-birth-func ((arg0 sparticle-system)
                     (arg1 sparticle-cpuinfo)
                     (arg2 sprite-vec-data-3d)
@@ -342,6 +402,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (pitspikes)
   :virtual #t
   :trans (behavior ()
@@ -371,6 +432,7 @@
     )
   )
 
+;; definition for method 7 of type pitspikes
 ;; WARN: Return type mismatch strip-hazard vs pitspikes.
 (defmethod relocate pitspikes ((obj pitspikes) (arg0 int))
   (if (nonzero? (-> obj spinner))
@@ -382,6 +444,7 @@
     )
   )
 
+;; definition for method 11 of type pitspikes
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! pitspikes ((obj pitspikes) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -428,6 +491,7 @@
   (none)
   )
 
+;; definition of type curtainsaw
 (deftype curtainsaw (strip-hazard)
   ()
   :heap-base #x80
@@ -436,13 +500,27 @@
   :flag-assert         #x15008000fc
   )
 
+;; definition for method 3 of type curtainsaw
+(defmethod inspect curtainsaw ((obj curtainsaw))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type strip-hazard inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-curtainsaw curtainsaw 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-curtainsaw curtainsaw curtainsaw-lod0-jg curtainsaw-idle-ja
+              ((curtainsaw-lod0-mg (meters 20)) (curtainsaw-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 4 0 10.5)
               :longest-edge (meters 0.0007044922)
               )
 
+;; failed to figure out what this is:
 (defstate idle (curtainsaw)
   :virtual #t
   :trans (behavior ()
@@ -476,6 +554,7 @@
     )
   )
 
+;; definition for method 11 of type curtainsaw
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! curtainsaw ((obj curtainsaw) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -521,6 +600,7 @@
   (none)
   )
 
+;; definition of type grenade-point
 (deftype grenade-point (process-drawable)
   ((root-override      collide-shape             :offset        128)
    (camera-name        string                    :offset-assert 200)
@@ -545,7 +625,31 @@
     )
   )
 
+;; definition for method 3 of type grenade-point
+(defmethod inspect grenade-point ((obj grenade-point))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcamera-name: ~A~%" (-> obj camera-name))
+  (format #t "~2Tparented?: ~A~%" (-> obj parented?))
+  (format #t "~2Tlightning-time: ~D~%" (-> obj lightning-time))
+  (format #t "~2Tstrike-table: ~A~%" (-> obj strike-table))
+  (format #t "~2Tlast-strike-index: ~D~%" (-> obj last-strike-index))
+  (format #t "~2Tspeed: (meters ~m)~%" (-> obj speed))
+  (format #t "~2Tpart2: ~A~%" (-> obj part2))
+  (format #t "~2Tpart3: ~A~%" (-> obj part3))
+  (format #t "~2Tpart-lightning-hit: ~A~%" (-> obj part-lightning-hit))
+  (format #t "~2Tenter-time: ~D~%" (-> obj enter-time))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 7 of type grenade-point
 ;; WARN: Return type mismatch process-drawable vs grenade-point.
 (defmethod relocate grenade-point ((obj grenade-point) (arg0 int))
   (if (nonzero? (-> obj part2))
@@ -560,6 +664,7 @@
   (the-as grenade-point ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 10 of type grenade-point
 (defmethod deactivate grenade-point ((obj grenade-point))
   (if (nonzero? (-> obj part2))
       (kill-and-free-particles (-> obj part2))
@@ -574,6 +679,7 @@
   (none)
   )
 
+;; definition for symbol *grenade-point-strike-table*, type (array (array vector))
 (define *grenade-point-strike-table*
   (the-as (array (array vector)) (new 'static 'boxed-array :type array
                                    (new 'static 'boxed-array :type vector
@@ -712,6 +818,7 @@
                                  )
   )
 
+;; failed to figure out what this is:
 (set! (-> *lightning-spec-id-table* 16) (new 'static 'lightning-spec
                                           :name "lightning-silo"
                                           :flags (lightning-spec-flags lsf2)
@@ -733,6 +840,7 @@
                                           )
       )
 
+;; failed to figure out what this is:
 (defstate idle (grenade-point)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -830,6 +938,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (grenade-point)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -864,6 +973,7 @@
     )
   )
 
+;; definition for method 11 of type grenade-point
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! grenade-point ((obj grenade-point) (arg0 entity-actor))
   (set! (-> obj parented?) #f)
@@ -926,6 +1036,7 @@
   (none)
   )
 
+;; definition of type grenade
 (deftype grenade (projectile)
   ((tumble-quat  quaternion :inline :offset-assert 480)
    (blast-radius float              :offset-assert 496)
@@ -941,9 +1052,29 @@
     )
   )
 
+;; definition for method 3 of type grenade
+(defmethod inspect grenade ((obj grenade))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type projectile inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttumble-quat: #<quaternion @ #x~X>~%" (-> obj tumble-quat))
+  (format #t "~2Tblast-radius: ~f~%" (-> obj blast-radius))
+  (format #t "~2Tend-target: ~D~%" (-> obj end-target))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-grenade plasmitebomb 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 0.3))
+;; failed to figure out what this is:
+(defskelgroup skel-grenade plasmitebomb plasmitebomb-lod0-jg plasmitebomb-idle-ja
+              ((plasmitebomb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.3)
+              )
 
+;; failed to figure out what this is:
 (defpartgroup group-grenade-armed
   :id 235
   :flags (use-local-clock)
@@ -951,6 +1082,7 @@
   :parts ((sp-item 1118 :flags (bit6)))
   )
 
+;; failed to figure out what this is:
 (defpart 1118
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
     (sp-flt spt-num 1.0)
@@ -971,6 +1103,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-grenade-hit
   :id 236
   :duration (seconds 2)
@@ -983,6 +1116,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1120
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 6.0)
@@ -1007,10 +1141,12 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1123
   :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0) (sp-flt spt-fade-a -1.4222223))
   )
 
+;; failed to figure out what this is:
 (defpart 1122
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
     (sp-flt spt-num 3.0)
@@ -1028,6 +1164,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1119
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x29 :page #xc))
     (sp-flt spt-num 1.0)
@@ -1043,6 +1180,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1121
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
     (sp-flt spt-num 4.0)
@@ -1069,6 +1207,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 1124
   :init-specs ((sp-flt spt-fade-r -0.53333336)
     (sp-flt spt-fade-g -1.0666667)
@@ -1077,6 +1216,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-grenade-fired
   :id 237
   :duration (seconds 0.017)
@@ -1085,6 +1225,7 @@
   :parts ((sp-item 1125))
   )
 
+;; failed to figure out what this is:
 (defpart 1125
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
     (sp-flt spt-num 6.0)
@@ -1114,6 +1255,9 @@
     )
   )
 
+;; definition for method 24 of type grenade
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-laser-sight grenade ((obj grenade))
   "TODO - confirm If applicable, draw the laser sight particles
        :virtual"
@@ -1156,6 +1300,8 @@
   (none)
   )
 
+;; definition for method 25 of type grenade
+;; WARN: Return type mismatch int vs none.
 (defmethod spawn-impact-particles grenade ((obj grenade))
   "Spawns associated particles with the projectile if applicable"
   ((method-of-type projectile spawn-impact-particles) obj)
@@ -1164,6 +1310,9 @@
   (none)
   )
 
+;; definition for method 26 of type grenade
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod spawn-shell-particles grenade ((obj grenade))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -1205,6 +1354,7 @@
   (none)
   )
 
+;; definition for method 28 of type grenade
 ;; WARN: Return type mismatch int vs sound-id.
 (defmethod play-impact-sound grenade ((obj grenade) (arg0 projectile-options))
   (let ((v1-0 arg0))
@@ -1220,6 +1370,7 @@
   (the-as sound-id 0)
   )
 
+;; failed to figure out what this is:
 (defstate impact (grenade)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1309,6 +1460,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate dissipate (grenade)
   :virtual #t
   :enter (behavior ()
@@ -1317,6 +1469,9 @@
     )
   )
 
+;; definition for method 40 of type grenade
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod grenade-method-40 grenade ((obj grenade))
   (let ((s5-0 (the-as process-drawable (-> obj end-target process 0))))
     (when s5-0
@@ -1342,6 +1497,8 @@
   (none)
   )
 
+;; definition for method 41 of type grenade
+;; WARN: Return type mismatch int vs none.
 (defmethod grenade-method-41 grenade ((obj grenade))
   (quaternion*! (-> obj root-override quat) (-> obj root-override quat) (-> obj tumble-quat))
   (projectile-move-fill-all-dirs obj)
@@ -1350,6 +1507,7 @@
   (none)
   )
 
+;; definition for method 30 of type grenade
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-collision! grenade ((obj grenade))
   "Init the [[projectile]]'s [[collide-shape]]"
@@ -1382,6 +1540,7 @@
   (none)
   )
 
+;; definition for method 31 of type grenade
 (defmethod init-proj-settings! grenade ((obj grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
        :virtual"
@@ -1425,14 +1584,31 @@
     )
   )
 
-(defskelgroup skel-ecowell-a ecowell-a 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+;; failed to figure out what this is:
+(defskelgroup skel-ecowell-a ecowell-a ecowell-a-lod0-jg -1
+              ((ecowell-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-b ecowell-b 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+;; failed to figure out what this is:
+(defskelgroup skel-ecowell-b ecowell-b ecowell-b-lod0-jg -1
+              ((ecowell-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-c ecowell-c 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+;; failed to figure out what this is:
+(defskelgroup skel-ecowell-c ecowell-c ecowell-c-lod0-jg -1
+              ((ecowell-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-d ecowell-d 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 400))
+;; failed to figure out what this is:
+(defskelgroup skel-ecowell-d ecowell-d ecowell-d-lod0-jg -1
+              ((ecowell-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   115
@@ -1461,6 +1637,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   115
@@ -1554,6 +1731,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   115
@@ -1582,6 +1760,7 @@
           )
   )
 
+;; definition of type drill-plat
 (deftype drill-plat (strip-hazard)
   ((plat-sound ambient-sound  :offset-assert 252)
    )
@@ -1591,7 +1770,21 @@
   :flag-assert         #x1500800100
   )
 
+;; definition for method 3 of type drill-plat
+(defmethod inspect drill-plat ((obj drill-plat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type strip-hazard inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tplat-sound: ~A~%" (-> obj plat-sound))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 7 of type drill-plat
 ;; WARN: Return type mismatch process-drawable vs drill-plat.
 (defmethod relocate drill-plat ((obj drill-plat) (arg0 int))
   (if (nonzero? (-> obj plat-sound))
@@ -1600,6 +1793,7 @@
   (the-as drill-plat ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 10 of type drill-plat
 (defmethod deactivate drill-plat ((obj drill-plat))
   (if (nonzero? (-> obj plat-sound))
       (stop! (-> obj plat-sound))
@@ -1608,11 +1802,13 @@
   (none)
   )
 
-(defskelgroup skel-drill-plat drill-plat 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-drill-plat drill-plat drill-plat-lod0-jg drill-plat-idle-ja
+              ((drill-plat-lod0-mg (meters 20)) (drill-plat-lod1-mg (meters 999999)))
               :bounds (static-spherem 14 18 0 26)
               )
 
+;; failed to figure out what this is:
 (defstate idle (drill-plat)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1671,6 +1867,8 @@
     )
   )
 
+;; definition for method 11 of type drill-plat
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! drill-plat ((obj drill-plat) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -1744,6 +1942,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   45
@@ -1769,12 +1968,16 @@
     )
   )
 
+;; definition for function strip-login
+;; WARN: Return type mismatch int vs none.
 (defun strip-login ()
   (set! *nav-network* (new 'loading-level 'nav-network))
   0
   (none)
   )
 
+;; definition for function strip-activate
+;; WARN: Return type mismatch int vs none.
 (defun strip-activate ()
   (setup-user-array (-> *part-id-table* 638) "flamer-part")
   (setup-user-array (-> *part-id-table* 639) "flamer-part")
@@ -1782,6 +1985,8 @@
   (none)
   )
 
+;; definition for function strip-deactivate
+;; WARN: Return type mismatch int vs none.
 (defun strip-deactivate ()
   (set! *nav-network* (the-as nav-network 0))
   0
