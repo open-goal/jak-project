@@ -999,7 +999,7 @@ struct ExecutionContext {
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
 
-  void sqrts(int src, int dst) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
+  void sqrts(int dst, int src) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
 
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
