@@ -3861,6 +3861,8 @@
   "ruins-vis"
   )
 
+(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2")
+
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SAG
 ;; ;;;;;;;;;;;;;;;;;;;;;
@@ -4388,26 +4390,26 @@
 ;; ;; TOE
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TOE.DGO" "toe.gd")
+(cgo "TOE.DGO" "toe.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/mars_tomb/left/chase/target-indax.gc"
-;;   "levels/mars_tomb/left/chase/tomb-boulder.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/mars_tomb/left/chase/target-indax.gc"
+  "levels/mars_tomb/left/chase/tomb-boulder.gc"
+  )
 
-;; (copy-textures 2374 2375 2376)
+(copy-textures 2374 2375 2376)
 
-;; (copy-gos
-;;   "jak-indax+0-ag"
-;;   "tomb-boulder-ag"
-;;   "tomb-baby-spider-ag"
-;;   "tomb-plat-pillar-ag"
-;;   "spider-eyes-ag"
-;;   "tomb-bounce-web-ag"
-;;   "tombe-vis"
-;;   )
+(copy-gos
+  "jak-indax+0-ag"
+  "tomb-boulder-ag"
+  ;; "tomb-baby-spider-ag"
+  "tomb-plat-pillar-ag"
+  "spider-eyes-ag"
+  "tomb-bounce-web-ag"
+  "tombe-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOMBEXT

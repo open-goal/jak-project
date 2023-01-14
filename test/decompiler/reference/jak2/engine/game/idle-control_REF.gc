@@ -58,16 +58,16 @@
 
 ;; definition of type idle-control
 (deftype idle-control (structure)
-  ((anim    (pointer uint32)  :offset-assert   0)
-   (current (pointer uint32)  :offset-assert   4)
-   (counter int32             :offset-assert   8)
-   (target  int32             :offset-assert  12)
+  ((anim    (pointer idle-control-frame)  :offset-assert   0)
+   (current (pointer idle-control-frame)  :offset-assert   4)
+   (counter int32                         :offset-assert   8)
+   (target  int32                         :offset-assert  12)
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (idle-control-method-9 (_type_ (pointer uint32)) none 9)
+    (idle-control-method-9 (_type_ (pointer idle-control-frame)) none 9)
     (idle-control-method-10 (_type_ process-drawable) none :behavior process-drawable 10)
     )
   )
@@ -89,7 +89,7 @@
 
 ;; definition for method 9 of type idle-control
 ;; WARN: Return type mismatch idle-control vs none.
-(defmethod idle-control-method-9 idle-control ((obj idle-control) (arg0 (pointer uint32)))
+(defmethod idle-control-method-9 idle-control ((obj idle-control) (arg0 (pointer idle-control-frame)))
   (set! (-> obj anim) arg0)
   (set! (-> obj current) arg0)
   (set! (-> obj counter) 0)
@@ -107,27 +107,27 @@
       (set! self arg0)
       (loop
         (let* ((s4-0 (-> obj current 0))
-               (v1-4 (shr (shl s4-0 56) 56))
+               (v1-4 (-> s4-0 command))
                )
           (cond
             ((= v1-4 1)
-             (if (< (shr (shl s4-0 48) 56) 0)
+             (if (< (-> s4-0 anim) 0)
                  (return #f)
                  )
              (when (zero? (-> obj target))
                (let ((t9-0 rand-vu-int-range)
-                     (a0-3 (sar (shl s4-0 40) 56))
+                     (a0-3 (-> s4-0 param0))
                      )
                  (shift-arith-right-32 a1-1 s4-0 24)
                  (set! (-> obj target) (t9-0 (the-as int a0-3) a1-1))
                  )
-               (ja :group! (-> (the-as process-drawable self) draw art-group data (shr (shl s4-0 48) 56)) :num! min)
+               (ja :group! (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim)) :num! min)
                (return #f)
                )
-             (ja :group! (-> (the-as process-drawable self) draw art-group data (shr (shl s4-0 48) 56))
+             (ja :group! (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim))
                  :num! (seek!
                    (the float
-                        (+ (-> (the-as art-joint-anim (-> (the-as process-drawable self) draw art-group data (shr (shl s4-0 48) 56)))
+                        (+ (-> (the-as art-joint-anim (-> (the-as process-drawable self) draw art-group data (-> s4-0 anim)))
                                frames
                                num-frames
                                )
@@ -158,7 +158,7 @@
                )
              )
             ((= v1-4 2)
-             (ja-channel-push! 1 (the-as time-frame (sar (shl s4-0 40) 56)))
+             (ja-channel-push! 1 (the-as time-frame (-> s4-0 param0)))
              (set! (-> obj current) (&-> (-> obj current) 1))
              (set! (-> obj counter) 0)
              (set! (-> obj target) 0)

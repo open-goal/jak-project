@@ -1,37 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-indax.gc
-;; name in dgo: target-indax
-;; dgos: TOE
-
-(define-extern *indax-walk-mods* surface)
-(define-extern *indax-jump-mods* surface)
-(define-extern *indax-double-jump-mods* surface)
-(define-extern *indax-bounce-mods* surface)
-(define-extern target-indax-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-indax-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-indax-jump-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-indax-init (function none :behavior target))
-(define-extern target-indax-exit (function none :behavior target))
-(define-extern target-indax-real-post (function none :behavior target))
-(define-extern target-indax-post (function none :behavior target))
-(define-extern target-indax-stance (state target))
-(define-extern target-indax-walk (state target))
-(define-extern target-indax-falling (state symbol target))
-(define-extern target-indax-jump (state float float surface target))
-(define-extern target-indax-double-jump (state float float target))
-(define-extern target-indax-hit-ground (state symbol target))
-(define-extern target-indax-trip (state target))
-(define-extern target-indax-attack (state target))
-(define-extern target-indax-attack-air (state symbol target))
-(define-extern target-indax-running-attack (state target))
-(define-extern target-indax-hit-setup-anim (function attack-info none :behavior target))
-(define-extern target-indax-hit (state symbol attack-info target))
-(define-extern target-indax-death (state symbol target))
-
-;; DECOMP BEGINS
-
+;; definition of type indax-info
 (deftype indax-info (basic)
   ((indax-start-time time-frame  :offset-assert   8)
    (indax-time       time-frame  :offset-assert  16)
@@ -42,7 +12,21 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type indax-info
+(defmethod inspect indax-info ((obj indax-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tindax-start-time: ~D~%" (-> obj indax-start-time))
+  (format #t "~1Tindax-time: ~D~%" (-> obj indax-time))
+  (format #t "~1Tart-group-backup: ~A~%" (-> obj art-group-backup))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (let ((v1-2 (copy *walk-mods* 'loading-level)))
   (set! (-> v1-2 flags) (surface-flag gun-off gun-fast-exit))
   (set! (-> v1-2 target-speed) 32768.0)
@@ -50,18 +34,21 @@
   (set! *indax-walk-mods* v1-2)
   )
 
+;; failed to figure out what this is:
 (let ((v1-4 (copy *jump-mods* 'loading-level)))
   (set! (-> v1-4 target-speed) 32768.0)
   (set! (-> v1-4 transv-max) 32768.0)
   (set! *indax-jump-mods* v1-4)
   )
 
+;; failed to figure out what this is:
 (let ((v1-6 (copy *double-jump-mods* 'loading-level)))
   (set! (-> v1-6 target-speed) 32768.0)
   (set! (-> v1-6 transv-max) 32768.0)
   (set! *indax-double-jump-mods* v1-6)
   )
 
+;; failed to figure out what this is:
 (let ((v1-8 (copy *jump-mods* 'loading-level)))
   (set! (-> v1-8 target-speed) 49152.0)
   (set! (-> v1-8 transv-max) 49152.0)
@@ -71,6 +58,7 @@
   (set! *indax-bounce-mods* v1-8)
   )
 
+;; definition for function target-indax-handler
 (defbehavior target-indax-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (a0-10 symbol))
   (cond
@@ -147,6 +135,7 @@
     )
   )
 
+;; definition for function target-indax-dangerous-event-handler
 (defbehavior target-indax-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touched)
@@ -204,6 +193,7 @@
     )
   )
 
+;; definition for function target-indax-jump-event-handler
 (defbehavior target-indax-jump-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((s2-0 (new 'stack-no-clear 'vector)))
     (cond
@@ -260,6 +250,8 @@
     )
   )
 
+;; definition for function target-indax-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior target-indax-init target ()
   (set! (-> self control current-surface flags)
@@ -289,6 +281,7 @@
   (none)
   )
 
+;; definition for function target-indax-exit
 (defbehavior target-indax-exit target ()
   (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
                                          (or (= v1-3 'target-indax-stance)
@@ -323,6 +316,8 @@
   (none)
   )
 
+;; definition for function target-indax-real-post
+;; INFO: Used lq/sq
 (defbehavior target-indax-real-post target ()
   (let ((f30-0 (-> self clock clock-ratio)))
     (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
@@ -441,11 +436,13 @@
   (none)
   )
 
+;; definition for function target-indax-post
 (defbehavior target-indax-post target ()
   (target-indax-real-post)
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-start (target)
   :event target-standard-event-handler
   :code (behavior ()
@@ -456,6 +453,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-stance (target)
   :event target-indax-handler
   :enter (behavior ()
@@ -583,6 +581,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-walk (target)
   :event target-indax-handler
   :enter (behavior ()
@@ -756,6 +755,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-falling (target)
   :event target-indax-jump-event-handler
   :enter (behavior ((arg0 symbol))
@@ -820,6 +820,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-jump (target)
   :event target-indax-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 surface))
@@ -899,6 +900,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-double-jump (target)
   :event target-indax-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float))
@@ -965,6 +967,7 @@
   :post target-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-hit-ground (target)
   :event target-indax-handler
   :enter (behavior ((arg0 symbol))
@@ -1034,6 +1037,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-trip (target)
   :event target-indax-jump-event-handler
   :enter (behavior ()
@@ -1077,6 +1081,7 @@
   :post target-no-stick-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-attack (target)
   :event target-indax-dangerous-event-handler
   :enter (-> target-attack enter)
@@ -1130,6 +1135,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-attack-air (target)
   :event target-indax-dangerous-event-handler
   :enter (-> target-attack-air enter)
@@ -1179,6 +1185,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-running-attack (target)
   :event target-indax-dangerous-event-handler
   :enter (-> target-running-attack enter)
@@ -1287,6 +1294,7 @@
   :post target-post
   )
 
+;; definition for function target-indax-hit-setup-anim
 ;; WARN: Return type mismatch float vs none.
 (defbehavior target-indax-hit-setup-anim target ((arg0 attack-info))
   (case (-> arg0 angle)
@@ -1310,6 +1318,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-hit (target)
   :event target-indax-handler
   :exit (behavior ()
@@ -1435,6 +1444,7 @@
   :post target-indax-post
   )
 
+;; failed to figure out what this is:
 (defstate target-indax-death (target)
   :event (-> target-death event)
   :exit (behavior ()
@@ -1567,3 +1577,7 @@
     )
   :post target-no-stick-post
   )
+
+
+
+

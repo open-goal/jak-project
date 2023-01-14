@@ -1,38 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: tomb-water.gc
-;; name in dgo: tomb-water
-;; dgos: TOA
-
-;; +++tomb-water:simon-block-flags
-(defenum simon-block-flags
-  :type uint16
-  :bitfield #t
-  (sbf0)
-  (sbf1)
-  (sbf2)
-  (sbf3)
-  (sbf4)
-  (sbf5)
-  (sbf6)
-  (sbf7)
-  (sbf8)
-  (sbf9)
-  (sbf10)
-  (sbf11)
-  (sbf12)
-  (sbf13)
-  (sbf14)
-  (sbf15)
-  )
-;; ---tomb-water:simon-block-flags
-
-(declare-type tomb-simon-block base-plat)
-(define-extern tomb-simon-block-init-by-other (function vector int int int int none :behavior tomb-simon-block))
-
-;; DECOMP BEGINS
-
+;; definition of type tomb-door
 (deftype tomb-door (process-drawable)
   ((notify-actor entity  :offset-assert 200)
    (round        uint32  :offset-assert 204)
@@ -47,9 +16,28 @@
     )
   )
 
+;; definition for method 3 of type tomb-door
+(defmethod inspect tomb-door ((obj tomb-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
+  (format #t "~2Tround: ~D~%" (-> obj round))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-door tomb-door 0 2 ((1 (meters 999999))) :bounds (static-spherem 4 4 0 7))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-door tomb-door tomb-door-lod0-jg tomb-door-idle-ja
+              ((tomb-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 4 4 0 7)
+              )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -88,6 +76,7 @@
   :code (the-as (function none :behavior tomb-door) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate open (tomb-door)
   :virtual #t
   :enter (behavior ((arg0 time-frame))
@@ -147,6 +136,7 @@
     )
   )
 
+;; definition for method 11 of type tomb-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-door ((obj tomb-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -203,6 +193,7 @@
   (none)
   )
 
+;; definition of type tomb-beetle-door
 (deftype tomb-beetle-door (process-drawable)
   ((offset            vector                3 :inline :offset-assert 208)
    (offset-index      int32                           :offset-assert 256)
@@ -221,12 +212,35 @@
     )
   )
 
+;; definition for method 3 of type tomb-beetle-door
+(defmethod inspect tomb-beetle-door ((obj tomb-beetle-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Toffset[3] @ #x~X~%" (-> obj offset))
+  (format #t "~2Toffset-index: ~D~%" (-> obj offset-index))
+  (format #t "~2Tkey-index: ~D~%" (-> obj key-index))
+  (format #t "~2Tbeetle[3] @ #x~X~%" (-> obj beetle))
+  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
+  (dotimes (s5-0 (-> obj actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (label cfg-7)
+  obj
+  )
 
-(defskelgroup skel-tomb-beetle-door tomb-beetle-door 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-beetle-door tomb-beetle-door tomb-beetle-door-lod0-jg tomb-beetle-door-idle-ja
+              ((tomb-beetle-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 4 4 0 7)
               )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-beetle-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -254,6 +268,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate open (tomb-beetle-door)
   :virtual #t
   :enter (behavior ()
@@ -313,6 +328,7 @@
   :post (the-as (function none :behavior tomb-beetle-door) ja-post)
   )
 
+;; definition for symbol tomb-beetle-door-offsets, type (inline-array vector)
 (define tomb-beetle-door-offsets (new 'static 'inline-array vector 3
                                    (new 'static 'vector :x 8192.0 :y 20480.0 :z 819.2 :w 1.0)
                                    (new 'static 'vector :x 16384.0 :y 20480.0 :z 819.2 :w 1.0)
@@ -320,6 +336,8 @@
                                    )
         )
 
+;; definition for method 11 of type tomb-beetle-door
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-beetle-door ((obj tomb-beetle-door) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
@@ -393,8 +411,13 @@
   (none)
   )
 
-(defskelgroup skel-tomb-button tomb-button 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 2.5))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-button tomb-button tomb-button-lod0-jg tomb-button-idle-ja
+              ((tomb-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              )
 
+;; definition of type tomb-button
 (deftype tomb-button (basebutton)
   ()
   :heap-base #xa0
@@ -403,7 +426,21 @@
   :flag-assert         #x2700a00120
   )
 
+;; definition for method 3 of type tomb-button
+(defmethod inspect tomb-button ((obj tomb-button))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type basebutton inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 33 of type tomb-button
+;; WARN: Return type mismatch int vs none.
 (defmethod basebutton-method-33 tomb-button ((obj tomb-button))
   "TODO - joint stuff"
   (initialize-skeleton
@@ -440,6 +477,7 @@
   (none)
   )
 
+;; definition for method 34 of type tomb-button
 ;; WARN: Return type mismatch collide-shape vs none.
 (defmethod basebutton-method-34 tomb-button ((obj tomb-button))
   "TODO - collision stuff"
@@ -464,6 +502,7 @@
   (none)
   )
 
+;; definition for method 35 of type tomb-button
 ;; WARN: Return type mismatch float vs none.
 (defmethod prepare-trigger-event! tomb-button ((obj tomb-button))
   "Sets `event-going-down` to `'trigger`"
@@ -473,6 +512,7 @@
   (none)
   )
 
+;; definition of type tomb-beetle-button
 (deftype tomb-beetle-button (tomb-button)
   ((round        uint32      :offset-assert 288)
    (speech-mask  uint32      :offset-assert 292)
@@ -487,7 +527,24 @@
     )
   )
 
+;; definition for method 3 of type tomb-beetle-button
+(defmethod inspect tomb-beetle-button ((obj tomb-beetle-button))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type tomb-button inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tround: ~D~%" (-> obj round))
+  (format #t "~2Tspeech-mask: ~D~%" (-> obj speech-mask))
+  (format #t "~2Tspeech-timer: ~D~%" (-> obj speech-timer))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 39 of type tomb-beetle-button
+;; WARN: Return type mismatch int vs none.
 (defmethod tomb-beetle-button-method-39 tomb-beetle-button ((obj tomb-beetle-button))
   (with-pp
     (when (>= (- (-> pp clock frame-counter) (-> obj speech-timer)) (seconds 6))
@@ -520,6 +577,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate going-down (tomb-beetle-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -543,6 +601,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate down-idle (tomb-beetle-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -586,6 +645,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate going-up (tomb-beetle-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -603,6 +663,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate up-idle (tomb-beetle-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -656,6 +717,7 @@
     )
   )
 
+;; definition for method 36 of type tomb-beetle-button
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod send-event! tomb-beetle-button ((obj tomb-beetle-button) (arg0 symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
@@ -702,6 +764,8 @@
   (none)
   )
 
+;; definition for method 35 of type tomb-beetle-button
+;; WARN: Return type mismatch int vs none.
 (defmethod prepare-trigger-event! tomb-beetle-button ((obj tomb-beetle-button))
   "Sets `event-going-down` to `'trigger`"
   (let ((t9-0 (method-of-type tomb-button prepare-trigger-event!)))
@@ -714,11 +778,13 @@
   (none)
   )
 
-(defskelgroup skel-tomb-move-swing-pole tomb-move-swing-pole 0 2
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-move-swing-pole tomb-move-swing-pole tomb-move-swing-pole-lod0-jg tomb-move-swing-pole-idle-ja
+              ((tomb-move-swing-pole-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.5)
               )
 
+;; definition of type tomb-simon-block
 (deftype tomb-simon-block (base-plat)
   ((sound-show  uint128                   :offset-assert 272)
    (color       vector            :inline :offset-assert 288)
@@ -747,7 +813,31 @@
     )
   )
 
+;; definition for method 3 of type tomb-simon-block
+;; INFO: Used lq/sq
+(defmethod inspect tomb-simon-block ((obj tomb-simon-block))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsound-show: ~D~%" (-> obj sound-show))
+  (format #t "~2Tcolor: #<vector @ #x~X>~%" (-> obj color))
+  (format #t "~2Tmy-idx: ~D~%" (-> obj my-idx))
+  (format #t "~2Tnext-idx: ~D~%" (-> obj next-idx))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tblink-timer[2] @ #x~X~%" (-> obj blink-timer))
+  (format #t "~2Tride-timer: ~D~%" (-> obj ride-timer))
+  (format #t "~2Torder: ~D~%" (-> obj order))
+  (format #t "~2Tbase-height: ~f~%" (-> obj base-height))
+  (format #t "~2Tmove-rate: ~f~%" (-> obj move-rate))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type tomb-plat-simon
 (deftype tomb-plat-simon (process-drawable)
   ((plat           (array handle)    :offset-assert 200)
    (plat-seq       (pointer uint32)  :offset-assert 204)
@@ -771,7 +861,28 @@
     )
   )
 
+;; definition for method 3 of type tomb-plat-simon
+(defmethod inspect tomb-plat-simon ((obj tomb-plat-simon))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tplat: ~A~%" (-> obj plat))
+  (format #t "~2Tplat-seq: #x~X~%" (-> obj plat-seq))
+  (format #t "~2Tplat-count: ~D~%" (-> obj plat-count))
+  (format #t "~2Tplat-seq-count: ~D~%" (-> obj plat-seq-count))
+  (format #t "~2Tplat-idx: ~D~%" (-> obj plat-idx))
+  (format #t "~2Tbutton-handle: ~D~%" (-> obj button-handle))
+  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *tomb-simon-sound-tbl*, type (pointer sound-name)
 (define *tomb-simon-sound-tbl* (new 'static 'array sound-name 4
                                  (static-sound-name "simon-red")
                                  (static-sound-name "simon-green")
@@ -780,6 +891,7 @@
                                  )
         )
 
+;; definition for symbol *tomb-simon-color-tbl*, type (inline-array vector)
 (define *tomb-simon-color-tbl* (new 'static 'inline-array vector 4
                                  (new 'static 'vector :x 0.8 :y 0.28 :z 0.28 :w 1.0)
                                  (new 'static 'vector :x 0.39 :y 0.61 :z 0.28 :w 1.0)
@@ -788,11 +900,13 @@
                                  )
         )
 
-(defskelgroup skel-tomb-simon-block tomb-plat-simon 0 3
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-simon-block tomb-plat-simon tomb-plat-simon-lod0-jg tomb-plat-simon-idle-ja
+              ((tomb-plat-simon-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               )
 
+;; definition for function tomb-plat-simon-handler
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 135]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 199]
@@ -871,6 +985,7 @@
           )
   )
 
+;; failed to figure out what this is:
 (defstate dormant (tomb-plat-simon)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -884,6 +999,7 @@
   :code (the-as (function none :behavior tomb-plat-simon) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate appear (tomb-plat-simon)
   :virtual #t
   :event tomb-plat-simon-handler
@@ -979,6 +1095,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate show-sequence (tomb-plat-simon)
   :virtual #t
   :event tomb-plat-simon-handler
@@ -1007,6 +1124,7 @@
   :code (the-as (function none :behavior tomb-plat-simon) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-plat-simon)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1035,6 +1153,7 @@
     )
   )
 
+;; definition for method 24 of type tomb-plat-simon
 ;; WARN: Return type mismatch object vs none.
 (defmethod tomb-plat-simon-method-24 tomb-plat-simon ((obj tomb-plat-simon) (arg0 int))
   (let ((a0-3 (handle->process (-> obj plat arg0))))
@@ -1043,6 +1162,7 @@
   (none)
   )
 
+;; definition for method 7 of type tomb-plat-simon
 ;; WARN: Return type mismatch process-drawable vs tomb-plat-simon.
 (defmethod relocate tomb-plat-simon ((obj tomb-plat-simon) (arg0 int))
   (if (nonzero? (-> obj plat))
@@ -1051,6 +1171,8 @@
   (the-as tomb-plat-simon ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 11 of type tomb-plat-simon
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-simon ((obj tomb-plat-simon) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
@@ -1088,10 +1210,12 @@
   (none)
   )
 
+;; definition for function simon-block-handler
 (defbehavior simon-block-handler tomb-simon-block ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (plat-event arg0 arg1 arg2 arg3)
   )
 
+;; definition for function tomb-simon-block-post
 (defbehavior tomb-simon-block-post tomb-simon-block ()
   (when (!= (-> self basetrans y) (-> self base-height))
     (seek! (-> self basetrans y) (-> self base-height) (* (-> self move-rate) (-> self clock seconds-per-frame)))
@@ -1113,6 +1237,8 @@
   (none)
   )
 
+;; definition for function tomb-simon-block-trans
+;; INFO: Used lq/sq
 (defbehavior tomb-simon-block-trans tomb-simon-block ()
   (when (logtest? (-> self flags) (simon-block-flags sbf0))
     (when (>= (-> self clock frame-counter) (-> self blink-timer 1))
@@ -1137,6 +1263,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1198,6 +1325,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate dangerous (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1274,6 +1402,7 @@
   :post tomb-simon-block-post
   )
 
+;; failed to figure out what this is:
 (defstate ready (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1305,6 +1434,7 @@
   :post tomb-simon-block-post
   )
 
+;; failed to figure out what this is:
 (defstate ridden (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1372,6 +1502,7 @@
   :post tomb-simon-block-post
   )
 
+;; failed to figure out what this is:
 (defstate temporary (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1415,6 +1546,7 @@
   :post tomb-simon-block-post
   )
 
+;; failed to figure out what this is:
 (defstate wobble-die (tomb-simon-block)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1444,6 +1576,7 @@
   :post tomb-simon-block-post
   )
 
+;; failed to figure out what this is:
 (defstate die (tomb-simon-block)
   :virtual #t
   :code (behavior ()
@@ -1472,6 +1605,7 @@
     )
   )
 
+;; definition for method 41 of type tomb-simon-block
 ;; WARN: Return type mismatch time-frame vs none.
 (defmethod set-blink-timers! tomb-simon-block ((obj tomb-simon-block))
   (with-pp
@@ -1482,11 +1616,13 @@
     )
   )
 
+;; definition for method 30 of type tomb-simon-block
 (defmethod get-art-group tomb-simon-block ((obj tomb-simon-block))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-simon-block" (the-as (pointer uint32) #f))
   )
 
+;; definition for method 31 of type tomb-simon-block
 ;; WARN: Return type mismatch collide-shape vs none.
 (defmethod base-plat-method-31 tomb-simon-block ((obj tomb-simon-block))
   "TODO - collision stuff"
@@ -1511,6 +1647,8 @@
   (none)
   )
 
+;; definition for function tomb-simon-block-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior tomb-simon-block-init-by-other tomb-simon-block ((arg0 vector) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
   (base-plat-method-31 self)
@@ -1536,6 +1674,7 @@
   (none)
   )
 
+;; definition of type tomb-simon-button
 (deftype tomb-simon-button (process-drawable)
   ((notify-actor entity           :offset-assert 200)
    (on-notice    (function none)  :offset-assert 204)
@@ -1554,12 +1693,29 @@
     )
   )
 
+;; definition for method 3 of type tomb-simon-button
+(defmethod inspect tomb-simon-button ((obj tomb-simon-button))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
+  (format #t "~2Ton-notice: ~A~%" (-> obj on-notice))
+  (format #t "~2Ton-activate: ~A~%" (-> obj on-activate))
+  (label cfg-4)
+  obj
+  )
 
-(defskelgroup skel-tomb-simon-button tomb-simon-button 0 3
-              ((1 (meters 999999)))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-simon-button tomb-simon-button tomb-simon-button-lod0-jg tomb-simon-button-open-ja
+              ((tomb-simon-button-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5.5)
               )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-simon-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1585,6 +1741,7 @@
   :code (the-as (function none :behavior tomb-simon-button) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate open (tomb-simon-button)
   :virtual #t
   :enter (behavior ((arg0 symbol))
@@ -1619,6 +1776,7 @@
   :post (the-as (function none :behavior tomb-simon-button) rider-post)
   )
 
+;; failed to figure out what this is:
 (defstate waiting (tomb-simon-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1658,6 +1816,7 @@
   :code (the-as (function none :behavior tomb-simon-button) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate pressed (tomb-simon-button)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1704,6 +1863,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate unpress (tomb-simon-button)
   :virtual #t
   :code (behavior ()
@@ -1724,6 +1884,7 @@
     )
   )
 
+;; definition for method 11 of type tomb-simon-button
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-simon-button ((obj tomb-simon-button) (arg0 entity-actor))
   (with-pp
@@ -1822,6 +1983,7 @@
     )
   )
 
+;; definition of type tomb-vibe
 (deftype tomb-vibe (process-drawable)
   ((spawn-pos         vector                :inline :offset-assert 208)
    (pat-tbl           (array handle)                :offset-assert 224)
@@ -1847,9 +2009,40 @@
     )
   )
 
+;; definition for method 3 of type tomb-vibe
+(defmethod inspect tomb-vibe ((obj tomb-vibe))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspawn-pos: #<vector @ #x~X>~%" (-> obj spawn-pos))
+  (format #t "~2Tpat-tbl: #x~X~%" (-> obj pat-tbl))
+  (format #t "~2Tpat-count: ~D~%" (-> obj pat-count))
+  (format #t "~2Tpat-index: ~D~%" (-> obj pat-index))
+  (format #t "~2Tpat-entry-index: ~D~%" (-> obj pat-entry-index))
+  (format #t "~2Tpat-timer: ~D~%" (-> obj pat-timer))
+  (format #t "~2Tpat-duration: ~D~%" (-> obj pat-duration))
+  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
+  (dotimes (s5-0 (-> obj actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Ton-activate: ~A~%" (-> obj on-activate))
+  (label cfg-7)
+  obj
+  )
 
-(defskelgroup skel-tomb-vibe tomb-vibe 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+;; failed to figure out what this is:
+(defskelgroup skel-tomb-vibe tomb-vibe tomb-vibe-lod0-jg tomb-vibe-idle-ja
+              ((tomb-vibe-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
+;; failed to figure out what this is:
 (defstate get-pattern (tomb-vibe)
   :virtual #t
   :code (behavior ()
@@ -1899,6 +2092,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-vibe)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -1982,6 +2176,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate vibrate (tomb-vibe)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2081,6 +2276,7 @@
   :post (the-as (function none :behavior tomb-vibe) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate die (tomb-vibe)
   :virtual #t
   :enter (behavior ((arg0 symbol))
@@ -2151,6 +2347,8 @@
     )
   )
 
+;; definition for method 11 of type tomb-vibe
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-vibe ((obj tomb-vibe) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
@@ -2270,6 +2468,7 @@
     )
   )
 
+;; definition of type tomb-water-trap
 (deftype tomb-water-trap (process-drawable)
   ((bbox              bounding-box   :inline :offset-assert 208)
    (run-bbox          bounding-box   :inline :offset-assert 240)
@@ -2296,7 +2495,31 @@
     )
   )
 
+;; definition for method 3 of type tomb-water-trap
+(defmethod inspect tomb-water-trap ((obj tomb-water-trap))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
+  (format #t "~2Trun-bbox: #<bounding-box @ #x~X>~%" (-> obj run-bbox))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
+  (format #t "~2Ton-duration: ~D~%" (-> obj on-duration))
+  (format #t "~2Tharmless-time: ~D~%" (-> obj harmless-time))
+  (format #t "~2Tl-spec: ~A~%" (-> obj l-spec))
+  (format #t "~2Tl-count: ~D~%" (-> obj l-count))
+  (format #t "~2Tl-index: ~A~%" (-> obj l-index))
+  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (format #t "~2Tvolume: ~f~%" (-> obj volume))
+  (format #t "~2Tcan-exit-running?: ~A~%" (-> obj can-exit-running?))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-water-trap)
   :virtual #t
   :trans (behavior ()
@@ -2325,6 +2548,7 @@
   :code (the-as (function none :behavior tomb-water-trap) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate running (tomb-water-trap)
   :virtual #t
   :enter (behavior ()
@@ -2433,6 +2657,7 @@
     )
   )
 
+;; definition for method 22 of type tomb-water-trap
 (defmethod tomb-water-trap-method-22 tomb-water-trap ((obj tomb-water-trap))
   (let ((gp-0 (new 'stack-no-clear 'collide-query)))
     (set! (-> gp-0 collide-with) (collide-spec jak bot player-list))
@@ -2446,6 +2671,8 @@
   (none)
   )
 
+;; definition for method 23 of type tomb-water-trap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch time-frame vs none.
 (defmethod tomb-water-trap-method-23 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector))
   (with-pp
@@ -2502,6 +2729,8 @@
     )
   )
 
+;; definition for method 24 of type tomb-water-trap
+;; INFO: Used lq/sq
 (defmethod tomb-water-trap-method-24 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector) (arg2 int))
   (let ((v1-1 (process-spawn
                 lightning-tracker
@@ -2535,6 +2764,7 @@
   (none)
   )
 
+;; definition for method 7 of type tomb-water-trap
 ;; WARN: Return type mismatch process-drawable vs tomb-water-trap.
 (defmethod relocate tomb-water-trap ((obj tomb-water-trap) (arg0 int))
   (if (nonzero? (-> obj l-index))
@@ -2543,6 +2773,7 @@
   (the-as tomb-water-trap ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 11 of type tomb-water-trap
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-water-trap ((obj tomb-water-trap) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
@@ -2629,6 +2860,7 @@
   (none)
   )
 
+;; definition of type tomb-smash-door
 (deftype tomb-smash-door (process-drawable)
   ((timeout time-frame  :offset-assert 200)
    (button  handle      :offset-assert 208)
@@ -2644,12 +2876,28 @@
     )
   )
 
+;; definition for method 3 of type tomb-smash-door
+(defmethod inspect tomb-smash-door ((obj tomb-smash-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttimeout: ~D~%" (-> obj timeout))
+  (format #t "~2Tbutton: ~D~%" (-> obj button))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-tomb-smash-door tomb-smash-door 0 2
               ((1 (meters 999999)))
               :bounds (static-spherem 0 8 0 12)
               )
 
+;; failed to figure out what this is:
 (defstate idle (tomb-smash-door)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -2663,6 +2911,7 @@
   :code (the-as (function none :behavior tomb-smash-door) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate open (tomb-smash-door)
   :virtual #t
   :enter (behavior ()
@@ -2716,6 +2965,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate close (tomb-smash-door)
   :virtual #t
   :code (behavior ()
@@ -2734,6 +2984,7 @@
     )
   )
 
+;; definition for method 11 of type tomb-smash-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-smash-door ((obj tomb-smash-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
