@@ -1160,10 +1160,11 @@
     (let ((f0-5 1.0)
           (f30-0 1.0)
           )
-      (when (= (-> *bigmap* bigmap-index) 13)
-        (set! f0-5 0.333)
-        (set! f30-0 0.75)
-        )
+      ;; TODO - need bigmap
+      ;; (when (= (-> *bigmap* bigmap-index) 13)
+      ;;   (set! f0-5 0.333)
+      ;;   (set! f30-0 0.75)
+      ;;   )
       (set! (-> obj frame-speed) (* (+ 4.0 (-> *setting-control* user-current rain)) f0-5))
       (set! (-> obj frame-speed2) (* (+ 5.0 (-> *setting-control* user-current rain)) f0-5))
       (when (not (paused?))
@@ -1200,11 +1201,7 @@
           (the-as vector4 (-> *time-of-day-context* current-sky-color))
           0.0078125
           )
-        (let ((t9-8 (method-of-type ocean generate-verts)))
-          (-> obj verts)
-          (-> obj heights)
-          (t9-8)
-          )
+        (generate-verts obj (-> obj verts) (-> obj heights))
         (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                (s5-2 (-> s4-0 base))
                )
@@ -1279,6 +1276,16 @@
     (none)
     )
   )
+
+;; PC Port hack
+(define *ocean-generate-verts-vector* (new 'global 'vector))
+
+(set-vector! *ocean-generate-verts-vector*
+             (the-as float #x43000000) ;; in jak1, this component was different!
+             (the-as float #x43000000)
+             (the-as float #x43000000)
+             (the-as float #x43000000)
+             )
 
 (defmethod draw! ocean ((obj ocean))
   (do-tex-scroll! obj)

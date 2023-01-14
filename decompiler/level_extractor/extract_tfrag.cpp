@@ -1994,7 +1994,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
                       std::vector<tfrag3::PreloadedVertex>& vertices,
                       std::vector<tfrag3::Texture>& texture_pool,
                       const TextureDB& tdb,
-                      const std::vector<std::pair<int, int>>& expected_missing_textures) {
+                      const std::vector<std::pair<int, int>>& expected_missing_textures,
+                      const std::string& level_name) {
   // we will set:
   // draws
   // color_indices_per_vertex
@@ -2028,9 +2029,9 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
               fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
                           "to include "
                           "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
-                          "tpage is {}. id is {} (0x{:x})",
+                          "tpage is {}. id is {} (0x{:x}) for level {}",
                           combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
-                          combo_tex_id & 0xffff));
+                          combo_tex_id & 0xffff, level_name));
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2095,7 +2096,8 @@ void emulate_tfrags(int geom,
                     std::vector<tfrag3::PreloadedVertex>& vertices,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
-                    bool dump_level) {
+                    bool dump_level,
+                    const std::string& level_name) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2114,7 +2116,8 @@ void emulate_tfrags(int geom,
   process_draw_mode(all_draws, map, tree_out.kind);
   auto groups = make_draw_groups(all_draws);
 
-  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures);
+  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures,
+                   level_name);
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_draws);
@@ -2155,7 +2158,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level) {
+                   bool dump_level,
+                   const std::string& level_name) {
   // go through 3 lods(?)
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     tfrag3::TfragTree this_tree;
@@ -2218,7 +2222,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
     std::vector<tfrag3::PreloadedVertex> vertices;
     emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
-                   tex_db, expected_missing_textures, dump_level);
+                   tex_db, expected_missing_textures, dump_level, level_name);
     pack_tfrag_vertices(&this_tree.packed_vertices, vertices);
     extract_time_of_day(tree, this_tree);
 

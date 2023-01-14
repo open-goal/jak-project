@@ -240,7 +240,11 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    if (dest_reg.is_xmm()) {
+      gen->add_instr(IGen::movq_xmm64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    } else {
+      gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    }
   } else if (m_name == "#t") {
     gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
                                            true_symbol_offset(gen->version())),
