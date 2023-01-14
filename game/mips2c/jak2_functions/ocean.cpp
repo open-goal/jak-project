@@ -120,7 +120,8 @@ u64 execute(void* ctxt) {
   c->mov64(a3, t4);                                 // or a3, t4, r0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddiu(t2, a2, 4);                             // daddiu t2, a2, 4
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  clip_polygon_against_positive_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L124
   c->load_symbol2(t9, cache.clip_polygon_against_negative_hyperplane);// lw t9, clip-polygon-against-negative-hyperplane(s7)
   if (bc) {goto block_11;}                          // branch non-likely
@@ -130,7 +131,7 @@ u64 execute(void* ctxt) {
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddu(t2, a2, r0);                             // daddu t2, a2, r0
   //c->jalr(call_addr);                               // jalr ra, t9
-  clip_polygon_against_positive_hyperplane::execute(ctxt);
+  clip_polygon_against_negative_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L124
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_11;}                          // branch non-likely
@@ -139,7 +140,8 @@ u64 execute(void* ctxt) {
   c->mov64(a3, t4);                                 // or a3, t4, r0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->daddiu(t2, a2, 4);                             // daddiu t2, a2, 4
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  clip_polygon_against_negative_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L124
   c->lw(a3, 4, a1);                                 // lw a3, 4(a1)
   if (bc) {goto block_11;}                          // branch non-likely
