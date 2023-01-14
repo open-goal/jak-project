@@ -5,6 +5,8 @@
 ;; name in dgo: shadow-cpu
 ;; dgos: ENGINE, GAME
 
+;; temp
+
 (defmethod shadow-control-method-13 shadow-control ((obj shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (with-pp
     (let ((s4-0 (new 'stack-no-clear 'collide-query)))
@@ -45,6 +47,30 @@
     0
     (none)
     )
+  )
+
+(defmethod shadow-control-method-14 shadow-control ((obj shadow-control) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 float))
+  (let ((gp-0 (-> obj settings)))
+    (let ((s4-0 (-> gp-0 shadow-dir)))
+      (vector-normalize-copy! s4-0 arg1 1.0)
+      (set! (-> gp-0 shadow-dir w) (- arg2))
+      (when *shadow-debug*
+        (add-debug-x #t (bucket-id debug-no-zbuf1) arg0 *color-red*)
+        (add-debug-vector #t (bucket-id debug-no-zbuf1) arg0 s4-0 (meters 3) *color-red*)
+        )
+      (let ((s1-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s4-0 arg3))
+            (s5-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s4-0 arg4))
+            )
+        (vector-negate! (-> gp-0 top-plane) s4-0)
+        (vector-negate! (-> gp-0 bot-plane) s4-0)
+        (set! (-> gp-0 top-plane w) (- (vector-dot s1-2 (the-as vector (-> gp-0 top-plane)))))
+        (set! (-> gp-0 bot-plane w) (- (vector-dot s5-2 (the-as vector (-> gp-0 bot-plane)))))
+        )
+      )
+    (logior! (-> gp-0 flags) (shadow-flags shdf02 shdf03 shdf04 shdf07))
+    )
+  0
+  (none)
   )
 
 ;; DECOMP BEGINS
