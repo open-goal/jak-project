@@ -15604,6 +15604,7 @@
    (damp-period float   :offset-assert 24)
    (ticks       float   :offset-assert 28)
    )
+  :pack-me
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
@@ -34863,7 +34864,7 @@
 (define-extern *spyder-nav-enemy-info* nav-enemy-info)
 (define-extern spyder-travel-post (function none :behavior spyder))
 (define-extern spyder-face-player-post (function none :behavior spyder))
-(define-extern *spyder-ik-setup* ik-setup)
+(define-extern *spyder-ik-setup* (inline-array ik-setup))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; crimson-guard-level            ;;
@@ -36533,7 +36534,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype dig-spikey-step (process-drawable)
-  ((smush         smush-control :inline :offset-assert 208)
+  ((smush         smush-control :inline :offset-assert 200)
    (init-quat     quaternion    :inline :offset-assert 240)
    (shudder-angle float                 :offset-assert 256)
    (rot-angle     float                 :offset-assert 260)
@@ -37759,7 +37760,7 @@
    (blade-angle         float                    :offset-assert 632)
    (desired-distance    float                    :offset-assert 636)
    (spiral-time         time-frame               :offset-assert 640)
-   (blade-part          part-spawner             :offset-assert 648)
+   (blade-part          sparticle-launch-control :offset-assert 648)
    (ambush-path         path-control             :offset-assert 652)
    (path-pos            float                    :offset-assert 656)
    (ambush-started      symbol                   :offset-assert 660)
@@ -39359,10 +39360,9 @@
 ;; atoll-tank                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype atoll-tank (process-focusable)
-  ((is-master?     basic  :offset-assert 200)
-   (aftermath-part basic  :offset-assert 204)
+  ((is-master?     symbol :offset-assert 204)
+   (aftermath-part sparticle-launch-control  :offset-assert 208)
    )
   :method-count-assert 29
   :size-assert         #xd4
@@ -39372,9 +39372,8 @@
     (idle () _type_ :state 28)
     )
   )
-|#
 
-;; (define-extern atoll-tank-init-by-other function)
+(define-extern atoll-tank-init-by-other (function process-drawable int none :behavior atoll-tank))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-scenes                   ;;
@@ -39497,7 +39496,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype juicer-shot (projectile)
-  ((lightning lightning-state 5   :offset-assert 472)
+  ((lightning lightning-control 5 :offset-assert 472)
    (victim    handle              :offset-assert 496)
    )
   :method-count-assert 40
@@ -40260,16 +40259,15 @@
 ;; atoll-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype piston (process-focusable)
-  ((sound-trans  vector     :inline :offset-assert 204)
-   (init-height  float              :offset-assert 220)
-   (range-top    float              :offset-assert 224)
-   (range-bottom float              :offset-assert 228)
-   (sound-time   UNKNOWN    2       :offset-assert 236)
-   (sync         sync-eased :inline :offset-assert 252)
-   (piston-id    int32              :offset-assert 296)
-   (looping-id   uint32             :offset-assert 300)
+  ((sound-trans  vector     :inline :offset-assert 208)
+   (init-height  float              :offset-assert 224)
+   (range-top    float              :offset-assert 228)
+   (range-bottom float              :offset-assert 232)
+   (sound-time   time-frame 2       :offset-assert 240)
+   (sync         sync-eased :inline :offset-assert 256)
+   (piston-id    int32              :offset-assert 300)
+   (looping-id   uint32             :offset-assert 304)
    )
   :method-count-assert 31
   :size-assert         #x134
@@ -40281,14 +40279,12 @@
     (running () _type_ :state 30)
     )
   )
-|#
 
-#|
 (deftype turbine (process-drawable)
-  ((dest-height float  :offset-assert 196)
-   (rise-height float  :offset-assert 200)
-   (rotspeed    float  :offset-assert 204)
-   (risen       basic  :offset-assert 208)
+  ((dest-height float  :offset-assert 200)
+   (rise-height float  :offset-assert 204)
+   (rotspeed    float  :offset-assert 208)
+   (risen       symbol :offset-assert 212)
    )
   :method-count-assert 22
   :size-assert         #xd8
@@ -40298,12 +40294,10 @@
     (risen () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype liftcat (process-drawable)
-  ((up-y   float  :offset-assert 196)
-   (down-y float  :offset-assert 200)
+  ((up-y   float  :offset-assert 200)
+   (down-y float  :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
@@ -40314,16 +40308,15 @@
     (idle-down () _type_ :state 22)
     )
   )
-|#
 
-#|
 (deftype atollrotpipe (process-drawable)
-  ((smush         smush-control :inline :offset-assert 196)
-   (init-quat     quaternion    :inline :offset-assert 236)
-   (rot-angle     float                 :offset-assert 252)
-   (shudder-angle float                 :offset-assert 256)
-   (cycle-time    float                 :offset-assert 260)
-   (cycle-offset  float                 :offset-assert 264)
+  ((root-override collide-shape-moving  :offset 128 :score 1)
+   (smush         smush-control :inline :offset 200)
+   (init-quat     quaternion    :inline :offset 240)
+   (rot-angle     float                 :offset 256)
+   (shudder-angle float                 :offset 260)
+   (cycle-time    float                 :offset 264)
+   (cycle-offset  float                 :offset 268)
    )
   :method-count-assert 21
   :size-assert         #x110
@@ -40332,17 +40325,16 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype slider (process-drawable)
-  ((path-pos          float              :offset-assert 196)
-   (sync              sync-eased :inline :offset-assert 204)
-   (attack-id         uint32             :offset-assert 248)
-   (sound-id          uint32             :offset-assert 252)
-   (collide-off-timer uint64             :offset-assert 260)
-   (l-points          UNKNOWN    6       :offset-assert 268)
-   (l-bolts           UNKNOWN    4       :offset-assert 364)
+  ((root-override     collide-shape-moving :offset 128 :score 1)
+   (path-pos          float              :offset-assert 200)
+   (sync              sync-eased :inline :offset-assert 208)
+   (attack-id         uint32             :offset-assert 252)
+   (sound-id          uint32             :offset-assert 256)
+   (collide-off-timer uint64             :offset-assert 264)
+   (l-points          vector   6 :inline :offset-assert 272)
+   (l-bolts           lightning-control 4 :offset-assert 368)
    )
   :method-count-assert 21
   :size-assert         #x180
@@ -40351,13 +40343,11 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype atoll-windmill (process-drawable)
-  ((sync         sync-linear :inline :offset-assert 196)
-   (blade-normal vector      :inline :offset-assert 220)
-   (orig-quat    quaternion  :inline :offset-assert 236)
+  ((sync         sync-linear :inline :offset-assert 200)
+   (blade-normal vector      :inline :offset-assert 224)
+   (orig-quat    quaternion  :inline :offset-assert 240)
    )
   :method-count-assert 21
   :size-assert         #x100
@@ -40366,9 +40356,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype atoll-valve (process-drawable)
   ()
   :method-count-assert 21
@@ -40378,9 +40366,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype atoll-hatch (process-drawable)
   ()
   :method-count-assert 21
@@ -40390,9 +40376,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype atoll-hellcat (process-drawable)
   ()
   :method-count-assert 22
@@ -40403,9 +40387,7 @@
     (idle () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype atoll-mar-symbol (process-drawable)
   ()
   :method-count-assert 21
@@ -40415,7 +40397,6 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42203,7 +42184,7 @@
 
 (define-extern *mammoth-nav-enemy-info* nav-enemy-info)
 (define-extern *mammoth-lightning-joint-tbl* (array int32))
-(define-extern *mammoth-ik-setup* mammoth-ik-setup)
+(define-extern *mammoth-ik-setup* (inline-array mammoth-ik-setup))
 (define-extern mammoth-walk-post (function none :behavior mammoth))
 (define-extern mammoth-walk-check-end (function none :behavior mammoth))
 (define-extern next-path-index (function none :behavior mammoth))
