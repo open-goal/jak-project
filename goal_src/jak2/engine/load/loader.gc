@@ -792,11 +792,24 @@
 (defglobalconstant STREAM_PLAY_HACK #t)
 (#cond
   (STREAM_PLAY_HACK
-    (define *hack-pos* 12)
+    (define *hack-pos-buffer-id* (new 'static 'array int 4)) ;; 4 channels?
+    (define *hack-pos-buffer-pos* (new 'static 'array int 4)) ;; 4 channels?
+    (define *hack-pos-next-idx* 0) ;; new channel, if none is found.
     (define *hack-pos-speed* 5)
     (defun get-current-str-pos ((obj sound-id))
-      (+! *hack-pos* *hack-pos-speed* )
-      *hack-pos*
+      (dotimes (i 4)
+        (when (= (-> *hack-pos-buffer-id* i) obj)
+          (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)
+          (return (-> *hack-pos-buffer-pos* i))
+          )
+        )
+      (set! (-> *hack-pos-buffer-id* *hack-pos-next-idx*) (the-as int obj))
+      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0)
+      (+! *hack-pos-next-idx* 1)
+      (if (= *hack-pos-next-idx* 4)
+          (set! *hack-pos-next-idx* 0)
+          )
+      *hack-pos-speed*
       )
     (defun get-str-id-is-playing? ((obj int))
       #t

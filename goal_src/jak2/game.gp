@@ -3858,7 +3858,7 @@
   "ruins-vis"
   )
 
-(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2")
+(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2" "RUTVICTO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SAG

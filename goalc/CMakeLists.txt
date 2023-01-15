@@ -62,5 +62,8 @@ if (WIN32)
 endif ()
 
 add_executable(goalc main.cpp)
+add_executable(goalc-simple simple_main.cpp)
+
 target_link_libraries(goalc common Zydis compiler sqlite3 SQLiteCpp)
+target_link_libraries(goalc-simple common Zydis compiler sqlite3 SQLiteCpp)
 
