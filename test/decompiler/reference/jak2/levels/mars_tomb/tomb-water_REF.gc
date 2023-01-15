@@ -139,6 +139,12 @@
 ;; definition for method 11 of type tomb-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-door ((obj tomb-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -340,6 +346,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-beetle-door ((obj tomb-beetle-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
@@ -721,9 +733,9 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod send-event! tomb-beetle-button ((obj tomb-beetle-button) (arg0 symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
-       - the `notify-actor`
-       - every [[entity-actor]] in the `actor-group` array
-       @see [[entity-actor]]"
+- the `notify-actor`
+- every [[entity-actor]] in the `actor-group` array
+@see [[entity-actor]]"
   (when arg0
     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-1 from) (process->ppointer self))
@@ -1175,6 +1187,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-simon ((obj tomb-plat-simon) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
@@ -1624,8 +1642,8 @@
 
 ;; definition for method 31 of type tomb-simon-block
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod base-plat-method-31 tomb-simon-block ((obj tomb-simon-block))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! tomb-simon-block ((obj tomb-simon-block))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1651,7 +1669,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior tomb-simon-block-init-by-other tomb-simon-block ((arg0 vector) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
-  (base-plat-method-31 self)
+  (init-plat-collision! self)
   (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (set! (-> self base-height) (-> self root-override trans y))
@@ -1887,6 +1905,12 @@
 ;; definition for method 11 of type tomb-simon-button
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-simon-button ((obj tomb-simon-button) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (with-pp
     (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
       (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
@@ -2351,6 +2375,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-vibe ((obj tomb-vibe) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (with-pp
     (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -2751,8 +2781,8 @@
     )
   (let* ((s3-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg1 arg0) 1.0))
          (s2-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 arg1) 1.0))
-         (s3-2 (forward-up-nopitch->quaternion (the-as quaternion (new 'stack-no-clear 'vector)) s3-1 *up-vector*))
-         (s1-0 (forward-up-nopitch->quaternion (the-as quaternion (new 'stack-no-clear 'vector)) s2-1 *up-vector*))
+         (s3-2 (forward-up-nopitch->quaternion (new 'stack-no-clear 'quaternion) s3-1 *up-vector*))
+         (s1-0 (forward-up-nopitch->quaternion (new 'stack-no-clear 'quaternion) s2-1 *up-vector*))
          (s2-2 (quaternion->matrix (new 'stack-no-clear 'matrix) s3-2))
          (s3-3 (quaternion->matrix (new 'stack-no-clear 'matrix) s1-0))
          )
@@ -2776,6 +2806,12 @@
 ;; definition for method 11 of type tomb-water-trap
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-water-trap ((obj tomb-water-trap) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (let ((a1-3 (new 'stack-no-clear 'sync-info-params)))
@@ -2783,7 +2819,7 @@
       (if #t
           (set! v1-1 (logior v1-1 1))
           )
-      (set! (-> a1-3 sync-type) (the-as basic 'sync-linear))
+      (set! (-> a1-3 sync-type) 'sync-linear)
       (set! (-> a1-3 sync-flags) (the-as sync-flags v1-1))
       )
     (set! (-> a1-3 entity) arg0)
@@ -2987,6 +3023,12 @@
 ;; definition for method 11 of type tomb-smash-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-smash-door ((obj tomb-smash-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))

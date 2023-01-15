@@ -50,10 +50,10 @@
               :shadow-joint-index 3
               )
 
-(defskelgroup skel-youngsamos-highres youngsamos-highres 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-youngsamos-highres youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-idle-ja
+              ((youngsamos-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
-              :shadow 2
+              :shadow youngsamos-highres-shadow-mg
               :origin-joint-index 3
               )
 
@@ -183,18 +183,18 @@
               :origin-joint-index 3
               )
 
-(defskelgroup skel-rift-rider rift-rider 0 4
-              ((1 (meters 999999)))
+(defskelgroup skel-rift-rider rift-rider rift-rider-lod0-jg rift-rider-idle-ja
+              ((rift-rider-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 1.5 0 5)
-              :shadow 2
+              :shadow rift-rider-shadow-mg
               :origin-joint-index 3
               :shadow-joint-index 3
               )
 
-(defskelgroup skel-torn-highres torn-highres 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-torn-highres torn-highres torn-highres-lod0-jg torn-highres-idle-ja
+              ((torn-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2.5)
-              :shadow 2
+              :shadow torn-highres-shadow-mg
               :origin-joint-index 3
               )
 
@@ -267,8 +267,8 @@
               :origin-joint-index 3
               )
 
-(defskelgroup skel-baron baron 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-baron baron baron-lod0-jg baron-idle-ja
+              ((baron-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               :origin-joint-index 3
               )
@@ -284,7 +284,7 @@
 
 (defmethod get-art-elem kor-npc ((obj kor-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor kor-hideout))
      (-> obj draw art-group data 5)
@@ -340,6 +340,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! metalkor-highres ((obj metalkor-highres) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -408,7 +414,7 @@
 
 (defmethod get-art-elem tess-npc ((obj tess-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor tess-alley))
      (if (task-node-closed? (game-task-node ruins-tower-resolution))
@@ -466,7 +472,7 @@
 
 (defmethod get-art-elem keira-npc ((obj keira-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor keira-stadium))
      (-> obj draw art-group data 3)
@@ -500,7 +506,7 @@
 
 (defmethod get-art-elem krew-npc ((obj krew-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (-> obj draw art-group data 4)
   )
 
@@ -539,7 +545,7 @@
 
 (defmethod get-art-elem kid-npc ((obj kid-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor kid-alley))
      (-> obj draw art-group data 5)
@@ -567,7 +573,7 @@
 
 (defmethod get-art-elem crocadog-npc ((obj crocadog-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor crocadog-vinroom))
      (-> obj draw art-group data 5)
@@ -616,7 +622,7 @@
 
 (defmethod get-art-elem torn-npc ((obj torn-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (cond
     ((task-node-open? (game-task-node ruins-tower-introduction))
      (-> obj draw art-group data 5)
@@ -692,7 +698,7 @@
 
 (defmethod get-art-elem youngsamos-npc ((obj youngsamos-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor youngsamos-forest))
      (-> obj draw art-group data 4)
@@ -741,7 +747,7 @@
 
 (defmethod get-art-elem samos-npc ((obj samos-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor samos-hideout))
      (-> obj draw art-group data 4)
@@ -778,8 +784,8 @@
 
 (defmethod get-art-elem onin-npc ((obj onin-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
-  (let ((v1-1 (game-task-control-method-9 (-> obj task))))
+@returns the appropriate [[art-element]] for the given NPC"
+  (let ((v1-1 (get-current-task-event (-> obj task))))
     (case (-> v1-1 action)
       (((game-task-action play))
        (set! (-> obj talk-message) (game-text-id text-x186))
@@ -849,10 +855,10 @@
 
 (defmethod get-art-elem pecker-npc ((obj pecker-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (local-vars (s5-0 art-joint-anim) (f30-0 float))
   (cond
-    ((logtest? (-> (game-task-control-method-9 (-> obj task)) flags) (game-task-flags gatflag-02))
+    ((logtest? (-> (get-current-task-event (-> obj task)) flags) (game-task-flags gatflag-02))
      (-> obj draw art-group data 6)
      )
     ((begin
@@ -937,7 +943,7 @@
 
 (defmethod get-art-elem ashelin-npc ((obj ashelin-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (case (-> obj task actor)
     (((game-task-actor ashelin-throne))
      (logior! (-> obj draw status) (draw-control-status no-draw-bounds))
@@ -974,7 +980,7 @@
 
 (defmethod get-art-elem daxter-npc ((obj daxter-npc))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (-> obj draw art-group data 3)
   )
 
@@ -984,14 +990,14 @@
               :origin-joint-index 3
               )
 
-(defskelgroup skel-tomb-boss-bridge-a tomb-boss-bridge 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-tomb-boss-bridge-a tomb-boss-bridge tomb-boss-bridge-a-lod0-jg tomb-boss-bridge-a-idle-ja
+              ((tomb-boss-bridge-a-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 17)
               :origin-joint-index 30
               )
 
-(defskelgroup skel-tomb-boss-bridge-b tomb-boss-bridge 6 8
-              ((7 (meters 999999)))
+(defskelgroup skel-tomb-boss-bridge-b tomb-boss-bridge tomb-boss-bridge-b-lod0-jg tomb-boss-bridge-b-idle-ja
+              ((tomb-boss-bridge-b-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 17)
               :origin-joint-index 31
               )
@@ -1008,8 +1014,8 @@
               :origin-joint-index 3
               )
 
-(defskelgroup skel-seal-of-mar seal-of-mar 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-seal-of-mar seal-of-mar seal-of-mar-lod0-jg -1
+              ((seal-of-mar-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
@@ -1044,23 +1050,23 @@
               :origin-joint-index 3
               )
 
-(defskelgroup skel-heart-of-mar heart-of-mar 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-heart-of-mar heart-of-mar heart-of-mar-lod0-jg heart-of-mar-idle-ja
+              ((heart-of-mar-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-gun-upgrade-a gun-upgrade-a 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-gun-upgrade-a gun-upgrade-a gun-upgrade-a-lod0-jg -1
+              ((gun-upgrade-a-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               :origin-joint-index 3
               )
 
 (defun intro-play ()
   "A dedicated function for playing the intro cutscenes in the correct order
-   ```opengoal
-   \"intro-samos-hut\" \"intro-vortex\" \"intro-city-square\" \"intro-prison\"
-   ```"
+```opengoal
+\"intro-samos-hut\" \"intro-vortex\" \"intro-city-square\" \"intro-prison\"
+```"
   (set! (-> *setting-control* user-default border-mode) #t)
   (set! (-> *level* play?) (-> *setting-control* user-default border-mode))
   (process-spawn
@@ -1076,9 +1082,9 @@
 
 (defun outro-play ()
   "A dedicated function for playing the intro cutscenes in the correct order
-   ```opengoal
-   \"outro-nest\" \"outro-palace\" \"outro-hiphog\" \"outro-port\"
-   ```"
+```opengoal
+\"outro-nest\" \"outro-palace\" \"outro-hiphog\" \"outro-port\"
+```"
   (set! (-> *setting-control* user-default border-mode) #t)
   (set! (-> *level* play?) (-> *setting-control* user-default border-mode))
   (process-spawn

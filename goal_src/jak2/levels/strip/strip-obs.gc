@@ -162,6 +162,12 @@
   )
 
 (defmethod init-from-entity! strip-hazard ((obj strip-hazard) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-64 res-tag))
   (set-vector! (-> obj shove-vec) 0.0 12288.0 24576.0 1.0)
   (set! (-> obj no-collision-timer) (the-as uint 0))
@@ -186,7 +192,7 @@
       (if #t
           (set! v1-4 (logior v1-4 1))
           )
-      (set! (-> s4-0 sync-type) (the-as basic 'sync-linear))
+      (set! (-> s4-0 sync-type) 'sync-linear)
       (set! (-> s4-0 sync-flags) (the-as sync-flags v1-4))
       )
     (set! (-> s4-0 entity) arg0)
@@ -211,8 +217,8 @@
   )
 
 
-(defskelgroup skel-fencespikes fencespikes 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-fencespikes fencespikes fencespikes-lod0-jg fencespikes-idle-ja
+              ((fencespikes-lod0-mg (meters 20)) (fencespikes-lod1-mg (meters 999999)))
               :bounds (static-spherem 12 0 0 10.5)
               )
 
@@ -246,6 +252,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! fencespikes ((obj fencespikes) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 string))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -316,8 +328,8 @@
   )
 
 
-(defskelgroup skel-pitspikes pitspikes 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-pitspikes pitspikes pitspikes-lod0-jg pitspikes-idle-ja
+              ((pitspikes-lod0-mg (meters 20)) (pitspikes-lod1-mg (meters 999999)))
               :bounds (static-spherem 8 0 0 12)
               )
 
@@ -384,6 +396,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! pitspikes ((obj pitspikes) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -437,8 +455,8 @@
   )
 
 
-(defskelgroup skel-curtainsaw curtainsaw 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-curtainsaw curtainsaw curtainsaw-lod0-jg curtainsaw-idle-ja
+              ((curtainsaw-lod0-mg (meters 20)) (curtainsaw-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 4 0 10.5)
               :longest-edge (meters 0.0007044922)
               )
@@ -478,6 +496,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! curtainsaw ((obj curtainsaw) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -866,6 +890,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! grenade-point ((obj grenade-point) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj parented?) #f)
   (when (not (-> obj parented?))
     (let ((a1-1 (handle->process (-> *game-info* controller 0))))
@@ -942,7 +972,10 @@
   )
 
 
-(defskelgroup skel-grenade plasmitebomb 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 0.3))
+(defskelgroup skel-grenade plasmitebomb plasmitebomb-lod0-jg plasmitebomb-idle-ja
+              ((plasmitebomb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.3)
+              )
 
 (defpartgroup group-grenade-armed
   :id 235
@@ -1116,7 +1149,7 @@
 
 (defmethod draw-laser-sight grenade ((obj grenade))
   "TODO - confirm If applicable, draw the laser sight particles
-       :virtual"
+:virtual"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
       (let ((t9-1 (method-of-type part-tracker activate)))
@@ -1384,7 +1417,7 @@
 
 (defmethod init-proj-settings! grenade ((obj grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   (with-pp
     (initialize-skeleton
       obj
@@ -1425,13 +1458,25 @@
     )
   )
 
-(defskelgroup skel-ecowell-a ecowell-a 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+(defskelgroup skel-ecowell-a ecowell-a ecowell-a-lod0-jg -1
+              ((ecowell-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-b ecowell-b 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+(defskelgroup skel-ecowell-b ecowell-b ecowell-b-lod0-jg -1
+              ((ecowell-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-c ecowell-c 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 40))
+(defskelgroup skel-ecowell-c ecowell-c ecowell-c-lod0-jg -1
+              ((ecowell-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
-(defskelgroup skel-ecowell-d ecowell-d 0 -1 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 400))
+(defskelgroup skel-ecowell-d ecowell-d ecowell-d-lod0-jg -1
+              ((ecowell-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
 
 (set-subtask-hook!
   *game-info*
@@ -1608,8 +1653,8 @@
   (none)
   )
 
-(defskelgroup skel-drill-plat drill-plat 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-drill-plat drill-plat drill-plat-lod0-jg drill-plat-idle-ja
+              ((drill-plat-lod0-mg (meters 20)) (drill-plat-lod1-mg (meters 999999)))
               :bounds (static-spherem 14 18 0 26)
               )
 
@@ -1673,6 +1718,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! drill-plat ((obj drill-plat) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)

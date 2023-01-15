@@ -38,6 +38,25 @@ std::string trim(const std::string& s) {
   return rtrim(ltrim(s));
 }
 
+std::string trim_newline_indents(const std::string& s) {
+  auto lines = split(s, '\n');
+  std::vector<std::string> trimmed_lines;
+  std::transform(lines.begin(), lines.end(), std::back_inserter(trimmed_lines),
+                 [](const std::string& line) { return ltrim(line); });
+  return join(trimmed_lines, "\n");
+}
+
+std::string join(const std::vector<std::string>& strs, const std::string& join_with) {
+  std::string out;
+  for (int i = 0; i < strs.size(); i++) {
+    out += strs.at(i);
+    if (i < strs.size() - 1) {
+      out += join_with;
+    }
+  }
+  return out;
+}
+
 int line_count(const std::string& str) {
   int result = 0;
   for (auto& c : str) {

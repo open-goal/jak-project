@@ -1171,6 +1171,7 @@
 ;; definition for function check-gungame-piece-ground
 ;; WARN: Return type mismatch number vs none.
 (defun check-gungame-piece-ground ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  "Ensures the splatter that sits below the dummy when destroyed is at the right height"
   (if (and (>= 35635.2 (-> arg2 vector 0 y)) (>= 0.0 (-> arg1 vel-sxvel y)))
       (set! (-> arg2 vector 0 y) 35635.2)
       (set! (-> arg1 next-time)
@@ -1603,7 +1604,7 @@
    (num          uint16                               :offset-assert   4)
    (ref-time-num int16                                :offset-assert   6)
    (score        int16                                :offset-assert   8)
-   (flags        uint8                                :offset-assert  10)
+   (flags        tpath-info-flags                     :offset-assert  10)
    (num-anims    uint8                                :offset-assert  11)
    (bonus-time   float                                :offset-assert  12)
    (list         (array int32)                        :offset-assert  16)
@@ -1671,11 +1672,11 @@
   :flag-assert         #x2100f00168
   (:methods
     (idle () _type_ :state 27)
-    (gun-dummy-method-28 (_type_) none 28)
-    (gun-dummy-method-29 (_type_) symbol 29)
-    (gun-dummy-method-30 (_type_) float 30)
-    (gun-dummy-method-31 (_type_ tpath-info) none 31)
-    (gun-dummy-method-32 (_type_) none 32)
+    (init-dummy-collison! (_type_) none 28)
+    (path-playing? (_type_) symbol 29)
+    (path-time-elapsed (_type_) float 30)
+    (init-tpath-info! (_type_ tpath-info) none 31)
+    (break-dummy (_type_) none 32)
     )
   )
 
@@ -2067,54 +2068,61 @@
 
 ;; definition for method 32 of type gun-dummy
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy ((obj gun-dummy))
+(defmethod break-dummy gun-dummy ((obj gun-dummy))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
   0
   (none)
   )
 
 ;; definition for method 30 of type gun-dummy
-(defmethod gun-dummy-method-30 gun-dummy ((obj gun-dummy))
-  (let ((f0-0 0.0))
-    (let ((v1-0 (the-as object (-> obj current))))
+(defmethod path-time-elapsed gun-dummy ((obj gun-dummy))
+  "@returns Calculates the combined total time across all control frames in the path"
+  (let ((total-time 0.0))
+    (let ((curr-frame (the-as tpath-control-frame (-> obj current))))
       (loop
-        (case (-> (the-as tpath-control-frame v1-0) command)
+        (case (-> curr-frame command)
           (((tpath-control-frame-command begin))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
-          (((tpath-control-frame-command tpath-control-frame-command-1))
-           (+! f0-0 (-> (the-as tpath-control-frame v1-0) time))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+          (((tpath-control-frame-command arise))
+           (+! total-time (-> curr-frame time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
-          (((tpath-control-frame-command tpath-control-frame-command-5))
-           (+! f0-0 (-> (the-as tpath-control-frame v1-0) time))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+          (((tpath-control-frame-command lower))
+           (+! total-time (-> curr-frame time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
-          (((tpath-control-frame-command tpath-control-frame-command-4))
-           (+! f0-0 (-> (the-as tpath-control-frame v1-0) time))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+          (((tpath-control-frame-command align-with-track))
+           (+! total-time (-> curr-frame time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
-          (((tpath-control-frame-command tpath-control-frame-command-2))
-           (+! f0-0 (-> (the-as tpath-control-frame v1-0) time))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+          (((tpath-control-frame-command translate))
+           (+! total-time (-> curr-frame time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
-          (((tpath-control-frame-command tpath-control-frame-command-3))
-           (+! f0-0 (-> (the-as tpath-control-frame v1-0) time))
-           (set! v1-0 (-> (the-as (inline-array tpath-control-frame) v1-0) 1))
+          (((tpath-control-frame-command wait))
+           (+! total-time (-> curr-frame time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
            )
           (((tpath-control-frame-command end))
-           (return f0-0)
+           (return total-time)
            )
           )
         )
       )
-    f0-0
+    total-time
     )
   )
 
 ;; definition for method 29 of type gun-dummy
 ;; INFO: Used lq/sq
-(defmethod gun-dummy-method-29 gun-dummy ((obj gun-dummy))
-  (local-vars (at-0 int) (v0-1 symbol))
+(defmethod path-playing? gun-dummy ((obj gun-dummy))
+  "Core functionality for playing back the dummy's path.  Does things like:
+- calculates the score in case the dummy is hit based on the time elapsed
+- moves around the dummy
+- plays sounds accordingly
+@returns if the dummy's current path is still in progress"
+  (local-vars (at-0 int) (ret symbol))
   (with-pp
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -2126,27 +2134,27 @@
            (vf7 :class vf)
            )
       (init-vf0-vector)
-      (let ((s5-0 (-> obj current))
-            (a1-0 (new 'stack-no-clear 'event-message-block))
+      (let ((curr-path-command (-> obj current))
+            (event-msg-block (new 'stack-no-clear 'event-message-block))
             )
-        (set! (-> a1-0 from) (process->ppointer pp))
-        (set! (-> a1-0 num-params) 1)
-        (set! (-> a1-0 message) 'path)
-        (set! (-> a1-0 param 0) (-> obj path-num))
-        (let ((s4-0 (the-as path-control (send-event-function (handle->process (-> obj train-man)) a1-0)))
+        (set! (-> event-msg-block from) (process->ppointer pp))
+        (set! (-> event-msg-block num-params) 1)
+        (set! (-> event-msg-block message) 'path)
+        (set! (-> event-msg-block param 0) (-> obj path-num))
+        (let ((path (the-as path-control (send-event-function (handle->process (-> obj train-man)) event-msg-block)))
               (f30-0 (* 0.0033333334 (the float (- (-> pp clock frame-counter) (-> obj state-time)))))
               )
-          (if (not s4-0)
+          (if (not path)
               (return #f)
               )
-          (case (-> s5-0 0 command)
-            (((tpath-control-frame-command tpath-control-frame-command-1))
-             (set! (-> obj path-pos) (* 0.007843138 (the float (-> s5-0 0 path-pos))))
-             (get-point-in-path! s4-0 (-> obj root-override trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root-override trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> s5-0 0 time)))
-             (let* ((s3-0 (get-point-in-path! s4-0 (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp))
+          (case (-> curr-path-command 0 command)
+            (((tpath-control-frame-command arise))
+             (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
+             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
+             (+! (-> obj root-override trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (let* ((s3-0 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp))
                     (v1-26 (get-point-in-path!
-                             s4-0
+                             path
                              (new 'stack-no-clear 'vector)
                              (if (< (-> obj path-pos) 0.01)
                                  (+ 0.1 (-> obj path-pos))
@@ -2169,33 +2177,33 @@
                  (sound-play "target-up-slow")
                  )
              (set! (-> obj first-time-command) #f)
-             (when (>= f30-0 (-> s5-0 0 time))
+             (when (>= f30-0 (-> curr-path-command 0 time))
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
                (set! (-> obj state-time) (-> pp clock frame-counter))
                )
              (return #t)
-             v0-1
+             ret
              )
-            (((tpath-control-frame-command tpath-control-frame-command-5))
-             (get-point-in-path! s4-0 (-> obj root-override trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root-override trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> s5-0 0 time)))
+            (((tpath-control-frame-command lower))
+             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
+             (+! (-> obj root-override trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> curr-path-command 0 time)))
              (if (-> obj first-time-command)
                  (sound-play "target-dwn-slow")
                  )
              (set! (-> obj first-time-command) #f)
-             (when (>= f30-0 (-> s5-0 0 time))
+             (when (>= f30-0 (-> curr-path-command 0 time))
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
                (set! (-> obj state-time) (-> pp clock frame-counter))
                )
              (return #t)
-             v0-1
+             ret
              )
-            (((tpath-control-frame-command tpath-control-frame-command-4))
-             (let ((s3-3 (get-point-in-path! s4-0 (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp)))
+            (((tpath-control-frame-command align-with-track))
+             (let ((s3-3 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp)))
                (let* ((v1-68 (get-point-in-path!
-                               s4-0
+                               path
                                (new 'stack-no-clear 'vector)
                                (if (< (-> obj path-pos) 0.01)
                                    (+ 0.1 (-> obj path-pos))
@@ -2216,25 +2224,25 @@
                (quaternion-normalize! (-> obj quat-ground))
                (set! (-> obj root-override trans quad) (-> s3-3 quad))
                )
-             (set! (-> obj inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> s5-0 0 time)))
+             (set! (-> obj inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
              (set! (-> obj first-time-command) #f)
-             (when (>= f30-0 (-> s5-0 0 time))
+             (when (>= f30-0 (-> curr-path-command 0 time))
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj inout-percent) 1.0)
                (set! (-> obj first-time-command) #t)
                (set! (-> obj state-time) (-> pp clock frame-counter))
                )
              (return #t)
-             v0-1
+             ret
              )
-            (((tpath-control-frame-command tpath-control-frame-command-2))
+            (((tpath-control-frame-command translate))
              (set! (-> obj score) (- (-> obj score) (* (-> obj score-speed) (-> pp clock seconds-per-frame))))
              (set! (-> obj inout-percent) (fmax 0.0 (- (-> obj inout-percent) (* 4.0 (-> pp clock seconds-per-frame)))))
              (let ((s2-4 (new 'stack-no-clear 'vector))
                    (s3-4 (new 'stack-no-clear 'vector))
-                   (f28-2 (lerp-scale 0.0 1.0 f30-0 0.0 (-> s5-0 0 time)))
+                   (f28-2 (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
                    )
-               (let ((v1-87 (-> s5-0 0 move-type)))
+               (let ((v1-87 (-> curr-path-command 0 move-type)))
                  (cond
                    ((zero? v1-87)
                     )
@@ -2249,8 +2257,8 @@
                     )
                    )
                  )
-               (get-point-in-path! s4-0 s2-4 (-> obj path-pos) 'interp)
-               (get-point-in-path! s4-0 s3-4 (* 0.007843138 (the float (-> s5-0 0 path-pos))) 'interp)
+               (get-point-in-path! path s2-4 (-> obj path-pos) 'interp)
+               (get-point-in-path! path s3-4 (* 0.007843138 (the float (-> curr-path-command 0 path-pos))) 'interp)
                (let ((v1-102 (new 'stack-no-clear 'vector)))
                  (set! (-> v1-102 quad) (-> obj root-override trans quad))
                  (vector-float*! (-> obj root-override trans) s2-4 (- 1.0 f28-2))
@@ -2295,7 +2303,7 @@
                (spawn (-> obj part) (-> obj root-override trans))
                )
              (set! (-> obj first-time-command) #f)
-             (when (>= f30-0 (-> s5-0 0 time))
+             (when (>= f30-0 (-> curr-path-command 0 time))
                (when (nonzero? (-> obj move-sound))
                  (sound-stop (-> obj move-sound))
                  (set! (-> obj move-sound) (new 'static 'sound-id))
@@ -2303,31 +2311,31 @@
                  )
                (sound-play "target-stop")
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
-               (set! (-> obj path-pos) (* 0.007843138 (the float (-> s5-0 0 path-pos))))
+               (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
                (set! (-> obj first-time-command) #t)
                (set! (-> obj state-time) (-> pp clock frame-counter))
                )
              (return #t)
-             v0-1
+             ret
              )
-            (((tpath-control-frame-command tpath-control-frame-command-3))
+            (((tpath-control-frame-command wait))
              (set! (-> obj score) (- (-> obj score) (* (-> obj score-speed) (-> pp clock seconds-per-frame))))
              (set! (-> obj inout-percent) (fmax 0.0 (- (-> obj inout-percent) (* 4.0 (-> pp clock seconds-per-frame)))))
-             (get-point-in-path! s4-0 (-> obj root-override trans) (-> obj path-pos) 'interp)
+             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
              (set! (-> obj first-time-command) #f)
-             (when (or (and (= (-> s5-0 0 time) -1.0) (< (-> obj hit-points) 0))
-                       (and (!= (-> s5-0 0 time) -1.0) (>= f30-0 (-> s5-0 0 time)))
+             (when (or (and (= (-> curr-path-command 0 time) -1.0) (< (-> obj hit-points) 0))
+                       (and (!= (-> curr-path-command 0 time) -1.0) (>= f30-0 (-> curr-path-command 0 time)))
                        )
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
                (set! (-> obj state-time) (-> pp clock frame-counter))
                )
              (return #t)
-             v0-1
+             ret
              )
             (((tpath-control-frame-command end))
              (return #f)
-             v0-1
+             ret
              )
             )
           )
@@ -2340,17 +2348,17 @@
 ;; INFO: Used lq/sq
 (defmethod get-trans gun-dummy ((obj gun-dummy) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((v1-0 (-> obj root-override)))
+  (let ((root (-> obj root-override)))
     (case arg0
       ((3 2)
-       (let ((v0-0 (new 'static 'vector :w 1.0)))
-         (set! (-> v0-0 quad) (-> v1-0 trans quad))
-         (set! (-> v0-0 y) (+ 8192.0 (-> v0-0 y)))
-         v0-0
+       (let ((vec (new 'static 'vector :w 1.0)))
+         (set! (-> vec quad) (-> root trans quad))
+         (set! (-> vec y) (+ 8192.0 (-> vec y)))
+         vec
          )
        )
       (else
-        (-> v1-0 trans)
+        (-> root trans)
         )
       )
     )
@@ -2370,33 +2378,39 @@
         (('track)
          (cond
            ((-> event param 0)
-            (if (and (not (logtest? (-> self info flags) 4)) (> (-> self hit-points) 0))
+            (if (and (not (logtest? (-> self info flags) (tpath-info-flags score-not-influenced-by-speed)))
+                     (> (-> self hit-points) 0)
+                     )
                 #t
                 'abort
                 )
             )
            (else
-             (and (not (logtest? (-> self info flags) 4)) (> (-> self hit-points) 0))
+             (and (not (logtest? (-> self info flags) (tpath-info-flags score-not-influenced-by-speed)))
+                  (> (-> self hit-points) 0)
+                  )
              )
            )
          )
         (('attack)
-         (let ((s5-0 (the-as attack-info (-> event param 1))))
+         (let ((attack-info (the-as attack-info (-> event param 1))))
            (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)
-           (when (or (not (logtest? (-> self info flags) 64))
-                     (and (logtest? (-> self info flags) 64) (or (= (-> s5-0 mode) 'eco-dark) (= (-> s5-0 mode) 'explode)))
+           (when (or (not (logtest? (-> self info flags) (tpath-info-flags tpath-info-flags-6)))
+                     (and (logtest? (-> self info flags) (tpath-info-flags tpath-info-flags-6))
+                          (or (= (-> attack-info mode) 'eco-dark) (= (-> attack-info mode) 'explode))
+                          )
                      )
-             (when (!= (-> s5-0 id) (-> self incoming-attack-id))
-               (set! (-> self incoming-attack-id) (-> s5-0 id))
-               (let ((s5-1 (if (type? proc process-drawable)
-                               (the-as process-drawable proc)
-                               )
-                           )
+             (when (!= (-> attack-info id) (-> self incoming-attack-id))
+               (set! (-> self incoming-attack-id) (-> attack-info id))
+               (let ((proc-draw (if (type? proc process-drawable)
+                                    (the-as process-drawable proc)
+                                    )
+                                )
                      )
-                 (when s5-1
-                   (let ((gp-1 (-> s5-1 root)))
-                     (when (if (type? gp-1 collide-shape)
-                               gp-1
+                 (when proc-draw
+                   (let ((cshape (-> proc-draw root)))
+                     (when (if (type? cshape collide-shape)
+                               cshape
                                )
                        (vector+float*! (-> self impact) (-> self root-override trans) *up-vector* 8192.0)
                        (vector+!
@@ -2415,7 +2429,7 @@
                       (set! (-> self spin-sound) (sound-play "target-spin"))
                       )
                      (else
-                       (if (and (logtest? (process-mask projectile) (-> s5-1 mask))
+                       (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
                                 (< (- (-> self clock frame-counter) (-> self last-combo-time)) (seconds 1))
                                 )
                            (send-event (ppointer->process (-> self parent)) 'combo)
@@ -2445,7 +2459,7 @@
     (none)
     )
   :exit (behavior ()
-    (logior! (-> self info flags) 2)
+    (logior! (-> self info flags) (tpath-info-flags broken))
     (none)
     )
   :code (behavior ()
@@ -2471,14 +2485,14 @@
     (none)
     )
   :post (behavior ()
-    (set! (-> self done? value) (not (gun-dummy-method-29 self)))
+    (set! (-> self done? value) (not (path-playing? self)))
     (when (zero? (-> self hit-points))
-      (logior! (-> self info flags) 2)
+      (logior! (-> self info flags) (tpath-info-flags broken))
       (if (>= -100.0 (-> self score))
           (sound-play "score-bad")
           )
       (send-event (handle->process (-> self train-man)) 'score (the int (-> self score)))
-      (gun-dummy-method-32 self)
+      (break-dummy self)
       (set! (-> self hit-points) -1)
       )
     (+! (-> self root-override trans y) (-> self y-offset))
@@ -2492,9 +2506,9 @@
         0
         )
       )
-    (let ((gp-2 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans))))
-      (vector-normalize! gp-2 1.0)
-      (seek-toward-heading-vec! (-> self root-override) gp-2 65536.0 (seconds 0.5))
+    (let ((vec-to-target (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans))))
+      (vector-normalize! vec-to-target 1.0)
+      (seek-toward-heading-vec! (-> self root-override) vec-to-target 65536.0 (seconds 0.5))
       )
     (quaternion-rotate-local-y! (-> self root-override quat) (-> self root-override quat) (-> self rot-y-offset))
     (quaternion-slerp!
@@ -2510,28 +2524,29 @@
 
 ;; definition for method 28 of type gun-dummy
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-28 gun-dummy ((obj gun-dummy))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) cshape-reaction-default)
-    (set! (-> s5-0 no-reaction)
+(defmethod init-dummy-collison! gun-dummy ((obj gun-dummy))
+  "Initializes the collision related stuff for the dummy"
+  (let ((cshape-moving (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape-moving dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape-moving reaction) cshape-reaction-default)
+    (set! (-> cshape-moving no-reaction)
           (the-as (function collide-shape-moving collide-query vector vector object) nothing)
           )
-    (set! (-> s5-0 penetrated-by) (penetrate))
-    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-6 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-6 prim-core action) (collide-action solid))
-      (set! (-> v1-6 transform-index) 0)
-      (set-vector! (-> v1-6 local-sphere) 0.0 7372.8 0.0 10240.0)
-      (set! (-> s5-0 total-prims) (the-as uint 1))
-      (set! (-> s5-0 root-prim) v1-6)
+    (set! (-> cshape-moving penetrated-by) (penetrate))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape-moving (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 10240.0)
+      (set! (-> cshape-moving total-prims) (the-as uint 1))
+      (set! (-> cshape-moving root-prim) prim-mesh)
       )
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (let ((v1-9 (-> s5-0 root-prim)))
-      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
-      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+    (set! (-> cshape-moving nav-radius) (* 0.75 (-> cshape-moving root-prim local-sphere w)))
+    (let ((root-prim (-> cshape-moving root-prim)))
+      (set! (-> cshape-moving backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root-override) cshape-moving)
     )
   0
   (none)
@@ -2546,7 +2561,13 @@
 ;; definition for method 11 of type gun-dummy
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! gun-dummy ((obj gun-dummy) (arg0 entity-actor))
-  (gun-dummy-method-28 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-dummy-collison! obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton
@@ -2561,13 +2582,14 @@
 
 ;; definition for method 31 of type gun-dummy
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-31 gun-dummy ((obj gun-dummy) (arg0 tpath-info))
+(defmethod init-tpath-info! gun-dummy ((obj gun-dummy) (arg0 tpath-info))
+  "Given a [[tpath-info]] use it to initialize the dummy with any relevant data or flags"
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
   (vector-identity! (-> obj root-override scale))
   (quaternion-copy! (-> obj quat) (-> obj root-override quat))
   (set! (-> obj root-override trans y) (+ -16384.0 (-> obj root-override trans y)))
-  (if (not (logtest? (-> arg0 flags) 16))
+  (if (not (logtest? (-> arg0 flags) (tpath-info-flags start-on-rand-anim)))
       (set! *tpath-rand* (the-as uint (rand-vu-int-count 16)))
       )
   (set! (-> obj current)
@@ -2576,18 +2598,18 @@
           (-> (the-as (inline-array tpath-control-frame) (-> arg0 anims (mod *tpath-rand* (-> arg0 num-anims)))) 0)
           )
         )
-  (let ((v1-19 (-> obj current)))
-    (when (= (-> v1-19 0 command) (tpath-control-frame-command begin))
-      (set! (-> obj path-num) (-> v1-19 0 path-num))
+  (let ((path (-> obj current)))
+    (when (= (-> path 0 command) (tpath-control-frame-command begin))
+      (set! (-> obj path-num) (-> path 0 path-num))
       (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
       )
     )
   (set! (-> obj score) (the float (-> arg0 score)))
-  (if (logtest? (-> arg0 flags) 4)
+  (if (logtest? (-> arg0 flags) (tpath-info-flags score-not-influenced-by-speed))
       (set! (-> obj score-speed) 0.0)
-      (set! (-> obj score-speed) (/ (-> obj score) (gun-dummy-method-30 obj)))
+      (set! (-> obj score-speed) (/ (-> obj score) (path-time-elapsed obj)))
       )
-  (set! (-> obj hit-points) (if (logtest? (-> arg0 flags) 32)
+  (set! (-> obj hit-points) (if (logtest? (-> arg0 flags) (tpath-info-flags double-hitpoints))
                                 2
                                 1
                                 )
@@ -2822,19 +2844,20 @@
 ;; definition for method 32 of type gun-dummy-a
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-a ((obj gun-dummy-a))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-a ((obj gun-dummy-a))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
-    (set! (-> s5-1 fountain-rand-transv-hi x) 4096.0)
-    (set! (-> s5-1 fountain-rand-transv-hi y) 122880.0)
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
+    (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2850,7 +2873,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-a-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-a-exploder-params*
       :to obj
       )
@@ -2862,17 +2885,18 @@
 ;; definition for method 32 of type gun-dummy-b
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-b ((obj gun-dummy-b))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-b ((obj gun-dummy-b))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2888,7 +2912,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-b-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-b-exploder-params*
       :to obj
       )
@@ -2900,17 +2924,18 @@
 ;; definition for method 32 of type gun-dummy-c
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-c ((obj gun-dummy-c))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-c ((obj gun-dummy-c))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2926,7 +2951,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-c-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-c-exploder-params*
       :to obj
       )
@@ -2938,17 +2963,18 @@
 ;; definition for method 32 of type gun-dummy-big
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-big ((obj gun-dummy-big))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-big ((obj gun-dummy-big))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -2964,7 +2990,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-big-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-big-exploder-params*
       :to obj
       )
@@ -2976,17 +3002,18 @@
 ;; definition for method 32 of type gun-dummy-gold
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-gold ((obj gun-dummy-gold))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-gold ((obj gun-dummy-gold))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-bonus")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3002,7 +3029,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-gold-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-gold-exploder-params*
       :to obj
       )
@@ -3014,17 +3041,18 @@
 ;; definition for method 32 of type gun-dummy-peace
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-dummy-peace ((obj gun-dummy-peace))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-dummy-peace ((obj gun-dummy-peace))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3040,7 +3068,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-dummy-gold-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-dummy-peace-exploder-params*
       :to obj
       )
@@ -3052,19 +3080,20 @@
 ;; definition for method 32 of type gun-cit-a
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-cit-a ((obj gun-cit-a))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-cit-a ((obj gun-cit-a))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
-    (set! (-> s5-1 fountain-rand-transv-hi x) 4096.0)
-    (set! (-> s5-1 fountain-rand-transv-hi y) 122880.0)
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
+    (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3080,7 +3109,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-cit-a-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-cit-a-exploder-params*
       :to obj
       )
@@ -3092,19 +3121,20 @@
 ;; definition for method 32 of type gun-cit-b
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-cit-b ((obj gun-cit-b))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-cit-b ((obj gun-cit-b))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
-    (set! (-> s5-1 fountain-rand-transv-hi x) 4096.0)
-    (set! (-> s5-1 fountain-rand-transv-hi y) 122880.0)
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
+    (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3120,7 +3150,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-cit-b-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-cit-b-exploder-params*
       :to obj
       )
@@ -3132,19 +3162,20 @@
 ;; definition for method 32 of type gun-cit-c
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-cit-c ((obj gun-cit-c))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-cit-c ((obj gun-cit-c))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
-    (set! (-> s5-1 fountain-rand-transv-hi x) 4096.0)
-    (set! (-> s5-1 fountain-rand-transv-hi y) 122880.0)
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
+    (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3160,7 +3191,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-cit-c-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-cit-c-exploder-params*
       :to obj
       )
@@ -3172,19 +3203,20 @@
 ;; definition for method 32 of type gun-cit-d
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod gun-dummy-method-32 gun-cit-d ((obj gun-cit-d))
-  (let ((v1-1 (-> obj root-override root-prim)))
-    (set! (-> v1-1 prim-core collide-as) (collide-spec))
-    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+(defmethod break-dummy gun-cit-d ((obj gun-cit-d))
+  "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+  (let ((root-prim (-> obj root-override root-prim)))
+    (set! (-> root-prim prim-core collide-as) (collide-spec))
+    (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
   0
   (setup-masks (-> obj draw) 0 -1)
   (setup-masks (-> obj draw) 1 0)
   (sound-play "target-break")
-  (let ((s5-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> s5-1 fountain-rand-transv-lo quad) (-> obj impact quad))
-    (set! (-> s5-1 fountain-rand-transv-hi x) 4096.0)
-    (set! (-> s5-1 fountain-rand-transv-hi y) 122880.0)
+  (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> obj impact quad))
+    (set! (-> exploder-tuning fountain-rand-transv-hi x) 4096.0)
+    (set! (-> exploder-tuning fountain-rand-transv-hi y) 122880.0)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -3200,7 +3232,7 @@
       joint-exploder
       (art-group-get-by-name *level* "skel-gun-cit-d-explode" (the-as (pointer uint32) #f))
       5
-      s5-1
+      exploder-tuning
       *gun-cit-d-exploder-params*
       :to obj
       )
@@ -3211,15 +3243,16 @@
 
 ;; definition for function gun-dummy-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3229,15 +3262,16 @@
 
 ;; definition for function gun-dummy-a-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-a-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-a-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-a]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3249,15 +3283,16 @@
 
 ;; definition for function gun-dummy-b-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-b-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-b-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-b]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3269,15 +3304,16 @@
 
 ;; definition for function gun-dummy-c-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-c-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-c-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-c]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-c" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3289,15 +3325,16 @@
 
 ;; definition for function gun-dummy-big-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-big-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-big-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-big]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-big" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3309,15 +3346,16 @@
 
 ;; definition for function gun-dummy-gold-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-gold-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-gold-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-gold]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-gold" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3329,15 +3367,16 @@
 
 ;; definition for function gun-dummy-peace-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-dummy-peace-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-dummy-peace-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-dummy-peace]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-peace" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3349,15 +3388,16 @@
 
 ;; definition for function gun-cit-a-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-cit-a-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-cit-a-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-cit-a]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3369,15 +3409,16 @@
 
 ;; definition for function gun-cit-b-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-cit-b-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-cit-b-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-cit-b]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3389,15 +3430,16 @@
 
 ;; definition for function gun-cit-c-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-cit-c-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-cit-c-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-cit-c]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-c" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))
@@ -3409,15 +3451,16 @@
 
 ;; definition for function gun-cit-d-init-by-other
 ;; WARN: Return type mismatch object vs none.
-(defbehavior gun-cit-d-init-by-other gun-dummy ((arg0 training-manager) (arg1 tpath-info))
-  (gun-dummy-method-28 self)
+(defbehavior gun-cit-d-init-by-other gun-dummy ((manager training-manager) (path-info tpath-info))
+  "Initializes a [[gun-cit-d]] given a [[tpath-info]]"
+  (init-dummy-collison! self)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-d" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self train-man) (process->handle arg0))
-  (gun-dummy-method-31 self arg1)
+  (set! (-> self train-man) (process->handle manager))
+  (init-tpath-info! self path-info)
   (set! (-> self move-sound) (new 'static 'sound-id))
   (set! (-> self turn-sound) (new 'static 'sound-id))
   (set! (-> self spin-sound) (new 'static 'sound-id))

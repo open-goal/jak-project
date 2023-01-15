@@ -33,16 +33,16 @@
 
 (defmethod art-init! water-anim-mincan ((obj water-anim-mincan))
   "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience."
-  (let ((t9-0 (method-of-type water-anim art-init!)))
-    (t9-0 obj)
+  (let ((func (method-of-type water-anim art-init!)))
+    (func obj)
     )
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
+  (let ((ripple-control (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) ripple-control)
     (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 close-fade-dist) 163840.0)
-    (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-water-anim-mincan)
+    (set! (-> ripple-control global-scale) 3072.0)
+    (set! (-> ripple-control close-fade-dist) 163840.0)
+    (set! (-> ripple-control far-fade-dist) 245760.0)
+    (set! (-> ripple-control waveform) ripple-for-water-anim-mincan)
     )
   0
   (none)
@@ -61,8 +61,8 @@
   )
 
 
-(defskelgroup skel-mincan-lighthouse-lens mincan-lighthouse 5 7
-              ((6 (meters 999999)))
+(defskelgroup skel-mincan-lighthouse-lens mincan-lighthouse mincan-lighthouse-lens-lod0-jg mincan-lighthouse-lens-idle-ja
+              ((mincan-lighthouse-lens-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
               :origin-joint-index 9
               )
@@ -114,6 +114,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mincan-lighthouse-lens ((obj mincan-lighthouse-lens) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -129,9 +135,10 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defbehavior mincan-lighthouse-lens-init-by-other mincan-lighthouse-lens ((arg0 mincan-lighthouse) (arg1 entity-actor))
+(defbehavior mincan-lighthouse-lens-init-by-other mincan-lighthouse-lens ((arg0 mincan-lighthouse) (entity entity-actor))
+  "Given an [[entity-actor]], create the [[mincan-lighthouse-lens]]"
   (set! (-> self root) (new 'process 'trsqv))
-  (process-drawable-from-entity! self arg1)
+  (process-drawable-from-entity! self entity)
   (initialize-skeleton
     self
     (the-as
@@ -157,8 +164,8 @@
   )
 
 
-(defskelgroup skel-mincan-lighthouse mincan-lighthouse 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mincan-lighthouse mincan-lighthouse mincan-lighthouse-lod0-jg mincan-lighthouse-idle-ja
+              ((mincan-lighthouse-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -20 0 62.5)
               :origin-joint-index 6
               )
@@ -211,6 +218,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mincan-lighthouse ((obj mincan-lighthouse) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -236,8 +249,8 @@
   )
 
 
-(defskelgroup skel-mincan-lens mincan-lens 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mincan-lens mincan-lens mincan-lens-lod0-jg mincan-lens-idle-ja
+              ((mincan-lens-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 5 0 15)
               :origin-joint-index 3
               )
@@ -290,70 +303,76 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mincan-lens ((obj mincan-lens) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 7) 0)))
-      (set! (-> s4-0 total-prims) (the-as uint 8))
-      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
-      (set! (-> s4-0 root-prim) s3-0)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 7) 0)))
+      (set! (-> cshape total-prims) (the-as uint 8))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set-vector! (-> prim-group local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> cshape root-prim) prim-group)
       )
-    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 6) (the-as uint 0))))
-      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-8 prim-core action) (collide-action solid))
-      (set! (-> v1-8 transform-index) 3)
-      (set-vector! (-> v1-8 local-sphere) 0.0 0.0 0.0 20480.0)
+    (let ((mesh-1 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 6) (the-as uint 0))))
+      (set! (-> mesh-1 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-1 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-1 prim-core action) (collide-action solid))
+      (set! (-> mesh-1 transform-index) 3)
+      (set-vector! (-> mesh-1 local-sphere) 0.0 0.0 0.0 20480.0)
       )
-    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 4) (the-as uint 0))))
-      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-10 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-10 prim-core action) (collide-action solid))
-      (set! (-> v1-10 transform-index) 3)
-      (set-vector! (-> v1-10 local-sphere) 0.0 0.0 32768.0 8192.0)
+    (let ((mesh-2 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 4) (the-as uint 0))))
+      (set! (-> mesh-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-2 prim-core action) (collide-action solid))
+      (set! (-> mesh-2 transform-index) 3)
+      (set-vector! (-> mesh-2 local-sphere) 0.0 0.0 32768.0 8192.0)
       )
-    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 5) (the-as uint 0))))
-      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-12 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-12 prim-core action) (collide-action solid))
-      (set! (-> v1-12 transform-index) 3)
-      (set-vector! (-> v1-12 local-sphere) 0.0 32768.0 0.0 28672.0)
+    (let ((mesh-3 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 5) (the-as uint 0))))
+      (set! (-> mesh-3 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-3 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-3 prim-core action) (collide-action solid))
+      (set! (-> mesh-3 transform-index) 3)
+      (set-vector! (-> mesh-3 local-sphere) 0.0 32768.0 0.0 28672.0)
       )
-    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-14 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-14 prim-core action) (collide-action solid))
-      (set! (-> v1-14 transform-index) 4)
-      (set-vector! (-> v1-14 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+    (let ((mesh-4 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-4 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-4 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-4 prim-core action) (collide-action solid))
+      (set! (-> mesh-4 transform-index) 4)
+      (set-vector! (-> mesh-4 local-sphere) 0.0 12288.0 -36864.0 28672.0)
       )
-    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
-      (set! (-> v1-16 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-16 prim-core action) (collide-action solid))
-      (set! (-> v1-16 transform-index) 7)
-      (set-vector! (-> v1-16 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+    (let ((mesh-5 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 1) (the-as uint 0))))
+      (set! (-> mesh-5 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-5 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-5 prim-core action) (collide-action solid))
+      (set! (-> mesh-5 transform-index) 7)
+      (set-vector! (-> mesh-5 local-sphere) 0.0 12288.0 -36864.0 28672.0)
       )
-    (let ((v1-18 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
-      (set! (-> v1-18 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-18 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-18 prim-core action) (collide-action solid))
-      (set! (-> v1-18 transform-index) 10)
-      (set-vector! (-> v1-18 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+    (let ((mesh-6 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 2) (the-as uint 0))))
+      (set! (-> mesh-6 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-6 prim-core action) (collide-action solid))
+      (set! (-> mesh-6 transform-index) 10)
+      (set-vector! (-> mesh-6 local-sphere) 0.0 12288.0 -36864.0 28672.0)
       )
-    (let ((v1-20 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
-      (set! (-> v1-20 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-20 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-20 prim-core action) (collide-action solid))
-      (set! (-> v1-20 transform-index) 13)
-      (set-vector! (-> v1-20 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+    (let ((mesh-7 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 3) (the-as uint 0))))
+      (set! (-> mesh-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-7 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-7 prim-core action) (collide-action solid))
+      (set! (-> mesh-7 transform-index) 13)
+      (set-vector! (-> mesh-7 local-sphere) 0.0 12288.0 -36864.0 28672.0)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-23 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-23 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-23 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> obj root) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -377,8 +396,8 @@
   )
 
 
-(defskelgroup skel-mincan-cogs mincan-cogs 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mincan-cogs mincan-cogs mincan-cogs-lod0-jg mincan-cogs-idle-ja
+              ((mincan-cogs-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 70)
               :origin-joint-index 3
               )
@@ -404,6 +423,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mincan-cogs ((obj mincan-cogs) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
