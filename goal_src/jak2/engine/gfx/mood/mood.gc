@@ -32,13 +32,8 @@
   #f
   )
 
-;; WARN: Return type mismatch int vs none.
-;; WARN: Function may read a register that is not set: f31
 (defun update-mood-itimes ((arg0 mood-context))
   (local-vars
-    (r0-0 int)
-    (r0-1 int)
-    (r0-2 int)
     (v1-1 uint128)
     (v1-2 uint128)
     (v1-3 uint128)
@@ -59,7 +54,6 @@
     (t2-1 uint128)
     (t3-0 uint128)
     (t3-1 uint128)
-    (f31-0 none)
     )
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -126,11 +120,11 @@
     (.mov t3-0 vf8)
     (.pw.sra t1-1 t1-0 6)
     (.pw.sra t2-1 t2-0 6)
-    (.mov r0-0 f31-0)
+    (nop!)
     (.pw.sra t3-1 t3-0 6)
-    (.mov r0-1 f31-0)
+    (nop!)
     (.ppach v1-3 a1-1 v1-2)
-    (.mov r0-2 f31-0)
+    (nop!)
     (.ppach a1-2 a3-1 a2-1)
     (set! (-> arg0 itimes 0 quad) v1-3)
     (.ppach v1-4 t1-1 t0-1)
@@ -387,10 +381,7 @@
     (set! (-> v1-0 0 dir0 extra x) 1.0)
     (set! (-> v1-0 0 dir1 extra x) 0.0)
     (set! (-> v1-0 0 dir2 extra x) 0.0)
-    (let ((f0-35 1.0))
-      (set! (-> v1-0 0 ambi extra x) f0-35)
-      f0-35
-      )
+    (set! (-> v1-0 0 ambi extra x) 1.0)
     )
   )
 
@@ -423,33 +414,28 @@
        (set! (-> gp-0 time) 0.0)
        (set! (-> gp-0 length) (the-as uint (the int (* (rand-vu-float-range 7.0 15.0) arg6))))
        (set! (-> gp-0 height) (the-as uint (the int (rand-vu-float-range 0.0 255.0))))
-       (let ((f0-11 arg4))
-         (set! (-> arg0 times s4-0 w) f0-11)
-         f0-11
-         )
+       (set! (-> arg0 times s4-0 w) arg4)
        )
       (else
         (let ((f0-14 (sin (* 32768.0 (/ f0-0 (the float v1-2))))))
           (set! (-> arg0 times s4-0 w) (+ (* (the float s0-0) f0-14 arg5) arg4))
           )
-        (when (not (paused?))
-          (let ((f0-19 (+ (-> gp-0 time) (if (= (-> *display* bg-clock clock-ratio) 0.0)
-                                             1.0
-                                             (-> self clock time-adjust-ratio)
-                                             )
-                          )
-                       )
-                )
-            (set! (-> gp-0 time) f0-19)
-            f0-19
+        (if (not (paused?))
+            (set! (-> gp-0 time) (+ (-> gp-0 time) (if (= (-> *display* bg-clock clock-ratio) 0.0)
+                                                       1.0
+                                                       (-> self clock time-adjust-ratio)
+                                                       )
+                                    )
+                  )
             )
-          )
         )
       )
     )
   )
 
-(define *flash0* (new 'static 'boxed-array :type float 1.0 0.0 0.5 1.0 0.5 0.0 0.5 0.35 0.4 0.35 0.25 0.1 0.04))
+(define *flash0*
+  (new 'static 'boxed-array :type float 1.0 0.0 0.5 1.0 0.5 0.0 0.5 0.35 0.4 0.35 0.25 0.1 0.04)
+  )
 
 (define *flash1* (new 'static 'boxed-array :type float 1.0 0.8 0.0 1.0 0.5 1.0 0.4 0.2 0.1))
 
@@ -457,47 +443,52 @@
 
 (define *flash3* (new 'static 'boxed-array :type float 0.5 0.0 1.0 0.9 1.0 0.8 0.3 0.0 0.0 0.5 0.1 0.5 0.35))
 
-(define *flash4* (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 1.0 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1))
+(define *flash4*
+  (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 1.0 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1)
+  )
 
 (define *flash5* (new 'static 'boxed-array :type float
-                      1.0
-                      0.0
-                      1.0
-                      0.0
-                      1.0
-                      0.95
-                      0.9
-                      0.85
-                      0.8
-                      0.75
-                      0.7
-                      0.65
-                      0.6
-                      0.55
-                      0.5
-                      0.45
-                      0.4
-                      0.35
-                      0.3
-                      0.25
-                      0.2
-                      0.5
-                      0.45
-                      0.4
-                      0.35
-                      0.3
-                      0.25
-                      0.2
-                      0.15
-                      0.1
-                      0.05
-                      )
-
+                   1.0
+                   0.0
+                   1.0
+                   0.0
+                   1.0
+                   0.95
+                   0.9
+                   0.85
+                   0.8
+                   0.75
+                   0.7
+                   0.65
+                   0.6
+                   0.55
+                   0.5
+                   0.45
+                   0.4
+                   0.35
+                   0.3
+                   0.25
+                   0.2
+                   0.5
+                   0.45
+                   0.4
+                   0.35
+                   0.3
+                   0.25
+                   0.2
+                   0.15
+                   0.1
+                   0.05
+                   )
         )
 
-(define *flash6* (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 0.5 0.0 0.5 0.35 0.0 0.0 1.0 0.0 0.2 0.1))
+(define *flash6*
+  (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 0.5 0.0 0.5 0.35 0.0 0.0 1.0 0.0 0.2 0.1)
+  )
 
-(define *flash7* (new 'static 'boxed-array :type float 1.0 0.8 0.3 0.0 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1))
+(define *flash7*
+  (new 'static 'boxed-array :type float 1.0 0.8 0.3 0.0 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1)
+  )
 
 (deftype light-state (structure)
   ((time float  :offset-assert   0)
@@ -569,10 +560,7 @@
                          )
                        )
                 )
-          (let ((f0-16 (+ f0-15 arg7)))
-            (set! (-> gp-0 time) f0-16)
-            f0-16
-            )
+          (set! (-> gp-0 time) (+ f0-15 arg7))
           )
         )
       )
@@ -595,12 +583,9 @@
       (set! (-> arg0 times arg1 w) (+ arg3 (* f0-1 arg4)))
       (set! (-> arg0 times (+ arg1 1) w) (+ arg3 (* (- f0-1) arg4)))
       )
-    (when (not (paused?))
-      (let ((f0-6 (+ (-> gp-0 lava) arg5)))
-        (set! (-> gp-0 lava) f0-6)
-        f0-6
+    (if (not (paused?))
+        (set! (-> gp-0 lava) (+ (-> gp-0 lava) arg5))
         )
-      )
     )
   )
 
@@ -614,7 +599,6 @@
   )
 
 
-;; WARN: Return type mismatch int vs none.
 (defun update-mood-flicker ((arg0 mood-context) (arg1 int) (arg2 int))
   "Unused"
   (let ((gp-0 (the-as flicker-state (+ (+ arg2 1840) (the-as int arg0)))))
@@ -669,16 +653,10 @@
         )
       (cond
         ((>= (-> gp-0 delay2) (-> gp-0 delay))
-         (let ((f0-5 (rand-vu-float-range 1.0 1.5)))
-           (set! (-> gp-0 value) f0-5)
-           f0-5
-           )
+         (set! (-> gp-0 value) (rand-vu-float-range 1.0 1.5))
          )
         ((< (-> gp-0 delay2) (-> gp-0 delay))
-         (let ((f0-6 1.5))
-           (set! (-> gp-0 value) f0-6)
-           f0-6
-           )
+         (set! (-> gp-0 value) 1.5)
          )
         )
       )
@@ -747,21 +725,19 @@
           )
       )
     (when (not (paused?))
-      (let* ((f0-5 (+ (-> gp-0 time) arg4))
-             (f0-6 (- f0-5 (* (the float (the int (/ f0-5 32.0))) 32.0)))
-             )
-        (set! (-> gp-0 time) f0-6)
-        f0-6
+      (let ((f0-5 (+ (-> gp-0 time) arg4)))
+        (set! (-> gp-0 time) (- f0-5 (* (the float (the int (/ f0-5 32.0))) 32.0)))
         )
       )
     )
   )
 
 (defun update-mood-caustics ((arg0 mood-context) (arg1 int) (arg2 float) (arg3 float) (arg4 float) (arg5 float))
-  (let* ((f0-2 (sin (+ arg2 arg3))) (f0-4 (+ arg4 (* f0-2 arg5)))) (set! (-> arg0 times arg1 w) f0-4) f0-4)
+  (let ((f0-2 (sin (+ arg2 arg3))))
+    (set! (-> arg0 times arg1 w) (+ arg4 (* f0-2 arg5)))
+    )
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod apply-mood-clouds-and-fog mood-control ((obj mood-control) (arg0 mood-control-work))
   (let ((v1-0 (-> obj mood-fog-table)))
     (dotimes (a0-1 24)
@@ -841,7 +817,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod apply-mood-color mood-control ((obj mood-control) (arg0 mood-control-work))
   (let ((v1-0 (-> obj mood-color-table)))
     (dotimes (a0-1 16)
@@ -880,7 +855,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod apply-mood-channels mood-control ((obj mood-control) (arg0 mood-control-work))
   (let ((v1-0 (-> obj mood-channel-group)))
     (dotimes (a0-1 24)
@@ -919,7 +893,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod adjust-num-clouds! mood-control ((obj mood-control) (arg0 mood-control-work))
   (let ((v1-0 (-> obj mood-clouds)))
     (set! (-> v1-0 cloud-min) 0.0)
@@ -948,9 +921,9 @@
 ;; WARN: Return type mismatch int vs sound-id.
 (defmethod play-or-stop-lightning! mood-control ((obj mood-control) (arg0 sound-spec) (arg1 vector))
   "Handles playing/stopping of the lightning sound
-       - Plays the lightning sound if we are not loading and `lightning-id` is zero
-       - Stops the lightning sound first if `lightning-id` is non-zero
-       Returns the current value of `lightning-id`"
+- Plays the lightning sound if we are not loading and `lightning-id` is zero
+- Stops the lightning sound first if `lightning-id` is non-zero
+Returns the current value of `lightning-id`"
   (vector+! (new 'stack-no-clear 'vector) arg1 (math-camera-pos))
   (the-as sound-id (cond
                      ((or (load-in-progress? *level*) (movie?))
@@ -1385,10 +1358,9 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod update-mood-range! mood-control ((obj mood-control) (min-cloud float) (max-cloud float) (min-fog float) (max-fog float))
   "Set the minimum and maximum ranges of clouds and fog
-       See [[mood-range]]"
+See [[mood-range]]"
   (set! (-> obj range min-cloud) min-cloud)
   (set! (-> obj range max-cloud) max-cloud)
   (set! (-> obj range min-fog) min-fog)
@@ -1397,16 +1369,11 @@
   (none)
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod set-time-for-random-weather! mood-control ((obj mood-control) (arg0 float) (arg1 float))
   "Set the `time-until-random`'s cloud and fog values
-       See [[mood-weather]]"
+See [[mood-weather]]"
   (set! (-> obj time-until-random cloud) arg0)
   (set! (-> obj time-until-random fog) arg1)
   0
   (none)
   )
-
-
-
-

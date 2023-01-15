@@ -20,14 +20,22 @@
   )
 
 
-(defskelgroup skel-sew-elevator sew-elevator 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 5.6 9.2))
+(defskelgroup skel-sew-elevator sew-elevator sew-elevator-lod0-jg sew-elevator-idle-ja
+              ((sew-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 5.6 9.2)
+              )
 
 (defmethod get-art-group sew-elevator ((obj sew-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-sew-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod elevator-method-43 sew-elevator ((obj sew-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points sew-elevator ((obj sew-elevator) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
         (v1-3 (-> obj root-override trans))
@@ -41,8 +49,8 @@
     )
   )
 
-(defmethod elevator-method-45 sew-elevator ((obj sew-elevator))
-  "@returns Stub, or always returns [[#t]]"
+(defmethod commited-to-ride? sew-elevator ((obj sew-elevator))
+  "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (let* ((gp-0 *target*)
          (a0-2 (if (type? gp-0 process-focusable)
                    gp-0
@@ -85,7 +93,7 @@
           (t9-0)
           )
       )
-    (when (and (logtest? (-> self elevator-status) (elevator-status elevator-status-0))
+    (when (and (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
                (logtest? (elevator-flags elevator-flags-16) (-> self params flags))
                )
       (sew-elevator-method-49 self #t)
@@ -114,7 +122,7 @@
       )
     (sound-stop (-> self sound-id))
     (sound-play "sew-elev-stop")
-    (when (and (logtest? (-> self elevator-status) (elevator-status elevator-status-0))
+    (when (and (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
                (logtest? (elevator-flags elevator-flags-16) (-> self params flags))
                )
       (sew-elevator-method-49 self #f)
@@ -130,7 +138,9 @@
   (none)
   )
 
-(defmethod base-plat-method-33 sew-elevator ((obj sew-elevator))
+(defmethod init-plat! sew-elevator ((obj sew-elevator))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> obj sound-id) (new-sound-id))
   0
   (none)
@@ -138,11 +148,11 @@
 
 (defmethod init-defaults! sew-elevator ((obj sew-elevator))
   "Initializes default settings related to the [[elevator]]:
-       - `elevator-xz-threshold`
-       - `elevator-y-threshold`
-       - `elevator-start-pos`
-       - `elevator-move-rate`
-       - `elevator-flags`"
+- `elevator-xz-threshold`
+- `elevator-y-threshold`
+- `elevator-start-pos`
+- `elevator-move-rate`
+- `elevator-flags`"
   (let ((t9-0 (method-of-type elevator init-defaults!)))
     (t9-0 obj)
     )
@@ -162,8 +172,8 @@
   (none)
   )
 
-(defmethod base-plat-method-31 sew-elevator ((obj sew-elevator))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! sew-elevator ((obj sew-elevator))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -222,8 +232,8 @@
   )
 
 
-(defskelgroup skel-sew-valve sew-valve 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-sew-valve sew-valve sew-valve-lod0-jg sew-valve-idle-ja
+              ((sew-valve-lod0-mg (meters 20)) (sew-valve-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2)
               )
 
@@ -324,6 +334,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-valve ((obj sew-valve) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -418,14 +434,14 @@
               :bounds (static-spherem 0 7.5 0 14.4)
               )
 
-(defskelgroup skel-sew-mar-statue-explode-a sew-mar-statue-explode 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-sew-mar-statue-explode-a sew-mar-statue-explode sew-mar-statue-explode-a-lod0-jg sew-mar-statue-explode-a-idle-ja
+              ((sew-mar-statue-explode-a-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :origin-joint-index 4
               )
 
-(defskelgroup skel-sew-mar-statue-explode-b sew-mar-statue-explode 4 6
-              ((5 (meters 999999)))
+(defskelgroup skel-sew-mar-statue-explode-b sew-mar-statue-explode sew-mar-statue-explode-b-lod0-jg sew-mar-statue-explode-b-idle-ja
+              ((sew-mar-statue-explode-b-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :origin-joint-index 6
               )
@@ -572,6 +588,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-mar-statue ((obj sew-mar-statue) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj spawned-debris?) #f)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -621,16 +643,16 @@
   )
 
 
-(defskelgroup skel-sew-catwalk-1 sew-catwalk 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-sew-catwalk-1 sew-catwalk sew-catwalk-1-lod0-jg sew-catwalk-1-idle-ja
+              ((sew-catwalk-1-lod0-mg (meters 20)) (sew-catwalk-1-lod1-mg (meters 999999)))
               :bounds (static-spherem -7 5 -25 18)
               :origin-joint-index 3
               )
 
 (defmethod start-bouncing! sew-catwalk ((obj sew-catwalk))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
-       and translate the platform via the `smush`
-       @see [[smush-control]]"
+and translate the platform via the `smush`
+@see [[smush-control]]"
   (logclear! (-> obj mask) (process-mask sleep))
   (logclear! (-> obj mask) (process-mask sleep-code))
   0
@@ -673,6 +695,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-catwalk ((obj sew-catwalk) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape-moving))
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
@@ -905,6 +933,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-mine-a ((obj sew-mine-a) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -981,6 +1015,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-mine-b ((obj sew-mine-b) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -1047,8 +1087,8 @@
   )
 
 
-(defskelgroup skel-sew-wall sew-wall 0 -1
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-sew-wall sew-wall sew-wall-lod0-jg -1
+              ((sew-wall-lod0-mg (meters 20)) (sew-wall-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 4
               )
@@ -1214,6 +1254,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-wall ((obj sew-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (with-pp
     (stack-size-set! (-> obj main-thread) 512)
     (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
@@ -1362,6 +1408,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! sew-grill ((obj sew-grill) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1390,7 +1442,10 @@
   )
 
 
-(defskelgroup skel-sew-scare-grunt grunt 0 5 ((1 (meters 999999))) :bounds (static-spherem 0 5 -12 20))
+(defskelgroup skel-sew-scare-grunt grunt grunt-lod0-jg grunt-idle-ja
+              ((grunt-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5 -12 20)
+              )
 
 (define *sew-scare-grunt-nav-enemy-info*
   (new 'static 'nav-enemy-info

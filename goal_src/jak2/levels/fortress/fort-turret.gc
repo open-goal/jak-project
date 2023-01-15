@@ -390,16 +390,16 @@
   (none)
   )
 
-(defskelgroup skel-fort-turret fort-turret 0 4
-              ((1 (meters 999999)))
+(defskelgroup skel-fort-turret fort-turret fort-turret-lod0-jg fort-turret-idle-ja
+              ((fort-turret-lod0-mg (meters 999999)))
               :bounds (static-spherem 8 11.25 0 16.5)
-              :shadow 3
+              :shadow fort-turret-shadow-mg
               :origin-joint-index 3
               :shadow-joint-index 3
               )
 
-(defskelgroup skel-fort-turret-explode fort-turret 7 9
-              ((8 (meters 999999)))
+(defskelgroup skel-fort-turret-explode fort-turret fort-turret-explode-lod0-jg fort-turret-explode-idle-ja
+              ((fort-turret-explode-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 15)
               )
 
@@ -457,10 +457,6 @@
     )
   )
 
-(defmethod coin-flip? fort-turret ((obj fort-turret))
-  "@returns The result of a 50/50 RNG roll"
-  #f
-  )
 
 (define *fort-turret-enemy-info*
   (new 'static 'enemy-info
@@ -768,8 +764,8 @@
     )
   :code (behavior ()
     (sound-play "turret-up")
-    (ja-no-eval :group! (-> self draw art-group data 6)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+    (ja-no-eval :group! fort-turret-rise-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim fort-turret-rise-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -792,8 +788,8 @@
               (fort-turret-method-142 self #t gp-2)
               )
             )
-          (ja-no-eval :group! (-> self draw art-group data 5)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+          (ja-no-eval :group! fort-turret-shoot-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim fort-turret-shoot-ja) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -876,7 +872,7 @@
     (set! (-> self desired-tilt) 0.0)
     (set! (-> self desired-twist) 0.0)
     (ja-channel-push! 1 (seconds 0.5))
-    (ja :group! (-> self draw art-group data 4))
+    (ja :group! fort-turret-idle-ja)
     (none)
     )
   :trans (behavior ()
@@ -1056,6 +1052,10 @@
   (none)
   )
 
+(defmethod coin-flip? fort-turret ((obj fort-turret))
+  "@returns The result of a 50/50 RNG roll"
+  #f
+  )
 
 ;; WARN: Return type mismatch enemy vs fort-turret.
 (defmethod relocate fort-turret ((obj fort-turret) (arg0 int))
@@ -1100,7 +1100,7 @@
       (if #t
           (set! v1-21 (logior v1-21 1))
           )
-      (set! (-> a1-7 sync-type) (the-as basic 'sync-linear))
+      (set! (-> a1-7 sync-type) 'sync-linear)
       (set! (-> a1-7 sync-flags) (the-as sync-flags v1-21))
       )
     (set! (-> a1-7 entity) (-> obj entity))

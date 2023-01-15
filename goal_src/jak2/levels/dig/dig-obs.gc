@@ -24,8 +24,8 @@
   )
 
 
-(defskelgroup skel-dig-sinking-plat dig-sinking-plat 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-dig-sinking-plat dig-sinking-plat dig-sinking-plat-lod0-jg dig-sinking-plat-idle-ja
+              ((dig-sinking-plat-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -2 0 5.25)
               )
 
@@ -68,8 +68,7 @@
 (define *dig-sinking-platform-constants* (new 'static 'rigid-body-object-constants
                                            :mass 4.0
                                            :inv-mass 0.25
-                                           :cm-joint-y (meters -2)
-                                           :cm-joint-w 1.0
+                                           :cm-joint (new 'static 'vector :y -8192.0 :w 1.0)
                                            :linear-damping 0.9
                                            :angular-damping 0.48
                                            :friction-factor 0.1
@@ -267,7 +266,7 @@
         (if #f
             (set! v1-25 (logior v1-25 1))
             )
-        (set! (-> a1-5 sync-type) (the-as basic 'sync-linear))
+        (set! (-> a1-5 sync-type) 'sync-linear)
         (set! (-> a1-5 sync-flags) (the-as sync-flags v1-25))
         )
       (set! (-> a1-5 entity) s5-2)
@@ -469,8 +468,8 @@
   )
 
 
-(defskelgroup skel-dig-log dig-log 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-dig-log dig-log dig-log-lod0-jg dig-log-idle-ja
+              ((dig-log-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 7.25 0 11)
               :origin-joint-index 3
               )
@@ -651,6 +650,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! dig-log ((obj dig-log) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> obj hud-handle) (the-as handle #f))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
@@ -732,7 +737,10 @@
   )
 
 
-(defskelgroup skel-dig-button dig-button 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-dig-button dig-button dig-button-lod0-jg dig-button-idle-ja
+              ((dig-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 (defmethod run-logic? dig-button ((obj dig-button))
   #t
@@ -801,6 +809,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! dig-button ((obj dig-button) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))

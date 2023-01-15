@@ -253,7 +253,7 @@
           (format 0 "ERROR: sql: select error ~A for ~A~%" a2-6 gp-0)
           (return (the-as mysql-nav-graph #f))
           )
-        (set! (-> gp-0 nav_graph_id) (the-as uint (string->int (the-as string (-> a2-6 data 0)))))
+        (set! (-> gp-0 nav_graph_id) (the-as uint (string->int (-> a2-6 data 0))))
         )
       )
     gp-0
@@ -262,7 +262,7 @@
 
 (defmethod alloc-new-node! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-node]]`, if `node-array`'s `length` exceeds `3000` return `-1`
-       otherwise, return the new size of the array"
+otherwise, return the new size of the array"
   (cond
     ((>= (-> obj node-array length) 3000)
      (format #t "mysql-nav-graph : nodes buffer too small, increase NAV_GRAPH_EDITOR_NODE_COUNT~%")
@@ -286,7 +286,7 @@
 
 (defmethod alloc-new-edge! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-edge]]`, if `edge-array`'s `length` exceeds `5000` return `-1`
-       otherwise, return the new size of the array"
+otherwise, return the new size of the array"
   (cond
     ((>= (-> obj edge-array length) 5000)
      (format #t "mysql-nav-graph : edges buffer too small, increase NAV_GRAPH_EDITOR_EDGE_COUNT~%")
@@ -310,7 +310,7 @@
 
 (defmethod indexof-visnode mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Returns the index in the `visnode-array` whom's [[mysql-nav-visnode]] has the provided `runtime-edge-id` and `runtime-node-id`
-       if none exist, return `-1`"
+if none exist, return `-1`"
   (dotimes (v1-0 (-> obj visnode-array length))
     (let ((a3-2 (-> obj visnode-array data v1-0)))
       (if (and (= (-> a3-2 runtime-edge-id) edge-id) (= (-> a3-2 runtime-node-id) node-id))
@@ -323,9 +323,9 @@
 
 (defmethod alloc-new-visnode! mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Potentially allocates a new `[[mysql-nav-visnode]]`:
-       - if `visnode-array`'s `length` exceeds `3000` return `-1`
-       - otherwise, if the node already exists, TODO
-         - if the node does not already exist, create it!"
+- if `visnode-array`'s `length` exceeds `3000` return `-1`
+- otherwise, if the node already exists, TODO
+- if the node does not already exist, create it!"
   (cond
     ((>= (-> obj visnode-array length) 3000)
      (format #t "mysql-nav-graph : visnodes buffer too small, increase NAV_GRAPH_EDITOR_VISNODE_COUNT~%")
@@ -441,7 +441,7 @@
        (when (logtest? (-> obj mysql-save-flag) (mysql-save-flag insert))
          (let ((v1-40 (sql-query "select LAST_INSERT_ID()")))
            (if (= (-> v1-40 error) 'select)
-               (set! (-> obj nav_node_id) (the-as uint (string->int (the-as string (-> v1-40 data 0)))))
+               (set! (-> obj nav_node_id) (the-as uint (string->int (-> v1-40 data 0))))
                )
            )
          )
@@ -645,7 +645,7 @@
        (when (logtest? (-> obj mysql-save-flag) (mysql-save-flag insert))
          (let ((v1-60 (sql-query "select LAST_INSERT_ID()")))
            (if (= (-> v1-60 error) 'select)
-               (set! (-> obj nav_edge_id) (the-as uint (string->int (the-as string (-> v1-60 data 0)))))
+               (set! (-> obj nav_edge_id) (the-as uint (string->int (-> v1-60 data 0))))
                )
            )
          )
@@ -722,7 +722,7 @@
 
 (defmethod indexof-nav-node mysql-nav-graph ((obj mysql-nav-graph) (node-id int))
   "Iterate through the `node-array` and return the index for the first [[mysql-nav-node]] whom's `nav_node_id` matches the provided id
-       returns `-1` if none is found"
+returns `-1` if none is found"
   (dotimes (v1-0 (-> obj node-array length))
     (if (= node-id (-> (the-as mysql-nav-node (-> obj node-array data v1-0)) nav_node_id))
         (return v1-0)
@@ -733,7 +733,7 @@
 
 (defmethod indexof-nav-edge mysql-nav-graph ((obj mysql-nav-graph) (edge-id int))
   "Iterate through the `edge-array` and return the index for the first [[mysql-nav-edge]] whom's `nav_edge_id` matches the provided id
-       returns `-1` if none is found"
+returns `-1` if none is found"
   (dotimes (v1-0 (-> obj edge-array length))
     (if (= edge-id (-> (the-as mysql-nav-edge (+ (+ (* 80 v1-0) 12) (the-as int (-> obj edge-array)))) nav_edge_id))
         (return v1-0)
@@ -762,7 +762,7 @@
         (format 0 "ERROR: sql: select error ~A for ~A~%" a2-2 obj)
         (return #f)
         )
-      (set! (-> obj nav_graph_id) (the-as uint (string->int (the-as string (-> a2-2 data 0)))))
+      (set! (-> obj nav_graph_id) (the-as uint (string->int (-> a2-2 data 0))))
       )
     )
   (format #t "Loading nodes ...~%")
@@ -786,21 +786,21 @@
             )
           (let ((s1-0 0))
             (while (< s1-0 (-> s2-1 len))
-              (when (= (string->int (the-as string (-> s2-1 data (+ s1-0 9)))) (-> obj nav_graph_id))
+              (when (= (string->int (-> s2-1 data (+ s1-0 9))) (-> obj nav_graph_id))
                 (let ((nav-node (-> obj node-array data (-> obj node-array length))))
                   (set! (-> nav-node mysql-save-flag) (mysql-save-flag))
                   (set! (-> nav-node runtime-id) (the-as uint (-> obj node-array length)))
                   (set! (-> nav-node nav_graph_id) (-> obj nav_graph_id))
-                  (set! (-> nav-node nav_node_id) (the-as uint (string->int (the-as string (-> s2-1 data s1-0)))))
-                  (set! (-> nav-node position x) (* 4096.0 (string->float (the-as string (-> s2-1 data (+ s1-0 1))))))
-                  (set! (-> nav-node position y) (* 4096.0 (string->float (the-as string (-> s2-1 data (+ s1-0 2))))))
-                  (set! (-> nav-node position z) (* 4096.0 (string->float (the-as string (-> s2-1 data (+ s1-0 3))))))
-                  (set! (-> nav-node level_name) (string->symbol (the-as string (-> s2-1 data (+ s1-0 4)))))
-                  (set! (-> nav-node angle) (* 182.04445 (string->float (the-as string (-> s2-1 data (+ s1-0 5))))))
-                  (set! (-> nav-node radius) (* 4096.0 (string->float (the-as string (-> s2-1 data (+ s1-0 6))))))
+                  (set! (-> nav-node nav_node_id) (the-as uint (string->int (-> s2-1 data s1-0))))
+                  (set! (-> nav-node position x) (* 4096.0 (string->float (-> s2-1 data (+ s1-0 1)))))
+                  (set! (-> nav-node position y) (* 4096.0 (string->float (-> s2-1 data (+ s1-0 2)))))
+                  (set! (-> nav-node position z) (* 4096.0 (string->float (-> s2-1 data (+ s1-0 3)))))
+                  (set! (-> nav-node level_name) (string->symbol (-> s2-1 data (+ s1-0 4))))
+                  (set! (-> nav-node angle) (* 182.04445 (string->float (-> s2-1 data (+ s1-0 5)))))
+                  (set! (-> nav-node radius) (* 4096.0 (string->float (-> s2-1 data (+ s1-0 6)))))
                   (set! (-> nav-node nav_node_flag) (nav-node-flag))
-                  (set! sv-16 (new 'global 'string 0 (the-as string (-> s2-1 data (+ s1-0 7)))))
-                  (copy-string<-string sv-16 (the-as string (-> s2-1 data (+ s1-0 7))))
+                  (set! sv-16 (new 'global 'string 0 (-> s2-1 data (+ s1-0 7))))
+                  (copy-string<-string sv-16 (-> s2-1 data (+ s1-0 7)))
                   (until #f
                     (cond
                       ((string-prefix= "visited" sv-16)
@@ -832,7 +832,7 @@
                     )
                   #f
                   (label cfg-27)
-                  (set! (-> nav-node nav_mesh_id) (the-as uint (string->int (the-as string (-> s2-1 data (+ s1-0 8))))))
+                  (set! (-> nav-node nav_mesh_id) (the-as uint (string->int (-> s2-1 data (+ s1-0 8)))))
                   )
                 (+! (-> obj node-array length) 1)
                 )
@@ -870,9 +870,9 @@
             )
           (let ((s2-2 0))
             (while (< s2-2 (-> s3-3 len))
-              (when (= (string->int (the-as string (-> s3-3 data (+ s2-2 11)))) (-> obj nav_graph_id))
-                (let ((s0-2 (string->int (the-as string (-> s3-3 data (+ s2-2 1))))))
-                  (set! sv-32 (string->int (the-as string (-> s3-3 data (+ s2-2 2)))))
+              (when (= (string->int (-> s3-3 data (+ s2-2 11))) (-> obj nav_graph_id))
+                (let ((s0-2 (string->int (-> s3-3 data (+ s2-2 1)))))
+                  (set! sv-32 (string->int (-> s3-3 data (+ s2-2 2))))
                   (set! sv-48 (indexof-nav-node obj s0-2))
                   (set! sv-64 (indexof-nav-node obj sv-32))
                   (let ((nav-edge
@@ -881,7 +881,7 @@
                         )
                     (when (and (!= sv-48 -1) (!= sv-64 -1))
                       (set! (-> nav-edge nav_graph_id) (-> obj nav_graph_id))
-                      (set! (-> nav-edge nav_edge_id) (the-as uint (string->int (the-as string (-> s3-3 data s2-2)))))
+                      (set! (-> nav-edge nav_edge_id) (the-as uint (string->int (-> s3-3 data s2-2))))
                       (set! (-> nav-edge nav_node_id_1) (the-as uint s0-2))
                       (set! (-> nav-edge nav_node_id_2) (the-as uint sv-32))
                       (set! (-> nav-edge mysql-save-flag) (mysql-save-flag))
@@ -890,23 +890,23 @@
                       (set! (-> nav-edge runtime-node-id-2) sv-64)
                       (let ((s0-3 (-> s3-3 data (+ s2-2 3))))
                         (cond
-                          ((string= "default" (the-as string s0-3))
+                          ((string= "default" s0-3)
                            (set! (-> nav-edge directionality) (nav-directionality default))
                            0
                            )
-                          ((string= "directed" (the-as string s0-3))
+                          ((string= "directed" s0-3)
                            (set! (-> nav-edge directionality) (nav-directionality directed))
                            )
-                          ((string= "bi_directional" (the-as string s0-3))
+                          ((string= "bi_directional" s0-3)
                            (set! (-> nav-edge directionality) (nav-directionality bi_directional))
                            )
                           )
                         )
-                      (set! (-> nav-edge speed_limit) (* 4096.0 (string->float (the-as string (-> s3-3 data (+ s2-2 4))))))
-                      (set! (-> nav-edge density) (string->float (the-as string (-> s3-3 data (+ s2-2 5)))))
+                      (set! (-> nav-edge speed_limit) (* 4096.0 (string->float (-> s3-3 data (+ s2-2 4)))))
+                      (set! (-> nav-edge density) (string->float (-> s3-3 data (+ s2-2 5))))
                       (set! (-> nav-edge traffic_edge_flag) 0)
-                      (let ((s0-4 (new 'global 'string 0 (the-as string (-> s3-3 data (+ s2-2 6))))))
-                        (copy-string<-string s0-4 (the-as string (-> s3-3 data (+ s2-2 6))))
+                      (let ((s0-4 (new 'global 'string 0 (-> s3-3 data (+ s2-2 6)))))
+                        (copy-string<-string s0-4 (-> s3-3 data (+ s2-2 6)))
                         (until #f
                           (cond
                             ((string-prefix= "pedestrian" s0-4)
@@ -928,8 +928,8 @@
                       #f
                       (label cfg-58)
                       (set! (-> nav-edge nav_clock_mask) (nav-clock-mask))
-                      (let ((s0-5 (new 'global 'string 0 (the-as string (-> s3-3 data (+ s2-2 7))))))
-                        (copy-string<-string s0-5 (the-as string (-> s3-3 data (+ s2-2 7))))
+                      (let ((s0-5 (new 'global 'string 0 (-> s3-3 data (+ s2-2 7)))))
+                        (copy-string<-string s0-5 (-> s3-3 data (+ s2-2 7)))
                         (until #f
                           (cond
                             ((string-prefix= "phase-1a" s0-5)
@@ -973,25 +973,25 @@
                       (label cfg-80)
                       (let ((s0-6 (-> s3-3 data (+ s2-2 8))))
                         (cond
-                          ((string= "no-clock" (the-as string s0-6))
+                          ((string= "no-clock" s0-6)
                            (set! (-> nav-edge nav_clock_type) (nav-clock-type no-clock))
                            0
                            )
-                          ((string= "clock2" (the-as string s0-6))
+                          ((string= "clock2" s0-6)
                            (set! (-> nav-edge nav_clock_type) (nav-clock-type clock2))
                            )
-                          ((string= "clock3" (the-as string s0-6))
+                          ((string= "clock3" s0-6)
                            (set! (-> nav-edge nav_clock_type) (nav-clock-type clock3))
                            )
-                          ((string= "clock4" (the-as string s0-6))
+                          ((string= "clock4" s0-6)
                            (set! (-> nav-edge nav_clock_type) (nav-clock-type clock4))
                            )
                           )
                         )
-                      (set! (-> nav-edge width) (* 4096.0 (string->float (the-as string (-> s3-3 data (+ s2-2 9))))))
+                      (set! (-> nav-edge width) (* 4096.0 (string->float (-> s3-3 data (+ s2-2 9)))))
                       (set! (-> nav-edge minimap_edge_flag) (nav-minimap-edge-flag))
-                      (let ((s0-7 (new 'global 'string 0 (the-as string (-> s3-3 data (+ s2-2 10))))))
-                        (copy-string<-string s0-7 (the-as string (-> s3-3 data (+ s2-2 10))))
+                      (let ((s0-7 (new 'global 'string 0 (-> s3-3 data (+ s2-2 10)))))
+                        (copy-string<-string s0-7 (-> s3-3 data (+ s2-2 10)))
                         (until #f
                           (cond
                             ((string-prefix= "pass-red" s0-7)
@@ -1055,12 +1055,12 @@
             )
           (let ((s2-3 0))
             (while (< s2-3 (-> s3-5 len))
-              (when (= (string->int (the-as string (-> s3-5 data (+ s2-3 2)))) (-> obj nav_graph_id))
+              (when (= (string->int (-> s3-5 data (+ s2-3 2))) (-> obj nav_graph_id))
                 (let ((nav-visnode (-> obj visnode-array data (-> obj visnode-array length))))
                   (set! (-> nav-visnode mysql-save-flag) (mysql-save-flag))
                   (set! (-> nav-visnode nav_graph_id) (-> obj nav_graph_id))
-                  (set! (-> nav-visnode nav_edge_id) (the-as uint (string->int (the-as string (-> s3-5 data s2-3)))))
-                  (set! (-> nav-visnode nav_node_id) (the-as uint (string->int (the-as string (-> s3-5 data (+ s2-3 1))))))
+                  (set! (-> nav-visnode nav_edge_id) (the-as uint (string->int (-> s3-5 data s2-3))))
+                  (set! (-> nav-visnode nav_node_id) (the-as uint (string->int (-> s3-5 data (+ s2-3 1)))))
                   (set! (-> nav-visnode runtime-edge-id) (indexof-nav-edge obj (the-as int (-> nav-visnode nav_edge_id))))
                   (set! (-> nav-visnode runtime-node-id) (indexof-nav-node obj (the-as int (-> nav-visnode nav_node_id))))
                   )
@@ -1097,7 +1097,6 @@
     )
   )
 
-;; WARN: Return type mismatch int vs none.
 (defmethod mysql-nav-graph-method-17 mysql-nav-graph ((obj mysql-nav-graph))
   (dotimes (v1-0 (-> obj node-array length))
     (set! (-> (the-as mysql-nav-node (-> obj node-array data v1-0)) temp-edge-list)
@@ -1109,9 +1108,9 @@
     )
   (countdown (v1-7 (-> obj edge-array length))
     (let ((a1-17 (the-as mysql-nav-edge (+ (+ (* 80 v1-7) 12) (the-as int (-> obj edge-array))))))
-      (when (zero? (logand (-> a1-17 mysql-save-flag) (mysql-save-flag delete)))
+      (when (not (logtest? (-> a1-17 mysql-save-flag) (mysql-save-flag delete)))
         (let ((a2-8 (-> obj node-array data (-> a1-17 runtime-node-id-1))))
-          (when (zero? (logand (-> a2-8 mysql-save-flag) (mysql-save-flag delete)))
+          (when (not (logtest? (-> a2-8 mysql-save-flag) (mysql-save-flag delete)))
             (cond
               ((-> a2-8 temp-edge-list)
                (set! (-> a1-17 temp-next-edge) (the-as mysql-nav-edge (-> a2-8 temp-edge-list)))
@@ -1132,9 +1131,7 @@
 
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; WARN: Return type mismatch int vs none.
 
-;; WARN: Return type mismatch int vs none.
 (defmethod mysql-nav-graph-method-20 mysql-nav-graph ((obj mysql-nav-graph))
   (mysql-nav-graph-method-17 obj)
   (mysql-nav-graph-method-19 obj)
@@ -1144,6 +1141,3 @@
 
 
 )
-
-
-
