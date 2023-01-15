@@ -870,10 +870,6 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    ;; HACK TO NOT GET STUCK WAITING FOR SCENE TO LOAD
-    ;; progress from cutscenes however is handled by the command-list on the load-state cleanup
-    (go-virtual release)
-    ;; END HACK - REMOVE ME EVENTUALLY
     (set! (-> self state-time) (-> self clock frame-counter))
     (when (or (-> self scene) (-> self preload-continue))
       (let ((gp-0 (scene-decode-continue (the-as basic (if (-> self scene)
@@ -996,7 +992,8 @@
                               (!= (-> *setting-control* user-current movie) (process->ppointer self))
                               )
                          *progress-process*
-                         (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3)
+                         ;; modified
+                         (#if STREAM_PLAY_HACK #f (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3))
                          )
                      )
             (suspend)
@@ -1073,7 +1070,7 @@
                                       )
                                (v1-167 (get-status *gui-control* (the-as sound-id a1-26)))
                                )
-                          (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active))))
+                          (#if STREAM_PLAY_HACK #f (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active)))))
                           )
                         )
                     )

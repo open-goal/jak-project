@@ -859,6 +859,9 @@
 "TOMB"
 "TWEAKVAL")
 
+(copy-strs "INSHUT" "INVORTEX" "INCSQUAR" "INPRISON")
+(copy-vag-files "ENG")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
@@ -2521,33 +2524,29 @@
 ;;   "lbrnermk"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LCGUARD
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LCGUARD
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LCGUARD.DGO" "lcguard.gd")
+(cgo "LCGUARD.DGO" "lcguard.gd")
 
-;; (copy-textures 2691)
+(copy-textures 2691)
 
-;; (copy-gos
-;;   "crimson-guard-highres-ag"
-;;   "lcguard"
-;;   )
+(copy-gos
+  "lcguard"
+  )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LCITYLOW
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LCITYLOW
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LCITYLOW.DGO" "lcitylow.gd")
+(cgo "LCITYLOW.DGO" "lcitylow.gd")
 
-;; (copy-textures 2755 2756 3388)
+(copy-textures 2755 2756 3388)
 
-;; (copy-gos
-;;   "barons-ship-lores-ag"
-;;   "searchlight-ag"
-;;   "pal-windmill-ag"
-;;   "lcitylow"
-;;   )
+(copy-gos
+  "lcitylow"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LDJAKBRN
@@ -2715,21 +2714,19 @@
 ;;   "lhipout"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LINTCSTB
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LINTCSTB
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LINTCSTB.DGO" "lintcstb.gd")
+(cgo "LINTCSTB.DGO" "lintcstb.gd")
 
-;; (copy-textures 2752 2754 3243)
+(copy-textures 2752 2754 3243)
 
-;; (copy-gos
-;;   "keira-highres-ag"
-;;   "samos-highres-ag"
-;;   "rift-rider-break-ag"
-;;   "rift-rider-ag"
-;;   "lintcstb"
-;;   )
+(copy-gos
+  "rift-rider-break-ag"
+  "rift-rider-ag"
+  "lintcstb"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LJAKDAX
