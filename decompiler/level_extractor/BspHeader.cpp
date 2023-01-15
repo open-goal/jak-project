@@ -933,7 +933,6 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       break;
     case GameVersion::Jak2:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
-      lg::print("flag: {}\n", flags);
       break;
     default:
       ASSERT(false);
@@ -954,8 +953,6 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
         collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats, version);
       }
     }
-  } else {
-    lg::warn("Skipping prototype-bucket-tie collision");
   }
 
   auto next_slot = get_field_ref(ref, "next", dts);

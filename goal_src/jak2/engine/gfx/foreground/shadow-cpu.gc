@@ -5,5 +5,73 @@
 ;; name in dgo: shadow-cpu
 ;; dgos: ENGINE, GAME
 
+;; temp
+
+(defmethod shadow-control-method-13 shadow-control ((obj shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+  (with-pp
+    (let ((s4-0 (new 'stack-no-clear 'collide-query)))
+      (let ((v1-0 pp))
+        (set! (-> s4-0 start-pos quad) (-> arg0 quad))
+        (set! (-> s4-0 start-pos y) (+ 4096.0 (-> s4-0 start-pos y)))
+        (set-vector! (-> s4-0 move-dist) 0.0 (- arg3) 0.0 1.0)
+        (let ((a0-4 s4-0))
+          (set! (-> a0-4 radius) 8192.0)
+          (set! (-> a0-4 collide-with) (collide-spec backgnd))
+          (set! (-> a0-4 ignore-process0) v1-0)
+          (set! (-> a0-4 ignore-process1) #f)
+          (set! (-> a0-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+          (set! (-> a0-4 action-mask) (collide-action solid))
+          )
+        )
+      (cond
+        ((>= (fill-and-probe-using-line-sphere *collide-cache* s4-0) 0.0)
+         (let ((v1-5 obj))
+           (logclear! (-> v1-5 settings flags) (shadow-flags disable-draw))
+           )
+         0
+         (let ((v1-7 obj))
+           (set! (-> v1-7 settings bot-plane w) (- (+ (-> s4-0 best-other-tri intersect y) arg1)))
+           )
+         0
+         (set! (-> obj settings top-plane w) (- (+ (-> s4-0 best-other-tri intersect y) arg2)))
+         0
+         )
+        (else
+          (let ((v1-10 obj))
+            (logior! (-> v1-10 settings flags) (shadow-flags disable-draw))
+            )
+          0
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod shadow-control-method-14 shadow-control ((obj shadow-control) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 float))
+  (let ((gp-0 (-> obj settings)))
+    (let ((s4-0 (-> gp-0 shadow-dir)))
+      (vector-normalize-copy! s4-0 arg1 1.0)
+      (set! (-> gp-0 shadow-dir w) (- arg2))
+      (when *shadow-debug*
+        (add-debug-x #t (bucket-id debug-no-zbuf1) arg0 *color-red*)
+        (add-debug-vector #t (bucket-id debug-no-zbuf1) arg0 s4-0 (meters 3) *color-red*)
+        )
+      (let ((s1-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s4-0 arg3))
+            (s5-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s4-0 arg4))
+            )
+        (vector-negate! (-> gp-0 top-plane) s4-0)
+        (vector-negate! (-> gp-0 bot-plane) s4-0)
+        (set! (-> gp-0 top-plane w) (- (vector-dot s1-2 (the-as vector (-> gp-0 top-plane)))))
+        (set! (-> gp-0 bot-plane w) (- (vector-dot s5-2 (the-as vector (-> gp-0 bot-plane)))))
+        )
+      )
+    (logior! (-> gp-0 flags) (shadow-flags shdf02 shdf03 shdf04 shdf07))
+    )
+  0
+  (none)
+  )
+
 ;; DECOMP BEGINS
 
