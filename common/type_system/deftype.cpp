@@ -8,6 +8,7 @@
 
 #include "common/goos/ParseHelpers.h"
 #include "common/log/log.h"
+#include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -205,7 +206,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     // check for docstring
     std::optional<std::string> docstring;
     if (obj->is_pair() && car(obj).is_string()) {
-      docstring = car(obj).as_string()->data;
+      docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
       obj = cdr(obj);
     }
     auto& args = car(obj);
@@ -588,7 +589,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
   iter = cdr(iter);
   // check for docstring
   if (iter->is_pair() && car(iter).is_string()) {
-    symbol_metadata.docstring = car(iter).as_string()->data;
+    symbol_metadata.docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
     iter = cdr(iter);
   }
   auto& field_list_obj = car(iter);

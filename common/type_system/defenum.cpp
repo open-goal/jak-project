@@ -11,6 +11,7 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/log/log.h"
 #include "common/util/BitUtils.h"
+#include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -60,7 +61,7 @@ EnumType* parse_defenum(const goos::Object& defenum,
   if (iter->is_pair() && car(iter).is_string()) {
     // TODO - docstring - store and use docstring if coming from the compiler
     if (symbol_metadata) {
-      symbol_metadata->docstring = car(iter).as_string()->data;
+      symbol_metadata->docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
     }
     iter = cdr(iter);
   }
