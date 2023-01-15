@@ -126,8 +126,8 @@
 
 ;; definition for method 31 of type tomb-plat-wall
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 tomb-plat-wall ((obj tomb-plat-wall))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! tomb-plat-wall ((obj tomb-plat-wall))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -154,8 +154,14 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-wall ((obj tomb-plat-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (base-plat-method-31 obj)
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
   (set! (-> obj draw light-index) (the-as uint 1))
@@ -170,7 +176,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-16 (logior v1-16 1))
           )
-      (set! (-> a1-4 sync-type) (the-as basic 'sync-eased))
+      (set! (-> a1-4 sync-type) 'sync-eased)
       (set! (-> a1-4 sync-flags) (the-as sync-flags v1-16))
       )
     (set! (-> a1-4 period) (the-as uint 1200))
@@ -865,6 +871,12 @@
 ;; definition for method 11 of type tomb-stair-block
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-stair-block ((obj tomb-stair-block) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 8) 0)))
@@ -1114,8 +1126,8 @@
 
 ;; definition for method 31 of type tomb-plat-pillar
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod base-plat-method-31 tomb-plat-pillar ((obj tomb-plat-pillar))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! tomb-plat-pillar ((obj tomb-plat-pillar))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
@@ -1182,11 +1194,11 @@
     (none)
     )
   :code (behavior ()
-    (logior! (-> self elevator-status) (elevator-status elevator-status-1))
+    (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (loop! 0.0))
     (until #f
       (when (= (-> self path-pos) 1.0)
-        (logclear! (-> self elevator-status) (elevator-status elevator-status-1))
+        (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
         (sound-play "t-elevator-hit")
         )
       (suspend)
@@ -1211,11 +1223,11 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-defaults! tomb-elevator ((obj tomb-elevator))
   "Initializes default settings related to the [[elevator]]:
-       - `elevator-xz-threshold`
-       - `elevator-y-threshold`
-       - `elevator-start-pos`
-       - `elevator-move-rate`
-       - `elevator-flags`"
+- `elevator-xz-threshold`
+- `elevator-y-threshold`
+- `elevator-start-pos`
+- `elevator-move-rate`
+- `elevator-flags`"
   (let ((t9-0 (method-of-type elevator init-defaults!)))
     (t9-0 obj)
     )
@@ -1232,8 +1244,8 @@
 
 ;; definition for method 31 of type tomb-elevator
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod base-plat-method-31 tomb-elevator ((obj tomb-elevator))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! tomb-elevator ((obj tomb-elevator))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
@@ -1257,8 +1269,8 @@
 
 ;; definition for method 42 of type tomb-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-ambient-sound! tomb-elevator ((obj tomb-elevator))
-  "Might be a virtual function, but clears the object's [[ambient-sound]]"
+(defmethod set-ambient-sound! tomb-elevator ((obj tomb-elevator))
+  "Sets the elevator's [[ambient-sound]] up"
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "tomb-elevator" :fo-max 70) (-> obj root-override trans))
         )
@@ -1298,6 +1310,12 @@
 ;; definition for method 11 of type tomb-boss-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-boss-door ((obj tomb-boss-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1425,6 +1443,12 @@
 ;; definition for method 11 of type tomb-wing-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-wing-door ((obj tomb-wing-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
@@ -1553,6 +1577,12 @@
 ;; definition for method 11 of type tomb-boulder-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-boulder-door ((obj tomb-boulder-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle camera-blocker))
@@ -1827,8 +1857,8 @@
 
 ;; definition for method 31 of type tomb-plat-return
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 tomb-plat-return ((obj tomb-plat-return))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! tomb-plat-return ((obj tomb-plat-return))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1854,7 +1884,13 @@
 ;; definition for method 11 of type tomb-plat-return
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-plat-return ((obj tomb-plat-return) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -1883,7 +1919,7 @@
     (set! (-> obj root-override pause-adjust-distance) (+ 204800.0 f30-0))
     )
   (set! (-> obj sound-id) (the-as uint (new-sound-id)))
-  (base-plat-method-33 obj)
+  (init-plat! obj)
   (if (or (task-closed? (the-as string ((method-of-type res-lump get-property-struct)
                                         (-> obj entity)
                                         'task-name
@@ -2207,6 +2243,12 @@
 ;; definition for method 11 of type tomb-sphinx
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-sphinx ((obj tomb-sphinx) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj target-actor) (entity-actor-lookup arg0 'alt-actor 0))
@@ -2220,7 +2262,3 @@
       )
   (none)
   )
-
-
-
-

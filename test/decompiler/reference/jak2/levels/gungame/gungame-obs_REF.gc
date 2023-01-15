@@ -217,6 +217,12 @@
 ;; definition for method 11 of type training-path
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! training-path ((obj training-path) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s5-0 (length "training-path-"))
         (a0-3 (length (-> obj name)))
         (v1-2 0)
@@ -996,14 +1002,8 @@
       :ref-time-num -1
       :anim1 (new 'static 'inline-array tpath-control-frame 4
         (new 'static 'tpath-control-frame :path-num #x23)
-        (new 'static 'tpath-control-frame
-          :time 0.3
-          :command (tpath-control-frame-command tpath-control-frame-command-1)
-          )
-        (new 'static 'tpath-control-frame
-          :time -1.0
-          :command (tpath-control-frame-command tpath-control-frame-command-3)
-          )
+        (new 'static 'tpath-control-frame :time 0.3 :command (tpath-control-frame-command arise))
+        (new 'static 'tpath-control-frame :time -1.0 :command (tpath-control-frame-command wait))
         (new 'static 'tpath-control-frame :command (tpath-control-frame-command end))
         )
       )
@@ -1011,15 +1011,8 @@
       :ref-time-num -1
       :anim1 (new 'static 'inline-array tpath-control-frame 4
         (new 'static 'tpath-control-frame :path-num #x23)
-        (new 'static 'tpath-control-frame
-          :time 0.3
-          :path-pos #x7f
-          :command (tpath-control-frame-command tpath-control-frame-command-1)
-          )
-        (new 'static 'tpath-control-frame
-          :time -1.0
-          :command (tpath-control-frame-command tpath-control-frame-command-3)
-          )
+        (new 'static 'tpath-control-frame :time 0.3 :path-pos #x7f :command (tpath-control-frame-command arise))
+        (new 'static 'tpath-control-frame :time -1.0 :command (tpath-control-frame-command wait))
         (new 'static 'tpath-control-frame :command (tpath-control-frame-command end))
         )
       )
@@ -1229,13 +1222,13 @@
     (dotimes (gp-2 (length (-> self course)))
       (let ((v1-20 (-> self course gp-2)))
         0
-        (logior! (-> v1-20 flags) 1)
-        (set! (-> v1-20 flags) (logand -3 (-> v1-20 flags)))
+        (logior! (-> v1-20 flags) (tpath-info-flags tpath-info-flags-0))
+        (logclear! (-> v1-20 flags) (tpath-info-flags broken))
         (cond
-          ((logtest? (-> v1-20 flags) 8)
+          ((logtest? (-> v1-20 flags) (tpath-info-flags tpath-info-flags-3))
            (+! (-> self total-bonus) 1)
            )
-          ((not (logtest? (-> v1-20 flags) 4))
+          ((not (logtest? (-> v1-20 flags) (tpath-info-flags score-not-influenced-by-speed)))
            (+! (-> self total-target) 1)
            )
           )
@@ -1523,13 +1516,13 @@
           )
         (dotimes (gp-0 (length (-> self course)))
           (let ((s5-0 (-> self course gp-0)))
-            (when (and (logtest? (-> s5-0 flags) 1) (>= f30-0 (-> s5-0 s-time)))
+            (when (and (logtest? (-> s5-0 flags) (tpath-info-flags tpath-info-flags-0)) (>= f30-0 (-> s5-0 s-time)))
               (cond
-                ((logtest? (-> s5-0 flags) 8)
+                ((logtest? (-> s5-0 flags) (tpath-info-flags tpath-info-flags-3))
                  (let ((s4-0 #t))
                    (dotimes (s3-0 (length (-> self course)))
                      (let ((s2-0 (-> self course s3-0)))
-                       (when (not (logtest? (-> s2-0 flags) 2))
+                       (when (not (logtest? (-> s2-0 flags) (tpath-info-flags broken)))
                          (dotimes (s1-0 (length (-> s5-0 list)))
                            (if (= (-> s5-0 list s1-0) (-> s2-0 num))
                                (set! s4-0 #f)
@@ -1540,15 +1533,17 @@
                      )
                    (when s4-0
                      (process-spawn gun-dummy-gold self s5-0 :to self)
-                     (set! (-> s5-0 flags) (logand -2 (-> s5-0 flags)))
+                     (logclear! (-> s5-0 flags) (tpath-info-flags tpath-info-flags-0))
                      )
                    )
                  (if (>= f30-0 (+ (-> s5-0 bonus-time) (-> s5-0 s-time)))
-                     (set! (-> s5-0 flags) (logand -2 (-> s5-0 flags)))
+                     (logclear! (-> s5-0 flags) (tpath-info-flags tpath-info-flags-0))
                      )
                  )
                 (else
-                  (when (and (not (logtest? (-> s5-0 flags) 4)) (not (-> self first-enemy-shown?)))
+                  (when (and (not (logtest? (-> s5-0 flags) (tpath-info-flags score-not-influenced-by-speed)))
+                             (not (-> self first-enemy-shown?))
+                             )
                     (if (task-node-open? (game-task-node city-red-gun-training-try-once))
                         (set! (-> self last-sound-id)
                               (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc024" -99.0 0)
@@ -1556,7 +1551,9 @@
                         )
                     (set! (-> self first-enemy-shown?) #t)
                     )
-                  (when (and (logtest? (-> s5-0 flags) 4) (not (-> self first-citizen-shown?)))
+                  (when (and (logtest? (-> s5-0 flags) (tpath-info-flags score-not-influenced-by-speed))
+                             (not (-> self first-citizen-shown?))
+                             )
                     (if (task-node-open? (game-task-node city-red-gun-training-try-once))
                         (set! (-> self last-sound-id)
                               (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc025" -99.0 0)
@@ -1565,7 +1562,7 @@
                     (set! (-> self first-citizen-shown?) #t)
                     )
                   (cond
-                    ((logtest? (-> s5-0 flags) 4)
+                    ((logtest? (-> s5-0 flags) (tpath-info-flags score-not-influenced-by-speed))
                      (let ((v1-93 (rand-vu-int-count 4)))
                        (cond
                          ((zero? v1-93)
@@ -1583,10 +1580,10 @@
                          )
                        )
                      )
-                    ((logtest? (-> s5-0 flags) 32)
+                    ((logtest? (-> s5-0 flags) (tpath-info-flags double-hitpoints))
                      (process-spawn gun-dummy-big self s5-0 :to self)
                      )
-                    ((logtest? (-> s5-0 flags) 64)
+                    ((logtest? (-> s5-0 flags) (tpath-info-flags tpath-info-flags-6))
                      (process-spawn gun-dummy-peace self s5-0 :to self)
                      )
                     (else
@@ -1605,7 +1602,7 @@
                         )
                       )
                     )
-                  (set! (-> s5-0 flags) (logand -2 (-> s5-0 flags)))
+                  (logclear! (-> s5-0 flags) (tpath-info-flags tpath-info-flags-0))
                   )
                 )
               )
@@ -1628,7 +1625,7 @@
                                                    )
                                                a1-37
                                                )
-                                             (logtest? (-> gp-1 flags) 2)
+                                             (logtest? (-> gp-1 flags) (tpath-info-flags broken))
                                              )
                                          )
                                        )
@@ -2172,7 +2169,7 @@
         (set! (-> s4-0 y) (+ 40960.0 (-> s4-0 y)))
         (set! (-> s4-0 z) (+ 5025792.0 (-> s4-0 z)))
         (training-manager-method-29 obj s4-0)
-        (set! (-> s3-0 pickup-type) (the-as pickup-type (-> arg0 s2-0 ammo)))
+        (set! (-> s3-0 pickup-type) (-> arg0 s2-0 ammo))
         (set! (-> s3-0 pickup-spawn-amount) (the float (-> arg0 s2-0 num)))
         (let* ((s0-0 (ppointer->process (process-spawn crate #f s4-0 'wood s3-0 :to *entity-pool*)))
                (s1-1 (if (type? s0-0 process-focusable)
@@ -2194,8 +2191,8 @@
   (dotimes (s5-0 (length arg0))
     (let ((v1-2 (-> arg0 s5-0)))
       0
-      (logior! (-> v1-2 flags) 1)
-      (set! (-> v1-2 flags) (logand -3 (-> v1-2 flags)))
+      (logior! (-> v1-2 flags) (tpath-info-flags tpath-info-flags-0))
+      (logclear! (-> v1-2 flags) (tpath-info-flags broken))
       (let ((a0-6 (-> v1-2 ref-time-num)))
         (set! (-> v1-2 ref-time-num) -1)
         (dotimes (a1-3 s5-0)
@@ -2264,6 +2261,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! training-manager ((obj training-manager) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set-setting! 'darkjak #f 0 0)
   (set! sv-16 (new 'static 'res-tag))
@@ -2566,6 +2569,12 @@
 ;; definition for method 11 of type gungame-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! gungame-door ((obj gungame-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
