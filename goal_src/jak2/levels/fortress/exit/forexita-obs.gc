@@ -31,10 +31,10 @@
   (art-group-get-by-name *level* "skel-fort-lift-plat" (the-as (pointer uint32) #f))
   )
 
-; (defmethod base-plat-method-32 fort-lift-plat ((obj fort-lift-plat))
-;   0
-;   (none)
-;   )
+;; (defmethod base-plat-method-32 fort-lift-plat ((obj fort-lift-plat))
+;;   0
+;;   (none)
+;;   )
 
 (defstate plat-idle (fort-lift-plat)
   :virtual #t
@@ -128,8 +128,8 @@
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod base-plat-method-31 fort-lift-plat ((obj fort-lift-plat))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! fort-lift-plat ((obj fort-lift-plat))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -198,7 +198,9 @@
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod base-plat-method-33 fort-lift-plat ((obj fort-lift-plat))
+(defmethod init-plat! fort-lift-plat ((obj fort-lift-plat))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> obj root-override pause-adjust-distance) 327680.0)
   (set! (-> obj sound-id) (new-sound-id))
   (none)
@@ -212,9 +214,9 @@
 
 (defmethod plat-path-sync fort-lift-plat ((obj fort-lift-plat))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
-       otherwise, [[plat::34]]
+otherwise, [[plat::34]]
 
-       @see [[sync-eased]]"
+@see [[sync-eased]]"
   (cond
     ((logtest? (-> obj path flags) (path-control-flag not-found))
      (go (method-of-object obj plat-idle))
@@ -294,6 +296,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! fort-claw ((obj fort-claw) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton

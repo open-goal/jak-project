@@ -10,9 +10,13 @@ bool ends_with(const std::string& s, const std::string& prefix);
 std::string ltrim(const std::string& s);
 std::string rtrim(const std::string& s);
 std::string trim(const std::string& s);
+/// Given a string with new-lines, split and trim the leading whitespace from each line
+/// then return the string with the new-lines back in place.
+std::string trim_newline_indents(const std::string& s);
 int line_count(const std::string& str);
 bool valid_regex(const std::string& regex);
 std::string diff(const std::string& lhs, const std::string& rhs);
 /// Default splits on \n characters
 std::vector<std::string> split(const ::std::string& str, char delimiter = '\n');
+std::string join(const std::vector<std::string>& strs, const std::string& join_with);
 }  // namespace str_util

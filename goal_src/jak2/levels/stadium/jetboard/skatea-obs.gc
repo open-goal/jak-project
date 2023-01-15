@@ -22,7 +22,7 @@
    (hud-score         handle                 :offset-assert 184)
    (hud-goal          handle                 :offset-assert 192)
    (voicebox          handle                 :offset-assert 200)
-   (last-sound-id     sound-id                 :offset-assert 208)
+   (last-sound-id     sound-id               :offset-assert 208)
    (combo-done?       symbol                 :offset-assert 212)
    (task-gold         uint16                 :offset-assert 216)
    (task-silver       uint16                 :offset-assert 218)
@@ -32,7 +32,7 @@
    (training-goal     float                  :offset-assert 228)
    (egg-count         int32                  :offset-assert 232)
    (medal             int32                  :offset-assert 236)
-   (gui-id            sound-id                 :offset-assert 240)
+   (gui-id            sound-id               :offset-assert 240)
    (hint-time         time-frame             :offset-assert 248)
    )
   :heap-base #x80
@@ -319,7 +319,7 @@
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "kei001" -99.0 0)
           )
     (while (or (not *target*) (zero? (logand (focus-status board) (-> *target* focus-status))))
-      (if (= (get-status *gui-control* (the-as sound-id (-> self last-sound-id))) (gui-status unknown))
+      (if (= (get-status *gui-control* (-> self last-sound-id)) (gui-status unknown))
           (send-event (handle->process (-> self voicebox)) 'speak-effect #f)
           )
       (render-text self (game-text-id board-tutorial-get-on-board))
@@ -522,7 +522,7 @@
         (if (= (-> self trick-type) (board-tricks board-rail-jump))
             (set! gp-2 #t)
             )
-        (if (= (get-status *gui-control* (the-as sound-id (-> self last-sound-id))) (gui-status unknown))
+        (if (= (get-status *gui-control* (-> self last-sound-id)) (gui-status unknown))
             (send-event (handle->process (-> self voicebox)) 'speak-effect #f)
             )
         (if (and gp-2 (-> self grind))
@@ -1353,7 +1353,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! hoverboard-training-manager ((obj hoverboard-training-manager) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -1377,7 +1382,7 @@
   (set! (-> obj hud-goal) (the-as handle #f))
   (set! (-> obj voicebox) (the-as handle #f))
   (set! (-> obj arrow) (the-as handle #f))
-  (set! (-> obj gui-id) (the-as sound-id 0))
+  (set! (-> obj gui-id) (new 'static 'sound-id))
   (set! (-> obj gui-id)
         (add-process *gui-control* obj (gui-channel message) (gui-action play) (-> obj name) 81920.0 0)
         )
@@ -1438,8 +1443,8 @@
   )
 
 
-(defskelgroup skel-skate-training-ramp skate-training-ramp 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-skate-training-ramp skate-training-ramp skate-training-ramp-lod0-jg skate-training-ramp-idle-ja
+              ((skate-training-ramp-lod0-mg (meters 999999)))
               :bounds (static-spherem 4 -4 8 12)
               )
 
@@ -1524,6 +1529,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skate-training-ramp ((obj skate-training-ramp) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skate-training-ramp-method-28 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1562,7 +1573,10 @@
   )
 
 
-(defskelgroup skel-skate-gate skate-gate 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 8 0 30))
+(defskelgroup skel-skate-gate skate-gate skate-gate-lod0-jg skate-gate-idle-ja
+              ((skate-gate-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 8 0 30)
+              )
 
 (defstate idle (skate-gate)
   :virtual #t
@@ -1642,6 +1656,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skate-gate ((obj skate-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skate-gate-method-29 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1679,8 +1699,8 @@
   (none)
   )
 
-(defskelgroup skel-skatea-jump-pad skatea-jump-pad 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-skatea-jump-pad skatea-jump-pad skatea-jump-pad-lod0-jg skatea-jump-pad-idle-ja
+              ((skatea-jump-pad-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 15)
               )
 
@@ -1789,8 +1809,8 @@
     )
   )
 
-(defskelgroup skel-skatea-floating-ring skatea-floating-ring 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-skatea-floating-ring skatea-floating-ring skatea-floating-ring-lod0-jg skatea-floating-ring-idle-ja
+              ((skatea-floating-ring-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 4 0 8)
               )
 
@@ -1887,6 +1907,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skatea-floating-ring ((obj skatea-floating-ring) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skatea-floating-ring-method-28 obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton

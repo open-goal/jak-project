@@ -573,11 +573,20 @@
   )
 
 
-(defskelgroup skel-dig-clasp dig-clasp 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+(defskelgroup skel-dig-clasp dig-clasp dig-clasp-lod0-jg dig-clasp-idle-ja
+              ((dig-clasp-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
-(defskelgroup skel-dig-clasp-explode dig-clasp 3 5 ((4 (meters 999999))) :bounds (static-spherem 0 0 0 8))
+(defskelgroup skel-dig-clasp-explode dig-clasp dig-clasp-explode-lod0-jg dig-clasp-explode-idle-ja
+              ((dig-clasp-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
-(defskelgroup skel-dig-clasp-b dig-clasp-b 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+(defskelgroup skel-dig-clasp-b dig-clasp-b dig-clasp-b-lod0-jg dig-clasp-b-idle-ja
+              ((dig-clasp-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (define *dig-clasp-exploder-params*
   (new 'static 'joint-exploder-static-params
@@ -616,14 +625,14 @@
       )
     (cond
       ((-> self b)
-       (ja :group! (-> self draw art-group data 2)
-           :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+       (ja :group! dig-digger-idle-ja
+           :num! (identity (the float (+ (-> (the-as art-joint-anim dig-digger-idle-ja) frames num-frames) -1)))
            )
        (setup-masks (-> self draw) 0 2)
        )
       (else
-        (ja :group! (-> self draw art-group data 2)
-            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+        (ja :group! dig-digger-idle-ja
+            :num! (identity (the float (+ (-> (the-as art-joint-anim dig-digger-idle-ja) frames num-frames) -1)))
             )
         (setup-masks (-> self draw) 0 2)
         )
@@ -651,11 +660,11 @@
     (talker-speech-class-method-10 (-> *talker-speech* 192))
     (cond
       ((-> self b)
-       (ja :group! (-> self draw art-group data 2) :num! min)
+       (ja :group! dig-digger-idle-ja :num! min)
        (setup-masks (-> self draw) 0 2)
        )
       (else
-        (ja :group! (-> self draw art-group data 2) :num! min)
+        (ja :group! dig-digger-idle-ja :num! min)
         (setup-masks (-> self draw) 0 2)
         )
       )
@@ -697,13 +706,11 @@
          (when (and (logtest? (-> v1-2 mask) (attack-info-mask mode)) (= (-> v1-2 mode) 'board))
            (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 85 (seconds 0.1))
            (go-virtual break-it)
-           self
            )
          )
        )
       (('break)
        (go-virtual break-it)
-       self
        )
       )
     )
@@ -716,6 +723,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! dig-clasp ((obj dig-clasp) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
@@ -760,6 +773,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! dig-clasp-b ((obj dig-clasp-b) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (when (not (task-node-closed? (game-task-node dig-knock-down-resolution)))
     (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
       (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -835,12 +854,15 @@
   )
 
 
-(defskelgroup skel-dig-tether-unsnapped dig-tether 2 4
-              ((3 (meters 999999)))
+(defskelgroup skel-dig-tether-unsnapped dig-tether dig-tether-unsnapped-lod0-jg dig-tether-idle-ja
+              ((dig-tether-unsnapped-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 80)
               )
 
-(defskelgroup skel-dig-tether-snapped dig-tether 0 4 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 80))
+(defskelgroup skel-dig-tether-snapped dig-tether dig-tether-snapped-lod0-jg dig-tether-idle-ja
+              ((dig-tether-snapped-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
 
 (defmethod dig-tether-method-22 dig-tether ((obj dig-tether))
   (with-pp
@@ -859,7 +881,6 @@
           ((or (send-event-function s5-0 a1-1)
                (logtest? (-> obj clasp extra perm status) (entity-perm-status subtask-complete))
                )
-           (format 0 "FAILURE")
            (go (method-of-object obj broken))
            )
           (s5-0
@@ -1154,8 +1175,8 @@
   )
 
 
-(defskelgroup skel-dig-digger dig-digger 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-dig-digger dig-digger dig-digger-lod0-jg dig-digger-idle-ja
+              ((dig-digger-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 36 0 40)
               :origin-joint-index 3
               )
@@ -1429,6 +1450,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! dig-digger ((obj dig-digger) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))

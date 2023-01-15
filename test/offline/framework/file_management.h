@@ -33,5 +33,3 @@ struct OfflineTestArtFile {
 std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_name,
                                                      const std::vector<std::string>& dgos,
                                                      const std::string& single_file);
-std::unordered_map<std::string, std::unordered_map<int, std::string>> find_art_files(
-    const std::string& game_name);

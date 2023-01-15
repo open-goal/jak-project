@@ -124,14 +124,24 @@
 ;; definition for function ruins-slide-sparks
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defun ruins-slide-sparks ((arg0 object) (arg1 vector))
-  (let ((t9-0 sp-launch-particles-var)
-        (a0-1 *sp-particle-system-2d*)
-        (v1-1 (-> *part-id-table* 1247))
-        (a2-0 *launch-matrix*)
+(defun ruins-slide-sparks ((arg0 object) (position vector))
+  "Generates simple sparks (2D particles) at the location specified. This is used in the cutscene.
+@param position The position to render the sparks at
+TODO - first arg type?"
+  (let ((launch-func sp-launch-particles-var)
+        (2d-sys *sp-particle-system-2d*)
+        (sp-launcher (-> *part-id-table* 1247))
+        (matrix *launch-matrix*)
         )
-    (set! (-> a2-0 trans quad) (-> arg1 quad))
-    (t9-0 a0-1 v1-1 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+    (set! (-> matrix trans quad) (-> position quad))
+    (launch-func
+      2d-sys
+      sp-launcher
+      matrix
+      (the-as sparticle-launch-state #f)
+      (the-as sparticle-launch-control #f)
+      1.0
+      )
     )
   0
   (none)
@@ -1331,6 +1341,8 @@
 
 ;; definition of type flag
 (deftype flag (process-drawable)
+  "The flag in the ruins mission.
+The scale will be linearly-interpolated based on the distance from the camera"
   ()
   :heap-base #x50
   :method-count-assert 21
@@ -1360,8 +1372,9 @@
   :code (the-as (function none :behavior flag) sleep-code)
   :post (behavior ()
     (ja :num! (loop!))
-    (let ((f0-1 (lerp-scale 1.0 2.5 (vector-vector-distance (camera-pos) (-> self root trans)) 81920.0 901120.0)))
-      (set-vector! (-> self root scale) f0-1 f0-1 f0-1 1.0)
+    (let ((flag-scale (lerp-scale 1.0 2.5 (vector-vector-distance (camera-pos) (-> self root trans)) 81920.0 901120.0))
+          )
+      (set-vector! (-> self root scale) flag-scale flag-scale flag-scale 1.0)
       )
     (set! (-> *part-id-table* 267 init-specs 4 initial-valuef) 24576.0)
     (set! (-> *part-id-table* 270 init-specs 3 initial-valuef) 65536.0)
@@ -1379,6 +1392,12 @@
 ;; definition for method 11 of type flag
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! flag ((obj flag) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1395,6 +1414,8 @@
 
 ;; definition of type ruins-precipice
 (deftype ruins-precipice (process-drawable)
+  "The edge of the ruins tower that the flag stands on
+Touching it flips the `play?` field which will trigger the cutscene"
   ((play? symbol  :offset-assert 200)
    )
   :heap-base #x50
@@ -1484,22 +1505,28 @@
 ;; definition for method 11 of type ruins-precipice
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ruins-precipice ((obj ruins-precipice) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 2048.0 0.0 2048.0 49152.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((cshape-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> cshape-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> cshape-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> cshape-mesh prim-core action) (collide-action solid))
+      (set! (-> cshape-mesh transform-index) 3)
+      (set-vector! (-> cshape-mesh local-sphere) 2048.0 0.0 2048.0 49152.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) cshape-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((v1-5 (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> obj root) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (vector+! (-> obj root trans) (-> obj root trans) (new 'static 'vector :z 28672.0 :w 1.0))

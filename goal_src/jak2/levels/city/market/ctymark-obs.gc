@@ -595,23 +595,16 @@
     )
   )
 
-;; WARN: Return type mismatch number vs float.
+;; WARN: Return type mismatch number vs none.
 (defun check-market-piece-ground ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
-  (the-as
-    float
-    (cond
-      ((and (>= 35225.6 (-> arg2 launchrot y)) (>= 0.0 (-> arg1 vel-sxvel y)))
-       (set! (-> arg2 launchrot y) 35225.6)
-       )
-      (else
-        (let ((v0-0 (the-as number (* (max 1 (the-as int (-> *display* clock (-> arg1 clock-index) sparticle-data x))) 2)))
-              )
-          (set! (-> arg1 next-time) (the-as uint v0-0))
-          v0-0
-          )
-        )
+  "TODO"
+  (if (and (>= 35225.6 (-> arg2 launchrot y)) (>= 0.0 (-> arg1 vel-sxvel y)))
+      (set! (-> arg2 launchrot y) 35225.6)
+      (set! (-> arg1 next-time)
+            (the-as uint (* (max 1 (the-as int (-> *display* clock (-> arg1 clock-index) sparticle-data x))) 2))
+            )
       )
-    )
+  (none)
   )
 
 (defpart 4359
@@ -1017,13 +1010,13 @@
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('attack)
-       (let ((a1-2 (-> event param 1)))
+       (let ((attack-info (-> event param 1)))
          (when proc
-           (let ((a2-1 (find-offending-process-focusable proc (the-as attack-info a1-2))))
-             (when a2-1
+           (let ((attacking-proc (find-offending-process-focusable proc (the-as attack-info attack-info))))
+             (when attacking-proc
                (forward-up-nopitch->inv-matrix
                  (-> self explode-matrix)
-                 (vector-! (new 'stack-no-clear 'vector) (-> a2-1 root-override trans) (-> self root-override trans))
+                 (vector-! (new 'stack-no-clear 'vector) (-> attacking-proc root-override trans) (-> self root-override trans))
                  *up-vector*
                  )
                (set! (-> self explode-matrix trans quad) (-> self root-override trans quad))
@@ -1046,9 +1039,9 @@
   :virtual #t
   :code (behavior ()
     (logior! (-> self focus-status) (focus-status dead))
-    (let ((v1-3 (-> self root-override root-prim)))
-      (set! (-> v1-3 prim-core collide-as) (collide-spec))
-      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    (let ((root-prim (-> self root-override root-prim)))
+      (set! (-> root-prim prim-core collide-as) (collide-spec))
+      (set! (-> root-prim prim-core collide-with) (collide-spec))
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
@@ -1064,8 +1057,8 @@
       :to self
       )
     (process-entity-status! self (entity-perm-status dead) #t)
-    (let ((gp-1 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-1) (seconds 5))
+    (let ((frame (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) frame) (seconds 5))
         (suspend)
         )
       )
@@ -1097,21 +1090,27 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! market-basket-a ((obj market-basket-a) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> s4-0 penetrated-by)
+    (set! (-> cshape penetrated-by)
           (penetrate
             generic-attack
             lunge
@@ -1131,7 +1130,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1172,21 +1171,27 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! market-basket-b ((obj market-basket-b) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> s4-0 penetrated-by)
+    (set! (-> cshape penetrated-by)
           (penetrate
             generic-attack
             lunge
@@ -1206,7 +1211,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1247,21 +1252,27 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! market-crate ((obj market-crate) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> s4-0 penetrated-by)
+    (set! (-> cshape penetrated-by)
           (penetrate
             generic-attack
             lunge
@@ -1281,7 +1292,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1322,21 +1333,27 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! market-sack-a ((obj market-sack-a) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> s4-0 penetrated-by)
+    (set! (-> cshape penetrated-by)
           (penetrate
             generic-attack
             lunge
@@ -1356,7 +1373,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1397,21 +1414,27 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! market-sack-b ((obj market-sack-b) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> s4-0 penetrated-by)
+    (set! (-> cshape penetrated-by)
           (penetrate
             generic-attack
             lunge
@@ -1431,7 +1454,7 @@
             knocked
             )
           )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1449,22 +1472,22 @@
   )
 
 (defun market-activate ((arg0 level))
-  (let* ((v1-0 (-> arg0 name))
-         (gp-0 (cond
-                 ((= v1-0 'ctymarka)
-                  (new 'static 'boxed-array :type int32 5 0 0 #x64f01c00 #x64f01d00)
+  (let* ((name (-> arg0 name))
+         (int-arr (cond
+                    ((= name 'ctymarka)
+                     (new 'static 'boxed-array :type int32 5 0 0 #x64f01c00 #x64f01d00)
+                     )
+                    ((= name 'ctymarkb)
+                     (new 'static 'boxed-array :type int32 5 0 0 #x65001c00 #x65001d00)
+                     )
+                    )
                   )
-                 ((= v1-0 'ctymarkb)
-                  (new 'static 'boxed-array :type int32 5 0 0 #x65001c00 #x65001d00)
-                  )
-                 )
-               )
          )
     (set! (-> (get-field-spec-by-id (-> *part-id-table* 4361) (sp-field-id spt-userdata)) initial-valuef)
-          (the-as float gp-0)
+          (the-as float int-arr)
           )
     (set! (-> (get-field-spec-by-id (-> *part-id-table* 4360) (sp-field-id spt-userdata)) initial-valuef)
-          (the-as float gp-0)
+          (the-as float int-arr)
           )
     )
   (setup-user-array (-> *part-id-table* 4355) "wood-plain-debris")

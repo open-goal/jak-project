@@ -81,6 +81,12 @@
 ;; definition for method 11 of type mtn-iris-door
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-iris-door ((obj mtn-iris-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -166,8 +172,8 @@
 
 ;; definition for method 31 of type mtn-plat-shoot
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 mtn-plat-shoot ((obj mtn-plat-shoot))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-shoot ((obj mtn-plat-shoot))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -199,7 +205,9 @@
 
 ;; definition for method 33 of type mtn-plat-shoot
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-33 mtn-plat-shoot ((obj mtn-plat-shoot))
+(defmethod init-plat! mtn-plat-shoot ((obj mtn-plat-shoot))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (logclear! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (set-vector! (-> obj axe-flip) 1.0 0.0 0.0 1.0)

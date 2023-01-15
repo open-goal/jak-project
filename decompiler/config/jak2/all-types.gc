@@ -299,7 +299,14 @@
     (new (symbol type string) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
+    (init-from-entity!
+      "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+       This commonly includes things such as:
+       - stack size
+       - collision information
+       - loading the skeleton group / bones
+       - sounds"
+      (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (process-tree-method-13 () none 13)
     )
@@ -7445,7 +7452,7 @@
     (get-trail-for-connection "Get a trail for connection. If arg1 is set, allow allocating a new one." (_type_ connection-minimap symbol) minimap-trail 10)
     (get-icon-draw-pos "Follow the path from the start until it reaches the border of the map, then get this position."
                        (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
-    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12)
+    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12) ;; int can be #f / vector can be a symbol
     (free-trail-by-connection "Free the trail associated with this connection." (_type_ connection-minimap) none 13)
     (update-trails "Main function to do trail search per-frame" (_type_) none 14)
     (draw-1 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
@@ -9779,7 +9786,7 @@
   :flag-assert #xa00000010
   (:methods
     (new (symbol type game-task-actor) _type_ 0)
-    (game-task-control-method-9 (_type_) game-task-event 9)
+    (get-current-task-event (_type_) game-task-event 9)
     )
   )
 
@@ -15351,7 +15358,7 @@
    (scene-start-time     time-frame             :offset-assert 312)
    (targ-speed           float              :offset-assert 320)
    (cur-speed            float              :offset-assert 324)
-   (speed-change-time    time-frame             :offset-assert 328)
+   (speed-change-time    time-frame             :offset-assert 328) ;; TODO - i don't think this is a time-frame see attach-pod-part
    (speed-press-time     time-frame             :offset-assert 336)
    (speed-change-speed   float              :offset-assert 344)
    (unknown-time         time-frame           :offset 344) ;; TODO - see attach-pod-part
@@ -15384,7 +15391,7 @@
   )
 
 (deftype sync-info-params (structure)
-  ((sync-type  basic   :offset-assert 0)
+  ((sync-type  symbol   :offset-assert 0)
    (sync-flags sync-flags  :offset-assert 8)
    (entity     basic   :offset-assert 16)
    (period     uint32  :offset-assert 20)
@@ -28838,6 +28845,9 @@
   )
 
 (deftype task-arrow (process-drawable)
+  "Despite the name, these are actually the beams of light that highlight
+   various objections.  Such as the flag in the first ruins mission
+   or collectable items on the ground (jetboard / weapon upgrades / etc)"
   ((pos              vector             :inline :offset-assert 208)
    (theta            float                      :offset-assert 224)
    (phi              float                      :offset-assert 228)
@@ -33262,9 +33272,14 @@
     (get-art-group
       "@returns The associated [[art-group]]"
       (_type_) art-group 30)
-    (base-plat-method-31 "TODO - collision stuff" (_type_) none 31)
+    (init-plat-collision!
+      "TODO - collision stuff for setting up the platform"
+      (_type_) none 31)
     (base-plat-method-32 (_type_) none 32)
-    (base-plat-method-33 (_type_) none 33)
+    (init-plat!
+      "Does any necessary initial platform setup.
+       For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+      (_type_) none 33)
     )
   )
 
@@ -33602,8 +33617,8 @@
 (defenum elevator-status
   :type uint64
   :bitfield #t
-  (elevator-status-0)
-  (elevator-status-1)
+  (waiting-to-descend)
+  (waiting-to-ascend)
   (moving)
   (elevator-status-3)
   (elevator-status-4)
@@ -33645,9 +33660,9 @@
        @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
        @param path-point-y The second point in the distance calculation"
       (_type_ int int) none 39)
-    (elevator-method-40
-      "TODO - need to figure out some flags to be confident about this"
-      (_type_) object 40)
+    (activate-elevator
+      "Puts the elevator initially into the correct state. This is typically based upon game completion"
+      (_type_) none 40)
     (init-defaults!
       "Initializes default settings related to the [[elevator]]:
        - `elevator-xz-threshold`
@@ -33656,13 +33671,19 @@
        - `elevator-move-rate`
        - `elevator-flags`"
       (_type_) none 41)
-    (clear-ambient-sound!
-      "Might be a virtual function, but clears the object's [[ambient-sound]]"
+    (set-ambient-sound!
+      "Sets the elevator's [[ambient-sound]] up"
       (_type_) none 42)
-    (elevator-method-43 (_type_ vector float float) symbol 43)
+    (move-between-points
+      "Move between two points on the elevator's path
+       @param vec TODO not sure
+       @param point-a The first point fetched from the elevator's path
+       @param point-b The second point fetched from the path
+       @see [[path-control]] and [[elevator]]"
+      (_type_ vector float float) symbol 43)
     (elevator-method-44 (_type_) symbol 44)
-    (elevator-method-45
-      "@returns Stub, or always returns [[#t]]"
+    (commited-to-ride?
+      "@returns if the target is considered within the elevator area enough to begin descending/ascending"
       (_type_) symbol 45)
     (move-to-next-point!
       "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
@@ -41779,8 +41800,10 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern throne-deactivate (function none))
-(define-extern throne-activate (function none))
+(define-extern throne-deactivate
+  "Sets  [[*math-camera*.f]] to `10,000` meters" (function none))
+(define-extern throne-activate
+  "Sets  [[*math-camera*.f]] to `20,000` meters" (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palace-scenes                  ;;
@@ -43124,9 +43147,13 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-palroof-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern palroof-deactivate (function none))
-(define-extern palroof-activate (function none))
+(define-extern check-drop-level-palroof-drop-userdata "TODO" (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern palroof-deactivate
+  "Sets [[palshaft.bigmap-id]] to `11` and [[*math-camera*.f]] to `20,000` meters"
+  (function none))
+(define-extern palroof-activate
+  "Sets [[palshaft.bigmap-id]] to `20` and [[*math-camera*.f]] to `10,000` meters"
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palroof-obs                    ;;
@@ -43575,10 +43602,12 @@
 ;; consite-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern consite-crimson-guard-shot (function sparticle-launcher vector sparticle-launch-state none))
-(define-extern movie-consite-metalkor-shot-draw-fire (function vector vector none))
-(define-extern movie-consite-metalkor-shot-draw-moving (function vector vector float none))
-(define-extern movie-consite-metalkor-shot-draw-impact (function scene-player vector vector none))
+(define-extern consite-crimson-guard-shot
+  "The guards briefly shoot at Kor before being rekt"
+  (function sparticle-launcher vector sparticle-launch-state none))
+(define-extern movie-consite-metalkor-shot-draw-fire "TODO - cutscenes/docs" (function vector vector none))
+(define-extern movie-consite-metalkor-shot-draw-moving "TODO - cutscenes/docs" (function vector vector float none))
+(define-extern movie-consite-metalkor-shot-draw-impact "TODO - cutscenes/docs" (function scene-player vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consite-obs                    ;;
@@ -43956,7 +43985,7 @@
 (deftype fort-floor-spike (process-drawable)
   ((pos-table        (inline-array vector)    :offset-assert 200)
    (spike-row        spike-row-info-array     :offset-assert 204)
-   (spike-dim        basic 2 :offset-assert 208)
+   (spike-dim        int32   2 :offset-assert 208)
    (attack-id        int32     :offset-assert 216)
    (no-overlap-timer uint64    :offset-assert 224)
    )
@@ -43965,9 +43994,15 @@
   :flag-assert         #x18007000e8
   (:methods
     (idle () _type_ :state 20)
-    (fort-floor-spike-method-21 (_type_) none 21)
-    (fort-floor-spike-method-22 (_type_) collide-shape-moving 22)
-    (fort-floor-spike-method-23 (_type_) symbol 23)
+    (init-spike-joints!
+      "Initializes the skeleton and joints for the spike"
+      (_type_) none 21)
+    (init-spike-collision!
+      "Initializes the collision for the particular spike"
+      (_type_) collide-shape-moving 22)
+    (init-periodic-animation!
+      "Initialzes the periodic animation of the spikes (exit and re-entry)"
+      (_type_) symbol 23)
     )
   )
 
@@ -44103,8 +44138,10 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern palent-deactivate (function none))
-(define-extern palent-activate (function none))
+(define-extern palent-deactivate
+  "Sets [[palshaft.bigmap-id]] to `20`" (function none))
+(define-extern palent-activate
+  "Sets [[palshaft.bigmap-id]] to `12`" (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pal-obs                        ;;
@@ -44265,7 +44302,9 @@
 ;; mech-part                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern mech-spawn-thruster (function mech-info vector vector float float none))
+(define-extern mech-spawn-thruster
+  "Draws the mech's thrusters"
+  (function mech-info vector vector float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech                           ;;
@@ -44788,7 +44827,9 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-stadium-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-stadium-drop-userdata
+  "Ensures the fountains in the stadium don't go through the ground / the splash effect is rendered"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-part                  ;;
@@ -45085,7 +45126,9 @@
   :flag-assert         #x1d00900110
   )
 
-(define-extern check-market-piece-ground (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern check-market-piece-ground
+  "TODO"
+  (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern market-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46240,7 +46283,9 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern palshaft-deactivate (function none))
+(define-extern palshaft-deactivate
+  "Sets [[palshaft.bigmap-id]] to `20`"
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-bbush                  ;;
@@ -46527,11 +46572,11 @@
 (defenum tpath-control-frame-command
   :type uint8
   (begin) ;; kinda a guess
-  (tpath-control-frame-command-1)
-  (tpath-control-frame-command-2)
-  (tpath-control-frame-command-3)
-  (tpath-control-frame-command-4)
-  (tpath-control-frame-command-5)
+  (arise)
+  (translate)
+  (wait)
+  (align-with-track)
+  (lower)
   (end) ;; kinda a guess
   )
 ;; ---gun-dummy:tpath-control-frame-command
@@ -46548,12 +46593,27 @@
   :flag-assert         #x900000008
   )
 
+;; +++gun-dummy:tpath-info-flags
+(defenum tpath-info-flags
+  :type uint8
+  :bitfield #t
+  (tpath-info-flags-0)
+  (broken)
+  (score-not-influenced-by-speed)
+  (tpath-info-flags-3)
+  (start-on-rand-anim)
+  (double-hitpoints)
+  (tpath-info-flags-6) ;; unknown - TODO i think this is related to the peacemaker course
+  (tpath-info-flags-7)
+  )
+;; ---gun-dummy:tpath-info-flags
+
 (deftype tpath-info (structure)
   ((s-time       float     :offset-assert 0)
    (num          uint16    :offset-assert 4)
    (ref-time-num int16     :offset-assert 6)
    (score        int16     :offset-assert 8)
-   (flags        uint8     :offset-assert 10)
+   (flags        tpath-info-flags     :offset-assert 10)
    (num-anims    uint8     :offset-assert 11)
    (bonus-time   float     :offset-assert 12)
    (list         (array int32)     :offset-assert 16)
@@ -46597,11 +46657,25 @@
   :flag-assert         #x2100f00168
   (:methods
     (idle () _type_ :state 27)
-    (gun-dummy-method-28 (_type_) none 28)
-    (gun-dummy-method-29 (_type_) symbol 29)
-    (gun-dummy-method-30 (_type_) float 30)
-    (gun-dummy-method-31 (_type_ tpath-info) none 31)
-    (gun-dummy-method-32 (_type_) none 32)
+    (init-dummy-collison!
+      "Initializes the collision related stuff for the dummy"
+      (_type_) none 28)
+    (path-playing?
+      "Core functionality for playing back the dummy's path.  Does things like:
+       - calculates the score in case the dummy is hit based on the time elapsed
+       - moves around the dummy
+       - plays sounds accordingly
+       @returns if the dummy's current path is still in progress"
+      (_type_) symbol 29)
+    (path-time-elapsed
+      "@returns Calculates the combined total time across all control frames in the path"
+      (_type_) float 30)
+    (init-tpath-info!
+      "Given a [[tpath-info]] use it to initialize the dummy with any relevant data or flags"
+      (_type_ tpath-info) none 31)
+    (break-dummy
+      "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
+      (_type_) none 32)
     )
   )
 
@@ -46625,7 +46699,9 @@
 
 (deftype gun-cit-d (gun-dummy) ())
 
-(define-extern check-gungame-piece-ground (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-gungame-piece-ground
+  "Ensures the splatter that sits below the dummy when destroyed is at the right height"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern *tpath-rand* uint)
 (define-extern *gun-dummy-a-exploder-params* joint-exploder-static-params)
 (define-extern *gun-dummy-b-exploder-params* joint-exploder-static-params)
@@ -46637,29 +46713,44 @@
 (define-extern *gun-cit-b-exploder-params* joint-exploder-static-params)
 (define-extern *gun-cit-c-exploder-params* joint-exploder-static-params)
 (define-extern *gun-cit-d-exploder-params* joint-exploder-static-params)
-(define-extern gun-dummy-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-a-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-b-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-c-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-big-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-gold-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-dummy-peace-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-cit-a-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-cit-b-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-cit-c-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
-(define-extern gun-cit-d-init-by-other (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-init-by-other
+  "Initializes a [[gun-dummy]] given a [[tpath-info]]"
+  (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-a-init-by-other
+  "Initializes a [[gun-dummy-a]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-b-init-by-other
+  "Initializes a [[gun-dummy-b]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-c-init-by-other
+  "Initializes a [[gun-dummy-c]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-big-init-by-other
+  "Initializes a [[gun-dummy-big]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-gold-init-by-other
+  "Initializes a [[gun-dummy-gold]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-dummy-peace-init-by-other
+  "Initializes a [[gun-dummy-peace]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-a-init-by-other
+  "Initializes a [[gun-cit-a]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-b-init-by-other
+  "Initializes a [[gun-cit-b]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-c-init-by-other
+  "Initializes a [[gun-cit-c]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
+(define-extern gun-cit-d-init-by-other
+  "Initializes a [[gun-cit-d]] given a [[tpath-info]]" (function training-manager tpath-info none :behavior gun-dummy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gungame-data                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gungame-crate (structure)
+  "Describes the contents and position of the crates in the gungame
+   `num` is the amount of TOTAL ammo to spawn (not pickups)
+   For example `20` would mean 4 red gun pickups, or 2 yellow gun pickups"
   ((pos   vector :inline :offset-assert 0)
    (pos-x float          :offset 0)
    (pos-y float          :offset 4)
    (pos-z float          :offset 8)
    (angle float          :offset 12)
-   (ammo  int32          :offset-assert 16)
+   (ammo  pickup-type          :offset-assert 16)
    (num   uint32         :offset-assert 20)
    )
   :method-count-assert 9
@@ -46848,15 +46939,23 @@
   )
 
 (define-extern ripple-for-water-anim-mincan ripple-wave-set)
-(define-extern mincan-lighthouse-lens-init-by-other (function mincan-lighthouse entity-actor none :behavior mincan-lighthouse-lens))
+(define-extern mincan-lighthouse-lens-init-by-other
+  "Given an [[entity-actor]], create the [[mincan-lighthouse-lens]]"
+  (function mincan-lighthouse entity-actor none :behavior mincan-lighthouse-lens))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; canyon-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern canyon-draw-beam (function vector vector none))
-(define-extern canyon-draw-beam-lens (function vector vector none))
-(define-extern canyon-draw-beam-statue (function vector vector none))
+(define-extern canyon-draw-beam
+  "Draws a particle beam between the two provided [[vector]] points"
+  (function vector vector none))
+(define-extern canyon-draw-beam-lens
+  "Draws a particle beam between the two provided [[vector]] points"
+  (function vector vector none))
+(define-extern canyon-draw-beam-statue
+  "Draws a particle beam between the two provided [[vector]] points"
+  (function vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vinroom-part                   ;;
@@ -47916,8 +48015,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern under-sig-red-shot (function object vector sparticle-launch-state none :behavior scene-player))
-(define-extern under-sig-red-shot-overhead (function object vector sparticle-launch-state none :behavior scene-player))
-(define-extern under-sig-red-shot-grunt (function object vector sparticle-launch-state none :behavior scene-player))
+(define-extern under-sig-red-shot-overhead (function process-tree vector sparticle-launch-state none :behavior scene-player))
+(define-extern under-sig-red-shot-grunt (function vector vector sparticle-launch-state none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig-recorder                   ;;
@@ -48058,7 +48157,10 @@
   :size-assert         #x174
   :flag-assert         #x3201000174
   (:methods
-    (cpad-elevator-method-49 (_type_ symbol) none 49)
+    (configure-collision
+      "Appropriately sets the collision on the elevator
+       @param collide-with-jak? If set, the elevator will collide with Jak"
+      (_type_ symbol) none 49)
     )
   )
 
@@ -48105,20 +48207,23 @@
   (:methods
     (nav-branch-method-9 (_type_) none 9)
     (nav-branch-method-10 (_type_ object int) none 10)
-    (nav-branch-method-11
+    (get-density
       "TODO
       @returns `density * 0.0078125` - is this some kind of trick?"
       (_type_) float 11)
-    (nav-branch-method-12
+    (get-speed-limit
       "TODO
       @returns `speed-limit * 1024.0`"
       (_type_) float 12)
-    (nav-branch-method-13
+    (get-width
       "TODO
        @returns `width * 256.0`"
       (_type_) float 13)
     (user-limit-reached? (_type_) symbol 14)
-    (nav-branch-method-15 "TODO - checks that `dest-node`'s `id` isn't #FFFF" (_type_) symbol 15)
+    (dest-node-id-at-max?
+      "@returns if `dest-node`'s `id` is equal to `#FFFF`
+       @see [[nav-node]]"
+      (_type_) symbol 15)
     (nav-branch-method-16 (_type_ float) none 16)
     (nav-branch-method-17 (_type_ float) none 17)
     (nav-branch-method-18 (_type_ float) none 18)
@@ -48178,7 +48283,7 @@
        @returns Nothing, the result will be in `ret`"
       (_type_ vector) vector 19)
     (get-angle (_type_) float 20)
-    (nav-node-method-21
+    (get-radius
       "TODO
        @returns `radius * 1024.0"
       (_type_) float 21)
@@ -49192,6 +49297,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype xz-height-map (structure)
+  "TODO - not terribly well understood yet, but this is used for the traffic height map
+   this is primarily used to store a massive amount of bytes in the `data` field
+   all initialized from static data."
   ((offset        float   3 :offset-assert 0)
    (x-offset      float     :offset 0)
    (y-offset      float     :offset 4)
@@ -51079,7 +51187,9 @@
 ;; errol-chal-part                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern city-race-borrow-level-activate (function none))
+(define-extern city-race-borrow-level-activate
+  "Sets up the `errol-ring-01` and `errol-ring-02` particles"
+  (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; errol-chal                     ;;
@@ -51705,6 +51815,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype flag (process-drawable)
+  "The flag in the ruins mission.
+   The scale will be linearly-interpolated based on the distance from the camera"
   ()
   :method-count-assert 21
   :size-assert         #xc8
@@ -51715,6 +51827,8 @@
   )
 
 (deftype ruins-precipice (process-drawable)
+  "The edge of the ruins tower that the flag stands on
+   Touching it flips the `play?` field which will trigger the cutscene"
   ((play? symbol  :offset-assert 200)
    )
   :method-count-assert 21
@@ -51725,7 +51839,11 @@
     )
   )
 
-(define-extern ruins-slide-sparks (function object vector none))
+(define-extern ruins-slide-sparks
+  "Generates simple sparks (2D particles) at the location specified. This is used in the cutscene.
+   @param position The position to render the sparks at
+   TODO - first arg type?"
+  (function object vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mechtest-obs                   ;;
@@ -51783,11 +51901,14 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-ruins-rubble (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern ruins-bird-bob-func (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern sparticle-ruins-bird-moon (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-ruins-tower-userdata-nosplat (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-ruins-tower-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ruins-rubble "TODO docs" (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern ruins-bird-bob-func
+  "Move the bird particles up and down, on a sinusoidal period with a wavelength of 300 frames
+   TODO - check argument types / what birds?"
+  (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern sparticle-ruins-bird-moon "TODO - investigate, what even is this?" (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ruins-tower-userdata-nosplat "TODO - docs" (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-ruins-tower-userdata "TODO - docs" (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; breakable-wall                 ;;
@@ -51975,12 +52096,22 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground
+      "TODO - understand the collision query stuff more
+      @returns whether or not the [[self]] is above the ground"
+      (_type_) symbol 22)
     )
   )
 
-(define-extern krew-collection-item-init-by-other (function vector krew-collection-item :behavior krew-collection-item))
-(define-extern krew-collection-item-spawn (function process vector krew-collection-item))
+(define-extern krew-collection-item-init-by-other
+  "Given a [[vector]] defining it's position, create a [[krew-collection-item]]
+   @param position The intended position of the item"
+  (function vector none :behavior krew-collection-item))
+(define-extern krew-collection-item-spawn
+  "Given a [[vector]] defining it's position, create a [[krew-collection-item]] via [[process-spawn]]
+   @param proc The [[process]] that is used to spawn the new item
+   @param position The intended position of the item"
+  (function process vector krew-collection-item))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyasha-obs                    ;;
@@ -52193,6 +52324,7 @@
   )
 
 (deftype hiphog-mirror-wf-pt (structure)
+  "@unused seemingly not used, but probably stood for hiphog-mirror-waveform-point"
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
    )
@@ -52201,11 +52333,29 @@
   :flag-assert         #x900000008
   )
 
-(define-extern birth-func-rotate-minute (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern birth-func-rotate-hour (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern birth-func-rotate-second (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern *hiphog-mirror-sheen-waveform* (inline-array ripple-wave))
-(define-extern hiphog-mirror-sheen-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-rotate-minute
+  "Determines the position of the minute hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   Every real second is 1 minute in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-hour
+  "Determines the position of the hour hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   Every real minute is 1 hour in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-second
+  "Determines the position of the second hand of the hiphog's clock associated with [[time-of-day-proc]]
+   TODO - check args
+   The clock actually only has 2 hands, this one does not appear to have been used?
+   Every real second is 1/60th of a second in Jak's time of day"
+  (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *hiphog-mirror-sheen-waveform*
+  "A collection of [[ripple-wave]]'s used to apply the effect to the hiphog's mirror"
+  (inline-array ripple-wave))
+(define-extern hiphog-mirror-sheen-func
+  "Handles the effect on the hiphogs mirror, which involves using [[*hiphog-mirror-sheen-waveform*]]
+   TODO on args and some more documentation"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hiphog-scenes                  ;;
