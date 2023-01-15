@@ -45,6 +45,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
+  dc.config->process_art_groups = false;  // not needed, art groups are stored in a json file
 
   std::vector<fs::path> dgo_paths;
   for (auto& x : offline_config.dgos) {

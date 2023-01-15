@@ -42,7 +42,7 @@ std::string trim_newline_indents(const std::string& s) {
   auto lines = split(s, '\n');
   std::vector<std::string> trimmed_lines;
   std::transform(lines.begin(), lines.end(), std::back_inserter(trimmed_lines),
-                 [](std::string line) { return ltrim(line); });
+                 [](const std::string& line) { return ltrim(line); });
   return join(trimmed_lines, "\n");
 }
 
