@@ -196,6 +196,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS);
   init_bucket_renderer<Merc2>("merc-l4-pris", BucketCategory::MERC, BucketId::MERC_L4_PRIS);
+  init_bucket_renderer<TextureUploadHandler>("tex-l5-pris", BucketCategory::TEX,
+                                             BucketId::TEX_L5_PRIS);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
@@ -205,6 +207,11 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l1-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L1_PRIS2);
   // 230
+  init_bucket_renderer<TextureUploadHandler>("tex-l2-pris2", BucketCategory::TEX,
+                                             BucketId::TEX_L2_PRIS2);
+
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-pris2", BucketCategory::TEX,
+                                             BucketId::TEX_L3_PRIS2);
   // 240
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS2);

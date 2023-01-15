@@ -938,8 +938,10 @@ void extract_merc(const ObjectFileData& ag_data,
             // not added to level, add it
             auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
             if (tex_it == tex_db.textures.end()) {
-              lg::error("failed to find texture: 0x{:x} for {}\n",
-                        draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name);
+              lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                        draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name,
+                        draw.state.merc_draw_mode.pc_combo_tex_id >> 16);
+              idx_in_level_texture = 0;
             } else {
               idx_in_level_texture = out.textures.size();
               auto& new_tex = out.textures.emplace_back();
