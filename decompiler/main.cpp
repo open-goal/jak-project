@@ -177,8 +177,7 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
-  // process art groups (used in decompilation)
-  if (config.decompile_code || config.process_art_groups) {
+  if (config.process_art_groups) {
     db.extract_art_info();
     // dumb art info to json if requested
     if (config.dump_art_group_info) {
@@ -188,6 +187,14 @@ int main(int argc, char** argv) {
       file_util::write_text_file(file_name, json.dump(-1));
       lg::info("[DUMP] Dumped art group info to {}", file_name.string());
     }
+  } else if (!config.art_group_info_dump.empty()) {
+    // process art groups (used in decompilation)
+    // - if the config has a path to the art info dump, just use that
+    // - otherwise (or if we want to dump it fresh) extract it
+    db.dts.art_group_info = config.art_group_info_dump;
+  } else {
+    lg::error("`process_art_groups` was false and no art-group-info dump was provided!");
+    return 1;
   }
 
   // main decompile.

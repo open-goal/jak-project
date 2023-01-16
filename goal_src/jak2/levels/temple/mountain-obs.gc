@@ -43,8 +43,8 @@
                           )
         )
 
-(defskelgroup skel-mtn-dice-button mtn-dice-button 0 3
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-mtn-dice-button mtn-dice-button mtn-dice-button-lod0-jg mtn-dice-button-idle-ja
+              ((mtn-dice-button-lod0-mg (meters 20)) (mtn-dice-button-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               )
 
@@ -308,7 +308,10 @@
   )
 
 
-(defskelgroup skel-mtn-dice mtn-dice 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 100))
+(defskelgroup skel-mtn-dice mtn-dice mtn-dice-lod0-jg mtn-dice-idle-ja
+              ((mtn-dice-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              )
 
 (defmethod mtn-dice-method-25 mtn-dice ((obj mtn-dice) (arg0 int))
   (let ((s4-0 (-> obj face-matrix arg0)))
@@ -1317,6 +1320,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-dice ((obj mtn-dice) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 7))
@@ -1465,8 +1474,8 @@
   )
 
 
-(defskelgroup skel-mtn-plat-elevator mtn-plat-elevator 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-plat-elevator mtn-plat-elevator mtn-plat-elevator-lod0-jg mtn-plat-elevator-idle-ja
+              ((mtn-plat-elevator-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 7)
               )
 
@@ -1475,8 +1484,8 @@
   (art-group-get-by-name *level* "skel-mtn-plat-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod clear-ambient-sound! mtn-plat-elevator ((obj mtn-plat-elevator))
-  "Might be a virtual function, but clears the object's [[ambient-sound]]"
+(defmethod set-ambient-sound! mtn-plat-elevator ((obj mtn-plat-elevator))
+  "Sets the elevator's [[ambient-sound]] up"
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-elevator-lp" :fo-max 70) (-> obj root-override trans))
         )
@@ -1484,7 +1493,12 @@
   (none)
   )
 
-(defmethod elevator-method-43 mtn-plat-elevator ((obj mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points mtn-plat-elevator ((obj mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
         )
@@ -1495,8 +1509,8 @@
     )
   )
 
-(defmethod base-plat-method-31 mtn-plat-elevator ((obj mtn-plat-elevator))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-elevator ((obj mtn-plat-elevator))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1534,7 +1548,10 @@
   )
 
 
-(defskelgroup skel-mtn-plat-updown mtn-plat-updown 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+(defskelgroup skel-mtn-plat-updown mtn-plat-updown mtn-plat-updown-lod0-jg mtn-plat-updown-idle-ja
+              ((mtn-plat-updown-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate idle (mtn-plat-updown)
   :virtual #t
@@ -1568,8 +1585,8 @@
   :post (the-as (function none :behavior mtn-plat-updown) plat-post)
   )
 
-(defmethod base-plat-method-31 mtn-plat-updown ((obj mtn-plat-updown))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-updown ((obj mtn-plat-updown))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1594,7 +1611,13 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-updown ((obj mtn-plat-updown) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -1627,7 +1650,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-24 (logior v1-24 1))
           )
-      (set! (-> a1-7 sync-type) (the-as basic 'sync-eased))
+      (set! (-> a1-7 sync-type) 'sync-eased)
       (set! (-> a1-7 sync-flags) (the-as sync-flags v1-24))
       )
     (set! (-> a1-7 period) (the-as uint 1800))
@@ -1668,7 +1691,10 @@
   )
 
 
-(defskelgroup skel-mtn-plat-eject mtn-plat-eject 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 4 7.1))
+(defskelgroup skel-mtn-plat-eject mtn-plat-eject mtn-plat-eject-lod0-jg mtn-plat-eject-idle-ja
+              ((mtn-plat-eject-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4 7.1)
+              )
 
 (defstate wait (mtn-plat-eject)
   :virtual #t
@@ -1725,6 +1751,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-eject ((obj mtn-plat-eject) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (mtn-plat-eject-method-22 obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1761,7 +1793,10 @@
   )
 
 
-(defskelgroup skel-mtn-plat-long mtn-plat-long 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 15.5))
+(defskelgroup skel-mtn-plat-long mtn-plat-long mtn-plat-long-lod0-jg mtn-plat-long-idle-ja
+              ((mtn-plat-long-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15.5)
+              )
 
 (defstate idle (mtn-plat-long)
   :virtual #t
@@ -1787,8 +1822,8 @@
   :post (the-as (function none :behavior mtn-plat-long) plat-post)
   )
 
-(defmethod base-plat-method-31 mtn-plat-long ((obj mtn-plat-long))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-long ((obj mtn-plat-long))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1813,7 +1848,13 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-long ((obj mtn-plat-long) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -1831,7 +1872,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-13 (logior v1-13 1))
           )
-      (set! (-> a1-5 sync-type) (the-as basic 'sync-linear))
+      (set! (-> a1-5 sync-type) 'sync-linear)
       (set! (-> a1-5 sync-flags) (the-as sync-flags v1-13))
       )
     (set! (-> a1-5 entity) arg0)
@@ -1856,7 +1897,10 @@
   )
 
 
-(defskelgroup skel-mtn-gate mtn-gate 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 4 0 18))
+(defskelgroup skel-mtn-gate mtn-gate mtn-gate-lod0-jg mtn-gate-idle-ja
+              ((mtn-gate-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 18)
+              )
 
 (defstate idle (mtn-gate)
   :virtual #t
@@ -1906,6 +1950,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-gate ((obj mtn-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -1996,15 +2046,15 @@
   )
 
 
-(defskelgroup skel-mtn-aval-rocks-1 mtn-aval-rocks 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-aval-rocks-1 mtn-aval-rocks mtn-aval-rocks-1-lod0-jg mtn-aval-rocks-1-idle-ja
+              ((mtn-aval-rocks-1-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 -100 140)
               )
 
-(defskelgroup skel-mtn-aval-rocks-shadow mtn-aval-rocks 4 7
-              ((5 (meters 999999)))
+(defskelgroup skel-mtn-aval-rocks-shadow mtn-aval-rocks mtn-aval-rocks-shadow-lod0-jg mtn-aval-rocks-shadow-idle-ja
+              ((mtn-aval-rocks-shadow-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -1.5 0 2)
-              :shadow 6
+              :shadow mtn-aval-rocks-shadow-shadow-mg
               )
 
 (define *mtn-aval-rocks-shadow-control*
@@ -2365,6 +2415,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-aval-rocks ((obj mtn-aval-rocks) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 collide-shape-prim-sphere) (sv-48 collide-shape-prim-sphere) (sv-64 vector))
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -2644,8 +2700,8 @@
   (none)
   )
 
-(defmethod base-plat-method-31 mtn-plat-return ((obj mtn-plat-return))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-return ((obj mtn-plat-return))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -2669,7 +2725,13 @@
   )
 
 (defmethod init-from-entity! mtn-plat-return ((obj mtn-plat-return) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -2691,7 +2753,7 @@
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 70) (-> obj root-override trans))
         )
-  (base-plat-method-33 obj)
+  (init-plat! obj)
   (mtn-plat-return-method-37 obj)
   (none)
   )
@@ -2770,7 +2832,10 @@
   )
 
 
-(defskelgroup skel-mtn-button mtn-button 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-mtn-button mtn-button mtn-button-lod0-jg mtn-button-open-ja
+              ((mtn-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 (defstate idle (mtn-button)
   :virtual #t
@@ -2856,6 +2921,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-button ((obj mtn-button) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -2921,14 +2992,14 @@
   )
 
 
-(defskelgroup skel-mtn-gear-device mtn-gear-device 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-mtn-gear-device mtn-gear-device mtn-gear-device-lod0-jg mtn-gear-device-idle-ja
+              ((mtn-gear-device-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 9 0 16)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-mtn-gear-device-collapse mtn-gear-device 4 6
-              ((5 (meters 999999)))
+(defskelgroup skel-mtn-gear-device-collapse mtn-gear-device mtn-gear-device-collapse-lod0-jg mtn-gear-device-collapse-idle-ja
+              ((mtn-gear-device-collapse-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 9 0 40)
               :origin-joint-index 33
               )
@@ -2961,6 +3032,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-gear-device ((obj mtn-gear-device) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (cond
     ((task-complete? *game-info* (game-task mountain-gear))
      (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -3271,7 +3348,9 @@
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod base-plat-method-33 trans-plat ((obj trans-plat))
+(defmethod init-plat! trans-plat ((obj trans-plat))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (logior! (-> obj flags) 2)
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)

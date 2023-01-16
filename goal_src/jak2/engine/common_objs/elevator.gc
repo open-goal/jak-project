@@ -35,8 +35,8 @@
 (defenum elevator-status
   :type uint64
   :bitfield #t
-  (elevator-status-0)
-  (elevator-status-1)
+  (waiting-to-descend)
+  (waiting-to-ascend)
   (moving)
   (elevator-status-3)
   (elevator-status-4)
@@ -111,12 +111,12 @@
     (arrived () _type_ :state 37)
     (elevator-method-38 (_type_) none 38)
     (calc-dist-between-points! (_type_ int int) none 39)
-    (elevator-method-40 (_type_) object 40)
+    (activate-elevator (_type_) none 40)
     (init-defaults! (_type_) none 41)
-    (clear-ambient-sound! (_type_) none 42)
-    (elevator-method-43 (_type_ vector float float) symbol 43)
+    (set-ambient-sound! (_type_) none 42)
+    (move-between-points (_type_ vector float float) symbol 43)
     (elevator-method-44 (_type_) symbol 44)
-    (elevator-method-45 (_type_) symbol 45)
+    (commited-to-ride? (_type_) symbol 45)
     (move-to-next-point! (_type_) none 46)
     (find-closest-point-in-path! (_type_ vector path-step symbol symbol) symbol 47)
     (elevator-method-48 (_type_) none 48)
@@ -124,7 +124,12 @@
   )
 
 
-(defmethod elevator-method-43 elevator ((obj elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points elevator ((obj elevator) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
   #f
   )
 
@@ -164,11 +169,11 @@
 
 (defmethod init-defaults! elevator ((obj elevator))
   "Initializes default settings related to the [[elevator]]:
-       - `elevator-xz-threshold`
-       - `elevator-y-threshold`
-       - `elevator-start-pos`
-       - `elevator-move-rate`
-       - `elevator-flags`"
+- `elevator-xz-threshold`
+- `elevator-y-threshold`
+- `elevator-start-pos`
+- `elevator-move-rate`
+- `elevator-flags`"
   (let ((entity (-> obj entity)))
     (set! (-> obj params xz-threshold) ((method-of-object entity get-property-value-float)
                                         entity
@@ -232,8 +237,8 @@
 
 (defun ease-value-in-out ((value float) (step-amount float))
   "TODO - the math in this function is full of duplication and isn't totally clear
-   but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
-   which is obviously useful for an elevator."
+but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
+which is obviously useful for an elevator."
   (let* ((step step-amount)
          (f4-0 (- 1.0 step-amount))
          (f3-0 (/ step (- 1.0 f4-0)))
@@ -392,7 +397,7 @@
             (= (-> self sticky-player-last-ride-time) (-> self clock frame-counter))
             )
            (('point-inside-shaft?)
-            (elevator-method-43 self (the-as vector (-> event param 1)) (-> self bottom-top 1) (-> self bottom-top 0))
+            (move-between-points self (the-as vector (-> event param 1)) (-> self bottom-top 1) (-> self bottom-top 0))
             )
            (('going-down?)
             (< (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self move-pos 1) 'interp) y)
@@ -419,13 +424,13 @@
 
 (defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 path-step) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
-       the provided [[vector]]
+the provided [[vector]]
 
-       @param vec The point at which distance calculations are based off
-       @param! next-step If a point is found, `next-pos` will be set to the correct point
-       @param arg2 TODO
-       @param arg3 TODO
-       @returns [[#t]] if a point in the path was found"
+@param vec The point at which distance calculations are based off
+@param! next-step If a point is found, `next-pos` will be set to the correct point
+@param arg2 TODO
+@param arg3 TODO
+@returns [[#t]] if a point in the path was found"
   (local-vars (path-point vector))
   (let ((elev-params (-> obj params))
         (smallest-dist 0.0)
@@ -470,20 +475,20 @@
          )
     (the-as
       symbol
-      (and target (elevator-method-43 obj (get-trans target 0) (-> obj move-pos 0) (-> obj move-pos 1)))
+      (and target (move-between-points obj (get-trans target 0) (-> obj move-pos 0) (-> obj move-pos 1)))
       )
     )
   )
 
-(defmethod elevator-method-45 elevator ((obj elevator))
-  "@returns Stub, or always returns [[#t]]"
+(defmethod commited-to-ride? elevator ((obj elevator))
+  "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   #t
   )
 
 (defmethod move-to-next-point! elevator ((obj elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
-       do so.
-       @see [[elevator::47]]"
+do so.
+@see [[elevator::47]]"
   (local-vars (zero float))
   (let ((target *target*))
     (when (and target
@@ -544,8 +549,8 @@
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('ridden)
-       (if (elevator-method-45 self)
-           (logior! (-> self elevator-status) (elevator-status elevator-status-0))
+       (if (commited-to-ride? self)
+           (logior! (-> self elevator-status) (elevator-status waiting-to-descend))
            )
        (elevator-event proc arg1 event-type event)
        )
@@ -556,7 +561,7 @@
     )
   :enter (behavior ()
     (set! (-> self ride-timer) (-> self clock frame-counter))
-    (logclear! (-> self elevator-status) (elevator-status elevator-status-0 moving))
+    (logclear! (-> self elevator-status) (elevator-status waiting-to-descend moving))
     (logior! (-> self mask) (process-mask actor-pause))
     (if (nonzero? (-> self sound))
         (update-vol! (-> self sound) 0.0)
@@ -565,7 +570,7 @@
     )
   :trans (behavior ()
     (plat-trans)
-    (when (not (logtest? (-> self elevator-status) (elevator-status elevator-status-0)))
+    (when (not (logtest? (-> self elevator-status) (elevator-status waiting-to-descend)))
       (set! (-> self ride-timer) (-> self clock frame-counter))
       (-> self params)
       (if (and (logtest? (-> self params flags) (elevator-flags elevator-flags-0))
@@ -585,7 +590,7 @@
     )
   :code (the-as (function none :behavior elevator) sleep-code)
   :post (behavior ()
-    (logclear! (-> self elevator-status) (elevator-status elevator-status-0))
+    (logclear! (-> self elevator-status) (elevator-status waiting-to-descend))
     (debug-draw (-> self path))
     (plat-post)
     (none)
@@ -600,7 +605,7 @@
        #t
        )
       (('player-ridden?)
-       (logtest? (-> self elevator-status) (elevator-status elevator-status-0))
+       (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
        )
       (else
         (elevator-event proc arg1 event-type event)
@@ -611,7 +616,7 @@
     (if (not (logtest? (-> self params flags) (elevator-flags elevator-flags-7)))
         (process-entity-status! self (entity-perm-status no-kill) #t)
         )
-    (logclear! (-> self elevator-status) (elevator-status elevator-status-1))
+    (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (when (logtest? (-> self params flags) (elevator-flags elevator-flags-2))
       (logclear! (-> self params flags) (elevator-flags elevator-flags-2))
       (logior! (-> self params flags) (elevator-flags elevator-flags-0))
@@ -665,7 +670,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (and (not (logtest? (-> self elevator-status) (elevator-status elevator-status-1)))
+    (if (and (not (logtest? (-> self elevator-status) (elevator-status waiting-to-ascend)))
              (= (-> self path-pos) 1.0)
              )
         (go-virtual arrived)
@@ -681,18 +686,18 @@
     (none)
     )
   :code (behavior ()
-    (logior! (-> self elevator-status) (elevator-status elevator-status-1))
+    (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (until #f
       (suspend)
       (if (= (-> self path-pos) 1.0)
-          (logclear! (-> self elevator-status) (elevator-status elevator-status-1))
+          (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
           )
       )
     #f
     (none)
     )
   :post (behavior ()
-    (when (logtest? (-> self elevator-status) (elevator-status elevator-status-1))
+    (when (logtest? (-> self elevator-status) (elevator-status waiting-to-ascend))
       (seek!
         (-> self path-pos)
         (-> self path-dest)
@@ -777,8 +782,8 @@
 (defmethod calc-dist-between-points! elevator ((obj elevator) (path-point-x int) (path-point-y int))
   "Calculates the distance between two points in the elevator's path.
 
-       @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
-       @param path-point-y The second point in the distance calculation"
+@param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
+@param path-point-y The second point in the distance calculation"
   (set! (-> obj path-seq data path-point-x next-pos) (the float path-point-y))
   (let ((point-x (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-point-x) 'interp))
         (point-y (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float path-point-y) 'interp))
@@ -789,14 +794,16 @@
   (none)
   )
 
-(defmethod clear-ambient-sound! elevator ((obj elevator))
-  "Might be a virtual function, but clears the object's [[ambient-sound]]"
+(defmethod set-ambient-sound! elevator ((obj elevator))
+  "Sets the elevator's [[ambient-sound]] up"
   (set! (-> obj sound) (the-as ambient-sound 0))
   0
   (none)
   )
 
-(defmethod base-plat-method-33 elevator ((obj elevator))
+(defmethod init-plat! elevator ((obj elevator))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
@@ -809,18 +816,25 @@
   (the-as elevator ((the-as (function base-plat int base-plat) (find-parent-method elevator 7)) obj arg0))
   )
 
-(defmethod elevator-method-40 elevator ((obj elevator))
-  "TODO - need to figure out some flags to be confident about this"
+;; WARN: Return type mismatch object vs none.
+(defmethod activate-elevator elevator ((obj elevator))
+  "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
       (go (method-of-object obj arrived))
       (go (method-of-object obj waiting))
       )
+  (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! elevator ((obj elevator) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-32 float) (sv-36 path-control) (sv-40 target))
-  (base-plat-method-31 obj)
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj entity)
   (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
   (stop-bouncing! obj)
@@ -878,8 +892,8 @@
   (set! (-> obj root-override pause-adjust-distance)
         (+ 122880.0 (-> obj params xz-threshold) (total-distance (-> obj path)))
         )
-  (clear-ambient-sound! obj)
-  (base-plat-method-33 obj)
-  (elevator-method-40 obj)
+  (set-ambient-sound! obj)
+  (init-plat! obj)
+  (activate-elevator obj)
   (none)
   )

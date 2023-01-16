@@ -5,5 +5,1496 @@
 ;; name in dgo: title-obs
 ;; dgos: TITLE
 
+(declare-type title-control process)
+(define-extern *title-control* (pointer title-control))
+
 ;; DECOMP BEGINS
 
+(deftype title-control (process)
+  ((selected    int32                         :offset-assert 128)
+   (sprites     hud-sprite          2 :inline :offset-assert 144)
+   (sprite-pos  vector              :inline   :offset-assert 272)
+   (sprite-draw uint32                        :offset-assert 288)
+   (buffer      external-art-buffer 2         :offset-assert 292)
+   (want        int32               2         :offset-assert 300)
+   (want-name   basic               2         :offset-assert 308)
+   (have        int32               2         :offset-assert 316)
+   (draw        int32                         :offset-assert 324)
+   (draw-name   basic                         :offset-assert 328)
+   (active      symbol                        :offset-assert 332)
+   (spark-time  time-frame                    :offset-assert 336)
+   (gui-id      uint32                        :offset-assert 344)
+   )
+  :heap-base #xe0
+  :method-count-assert 18
+  :size-assert         #x15c
+  :flag-assert         #x1200e0015c
+  (:methods
+    (startup () _type_ :state 14)
+    (wait () _type_ :state 15)
+    (idle () _type_ :state 16)
+    (scrap-book (int) _type_ :state 17)
+    )
+  )
+
+
+;; WARN: Return type mismatch process vs title-control.
+(defmethod relocate title-control ((obj title-control) (arg0 int))
+  (dotimes (v1-0 2)
+    (if (nonzero? (-> obj buffer v1-0))
+        (&+! (-> obj buffer v1-0) arg0)
+        )
+    )
+  (the-as title-control ((method-of-type process relocate) obj arg0))
+  )
+
+(defmethod deactivate title-control ((obj title-control))
+  (dotimes (s5-0 2)
+    (set-pending-file (-> obj buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+    )
+  (dotimes (s5-1 2)
+    (update (-> obj buffer s5-1))
+    )
+  ((method-of-type process deactivate) obj)
+  (none)
+  )
+
+(defskelgroup skel-jak-logo jak-logo jak-logo-lod0-jg -1
+              ((jak-logo-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 20)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-jak-stand jak-stand jak-stand-lod0-jg -1
+              ((jak-stand-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 20)
+              :origin-joint-index 3
+              )
+
+;; WARN: Return type mismatch time-frame vs none.
+(defun title-plug-lightning ((arg0 process-drawable) (arg1 vector) (arg2 cspace))
+  (local-vars (sv-32 cspace) (sv-48 int) (sv-64 symbol) (sv-80 int) (sv-96 vector))
+  (set! sv-32 arg2)
+  (when (< (-> *setting-control* user-current movie-skip-frame) 0.0)
+    (let ((s5-0 (get-process *default-dead-pool* lightning-tracker #x4000)))
+      (when s5-0
+        (let ((t9-1 (method-of-type lightning-tracker activate)))
+          (t9-1
+            (the-as lightning-tracker s5-0)
+            *entity-pool*
+            (symbol->string (-> lightning-tracker symbol))
+            (the-as pointer #x70004000)
+            )
+          )
+        (let ((s3-0 run-function-in-process)
+              (s2-0 s5-0)
+              (s1-0 lightning-tracker-init)
+              (s0-0 (-> *lightning-spec-id-table* 1))
+              )
+          (set! sv-48 30)
+          (set! sv-64 (the-as symbol #f))
+          (set! sv-80 (+ (-> sv-32 joint number) 1))
+          (set! sv-96 (new 'stack-no-clear 'vector))
+          (set! (-> sv-96 x) (+ (-> arg1 x) (rand-vu-float-range -4096.0 4096.0)))
+          (set! (-> sv-96 y) (+ (-> arg1 y) (rand-vu-float-range -4096.0 4096.0)))
+          (set! (-> sv-96 z) (+ (-> arg1 z) (rand-vu-float-range -4096.0 4096.0)))
+          (set! (-> sv-96 w) 1.0)
+          ((the-as (function object object object object object object object object none) s3-0)
+           s2-0
+           s1-0
+           s0-0
+           sv-48
+           sv-64
+           arg0
+           sv-80
+           sv-96
+           )
+          )
+        (-> s5-0 ppointer)
+        )
+      )
+    (let ((v1-21 (handle->process (-> *game-info* controller 0))))
+      (if v1-21
+          (set! (-> (the-as title-control v1-21) spark-time) (-> *display* base-clock frame-counter))
+          )
+      )
+    )
+  (none)
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "title-disk-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1000000
+    :entity "scene-stage-47"
+    :art-group "scenecamera"
+    :anim "title-disk-intro"
+    :parts 10
+    :command-list '((0
+        (want-force-vis 'ctysluma #t)
+        (want-force-vis 'ctywide #t)
+        (kill "ctysluma-part-181")
+        (kill "ctysluma-part-182")
+        (kill "ctysluma-part-187")
+        (kill "ctysluma-part-188")
+        (send-event "jak-logo" 'color-mult 0 0 0 1)
+        (setting-unset sound-bank-load)
+        (apply
+          ,(lambda ()
+             (send-event (ppointer->process *time-of-day*) 'change 'ratio 0)
+             (send-event (ppointer->process *time-of-day*) 'change 'hour 23)
+             (send-event (ppointer->process *time-of-day*) 'change 'minute 0)
+             (send-event (ppointer->process *time-of-day*) 'change 'second 0)
+             )
+          )
+        (joint-eval
+          ,(lambda ((arg0 process-drawable) (arg1 vector) (arg2 cspace))
+             (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
+             (case (scf-get-territory)
+               ((1)
+                (case (-> *setting-control* user-current language)
+                  (((language-enum spanish))
+                   (send-event arg0 'segment 32 0)
+                   )
+                  (((language-enum french))
+                   (send-event arg0 'segment 64 0)
+                   )
+                  (else
+                    (send-event arg0 'segment 512 0)
+                    )
+                  )
+                )
+               ((2)
+                (send-event arg0 'segment 256 128)
+                )
+               )
+             )
+          entity
+          "jak-logo"
+          joint
+          "plugsparks"
+          )
+        (fadein (seconds (new 'static 'bfloat :data 1.0)))
+        )
+      (10 (want-force-vis 'ctysluma #f) (want-force-vis 'ctywide #f) (send-event *target* 'change-mode 'title))
+      (991
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        (part-tracker
+          "group-title-plug"
+          entity
+          "jak-logo"
+          joint
+          "plugsparks"
+          track
+          #t
+          duration
+          (frame-range (new 'static 'bfloat :data 991.0) (new 'static 'bfloat :data 1011.0))
+          )
+        )
+      (992
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (998
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 0.3)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (999
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1004
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1005
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1008
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 0.85)
+          (new 'static 'bfloat :data 0.85)
+          (new 'static 'bfloat :data 0.85)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1009
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1010
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1011
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        (joint-eval title-plug-lightning entity "jak-logo" joint "plugsparks")
+        )
+      (1012
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          )
+        )
+      (1013
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat)
+          (new 'static 'bfloat :data 1.0)
+          )
+        )
+      (1033
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          )
+        )
+      (1063
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 0.5)
+          (new 'static 'bfloat :data 1.0)
+          )
+        )
+      (1073
+        (send-event
+          "jak-logo"
+          'color-mult
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          (new 'static 'bfloat :data 1.0)
+          )
+        )
+      (1105
+        (apply
+          ,(lambda ()
+             (with-pp
+               (kill-by-type lightning-tracker *active-pool*)
+               (kill-by-type part-tracker *active-pool*)
+               (if (lookup-gui-connection *gui-control* pp (gui-channel art-load) (the-as string #f) (new 'static 'sound-id))
+                   (sound-group-pause (sound-group dialog))
+                   )
+               (send-event (handle->process (-> *game-info* controller 0)) 'pause)
+               (time-of-day-setup #t)
+               (remove-setting! 'half-speed)
+               (none)
+               )
+             )
+          )
+        )
+      )
+    :cut-list '()
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #f
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'title
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x1e
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-logo"
+        :level 'title
+        :art-group "skel-jak-logo"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x6e
+        )
+      (new 'static 'scene-actor
+        :name "jak-stand"
+        :level 'title
+        :art-group "skel-jak-stand"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "title-movie"
+    :end-point-obj "title-movie-end"
+    :borrow '()
+    :sfx-volume 1.0
+    :ambient-volume 1.0
+    :blackout-end #f
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(defbehavior title-screen-change title-control ((arg0 symbol) (arg1 int) (arg2 symbol) (arg3 int) (arg4 symbol) (arg5 symbol))
+  (when arg5
+    (let ((s1-0 (the-as int (-> *setting-control* user-current language))))
+      (if (and (= (the-as language-enum s1-0) (language-enum english)) (= (scf-get-territory) 1))
+          (set! s1-0 7)
+          )
+      (if (>= arg1 0)
+          (+! arg1 (* 3 s1-0))
+          )
+      (if (>= arg3 0)
+          (+! arg3 (* 3 s1-0))
+          )
+      )
+    )
+  (set! (-> self want-name 0) (the-as basic arg0))
+  (set! (-> self want 0) arg1)
+  (set! (-> self want-name 1) (-> self draw-name))
+  (set! (-> self want 1) (-> self draw))
+  (when arg4
+    (set-setting! 'bg-a 'abs #x3f800000 0)
+    (set! (-> *setting-control* user-current bg-a) 1.0)
+    (set-blackout-frames 0)
+    (apply-settings *setting-control*)
+    )
+  (when (>= (-> self draw) 0)
+    (set-setting! 'bg-a 'abs #x3f800000 0)
+    (apply-settings *setting-control*)
+    (while (!= (-> *setting-control* user-current bg-a) 1.0)
+      (suspend)
+      )
+    )
+  (set! (-> self draw) arg1)
+  (set! (-> self draw-name) (the-as basic arg0))
+  (set! (-> self active) #f)
+  (while (and (>= (-> self draw) 0) (not (-> self active)))
+    (suspend)
+    )
+  (remove-setting! 'bg-a)
+  (set! (-> self want-name 1) (the-as basic arg2))
+  (set! (-> self want 1) arg3)
+  0
+  (none)
+  )
+
+(defun wait-for-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
+  (with-pp
+    (let ((s3-0 (-> pp clock frame-counter))
+          (s4-0 #f)
+          )
+      (while (not (or (>= (- (-> pp clock frame-counter) s3-0) arg1) (and (>= (- (-> pp clock frame-counter) s3-0) arg0) s4-0))
+                  )
+        (if (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
+            (set! s4-0 #t)
+            )
+        (when (cpad-pressed? 0 triangle)
+          (set! s4-0 'abort)
+          (goto cfg-14)
+          )
+        (suspend)
+        )
+      (label cfg-14)
+      s4-0
+      )
+    )
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior title-menu title-control ()
+  (local-vars (sv-112 font-context))
+  (sound-play "dmenu-hit")
+  (let ((gp-1 (new 'static 'boxed-array :type uint32 #x132)))
+    (until #f
+      (when (not (paused?))
+        (cond
+          ((and (logtest? (pad-buttons up l-analog-down) (-> *cpad-list* cpads 0 button0-rel 0))
+                (> (-> self selected) 0)
+                )
+           (seekl! (-> self selected) 0 1)
+           (sound-play "dmenu-move")
+           )
+          ((and (logtest? (pad-buttons down l-analog-up) (-> *cpad-list* cpads 0 button0-rel 0))
+                (< (-> self selected) (+ (-> gp-1 length) -1))
+                )
+           (seekl! (-> self selected) (+ (-> gp-1 length) -1) 1)
+           (sound-play "dmenu-move")
+           )
+          ((or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
+               (and (cpad-pressed? 0 start)
+                    (or (not *debug-segment*) (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))))
+                    )
+               )
+           (sound-play "dmenu-pick")
+           (return (the-as object (-> self selected)))
+           )
+          )
+        (when (< (mod (-> self clock frame-counter) 300) 210)
+          (set! sv-112 (new
+                         'stack
+                         'font-context
+                         *font-default-matrix*
+                         64
+                         312
+                         0.0
+                         (font-color default-#cddbcd)
+                         (font-flags shadow kerning)
+                         )
+                )
+          (let ((v1-35 sv-112))
+            (set! (-> v1-35 width) (the float 384))
+            )
+          (let ((v1-36 sv-112))
+            (set! (-> v1-36 height) (the float 50))
+            )
+          (set! (-> sv-112 flags) (font-flags shadow kerning middle left large))
+          (set! (-> sv-112 scale) 0.7)
+          (dotimes (s5-4 (-> gp-1 length))
+            (if (= (-> self selected) s5-4)
+                (set! (-> sv-112 color) (font-color #f1f104))
+                (set! (-> sv-112 color) (font-color #dadada))
+                )
+            (print-game-text
+              (lookup-text! *common-text* (the-as game-text-id (-> gp-1 s5-4)) #f)
+              sv-112
+              #f
+              44
+              (bucket-id progress)
+              )
+            (set! (-> sv-112 origin y) (+ 22.0 (-> sv-112 origin y)))
+            )
+          )
+        )
+      (suspend)
+      )
+    )
+  #f
+  -1
+  )
+
+(defun title-fade-out ((arg0 float))
+  (with-pp
+    (setup *screen-filter* (new 'static 'vector) (new 'static 'vector :w 128.0) arg0 (bucket-id screen-filter))
+    (let ((gp-0 (-> pp clock frame-counter)))
+      (until (>= (- (-> pp clock frame-counter) gp-0) (seconds 0.4))
+        (suspend)
+        )
+      )
+    (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+    (set! (-> *setting-control* user-current bg-a) 0.0)
+    (while (or (-> *setting-control* user-current movie)
+               (not *target*)
+               (not (and (-> *target* next-state) (= (-> *target* next-state name) 'target-title)))
+               (!= (-> *setting-control* user-current bg-a) 0.0)
+               )
+      (suspend)
+      )
+    (set! (-> *game-info* blackout-time) 0)
+    (set! (-> *setting-control* user-current bg-a-force) 0.0)
+    (disable *screen-filter*)
+    0
+    (none)
+    )
+  )
+
+(defun title-progress ((arg0 symbol))
+  (with-pp
+    (setup
+      *screen-filter*
+      (new 'static 'vector :w 128.0)
+      (new 'static 'vector :w 128.0)
+      (-> pp clock seconds-per-frame)
+      (bucket-id screen-filter)
+      )
+    (set-setting! 'allow-progress #t 0 0)
+    (apply-settings *setting-control*)
+    (activate-progress *dproc* arg0)
+    (set-setting! 'allow-progress #f 0 0)
+    (dotimes (gp-1 5)
+      (suspend)
+      )
+    (disable *screen-filter*)
+    (remove-setting! 'allow-error)
+    (while (-> *blit-displays-work* menu-mode)
+      (suspend)
+      )
+    (set-setting! 'allow-error #f 0 0)
+    (apply-settings *setting-control*)
+    (set-blackout-frames (seconds 0.2))
+    0
+    (none)
+    )
+  )
+
+(defstate startup (title-control)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('pause)
+                      (set! (-> *game-info* demo-state) (the-as uint 2))
+                      (the-as object (remove-setting! 'bg-a))
+                      )
+                     (('scrap-book)
+                      (go-virtual scrap-book (the-as int (-> event param 0)))
+                      )
+                     )
+            )
+    )
+  :exit (behavior ()
+    (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
+                                           (or (= v1-3 'startup) (= v1-3 'wait) (= v1-3 'idle) (= v1-3 'scrap-book))
+                                           )
+                    )
+               )
+      (disable *screen-filter*)
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((v1-1 (-> *game-info* demo-state)))
+      (when (or (zero? v1-1) (= v1-1 1))
+        (let ((a1-0 (new 'stack-no-clear 'array 'symbol 6)))
+          (set! (-> a1-0 5) #f)
+          (set! (-> a1-0 4) #f)
+          (set! (-> a1-0 3) #f)
+          (set! (-> a1-0 2) 'ctywide)
+          (set! (-> a1-0 1) 'ctysluma)
+          (set! (-> a1-0 0) 'title)
+          (want-levels *load-state* a1-0)
+          )
+        (want-display-level *load-state* 'ctysluma 'display)
+        (want-display-level *load-state* 'ctywide 'display)
+        (when (zero? (-> *game-info* demo-state))
+          (title-screen-change (the-as symbol "demo-screens") 27 #f -1 #t #f)
+          (wait-for-press (seconds 1) (seconds 5) #f)
+          (while (not (and (= (level-status *level* 'ctysluma) 'active) (= (level-status *level* 'ctywide) 'active)))
+            (suspend)
+            )
+          (title-screen-change #f -1 #f -1 #f #f)
+          (set-blackout-frames (seconds 0.2))
+          )
+        (label cfg-12)
+        (let ((gp-0 (new 'stack-no-clear 'mc-slot-info)))
+          (mc-get-slot-info 0 gp-0)
+          (when (zero? (-> gp-0 known))
+            (set-blackout-frames (seconds 0.05))
+            (suspend)
+            (goto cfg-12)
+            )
+          (set! (-> *setting-control* user-default bg-a) 0.0)
+          (when (or (zero? (-> gp-0 handle))
+                    (and (nonzero? (-> gp-0 formatted)) (zero? (-> gp-0 inited)) (< (-> gp-0 mem-actual) (-> gp-0 mem-required)))
+                    )
+            (mem-copy! (the-as pointer *auto-save-info*) (the-as pointer gp-0) 300)
+            (set-blackout-frames 0)
+            (let ((s5-0 'insufficient-space))
+              (if (zero? (-> gp-0 handle))
+                  (set! s5-0 'no-memory-card)
+                  )
+              (title-fade-out 1000.0)
+              (title-progress s5-0)
+              )
+            (goto cfg-26)
+            )
+          )
+        )
+      )
+    (label cfg-26)
+    (let ((v1-39 (-> *game-info* demo-state)))
+      (when (or (zero? v1-39) (= v1-39 1))
+        (set! (-> *game-info* demo-state) (the-as uint 1))
+        (let ((gp-2
+                (ppointer->handle (process-spawn scene-player :init scene-player-init "title-disk-intro" #t "title-movie"))
+                )
+              )
+          (while (and (handle->process (the-as handle gp-2)) (= (-> *game-info* demo-state) 1))
+            (when (and (cpad-pressed? 0 start triangle) (< (-> *setting-control* user-current movie-skip-frame) 0.0))
+              (set-setting! 'movie-skip-frame 'abs #x448a2000 0)
+              (set-setting! 'dialog-volume 'abs 0 0)
+              (set! (-> *setting-control* user-current dialog-volume) 0.000000001)
+              (set-setting! 'bg-a 'abs #x3f800000 0)
+              (set! (-> *setting-control* user-current bg-a) 1.0)
+              (apply-settings *setting-control*)
+              )
+            (if *target*
+                (set! (-> *target* control trans quad) (-> (math-camera-pos) quad))
+                )
+            (set! (-> *game-info* kiosk-timeout) (the-as uint (-> *display* game-clock frame-counter)))
+            (set! (-> *ACTOR-bank* birth-max) 1000)
+            (suspend)
+            )
+          )
+        (set! (-> *game-info* demo-state) (the-as uint 1))
+        )
+      )
+    (go-virtual wait)
+    (none)
+    )
+  :post (behavior ()
+    (local-vars (v1-73 external-art-buffer))
+    (let ((gp-0 (command-get-process "jak-logo" (the-as process #f))))
+      (when (and gp-0 (nonzero? (-> (the-as process-drawable gp-0) draw)))
+        (let ((s5-0 (lookup-light-sphere-by-name "big-title1" (-> self level bsp light-hash)))
+              (v1-6 (lookup-light-sphere-by-name "big-title2" (-> self level bsp light-hash)))
+              )
+          (if s5-0
+              (set! (-> s5-0 brightness) (-> (the-as process-drawable gp-0) draw color-mult x))
+              )
+          (if v1-6
+              (set! (-> v1-6 brightness) (-> (the-as process-drawable gp-0) draw color-mult x))
+              )
+          )
+        )
+      )
+    (let ((gp-1 (lookup-light-sphere-by-name "small-title" (-> self level bsp light-hash))))
+      (when gp-1
+        (if (>= (- (-> *display* base-clock frame-counter) (-> self spark-time)) (seconds 0.125))
+            (set! (-> gp-1 brightness) 0.0)
+            (set! (-> gp-1 brightness) (rand-vu-float-range 0.5 2.0))
+            )
+        )
+      )
+    (dotimes (v1-16 2)
+      (set! (-> self buffer v1-16 frame-lock) #f)
+      (set! (-> self have v1-16) -1)
+      )
+    (dotimes (gp-2 2)
+      (let ((s5-1 (-> self want gp-2))
+            (s4-0 (-> self want-name gp-2))
+            )
+        (when (>= s5-1 0)
+          (dotimes (s3-0 2)
+            (case (file-status (-> self buffer s3-0) (the-as string s4-0) s5-1)
+              (('locked 'active)
+               (set! (-> self buffer s3-0 frame-lock) #t)
+               (set! (-> self have gp-2) s3-0)
+               )
+              )
+            )
+          )
+        )
+      )
+    (dotimes (gp-3 2)
+      (let ((a2-1 (-> self want gp-3))
+            (a1-9 (-> self want-name gp-3))
+            )
+        (when (and (>= a2-1 0) (< (-> self have gp-3) 0))
+          (dotimes (v1-46 2)
+            (when (not (-> self buffer v1-46 frame-lock))
+              (set-pending-file (-> self buffer v1-46) (the-as string a1-9) a2-1 (process->handle self) -1.0)
+              (goto cfg-45)
+              )
+            )
+          )
+        )
+      (label cfg-45)
+      )
+    (dotimes (gp-4 2)
+      (update (-> self buffer gp-4))
+      )
+    (set! (-> self active) #f)
+    (when (>= (-> self draw) 0)
+      (dotimes (gp-5 2)
+        (when (file-status (-> self buffer gp-5) (the-as string (-> self draw-name)) (-> self draw))
+          (set! v1-73 (-> self buffer gp-5))
+          (goto cfg-58)
+          )
+        )
+      (set! v1-73 (the-as external-art-buffer #f))
+      (label cfg-58)
+      (when (and v1-73 (-> v1-73 art-group))
+        (draw-raw-image (bucket-id debug-no-zbuf1) (-> v1-73 art-group) 512 416 (-> self level) 8)
+        (set! (-> self active) #t)
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate wait (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ()
+    (remove-setting! 'allow-timeout)
+    (remove-setting! 'dialog-volume)
+    (if (zero? (title-menu))
+        (go-virtual idle)
+        )
+    (sleep-code)
+    (none)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+(defstate idle (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ()
+    (title-fade-out (* 3.0 (-> self clock seconds-per-frame)))
+    (title-progress 'title)
+    (sleep-code)
+    (none)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+(defstate scrap-book (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ((arg0 int))
+    (while (-> *blit-displays-work* menu-mode)
+      (suspend)
+      )
+    (set-blackout-frames (seconds 1000))
+    (let* ((v1-3 arg0)
+           (gp-0 (cond
+                   ((= v1-3 1)
+                    0
+                    )
+                   ((= v1-3 2)
+                    43
+                    )
+                   (else
+                     0
+                     )
+                   )
+                 )
+           (s5-1 (cond
+                   ((= arg0 1)
+                    43
+                    )
+                   ((= arg0 2)
+                    196
+                    )
+                   (else
+                     0
+                     )
+                   )
+                 )
+           (s4-0 gp-0)
+           (a3-0 (+ gp-0 1))
+           (v1-6 #f)
+           )
+      (while (not (or (>= s4-0 s5-1) (= v1-6 'abort)))
+        (let ((t9-1 title-screen-change)
+              (a0-4 "scrap-book")
+              (a1-0 s4-0)
+              (a2-0 "scrap-book")
+              )
+          (set! a3-0 (cond
+                       ((>= a3-0 s5-1)
+                        -1
+                        )
+                       (else
+                         (empty)
+                         a3-0
+                         )
+                       )
+                )
+          (t9-1 (the-as symbol a0-4) a1-0 (the-as symbol a2-0) a3-0 (= s4-0 gp-0) #f)
+          )
+        (set! v1-6 (wait-for-press (seconds 1) (seconds 5) #t))
+        (+! s4-0 1)
+        (set! a3-0 (+ s4-0 1))
+        )
+      )
+    (title-screen-change #f -1 #f -1 #f #f)
+    (set-blackout-frames (seconds 0.2))
+    (set! (-> *game-info* demo-state) (the-as uint 1))
+    (go-virtual idle)
+    (none)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior title-control-init title-control ()
+  (stack-size-set! (-> self main-thread) 2048)
+  (logclear! (-> self mask) (process-mask freeze pause menu progress actor-pause))
+  (set! (-> self level) (level-get *level* 'title))
+  (let ((a1-2 (if (and (nonzero? (-> self level entity)) (> (-> self level entity length) 0))
+                  (-> self level entity data 0 entity)
+                  )
+              )
+        )
+    (process-entity-set! self (the-as entity-actor a1-2))
+    )
+  (set-setting! 'allow-pause #f 0 0)
+  (set-setting! 'allow-progress #f 0 0)
+  (set-setting! 'airlock #f 0 0)
+  (set-setting! 'music #f 0 0)
+  (set-setting! 'allow-timeout #f 0 0)
+  (set-setting! 'allow-error #f 0 0)
+  (set-setting! 'music-volume 'abs 0 0)
+  (apply-settings *setting-control*)
+  (dotimes (gp-0 2)
+    (set! (-> self buffer gp-0)
+          (new
+            'process
+            'external-art-buffer
+            gp-0
+            (lambda ((arg0 external-art-buffer))
+              (let ((gp-0 (level-get *level* 'title)))
+                (cond
+                  ((not (-> gp-0 user-object (-> arg0 index)))
+                   (let ((s4-0 (-> arg0 heap)))
+                     (set! (-> s4-0 base) (kmalloc (-> gp-0 heap) #xd0000 (kmalloc-flags) "heap"))
+                     (set! (-> s4-0 current) (-> s4-0 base))
+                     (set! (-> s4-0 top-base) (&+ (-> s4-0 base) #xd0000))
+                     (set! (-> s4-0 top) (-> s4-0 top-base))
+                     )
+                   (set! (-> gp-0 user-object (-> arg0 index)) (the-as basic (-> arg0 heap base)))
+                   )
+                  (else
+                    (let ((v1-10 (-> arg0 heap)))
+                      (set! (-> v1-10 base) (the-as pointer (-> gp-0 user-object (-> arg0 index))))
+                      (set! (-> v1-10 current) (-> v1-10 base))
+                      (set! (-> v1-10 top-base) (&+ (-> v1-10 base) #xd0000))
+                      (set! (-> v1-10 top) (-> v1-10 top-base))
+                      )
+                    )
+                  )
+                )
+              0
+              (none)
+              )
+            #f
+            )
+          )
+    )
+  (set! (-> self selected) 0)
+  (dotimes (v1-36 2)
+    (set! (-> self want v1-36) -1)
+    (set! (-> self have v1-36) -1)
+    )
+  (set! (-> self draw) -1)
+  (set! (-> self active) #f)
+  (dotimes (v1-40 2)
+    (let ((a0-16 (&+ (-> self sprites 0 color2) (* v1-40 64))))
+      (set! (-> a0-16 0) 128)
+      (set! (-> a0-16 1) 128)
+      (set! (-> a0-16 2) 128)
+      (set! (-> a0-16 3) 128)
+      )
+    (set! (-> self sprites v1-40 pos z) #xffffff)
+    (set! (-> self sprites v1-40 pos w) 0)
+    (set! (-> self sprites v1-40 scale-x) 1.0)
+    (set! (-> self sprites v1-40 scale-y) 1.0)
+    (set! (-> self sprites v1-40 angle) 0.0)
+    (set! (-> self sprites v1-40 flags) (the-as uint 0))
+    (set! (-> self sprites v1-40 tex) #f)
+    )
+  (set! (-> self sprite-draw) (the-as uint 0))
+  (case (-> *game-info* demo-state)
+    ((100)
+     (set! (-> *game-info* demo-state) (the-as uint 1))
+     )
+    ((201)
+     (go-virtual scrap-book 1)
+     )
+    ((202)
+     (go-virtual scrap-book 2)
+     )
+    ((203)
+     (go-virtual scrap-book 3)
+     )
+    )
+  (set! *title-control* (the-as (pointer title-control) (process->ppointer self)))
+  (set! (-> *game-info* controller 0) (process->handle self))
+  (go-virtual startup)
+  (none)
+  )
+
+(defstate target-title (target)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('change-mode)
+       (case (-> event param 0)
+         (('grab)
+          (if (not (-> event param 1))
+              #t
+              (go target-grab 'stance)
+              )
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :enter (behavior ((arg0 symbol))
+    (let ((a0-1 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> a0-1 next0)))
+        (while (!= a0-1 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-1)))
+          (set! a0-1 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    (ja-channel-set! 0)
+    (when arg0
+      (let ((gp-1 (-> self mask))
+            (s5-1 (-> *game-info* mode))
+            )
+        (set! (-> *game-info* mode) 'movie)
+        (logior! (-> self mask) (process-mask no-kill))
+        (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+        (set! (-> self mask) gp-1)
+        (set! (-> *game-info* mode) s5-1)
+        )
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      (kill-by-type title-control *active-pool*)
+      (set! (-> self game controller 0)
+            (ppointer->handle (process-spawn title-control :init title-control-init :to *entity-pool*))
+            )
+      )
+    (none)
+    )
+  :code (the-as (function symbol none :behavior target) sleep-code)
+  :post target-no-move-post
+  )
+
+(defpartgroup group-title-sign-naughtydog
+  :id 1285
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 8)
+  :rotate ((degrees 0) (degrees 4) (degrees 0))
+  :parts ((sp-item 5460 :flags (is-3d launch-asap bit7))
+    (sp-item 5461 :flags (is-3d launch-asap bit7))
+    (sp-item 5462 :fade-after (meters 200) :flags (bit6) :hour-mask #b111111111110000000)
+    )
+  )
+
+(defpart 5462
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 32) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 2048.0)
+    (sp-rnd-flt spt-scale-y (meters 48) (meters 0.1) 1.0)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 10.0 2.0 1.0)
+    (sp-flt spt-omega 822476.8)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 2048.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5460
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 0.1))
+    (sp-flt spt-scale-x (meters 16))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866432 -2139062144 0 1 -1054866432 #x60606060 #x202020 1)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5461
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -0.1))
+    (sp-flt spt-scale-x (meters 16))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 180.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866432 -2139062144 0 1 -1054866432 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpartgroup group-title-sign-big-praxis
+  :id 1286
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 8)
+  :rotate ((degrees 0) (degrees 4) (degrees 0))
+  :parts ((sp-item 5463 :flags (is-3d launch-asap bit7))
+    (sp-item 5464 :flags (is-3d launch-asap bit7))
+    (sp-item 5465 :fade-after (meters 200) :flags (bit6) :hour-mask #b111111111110000000)
+    )
+  )
+
+(defpart 5465
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 48) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 2048.0)
+    (sp-rnd-flt spt-scale-y (meters 32) (meters 0.1) 1.0)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 10.0 2.0 1.0)
+    (sp-flt spt-omega 822476.8)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 2048.0)
+    )
+  )
+
+(defpart 5463
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 16))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866688 -2139062144 0 1 -1054866688 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5464
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 180.0))
+    (sp-flt spt-scale-y (meters 16))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866688 -2139062144 0 1 -1054866688 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpartgroup group-title-sign-wanted
+  :id 1287
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 4)
+  :rotate ((degrees 0) (degrees 4) (degrees 0))
+  :parts ((sp-item 5466 :flags (is-3d launch-asap bit7))
+    (sp-item 5467 :flags (is-3d launch-asap bit7))
+    (sp-item 5468 :fade-after (meters 200) :flags (bit6) :hour-mask #b111111111110000000)
+    )
+  )
+
+(defpart 5468
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 32) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 2048.0)
+    (sp-rnd-flt spt-scale-y (meters 32) (meters 0.1) 1.0)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 10.0 2.0 1.0)
+    (sp-flt spt-omega 822476.8)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 2048.0)
+    )
+  )
+
+(defpart 5466
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866176 -2139062144 0 1 -1054866176 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5467
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 180.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054866176 -2139062144 0 1 -1054866176 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpartgroup group-title-sign-scea
+  :id 1288
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 4)
+  :rotate ((degrees 0) (degrees 4) (degrees 0))
+  :parts ((sp-item 5469 :flags (is-3d launch-asap bit7)) (sp-item 5470 :flags (is-3d launch-asap bit7)))
+  )
+
+(defpart 5469
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054867456 -2139062144 0 1 -1054867456 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5470
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc12))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -0.05))
+    (sp-flt spt-scale-x (meters 8))
+    (sp-flt spt-rot-x 16384.0)
+    (sp-flt spt-rot-z (degrees 180.0))
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 5 0 0 -1054867456 -2139062144 0 1 -1054867456 -2141167520 #x202020 0)
+      )
+    (sp-func spt-func 'sparticle-texture-day-night)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(when (= (scf-get-territory) 1)
+  (let ((v1-82 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
+    (if v1-82
+        (set! (-> v1-82 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054867200 -2139062144 0 1 -1054867200 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  (let ((v1-85 (get-field-spec-by-id (-> *part-id-table* 5470) (sp-field-id spt-userdata))))
+    (if v1-85
+        (set! (-> v1-85 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054867200 -2139062144 0 1 -1054867200 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  )
+
+(when (= (scf-get-territory) 2)
+  (let ((v1-89 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
+    (if v1-89
+        (set! (-> v1-89 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054866944 -2139062144 0 1 -1054866944 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  (let ((v1-92 (get-field-spec-by-id (-> *part-id-table* 5470) (sp-field-id spt-userdata))))
+    (if v1-92
+        (set! (-> v1-92 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054866944 -2139062144 0 1 -1054866944 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  )
+
+(when (= (scf-get-territory) 3)
+  (let ((v1-96 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
+    (if v1-96
+        (set! (-> v1-96 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054865920 -2139062144 0 1 -1054865920 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  (let ((v1-99 (get-field-spec-by-id (-> *part-id-table* 5470) (sp-field-id spt-userdata))))
+    (if v1-99
+        (set! (-> v1-99 initial-valuef)
+              (the-as
+                float
+                (new 'static 'boxed-array :type int32 5 0 0 -1054865920 -2139062144 0 1 -1054865920 -2141167520 #x202020 0)
+                )
+              )
+        )
+    )
+  )
+
+(defpartgroup group-title-plug
+  :id 1289
+  :linger-duration (seconds 2)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 5471 :flags (bit6) :period 1500 :length 150)
+    (sp-item 5472 :flags (bit6) :period 1500 :length 150)
+    (sp-item 5473 :period 1500 :length 200)
+    (sp-item 5473 :period 1500 :length 100)
+    (sp-item 5473 :period 1500 :length 70)
+    (sp-item 5473 :period 1500 :length 45)
+    (sp-item 5473 :period 1500 :length 30)
+    (sp-item 5473 :period 1500 :length 25)
+    (sp-item 5473 :period 1500 :length 20)
+    (sp-item 5473 :period 1500 :length 15)
+    )
+  )
+
+(defpart 5471
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 5) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 1638.4)
+    (sp-rnd-flt spt-rot-z (degrees -5.0) (degrees 10.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-rnd-flt spt-b 200.0 55.0 1.0)
+    (sp-rnd-flt spt-a 20.0 4.0 1.0)
+    (sp-flt spt-omega 411648.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 6144.0)
+    )
+  )
+
+(defpart 5472
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 32) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 1638.4)
+    (sp-rnd-flt spt-rot-z (degrees -2.0) (degrees 4.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 255.0 255.0 1.0)
+    (sp-rnd-flt spt-b 200.0 55.0 1.0)
+    (sp-rnd-flt spt-a 8.0 4.0 1.0)
+    (sp-flt spt-omega 1231667.2)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 6144.0)
+    )
+  )
+
+(defpart 5473
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x92 :page #xc))
+    (sp-rnd-flt spt-num 1.0 1.0 1.0)
+    (sp-flt spt-scale-x (meters 1.5))
+    (sp-int spt-rot-x 4)
+    (sp-flt spt-scale-y (meters 0.05))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-omega 8.192)
+    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.06666667) 1.0)
+    (sp-rnd-flt spt-fade-r -0.85 -0.85 1.0)
+    (sp-rnd-flt spt-fade-g -1.7 -1.7 1.0)
+    (sp-flt spt-fade-b -8.0)
+    (sp-rnd-flt spt-accel-y -6.826667 -2.7306666 1.0)
+    (sp-flt spt-friction 0.96)
+    (sp-int-plain-rnd spt-timer 300 1199 1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    (sp-func spt-func 'sparticle-motion-blur)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )

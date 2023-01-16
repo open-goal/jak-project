@@ -26,6 +26,7 @@ class Wrapper {
   std::vector<std::string> examples{};
   std::vector<std::pair<std::string, replxx::Replxx::Color>> regex_colors{};
 
+  Wrapper(GameVersion version) : repl_config(version) {}
   Wrapper(const std::string& _username, const Config& config, const StartupFile& startup)
       : username(_username), repl_config(config), startup_file(startup) {}
   replxx::Replxx& get_repl() { return repl; }

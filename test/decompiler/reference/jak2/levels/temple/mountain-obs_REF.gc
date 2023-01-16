@@ -1409,6 +1409,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-dice ((obj mtn-dice) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 7))
@@ -1584,8 +1590,8 @@
 
 ;; definition for method 42 of type mtn-plat-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-ambient-sound! mtn-plat-elevator ((obj mtn-plat-elevator))
-  "Might be a virtual function, but clears the object's [[ambient-sound]]"
+(defmethod set-ambient-sound! mtn-plat-elevator ((obj mtn-plat-elevator))
+  "Sets the elevator's [[ambient-sound]] up"
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-elevator-lp" :fo-max 70) (-> obj root-override trans))
         )
@@ -1594,7 +1600,12 @@
   )
 
 ;; definition for method 43 of type mtn-plat-elevator
-(defmethod elevator-method-43 mtn-plat-elevator ((obj mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points mtn-plat-elevator ((obj mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
         )
@@ -1607,8 +1618,8 @@
 
 ;; definition for method 31 of type mtn-plat-elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 mtn-plat-elevator ((obj mtn-plat-elevator))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-elevator ((obj mtn-plat-elevator))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1703,8 +1714,8 @@
 
 ;; definition for method 31 of type mtn-plat-updown
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 mtn-plat-updown ((obj mtn-plat-updown))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-updown ((obj mtn-plat-updown))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1730,7 +1741,13 @@
 ;; definition for method 11 of type mtn-plat-updown
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-updown ((obj mtn-plat-updown) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -1763,7 +1780,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-24 (logior v1-24 1))
           )
-      (set! (-> a1-7 sync-type) (the-as basic 'sync-eased))
+      (set! (-> a1-7 sync-type) 'sync-eased)
       (set! (-> a1-7 sync-flags) (the-as sync-flags v1-24))
       )
     (set! (-> a1-7 period) (the-as uint 1800))
@@ -1885,6 +1902,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-eject ((obj mtn-plat-eject) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (mtn-plat-eject-method-22 obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1968,8 +1991,8 @@
 
 ;; definition for method 31 of type mtn-plat-long
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 mtn-plat-long ((obj mtn-plat-long))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-long ((obj mtn-plat-long))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -1995,7 +2018,13 @@
 ;; definition for method 11 of type mtn-plat-long
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-plat-long ((obj mtn-plat-long) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -2013,7 +2042,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-13 (logior v1-13 1))
           )
-      (set! (-> a1-5 sync-type) (the-as basic 'sync-linear))
+      (set! (-> a1-5 sync-type) 'sync-linear)
       (set! (-> a1-5 sync-flags) (the-as sync-flags v1-13))
       )
     (set! (-> a1-5 entity) arg0)
@@ -2108,6 +2137,12 @@
 ;; definition for method 11 of type mtn-gate
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-gate ((obj mtn-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -2612,6 +2647,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-aval-rocks ((obj mtn-aval-rocks) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 collide-shape-prim-sphere) (sv-48 collide-shape-prim-sphere) (sv-64 vector))
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -2916,8 +2957,8 @@
 
 ;; definition for method 31 of type mtn-plat-return
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-31 mtn-plat-return ((obj mtn-plat-return))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! mtn-plat-return ((obj mtn-plat-return))
+  "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -2942,7 +2983,13 @@
 
 ;; definition for method 11 of type mtn-plat-return
 (defmethod init-from-entity! mtn-plat-return ((obj mtn-plat-return) (arg0 entity-actor))
-  (base-plat-method-31 obj)
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
@@ -2964,7 +3011,7 @@
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 70) (-> obj root-override trans))
         )
-  (base-plat-method-33 obj)
+  (init-plat! obj)
   (mtn-plat-return-method-37 obj)
   (none)
   )
@@ -3167,6 +3214,12 @@
 ;; definition for method 11 of type mtn-button
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-button ((obj mtn-button) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -3290,6 +3343,12 @@
 ;; definition for method 11 of type mtn-gear-device
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! mtn-gear-device ((obj mtn-gear-device) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (cond
     ((task-complete? *game-info* (game-task mountain-gear))
      (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -3635,7 +3694,9 @@
 
 ;; definition for method 33 of type trans-plat
 ;; WARN: Return type mismatch float vs none.
-(defmethod base-plat-method-33 trans-plat ((obj trans-plat))
+(defmethod init-plat! trans-plat ((obj trans-plat))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (logior! (-> obj flags) 2)
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)

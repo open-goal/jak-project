@@ -34,8 +34,8 @@
   (art-group-get-by-name *level* "skel-plat" (the-as (pointer uint32) #f))
   )
 
-(defmethod base-plat-method-31 plat ((obj plat))
-  "TODO - collision stuff"
+(defmethod init-plat-collision! plat ((obj plat))
+  "TODO - collision stuff for setting up the platform"
   (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
       (set! (-> collision-mesh prim-core collide-as) (collide-spec pusher))
@@ -58,7 +58,9 @@
   (none)
   )
 
-(defmethod base-plat-method-33 plat ((obj plat))
+(defmethod init-plat! plat ((obj plat))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
@@ -70,9 +72,9 @@
 
 (defmethod plat-path-sync plat ((obj plat))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
-       otherwise, [[plat::34]]
+otherwise, [[plat::34]]
 
-       @see [[sync-eased]]"
+@see [[sync-eased]]"
   (cond
     ((logtest? (-> obj path flags) (path-control-flag not-found))
      (go (method-of-object obj plat-idle))
@@ -151,8 +153,14 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! plat ((obj plat) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (base-plat-method-31 obj)
+  (init-plat-collision! obj)
   (process-drawable-from-entity! obj entity)
   (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
   (update-transforms (-> obj root-override))
@@ -166,7 +174,7 @@
       (if (not (logtest? (-> obj fact options) (actor-option loop)))
           (set! v1-15 (logior v1-15 1))
           )
-      (set! (-> params sync-type) (the-as basic 'sync-eased))
+      (set! (-> params sync-type) 'sync-eased)
       (set! (-> params sync-flags) (the-as sync-flags v1-15))
       )
     (set! (-> params period) (the-as uint 1200))
@@ -184,19 +192,19 @@
   (cond
     ((logtest? (-> obj path flags) (path-control-flag not-found))
      (set! (-> obj path-pos) 0.0)
-     (base-plat-method-33 obj)
+     (init-plat! obj)
      (plat-path-sync obj)
      )
     ((> (-> obj sync period) 0)
      (set! (-> obj path-pos) (get-norm! (-> obj sync) 0))
      (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
-     (base-plat-method-33 obj)
+     (init-plat! obj)
      (plat-path-sync obj)
      )
     (else
       (set! (-> obj path-pos) 0.0)
       (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) (-> obj path-pos) 'interp)
-      (base-plat-method-33 obj)
+      (init-plat! obj)
       (plat-path-sync obj)
       )
     )
