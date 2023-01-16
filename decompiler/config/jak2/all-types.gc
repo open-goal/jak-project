@@ -35075,15 +35075,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype form-search-info (structure)
-  ((form           basic              :offset-assert 0)
-   (count          int32              :offset-assert 4)
-   (pos-table      uint32             :offset-assert 8)
-   (actor-position vector  16 :inline :offset-assert 16)  ;; Guessing this an inline postiion vector as it's 16 x (4 x 4)
-   (actor-valid?   symbol  16         :offset-assert 272) ;; Guessing symbol as it looks like an array of bools
-   (index-table    uint32  16         :offset-assert 336) ;; Guessing it's uint32 as it's 16 x 4
-   (dest-pos-table vector  16 :inline :offset-assert 400) ;; Guessing this an inline position vector as it's 16 x (4 x 4)
-   (best-mapping   uint32  16         :offset-assert 656) ;; Guessing it's uint32 as it's 16 x 4
-   (best-cost      float              :offset-assert 720)
+  ((form           basic               :offset-assert 0)
+   (count          int32               :offset-assert 4)
+   (pos-table      uint32              :offset-assert 8)
+   (actor-position vector   16 :inline :offset-assert 16)
+   (actor-valid?   symbol   16         :offset-assert 272)
+   (index-table    vector4w 16         :offset-assert 336) ;; Guessing this based on other fields with this name
+   (dest-pos-table vector   16 :inline :offset-assert 400)
+   (best-mapping   uint32   16         :offset-assert 656) ;; Guessing it's uint32 as it's 16 x 4
+   (best-cost      float               :offset-assert 720)
    )
   :method-count-assert 9
   :size-assert         #x2d4
@@ -35101,9 +35101,9 @@
 
 (deftype hover-formation-control (basic)
   ((search-info    form-search-info :inline :offset-assert 16)
-   (entity         basic                    :offset-assert 740)
-   (anchor-proc    uint64                   :offset-assert 744)
-   (actor-table    uint64           16      :offset-assert 752) ;; Guessing uint64 as it's 16 x 8
+   (entity         entity                   :offset-assert 740)
+   (anchor-proc    handle                   :offset-assert 744)
+   (actor-table    handle           16      :offset-assert 752)
    ;; NOTE These appear to be 2 different sets of flags, some functions (eg method 12 and 19) load from 884 instead
    (flags          uint16                   :offset-assert 880)
    (formation-type uint64                   :offset-assert 888)
@@ -35112,15 +35112,15 @@
    (world-to-zone  matrix           :inline :offset-assert 976)
    (offset         vector           :inline :offset-assert 1040)
    (focus-quat     quaternion       :inline :offset-assert 1056)
-   (notice-dist    float                    :offset-assert 1072)
+   (notice-dist    meters                   :offset-assert 1072)
    (rotation-inc   float                    :offset-assert 1076)
    )
   :method-count-assert 21
   :size-assert         #x438
   :flag-assert         #x1500000438
   (:methods
-    (new (symbol type object object object object object object) _type_ 0)
-    (hover-formation-control-method-9 (_type_ uint) int 9)
+    (new (symbol type none entity float uint128 float handle) _type_ 0)
+    (hover-formation-control-method-9 (_type_ handle) int 9)
     ;; TODO This calls vector-rotate-y as its main function, check what it's rotating to rename
     (hover-formation-control-method-10 (_type_ vector vector float) none 10)
     (hover-formation-control-method-11 (_type_) int 11)
@@ -35129,17 +35129,17 @@
     (hover-formation-control-method-14 (_type_) none 14)
     (hover-formation-control-method-15 (_type_ vector vector) vector 15)
     (hover-formation-control-method-16 (_type_) none 16)
-    (hover-formation-control-method-17 (_type_ _type_) none 17)
-    (hover-formation-control-method-18 (_type_ _type_) none 18)
+    (hover-formation-control-method-17 (_type_ process) int 17)
+    (hover-formation-control-method-18 (_type_ process) int 18)
     (hover-formation-control-method-19 (_type_ uint) int 19)
     (hover-formation-control-method-20 () none 20)
     )
   )
 
 (deftype hover-formation (process)
-  ((formation       basic   :offset-assert 128) ;; The original offset here was 124, all bumped up by 4 to match process parent
-   (path            basic   :offset-assert 132)
-   (formation-timer uint64  :offset-assert 136)
+  ((formation       basic        :offset-assert 128) ;; The original offset here was 124, all bumped up by 4 to match process parent
+   (path            path-control :offset-assert 132)
+   (formation-timer uint64       :offset-assert 136)
    )
   :method-count-assert 16
   :size-assert         #x90
@@ -35147,6 +35147,8 @@
   (:methods
     ;; TODO This should likely be "(relocate (_type_ kheap (pointer uint8)) none :replace 7)", but that currently fails
     (relocate (_type_ int) none :replace 7)
+    ;; TODO This currently suggests a different return type to the parent, overriding
+    (init-from-entity! (_type_ entity-actor) object :replace 11)
     (idle () _type_ :state 14)
     (hover-formation-method-15 () int 15)
     )
@@ -35604,7 +35606,7 @@
 
 (define-extern odd? (function int symbol))
 (define-extern even? (function int symbol))
-(define-extern gen-perms (function int (function hover-formation hover-formation hover-formation none) (function vector object) object symbol))
+(define-extern gen-perms (function int (function int int (function none) none) (function vector object) vector symbol))
 (define-extern test-gen-perms (function int object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
