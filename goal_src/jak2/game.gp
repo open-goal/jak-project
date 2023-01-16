@@ -859,7 +859,12 @@
 "TOMB"
 "TWEAKVAL")
 
+;; intro cutscenes
 (copy-strs "INSHUT" "INVORTEX" "INCSQUAR" "INPRISON")
+
+;; jak ambient
+(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6")
+
 (copy-vag-files "ENG")
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -4254,26 +4259,27 @@
   "throne-vis"
   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; TITLE
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; TITLE
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TITLE.DGO" "title.gd")
+(cgo "TITLE.DGO" "title.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/title/title-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/title/title-obs.gc"
+  )
 
-;; (copy-textures 3091 3090)
+(copy-textures 3091 3090)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-logo-ag"
-;;   "jak-stand-ag"
-;;   "title"
-;;   )
+(copy-gos
+  "jak-logo-ag"
+  "jak-stand-ag"
+  "title"
+  )
+
+(copy-strs "DESCREEN" "TIDINTRO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOA
