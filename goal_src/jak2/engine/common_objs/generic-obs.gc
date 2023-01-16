@@ -1548,6 +1548,13 @@ This commonly includes things such as:
                                              )
           )
     )
+  ;; Note: there's some changes here to skip setting things if arg4 is #f.
+  ;; the address of #f is misaligned, but on ps2 the lq instruction will silently mask.
+  ;; Loading from #f doesn't really make sense, so this was likely just a mistake in the
+  ;; original game.
+  ;; the OpenGOAL compiler uses vmovaps, which will crash on a misaligned load because
+  ;; this has been useful for finding errors. So to prevent this crash, we skip the load
+  ;; if the argument is #f. (some callers of this directly pass #f, so it's not a bug higher up).
   (cond
     ((>= 256 (the-as int arg4))
      (set! (-> self target-joint0) (the-as int arg4))
@@ -1555,7 +1562,10 @@ This commonly includes things such as:
      )
     (else
       (set! (-> self target-joint0) -1)
-      (set! (-> self offset0 quad) (-> arg4 quad))
+      ;; hack, fixed bug in original game
+      (when arg4
+        (set! (-> self offset0 quad) (-> arg4 quad))
+        )
       )
     )
   (cond
@@ -1565,7 +1575,10 @@ This commonly includes things such as:
      )
     (else
       (set! (-> self target-joint1) -1)
-      (set! (-> self offset1 quad) (-> arg5 quad))
+      ;; hack, fixed bug in original game
+      (when arg5
+        (set! (-> self offset1 quad) (-> arg5 quad))
+        )
       )
     )
   (set! (-> self root) (new 'process 'trsqv))

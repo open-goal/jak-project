@@ -16172,7 +16172,7 @@
 
 (deftype collide-prim-core (structure)
   ((world-sphere vector         :inline :offset-assert 0)
-   (collide-as   collide-spec           :offset-assert 16) ;; guessed by decompiler
+   (collide-as   collide-spec           :offset 16) ;; guessed by decompiler
    (collide-with collide-spec           :offset-assert 20)
    (action       collide-action         :offset-assert 24) ;; guessed by decompiler
    (prim-type    prim-type              :offset-assert 28)
@@ -16513,7 +16513,7 @@
     (try-snap-to-surface (_type_ vector float float float) symbol 64)
     (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol 65)
     (step-collison! (_type_ vector vector float int) float 66)
-    (collide-shape-moving-method-67 () none 67)
+    (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none 67)
     )
   )
 
@@ -24479,7 +24479,7 @@
 ;; (define-extern hflip-disp function)
 (define-extern blit-displays (function none))
 (define-extern draw-color-bars (function none))
-;; (define-extern draw-raw-image function)
+(define-extern draw-raw-image (function bucket-id art-group int int level int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; font-data                      ;;
@@ -32312,8 +32312,15 @@
 ;; idle-control                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum ic-cmd
+  :type uint8
+  (restart 0)
+  (play 1)
+  (push 2)
+  )
+
 (deftype idle-control-frame (uint32)
-  ((command  uint8  :offset 0)
+  ((command  ic-cmd :offset 0)
    (anim     uint8  :offset 8)
    (param0   uint8  :offset 16)
    (param1   uint8  :offset 24)
@@ -33723,6 +33730,32 @@
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
+  )
+
+
+(deftype rb-work (structure)
+  ((cquery collide-query :inline)
+   (mat-1 matrix :inline :offset 544)
+   (vec-2 vector :inline :offset 608)
+   (vec-5 vector :inline :offset 624)
+   (vec-3 vector :inline :offset 640)
+   (float-4 float :offset 656)
+   (pat-id pat-surface :offset 660)
+   (rbody rigid-body :offset 664)
+   (prim-id int32 :offset 668)
+   (vec-1 vector :inline :offset 672)
+   (quat-1 quaternion :inline)
+   (vec-8 vector :inline :offset 704)
+   (vec-4 vector :inline :offset 720)
+   (vec-6 vector :inline)
+   (vec-7 vector :inline)
+   (vec-9 vector :inline)
+   (float-2 float :offset 784)
+   (float-3 float)
+   (dt float :offset 792)
+   (float-1 float)
+   (cnt int8 :offset 800)
+   )
   )
 
 (define-extern *rigid-body-work* rigid-body-work)
@@ -44268,35 +44301,42 @@
 ;; title-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype title-control (process)
-  ()
+  ((selected int32 :offset-assert 128)
+   (sprites hud-sprite 2 :inline :offset-assert 144)
+   (sprite-pos vector :inline :offset-assert 272)
+   (sprite-draw uint32 :offset-assert 288)
+   (buffer external-art-buffer 2 :offset-assert 292)
+   (want int32 2 :offset-assert 300)
+   (want-name basic 2 :offset-assert 308)
+   (have int32 2 :offset-assert 316)
+   (draw int32  :offset-assert 324)
+   (draw-name basic :offset-assert 328)
+   (active symbol :offset-assert 332)
+   (spark-time time-frame :offset-assert 336)
+   (gui-id uint32 :offset-assert 344)
+   )
   :method-count-assert 18
   :size-assert         #x15c
   :flag-assert         #x1200e0015c
   ;; Failed to read fields.
   (:methods
-    (title-control-method-9 () none 9)
-    (title-control-method-10 () none 10)
-    (title-control-method-11 () none 11)
-    (title-control-method-12 () none 12)
-    (title-control-method-13 () none 13)
     (startup () _type_ :state 14)
     (wait () _type_ :state 15)
     (idle () _type_ :state 16)
-    (scrap-book () _type_ :state 17)
+    (scrap-book (int) _type_ :state 17)
     )
   )
-|#
 
-;; (define-extern title-plug-lightning function)
-;; (define-extern title-screen-change function)
-;; (define-extern wait-for-press function)
-;; (define-extern title-menu function)
-;; (define-extern title-fade-out function)
-;; (define-extern title-progress function)
-;; (define-extern title-control-init function)
+(define-extern title-plug-lightning (function process-drawable vector cspace none))
+(define-extern title-screen-change (function symbol int symbol int symbol symbol none :behavior title-control))
+(define-extern wait-for-press (function time-frame time-frame symbol symbol))
+(define-extern title-menu (function object :behavior title-control))
+(define-extern title-fade-out (function float none))
+(define-extern title-progress (function symbol none))
+(define-extern title-control-init (function none :behavior title-control))
 (define-extern target-title (state symbol target))
+(define-extern *title-control* (pointer title-control))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-part                      ;;
