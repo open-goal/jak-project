@@ -72,14 +72,14 @@ struct SoundStreamName {
 };
 
 struct RPC_Play_Cmd_Jak2 {
-    u16 rsvd;
-    u16 result;
-    u32 address;
-    u32 section;
-    u32 maxlen;
-    u32 id[4];
-    SoundStreamName names[4];
-    u32 pad[8];
+  u16 rsvd;
+  u16 result;
+  u32 address;
+  u32 section;
+  u32 maxlen;
+  u32 id[4];
+  SoundStreamName names[4];
+  u32 pad[8];
 };
 static_assert(sizeof(RPC_Play_Cmd_Jak2) == 256);
 
@@ -99,7 +99,6 @@ static_assert(sizeof(RPC_Play_Cmd_Jak2) == 256);
   :flag-assert         #x9000000e0
   )
  */
-
 
 constexpr int STR_RPC_RESULT_ERROR = 1;
 constexpr int STR_RPC_RESULT_DONE = 0;

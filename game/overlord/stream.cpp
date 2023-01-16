@@ -337,7 +337,7 @@ void* RPC_PLAY_jak1([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
 /*!
  * This is just copied from Jak 1, and is totally wrong for jak 2.
- * It's enough to stream the STR animation files to the engine.
+ * It does nothing.
  */
 void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   s32 n_messages = size / PLAY_MSG_SIZE;
@@ -369,7 +369,6 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
     n_messages--;
     cmd++;
   }
-
 
   return _cmd;
 }
