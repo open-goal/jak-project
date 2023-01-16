@@ -380,7 +380,7 @@
 
 (defmethod init-proj-settings! juicer-shot ((obj juicer-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   (logior! (-> obj options) (projectile-options proj-options-8000))
   (set! (-> obj attack-mode) 'eco-yellow)
   (set! (-> obj move) juicer-proj-move)
@@ -420,10 +420,10 @@
   (none)
   )
 
-(defskelgroup skel-juicer juicer 0 -1
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+(defskelgroup skel-juicer juicer juicer-lod0-jg -1
+              ((juicer-lod0-mg (meters 20)) (juicer-lod1-mg (meters 40)) (juicer-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5.3)
-              :shadow 4
+              :shadow juicer-shadow-mg
               :origin-joint-index 21
               )
 
@@ -511,7 +511,7 @@
     :move-to-ground #t
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 4
-      (new 'static 'idle-control-frame :command #x1 :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x1 :param1 #x1)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
@@ -782,9 +782,9 @@
   :virtual #t
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (or (and v1-2 (or (= v1-2 (-> self draw art-group data 9)) (= v1-2 (-> self draw art-group data 20))))
+      (when (or (and v1-2 (or (= v1-2 juicer-charge0-ja) (= v1-2 juicer-charge1-ja)))
                 (let ((v1-8 (ja-group)))
-                  (and v1-8 (or (= v1-8 (-> self draw art-group data 8)) (= v1-8 (-> self draw art-group data 23))))
+                  (and v1-8 (or (= v1-8 juicer-patrol0-ja) (= v1-8 juicer-patrol1-ja)))
                   )
                 )
         (ja-no-eval :num! (seek!))
@@ -1050,7 +1050,7 @@
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (and v1-2 (or (= v1-2 (-> self draw art-group data 9)) (= v1-2 (-> self draw art-group data 20))))
+      (when (and v1-2 (or (= v1-2 juicer-charge0-ja) (= v1-2 juicer-charge1-ja)))
         (ja-no-eval :num! (seek!))
         (while (not (ja-done? 0))
           (suspend)
@@ -1263,8 +1263,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 13)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
+    (ja-no-eval :group! juicer-attack0-start-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-start-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1282,8 +1282,8 @@
       (set! (-> v1-29 attack-id) s5-0)
       (let ((s4-0 (-> self clock frame-counter)))
         (until (>= (- (-> self clock frame-counter) s4-0) (seconds 0.25))
-          (ja-no-eval :group! (-> self draw art-group data 14)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1)))
+          (ja-no-eval :group! juicer-attack0-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-ja) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -1305,7 +1305,7 @@
                 )
             (b!
               (not (and (-> self using-turn-anim) (let ((v1-73 (ja-group)))
-                                                    (not (and v1-73 (= v1-73 (-> self draw art-group data 12))))
+                                                    (not (and v1-73 (= v1-73 juicer-attack-turn-ja)))
                                                     )
                         )
                    )
@@ -1313,15 +1313,15 @@
               :delay (empty-form)
               )
             (ja-channel-push! 1 (seconds 0.05))
-            (ja :group! (-> self draw art-group data 12))
+            (ja :group! juicer-attack-turn-ja)
             (b! #t cfg-42 :delay (nop!))
             (label cfg-31)
             (when (and (not (-> self using-turn-anim)) (let ((v1-84 (ja-group)))
-                                                         (not (and v1-84 (= v1-84 (-> self draw art-group data 14))))
+                                                         (not (and v1-84 (= v1-84 juicer-attack0-ja)))
                                                          )
                        )
               (ja-channel-push! 1 (seconds 0.05))
-              (ja :group! (-> self draw art-group data 14))
+              (ja :group! juicer-attack0-ja)
               )
             (label cfg-42)
             (suspend)
@@ -1354,7 +1354,7 @@
   :virtual #t
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (and v1-2 (or (= v1-2 (-> self draw art-group data 9)) (= v1-2 (-> self draw art-group data 20))))
+      (when (and v1-2 (or (= v1-2 juicer-charge0-ja) (= v1-2 juicer-charge1-ja)))
         (ja-no-eval :num! (seek!))
         (while (not (ja-done? 0))
           (suspend)

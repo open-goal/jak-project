@@ -73,10 +73,10 @@
   )
 
 
-(defskelgroup skel-flying-spider flying-spider 0 9
-              ((1 (meters 999999)))
+(defskelgroup skel-flying-spider flying-spider flying-spider-lod0-jg flying-spider-walk0-ja
+              ((flying-spider-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 1.5 0 6)
-              :shadow 4
+              :shadow flying-spider-shadow-mg
               )
 
 (define *flying-spider-nav-enemy-info*
@@ -89,8 +89,8 @@
     :move-to-ground #t
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 4
-      (new 'static 'idle-control-frame :command #x2 :param0 #x1e)
-      (new 'static 'idle-control-frame :command #x1 :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x1 :param1 #x1)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       )
@@ -167,8 +167,8 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 5)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+      (ja-no-eval :group! flying-spider-idle0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -210,8 +210,8 @@
   :code (behavior ()
     (ja-channel-push! 1 0)
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 6)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+      (ja-no-eval :group! flying-spider-idle-flying-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle-flying-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -253,8 +253,8 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 7)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+    (ja-no-eval :group! flying-spider-drop-down-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-drop-down-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -270,8 +270,8 @@
       (set! (-> s5-0 y) 0.0)
       (vector-xz-normalize! s5-0 1.0)
       (forward-up-nopitch->quaternion gp-0 s5-0 *y-vector*)
-      (ja-no-eval :group! (-> self draw art-group data 8)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1)))
+      (ja-no-eval :group! flying-spider-drop-down-land-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-drop-down-land-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -389,11 +389,11 @@
     (until #f
       (when (= (-> self focus-dir) 1)
         (let ((v1-4 (ja-group)))
-          (if (not (and v1-4 (= v1-4 (-> self draw art-group data 19))))
+          (if (not (and v1-4 (= v1-4 flying-spider-turn-left-180-ja)))
               (ja-channel-push! 1 (seconds 0.15))
               )
           )
-        (ja-no-eval :group! (-> self draw art-group data 19) :num! (loop!) :frame-num 0.0)
+        (ja-no-eval :group! flying-spider-turn-left-180-ja :num! (loop!) :frame-num 0.0)
         (while (= (-> self focus-dir) 1)
           (suspend)
           (ja :num! (loop!))
@@ -401,11 +401,11 @@
         )
       (when (= (-> self focus-dir) 2)
         (let ((v1-28 (ja-group)))
-          (if (not (and v1-28 (= v1-28 (-> self draw art-group data 20))))
+          (if (not (and v1-28 (= v1-28 flying-spider-turn-right-180-ja)))
               (ja-channel-push! 1 (seconds 0.15))
               )
           )
-        (ja-no-eval :group! (-> self draw art-group data 20) :num! (loop!) :frame-num 0.0)
+        (ja-no-eval :group! flying-spider-turn-right-180-ja :num! (loop!) :frame-num 0.0)
         (while (= (-> self focus-dir) 2)
           (suspend)
           (ja :num! (loop!))
@@ -473,8 +473,8 @@
   :code (behavior ()
     (until #f
       (ja-channel-push! 1 (seconds 0.15))
-      (ja-no-eval :group! (-> self draw art-group data 5)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+      (ja-no-eval :group! flying-spider-idle0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-idle0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -530,32 +530,32 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 14)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1)) 2.0)
+    (ja-no-eval :group! flying-spider-shoot-start-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-start-ja) frames num-frames) -1)) 2.0)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! (-> self draw art-group data 15)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)) 2.0)
+    (ja-no-eval :group! flying-spider-shoot-right-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-right-ja) frames num-frames) -1)) 2.0)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! (-> self draw art-group data 16)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)) 2.0)
+    (ja-no-eval :group! flying-spider-shoot-left-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-left-ja) frames num-frames) -1)) 2.0)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 2.0))
       )
-    (ja-no-eval :group! (-> self draw art-group data 17)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)) 2.0)
+    (ja-no-eval :group! flying-spider-shoot-stop-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim flying-spider-shoot-stop-ja) frames num-frames) -1)) 2.0)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)

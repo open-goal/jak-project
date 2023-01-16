@@ -55,10 +55,10 @@
   )
 
 
-(defskelgroup skel-mammoth mammoth 0 6
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-mammoth mammoth mammoth-lod0-jg mammoth-walk0-ja
+              ((mammoth-lod0-mg (meters 20)) (mammoth-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 4.5 0 17)
-              :shadow 3
+              :shadow mammoth-shadow-mg
               )
 
 (define *mammoth-nav-enemy-info*
@@ -71,8 +71,8 @@
     :move-to-ground #t
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 4
-      (new 'static 'idle-control-frame :command #x2 :param0 #x1e)
-      (new 'static 'idle-control-frame :command #x1 :anim #x6 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x6 :param0 #x1 :param1 #x1)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       )
@@ -389,8 +389,8 @@
       )
     (ja-channel-push! 1 (seconds 0.1))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 4)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
+      (ja-no-eval :group! mammoth-idle0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-idle0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -427,8 +427,8 @@
     (next-path-index)
     (set-nav-destination)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 5)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+    (ja-no-eval :group! mammoth-idle0-to-walk-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-idle0-to-walk-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -464,12 +464,12 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (let ((v1-2 (ja-group)))
-      (when (not (or (and v1-2 (= v1-2 (-> self draw art-group data 6)))
+      (when (not (or (and v1-2 (= v1-2 mammoth-walk0-ja))
                      (let ((v1-8 (ja-group)))
-                       (and v1-8 (= v1-8 (-> self draw art-group data 7)))
+                       (and v1-8 (= v1-8 mammoth-walk1-ja))
                        )
                      (let ((v1-13 (ja-group)))
-                       (and v1-13 (= v1-13 (-> self draw art-group data 5)))
+                       (and v1-13 (= v1-13 mammoth-idle0-to-walk-ja))
                        )
                      )
                  )
@@ -553,8 +553,8 @@
   :code (behavior ()
     (set-nav-destination)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 8)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1)) 0.8)
+    (ja-no-eval :group! mammoth-walk-fire0-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-walk-fire0-ja) frames num-frames) -1)) 0.8)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -564,8 +564,8 @@
     (until #f
       (mammoth-walk-check-end)
       (set-nav-destination)
-      (ja-no-eval :group! (-> self draw art-group data 6)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)) 0.8)
+      (ja-no-eval :group! mammoth-walk0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-walk0-ja) frames num-frames) -1)) 0.8)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -719,24 +719,24 @@
   :virtual #t
   :code (behavior ()
     (set-nav-destination)
-    (ja-no-eval :group! (-> self draw art-group data 9)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+    (ja-no-eval :group! mammoth-death-right-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-death-right-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! (-> self draw art-group data 10)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) frames num-frames) -1)))
+    (ja-no-eval :group! mammoth-death-right-fall-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-death-right-fall-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! (-> self draw art-group data 11)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+    (ja-no-eval :group! mammoth-death-right-fall-end-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mammoth-death-right-fall-end-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)

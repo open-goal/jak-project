@@ -33,17 +33,17 @@
 
 (defmethod init-proj-settings! spyder-shot ((obj spyder-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   ((the-as (function projectile none) (find-parent-method spyder-shot 31)) obj)
   (set! (-> obj max-speed) 307200.0)
   (set! (-> obj timeout) (seconds 0.267))
   (none)
   )
 
-(defskelgroup skel-spyder spyder 0 -1
-              ((1 (meters 20)) (2 (meters 999999)))
+(defskelgroup skel-spyder spyder spyder-lod0-jg -1
+              ((spyder-lod0-mg (meters 20)) (spyder-lod1-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
-              :shadow 3
+              :shadow spyder-shadow-mg
               :origin-joint-index 28
               )
 
@@ -91,7 +91,7 @@
     :move-to-ground #t
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 4
-      (new 'static 'idle-control-frame :command #x1 :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
@@ -985,7 +985,7 @@
   :code (behavior ()
     (when (not (enemy-method-96 self 2730.6667 #t))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja :group! (-> self draw art-group data 5))
+      (ja :group! spyder-patrol0-ja)
       (ja :num-func num-func-identity :frame-num 0.0)
       (until (enemy-method-96 self 910.2222 #t)
         (ja-blend-eval)
@@ -999,14 +999,14 @@
     0
     (ja-channel-push! 2 (seconds 0.2))
     (let ((f30-0 0.0))
-      (ja-no-eval :group! (-> self draw art-group data 9) :num! (loop!) :frame-num 0.0)
+      (ja-no-eval :group! spyder-shoot-low-ja :num! (loop!) :frame-num 0.0)
       (let ((a0-12 (-> self skel root-channel 1)))
         (set! (-> a0-12 frame-interp 1) f30-0)
         (set! (-> a0-12 frame-interp 0) f30-0)
-        (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
+        (set! (-> a0-12 frame-group) (the-as art-joint-anim spyder-shoot-high-ja))
         (set! (-> a0-12 param 0) 0.0)
         (set! (-> a0-12 frame-num) 0.0)
-        (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-chan)
+        (joint-control-channel-group! a0-12 (the-as art-joint-anim spyder-shoot-high-ja) num-func-chan)
         )
       (let ((a0-14 (handle->process (-> self focus handle))))
         (when a0-14

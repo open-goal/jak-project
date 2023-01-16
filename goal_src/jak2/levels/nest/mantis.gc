@@ -282,7 +282,11 @@
   )
 
 
-(defskelgroup skel-mantis mantis 0 5 ((1 (meters 999999))) :bounds (static-spherem 0 1.5 0 4) :shadow 4)
+(defskelgroup skel-mantis mantis mantis-lod0-jg mantis-idle0-ja
+              ((mantis-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.5 0 4)
+              :shadow mantis-shadow-mg
+              )
 
 (define *mantis-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -294,11 +298,11 @@
     :move-to-ground #t
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 8
-      (new 'static 'idle-control-frame :command #x2 :param0 #x1e)
-      (new 'static 'idle-control-frame :command #x1 :anim #x5 :param0 #x2 :param1 #x5)
-      (new 'static 'idle-control-frame :command #x1 :anim #x7 :param0 #x1 :param1 #x1)
-      (new 'static 'idle-control-frame :command #x1 :anim #x6 :param0 #x1 :param1 #x1)
-      (new 'static 'idle-control-frame :command #x1 :anim #x8 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x2 :param1 #x5)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x7 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x6 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x8 :param0 #x1 :param1 #x1)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
@@ -417,8 +421,8 @@
     (until #f
       (let ((gp-0 (get-rand-int-range self 3 5)))
         (dotimes (s5-0 gp-0)
-          (ja-no-eval :group! (-> self draw art-group data 5)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+          (ja-no-eval :group! mantis-idle0-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle0-ja) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -427,8 +431,8 @@
             )
           )
         )
-      (ja-no-eval :group! (-> self draw art-group data 7)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+      (ja-no-eval :group! mantis-idle0-to-idle1-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle0-to-idle1-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -437,8 +441,8 @@
         )
       (let ((gp-1 (get-rand-int self 3)))
         (dotimes (s5-1 gp-1)
-          (ja-no-eval :group! (-> self draw art-group data 6)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+          (ja-no-eval :group! mantis-idle1-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle1-ja) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -447,8 +451,8 @@
             )
           )
         )
-      (ja-no-eval :group! (-> self draw art-group data 8)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1)))
+      (ja-no-eval :group! mantis-idle1-to-idle0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle1-to-idle0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -571,8 +575,8 @@
     (enemy-method-109 self 1)
     (set! (-> self root-override2 trans y) (-> self base-height))
     (ja-channel-push! 1 0)
-    (ja-no-eval :group! (-> self draw art-group data 25)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-ground-crawl-out-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-ground-crawl-out-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -620,8 +624,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 23)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 23)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-ground-jump-out-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-ground-jump-out-ja) frames num-frames) -1)))
                 )
     (until #f
       (if (< (-> self base-height) (-> self root-override2 trans y))
@@ -661,8 +665,8 @@
     #f
     (label cfg-24)
     (ja-channel-push! 1 (seconds 0.05))
-    (ja-no-eval :group! (-> self draw art-group data 24)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-ground-jump-out-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-ground-jump-out-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -809,8 +813,8 @@
         )
       0
       (dotimes (gp-0 (get-rand-int-range self 1 2))
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+        (ja-no-eval :group! mantis-idle0-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle0-ja) frames num-frames) -1)))
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -888,8 +892,8 @@
         )
       0
       (dotimes (gp-2 (get-rand-int-range self 3 5))
-        (ja-no-eval :group! (-> self draw art-group data 9)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+        (ja-no-eval :group! mantis-run0-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-run0-ja) frames num-frames) -1)))
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -942,8 +946,8 @@
       (set! (-> v1-2 target-speed) 81920.0)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 29)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 29)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-attack0-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-attack0-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -959,8 +963,8 @@
       (set! (-> v1-34 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 30)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 30)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-attack0-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-attack0-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1003,8 +1007,8 @@
       (set! (-> v1-0 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 31)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 31)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-attack1-wind-up-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-attack1-wind-up-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1034,8 +1038,8 @@
       (set! (-> v1-41 target-speed) 286720.0)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 32)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 32)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-attack1-go-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-attack1-go-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1051,8 +1055,8 @@
       (set! (-> v1-73 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 33)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-attack1-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-attack1-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1091,8 +1095,8 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data 34)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-roll-right-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-roll-right-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1104,8 +1108,8 @@
       (set! (-> v1-33 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 35)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 35)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-roll-right-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-roll-right-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1157,8 +1161,8 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.067))
-    (ja-no-eval :group! (-> self draw art-group data 37)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 37)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-hop-left-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-hop-left-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1170,8 +1174,8 @@
       (set! (-> v1-34 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
-    (ja-no-eval :group! (-> self draw art-group data 38)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 38)) frames num-frames) -1)))
+    (ja-no-eval :group! mantis-hop-left-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-hop-left-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1259,8 +1263,8 @@
             )
           )
         (dotimes (gp-1 (get-rand-int-range self 2 4))
-          (ja-no-eval :group! (-> self draw art-group data 5)
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+          (ja-no-eval :group! mantis-idle0-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim mantis-idle0-ja) frames num-frames) -1)))
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -1833,7 +1837,7 @@
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod enemy-method-92 mantis ((obj mantis) (arg0 int) (arg1 nav-poly))
   "TODO - nav-poly is a guess
-       @abstract"
+@abstract"
   (let ((v1-0 arg0))
     (when (or (zero? v1-0) (= v1-0 1) (= v1-0 2) (= v1-0 3))
       (let ((a0-4 obj))

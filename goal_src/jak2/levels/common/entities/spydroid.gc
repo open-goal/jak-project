@@ -472,9 +472,16 @@
     )
   )
 
-(defskelgroup skel-spydroid spydroid 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4) :shadow 2)
+(defskelgroup skel-spydroid spydroid spydroid-lod0-jg spydroid-idle-ja
+              ((spydroid-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow spydroid-shadow-mg
+              )
 
-(defskelgroup skel-spydroid-exploding spydroid 18 20 ((19 (meters 999999))) :bounds (static-spherem 0 0 0 12))
+(defskelgroup skel-spydroid-exploding spydroid spydroid-exploding-lod0-jg spydroid-exploding-idle-ja
+              ((spydroid-exploding-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 12)
+              )
 
 (define *spydroid-exploder-params*
   (new 'static 'joint-exploder-static-params
@@ -534,8 +541,8 @@
     :move-to-ground #f
     :hover-if-no-ground #f
     :idle-anim-script (new 'static 'array idle-control-frame 4
-      (new 'static 'idle-control-frame :command #x2 :param0 #x1e)
-      (new 'static 'idle-control-frame :command #x1 :anim #x3 :param0 #x64 :param1 #x64)
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x3 :param0 #x64 :param1 #x64)
       (new 'static 'idle-control-frame)
       (new 'static 'idle-control-frame)
       )
@@ -957,7 +964,7 @@
       (set! (-> self attack-id) a0-10)
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (ja :group! (-> self draw art-group data 6) :num! min)
+    (ja :group! spydroid-attack-jump-ja :num! min)
     (none)
     )
   :exit (behavior ()
@@ -981,7 +988,7 @@
         )
     (let ((v1-9 (ja-group)))
       (cond
-        ((and v1-9 (= v1-9 (-> self draw art-group data 6)))
+        ((and v1-9 (= v1-9 spydroid-attack-jump-ja))
          (ja :num! (seek!))
          (when (ja-done? 0)
            (let ((v1-20 (-> self nav)))
@@ -996,11 +1003,11 @@
              (set! (-> v1-24 turning-acceleration) 0.0)
              )
            0
-           (ja :group! (-> self draw art-group data 7) :num! min)
+           (ja :group! spydroid-attack-land-ja :num! min)
            )
          )
         ((let ((v1-32 (ja-group)))
-           (and v1-32 (= v1-32 (-> self draw art-group data 7)))
+           (and v1-32 (= v1-32 spydroid-attack-land-ja))
            )
          (ja :num! (seek!))
          (cond
@@ -1014,27 +1021,23 @@
             )
            ((< 0.0 (-> self diff-angle))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 17) :num! min)
+            (ja :group! spydroid-turn-left-ja :num! min)
             )
            (else
              (ja-channel-push! 1 (seconds 0.1))
-             (ja :group! (-> self draw art-group data 16) :num! min)
+             (ja :group! spydroid-turn-right-ja :num! min)
              )
            )
          )
         ((let ((v1-58 (ja-group)))
-           (and (and v1-58 (= v1-58 (-> self draw art-group data 17)))
-                (and (-> self desire-turn) (< 0.0 (-> self diff-angle)))
-                )
+           (and (and v1-58 (= v1-58 spydroid-turn-left-ja)) (and (-> self desire-turn) (< 0.0 (-> self diff-angle))))
            )
          (ja :num! (loop! (* 0.0019975142 (-> self diff-angle))))
          )
         (else
           (let ((v1-68 (ja-group)))
             (cond
-              ((and (and v1-68 (= v1-68 (-> self draw art-group data 16)))
-                    (and (-> self desire-turn) (< (-> self diff-angle) 0.0))
-                    )
+              ((and (and v1-68 (= v1-68 spydroid-turn-right-ja)) (and (-> self desire-turn) (< (-> self diff-angle) 0.0)))
                (ja :num! (loop! (* -0.0019975142 (-> self diff-angle))))
                )
               ((-> self hit-target)
@@ -1104,9 +1107,9 @@
       ((< 0.0 (-> self diff-angle))
        (let ((v1-43 (ja-group)))
          (cond
-           ((not (and v1-43 (= v1-43 (-> self draw art-group data 17))))
+           ((not (and v1-43 (= v1-43 spydroid-turn-left-ja)))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 17) :num! min)
+            (ja :group! spydroid-turn-left-ja :num! min)
             )
            (else
              (ja :num! (loop! (* 0.0019975142 (-> self diff-angle))))
@@ -1117,9 +1120,9 @@
       (else
         (let ((v1-55 (ja-group)))
           (cond
-            ((not (and v1-55 (= v1-55 (-> self draw art-group data 16))))
+            ((not (and v1-55 (= v1-55 spydroid-turn-right-ja)))
              (ja-channel-push! 1 (seconds 0.1))
-             (ja :group! (-> self draw art-group data 16) :num! min)
+             (ja :group! spydroid-turn-right-ja :num! min)
              )
             (else
               (ja :num! (loop! (* -0.0019975142 (-> self diff-angle))))
@@ -1161,9 +1164,9 @@
       ((< 0.0 (-> self diff-angle))
        (let ((v1-27 (ja-group)))
          (cond
-           ((not (and v1-27 (= v1-27 (-> self draw art-group data 17))))
+           ((not (and v1-27 (= v1-27 spydroid-turn-left-ja)))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 17) :num! min)
+            (ja :group! spydroid-turn-left-ja :num! min)
             )
            (else
              (ja :num! (loop! (* 0.0019975142 (-> self diff-angle))))
@@ -1174,9 +1177,9 @@
       (else
         (let ((v1-39 (ja-group)))
           (cond
-            ((not (and v1-39 (= v1-39 (-> self draw art-group data 16))))
+            ((not (and v1-39 (= v1-39 spydroid-turn-right-ja)))
              (ja-channel-push! 1 (seconds 0.1))
-             (ja :group! (-> self draw art-group data 16) :num! min)
+             (ja :group! spydroid-turn-right-ja :num! min)
              )
             (else
               (ja :num! (loop! (* -0.0019975142 (-> self diff-angle))))
@@ -1219,9 +1222,9 @@
       ((< 0.0 (-> self diff-angle))
        (let ((v1-27 (ja-group)))
          (cond
-           ((not (and v1-27 (= v1-27 (-> self draw art-group data 17))))
+           ((not (and v1-27 (= v1-27 spydroid-turn-left-ja)))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 17) :num! min)
+            (ja :group! spydroid-turn-left-ja :num! min)
             )
            (else
              (ja :num! (loop! (* 0.0019975142 (-> self diff-angle))))
@@ -1232,9 +1235,9 @@
       (else
         (let ((v1-39 (ja-group)))
           (cond
-            ((not (and v1-39 (= v1-39 (-> self draw art-group data 16))))
+            ((not (and v1-39 (= v1-39 spydroid-turn-right-ja)))
              (ja-channel-push! 1 (seconds 0.1))
-             (ja :group! (-> self draw art-group data 16) :num! min)
+             (ja :group! spydroid-turn-right-ja :num! min)
              )
             (else
               (ja :num! (loop! (* -0.0019975142 (-> self diff-angle))))
@@ -1276,9 +1279,9 @@
       ((< 0.0 (-> self diff-angle))
        (let ((v1-23 (ja-group)))
          (cond
-           ((not (and v1-23 (= v1-23 (-> self draw art-group data 17))))
+           ((not (and v1-23 (= v1-23 spydroid-turn-left-ja)))
             (ja-channel-push! 1 (seconds 0.1))
-            (ja :group! (-> self draw art-group data 17) :num! min)
+            (ja :group! spydroid-turn-left-ja :num! min)
             )
            (else
              (ja :num! (loop! (* 0.0019975142 (-> self diff-angle))))
@@ -1289,9 +1292,9 @@
       (else
         (let ((v1-35 (ja-group)))
           (cond
-            ((not (and v1-35 (= v1-35 (-> self draw art-group data 16))))
+            ((not (and v1-35 (= v1-35 spydroid-turn-right-ja)))
              (ja-channel-push! 1 (seconds 0.1))
-             (ja :group! (-> self draw art-group data 16) :num! min)
+             (ja :group! spydroid-turn-right-ja :num! min)
              )
             (else
               (ja :num! (loop! (* -0.0019975142 (-> self diff-angle))))
