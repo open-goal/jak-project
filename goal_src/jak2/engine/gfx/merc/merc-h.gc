@@ -5,6 +5,26 @@
 ;; name in dgo: merc-h
 ;; dgos: ENGINE, GAME
 
+;; NOTE - for default-menu
+(define-extern merc-stats (function none))
+
+;; NOTE - for process-drawable
+(define-extern merc-blend-shape (function process-drawable object))
+(define-extern merc-eye-anim (function process-drawable none))
+
+(defenum effect-bits
+  :type uint8
+  :bitfield #t
+  (texscroll 0)
+  (no-fade-out 1)
+  (ripple 2)
+  (emerc 3) ;; envmap??
+  (ignore-tod-for-envmap-tint 4) ;; color thing
+  (force-mercneric 5) ;; some mercneric-only effect
+  (cross-fade 6)
+  (ignore-alpha 7)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype ripple-merc-query (inline-array-class)
@@ -18,6 +38,8 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+
 (set! (-> ripple-merc-query heap-base) (the-as uint 16))
 
 (deftype merc-byte-header (structure)
@@ -41,6 +63,7 @@
   :flag-assert         #x900000017
   )
 
+
 (deftype merc-fragment (structure)
   ((header merc-byte-header :inline :offset-assert   0)
    (rest   uint8            1       :offset-assert  23)
@@ -49,9 +72,10 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (login-adgifs (_type_) none 9)
+    (login-adgifs (_type_) merc-fragment 9)
     )
   )
+
 
 (deftype merc-vtx (structure)
   ((mat-0 uint8  :offset-assert   0)
@@ -72,6 +96,7 @@
   :flag-assert         #x90000000c
   )
 
+
 (deftype merc-fp-header (structure)
   ((x-add            float  :offset-assert   0)
    (y-add            float  :offset-assert   4)
@@ -86,6 +111,8 @@
   :flag-assert         #x900000010
   )
 
+
+;; WARN: Return type mismatch int vs merc-fp-header.
 (defun merc-fragment-fp-data ((arg0 merc-fragment))
   (the-as merc-fp-header (+ (the-as uint arg0) (* (-> arg0 header mm-quadword-fp-off) 16)))
   )
@@ -100,6 +127,7 @@
   :flag-assert         #x900000002
   )
 
+
 (deftype merc-fragment-control (structure)
   ((unsigned-four-count uint8                          :offset-assert   0)
    (lump-four-count     uint8                          :offset-assert   1)
@@ -112,6 +140,7 @@
   :flag-assert         #x900000004
   )
 
+
 (deftype merc-blend-data (structure)
   ((int8-data int8 :dynamic :offset-assert   0)
    )
@@ -119,6 +148,7 @@
   :size-assert         #x0
   :flag-assert         #x900000000
   )
+
 
 (deftype merc-blend-ctrl (structure)
   ((blend-vtx-count     uint8          :offset-assert   0)
@@ -130,16 +160,18 @@
   :flag-assert         #x900000002
   )
 
+
 (deftype mei-envmap-tint (structure)
   ((fade0 float   :offset-assert   0)
    (fade1 float   :offset-assert   4)
-   (tint  uint32  :offset-assert   8)
+   (tint  rgba    :offset-assert   8)
    (dummy int32   :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype mei-texture-scroll (structure)
   ((max-dist     float   :offset-assert   0)
@@ -155,6 +187,7 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype mei-ripple (structure)
   ((x-base    float  :offset-assert   0)
    (z-base    float  :offset-assert   4)
@@ -165,6 +198,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype merc-extra-info (structure)
   ((envmap-tint-offset    uint8    :offset-assert   0)
@@ -178,13 +212,14 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype merc-effect (structure)
   ((frag-geo            merc-fragment          :offset-assert   0)
    (frag-ctrl           merc-fragment-control  :offset-assert   4)
    (blend-data          merc-blend-data        :offset-assert   8)
    (blend-ctrl          merc-blend-ctrl        :offset-assert  12)
    (merc-effect-version uint8                  :offset-assert  16)
-   (effect-bits         uint8                  :offset-assert  17)
+   (effect-bits         effect-bits            :offset-assert  17)
    (frag-count          uint16                 :offset-assert  18)
    (blend-frag-count    uint16                 :offset-assert  20)
    (tri-count           uint16                 :offset-assert  22)
@@ -200,6 +235,7 @@
     (login-adgifs (_type_) none 9)
     )
   )
+
 
 (deftype merc-eye-ctrl (structure)
   ((eye-slot           int8                   :offset-assert   0)
@@ -218,6 +254,7 @@
   :flag-assert         #x9000001f0
   )
 
+
 (deftype merc-eye-anim-frame (structure)
   ((pupil-trans-x int8    :offset-assert   0)
    (pupil-trans-y int8    :offset-assert   1)
@@ -233,6 +270,7 @@
   :flag-assert         #x900000008
   )
 
+
 (deftype merc-eye-anim-block (structure)
   ((max-frame int16                                :offset-assert   0)
    (data      merc-eye-anim-frame :inline :dynamic :offset-assert   8)
@@ -242,6 +280,7 @@
   :flag-assert         #x900000008
   )
 
+
 (deftype texture-usage-group (structure)
   ((data texture-masks 7 :inline :offset-assert   0)
    )
@@ -249,6 +288,7 @@
   :size-assert         #x150
   :flag-assert         #x900000150
   )
+
 
 (deftype merc-ctrl-header (structure)
   ((xyz-scale              float                        :offset-assert   0)
@@ -304,9 +344,10 @@
   :flag-assert         #x900000080
   )
 
+
 (deftype merc-ctrl (art-element)
   ((num-joints int32                             :offset         20)
-   (seg-table  basic                             :offset         24)
+   (seg-table  (array uint64)                    :offset         24)
    (header     merc-ctrl-header :inline          :offset-assert  32)
    (effect     merc-effect      :inline :dynamic :offset-assert 160)
    )
@@ -314,6 +355,7 @@
   :size-assert         #xa0
   :flag-assert         #xd000000a0
   )
+
 
 (deftype merc-vu1-low-mem (structure)
   ((tri-strip-gif gs-gif-tag :inline :offset-assert   0)
@@ -327,18 +369,20 @@
   :flag-assert         #x900000080
   )
 
+
 (deftype emerc-vu1-low-mem (structure)
-  ((tri-strip-gif qword  :inline   :offset-assert   0)
-   (ad-gif        qword  :inline   :offset-assert  16)
-   (hvdf-offset   vector :inline   :offset-assert  32)
-   (perspective   vector 4 :inline :offset-assert  48)
-   (fog           vector :inline   :offset-assert 112)
-   (unperspect    vector :inline   :offset-assert 128)
+  ((tri-strip-gif gs-gif-tag :inline   :offset-assert   0)
+   (ad-gif        gs-gif-tag :inline   :offset-assert  16)
+   (hvdf-offset   vector     :inline   :offset-assert  32)
+   (perspective   vector     4 :inline :offset-assert  48)
+   (fog           vector     :inline   :offset-assert 112)
+   (unperspect    vector     :inline   :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
+
 
 (deftype ripple-wave (structure)
   ((scale float  :offset-assert   0)
@@ -356,6 +400,7 @@
   :flag-assert         #x90000001c
   )
 
+
 (deftype ripple-wave-set (basic)
   ((count        int32                 :offset-assert   4)
    (converted    basic                 :offset-assert   8)
@@ -368,6 +413,7 @@
   :flag-assert         #x900000088
   )
 
+
 (deftype ripple-control (basic)
   ((global-scale            float              :offset-assert   4)
    (last-frame-scale        float              :offset-assert   8)
@@ -379,13 +425,14 @@
    (send-query              symbol             :offset-assert  32)
    (query                   ripple-merc-query  :offset-assert  36)
    )
-   (:methods
-    (new (symbol type) _type_ 0)
-    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
   )
+
 
 (defmethod new ripple-control ((allocation symbol) (type-to-make type))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))

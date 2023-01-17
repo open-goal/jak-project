@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/goos/Reader.h"
+#include "common/goos/TextDB.h"
 #include "common/type_system/TypeSystem.h"
-#include <common/goos/TextDB.h>
 
 #include "decompiler/Disasm/Register.h"
 

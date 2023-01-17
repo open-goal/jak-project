@@ -102,6 +102,7 @@ const std::unordered_map<
         {".pw.sra", &Compiler::compile_asm_pw_sra},
 
         {".por", &Compiler::compile_asm_por},
+        {".pxor", &Compiler::compile_asm_pxor},
         {".pnor", &Compiler::compile_asm_pnor},
         {".pand", &Compiler::compile_asm_pand},
 
@@ -125,6 +126,7 @@ const std::unordered_map<
         {".pcpyud", &Compiler::compile_asm_pcpyud},
         {".pceqw", &Compiler::compile_asm_pceqw},
         {".ppach", &Compiler::compile_asm_ppach},
+        {".ppacb", &Compiler::compile_asm_ppacb},
         {".psubw", &Compiler::compile_asm_psubw},
 
         // BLOCK FORMS
@@ -138,6 +140,7 @@ const std::unordered_map<
 
         // COMPILER CONTROL
         {"repl-help", &Compiler::compile_repl_help},
+        {"repl-keybinds", &Compiler::compile_repl_keybinds},
         {":clear", &Compiler::compile_repl_clear_screen},
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
@@ -175,6 +178,7 @@ const std::unordered_map<
         // DEBUGGING
         {"dbs", &Compiler::compile_dbs},
         {"dbg", &Compiler::compile_dbg},
+        {"dbgc", &Compiler::compile_dbg_and_continue},
         {":cont", &Compiler::compile_cont},
         {":stop", &Compiler::compile_stop},
         {":break", &Compiler::compile_break},

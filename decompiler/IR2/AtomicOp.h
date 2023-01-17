@@ -131,6 +131,7 @@ class SimpleAtom {
     INTEGER_CONSTANT,
     SYMBOL_PTR,
     SYMBOL_VAL,
+    SYMBOL_VAL_PTR,
     EMPTY_LIST,
     STATIC_ADDRESS,
     INVALID
@@ -140,6 +141,7 @@ class SimpleAtom {
   static SimpleAtom make_var(const RegisterAccess& var);
   static SimpleAtom make_sym_ptr(const std::string& name);
   static SimpleAtom make_sym_val(const std::string& name);
+  static SimpleAtom make_sym_val_ptr(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
   static SimpleAtom make_static_address(int static_label_id);
@@ -174,6 +176,7 @@ class SimpleAtom {
   bool is_sym_val(const std::string& str) const {
     return m_kind == Kind::SYMBOL_VAL && m_string == str;
   }
+  bool is_sym_val_ptr() const { return m_kind == Kind::SYMBOL_VAL_PTR; };
   bool is_empty_list() const { return m_kind == Kind::EMPTY_LIST; };
   bool is_static_addr() const { return m_kind == Kind::STATIC_ADDRESS; };
   Kind get_kind() const { return m_kind; }
@@ -184,7 +187,7 @@ class SimpleAtom {
   SimpleExpression as_expr() const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
   const std::string& get_str() const {
-    ASSERT(is_sym_ptr() || is_sym_val());
+    ASSERT(is_sym_ptr() || is_sym_val() || is_sym_val_ptr());
     return m_string;
   }
   void mark_as_float();
@@ -255,7 +258,8 @@ class SimpleExpression {
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
     VECTOR_4_DOT,
-    VECTOR_LENGTH,  // jak 2 only.
+    VECTOR_LENGTH,            // jak 2 only.
+    VECTOR_PLUS_FLOAT_TIMES,  // jak 2 only.
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };
@@ -279,6 +283,11 @@ class SimpleExpression {
                    const SimpleAtom& arg0,
                    const SimpleAtom& arg1,
                    const SimpleAtom& arg2);
+  SimpleExpression(Kind kind,
+                   const SimpleAtom& arg0,
+                   const SimpleAtom& arg1,
+                   const SimpleAtom& arg2,
+                   const SimpleAtom& arg3);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   std::string to_string(const Env& env) const;
   bool operator==(const SimpleExpression& other) const;
@@ -300,7 +309,7 @@ class SimpleExpression {
 
  private:
   Kind m_kind = Kind::INVALID;
-  SimpleAtom m_args[3];
+  SimpleAtom m_args[4];
   s8 n_args = -1;
 };
 
@@ -507,6 +516,8 @@ class StoreOp : public AtomicOp {
   void collect_vars(RegAccessSet& vars) const override;
   const SimpleExpression& addr() const { return m_addr; }
   const SimpleAtom& value() const { return m_value; }
+  Kind kind() const { return m_kind; }
+  int store_size() const { return m_size; }
 
  private:
   int m_size;

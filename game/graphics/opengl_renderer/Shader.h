@@ -3,11 +3,12 @@
 #include <string>
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
 class Shader {
  public:
   static constexpr char shader_folder[] = "game/graphics/opengl_renderer/shaders/";
-  Shader(const std::string& shader_name);
+  Shader(const std::string& shader_name, GameVersion version);
   Shader() = default;
   void activate() const;
   bool okay() const { return m_is_okay; }
@@ -51,7 +52,7 @@ enum class ShaderId {
 
 class ShaderLibrary {
  public:
-  ShaderLibrary();
+  ShaderLibrary(GameVersion version);
   Shader& operator[](ShaderId id) { return m_shaders[(int)id]; }
   Shader& at(ShaderId id) { return m_shaders[(int)id]; }
 

@@ -380,7 +380,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "game/assets/game_text.gp"
+(defstep :in "game/assets/jak1/game_text.gp"
   :tool 'text
   :out '("$OUT/iso/0COMMON.TXT"
          "$OUT/iso/1COMMON.TXT"
@@ -391,7 +391,7 @@
          "$OUT/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/game_subtitle.gp"
+(defstep :in "game/assets/jak1/game_subtitle.gp"
   :tool 'subtitle
   :out '("$OUT/iso/0SUBTIT.TXT"
          "$OUT/iso/3SUBTIT.TXT"
@@ -1894,7 +1894,7 @@
  "collide/collide-shape.gc"
  "collide/collide-shape-rider.gc"
  "collide/collide.gc"
- "collide/collide-planes.gc"
+;;  "collide/collide-planes.gc"
  "gfx/merc/merc-death.gc"
  "common-obs/water-h.gc"
  "camera/camera.gc"
@@ -2039,9 +2039,11 @@
 ;; Custom or Modified Code
 (goal-src "pc/features/autosplit-h.gc")
 (goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h")
+(goal-src "pc/features/speedruns-h.gc")
+(goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
-(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h")
+(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")

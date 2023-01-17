@@ -9,7 +9,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
+DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
@@ -278,13 +278,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
-  if (state.fogging_enable) {
-    //    ASSERT(false);
-  }
+
   if (state.aa_enable) {
-    ASSERT(false);
-  }
-  if (state.use_uv) {
     ASSERT(false);
   }
   if (state.ctxt) {
@@ -311,11 +306,10 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   if (!tex) {
     // TODO Add back
     if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
-      fmt::print("Failed to find texture at {}, using random (eye zone)\n", state.texture_base_ptr);
-
+      lg::warn("Failed to find texture at {}, using random (eye zone)", state.texture_base_ptr);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+      lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
@@ -572,16 +566,21 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::XYZF2:
               handle_xyzf2_packed(data + offset, render_state, prof);
               break;
+            case GifTag::RegisterDescriptor::XYZ2:
+              handle_xyz2_packed(data + offset, render_state, prof);
+              break;
             case GifTag::RegisterDescriptor::PRIM:
               handle_prim_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
               break;
+            case GifTag::RegisterDescriptor::UV:
+              handle_uv_packed(data + offset);
+              break;
             default:
-              fmt::print("Register {} is not supported in packed mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -603,9 +602,8 @@ void DirectRenderer::render_gif(const u8* data,
               handle_xyzf2(register_data, render_state, prof);
               break;
             default:
-              fmt::print("Register {} is not supported in reglist mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in reglist mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 8;  // PACKED = quadwords
         }
@@ -769,6 +767,15 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.Q, data + 8, 4);
 }
 
+void DirectRenderer::handle_uv_packed(const u8* data) {
+  u32 u, v;
+  memcpy(&u, data, 4);
+  memcpy(&v, data + 4, 4);
+  m_prim_building.st_reg.x() = u;
+  m_prim_building.st_reg.y() = v;
+  m_prim_building.Q = 16.f;
+}
+
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   // TODO update Q from st.
   m_prim_building.rgba_reg[0] = data[0];
@@ -790,9 +797,25 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, !adc);
 }
 
+void DirectRenderer::handle_xyz2_packed(const u8* data,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
+  u32 x, y;
+  memcpy(&x, data, 4);
+  memcpy(&y, data + 4, 4);
+
+  u64 upper;
+  memcpy(&upper, data + 8, 8);
+  u32 z = upper;
+
+  bool adc = upper & (1ull << 47);
+  handle_xyzf2_common(x << 16, y << 16, z, 0, render_state, prof, !adc);
+}
+
+PerGameVersion<u32> normal_zbp = {448, 304};
 void DirectRenderer::handle_zbuf1(u64 val,
                                   SharedRenderState* render_state,
                                   ScopedProfilerNode& prof) {
@@ -800,7 +823,7 @@ void DirectRenderer::handle_zbuf1(u64 val,
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   ASSERT(x.psm() == TextureFormat::PSMZ24);
-  ASSERT(x.zbp() == 448);
+  ASSERT(x.zbp() == normal_zbp[render_state->version]);
 
   bool write = !x.zmsk();
   //  ASSERT(write);
@@ -925,9 +948,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          SharedRenderState* render_state,
                                          ScopedProfilerNode& prof,
                                          bool advance) {
-  if (m_my_id == BucketId::MERC_TFRAG_TEX_LEVEL0) {
-    // fmt::print("0x{:x}, 0x{:x}, 0x{:x}\n", x, y, z);
-  }
   if (m_prim_buffer.is_full()) {
     lg::warn("Buffer wrapped in {} ({} verts, {} bytes)", m_name, m_ogl.vertex_buffer_max_verts,
              m_prim_buffer.vert_count * sizeof(Vertex));
@@ -954,9 +974,14 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner1_rgba = m_prim_building.building_rgba[0];
         auto& corner2_vert = m_prim_building.building_vert[1];
         auto& corner2_rgba = m_prim_building.building_rgba[1];
+        auto& corner1_stq = m_prim_building.building_stq[0];
+        auto& corner2_stq = m_prim_building.building_stq[1];
+
         // should use most recent vertex z.
         math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
         math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
+        math::Vector<float, 3> corner3_stq{corner1_stq[0], corner2_stq[1], corner2_stq[2]};
+        math::Vector<float, 3> corner4_stq{corner2_stq[0], corner1_stq[1], corner2_stq[2]};
 
         if (m_prim_gl_state.gouraud_enable) {
           // I'm not really sure what the GS does here.
@@ -965,12 +990,12 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, {}, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, {}, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, {}, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, {}, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, corner3_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, corner4_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -1065,7 +1090,7 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, true);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, true);
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {
@@ -1122,7 +1147,7 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
   v.rgba = rgba;
   v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
   v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
-  v.xyzf[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[2] = (float)vert[2] / (float)0xffffff;
   v.xyzf[3] = (float)vert[3];
   v.stq = st;
   v.tex_unit = unit;

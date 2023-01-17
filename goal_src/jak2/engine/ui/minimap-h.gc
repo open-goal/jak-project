@@ -4,6 +4,7 @@
 ;; name: minimap-h.gc
 ;; name in dgo: minimap-h
 ;; dgos: ENGINE, GAME
+
 (defenum minimap-flag
   :bitfield #t
   :type uint16
@@ -99,8 +100,11 @@
   (ruins-hut 68)
   (forest-samos 69)
   (metalhead 70)
-
   )
+
+(declare-type process-drawable process)
+(declare-type minimap structure)
+(define-extern *minimap* minimap)
 
 ;; DECOMP BEGINS
 
@@ -113,14 +117,16 @@
    (scale            float                 :offset-assert  28)
    (color            rgba                  :offset-assert  32)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
 
+
 (deftype connection-minimap (connection-pers)
   ((handle            handle                     :offset          8)
-   (position          vector                     :offset         16)
+   (position          object                     :offset         16)
    (alpha             float                      :offset         20)
    (class             minimap-class-node         :offset         24)
    (flags             minimap-flag               :offset         28)
@@ -134,6 +140,7 @@
   :flag-assert         #x900000050
   )
 
+
 (deftype engine-minimap (engine-pers)
   ((alive-list-override connection-minimap  :offset  24)
    (dead-list-override  connection-minimap  :offset  28)
@@ -142,6 +149,7 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   )
+
 
 (deftype minimap-trail (structure)
   ((used-by        connection-minimap               :offset-assert   0)
@@ -157,22 +165,24 @@
   :size-assert         #xd0
   :flag-assert         #xb000000d0
   (:methods
-    (minimap-trail-method-9 () none 9)
-    (minimap-trail-method-10 () none 10)
+    (get-distance-with-path (_type_ vector vector) float 9)
+    (reset (_type_) none 10)
     )
   )
 
+
 (deftype minimap-draw-work (structure)
-  ((buf           basic              :offset-assert   0)
-   (justify-right basic              :offset-assert   4)
-   (draw-pos      vector4w :inline   :offset-assert  16)
-   (mat           matrix   :inline   :offset-assert  32)
-   (corner        vector4w 4 :inline :offset-assert  96)
+  ((buf           dma-buffer           :offset-assert   0)
+   (justify-right symbol               :offset-assert   4)
+   (draw-pos      vector4w   :inline   :offset-assert  16)
+   (mat           matrix     :inline   :offset-assert  32)
+   (corner        vector     4 :inline :offset-assert  96)
    )
   :method-count-assert 9
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
+
 
 (deftype minimap (structure)
   ((draw-tmpl        dma-gif-packet :inline   :offset-assert   0)
@@ -184,20 +194,20 @@
    (color            vector4w       :inline   :offset-assert 192)
    (offset           vector         :inline   :offset-assert 208)
    (minimap-corner   vector         :inline   :offset-assert 224)
-   (last-name        basic                    :offset-assert 240)
+   (last-name        string                   :offset-assert 240)
    (last-tex         basic                    :offset-assert 244)
    (target-inv-scale float                    :offset-assert 248)
    (map-bits         uint64                   :offset-assert 256)
-   (level            basic                    :offset-assert 264)
-   (ctywide          basic                    :offset-assert 268)
+   (level            level                    :offset-assert 264)
+   (ctywide          level                    :offset-assert 268)
    (inv-scale        float                    :offset        212)
    (fade             float                    :offset        220)
-   (engine           basic                    :offset-assert 272)
+   (engine           engine-minimap           :offset-assert 272)
    (engine-key       uint32                   :offset-assert 276)
    (trail            minimap-trail  6 :inline :offset-assert 288)
-   (race-tex         basic                    :offset-assert 1536)
+   (race-tex         texture                  :offset-assert 1536)
    (race-scale       float                    :offset-assert 1540)
-   (race-level       basic                    :offset-assert 1544)
+   (race-level       level                    :offset-assert 1544)
    (sprite2-tmpl     dma-gif-packet :inline   :offset-assert 1552)
    (race-corner      vector         :inline   :offset-assert 1584)
    (goal-time        float                    :offset-assert 1600)
@@ -207,25 +217,24 @@
   :size-assert         #x648
   :flag-assert         #x1c00000648
   (:methods
-    (minimap-method-9 () none 9)
-    (minimap-method-10 () none 10)
-    (minimap-method-11 () none 11)
-    (minimap-method-12 () none 12)
-    (minimap-method-13 () none 13)
-    (minimap-method-14 () none 14)
-    (minimap-method-15 () none 15)
-    (minimap-method-16 () none 16)
-    (minimap-method-17 () none 17)
-    (minimap-method-18 () none 18)
-    (minimap-method-19 () none 19)
-    (minimap-method-20 () none 20)
-    (minimap-method-21 () none 21)
-    (minimap-method-22 () none 22)
-    (minimap-method-23 () none 23)
-    (minimap-method-24 () none 24)
-    (minimap-method-25 () none 25)
-    (minimap-method-26 () none 26)
-    (minimap-method-27 () none 27)
+    (debug-draw (_type_) none 9)
+    (get-trail-for-connection (_type_ connection-minimap symbol) minimap-trail 10)
+    (get-icon-draw-pos (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
+    (add-icon! (_type_ process uint int vector int) connection-minimap 12)
+    (free-trail-by-connection (_type_ connection-minimap) none 13)
+    (update-trails (_type_) none 14)
+    (draw-1 (_type_ dma-buffer vector4w symbol) none 15)
+    (draw-connection (_type_ minimap-draw-work connection-minimap) none 16)
+    (draw-frustum-1 (_type_ minimap-draw-work connection-minimap) none 17)
+    (draw-frustum-2 (_type_ minimap-draw-work connection-minimap) none 18)
+    (sub-draw-1-2 (_type_ minimap-draw-work) none 19)
+    (update! (_type_) symbol 20)
+    (sub-draw-1-1 (_type_ minimap-draw-work) none 21)
+    (set-color (_type_ vector) none 22)
+    (draw-racer-2 (_type_ minimap-draw-work connection-minimap) none 23)
+    (draw-sprite2 (_type_ dma-buffer vector4w symbol) none 24)
+    (set-race-texture (_type_ texture float level) none 25)
+    (draw-racer-1 (_type_ minimap-draw-work connection-minimap float float float) none 26)
+    (set-race-corner (_type_ float float) none 27)
     )
   )
-

@@ -6,6 +6,7 @@
  */
 
 #include <string>
+#include <vector>
 
 #include "common/common_types.h"
 
@@ -46,7 +47,7 @@ enum class GameVersion { Jak1 = 1, Jak2 = 2 };
 template <typename T>
 struct PerGameVersion {
   constexpr PerGameVersion(T jak1, T jak2) : data{jak1, jak2} {}
-  constexpr T operator[](GameVersion v) const { return data[(int)v - 1]; }
+  constexpr const T& operator[](GameVersion v) const { return data[(int)v - 1]; }
   T data[2];
 };
 
@@ -55,3 +56,4 @@ constexpr PerGameVersion<const char*> game_version_names = {"jak1", "jak2"};
 GameVersion game_name_to_version(const std::string& name);
 bool valid_game_version(const std::string& name);
 std::string version_to_game_name(GameVersion v);
+std::vector<std::string> valid_game_version_names();

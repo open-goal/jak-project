@@ -27,7 +27,7 @@ uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
+const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
 
 // output
 out vec3 vtx_color;

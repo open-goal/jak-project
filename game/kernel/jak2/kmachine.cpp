@@ -1,12 +1,14 @@
 #include "kmachine.h"
 
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 
+#include "game/discord.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -50,7 +52,7 @@ void InitParms(int argc, const char* const* argv) {
     DiskBoot = 1;
     isodrv = fakeiso;
     modsrc = 0;
-    reboot = 0;
+    reboot_iop = 0;
     DebugSegment = 0;
     MasterDebug = 0;
   }
@@ -65,7 +67,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cd mode\n");
       isodrv = iso_cd;  // use the actual DVD drive for data files
       modsrc = 1;       // use the DVD drive data for IOP modules
-      reboot = 1;       // Reboot the IOP (load new IOP runtime)
+      reboot_iop = 1;   // Reboot the IOP (load new IOP runtime)
     }
 
     // the "cddata" uses the DVD drive for everything but IOP modules.
@@ -73,7 +75,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cddata mode\n");
       isodrv = iso_cd;  // tell IOP to use actual DVD drive for data files
       modsrc = 0;       // don't use DVD drive for IOP modules
-      reboot = 0;       // no need to reboot the IOP
+      reboot_iop = 0;   // no need to reboot the IOP
     }
 
     if (arg == "-demo") {
@@ -98,14 +100,14 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: deviso mode\n");
       isodrv = deviso;  // IOP deviso mode
       modsrc = 2;       // now 2 for Jak 2
-      reboot = 0;
+      reboot_iop = 0;
     }
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
     if (arg == "-fakeiso") {
       Msg(6, "dkernel: fakeiso mode\n");
       isodrv = fakeiso;  // IOP fakeeiso mode
       modsrc = 0;        // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // the "boot" mode is used to set GOAL up for running the game in retail mode
@@ -184,11 +186,11 @@ void InitIOP() {
   sceSifInitRpc(0);
 
   // init cd if we need it
-  if (((isodrv == iso_cd) || (modsrc == 1)) || (reboot == 1)) {
+  if (((isodrv == iso_cd) || (modsrc == 1)) || (reboot_iop == 1)) {
     InitCD();
   }
 
-  if (reboot == 0) {
+  if (reboot_iop == 0) {
     // iop with dev kernel
     printf("Rebooting IOP...\n");
     while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp271.img")) {
@@ -424,9 +426,40 @@ int ShutdownMachine() {
   return 0;
 }
 
-Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
-  // stubbed out in the actual game
-  return mouse;
+u32 MouseGetData(u32 _mouse) {
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
+
+  mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->status = 1;
+  mouse->button0 = 0;
+
+  auto [xpos, ypos] = Gfx::get_mouse_pos();
+
+  // NOTE - ignoring speed and setting position directly
+  // the game assumes resolutions, so this makes it a lot easier to make it actually
+  // line up with the mouse cursor
+
+  // TODO - probably factor in scaling as well
+  auto win_width = Gfx::get_window_width();
+  auto win_height = Gfx::get_window_height();
+
+  // These are used to calculate the speed at which to move the mouse to it's new coordinates
+  // zero'd out so they are ignored and don't impact the position we are about to set
+  mouse->deltax = 0;
+  mouse->deltay = 0;
+  // These positions will get capped to:
+  // - [-256.0, 256.0] for width
+  // - [-208.0, 208.0] for height
+  // (then 208 or 256 is always added to them to get the final screen coordinate)
+  // So just normalize the actual window's values to this range
+  double width_per = xpos / win_width;
+  double height_per = ypos / win_height;
+  mouse->posx = (512.0 * width_per) - 256.0;
+  mouse->posy = (416.0 * height_per) - 208.0;
+  // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
+  return _mouse;
 }
 
 /*!
@@ -457,16 +490,102 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+void pc_set_levels(u32 lev_list) {
+  std::vector<std::string> levels;
+  for (int i = 0; i < 6; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::set_levels(levels);
+}
+
+void update_discord_rpc(u32 discord_info) {
+  if (gDiscordRpcEnabled) {
+    DiscordRichPresence rpc;
+    char state[128];
+    char large_image_key[128];
+    char large_image_text[128];
+    char small_image_key[128];
+    char small_image_text[128];
+    auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
+    if (info) {
+      // Get the data from GOAL
+      int orbs = (int)*Ptr<float>(info->orb_count).c();
+      int gems = (int)*Ptr<float>(info->gem_count).c();
+      char* status = Ptr<String>(info->status).c()->data();
+      char* level = Ptr<String>(info->level).c()->data();
+      auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
+      float time = *Ptr<float>(info->time_of_day).c();
+      float percent_completed = info->percent_completed;
+
+      // Construct the DiscordRPC Object
+      // TODO - take nice screenshots with the various time of days once the graphics is in a final
+      // state
+      const char* full_level_name =
+          "unknown";  // jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      memset(&rpc, 0, sizeof(rpc));
+      if (!indoors(level)) {
+        char level_with_tod[128];
+        strcpy(level_with_tod, level);
+        strcat(level_with_tod, "-");
+        strcat(level_with_tod, time_of_day_str(time));
+        strcpy(large_image_key, level_with_tod);
+      } else {
+        strcpy(large_image_key, level);
+      }
+      strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
+      if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
+      } else {
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems))
+                          .c_str());
+        strcpy(large_image_text, fmt::format(" | {:.0f}% | Orbs: {} | Gems: {}", percent_completed,
+                                             std::to_string(orbs), std::to_string(gems))
+                                     .c_str());
+      }
+      rpc.largeImageText = large_image_text;
+      rpc.state = state;
+      if (!indoors(level)) {
+        strcpy(small_image_key, time_of_day_str(time));
+        strcpy(small_image_text, "Time of day: ");
+        strcat(small_image_text, get_time_of_day(time).c_str());
+      } else {
+        strcpy(small_image_key, "");
+        strcpy(small_image_text, "");
+      }
+      rpc.smallImageKey = small_image_key;
+      rpc.smallImageText = small_image_text;
+      rpc.startTimestamp = gStartTime;
+      rpc.details = status;
+      rpc.partySize = 0;
+      rpc.partyMax = 0;
+      Discord_UpdatePresence(&rpc);
+    }
+  } else {
+    Discord_ClearPresence();
+  }
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  // make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
-  // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
@@ -505,11 +624,14 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
 
   // discord rich presence
-  // make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
-  // make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
+
+  // debugging tools
+  make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
 
   // init ps2 VM
   if (VM::use) {
@@ -531,23 +653,19 @@ void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
 }
 
-u32 sceGsSyncV(u32 /*mode*/) {
-  // stub, jak2 probably works differently here
-  ASSERT(false);
-  return 0;
-  /*
+u32 sceGsSyncV(u32 mode) {
   ASSERT(mode == 0);
-  VBlank_Handler();
+  // VBlank_Handler(); meh...
+  if (vblank_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
+    call_goal(Ptr<Function>(vblank_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+  }
+
   return Gfx::vsync();
-   */
 }
 
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
-  // stub, jak2 probably works differently here
   ASSERT(mode == 0 && timeout == 0);
-  ASSERT(false);
-  return 0;
-  // return Gfx::sync_path();
+  return Gfx::sync_path();
 }
 
 void aybabtu() {}
@@ -616,6 +734,92 @@ void InitMachineScheme() {
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
     call_goal_function_by_name("play-boot");  // new function for jak2!
+  }
+}
+
+std::optional<SQLite::Database> sql_db = std::nullopt;
+
+void initialize_sql_db() {
+  // If the DB has already been initialized, no-op
+  if (sql_db) {
+    return;
+  }
+  // In the original environment, they relied on a database already being setup with the correct
+  // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
+  // that here!
+
+  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
+  // nicer editing experience
+
+  fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
+  file_util::create_dir_if_needed_for_file(db_path);
+
+  try {
+    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    SQLite::Transaction tx(sql_db.value());
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
+        "'translate_x' REAL, 'translate_y' REAL, 'translate_z' REAL, 'last_update' TEXT, "
+        "'sample_point_update' TEXT, PRIMARY KEY('level_info_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'light' ( 'light_id' INTEGER, 'name' TEXT, 'level_name' TEXT, "
+        "'pos_x' REAL, 'pos_y' REAL, 'pos_z' REAL, 'r' REAL, 'dir_x' REAL, 'dir_y' REAL, 'dir_z' "
+        "REAL, 'color0_r' REAL, 'color0_g' REAL, 'color0_b' REAL, 'color0_a' REAL, 'decay_start' "
+        "REAL, 'ambient_point_ratio' REAL, 'brightness' REAL, PRIMARY KEY('light_id' "
+        "AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_edge' ( 'nav_edge_id' INTEGER NOT NULL, 'nav_graph_id' "
+        "INTEGER NOT NULL, 'nav_node_id_1' INTEGER, 'nav_node_id_2' INTEGER, 'directionality' "
+        "TEXT, 'speed_limit' NUMERIC, 'density' NUMERIC, 'traffic_edge_flag' NUMERIC, "
+        "'nav_clock_mask' NUMERIC, 'nav_clock_type' TEXT, 'width' NUMERIC, 'minimap_edge_flag' "
+        "NUMERIC, FOREIGN KEY('nav_node_id_2') REFERENCES 'nav_node'('nav_node_id'), FOREIGN "
+        "KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'), FOREIGN KEY('nav_node_id_1') "
+        "REFERENCES 'nav_node'('nav_node_id'), PRIMARY KEY('nav_edge_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_graph' ( 'nav_graph_id' INTEGER, 'name' TEXT, PRIMARY "
+        "KEY('nav_graph_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_mesh' ( 'nav_mesh_id' INTEGER, PRIMARY KEY('nav_mesh_id' "
+        "AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_node' ( 'nav_node_id' INTEGER NOT NULL, 'nav_graph_id' "
+        "INTEGER NOT NULL, 'nav_mesh_id' INTEGER NOT NULL, 'x' REAL, 'y' REAL, 'z' REAL, "
+        "'level_name' TEXT, 'angle' REAL, 'radius' REAL, 'nav_node_flag' NUMERIC, FOREIGN "
+        "KEY('nav_mesh_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
+        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'nav_visible_nodes' ( 'nav_node_id' INTEGER NOT NULL, "
+        "'nav_graph_id' INTEGER NOT NULL, 'nav_edge_id' INTEGER NOT NULL, FOREIGN "
+        "KEY('nav_edge_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
+        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'race_path' ( 'race_path_id' INTEGER, 'race' TEXT, 'path' "
+        "INTEGER, PRIMARY KEY('race_path_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region' ( 'region_id' INTEGER NOT NULL, 'level_name' TEXT, "
+        "'flags' NUMERIC, 'tree' TEXT, 'on_enter' TEXT, 'on_exit' TEXT, 'on_inside' TEXT, PRIMARY "
+        "KEY('region_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_face' ( 'region_face_id' INTEGER NOT NULL, 'region_id' "
+        "INTEGER NOT NULL, 'idx' INTEGER, 'kind' TEXT, 'radius' REAL, FOREIGN KEY('region_id') "
+        "REFERENCES 'region'('region_id'), PRIMARY KEY('region_face_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_point' ( 'region_point_id' INTEGER, 'region_face_id' "
+        "INTEGER NOT NULL, 'idx' INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
+        "KEY('region_face_id') REFERENCES 'region_face'('region_face_id'), PRIMARY "
+        "KEY('region_point_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'region_sphere' ( 'region_sphere_id' INTEGER, 'region_id' "
+        "INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, 'r' REAL, FOREIGN KEY('region_id') REFERENCES "
+        "'region'('region_id'), PRIMARY KEY('region_sphere_id' AUTOINCREMENT) );");
+    sql_db->exec(
+        "CREATE TABLE IF NOT EXISTS 'sample_point' ( 'sample_point_id' INTEGER, 'level_info_id' "
+        "INTEGER NOT NULL, 'source' TEXT, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
+        "KEY('level_info_id') REFERENCES 'level_info'('level_info_id'), PRIMARY "
+        "KEY('sample_point_id' AUTOINCREMENT) );");
+    tx.commit();
+  } catch (std::exception& e) {
+    lg::error("[SQL] Error creating SQLite DB - {}", e.what());
   }
 }
 

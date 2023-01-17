@@ -13,12 +13,15 @@
 
 class Sprite3 : public BucketRenderer {
  public:
-  Sprite3(const std::string& name, BucketId my_id);
+  Sprite3(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   static constexpr int SPRITES_PER_CHUNK = 48;
 
  private:
+  void render_jak1(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void render_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
   void opengl_setup();
   void opengl_setup_normal();
   void opengl_setup_distort();
@@ -33,7 +36,7 @@ class Sprite3 : public BucketRenderer {
   void distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_setup_framebuffer_dims(SharedRenderState* render_state);
-  void handle_sprite_frame_setup(DmaFollower& dma);
+  void handle_sprite_frame_setup(DmaFollower& dma, GameVersion version);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
                         SharedRenderState* render_state,

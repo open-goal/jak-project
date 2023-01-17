@@ -5,6 +5,9 @@
 ;; name in dgo: collide-mesh-h
 ;; dgos: ENGINE, GAME
 
+(declare-type collide-mesh-cache-tri structure)
+(declare-type collide-shape-prim-mesh basic)
+
 ;; DECOMP BEGINS
 
 (deftype collide-tri-result (structure)
@@ -19,6 +22,7 @@
   :flag-assert         #x900000058
   )
 
+
 (deftype collide-mesh-tri (structure)
   ((vertex-index uint8       3 :offset-assert   0)
    (unused       uint8         :offset-assert   3)
@@ -29,6 +33,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype collide-mesh (basic)
   ((joint-id    int32                           :offset-assert   4)
@@ -41,15 +46,16 @@
   :size-assert         #x28
   :flag-assert         #x1000000028
   (:methods
-    (collide-mesh-method-9 () none 9)
-    (collide-mesh-method-10 () none 10)
-    (collide-mesh-method-11 () none 11)
-    (collide-mesh-method-12 () none 12)
-    (collide-mesh-method-13 () none 13)
-    (collide-mesh-method-14 () none 14)
-    (collide-mesh-method-15 () none 15)
+    (debug-draw-tris (_type_ process-drawable int) none 9)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol 10)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 11)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none 13)
+    (collide-mesh-math-1 (_type_ object object) none 14)
+    (collide-mesh-math-2 (_type_ object object object) none 15)
     )
   )
+
 
 (deftype collide-mesh-cache-tri (structure)
   ((vertex vector         3 :inline :offset-assert   0)
@@ -62,6 +68,7 @@
   :flag-assert         #x900000060
   )
 
+
 (deftype collide-mesh-cache-entry (structure)
   ((mat  matrix                 :inline          :offset-assert   0)
    (tris collide-mesh-cache-tri :inline :dynamic :offset-assert  64)
@@ -70,6 +77,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
+
 
 (deftype collide-mesh-cache (basic)
   ((used-size uint32       :offset-assert   4)
@@ -81,10 +89,10 @@
   :size-assert         #xbb90
   :flag-assert         #xd0000bb90
   (:methods
-    (collide-mesh-cache-method-9 () none 9)
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry 9)
     (is-id? (_type_ int) symbol 10)
     (next-id! (_type_) uint 11)
-    (collide-mesh-cache-method-12 () none 12)
+    (allocate! (_type_ int) collide-mesh-cache-entry 12)
     )
   )
 
@@ -117,11 +125,11 @@
 (kmemopen global "collide-mesh-cache")
 
 (define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
+
 (set! (-> *collide-mesh-cache* id) (the-as uint 1))
+
 (set! (-> *collide-mesh-cache* used-size) (the-as uint 0))
+
 (set! (-> *collide-mesh-cache* max-size) (the-as uint #xbb80))
+
 (kmemclose)
-
-
-
-

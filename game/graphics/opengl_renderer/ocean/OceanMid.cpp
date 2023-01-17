@@ -1,5 +1,7 @@
 #include "OceanMid.h"
 
+#include "common/log/log.h"
+
 static bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
   return tag.qwc == 2 && tag.kind == DmaTag::Kind::CNT && v0.kind == VifCode::Kind::NOP &&
          v1.kind == VifCode::Kind::DIRECT;
@@ -111,7 +113,7 @@ void OceanMid::run(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
           run_call275_vu2c();
           break;
         default:
-          fmt::print("unknown call1: {}\n", v1.immediate);
+          lg::warn("unknown call1: {}", v1.immediate);
       }
     } else if (v0.kind == VifCode::Kind::MSCALF && v1.kind == VifCode::Kind::FLUSHA) {
       switch (v0.immediate) {

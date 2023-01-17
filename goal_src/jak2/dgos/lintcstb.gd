@@ -1,0 +1,10 @@
+("LINTCSTB.DGO"
+  ("tpage-2752.go" "tpage-2752")
+  ("tpage-2754.go" "tpage-2754")
+  ("tpage-3243.go" "tpage-3243")
+  ("keira-highres-ag.go" "keira-highres")
+  ("samos-highres-ag.go" "samos-highres")
+  ("rift-rider-break-ag.go" "rift-rider-break")
+  ("rift-rider-ag.go" "rift-rider")
+  ("lintcstb.go" "lintcstb")
+  )

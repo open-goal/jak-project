@@ -134,8 +134,8 @@ Compiler::ConstPropResult Compiler::try_constant_propagation(const goos::Object&
   auto ret = constant_propagation_dispatch(form, env);
   size_t end_size = code_size(env);
   if (start_size != end_size) {
-    fmt::print("Compiler bug in constant propagation. Code was generated: {} vs {}\n", start_size,
-               end_size);
+    lg::print("Compiler bug in constant propagation. Code was generated: {} vs {}\n", start_size,
+              end_size);
     ASSERT(false);
   }
   return ret;
@@ -263,8 +263,7 @@ s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
   }
 
   if (prop.has_side_effects) {
-    throw_compiler_error(in, "Value {} cannot be used as a constant - it has side effects.",
-                         in.print());
+    throw_compiler_error(in, "Value {} cannot be used as a constant.", in.print());
   } else {
     if (prop.value.is_int()) {
       return prop.value.as_int();

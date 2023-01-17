@@ -228,6 +228,11 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
+  void update_from_stack_vector_plus_float_times(const Env& env,
+                                                 FormPool& pool,
+                                                 FormStack& stack,
+                                                 std::vector<FormElement*>* result,
+                                                 bool allow_side_effects);
   void update_from_stack_vectors_in_common(FixedOperatorKind kind,
                                            const Env& env,
                                            FormPool& pool,
@@ -256,6 +261,7 @@ class StoreElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  const StoreOp* op() const { return m_op; }
 
  private:
   // todo - we may eventually want to use a different representation for more
@@ -265,11 +271,14 @@ class StoreElement : public FormElement {
 
 /*!
  * Representing a value loaded from memory.  Not the destination.
- * Unclear if this should have some common base with store?
  */
 class LoadSourceElement : public FormElement {
  public:
-  LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind);
+  LoadSourceElement(Form* addr,
+                    int size,
+                    LoadVarOp::Kind kind,
+                    const std::optional<IR2_RegOffset>& load_source_ro,
+                    const TP_Type& ro_reg_type);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -289,6 +298,8 @@ class LoadSourceElement : public FormElement {
   Form* m_addr = nullptr;
   int m_size = -1;
   LoadVarOp::Kind m_kind;
+  std::optional<IR2_RegOffset> m_load_source_ro;
+  TP_Type m_ro_reg_type;
 };
 
 /*!
@@ -1666,7 +1677,8 @@ class DefstateElement : public FormElement {
 class DefskelgroupElement : public FormElement {
  public:
   struct StaticInfo {
-    std::string art_name;
+    std::string name;  // jak 2
+    std::string art_group_name;
     math::Vector4f bounds;
     int max_lod;
     float longest_edge;
@@ -1674,6 +1686,9 @@ class DefskelgroupElement : public FormElement {
     s8 version;
     s8 shadow;
     s8 sort;
+    s8 origin_joint_index;
+    s8 shadow_joint_index;
+    s8 light_index;
   };
   struct Entry {
     Form* mgeo = nullptr;
@@ -1711,6 +1726,9 @@ class DefpartgroupElement : public FormElement {
     u16 flags;
     std::string name;
     math::Vector4f bounds;
+    // added in jak 2
+    math::Vector3f rot;
+    math::Vector3f scale;
 
     struct PartGroupItem {
       u32 part_id;
@@ -1753,6 +1771,19 @@ class DefpartElement : public FormElement {
       u16 flags;
       std::vector<LinkedWord> data;
       goos::Object sound_spec;
+      goos::Object userdata;  // backup
+
+      bool is_sp_end(GameVersion version) const {
+        switch (version) {
+          case GameVersion::Jak1:
+            return field_id == 67;
+          case GameVersion::Jak2:
+            return field_id == 72;
+          default:
+            ASSERT_MSG(false, fmt::format("unknown version {} for is_sp_end"));
+            return false;
+        }
+      }
     };
     std::vector<PartField> fields;
   };
@@ -1772,6 +1803,33 @@ class DefpartElement : public FormElement {
  private:
   StaticInfo m_static_info;
   int m_id;
+};
+
+// for that macro
+class WithDmaBufferAddBucketElement : public FormElement {
+ public:
+  WithDmaBufferAddBucketElement(RegisterAccess dma_buf,
+                                Form* dma_buf_val,
+                                Form* bucket,
+                                const std::vector<FormElement*>& body);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
+
+ private:
+  RegisterAccess m_dma_buf;
+  Form* m_dma_buf_val;
+  Form* m_bucket;
+  std::vector<FormElement*> m_body;
 };
 
 class ResLumpMacroElement : public FormElement {

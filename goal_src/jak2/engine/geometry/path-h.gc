@@ -19,41 +19,46 @@
 ;; DECOMP BEGINS
 
 (deftype path-control (basic)
-  ((flags      path-control-flag             :offset-assert   4)
-   (name       symbol                        :offset-assert   8)
-   (process    process-drawable              :offset-assert  12)
-   (curve      curve                 :inline :offset-assert  16)
-   (num-cverts int32                         :offset         20)
-   (cverts     (inline-array vector)         :offset         16)
+  "An abstraction around a [[curve]], providing tools such as:
+- debug drawing
+- conveniant vertex accessing
+- vertex finding/searching algorithms"
+  ((flags   path-control-flag         :offset-assert   4)
+   (name    symbol                    :offset-assert   8)
+   (process process-drawable          :offset-assert  12)
+   (curve   curve             :inline :offset-assert  16)
    )
   :method-count-assert 27
   :size-assert         #x24
   :flag-assert         #x1b00000024
   (:methods
     (new (symbol type process symbol float entity symbol) _type_ 0)
-    (path-control-method-9 () none 9)
-    (path-control-method-10 () none 10)
-    (path-control-method-11 () none 11)
-    (path-control-method-12 () none 12)
-    (path-control-method-13 () none 13)
-    (path-control-method-14 () none 14)
-    (path-control-method-15 () none 15)
-    (path-control-method-16 () none 16)
+    (debug-draw (_type_) none 9)
+    (get-point-in-path! (_type_ vector float symbol) vector 10)
+    (get-random-point (_type_ vector) vector :behavior process 11)
+    (displacement-between-two-points-copy! (_type_ vector float float) vector 12)
+    (displacement-between-two-points-normalized! (_type_ vector float) vector 13)
+    (get-point-at-percent-along-path! (_type_ vector float symbol) vector 14)
+    (displacement-between-points-at-percent-scaled! (_type_ vector float float) vector 15)
+    (displacement-between-points-at-percent-normalized! (_type_ vector float) vector 16)
     (get-num-segments (_type_) float 17)
-    (path-control-method-18 () none 18)
+    (total-distance (_type_) float 18)
     (get-num-verts (_type_) int 19)
     (path-distance-equal-spacing (_type_ float) float 20)
     (average-segment-length (_type_ float) float 21)
-    (path-control-method-22 () none 22)
-    (path-control-method-23 () none 23)
-    (path-control-method-24 () none 24)
+    (get-furthest-point-on-path (_type_ vector) float 22)
+    (get-path-percentage-at-furthest-point (_type_ vector) float 23)
+    (path-control-method-24 (_type_ vector) vector 24)
     (should-display-marks? (_type_) symbol 25)
-    (path-control-method-26 () none 26)
+    (displacement-between-two-points! (_type_ vector float float) vector 26)
     )
   )
+
+
 (set! (-> path-control method-table 9) nothing)
 
 (deftype curve-control (path-control)
+  "Identical in terms of data to a [[path-control]] but has different implementation"
   ()
   :method-count-assert 27
   :size-assert         #x24
@@ -63,6 +68,10 @@
     )
   )
 
+
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch object vs path-control.
 (defmethod new path-control ((allocation symbol)
                            (type-to-make type)
                            (arg0 process)
@@ -148,7 +157,7 @@
   )
 
 (defmethod get-num-verts path-control ((obj path-control))
-  (the-as int (-> obj curve num-cverts))
+  (-> obj curve num-cverts)
   )
 
 (defmethod path-distance-equal-spacing path-control ((obj path-control) (arg0 float))
@@ -185,7 +194,7 @@
         )
       (when (not (get-curve-data! s3-1 (-> gp-0 curve) arg1 s2-0 arg2))
         (cond
-          ((> (the-as int (-> gp-0 curve num-cverts)) 0)
+          ((> (-> gp-0 curve num-cverts) 0)
            (set! (-> gp-0 type) path-control)
            )
           (else
@@ -200,4 +209,3 @@
     gp-0
     )
   )
-

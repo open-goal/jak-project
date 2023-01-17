@@ -652,6 +652,7 @@ TEST_F(WithGameTests, Pextlw) {
                                            "#x07060504030201001716151413121110\n"
                                            "#x1f1e1d1c1b1a19180f0e0d0c0b0a0908\n"
                                            "#x0d0c0908050401001d1c191815141110\n"
+                                           "#x0e0c0a08060402001e1c1a1816141210\n"
                                            "#xffffffff00000000ffffffff00000000\n"
                                            "#x00090000000000fefffffffe000002ff\n"
                                            "0\n"});
@@ -765,6 +766,11 @@ TEST_F(WithGameTests, StaticLambda) {
                                           {"Add: 30 sub: -10\n0\n"});
 }
 
+TEST_F(WithGameTests, StaticLambdaArrayDraft) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-lambdas.gc",
+                                          {"2\n1\n0\n"});
+}
+
 TEST_F(WithGameTests, MethodReplace) {
   shared_compiler->runner.run_static_test(testCategory, "test-method-replace.gc",
                                           {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
@@ -844,7 +850,7 @@ TEST_F(WithGameTests, StackSingletonType) {
                                           {"#t\n0\n"});
 }
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace test_func {
 extern u64 execute(void*);
 }
@@ -852,16 +858,16 @@ namespace goal_call_test {
 extern u64 execute(void*);
 extern void link();
 }  // namespace goal_call_test
-}  // namespace Mips2C
+}  // namespace Mips2C::jak1
 
 TEST_F(WithGameTests, Mips2CBasic) {
-  Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::test_func::execute, 0);
+  Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::jak1::test_func::execute, 0);
   shared_compiler->runner.run_static_test(testCategory, "test-mips2c-call.gc", {"36\n0\n"});
 }
 
 TEST_F(WithGameTests, Mips2C_CallGoal) {
-  Mips2C::gLinkedFunctionTable.reg("test-func2", Mips2C::goal_call_test::execute, 128);
-  Mips2C::goal_call_test::link();
+  Mips2C::gLinkedFunctionTable.reg("test-func2", Mips2C::jak1::goal_call_test::execute, 128);
+  Mips2C::jak1::goal_call_test::link();
   shared_compiler->runner.run_static_test(testCategory, "test-mips2c-goal.gc",
                                           {"1 2 3 4 5 6 7 8\n12\n"});
 }

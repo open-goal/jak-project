@@ -33,3 +33,4 @@ u32 GetISOFileLength(FileRecord* f);
 u32 InitISOFS(const char* fs_mode, const char* loading_screen);
 VagDirEntry* FindVAGFile(const char* name);
 s32 GetVAGStreamPos();
+void SetVAGVol();

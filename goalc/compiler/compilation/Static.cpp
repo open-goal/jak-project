@@ -140,7 +140,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
     } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
-               is_symbol(field_info.type)) {
+               is_symbol(field_info.type) || field_info.type == TypeSpec("object")) {
       if (is_pair(field_info.type)) {
         ASSERT(!field_info.field.is_inline());
       }
@@ -230,13 +230,25 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
     } else if (field_info.type.base_type() == "inline-array") {
       auto sr = compile_static(field_value, env);
-      if (!sr.is_reference()) {
+      if (sr.is_symbol() && sr.symbol_name() == "#f") {
+        // allow #f to be used for an inline-array
+        structure->add_symbol_record(sr.symbol_name(), field_offset);
+        auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+        ASSERT(deref_info.mem_deref);
+        ASSERT(deref_info.can_deref);
+        ASSERT(deref_info.load_size == 4);
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(structure->data.data() + field_offset, &linker_val, 4);
+      } else if (!sr.is_reference()) {
         throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      } else {
+        typecheck(form, field_info.type, sr.typespec());
+        ASSERT(sr.reference()->get_addr_offset() == 0);
+        structure->add_pointer_record(field_offset, sr.reference(),
+                                      sr.reference()->get_addr_offset());
       }
-      typecheck(form, field_info.type, sr.typespec());
-      ASSERT(sr.reference()->get_addr_offset() == 0);
-      structure->add_pointer_record(field_offset, sr.reference(),
-                                    sr.reference()->get_addr_offset());
     } else if (field_info.type.base_type() == "pointer") {
       auto sr = compile_static(field_value, env);
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
@@ -586,14 +598,14 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                                         bool can_macro) {
   auto fie = env->file_env();
   if (form.is_pair()) {
-    if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
-                                            form.as_pair()->car.as_symbol()->name == "the" ||
-                                            form.as_pair()->car.as_symbol()->name == "lambda")) {
+    if (form.as_pair()->car.is_symbol("new") || form.as_pair()->car.is_symbol("the") ||
+        (can_macro && form.as_pair()->car.is_symbol("lambda"))) {
       return compile_static(form, env);
     }
     if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol()->name == "unquote") {
       // ,(macro-name args...) is actually (unquote (macro-name args...))
       // decompile the arg as macro if possible.
+      // ,(lambda ...) is also a special case.
       auto& unq_arg_pair = form.as_pair()->cdr;
       if (unq_arg_pair.is_empty_list()) {
         throw_compiler_error(form, "Cannot unquote empty list");
@@ -603,7 +615,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
         throw_compiler_error(form, "Cannot unquote non-list");
       }
       goos::Object macro_obj;
-      if (!try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
+      if (!unq_arg.as_pair()->car.is_symbol("lambda") &&
+          !try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
         throw_compiler_error(form, "Macro {} not found", unq_arg.as_pair()->car.print());
       }
       return compile_static_no_eval_for_pairs(form.as_pair()->cdr.as_pair()->car, env, seg, true);
@@ -848,8 +861,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
-        // allow #f for any structure.
-        typecheck(form, TypeSpec("structure"), content_type);
+        // allow #f for any structure, or symbol (no longer a structure in jak 2)
+        if (content_type.base_type() != "symbol") {
+          typecheck(form, TypeSpec("structure"), content_type);
+        }
       } else {
         typecheck(form, content_type, sr.typespec());
       }
@@ -868,6 +883,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
         throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
                              sr.constant().print(), arg_idx, content_type.print());
       }
+    }  // TODO - handle type case here as well
+    else if (sr.is_func()) {
+      ASSERT(deref_info.stride == 4);
+      structure->add_function_record(sr.function(), elt_offset);
     } else {
       ASSERT(false);
     }
@@ -1079,7 +1098,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   ASSERT(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, false);
   ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

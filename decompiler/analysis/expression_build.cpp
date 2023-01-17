@@ -1,5 +1,6 @@
 #include "expression_build.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
@@ -25,7 +26,7 @@ bool convert_to_expressions(
       f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
       f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
       f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
-    f.ir2.env.set_remap_for_function(f.type);
+    f.ir2.env.set_remap_for_function(f);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     auto method_type =
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
@@ -46,7 +47,7 @@ bool convert_to_expressions(
       info.second.name_override = rename->second;
     }
     //     debug
-    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    // lg::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
     //         info.second.tp_type.print());
   }
 

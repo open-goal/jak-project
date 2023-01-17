@@ -3,9 +3,11 @@
 #include <set>
 #include <thread>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
@@ -20,7 +22,8 @@ namespace decompiler {
 /*!
  * Look through files in a DGO and find the bsp-header file (the level)
  */
-std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records) {
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records,
+                                             const std::string& dgo_name) {
   std::optional<ObjectFileRecord> result;
   bool found = false;
   for (auto& file : records) {
@@ -28,6 +31,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
       ASSERT(!found);
       found = true;
       result = file;
+    }
+  }
+
+  if (!result) {
+    if (str_util::ends_with(dgo_name, ".DGO") || str_util::ends_with(dgo_name, ".CGO")) {
+      auto expected_name = dgo_name.substr(0, dgo_name.length() - 4);
+      for (auto& c : expected_name) {
+        c = tolower(c);
+      }
+      if (!records.empty() && expected_name == records.back().name) {
+        return records.back();
+      }
     }
   }
   return result;
@@ -38,18 +53,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
  */
 bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   if (file.segments != 1) {
-    fmt::print("Got {} segments, but expected 1\n", file.segments);
+    lg::error("Got {} segments, but expected 1", file.segments);
     return false;
   }
 
   auto& first_word = file.words_by_seg.at(0).at(0);
   if (first_word.kind() != decompiler::LinkedWord::TYPE_PTR) {
-    fmt::print("Expected the first word to be a type pointer, but it wasn't.\n");
+    lg::error("Expected the first word to be a type pointer, but it wasn't.");
     return false;
   }
 
   if (first_word.symbol_name() != "bsp-header") {
-    fmt::print("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name());
+    lg::error("Expected to get a bsp-header, but got {} instead.", first_word.symbol_name());
     return false;
   }
 
@@ -115,14 +130,14 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
                                                               const DecompileHacks& hacks,
                                                               bool extract_collision,
                                                               tfrag3::Level& level_data) {
-  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
+  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
   if (!bsp_rec) {
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
   std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
-  fmt::print("Processing level {} ({})\n", dgo_name, level_name);
+  lg::info("Processing level {} ({})", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
@@ -130,18 +145,19 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
   level_tools::DrawStats draw_stats;
   // draw_stats.debug_print_dma_data = true;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats);
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
 
   /*
   level_tools::PrintSettings settings;
   settings.expand_collide = true;
-  fmt::print("{}\n", bsp_header.print(settings));
+  lg::print("{}\n", bsp_header.print(settings));
    */
 
   const std::set<std::string> tfrag_trees = {
-      "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
-      "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
+      "drawable-tree-tfrag",        "drawable-tree-trans-tfrag",       "drawable-tree-tfrag-trans",
+      "drawable-tree-dirt-tfrag",   "drawable-tree-tfrag-water",       "drawable-tree-ice-tfrag",
+      "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
   int i = 0;
 
   std::vector<const level_tools::DrawableTreeInstanceTie*> all_ties;
@@ -164,12 +180,12 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, level_data,
-                    false);
+                    false, level_name);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);
       extract_tie(as_tie_tree, fmt::format("{}-{}-tie", dgo_name, i++),
-                  bsp_header.texture_remap_table, tex_db, level_data, false);
+                  bsp_header.texture_remap_table, tex_db, level_data, false, db.version());
     } else if (draw_tree->my_type() == "drawable-tree-instance-shrub") {
       auto as_shrub_tree =
           dynamic_cast<level_tools::shrub_types::DrawableTreeInstanceShrub*>(draw_tree.get());
@@ -185,7 +201,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       extract_collide_frags(as_collide_frags, all_ties, fmt::format("{}-{}-collide", dgo_name, i++),
                             level_data, false);
     } else {
-      // fmt::print("  unsupported tree {}\n", draw_tree->my_type());
+      lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
   level_data.level_name = level_name;
@@ -224,10 +240,10 @@ void extract_common(const ObjectFileDB& db,
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
 
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
@@ -261,10 +277,10 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(level_data, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());

@@ -1,0 +1,13 @@
+("LTESS.DGO"
+  ("tess-lhiphog+0-ag.go" "tess-lhiphog+0")
+  ("tpage-1862.go" "tpage-1862")
+  ("tpage-1756.go" "tpage-1756")
+  ("tpage-2881.go" "tpage-2881")
+  ("tpage-3241.go" "tpage-3241")
+  ("krew-highres-ag.go" "krew-highres")
+  ("sig-highres-ag.go" "sig-highres")
+  ("tess-highres-ag.go" "tess-highres")
+  ("hip-bottle-c-ag.go" "hip-bottle-c")
+  ("hip-bottle-b-ag.go" "hip-bottle-b")
+  ("ltess.go" "ltess")
+  )

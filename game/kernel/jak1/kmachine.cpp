@@ -36,7 +36,6 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak1/ksound.h"
 #include "game/kernel/svnrev.h"
-#include "game/mips2c/mips2c_table.h"
 #include "game/sce/deci2.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
@@ -61,7 +60,7 @@ void InitParms(int argc, const char* const* argv) {
     DiskBoot = 1;
     isodrv = fakeiso;
     modsrc = 0;
-    reboot = 0;
+    reboot_iop = 0;
     DebugSegment = 0;
     MasterDebug = 0;
   }
@@ -76,7 +75,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cd mode\n");
       isodrv = iso_cd;  // use the actual DVD drive for data files
       modsrc = 1;       // use the DVD drive data for IOP modules
-      reboot = 1;       // Reboot the IOP (load new IOP runtime)
+      reboot_iop = 1;   // Reboot the IOP (load new IOP runtime)
     }
 
     // the "cddata" uses the DVD drive for everything but IOP modules.
@@ -84,7 +83,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cddata mode\n");
       isodrv = iso_cd;  // tell IOP to use actual DVD drive for data files
       modsrc = 0;       // don't use DVD drive for IOP modules
-      reboot = 0;       // no need to reboot the IOP
+      reboot_iop = 0;   // no need to reboot the IOP
     }
 
     // the "deviso" mode is one of two modes for testing without the need for DVDs
@@ -92,7 +91,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: deviso mode\n");
       isodrv = deviso;  // IOP deviso mode
       modsrc = 0;       // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
@@ -100,7 +99,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: fakeiso mode\n");
       isodrv = fakeiso;  // IOP fakeeiso mode
       modsrc = 0;        // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // an added mode to allow booting without a KERNEL.CGO for testing
@@ -166,12 +165,12 @@ void InitIOP() {
   // before doing anything with the I/O Processor, we need to set up SIF RPC
   sceSifInitRpc(0);
 
-  if ((isodrv == iso_cd) || modsrc || reboot) {
+  if ((isodrv == iso_cd) || modsrc || reboot_iop) {
     // we will need the DVD drive to bring up the IOP
     InitCD();
   }
 
-  if (!reboot) {
+  if (!reboot_iop) {
     // reboot with development IOP kernel
     lg::debug("Rebooting IOP...");
     while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp221.img")) {
@@ -387,33 +386,6 @@ int ShutdownMachine() {
 }
 
 // todo, these could probably be moved to common
-/*!
- * Called from game thread to submit rendering DMA chain.
- */
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
-  Gfx::send_chain(g_ee_main_mem, chain);
-}
-
-/*!
- * Called from game thread to upload a texture outside of the main DMA chain.
- */
-void pc_texture_upload_now(u32 page, u32 mode) {
-  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
-}
-
-void pc_texture_relocate(u32 dst, u32 src, u32 format) {
-  Gfx::texture_relocate(dst, src, format);
-}
-
-/*!
- * Called from the game thread at initialization.
- * The game thread is the only one to touch the mips2c function table (through the linker and
- * through this function), so no locking is needed.
- */
-u64 pc_get_mips2c(u32 name) {
-  const char* n = Ptr<String>(name).c()->data();
-  return Mips2C::gLinkedFunctionTable.get(n);
-}
 
 /*!
  * Called from the game thread at each frame to tell the PC rendering code which levels to start

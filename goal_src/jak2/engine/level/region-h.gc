@@ -5,21 +5,24 @@
 ;; name in dgo: region-h
 ;; dgos: ENGINE, GAME
 
+(declare-type region-prim-area structure)
+
 ;; DECOMP BEGINS
 
 (deftype region (structure)
   ((id        uint32  :offset-assert   0)
-   (on-enter  basic   :offset-assert   4)
-   (on-inside basic   :offset-assert   8)
-   (on-exit   basic   :offset-assert  12)
+   (on-enter  pair    :offset-assert   4)
+   (on-inside pair    :offset-assert   8)
+   (on-exit   pair    :offset-assert  12)
    )
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (region-method-9 () none 9)
+    (region-method-9 (_type_ vector) symbol 9)
     )
   )
+
 
 (deftype region-array (inline-array-class)
   ((data region :inline :dynamic :offset-assert  16)
@@ -28,6 +31,8 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+
 (set! (-> region-array heap-base) (the-as uint 16))
 
 (deftype drawable-region-prim (drawable)
@@ -37,11 +42,12 @@
   :size-assert         #x20
   :flag-assert         #x1400000020
   (:methods
-    (drawable-region-prim-method-17 () none 17)
-    (drawable-region-prim-method-18 () none 18)
-    (drawable-region-prim-method-19 () none 19)
+    (debug-draw-region (_type_ int) none 17)
+    (track-region (_type_ region-prim-area) symbol 18)
+    (within-area? (_type_ region-prim-area) symbol 19)
     )
   )
+
 
 (deftype drawable-tree-region-prim (drawable-tree)
   ((name  basic                          :offset   8)
@@ -51,25 +57,9 @@
   :size-assert         #x20
   :flag-assert         #x1300000020
   (:methods
-    (drawable-tree-region-prim-method-17 () none 17)
+    (drawable-tree-region-prim-method-17 (_type_ vector) symbol 17)
     (debug-print (_type_ vector object) none 18)
     )
-  )
-
-(defmethod inspect drawable-tree-region-prim ((obj drawable-tree-region-prim))
-  (when (not obj)
-    (return obj)
-    )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tid: ~D~%" (-> obj id))
-  (format #t "~1Tbsphere: ~`vector`P~%" (-> obj bsphere))
-  (format #t "~1Tlength: ~D~%" (-> obj length))
-  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D]~1Tdata: ~A~%" s5-0 (-> obj data s5-0))
-    )
-  (format #t "~1Tname: ~A~%" (-> obj name))
-  obj
   )
 
 
@@ -89,6 +79,7 @@
   :flag-assert         #x1400000020
   )
 
+
 (deftype region-face-data (structure)
   ((normal        vector :inline          :offset-assert   0)
    (normal-offset float                   :offset         12)
@@ -100,6 +91,7 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype drawable-region-face (drawable-region-prim)
   ((data region-face-data  :offset  12)
    )
@@ -108,6 +100,7 @@
   :flag-assert         #x1400000020
   )
 
+
 (deftype region-face-array (inline-array-class)
   ((data region-face-data :dynamic :offset  20)
    )
@@ -115,6 +108,8 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
+
+
 (set! (-> region-face-array heap-base) (the-as uint 32))
 
 (deftype drawable-region-volume (drawable-region-prim)
@@ -124,6 +119,7 @@
   :size-assert         #x20
   :flag-assert         #x1400000020
   )
+
 
 (deftype region-prim-list (structure)
   ((num-items int32                    :offset-assert   0)

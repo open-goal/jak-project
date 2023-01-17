@@ -5,5 +5,397 @@
 ;; name in dgo: rigid-body-h
 ;; dgos: GAME, COMMON
 
+;; +++rigid-body-flag
+(defenum rigid-body-flag
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (enable-physics 1)
+  (enable-collision 2)
+  (active 3)
+  (debug 4)
+  (blocker 5)
+  )
+;; ---rigid-body-flag
+
+;; +++rigid-body-object-flag
+(defenum rigid-body-object-flag
+  :bitfield #t
+  :type uint64
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  (player-touching 4)
+  (player-edge-grabbing 5)
+  (player-standing-on 6)
+  (player-impulse-force 7)
+  (player-contact-force 8)
+  (persistent 9)
+  (in-air 10)
+  (on-ground 11)
+  (on-flight-level 12)
+  (riding 13)
+  (player-driving 14)
+  (waiting-for-player 15)
+  (ignition 16)
+  (turbo-boost 17)
+  (reverse-gear 18)
+  (slide 19)
+  (hard-turn 20)
+  (jump 21)
+  (jump-sound 22)
+  (ai-driving 23)
+  (traffic-managed 24)
+  (flight-level-transition 25)
+  (flight-level-transition-ending 26)
+  (camera-bike-mode 27)
+  (camera-rapid-track-mode 28)
+  (camera 29)
+  (alert 30)
+  (in-pursuit 31)
+  (target-in-sight 32)
+  (rammed-target 33)
+  (draw-marks 34)
+  (hack-edit-graph-mode 35)
+  (measure-control-parameters 36)
+  (lights-on 37)
+  (lights-update 38)
+  (lights-dead 39)
+  (no-hijack 40)
+  (player-grabbed 41)
+  (nav-spheres 42)
+  (idle-sound 43)
+  )
+;; ---rigid-body-object-flag
+
+(declare-type rigid-body-work structure)
+(declare-type rigid-body-object process-focusable)
+
 ;; DECOMP BEGINS
 
+(deftype rigid-body-info (structure)
+  ((mass                float          :offset-assert   0)
+   (inv-mass            float          :offset-assert   4)
+   (linear-damping      float          :offset-assert   8)
+   (angular-damping     float          :offset-assert  12)
+   (bounce-factor       float          :offset-assert  16)
+   (friction-factor     float          :offset-assert  20)
+   (bounce-mult-factor  float          :offset-assert  24)
+   (cm-offset-joint     vector :inline :offset-assert  32)
+   (inv-inertial-tensor matrix :inline :offset-assert  48)
+   (inertial-tensor     matrix :inline :offset-assert 112)
+   (inertial-tensor-box meters 3       :offset-assert 176)
+   )
+  :method-count-assert 10
+  :size-assert         #xbc
+  :flag-assert         #xa000000bc
+  (:methods
+    (rigid-body-info-method-9 (_type_) none 9)
+    )
+  )
+
+
+(deftype rigid-body-object-extra-info (structure)
+  ((max-time-step      float   :offset-assert   0)
+   (gravity            meters  :offset-assert   4)
+   (idle-distance      meters  :offset-assert   8)
+   (attack-force-scale float   :offset-assert  12)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype rigid-body-object-constants (structure)
+  ((info               rigid-body-info              :inline :offset-assert   0)
+   (mass               float                                :offset          0)
+   (inv-mass           float                                :offset          4)
+   (cm-joint           vector                       :inline :offset         32)
+   (cm-joint-x         meters                               :offset         32)
+   (cm-joint-y         meters                               :offset         36)
+   (cm-joint-z         meters                               :offset         40)
+   (cm-joint-w         meters                               :offset         44)
+   (linear-damping     float                                :offset          8)
+   (angular-damping    float                                :offset         12)
+   (bounce-factor      float                                :offset         16)
+   (friction-factor    float                                :offset         20)
+   (inertial-tensor-x  meters                               :offset        176)
+   (inertial-tensor-y  meters                               :offset        180)
+   (inertial-tensor-z  meters                               :offset        184)
+   (extra              rigid-body-object-extra-info :inline :offset-assert 188)
+   (max-time-step      float                                :offset        188)
+   (gravity            meters                               :offset        192)
+   (idle-distance      meters                               :offset        196)
+   (attack-force-scale float                                :offset        200)
+   (name               symbol                               :offset-assert 204)
+   )
+  :method-count-assert 9
+  :size-assert         #xd0
+  :flag-assert         #x9000000d0
+  )
+
+
+(deftype rigid-body-impact (structure)
+  ((point    vector      :inline :offset-assert   0)
+   (normal   vector      :inline :offset-assert  16)
+   (velocity vector      :inline :offset-assert  32)
+   (impulse  float               :offset-assert  48)
+   (pat      pat-surface         :offset-assert  52)
+   (rbody    basic               :offset-assert  56)
+   (prim-id  uint32              :offset-assert  60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype rigid-body (structure)
+  ((work           rigid-body-work                      :offset-assert   0)
+   (info           rigid-body-info                      :offset-assert   4)
+   (flags          rigid-body-flag                      :offset-assert   8)
+   (force-callback (function object float none)         :offset-assert  12)
+   (blocked-by     basic                                :offset-assert  16)
+   (time-remaining float                                :offset-assert  20)
+   (step-count     int16                                :offset-assert  24)
+   (position       vector                       :inline :offset-assert  32)
+   (rot            vector                       :inline :offset-assert  48)
+   (rotation       quaternion                   :inline :offset         48)
+   (lin-momentum   vector                       :inline :offset-assert  64)
+   (ang-momentum   vector                       :inline :offset-assert  80)
+   (force          vector                       :inline :offset-assert  96)
+   (torque         vector                       :inline :offset-assert 112)
+   (lin-velocity   vector                       :inline :offset-assert 128)
+   (ang-velocity   vector                       :inline :offset-assert 144)
+   (matrix         matrix                       :inline :offset-assert 160)
+   (inv-i-world    matrix                       :inline :offset-assert 224)
+   )
+  :method-count-assert 32
+  :size-assert         #x120
+  :flag-assert         #x2000000120
+  (:methods
+    (rigid-body-method-9 (_type_ collide-shape-moving float) none 9)
+    (rigid-body-method-10 (_type_) none 10)
+    (rigid-body-method-11 (_type_ collide-shape-moving) none 11)
+    (rigid-body-method-12 (_type_ float) none 12)
+    (rigid-body-method-13 (_type_) none 13)
+    (rigid-body-method-14 (_type_ float) none 14)
+    (rigid-body-method-15 (_type_ collide-shape-moving float) none 15)
+    (clear-force-torque! (_type_) none 16)
+    (clear-momentum! (_type_) none 17)
+    (rigid-body-method-18 (_type_ vector vector) none 18)
+    (rigid-body-method-19 (_type_ vector vector) none 19)
+    (rigid-body-method-20 (_type_ vector) none 20)
+    (rigid-body-method-21 (_type_ vector vector float) none 21)
+    (rigid-body-method-22 (_type_ vector vector) vector 22)
+    (rigid-body-method-23 (_type_ vector) vector 23)
+    (rigid-body-method-24 (_type_) none 24)
+    (rigid-body-method-25 (_type_ rigid-body-info vector quaternion function) none 25)
+    (rigid-body-method-26 (_type_ vector quaternion) none 26)
+    (print-physics (_type_ object) none 27)
+    (print-force-torque (_type_ object) none 28)
+    (print-position-rotation (_type_ object) none 29)
+    (print-momentum (_type_ object) none 30)
+    (print-velocity (_type_ object) none 31)
+    )
+  )
+
+
+(deftype rigid-body-control (basic)
+  ((process        process                 :offset-assert   4)
+   (state          rigid-body      :inline :offset-assert  16)
+   (work           basic                   :offset         16)
+   (info           rigid-body-info         :offset         20)
+   (flags          rigid-body-flag         :offset         24)
+   (force-callback basic                   :offset         28)
+   (blocked-by     basic                   :offset         32)
+   (time-remaining float                   :offset         36)
+   (step-count     int16                   :offset         40)
+   (position       vector          :inline :offset         48)
+   (rot            vector          :inline :offset         64)
+   (rotation       quaternion      :inline :offset         64)
+   (lin-momentum   vector          :inline :offset         80)
+   (ang-momentum   vector          :inline :offset         96)
+   (force          vector          :inline :offset        112)
+   (torque         vector          :inline :offset        128)
+   (lin-velocity   vector          :inline :offset        144)
+   (ang-velocity   vector          :inline :offset        160)
+   (matrix         matrix          :inline :offset        176)
+   (inv-i-world    matrix          :inline :offset        240)
+   )
+  :method-count-assert 26
+  :size-assert         #x130
+  :flag-assert         #x1a00000130
+  (:methods
+    (new (symbol type process) _type_ 0)
+    (rigid-body-control-method-9 (_type_ collide-shape-moving float) none 9)
+    (rigid-body-control-method-10 (_type_ rigid-body-object float float) object 10)
+    (rigid-body-control-method-11 (_type_ collide-shape-moving) none 11)
+    (rigid-body-control-method-12 (_type_ float) none 12)
+    (rigid-body-control-method-13 (_type_) none 13)
+    (rigid-body-control-method-14 (_type_ float) none 14)
+    (clear-force-torque! (_type_) none 15)
+    (clear-momentum! (_type_) none 16)
+    (rigid-body-control-method-17 (_type_ vector vector) none 17)
+    (rigid-body-control-method-18 (_type_ vector vector) none 18)
+    (rigid-body-control-method-19 (_type_ vector) none 19)
+    (rigid-body-control-method-20 (_type_ vector vector float) none 20)
+    (rigid-body-control-method-21 (_type_ vector vector) vector 21)
+    (rigid-body-control-method-22 (_type_ vector) vector 22)
+    (rigid-body-control-method-23 (_type_) none 23)
+    (rigid-body-control-method-24 (_type_ rigid-body-info vector quaternion basic) none 24)
+    (rigid-body-control-method-25 (_type_ vector quaternion) none 25)
+    )
+  )
+
+
+(defmethod rigid-body-control-method-9 rigid-body-control ((obj rigid-body-control) (arg0 collide-shape-moving) (arg1 float))
+  (rigid-body-method-9 (-> obj state) arg0 arg1)
+  (none)
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defmethod rigid-body-control-method-10 rigid-body-control ((obj rigid-body-control) (arg0 rigid-body-object) (arg1 float) (arg2 float))
+  (the-as object (rigid-body-method-10 (-> obj state)))
+  )
+
+(defmethod rigid-body-control-method-11 rigid-body-control ((obj rigid-body-control) (arg0 collide-shape-moving))
+  (rigid-body-method-11 (-> obj state) arg0)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-12 rigid-body-control ((obj rigid-body-control) (arg0 float))
+  (rigid-body-method-12 (-> obj state) arg0)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-13 rigid-body-control ((obj rigid-body-control))
+  (rigid-body-method-13 (-> obj state))
+  (none)
+  )
+
+(defmethod rigid-body-control-method-14 rigid-body-control ((obj rigid-body-control) (arg0 float))
+  (rigid-body-method-14 (-> obj state) arg0)
+  (none)
+  )
+
+(defmethod clear-force-torque! rigid-body-control ((obj rigid-body-control))
+  (clear-force-torque! (-> obj state))
+  (none)
+  )
+
+(defmethod clear-momentum! rigid-body-control ((obj rigid-body-control))
+  (clear-momentum! (-> obj state))
+  (none)
+  )
+
+(defmethod rigid-body-control-method-17 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
+  (rigid-body-method-18 (-> obj state) arg0 arg1)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-18 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
+  (rigid-body-method-19 (-> obj state) arg0 arg1)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-19 rigid-body-control ((obj rigid-body-control) (arg0 vector))
+  (rigid-body-method-20 (-> obj state) arg0)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-20 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector) (arg2 float))
+  (rigid-body-method-21 (-> obj state) arg0 arg1 arg2)
+  (none)
+  )
+
+(defmethod rigid-body-control-method-21 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 vector))
+  (rigid-body-method-22 (-> obj state) arg0 arg1)
+  )
+
+(defmethod rigid-body-control-method-22 rigid-body-control ((obj rigid-body-control) (arg0 vector))
+  (rigid-body-method-23 (-> obj state) arg0)
+  )
+
+(defmethod rigid-body-control-method-23 rigid-body-control ((obj rigid-body-control))
+  (rigid-body-method-24 (-> obj state))
+  (none)
+  )
+
+(defmethod rigid-body-control-method-24 rigid-body-control ((obj rigid-body-control) (arg0 rigid-body-info) (arg1 vector) (arg2 quaternion) (arg3 basic))
+  (rigid-body-method-25 (-> obj state) arg0 arg1 arg2 (the-as function arg3))
+  (none)
+  )
+
+(defmethod rigid-body-control-method-25 rigid-body-control ((obj rigid-body-control) (arg0 vector) (arg1 quaternion))
+  (rigid-body-method-26 (-> obj state) arg0 arg1)
+  (none)
+  )
+
+(deftype rigid-body-object (process-focusable)
+  ((root-override-2       collide-shape-moving                :offset        128)
+   (info                  rigid-body-object-constants         :offset-assert 204)
+   (flags                 rigid-body-object-flag              :offset-assert 208)
+   (max-time-step         float                               :offset-assert 216)
+   (incoming-attack-id    uint32                              :offset-assert 220)
+   (player-touch-time     time-frame                          :offset-assert 224)
+   (disturbed-time        time-frame                          :offset-assert 232)
+   (player-force-position vector                      :inline :offset-assert 240)
+   (player-force          vector                      :inline :offset-assert 256)
+   )
+  :heap-base #x90
+  :method-count-assert 53
+  :size-assert         #x110
+  :flag-assert         #x3500900110
+  (:methods
+    (idle () _type_ :state 27)
+    (active () _type_ :state 28)
+    (rigid-body-object-method-29 (_type_ float) none 29)
+    (rigid-body-object-method-30 (_type_) none 30)
+    (rigid-body-object-method-31 (_type_ rigid-body-object-constants) none 31)
+    (rigid-body-object-method-32 (_type_) none 32)
+    (rigid-body-object-method-33 (_type_) none 33)
+    (rigid-body-object-method-34 (_type_) none 34)
+    (rigid-body-object-method-35 (_type_) none 35)
+    (rigid-body-object-method-36 (_type_) none 36)
+    (rigid-body-object-method-37 (_type_) none 37)
+    (rigid-body-object-method-38 (_type_) none 38)
+    (rigid-body-object-method-39 (_type_) none 39)
+    (rigid-body-object-method-40 (_type_) none 40)
+    (rigid-body-object-method-41 (_type_) none 41)
+    (rigid-body-object-method-42 (_type_) none :behavior rigid-body-object 42)
+    (rigid-body-object-method-43 (_type_) none 43)
+    (apply-damage (_type_ float matrix) none 44)
+    (rigid-body-object-method-45 (_type_ rigid-body-impact) none 45)
+    (rigid-body-object-method-46 (_type_ process-drawable int symbol event-message-block) none :behavior rigid-body-object 46)
+    (rigid-body-object-method-47 (_type_ process-drawable attack-info touching-shapes-entry penetrate) symbol 47)
+    (rigid-body-object-method-48 (_type_ process-focusable touching-shapes-entry) symbol 48)
+    (rigid-body-object-method-49 (_type_ rigid-body-impact touching-shapes-entry) none 49)
+    (rigid-body-object-method-50 (_type_ float) none 50)
+    (rigid-body-object-method-51 (_type_) none 51)
+    (rigid-body-object-method-52 (_type_) none 52)
+    )
+  )
+
+
+(deftype rigid-body-queue (structure)
+  ((count int8       :offset-assert   0)
+   (array uint64 128 :offset          8)
+   )
+  :method-count-assert 17
+  :size-assert         #x408
+  :flag-assert         #x1100000408
+  (:methods
+    (rigid-body-queue-method-9 (_type_) none 9)
+    (rigid-body-queue-method-10 (_type_) none 10)
+    (rigid-body-queue-method-11 (_type_) none 11)
+    (rigid-body-queue-method-12 (_type_ int int) none 12)
+    (rigid-body-queue-method-13 (_type_) none 13)
+    (rigid-body-queue-method-14 (_type_ int) none 14)
+    (rigid-body-queue-method-15 (_type_) none 15)
+    (validate (_type_) symbol 16)
+    )
+  )

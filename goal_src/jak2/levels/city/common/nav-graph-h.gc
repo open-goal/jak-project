@@ -5,5 +5,236 @@
 ;; name in dgo: nav-graph-h
 ;; dgos: CWI
 
+(declare-type nav-node structure)
+
+;; +++nav-node-flag-byte
+(defenum nav-node-flag-byte
+  "The same as [[nav-node-flag]] but more compact"
+  :type uint8
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4))
+;; ---nav-node-flag-byte
+
 ;; DECOMP BEGINS
 
+(deftype nav-branch (structure)
+  ((node              int32    2 :offset-assert   0)
+   (src-node          nav-node   :offset          0)
+   (dest-node         nav-node   :offset          4)
+   (temp-dest-node-id int32      :offset          4)
+   (speed-limit       uint8      :offset-assert   8)
+   (density           uint8      :offset-assert   9)
+   (clock-type        uint8      :offset-assert  10)
+   (clock-mask        uint8      :offset-assert  11)
+   (max-user-count    uint8      :offset-assert  12)
+   (user-count        uint8      :offset-assert  13)
+   (width             uint8      :offset-assert  14)
+   (flags             uint8      :offset-assert  15)
+   )
+  :method-count-assert 21
+  :size-assert         #x10
+  :flag-assert         #x1500000010
+  (:methods
+    (nav-branch-method-9 (_type_) none 9)
+    (nav-branch-method-10 (_type_ object int) none 10)
+    (get-density (_type_) float 11)
+    (get-speed-limit (_type_) float 12)
+    (get-width (_type_) float 13)
+    (user-limit-reached? (_type_) symbol 14)
+    (dest-node-id-at-max? (_type_) symbol 15)
+    (nav-branch-method-16 (_type_ float) none 16)
+    (nav-branch-method-17 (_type_ float) none 17)
+    (nav-branch-method-18 (_type_ float) none 18)
+    (nav-branch-method-19 (_type_ nav-node) none 19)
+    (nav-branch-method-20 (_type_ nav-node) none 20)
+    )
+  )
+
+
+(deftype nav-node (structure)
+  ((data         uint32                    8       :offset-assert   0)
+   (position     vector                    :inline :offset          0)
+   (pos-x        float                             :offset          0)
+   (pos-y        float                             :offset          4)
+   (pos-z        float                             :offset          8)
+   (angle        uint16                            :offset         12)
+   (id           uint16                            :offset         14)
+   (radius       uint8                             :offset         16)
+   (branch-count int8                              :offset         17)
+   (flags        nav-node-flag-byte                :offset         18)
+   (pad0         int8                      1       :offset         19)
+   (branch-array (inline-array nav-branch)         :offset         20)
+   (nav-mesh-id  uint32                            :offset         24)
+   (level        symbol                            :offset         28)
+   )
+  :method-count-assert 22
+  :size-assert         #x20
+  :flag-assert         #x1600000020
+  (:methods
+    (nav-node-method-9 (_type_) none 9)
+    (nav-node-method-10 (_type_ symbol string) none 10)
+    (nav-node-method-11 (_type_ int) none 11)
+    (nav-node-method-12 (_type_ vector nav-node) none 12)
+    (nav-node-method-13 (_type_ vector) none 13)
+    (nav-node-method-14 (_type_ vector) none 14)
+    (nav-node-method-15 (_type_ uint) none 15)
+    (nav-node-method-16 (_type_ float) none 16)
+    (nav-node-method-17 (_type_ float) none 17)
+    (get-position (_type_ vector) vector 18)
+    (calc-sine-and-cosine! (_type_ vector) vector 19)
+    (get-angle (_type_) float 20)
+    (get-radius (_type_) float 21)
+    )
+  )
+
+
+(defmethod get-density nav-branch ((obj nav-branch))
+  "TODO
+@returns `density * 0.0078125` - is this some kind of trick?"
+  (* 0.0078125 (the float (-> obj density)))
+  )
+
+(defmethod get-speed-limit nav-branch ((obj nav-branch))
+  "TODO
+@returns `speed-limit * 1024.0`"
+  (* 1024.0 (the float (-> obj speed-limit)))
+  )
+
+(defmethod get-width nav-branch ((obj nav-branch))
+  "TODO
+@returns `width * 256.0`"
+  (* 256.0 (the float (-> obj width)))
+  )
+
+(defmethod user-limit-reached? nav-branch ((obj nav-branch))
+  (>= (-> obj user-count) (-> obj max-user-count))
+  )
+
+(defmethod dest-node-id-at-max? nav-branch ((obj nav-branch))
+  "@returns if `dest-node`'s `id` is equal to `#FFFF`
+@see [[nav-node]]"
+  (!= (-> obj dest-node id) #xffff)
+  )
+
+(defmethod get-radius nav-node ((obj nav-node))
+  "TODO
+@returns `radius * 1024.0"
+  (* 1024.0 (the float (-> obj radius)))
+  )
+
+(defmethod get-angle nav-node ((obj nav-node))
+  (the float (-> obj angle))
+  )
+
+(defmethod calc-sine-and-cosine! nav-node ((obj nav-node) (ret vector))
+  "Computes the sine and cosine of the `angle`.
+@param! ret The result <cosine, 0.0, -(sine), 1.0>
+@returns Nothing, the result will be in `ret`"
+  (let ((angle (the float (-> obj angle)))
+        (sin-cos-result (new 'stack-no-clear 'vector))
+        )
+    (sincos! sin-cos-result angle)
+    (set! (-> ret x) (-> sin-cos-result y))
+    (set! (-> ret y) 0.0)
+    (set! (-> ret z) (- (-> sin-cos-result x)))
+    )
+  (set! (-> ret w) 1.0)
+  ret
+  )
+
+(defmethod get-position nav-node ((obj nav-node) (ret vector))
+  "@param! ret The [[vector]] that is modified to hold the result
+@returns the `position` [[vector]] with a `w` component of `1.0`"
+  (set! (-> ret quad) (-> obj position quad))
+  (set! (-> ret w) 1.0)
+  ret
+  )
+
+(deftype nav-graph-link (structure)
+  ((id            uint32           :offset-assert   0)
+   (dest-graph-id uint32           :offset-assert   4)
+   (src-branch-id uint16           :offset-assert   8)
+   (dest-node-id  uint16           :offset-assert  10)
+   (dest-graph    basic            :offset-assert  12)
+   (dummy-node    nav-node :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype nav-graph (basic)
+  ((node-count   int16                           :offset-assert   4)
+   (branch-count int16                           :offset-assert   6)
+   (node-array   (inline-array nav-node)         :offset-assert   8)
+   (branch-array (inline-array nav-branch)       :offset-assert  12)
+   (link-count   int16                           :offset-assert  16)
+   (pad2         uint16                          :offset-assert  18)
+   (link-array   (inline-array nav-graph-link)   :offset-assert  20)
+   (first-node   int16                           :offset-assert  24)
+   (pad0         uint16                          :offset-assert  26)
+   (patched      symbol                          :offset-assert  28)
+   (id           uint32                          :offset-assert  32)
+   (pad1         uint32                        6 :offset-assert  36)
+   )
+  :method-count-assert 45
+  :size-assert         #x3c
+  :flag-assert         #x2d0000003c
+  (:methods
+    (new (symbol type int int int uint) _type_ 0)
+    (nav-graph-method-9 (_type_) none 9)
+    (nav-graph-method-10 (_type_ vector int) none 10)
+    (nav-graph-method-11 (_type_) none 11)
+    (nav-graph-method-12 (_type_) none 12)
+    (nav-graph-method-13 (_type_ int int) none 13)
+    (nav-graph-method-14 (_type_ int int) none 14)
+    (nav-graph-method-15 (_type_) none 15)
+    (nav-graph-method-16 (_type_ int) nav-node 16)
+    (nav-graph-method-17 (_type_ nav-node) none 17)
+    (nav-graph-method-18 (_type_ nav-node int) none 18)
+    (nav-graph-method-19 (_type_ int int int int int int) none 19)
+    (nav-graph-method-20 (_type_ int int) none 20)
+    (nav-graph-method-21 (_type_) none 21)
+    (nav-graph-method-22 (_type_ int int) none 22)
+    (nav-graph-method-23 (_type_ int int) none 23)
+    (nav-graph-method-24 (_type_ int int) none 24)
+    (nav-graph-method-25 (_type_ symbol symbol) none 25)
+    (nav-graph-method-26 (_type_ symbol symbol) none 26)
+    (nav-graph-method-27 (_type_ nav-node-flag-byte nav-node-flag-byte symbol) none 27)
+    (nav-graph-method-28 (_type_) none 28)
+    (nav-graph-method-29 (_type_ symbol) none 29)
+    (nav-graph-method-30 (_type_ uint) none 30)
+    (nav-graph-method-31 (_type_ float) none 31)
+    (nav-graph-method-32 (_type_ float) none 32)
+    (nav-graph-method-33 (_type_ float) none 33)
+    (nav-graph-method-34 (_type_ float) none 34)
+    (nav-graph-method-35 (_type_ int) none 35)
+    (nav-graph-method-36 (_type_ int) none 36)
+    (nav-graph-method-37 (_type_ vector) none 37)
+    (nav-graph-method-38 (_type_) none 38)
+    (nav-graph-method-39 (_type_) none 39)
+    (nav-graph-method-40 (_type_ int) int 40)
+    (node-at-idx (_type_ int) nav-node 41)
+    (nav-graph-method-42 (_type_) none 42)
+    (nav-graph-method-43 (_type_ nav-graph-link string) none 43)
+    (from-editor () none 44)
+    )
+  )
+
+
+(defmethod node-at-idx nav-graph ((obj nav-graph) (idx int))
+  "Get the `nav-node` at a given position.
+@param idx The position in the `node-array` to return
+@returns the [[nav-node]] if it can be found, otherwise return [[#f]]"
+  (let ((v0-0 (the-as nav-node #f)))
+    (if (and (>= idx 0) (< idx (-> obj node-count)))
+        (set! v0-0 (-> obj node-array idx))
+        )
+    v0-0
+    )
+  )

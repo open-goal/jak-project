@@ -6,12 +6,32 @@
 ;; dgos: ENGINE, GAME
 
 (declare-type prototype-tie drawable)
+(declare-type collide-hash-fragment-array basic)
+
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0) ;; set from debug menu, for debugging
+  ;; 1 is envmap related?
+  (tpage-alpha 2)
+  (vanish      3)
+  (visible     5) ;; set by prototypes-game-visible-set! to hide things on purpose
+  (no-collide  6)
+  (tpage-water 7)
+  )
+
+
+(defenum instance-flags
+  :type uint16
+  :bitfield #t
+  (no-collide 0)
+  )
 
 ;; DECOMP BEGINS
 
 (deftype prototype-bucket (basic)
   ((name                string           :offset-assert   4)
-   (flags               uint16           :offset-assert   8)
+   (flags               prototype-flags  :offset-assert   8)
    (texture-masks-index uint16           :offset-assert  10)
    (in-level            uint16           :offset-assert  12)
    (utextures           uint16           :offset-assert  14)
@@ -33,13 +53,14 @@
   )
 
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((next        uint32     4 :offset-assert  64)
-   (count       uint16     4 :offset-assert  80)
-   (mod-count   uint16     4 :offset-assert  88)
-   (last        dma-packet 4 :offset-assert  96)
-   (next-clear  uint128      :offset         64)
-   (count-clear uint64       :offset         80)
-   (last-clear  uint128      :offset         96)
+  ((next              uint32     4 :offset-assert  64)
+   (count             uint16     4 :offset-assert  80)
+   (mod-count         uint16     4 :offset-assert  88)
+   (last              dma-packet 4 :offset-assert  96)
+   (next-clear        uint128      :offset         64)
+   (count-clear       uint64       :offset         80)
+   (count-clear-qword uint128      :offset         80)
+   (last-clear        uint128      :offset         96)
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -78,7 +99,7 @@
    (envmap-fade-far             float                        :offset-assert 164)
    (envmap-shader               adgif-shader                 :offset-assert 168)
    (tint-color                  uint32                       :offset-assert 172)
-   (collide-hash-fragment-array basic                        :offset-assert 176)
+   (collide-hash-fragment-array collide-hash-fragment-array  :offset-assert 176)
    (tie-colors                  time-of-day-palette          :offset-assert 180)
    (data                        uint32              :dynamic :offset-assert 184)
    (color-index-qwc             uint32              :dynamic :offset-assert 184)
@@ -176,12 +197,13 @@
   )
 
 (deftype instance (drawable)
-  ((bucket-index uint16           :offset          6)
-   (origin       matrix4h :inline :offset-assert  32)
-   (flags        uint16           :offset         46)
-   (wind-index   uint16           :offset         62)
+  ((bucket-index uint16           :offset 6)
+   (origin       matrix4h :inline :offset-assert 32)
+   (flags        instance-flags   :offset 46)
+   (wind-index   uint16           :offset 62)
    )
   :method-count-assert 17
   :size-assert         #x40
   :flag-assert         #x1100000040
   )
+

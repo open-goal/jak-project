@@ -37,7 +37,7 @@ enum class VuInstrK {
   MULAbc,
   MADD,
   //  MADDi,
-  //  MADDq,
+  MADDq,
   MADDbc,
   MADDA,
   //  MADDAi,  // 30

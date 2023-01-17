@@ -359,6 +359,9 @@
 (#x1500 "SPEEDRUNNER MODE"
         "SPEEDRUNNER MODE")
 
+(#x1501 "CUTSCENE SKIPS"
+        "CUTSCENE SKIPS")
+
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
 

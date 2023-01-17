@@ -4,7 +4,7 @@
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTestJak1, DraftExprIdentity) {
+TEST_F(FormRegressionTestJak1, ExprIdentity) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -2152,7 +2152,7 @@ TEST_F(FormRegressionTestJak1, ExprPrintTreeBitmask) {
       "(begin\n"
       "  (dotimes\n"
       "   (s4-0 arg1)\n"
-      "   (if (zero? (logand arg0 1)) (format #t \"    \") (format #t \"|   \"))\n"
+      "   (if (not (logtest? arg0 1)) (format #t \"    \") (format #t \"|   \"))\n"
       "   (set! arg0 (shr arg0 1))\n"
       "   )\n"
       "  #f\n"
@@ -2265,17 +2265,17 @@ TEST_F(FormRegressionTestJak1, ExprPrintName) {
 
   std::string expected =
       "(cond\n"
-      "  ((= arg0 arg1) #t)\n"
+      "  ((= arg0 arg1)\n"
+      "   #t\n"
+      "   )\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) string))\n"
       "   (string= (the-as string arg0) (the-as string arg1))\n"
       "   )\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) symbol))\n"
-      "   (string= (the-as string arg0) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
-      "(the-as int arg1))))))\n"
+      "   (string= (the-as string arg0) (symbol->string arg1))\n"
       "   )\n"
       "  ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol))\n"
-      "   (string= (the-as string arg1) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
-      "(the-as int arg0))))))\n"
+      "   (string= (the-as string arg1) (symbol->string arg0))\n"
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},

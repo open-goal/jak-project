@@ -29,7 +29,7 @@
   )
 
 ;; definition for method 10 of type engine-sound-pers
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defmethod kill-callback engine-sound-pers ((obj engine-sound-pers) (arg0 connection-pers))
   (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-param))
@@ -90,7 +90,8 @@
    (stream-position uint32            4         :offset        272)
    (stream-status   stream-status     4         :offset-assert 288)
    (stream-name     sound-stream-name 4 :inline :offset-assert 304)
-   (stream-id       uint32            4         :offset-assert 496)
+   (stream-id       sound-id          4         :offset-assert 496)
+   (stream-id-int32 int32             4         :offset        496)
    (music-register  uint8             17        :offset-assert 512)
    (music-excite    int8                        :offset        528)
    (ramdisk-name    uint8             48        :offset-assert 529)
@@ -151,8 +152,8 @@
 ;; definition for function str-is-playing?
 (defun str-is-playing? ()
   (countdown (v1-0 4)
-    (if (and (>= (-> *sound-iop-info* stream-id v1-0) 0)
-             (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status four))
+    (if (and (>= (the-as uint (-> *sound-iop-info* stream-id v1-0)) 0)
+             (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-four))
              )
         (return #t)
         )
@@ -164,7 +165,7 @@
 (defun str-id-is-playing? ((arg0 int))
   (countdown (v1-0 4)
     (if (and (= arg0 (-> *sound-iop-info* stream-id v1-0))
-             (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status one six))
+             (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-one ststatus-six))
              )
         (return #t)
         )
@@ -335,7 +336,7 @@
   )
 
 ;; definition for function sound-set-stereo-mode
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun sound-set-stereo-mode ((arg0 stereo-mode))
   (let ((v1-1 (the-as sound-rpc-set-stereo-mode (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command set-stereo-mode))
@@ -347,7 +348,7 @@
   )
 
 ;; definition for function list-sounds
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun list-sounds ()
   (let ((v1-1 (the-as sound-rpc-list-sounds (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command list-sounds))
@@ -586,7 +587,7 @@
   )
 
 ;; definition for function free-last-sound-buffer-entry
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun free-last-sound-buffer-entry ()
   (decrement-elt-used *sound-player-rpc*)
   0
@@ -594,7 +595,7 @@
   )
 
 ;; definition for function sound-basic-cb
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun sound-basic-cb ((arg0 int) (arg1 (pointer int32)))
   (set! (-> arg1 0) arg0)
   0
@@ -633,7 +634,7 @@
 
 ;; definition for function string->sound-name
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch uint128 vs sound-name.
+;; WARN: Return type mismatch uint128 vs sound-name.
 (defun string->sound-name ((arg0 string))
   (let ((v1-0 (new 'stack-no-clear 'qword)))
     (set! (-> v1-0 quad) (the-as uint128 0))
@@ -686,68 +687,66 @@
 
 ;; definition for function sound-play-by-name
 ;; INFO: Used lq/sq
-(defun sound-play-by-name ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 symbol))
+(defbehavior sound-play-by-name process-drawable ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 object))
+  "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
+otherwise, an explicit [[vector]] can be provided"
   (local-vars (sv-16 sound-group))
-  (with-pp
-    (set! sv-16 arg5)
-    (let ((s4-0 (the-as object arg6)))
-      (when *sound-player-enable*
-        (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
-          (set! (-> s5-0 command) (sound-command play))
-          (set! (-> s5-0 id) arg1)
-          (set! (-> s5-0 name) arg0)
-          (set! (-> s5-0 params mask) (the-as uint 0))
-          (set! (-> s5-0 params group) (the-as uint sv-16))
-          (set! (-> s5-0 params volume) arg2)
-          (set! (-> s5-0 params pitch-mod) arg3)
-          (set! (-> s5-0 params bend) arg4)
-          (let ((s3-1 (the-as process-drawable pp)))
-            (when (= (the-as symbol s4-0) #t)
-              (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
-                  (set! s4-0 (-> s3-1 root trans))
-                  (set! s4-0 #f)
-                  )
-              )
-            )
-          (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) (the-as vector s4-0))
-          )
-        )
-      )
-    arg1
-    )
-  )
-
-;; definition for function sound-play-by-spec
-;; INFO: Used lq/sq
-(defun sound-play-by-spec ((arg0 sound-spec) (arg1 sound-id) (arg2 vector))
-  (with-pp
+  (set! sv-16 arg5)
+  (let ((s4-0 arg6))
     (when *sound-player-enable*
       (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
         (set! (-> s5-0 command) (sound-command play))
         (set! (-> s5-0 id) arg1)
-        (set! (-> s5-0 name) (-> arg0 sound-name))
-        (set! (-> s5-0 params mask) (the-as uint (-> arg0 mask)))
-        (set! (-> s5-0 params group-and-regs) (-> arg0 group-and-regs))
-        (set! (-> s5-0 params volume) (-> arg0 volume))
-        (set! (-> s5-0 params pitch-mod) (-> arg0 pitch-mod))
-        (set! (-> s5-0 params bend) (-> arg0 bend))
-        (set! (-> s5-0 params fo-min) (-> arg0 fo-min))
-        (set! (-> s5-0 params fo-max) (-> arg0 fo-max))
-        (set! (-> s5-0 params fo-curve) (-> arg0 fo-curve))
-        (set! (-> s5-0 params priority) (-> arg0 priority))
-        (let ((s3-1 (the-as process-drawable pp)))
-          (when (= arg2 #t)
+        (set! (-> s5-0 name) arg0)
+        (set! (-> s5-0 params mask) (the-as uint 0))
+        (set! (-> s5-0 params group) (the-as uint sv-16))
+        (set! (-> s5-0 params volume) arg2)
+        (set! (-> s5-0 params pitch-mod) arg3)
+        (set! (-> s5-0 params bend) arg4)
+        (let ((s3-1 self))
+          (when (= s4-0 #t)
             (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
-                (set! arg2 (-> s3-1 root trans))
-                (set! arg2 (the-as vector #f))
+                (set! s4-0 (-> s3-1 root trans))
+                (set! s4-0 #f)
                 )
             )
           )
-        (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) arg2)
+        (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) (the-as vector s4-0))
         )
       )
-    arg1
     )
+  arg1
+  )
+
+;; definition for function sound-play-by-spec
+;; INFO: Used lq/sq
+(defbehavior sound-play-by-spec process-drawable ((arg0 sound-spec) (arg1 sound-id) (arg2 vector))
+  (when *sound-player-enable*
+    (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
+      (set! (-> s5-0 command) (sound-command play))
+      (set! (-> s5-0 id) arg1)
+      (set! (-> s5-0 name) (-> arg0 sound-name))
+      (set! (-> s5-0 params mask) (the-as uint (-> arg0 mask)))
+      (set! (-> s5-0 params group-and-regs) (-> arg0 group-and-regs))
+      (set! (-> s5-0 params volume) (-> arg0 volume))
+      (set! (-> s5-0 params pitch-mod) (-> arg0 pitch-mod))
+      (set! (-> s5-0 params bend) (-> arg0 bend))
+      (set! (-> s5-0 params fo-min) (-> arg0 fo-min))
+      (set! (-> s5-0 params fo-max) (-> arg0 fo-max))
+      (set! (-> s5-0 params fo-curve) (-> arg0 fo-curve))
+      (set! (-> s5-0 params priority) (-> arg0 priority))
+      (let ((s3-1 self))
+        (when (= arg2 #t)
+          (if (and s3-1 (type? s3-1 process-drawable) (nonzero? (-> s3-1 root)))
+              (set! arg2 (-> s3-1 root trans))
+              (set! arg2 (the-as vector #f))
+              )
+          )
+        )
+      (sound-trans-convert (the-as vector3w (-> s5-0 params trans)) arg2)
+      )
+    )
+  arg1
   )
 
 ;; definition for function sound-pause
@@ -852,7 +851,7 @@
 
 ;; definition for method 0 of type ambient-sound
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch object vs ambient-sound.
+;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
   (local-vars
     (sv-16 sound-spec)
@@ -882,7 +881,7 @@
              )
            )
        (when v1-2
-         (set! sv-32 (string->sound-name (the-as string (-> (the-as (pointer uint32) (+ #xff37 (the-as int v1-2)))))))
+         (set! sv-32 (string->sound-name (symbol->string v1-2)))
          (set! sv-48 (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float)))
          (set! sv-16 *ambient-spec*)
          (set! sv-64 (new 'static 'res-tag))
@@ -982,10 +981,9 @@
              (set! (-> s5-1 sound-name) (-> obj name))
              (set! (-> s5-1 fo-max) (-> obj falloff-far))
              (set! (-> s5-1 mask) (sound-mask))
-             (when (-> obj params)
-               pp
-               (effect-param->sound-spec s5-1 (-> obj params) (-> obj param-count))
-               )
+             (if (-> obj params)
+                 (effect-param->sound-spec s5-1 (-> obj params) (-> obj param-count) (the-as process-focusable pp))
+                 )
              )
            (let ((v1-23 (-> s5-1 fo-max)))
              (if (and (nonzero? v1-23) (< (* 4096.0 (the float v1-23)) (vector-vector-distance (ear-trans 0) (-> obj trans))))
@@ -1022,7 +1020,7 @@
                                    (-> obj pitch)
                                    0
                                    (sound-group sfx)
-                                   (the-as symbol (-> obj trans))
+                                   (-> obj trans)
                                    )
              )
        )
@@ -1036,7 +1034,7 @@
                   (-> obj pitch)
                   0
                   (sound-group sfx)
-                  (the-as symbol (-> obj trans))
+                  (-> obj trans)
                   )
                 )
           (set! (-> obj play-time)
@@ -1101,7 +1099,7 @@
   )
 
 ;; definition for method 13 of type ambient-sound
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defmethod update-pitch-mod! ambient-sound ((obj ambient-sound) (arg0 float))
   (when (nonzero? (-> obj playing-id))
     (when *sound-player-enable*
@@ -1120,7 +1118,7 @@
   )
 
 ;; definition for method 14 of type ambient-sound
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defmethod set-falloff-far! ambient-sound ((obj ambient-sound) (arg0 float))
   (set! (-> obj falloff-far) (the int (* 0.00024414062 arg0)))
   0
@@ -1149,7 +1147,7 @@
       arg0
       (+ (* s5-0 16) 16)
       48
-      (font-color default)
+      (font-color default-#cddbcd)
       (font-flags shadow)
       )
     )
@@ -1162,7 +1160,7 @@
       arg0
       (+ (* s5-1 16) 16)
       64
-      (font-color default)
+      (font-color default-#cddbcd)
       (font-flags shadow)
       )
     )
@@ -1174,7 +1172,7 @@
       (-> *level* sound-bank 1)
       (-> *level* sound-bank 2)
       )
-    (s5-2 *temp-string* arg0 16 88 (font-color default) (font-flags shadow))
+    (s5-2 *temp-string* arg0 16 88 (font-color default-#cddbcd) (font-flags shadow))
     )
   (let ((s5-3 draw-string-xy))
     (format
@@ -1187,7 +1185,7 @@
       (-> *setting-control* user-current sound-excitement)
       (-> *setting-control* user-current mode-sound-bank)
       )
-    (s5-3 *temp-string* arg0 16 104 (font-color default) (font-flags shadow))
+    (s5-3 *temp-string* arg0 16 104 (font-color default-#cddbcd) (font-flags shadow))
     )
   0
   )
@@ -1201,7 +1199,7 @@
       (-> *sound-iop-info* freemem)
       (shr (-> *sound-iop-info* freemem) 10)
       )
-    (s5-0 *temp-string* arg0 32 96 (font-color default) (font-flags shadow))
+    (s5-0 *temp-string* arg0 32 96 (font-color default-#cddbcd) (font-flags shadow))
     )
   (let ((s5-1 draw-string-xy))
     (format
@@ -1210,7 +1208,7 @@
       (-> *sound-iop-info* freemem2)
       (shr (-> *sound-iop-info* freemem2) 10)
       )
-    (s5-1 *temp-string* arg0 32 64 (font-color default) (font-flags shadow))
+    (s5-1 *temp-string* arg0 32 64 (font-color default-#cddbcd) (font-flags shadow))
     )
   0
   )
@@ -1234,7 +1232,11 @@
 (defun-debug make-sqrt-table ()
   (format #t "static int sqrt_table[256] =~%{~%")
   (dotimes (gp-0 256)
-    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0)))) (a2-0 (the int (+ 0.5 f0-2)))) (format #t "~D,~%" a2-0))
+    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0))))
+           (a2-0 (the int (+ 0.5 f0-2)))
+           )
+      (format #t "~D,~%" a2-0)
+      )
     )
   (format #t "};~%")
   0
@@ -1265,7 +1267,7 @@
   )
 
 ;; definition for function loader-test-command
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun loader-test-command ((arg0 sound-command) (arg1 uint))
   (let ((v1-1 (the-as sound-rpc-test-cmd (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) arg0)
@@ -1284,7 +1286,7 @@
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
     (vector-! (-> gp-0 0) (target-pos 0) arg0)
     (if *target*
-        (vector-! (-> gp-0 1) arg1 (-> *target* root transv))
+        (vector-! (-> gp-0 1) arg1 (-> *target* control transv))
         (set! (-> gp-0 1 quad) (-> arg1 quad))
         )
     (vector-normalize! (-> gp-0 0) 1.0)
@@ -1295,38 +1297,36 @@
   )
 
 ;; definition for function sound-bank-reload
-;; INFO: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs none.
 (defun sound-bank-reload ()
   (process-spawn-function
     process
-    (lambda ()
-      (with-pp
-        (let ((gp-0 (the-as (array symbol) (new 'static 'boxed-array :type symbol :length 0 :allocated-length 3))))
-          (dotimes (v1-0 3)
-            (set! (-> gp-0 v1-0) (the-as symbol (-> *level* sound-bank v1-0)))
+    (lambda () (with-pp
+                 (let ((gp-0 (new 'static 'boxed-array :type symbol :length 0 :allocated-length 3)))
+                   (dotimes (v1-0 3)
+                     (set! (-> gp-0 v1-0) (the-as symbol (-> *level* sound-bank v1-0)))
+                     )
+                   (let ((a1-3 (new 'stack-no-clear 'array 'symbol 4)))
+                     (set! (-> a1-3 2) 'empty2)
+                     (set! (-> a1-3 1) 'empty1)
+                     (set! (-> a1-3 0) 'empty0)
+                     (want-sound-banks *load-state* a1-3)
+                     )
+                   (let ((s5-0 (-> pp clock frame-counter)))
+                     (until (>= (- (-> pp clock frame-counter) s5-0) (seconds 1))
+                       (suspend)
+                       )
+                     )
+                   (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
+                     (set! (-> a1-4 2) (-> gp-0 2))
+                     (set! (-> a1-4 1) (-> gp-0 1))
+                     (set! (-> a1-4 0) (-> gp-0 0))
+                     (want-sound-banks *load-state* a1-4)
+                     )
+                   )
+                 (none)
+                 )
             )
-          (let ((a1-3 (new 'stack-no-clear 'array 'symbol 4)))
-            (set! (-> a1-3 2) 'empty2)
-            (set! (-> a1-3 1) 'empty1)
-            (set! (-> a1-3 0) 'empty0)
-            (want-sound-banks *load-state* a1-3)
-            )
-          (let ((s5-0 (-> pp clock frame-counter)))
-            (until (>= (- (-> pp clock frame-counter) s5-0) (seconds 1))
-              (suspend)
-              )
-            )
-          (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
-            (set! (-> a1-4 2) (-> gp-0 2))
-            (set! (-> a1-4 1) (-> gp-0 1))
-            (set! (-> a1-4 0) (-> gp-0 0))
-            (want-sound-banks *load-state* a1-4)
-            )
-          )
-        (none)
-        )
-      )
-    :name (symbol->string (-> process symbol))
     :to *display-pool*
     )
   0

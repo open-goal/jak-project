@@ -16,7 +16,7 @@ class Interpreter {
  public:
   Interpreter(const std::string& user_profile = "#f");
   ~Interpreter();
-  void execute_repl(ReplWrapper& repl);
+  void execute_repl(REPL::Wrapper& repl);
   void throw_eval_error(const Object& o, const std::string& err);
   Object eval_with_rewind(const Object& obj, const std::shared_ptr<EnvironmentObject>& env);
   bool get_global_variable_by_name(const std::string& name, Object* dest);

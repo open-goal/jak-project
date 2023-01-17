@@ -3,18 +3,18 @@
 
 ;; definition of type joint-control-channel
 (deftype joint-control-channel (structure)
-  ((parent           joint-control                                        :offset-assert   0)
-   (frame-group      art-joint-anim                                       :offset-assert   4)
-   (frame-num        float                                                :offset-assert   8)
-   (dist             meters                                               :offset-assert  12)
-   (num-func         (function joint-control-channel float float float)   :offset-assert  16)
-   (param            float                                              3 :offset-assert  20)
-   (frame-interp     float                                              2 :offset-assert  32)
-   (inspector-amount uint8                                                :offset-assert  40)
-   (command          joint-control-command                                :offset-assert  48)
-   (group-sub-index  int8                                                 :offset-assert  56)
-   (grou-size        int8                                                 :offset-assert  57)
-   (eval-time        uint32                                               :offset-assert  60)
+  ((parent           joint-control                                              :offset-assert   0)
+   (frame-group      art-joint-anim                                             :offset-assert   4)
+   (frame-num        float                                                      :offset-assert   8)
+   (dist             meters                                                     :offset-assert  12)
+   (num-func         (function joint-control-channel float float float float)   :offset-assert  16)
+   (param            float                                                    3 :offset-assert  20)
+   (frame-interp     float                                                    2 :offset-assert  32)
+   (inspector-amount uint8                                                      :offset-assert  40)
+   (command          joint-control-command                                      :offset-assert  48)
+   (group-sub-index  int8                                                       :offset-assert  56)
+   (group-size       int8                                                       :offset-assert  57)
+   (eval-time        uint32                                                     :offset-assert  60)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -74,7 +74,7 @@
            )
     )
   (format #t "~1Tgroup-sub-index: ~D~%" (-> obj group-sub-index))
-  (format #t "~1Tgroup-size: ~D~%" (-> obj grou-size))
+  (format #t "~1Tgroup-size: ~D~%" (-> obj group-size))
   (format #t "~1Teval-time: ~D~%" (-> obj eval-time))
   (label cfg-23)
   obj
@@ -82,34 +82,35 @@
 
 ;; definition of type top-anim-joint-control
 (deftype top-anim-joint-control (basic)
-  ((process             uint32       :offset-assert   4)
-   (interp-select       uint64     2 :offset-assert   8)
-   (base-anim           basic        :offset-assert  24)
-   (base-anim-speed     float        :offset-assert  28)
-   (base-anim-blend     float        :offset-assert  32)
-   (interp              float        :offset-assert  36)
-   (frame-group         basic        :offset-assert  40)
-   (frame-group-push    basic        :offset-assert  44)
-   (frame-num           float        :offset-assert  48)
-   (frame-targ          basic        :offset-assert  52)
-   (frame-speed         float        :offset-assert  56)
-   (frame-blend         float        :offset-assert  60)
-   (frame-cur-blend     float        :offset-assert  64)
-   (frame-start         float        :offset-assert  68)
-   (frame-post-blend    float        :offset-assert  72)
-   (frame-post-end      float        :offset-assert  76)
-   (frame-push-time     time-frame   :offset-assert  80)
-   (frame-post-put-away basic        :offset-assert  88)
-   (update-time         time-frame   :offset-assert  96)
+  ((process             (pointer process-drawable)   :offset-assert   4)
+   (interp-select       uint64                     2 :offset-assert   8)
+   (base-anim           basic                        :offset-assert  24)
+   (base-anim-speed     float                        :offset-assert  28)
+   (base-anim-blend     float                        :offset-assert  32)
+   (interp              float                        :offset-assert  36)
+   (frame-group         art-joint-anim               :offset-assert  40)
+   (frame-group-push    art-joint-anim               :offset-assert  44)
+   (frame-num           float                        :offset-assert  48)
+   (frame-targ          art-joint-anim               :offset-assert  52)
+   (frame-speed         float                        :offset-assert  56)
+   (frame-blend         float                        :offset-assert  60)
+   (frame-cur-blend     float                        :offset-assert  64)
+   (frame-start         float                        :offset-assert  68)
+   (frame-post-blend    float                        :offset-assert  72)
+   (frame-post-end      float                        :offset-assert  76)
+   (frame-push-time     time-frame                   :offset-assert  80)
+   (frame-post-put-away basic                        :offset-assert  88)
+   (update-time         time-frame                   :offset-assert  96)
    )
   :method-count-assert 13
   :size-assert         #x68
   :flag-assert         #xd00000068
   (:methods
-    (top-anim-joint-control-method-9 () none 9)
-    (top-anim-joint-control-method-10 () none 10)
-    (top-anim-joint-control-method-11 () none 11)
-    (top-anim-joint-control-method-12 () none 12)
+    (new (symbol type process-drawable) _type_ 0)
+    (reset (_type_) none 9)
+    (update (_type_) none 10)
+    (get-channel (_type_ int) joint-control-channel 11)
+    (push-anim-to-targ (_type_ art-joint-anim float int int float float symbol) none 12)
     )
   )
 
@@ -145,29 +146,30 @@
 
 ;; definition of type joint-control
 (deftype joint-control (basic)
-  ((status                  joint-control-status                   :offset-assert   4)
-   (allocated-length        uint8                                  :offset-assert   6)
-   (active-channels         uint8                                  :offset-assert   7)
-   (root-channel            uint32                                 :offset         16)
-   (blend-index             uint8                                  :offset-assert  20)
-   (active-frame-interp     uint8                                  :offset-assert  21)
-   (float-channels          uint8                                  :offset-assert  22)
-   (generate-frame-function function                               :offset-assert  24)
-   (prebind-function        function                               :offset-assert  28)
-   (postbind-function       function                               :offset-assert  32)
-   (effect                  basic                                  :offset-assert  36)
-   (interp-select           int64                 2                :offset-assert  40)
-   (top-anim                basic                                  :offset-assert  56)
-   (override                basic                                  :offset-assert  60)
-   (channel                 joint-control-channel :inline :dynamic :offset-assert  64)
+  ((status                  joint-control-status                                                     :offset-assert   4)
+   (allocated-length        uint8                                                                    :offset-assert   6)
+   (active-channels         uint8                                                                    :offset-assert   7)
+   (root-channel            (inline-array joint-control-channel)                                     :offset         16)
+   (blend-index             uint8                                                                    :offset-assert  20)
+   (active-frame-interp     uint8                                                                    :offset-assert  21)
+   (float-channels          uint8                                                                    :offset-assert  22)
+   (generate-frame-function (function joint-anim-frame int joint-control int)                        :offset-assert  24)
+   (prebind-function        (function joint-anim-frame int joint-control int)                        :offset-assert  28)
+   (postbind-function       (function draw-control cspace-array joint-control none)                  :offset-assert  32)
+   (effect                  effect-control                                                           :offset-assert  36)
+   (interp-select           int64                                                   2                :offset-assert  40)
+   (top-anim                top-anim-joint-control                                                   :offset-assert  56)
+   (override                (array float)                                                            :offset-assert  60)
+   (channel                 joint-control-channel                                   :inline :dynamic :offset-assert  64)
    )
   :method-count-assert 12
   :size-assert         #x40
   :flag-assert         #xc00000040
   (:methods
-    (joint-control-method-9 () none 9)
-    (joint-control-method-10 () none 10)
-    (joint-control-method-11 () none 11)
+    (new (symbol type int) _type_ 0)
+    (current-cycle-distance (_type_) float 9)
+    (update-anim-data (_type_) none 10)
+    (debug-print-channels (_type_ symbol) int 11)
     )
   )
 
@@ -339,7 +341,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

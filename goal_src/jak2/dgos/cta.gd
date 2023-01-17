@@ -1,0 +1,13 @@
+("CTA.DGO"
+  ("ctysluma-part.o" "ctysluma-part")
+  ("neon-baron-part.o" "neon-baron-part")
+  ("tpage-974.go" "tpage-974")
+  ("tpage-973.go" "tpage-973")
+  ("tpage-1680.go" "tpage-1680")
+  ("tpage-1021.go" "tpage-1021")
+  ("tpage-1646.go" "tpage-1646")
+  ("fort-entry-gate-ag.go" "fort-entry-gate")
+  ("cty-fruit-stand-ag.go" "cty-fruit-stand")
+  ("hide-door-a-ag.go" "hide-door-a")
+  ("ctysluma-vis.go" "ctysluma-vis")
+  )

@@ -1,15 +1,27 @@
 #include "Tie3.h"
 
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/log/log.h"
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
+Tie3::Tie3(const std::string& name, int my_id, int level_id)
     : BucketRenderer(name, my_id), m_level_id(level_id) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+
+  m_wind_data.paused = 0;
+  math::Vector4f ones(1, 1, 1, 1);
+  m_wind_data.wind_normal = ones;
+  m_wind_data.wind_temp = ones;
+  for (auto& wv : m_wind_data.wind_array) {
+    wv = ones;
+  }
+  for (auto& wf : m_wind_data.wind_force) {
+    wf = 1.f;
+  }
 }
 
 Tie3::~Tie3() {
@@ -157,7 +169,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("TIE setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("TIE setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -209,19 +221,19 @@ void do_wind_math(u16 wind_idx,
   // vmula.xyzw acc, vf16, vf1       # acc = vf16
   // vmsubax.xyzw acc, vf18, vf19    # acc = vf16 - vf18 * wind_const.x
   // vmsuby.xyzw vf16, vf17, vf19
-  //# vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
+  // # vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
   vf16.x() -= cx * vf18_x + cy * vf17_x;
   vf16.z() -= cx * vf18_z + cy * vf17_z;
 
   // vmulaz.xyzw acc, vf16, vf19     # acc = vf16 * wind_const.z
   // vmadd.xyzw vf18, vf1, vf18
-  //# vf18 += vf16 * wind_const.z
+  // # vf18 += vf16 * wind_const.z
   math::Vector4f vf18(vf18_x, 0.f, vf18_z, 0.f);
   vf18 += vf16 * cz;
 
   // vmulaz.xyzw acc, vf18, vf19    # acc = vf18 * wind_const.z
   // vmadd.xyzw vf17, vf17, vf1
-  //# vf17 += vf18 * wind_const.z
+  // # vf17 += vf18 * wind_const.z
   math::Vector4f vf17(vf17_x, 0.f, vf17_z, 0.f);
   vf17 += vf18 * cz;
 
@@ -301,8 +313,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -314,11 +327,18 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     return;
   }
 
-  auto gs_test = dma.read_and_advance();
-  ASSERT(gs_test.size_bytes == 32);
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    return;
+  }
 
-  auto tie_consts = dma.read_and_advance();
-  ASSERT(tie_consts.size_bytes == 9 * 16);
+  auto gs_test = dma.read_and_advance();
+  if (gs_test.size_bytes == 160) {
+  } else {
+    ASSERT(gs_test.size_bytes == 32);
+
+    auto tie_consts = dma.read_and_advance();
+    ASSERT(tie_consts.size_bytes == 9 * 16);
+  }
 
   auto mscalf = dma.read_and_advance();
   ASSERT(mscalf.size_bytes == 0);
@@ -327,6 +347,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   ASSERT(row.size_bytes == 32);
 
   auto next = dma.read_and_advance();
+  if (next.size_bytes == 32) {
+    next = dma.read_and_advance();
+  }
   ASSERT(next.size_bytes == 0);
 
   auto pc_port_data = dma.read_and_advance();
@@ -334,9 +357,12 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
-  auto wind_data = dma.read_and_advance();
-  ASSERT(wind_data.size_bytes == sizeof(WindWork));
-  memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  if (render_state->version == GameVersion::Jak1) {
+    auto wind_data = dma.read_and_advance();
+    ASSERT(wind_data.size_bytes == sizeof(WindWork));
+    memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  } else {
+  }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     dma.read_and_advance();
@@ -357,17 +383,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-  }
-
-  if (false) {
-    //    for (int i = 0; i < 8; i++) {
-    //      settings.time_of_day_weights[i] = m_time_of_days[i];
-    //    }
-  } else {
-    for (int i = 0; i < 8; i++) {
-      settings.time_of_day_weights[i] =
-          2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
-    }
+    settings.itimes[i] = m_pc_port_data.itimes[i];
   }
 
   if (!m_override_level) {
@@ -526,9 +542,9 @@ void Tie3::render_tree(int idx,
 
   Timer interp_timer;
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
   tree.perf.tod_time.add(interp_timer.getSeconds());
 

@@ -1,5 +1,6 @@
 #include "extract_merc.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
 
@@ -198,8 +199,8 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
 
   else {
     // unsupported blend: a 0 b 1 c 0 d 2 is this part of generic?
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
+    lg::warn("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
+             (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     // ASSERT(false);
   }
@@ -297,8 +298,8 @@ void handle_frag(const std::string& debug_name,
                  MercMemory& memory) {
   (void)frag_ctrl;
   (void)debug_name;
-  // fmt::print("handling frag: {}\n", debug_name);
-  // fmt::print("{}\n", frag.print());
+  // lg::print("handling frag: {}\n", debug_name);
+  // lg::print("{}\n", frag.print());
 
   // we'll iterate through the lump and rgba data
   int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
@@ -490,7 +491,7 @@ void handle_frag(const std::string& debug_name,
       //      dst1_adc = dst0_adc && (mat0_flag >= 0);
       //      dst0_adc = !dst0_adc;
       //      dst1_adc = !dst1_adc;
-      //      fmt::print("{}\n", dst1_adc);
+      //      lg::print("{}\n", dst1_adc);
     }
 
     // write to two spots in memory
@@ -510,7 +511,7 @@ void handle_frag(const std::string& debug_name,
     memory.memory.at(vtx.dst1 + 2).kind = MercOutputQuadword::Kind::INVALID;
 
     /*
-    fmt::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
+    lg::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
                vtx.pos.to_string_aligned(), dst0_adc, dst1_adc, mat1_flag);
                */
 
@@ -542,7 +543,7 @@ std::vector<u32> index_list_from_packet(u32 vtx_ptr, u32 nloop, const MercMemory
       prev_vtx = vtx_mem.vtx_idx;
     } else {
       // missing vertex!
-      fmt::print("MISSING VERTEX at {}\n", vtx_ptr);
+      lg::warn("MISSING VERTEX at {}", vtx_ptr);
       result.push_back(UINT32_MAX);
     }
 
@@ -653,7 +654,6 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
 
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
-                                        const TextureDB& tdb,
                                         const std::vector<level_tools::TextureRemap>& map,
                                         const std::string& debug_name,
                                         size_t ctrl_idx,
@@ -725,9 +725,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       u32 tpage = new_tex >> 20;
       u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
       u32 tex_combo = (((u32)tpage) << 16) | tidx;
-      // look up the texture to make sure it's valid
-      auto tex = tdb.textures.find(tex_combo);
-      ASSERT(tex != tdb.textures.end());
+
       // remember the texture id
       merc_state.merc_draw_mode.pc_combo_tex_id = tex_combo;
 
@@ -759,7 +757,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 srcdst_ptr = frag.header.srcdest_off;
     for (u32 sci = 0; sci < frag.header.samecopy_cnt; sci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("sci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("sci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle].memory.at(src);
       u32 dst = cpy[1];
@@ -771,7 +769,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        fmt::print("sc missing vert\n");
+        lg::warn("sc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
 
@@ -781,7 +779,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // "cross" copy from the other output buffer
     for (u32 cci = 0; cci < frag.header.crosscopy_cnt; cci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("cci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("cci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle ^ 1].memory.at(src);
       u32 dst = cpy[1];
@@ -793,7 +791,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        fmt::print("cc missing vert\n");
+        lg::warn("cc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
       srcdst_ptr++;
@@ -881,8 +879,8 @@ void extract_merc(const ObjectFileData& ag_data,
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
-      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
-                                                    map, ctrls[ci].name, ci, ei, dump_level));
+      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, map,
+                                                    ctrls[ci].name, ci, ei, dump_level));
     }
   }
 
@@ -940,7 +938,10 @@ void extract_merc(const ObjectFileData& ag_data,
             // not added to level, add it
             auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
             if (tex_it == tex_db.textures.end()) {
-              ASSERT(false);
+              lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                        draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name,
+                        draw.state.merc_draw_mode.pc_combo_tex_id >> 16);
+              idx_in_level_texture = 0;
             } else {
               idx_in_level_texture = out.textures.size();
               auto& new_tex = out.textures.emplace_back();

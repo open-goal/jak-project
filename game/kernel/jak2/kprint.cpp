@@ -246,6 +246,16 @@ s32 format_impl_jak2(uint64_t* args) {
           output_ptr = strend(output_ptr);
         } break;
 
+        case 'O':
+        case 'o': {
+          *output_ptr = '~';
+          output_ptr++;
+          kitoa(output_ptr, arg_regs[arg_reg_idx++], 10, 0, ' ', 0);
+          output_ptr = strend(output_ptr);
+          *output_ptr = 'u';
+          output_ptr++;
+        } break;
+
         case 'A':  // print a boxed object
         case 'a':  // pad,padchar (like ) ~8,'0A
         {

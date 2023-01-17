@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 
@@ -86,9 +87,9 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   m_upper_op6_table[0b011110].set(VuInstrK::MULi);    // 30
   m_upper_op6_table[0b011111].set(VuInstrK::MINIi);   // 31
 
-  m_upper_op6_table[0b100000].set(VuInstrK::ADDq);  // 32
-  //  m_upper_op6_table[0b100001].set(VuInstrK::MADDq);   // 33
-  m_upper_op6_table[0b100010].set(VuInstrK::ADDi);  // 34
+  m_upper_op6_table[0b100000].set(VuInstrK::ADDq);   // 32
+  m_upper_op6_table[0b100001].set(VuInstrK::MADDq);  // 33
+  m_upper_op6_table[0b100010].set(VuInstrK::ADDi);   // 34
   //  m_upper_op6_table[0b100011].set(VuInstrK::MADDi);   // 35
   //  m_upper_op6_table[0b100100].set(VuInstrK::SUBq);    // 36
   //  m_upper_op6_table[0b100101].set(VuInstrK::MSUBq);   // 37
@@ -143,6 +144,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::ADDA, "adda").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
   add_op(VuInstrK::MADD, "madd").iemdt().dst_mask().dss_fd_fs_ft();
   add_op(VuInstrK::ADDq, "addq").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_q();
+  add_op(VuInstrK::MADDq, "madd").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_q();
   add_op(VuInstrK::MULi, "muli").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::ADDi, "addi").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::MULAq, "mula").iemdt().dst_mask().dst_acc().vft_zero().src_vfs().src_q();
@@ -413,15 +415,15 @@ VuProgram VuDisassembler::disassemble(void* data, int size_bytes, bool debug_pri
 
     // debug
     if (debug_print) {
-      fmt::print("{}\n", to_string(VuInstructionPair{upper_instr, lower_instr}));
+      lg::print("{}\n", to_string(VuInstructionPair{upper_instr, lower_instr}));
     }
   }
 
   name_labels();
 
   if (debug_print) {
-    fmt::print("----------------------------------\n");
-    fmt::print("{}\n", to_string(prog));
+    lg::print("----------------------------------\n");
+    lg::print("{}\n", to_string(prog));
   }
 
   return prog;
@@ -1013,7 +1015,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
                          instr.src.at(1).to_string(m_label_names));
     default:
       unk++;
-      fmt::print("unknown 0 is {}\n", to_string(instr));
+      lg::print("unknown 0 is {}\n", to_string(instr));
 
       return "ASSERT(false);";  //"???";
   }
@@ -1021,7 +1023,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_forma
 unknown:
 
   unk++;
-  fmt::print("unknown 1 is {}\n", to_string(instr));
+  lg::print("unknown 1 is {}\n", to_string(instr));
 
   return "ASSERT(false);";
 }
@@ -1261,7 +1263,7 @@ std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog, bool mips2
       }
     }
   }
-  fmt::print("TOTAL unk: {}\n", unk);
+  lg::print("TOTAL unk: {}\n", unk);
   return result;
 }
 

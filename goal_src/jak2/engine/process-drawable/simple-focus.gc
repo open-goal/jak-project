@@ -7,3 +7,58 @@
 
 ;; DECOMP BEGINS
 
+(deftype simple-focus (process-focusable)
+  ((first-time? symbol  :offset-assert 204)
+   )
+  :heap-base #x50
+  :method-count-assert 28
+  :size-assert         #xd0
+  :flag-assert         #x1c005000d0
+  (:methods
+    (idle () _type_ :state 27)
+    )
+  )
+
+
+(defmethod get-trans simple-focus ((obj simple-focus) (arg0 int))
+  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
+  (-> obj root-override trans)
+  )
+
+(defmethod run-logic? simple-focus ((obj simple-focus))
+  (when (-> obj first-time?)
+    (set! (-> obj first-time?) #f)
+    #t
+    )
+  )
+
+(defstate idle (simple-focus)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('move-trans)
+                      (let ((v0-0 (-> self root-override trans)))
+                        (set! (-> v0-0 quad) (-> (the-as vector (-> event param 0)) quad))
+                        v0-0
+                        )
+                      )
+                     )
+            )
+    )
+  :code (the-as (function none :behavior simple-focus) sleep-code)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior simple-focus-init-by-other simple-focus ()
+  "Initializes the new [[simple-focus]]. `first-time?` will be set to [[#t]]"
+  (let ((root (new 'process 'trsqv)))
+    (set! (-> self root-override) (the-as collide-shape root))
+    (vector-identity! (-> root scale))
+    (quaternion-identity! (-> root quat))
+    )
+  (logclear! (-> self mask) (process-mask enemy))
+  (set! (-> self first-time?) #t)
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (go-virtual idle)
+  (none)
+  )

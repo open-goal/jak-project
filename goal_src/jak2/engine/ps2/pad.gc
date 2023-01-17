@@ -35,6 +35,16 @@
     (circle   13)
     (x        14)
     (square   15)
+    ;; only 16 buttons are mapped to hardware, the rest are 'actions' or something else
+    (l-analog-down 16)
+    (l-analog-right 17)
+    (l-analog-up 18)
+    (l-analog-left 19)
+    (r-analog-down 20)
+    (r-analog-right 21)
+    (r-analog-up 22)
+    (r-analog-left 23)
+    (confirm 24)
     )
 
 (defenum pad-type
@@ -45,6 +55,7 @@
   (namco-gun 6)
   )
 
+;; decomp begins
 
 (deftype scf-time (structure)
   ((stat   uint8  :offset-assert   0)
@@ -61,6 +72,7 @@
   :flag-assert         #x900000008
   )
 
+(define-extern scf-get-time (function scf-time none))
 
 ;; this gets set to #f later on.
 (define *cheat-mode* #t)
@@ -121,7 +133,7 @@
   :flag-assert         #xa00000090
   (:methods
     (new (symbol type int) _type_ 0)
-    (invert-analog-if-needed (_type_) none 9)
+    (adjust-to-screen-flip (_type_) int 9)
     )
   )
 
@@ -191,6 +203,7 @@
     )
   )
 
+
 (defmethod new cpad-list ((allocation symbol) (type-to-make type))
   "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
    aren't connected yet."
@@ -255,166 +268,166 @@
 
 (defun service-cpads ()
   "Read from cpads and update vibration"
-  (let ((gp-0 *cpad-list*))
-    (dotimes (s5-0 (-> gp-0 num-cpads))
-      (let ((s4-0 (-> *cpad-list* cpads s5-0)))
-        (set! (-> s4-0 old-leftx 1) (-> s4-0 old-leftx 0))
-        (set! (-> s4-0 old-leftx 0) (-> s4-0 leftx))
-        (set! (-> s4-0 old-lefty 1) (-> s4-0 old-lefty 0))
-        (set! (-> s4-0 old-lefty 0) (-> s4-0 lefty))
-        (set! (-> s4-0 old-rightx 1) (-> s4-0 old-rightx 0))
-        (set! (-> s4-0 old-rightx 0) (-> s4-0 rightx))
-        (set! (-> s4-0 old-righty 1) (-> s4-0 old-righty 0))
-        (set! (-> s4-0 old-righty 0) (-> s4-0 righty))
-        (cpad-get-data s4-0)
-        (invert-analog-if-needed s4-0)
+  (let ((pads *cpad-list*))
+    (dotimes (i (-> pads num-cpads))
+      (let ((pad (-> *cpad-list* cpads i)))
+        (set! (-> pad old-leftx 1) (-> pad old-leftx 0))
+        (set! (-> pad old-leftx 0) (-> pad leftx))
+        (set! (-> pad old-lefty 1) (-> pad old-lefty 0))
+        (set! (-> pad old-lefty 0) (-> pad lefty))
+        (set! (-> pad old-rightx 1) (-> pad old-rightx 0))
+        (set! (-> pad old-rightx 0) (-> pad rightx))
+        (set! (-> pad old-righty 1) (-> pad old-righty 0))
+        (set! (-> pad old-righty 0) (-> pad righty))
+        (cpad-get-data pad)
+        (adjust-to-screen-flip pad)
         (cond
-          ((zero? (logand (-> s4-0 valid) 128))
-           (dotimes (s3-0 2)
+          ((zero? (logand (-> pad valid) 128))
+           (dotimes (buzz-i 2)
              (cond
-               ((and (-> s4-0 buzz) (< (get-current-time) (-> s4-0 buzz-time s3-0)) (= *master-mode* 'game))
-                (let ((v1-20 s3-0))
+               ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time buzz-i)) (= *master-mode* 'game))
+                (let ((v1-20 buzz-i))
                   (cond
                     ((zero? v1-20)
-                     (set! (-> s4-0 direct s3-0)
-                           (logand (ash (-> s4-0 buzz-val s3-0) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
+                     (set! (-> pad direct buzz-i)
+                           (logand (ash (-> pad buzz-val buzz-i) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
                            )
                      )
                     ((= v1-20 1)
-                     (set! (-> s4-0 direct s3-0) (-> s4-0 buzz-val s3-0))
+                     (set! (-> pad direct buzz-i) (-> pad buzz-val buzz-i))
                      )
                     )
                   )
                 )
-               ((and (zero? s3-0) (> (-> s4-0 buzz-pause-time) 0))
-                (set! (-> s4-0 direct s3-0)
-                      (logand (ash (-> s4-0 buzz-pause-val s3-0) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
+               ((and (zero? buzz-i) (> (-> pad buzz-pause-time) 0))
+                (set! (-> pad direct buzz-i)
+                      (logand (ash (-> pad buzz-pause-val buzz-i) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
                       )
-                (+! (-> s4-0 buzz-pause-time) -1)
+                (+! (-> pad buzz-pause-time) -1)
                 )
                (else
-                 (set! (-> s4-0 buzz-val s3-0) (the-as uint 0))
-                 (set! (-> s4-0 direct s3-0) (the-as uint 0))
-                 (when (zero? s3-0)
-                   (set! (-> s4-0 buzz-pause-time) (the-as uint 0))
+                 (set! (-> pad buzz-val buzz-i) (the-as uint 0))
+                 (set! (-> pad direct buzz-i) (the-as uint 0))
+                 (when (zero? buzz-i)
+                   (set! (-> pad buzz-pause-time) (the-as uint 0))
                    0
                    )
                  )
                )
              )
-           (when (< (the-as uint 192) (-> s4-0 direct 1))
-             (set! (-> s4-0 direct 0) (the-as uint 0))
+           (when (< (the-as uint 192) (-> pad direct 1))
+             (set! (-> pad direct 0) (the-as uint 0))
              0
              )
-           (set! (-> s4-0 button0-abs 2) (-> s4-0 button0-abs 1))
-           (set! (-> s4-0 button0-abs 1) (-> s4-0 button0-shadow-abs 0))
-           (set! (-> s4-0 button0-rel 2) (-> s4-0 button0-rel 1))
-           (set! (-> s4-0 button0-rel 1) (-> s4-0 button0-rel 0))
-           (when (= (-> s4-0 status) 115)
-             (set! (-> s4-0 abutton 0) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons right))
+           (set! (-> pad button0-abs 2) (-> pad button0-abs 1))
+           (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
+           (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
+           (when (= (-> pad status) 115)
+             (set! (-> pad abutton 0) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons right))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 1) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons left))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 2) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons up))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 3) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons down))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 6) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons x))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 5) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons circle))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 4) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons triangle))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 7) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons square))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 8) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l1))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 10) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l2))
                                                         255
                                                         0
                                                         )
                                                )
                    )
-             (set! (-> s4-0 abutton 1) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons left))
+             (set! (-> pad abutton 9) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r1))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 11) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r2))
                                                         255
                                                         0
                                                         )
                                                )
-                   )
-             (set! (-> s4-0 abutton 2) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons up))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 3) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons down))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 6) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons x))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 5) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons circle))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 4) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons triangle))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 7) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons square))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 8) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons l1))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 10) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons l2))
-                                                         255
-                                                         0
-                                                         )
-                                                )
-                   )
-             (set! (-> s4-0 abutton 9) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons r1))
-                                                        255
-                                                        0
-                                                        )
-                                               )
-                   )
-             (set! (-> s4-0 abutton 11) (the-as uint (if (logtest? (-> s4-0 button0-abs 0) (pad-buttons r2))
-                                                         255
-                                                         0
-                                                         )
-                                                )
                    )
              )
-           (let ((s3-1 (-> s4-0 button0)))
+           (let ((buttons-pushed (the-as pad-buttons (-> pad button0))))
              (cond
-               ((< (-> s4-0 lefty) (the-as uint 30))
-                (set! s3-1 (logior s3-1 #x10000))
+               ((< (-> pad lefty) (the-as uint 30))
+                (set! buttons-pushed (logior (pad-buttons l-analog-down) buttons-pushed))
                 )
-               ((< (the-as uint 225) (-> s4-0 lefty))
-                (set! s3-1 (logior s3-1 #x40000))
+               ((< (the-as uint 225) (-> pad lefty))
+                (set! buttons-pushed (logior (pad-buttons l-analog-up) buttons-pushed))
                 )
                )
              (cond
-               ((< (-> s4-0 leftx) (the-as uint 30))
-                (set! s3-1 (logior s3-1 #x80000))
+               ((< (-> pad leftx) (the-as uint 30))
+                (set! buttons-pushed (logior (pad-buttons l-analog-left) buttons-pushed))
                 )
-               ((< (the-as uint 225) (-> s4-0 leftx))
-                (set! s3-1 (logior s3-1 #x20000))
-                )
-               )
-             (cond
-               ((< (-> s4-0 righty) (the-as uint 30))
-                (set! s3-1 (logior s3-1 #x100000))
-                )
-               ((< (the-as uint 225) (-> s4-0 righty))
-                (set! s3-1 (logior s3-1 #x400000))
+               ((< (the-as uint 225) (-> pad leftx))
+                (set! buttons-pushed (logior (pad-buttons l-analog-right) buttons-pushed))
                 )
                )
              (cond
-               ((< (-> s4-0 rightx) (the-as uint 30))
-                (set! s3-1 (logior s3-1 #x800000))
+               ((< (-> pad righty) (the-as uint 30))
+                (set! buttons-pushed (logior (pad-buttons r-analog-down) buttons-pushed))
                 )
-               ((< (the-as uint 225) (-> s4-0 rightx))
-                (set! s3-1 (logior s3-1 #x200000))
+               ((< (the-as uint 225) (-> pad righty))
+                (set! buttons-pushed (logior (pad-buttons r-analog-up) buttons-pushed))
+                )
+               )
+             (cond
+               ((< (-> pad rightx) (the-as uint 30))
+                (set! buttons-pushed (logior (pad-buttons r-analog-left) buttons-pushed))
+                )
+               ((< (the-as uint 225) (-> pad rightx))
+                (set! buttons-pushed (logior (pad-buttons r-analog-right) buttons-pushed))
                 )
                )
              (let ((v1-123 (get-current-language)))
@@ -422,13 +435,13 @@
                  ((or (= v1-123 (language-enum japanese)) (= v1-123 (language-enum korean)))
                   (case (scf-get-territory)
                     ((2 3)
-                     (if (logtest? s3-1 8192)
-                         (set! s3-1 (logior s3-1 #x1000000))
+                     (if (logtest? buttons-pushed (pad-buttons circle))
+                         (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
                          )
                      )
                     (else
-                      (if (logtest? s3-1 #x6000)
-                          (set! s3-1 (logior s3-1 #x1000000))
+                      (if (logtest? buttons-pushed (pad-buttons circle x))
+                          (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
                           )
                       )
                     )
@@ -436,55 +449,55 @@
                  ((let ((v1-135 (scf-get-territory)))
                     (or (= v1-135 2) (= v1-135 3))
                     )
-                  (if (logtest? s3-1 #x6000)
-                      (set! s3-1 (logior s3-1 #x1000000))
+                  (if (logtest? buttons-pushed (pad-buttons circle x))
+                      (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
                       )
                   )
                  (else
-                   (if (logtest? s3-1 #x4000)
-                       (set! s3-1 (logior s3-1 #x1000000))
+                   (if (logtest? buttons-pushed (pad-buttons x))
+                       (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
                        )
                    )
                  )
                )
-             (set! (-> s4-0 button0-shadow-abs 0) (the-as pad-buttons s3-1))
-             (set! (-> s4-0 button0-abs 0) (the-as pad-buttons s3-1))
+             (set! (-> pad button0-shadow-abs 0) buttons-pushed)
+             (set! (-> pad button0-abs 0) buttons-pushed)
              )
-           (set! (-> s4-0 button0-rel 0) (logclear (-> s4-0 button0-abs 0) (-> s4-0 button0-abs 1)))
+           (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
            (when *cpad-debug*
-             (set! (-> s4-0 leftx) (the-as uint 255))
-             (set! (-> s4-0 rightx) (the-as uint 255))
+             (set! (-> pad leftx) (the-as uint 255))
+             (set! (-> pad rightx) (the-as uint 255))
              )
-           (set! (-> s4-0 stick0-speed) 1.0)
+           (set! (-> pad stick0-speed) 1.0)
            (cond
-             ((= (shr (-> s4-0 status) 4) 7)
-              (let ((f30-0 (* 0.0078125 (the float (+ (-> s4-0 leftx) -128))))
-                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> s4-0 lefty))))))
+             ((= (shr (-> pad status) 4) 7)
+              (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
+                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
                     )
-                (set! (-> s4-0 stick0-dir) (atan (- f30-0) f28-0))
-                (set! (-> s4-0 stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
+                (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
+                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
                 )
-              (if (< (-> s4-0 stick0-speed) 0.3)
-                  (set! (-> s4-0 stick0-speed) 0.0)
+              (if (< (-> pad stick0-speed) 0.3)
+                  (set! (-> pad stick0-speed) 0.0)
                   )
               )
              (else
-               (set! (-> s4-0 leftx) (the-as uint 128))
-               (set! (-> s4-0 lefty) (the-as uint 128))
-               (set! (-> s4-0 rightx) (the-as uint 128))
-               (set! (-> s4-0 righty) (the-as uint 128))
-               (set! (-> s4-0 stick0-dir) 0.0)
-               (set! (-> s4-0 stick0-speed) 0.0)
+               (set! (-> pad leftx) (the-as uint 128))
+               (set! (-> pad lefty) (the-as uint 128))
+               (set! (-> pad rightx) (the-as uint 128))
+               (set! (-> pad righty) (the-as uint 128))
+               (set! (-> pad stick0-dir) 0.0)
+               (set! (-> pad stick0-speed) 0.0)
                )
              )
-           (if (or (!= (-> s4-0 button0-abs 0) (-> s4-0 button0-abs 1))
-                   (or (< 0.3 (-> s4-0 stick0-speed)) (zero? (-> s4-0 change-time)))
+           (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
+                   (or (< 0.3 (-> pad stick0-speed)) (zero? (-> pad change-time)))
                    )
-               (set! (-> s4-0 change-time) (get-current-time))
+               (set! (-> pad change-time) (get-current-time))
                )
            )
           (else
-            (cpad-invalid! s4-0)
+            (cpad-invalid! pad)
             )
           )
         )
@@ -558,6 +571,7 @@
     )
   )
 
+
 (defmethod new mouse-info ((allocation symbol) (type-to-make type))
   "Allocate a new mouse."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -570,6 +584,7 @@
 
 (define *mouse* (new 'global 'mouse-info))
 
+;; WARN: Return type mismatch mouse-info vs none.
 (defun service-mouse ()
   "Update the mouse, and draw the cursor."
   (let ((gp-0 *mouse*))
@@ -605,7 +620,7 @@
     (if (and (-> gp-0 active) (-> gp-0 valid) (-> gp-0 cursor))
         (add-debug-cursor
           #t
-          (bucket-id debug-no-zbuf)
+          (bucket-id debug-no-zbuf2)
           (+ (the int (-> gp-0 posx)) 256)
           (+ (the int (-> gp-0 posy)) 208)
           (the-as int (-> gp-0 button0-abs 0))
@@ -614,7 +629,3 @@
     )
   (none)
   )
-
-
-
-

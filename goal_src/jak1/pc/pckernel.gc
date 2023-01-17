@@ -98,7 +98,6 @@
 
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
-
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
@@ -246,6 +245,10 @@
     (pc-sound-set-fade-hack fade-hack)
     )
 
+  (if (pc-cheats? (-> obj cheats) mirror)
+      (sound-set-mirror-mode (sound-mirror-mode mirrored))
+      (sound-set-mirror-mode (sound-mirror-mode normal)))
+
   (none))
 
 ;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
@@ -328,8 +331,8 @@
 
   ;; update auto-splitter info
   (when (-> *pc-settings* speedrunner-mode?)
-    (with-profiler "autosplit-update-jak1"
-      (update-autosplit-info-jak1)))
+    (with-profiler "speedrun-update-jak1"
+      (speedrun-mode-update)))
 
   (when (not (-> obj use-vis?))
     (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
@@ -531,8 +534,10 @@
       (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
   (if (task-closed? (game-task village3-buzzer) (task-status need-resolution))
       (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
-  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
-      (add-to-music-log obj 'village1 1))
+  (when (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1)
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage)))
+      )
   (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
       (add-to-music-log obj 'jungleb 2))
   (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
@@ -545,10 +550,14 @@
       (add-to-music-log obj 'misty 4))
   (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
       (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task village2-levitator) (task-status need-hint))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
   (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
       (add-to-music-log obj 'swamp 1))
   (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
       (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task village3-button) (task-status need-hint))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
   (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
       (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
   (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
@@ -561,6 +570,10 @@
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
   (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (task-closed? (game-task finalboss-movies) (task-status unknown))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end)))
+      )
   (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
       (add-to-music-log obj 'credits 0)
       (add-to-music-log obj 'credits 1)
@@ -864,6 +877,7 @@
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
                 (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
+                (("cutscene-skips?") (set! (-> obj cutscene-skips?) (file-stream-read-symbol file)))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -990,6 +1004,7 @@
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
     (format file "  (speedrunner-mode? ~A)~%" (-> obj speedrunner-mode?))
+    (format file "  (cutscene-skips? ~A)~%" (-> obj cutscene-skips?))
     (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
     (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
     (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))
@@ -1148,8 +1163,8 @@
 
 ) ;; when debug_segment
 
-(defun-debug draw-build-revision ()
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                      (bucket-id debug-no-zbuf))
           (draw-string-xy *pc-settings-built-sha*
                           buf

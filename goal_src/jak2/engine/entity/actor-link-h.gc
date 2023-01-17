@@ -11,6 +11,7 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch entity vs entity-actor.
 (defun entity-actor-lookup ((arg0 res-lump) (arg1 symbol) (arg2 int))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -27,6 +28,7 @@
     )
   )
 
+;; WARN: Check prologue - tricky store of r0
 (defun entity-actor-count ((arg0 res-lump) (arg1 symbol))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -66,6 +68,7 @@
     )
   )
 
+
 (defmethod next-actor entity-actor ((obj entity-actor))
   (entity-actor-lookup obj 'next-actor 0)
   )
@@ -99,10 +102,12 @@
   (-> obj prev)
   )
 
+;; WARN: Return type mismatch basic vs process.
 (defmethod get-next-process actor-link-info ((obj actor-link-info))
   (the-as process (and (-> obj next) (-> obj next extra process)))
   )
 
+;; WARN: Return type mismatch basic vs process.
 (defmethod get-prev-process actor-link-info ((obj actor-link-info))
   (the-as process (and (-> obj prev) (-> obj prev extra process)))
   )
@@ -149,7 +154,7 @@
       (set! s4-0 (entity-actor-lookup s4-0 'prev-actor 0))
       )
     (while s4-0
-      (if (arg0 (the-as entity-actor s4-0) arg1)
+      (if (arg0 s4-0 arg1)
           (return (the-as int #f))
           )
       (let ((a0-4 s4-0))
@@ -206,6 +211,7 @@
     )
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defmethod send-to-next actor-link-info ((obj actor-link-info) (arg0 symbol))
   (let ((a0-1 (-> obj next)))
     (when a0-1
@@ -219,6 +225,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defmethod send-to-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
   (let ((a0-1 (-> obj prev)))
     (when a0-1
@@ -232,12 +239,14 @@
   (none)
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defmethod send-to-next-and-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
   (send-to-next obj arg0)
   (send-to-prev obj arg0)
   (none)
   )
 
+;; WARN: Return type mismatch symbol vs none.
 (defmethod send-to-all actor-link-info ((obj actor-link-info) (arg0 symbol))
   (send-to-all-after obj arg0)
   (send-to-all-before obj arg0)
@@ -264,7 +273,7 @@
   )
 
 (defmethod get-matching-actor-type-mask actor-link-info ((obj actor-link-info) (arg0 type))
-  (let ((s3-0 (the-as entity-actor (-> obj process entity)))
+  (let ((s3-0 (-> obj process entity))
         (s5-0 0)
         )
     (let ((s4-0 1))
@@ -359,7 +368,3 @@
     gp-0
     )
   )
-
-
-
-

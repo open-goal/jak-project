@@ -255,6 +255,25 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+u64 make_debug_string_from_c(const char* c_str) {
+  auto str_size = strlen(c_str);
+  auto mem_size = str_size + 1;
+  if (mem_size < 8) {
+    mem_size = 8;
+  }
+
+  auto mem = alloc_heap_object((s7 + FIX_SYM_DEBUG).offset, u32_in_fixed_sym(FIX_SYM_STRING_TYPE),
+                               mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
+  // there's no check for failed allocation here!
+
+  // string size field
+  *Ptr<u32>(mem) = str_size;
+
+  // rest is chars
+  kstrcpy(Ptr<char>(mem + 4).c(), c_str);
+  return mem;
+}
+
 extern "C" {
 void _arg_call_linux();
 }
@@ -962,7 +981,7 @@ u64 type_typep(Ptr<Type> t1, Ptr<Type> t2) {
 
 u64 method_set(u32 type_, u32 method_id, u32 method) {
   Ptr<Type> type(type_);
-  if (method_id > 127)
+  if (method_id > 255)
     printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
 
   auto existing_method = type->get_method(method_id).offset;
@@ -1000,8 +1019,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1020,8 +1037,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1464,7 +1479,7 @@ int InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_ASIZE_OF_BASIC_FUNC, "asize-of-basic-func",
                    make_function_from_c((void*)asize_of_basic).offset);
   set_fixed_symbol(FIX_SYM_COPY_BASIC_FUNC, "asize-of-basic-func",
-                   make_function_from_c((void*)copy_basic).offset);
+                   make_function_from_c((void*)copy_basic, true).offset);
   set_fixed_symbol(FIX_SYM_DELETE_BASIC, "delete-basic",
                    make_function_from_c((void*)delete_basic).offset);
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
@@ -1513,7 +1528,7 @@ int InitHeapAndSymbol() {
       set_fixed_type(FIX_SYM_BASIC, "basic", get_fixed_type_symbol(FIX_SYM_STRUCTURE),
                      pack_type_flag(9, 0, 4), make_function_from_c((void*)print_basic).offset,
                      make_function_from_c((void*)inspect_basic).offset);
-  basic_type->new_method = make_function_from_c((void*)new_basic);
+  basic_type->new_method = make_function_from_c((void*)new_basic, true);
   basic_type->delete_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_DELETE_BASIC));
   basic_type->asize_of_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_ASIZE_OF_BASIC_FUNC));
   basic_type->copy_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_COPY_BASIC_FUNC));
@@ -1640,7 +1655,7 @@ int InitHeapAndSymbol() {
                  pack_type_flag(9, 0, 16), 0, 0);
 
   Ptr<Type>(u32_in_fixed_sym(FIX_SYM_OBJECT_TYPE))->new_method =
-      make_function_from_c((void*)alloc_heap_object);
+      make_function_from_c((void*)alloc_heap_object, true);
 
   make_function_symbol_from_c("string->symbol", (void*)intern);
   make_function_symbol_from_c("print", (void*)sprint);
@@ -1656,7 +1671,7 @@ int InitHeapAndSymbol() {
   make_function_symbol_from_c("kmemclose", (void*)kmemclose);
   make_function_symbol_from_c("new-dynamic-structure", (void*)new_dynamic_structure);
   make_function_symbol_from_c("method-set!", (void*)method_set);
-  make_function_symbol_from_c("link", (void*)link_and_exec);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
   make_function_symbol_from_c("link-busy?", (void*)link_busy);
   make_function_symbol_from_c("link-reset", (void*)link_reset);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
@@ -1664,7 +1679,7 @@ int InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("memcpy-and-rellink", 0);
   make_raw_function_symbol_from_c("symlink2", 0);
   make_raw_function_symbol_from_c("symlink3", 0);
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   make_function_symbol_from_c("sql-query", (void*)sql_query_sync);
   make_function_symbol_from_c("mc-run", (void*)MC_run);
@@ -1754,9 +1769,11 @@ u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   return 0;
 }
 
-u64 loado(u32 /*file_name_in*/, u32 /*heap_in*/) {
-  ASSERT(false);
-  return 0;
+u64 loado(u32 file_name_in, u32 /*heap_in*/) {
+  // ASSERT(false);
+  Ptr<String> file_name(file_name_in);
+  printf("****** CALL TO loado(%s) ******\n", file_name->data());
+  return s7.offset;
 }
 
 /*!

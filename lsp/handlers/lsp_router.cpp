@@ -4,6 +4,7 @@
 
 #include "lsp/handlers/initialize.h"
 #include "lsp/protocol/error_codes.h"
+#include "text_document/completion.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
 #include "text_document/go_to.h"
@@ -37,6 +38,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
+  m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
 }
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
@@ -62,12 +64,11 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     const MessageBuffer& message_buffer,
     AppState& appstate) {
   const json& body = message_buffer.body();
-  auto method = body["method"];
-  lg::info(method);
+  auto& method = body["method"];
 
   // If the workspace has not yet been initialized but the client sends a
   // message that doesn't have method "initialize" then we'll return an error
-  // as per LSP spec.
+  // as per the LSP spec.
   if (method != "initialize" && !appstate.workspace.is_initialized()) {
     auto error = {
         make_response(error_resp(ErrorCodes::ServerNotInitialized, "Server not yet initialized."))};
@@ -94,13 +95,14 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
         break;
       case LSPRouteType::REQUEST_RESPONSE:
         auto resp_body = route.m_request_handler(appstate.workspace, body["id"], body["params"]);
+        json resp;
+        resp["id"] = body["id"];
         if (resp_body) {
-          json resp;
-          // TODO - this should be the job of the handler, not here!
-          resp["id"] = body["id"];
           resp["result"] = resp_body.value();
-          resp_bodies.push_back(resp);
+        } else {
+          resp["result"] = nullptr;
         }
+        resp_bodies.push_back(resp);
         break;
     }
 
@@ -108,7 +110,6 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     if (route.m_post_notification_publish) {
       auto resp = route.m_post_notification_publish.value()(appstate.workspace, body["params"]);
       if (resp) {
-        lg::info("adding publish resp");
         resp_bodies.push_back(resp.value());
       }
     }

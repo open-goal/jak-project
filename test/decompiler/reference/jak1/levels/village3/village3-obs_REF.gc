@@ -446,10 +446,10 @@
 ;; failed to figure out what this is:
 (defstate idle (pistons)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('update)
-       (go-virtual active (process->handle arg0) #f)
+       (go-virtual active (process->handle proc) #f)
        )
       )
     )
@@ -512,17 +512,17 @@
 ;; failed to figure out what this is:
 (defstate idle (gondolacables)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'update)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((v0-0 1))
-                         (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
-                         v0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('update)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (let ((v0-0 1))
+                        (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (loop

@@ -7,3 +7,464 @@
 
 ;; DECOMP BEGINS
 
+(deftype rigid-body-platform-constants (rigid-body-object-constants)
+  ((drag-factor           float   :offset-assert 208)
+   (buoyancy-factor       float   :offset-assert 212)
+   (max-buoyancy-depth    meters  :offset-assert 216)
+   (player-weight         meters  :offset-assert 220)
+   (player-bonk-factor    float   :offset-assert 224)
+   (player-dive-factor    float   :offset-assert 228)
+   (player-force-distance meters  :offset-assert 232)
+   (player-force-clamp    meters  :offset-assert 236)
+   (player-force-timeout  uint64  :offset-assert 240)
+   (explosion-force       meters  :offset-assert 248)
+   (control-point-count   int32   :offset-assert 252)
+   (platform              symbol  :offset-assert 256)
+   (sound-name            string  :offset-assert 260)
+   )
+  :method-count-assert 9
+  :size-assert         #x108
+  :flag-assert         #x900000108
+  )
+
+
+(deftype rigid-body-control-point (structure)
+  ((local-pos vector :inline :offset-assert   0)
+   (world-pos vector :inline :offset-assert  16)
+   (velocity  vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype rigid-body-control-point-inline-array (inline-array-class)
+  ((data rigid-body-control-point :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> rigid-body-control-point-inline-array heap-base) (the-as uint 48))
+
+(deftype rigid-body-platform (rigid-body-object)
+  ((info-override        rigid-body-platform-constants                 :offset        204)
+   (control-point-array  rigid-body-control-point-inline-array         :offset-assert 272)
+   (player-velocity      vector                                :inline :offset-assert 288)
+   (player-velocity-prev vector                                :inline :offset-assert 304)
+   (unknown-pad          uint32                                8       :offset-assert 320)
+   (float-height-offset  float                                         :offset-assert 352)
+   (player-bonk-timeout  uint64                                        :offset-assert 360)
+   (water-anim           water-anim                                    :offset-assert 368)
+   )
+  :heap-base #x100
+  :method-count-assert 57
+  :size-assert         #x174
+  :flag-assert         #x3901000174
+  (:methods
+    (rigid-body-platform-method-53 (_type_ vector) float 53)
+    (rigid-body-platform-method-54 (_type_ rigid-body-control-point) none 54)
+    (rigid-body-platform-method-55 (_type_) none 55)
+    (rigid-body-platform-method-56 (_type_ vector) none 56)
+    )
+  )
+
+
+;; WARN: Return type mismatch rigid-body-object vs rigid-body-platform.
+(defmethod relocate rigid-body-platform ((obj rigid-body-platform) (new-addr int))
+  (if (nonzero? (-> obj control-point-array))
+      (&+! (-> obj control-point-array) new-addr)
+      )
+  (the-as
+    rigid-body-platform
+    ((the-as (function rigid-body-object int rigid-body-object) (find-parent-method rigid-body-platform 7))
+     obj
+     new-addr
+     )
+    )
+  )
+
+(defmethod rigid-body-platform-method-53 rigid-body-platform ((obj rigid-body-platform) (arg0 vector))
+  (local-vars (f0-1 object))
+  (let ((v1-0 (-> obj water-anim)))
+    0.0
+    (set! f0-1 (cond
+                 (v1-0
+                   (let ((a0-1 v1-0))
+                     (if (if a0-1
+                             (-> a0-1 child 3)
+                             )
+                         (set! f0-1 (-> v1-0 child 9))
+                         (set! f0-1 (-> v1-0 child 9))
+                         )
+                     )
+                   f0-1
+                   )
+                 (else
+                   (get-height *ocean* arg0 #t)
+                   )
+                 )
+          )
+    )
+  (the-as float f0-1)
+  )
+
+(defmethod rigid-body-platform-method-54 rigid-body-platform ((obj rigid-body-platform) (ctrl-point rigid-body-control-point))
+  (set! (-> ctrl-point world-pos w)
+        (+ (rigid-body-platform-method-53 obj (-> ctrl-point world-pos)) (-> obj float-height-offset))
+        )
+  (let* ((s4-0 (new 'stack-no-clear 'vector))
+         (f0-3 (- (-> ctrl-point world-pos w) (-> ctrl-point world-pos y)))
+         (f30-0 (/ f0-3 (-> obj info-override max-buoyancy-depth)))
+         )
+    (when (< 0.0 f0-3)
+      (vector-float*!
+        s4-0
+        *y-vector*
+        (* (-> obj rbody state info mass)
+           (fmin 1.0 f30-0)
+           (/ (-> obj info-override gravity) (the float (-> obj info-override control-point-count)))
+           (-> obj info-override buoyancy-factor)
+           )
+        )
+      (let ((v1-6 (-> obj rbody))
+            (a1-9 (-> ctrl-point world-pos))
+            (a2-0 s4-0)
+            )
+        (rigid-body-method-18 (-> v1-6 state) a1-9 a2-0)
+        )
+      (vector-float*! s4-0 (-> ctrl-point velocity) (* -1.0 (-> obj info-override drag-factor) (fmin 1.0 f30-0)))
+      (let ((v1-11 (-> obj rbody))
+            (a1-13 (-> ctrl-point world-pos))
+            )
+        (rigid-body-method-18 (-> v1-11 state) a1-13 s4-0)
+        )
+      )
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-50 rigid-body-platform ((obj rigid-body-platform) (arg0 float))
+  (when (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force player-contact-force))
+    (if (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force))
+        (logclear! (-> obj flags) (rigid-body-object-flag player-impulse-force))
+        )
+    (let ((rigid-body (-> obj rbody))
+          (force-pos (-> obj player-force-position))
+          (force (-> obj player-force))
+          (force-dist (-> obj info-override player-force-distance))
+          )
+      (rigid-body-method-21 (-> rigid-body state) force-pos force force-dist)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-platform-method-55 rigid-body-platform ((obj rigid-body-platform))
+  (let ((a1-0 (new 'stack-no-clear 'vector)))
+    (vector-float*! a1-0 *y-vector* (* -1.0 (-> obj info-override gravity) (-> obj rbody state info mass)))
+    (rigid-body-method-20 (-> obj rbody state) a1-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-platform-method-56 rigid-body-platform ((obj rigid-body-platform) (arg0 vector))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector-! v1-0 arg0 (-> obj rbody state position))
+    (set! (-> v1-0 y) 0.0)
+    (let* ((f0-1 (vector-length v1-0))
+           (f1-1 (* 10.0 (fmax 0.0 (fmin 4096.0 (+ -4096.0 f0-1)))))
+           )
+      (when (< 0.0 f1-1)
+        (vector-float*! v1-0 v1-0 (/ f1-1 f0-1))
+        (rigid-body-method-20 (-> obj rbody state) v1-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-29 rigid-body-platform ((obj rigid-body-platform) (arg0 float))
+  (let ((s4-0 (-> obj rbody state matrix)))
+    (dotimes (s3-0 (-> obj info-override control-point-count))
+      (let ((s2-0 (-> obj control-point-array data s3-0)))
+        (vector-matrix*! (-> s2-0 world-pos) (-> s2-0 local-pos) s4-0)
+        (let ((v1-4 (-> obj rbody))
+              (a1-2 (-> s2-0 world-pos))
+              (a2-1 (-> s2-0 velocity))
+              )
+          (rigid-body-method-22 (-> v1-4 state) a1-2 a2-1)
+          )
+        (rigid-body-platform-method-54 obj s2-0)
+        )
+      )
+    )
+  (rigid-body-platform-method-55 obj)
+  (rigid-body-object-method-50 obj arg0)
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-30 rigid-body-platform ((obj rigid-body-platform))
+  (if (-> obj info-override platform)
+      (detect-riders! (-> obj root-override-2))
+      )
+  (set! (-> obj player-velocity-prev quad) (-> obj player-velocity quad))
+  (if *target*
+      (set! (-> obj player-velocity quad) (-> *target* control transv quad))
+      (set! (-> obj player-velocity quad) (-> *null-vector* quad))
+      )
+  (let ((t9-1 (method-of-type rigid-body-object rigid-body-object-method-30)))
+    (t9-1 obj)
+    )
+  (logclear! (-> obj flags) (rigid-body-object-flag player-contact-force))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-47 rigid-body-platform ((obj rigid-body-platform)
+                                                          (arg0 process-drawable)
+                                                          (arg1 attack-info)
+                                                          (arg2 touching-shapes-entry)
+                                                          (arg3 penetrate)
+                                                          )
+  ((method-of-type rigid-body-object rigid-body-object-method-47) obj arg0 arg1 arg2 arg3)
+  #f
+  )
+
+(defmethod rigid-body-object-method-46 rigid-body-platform ((obj rigid-body-platform) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('edge-grabbed)
+     (let ((v1-1 (the-as object (-> arg3 param 0))))
+       (when (not (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force)))
+         (logior! (-> obj flags) (rigid-body-object-flag player-contact-force))
+         (set! (-> obj player-force-position quad) (-> (the-as rigid-body-control-point v1-1) velocity quad))
+         (vector-reset! (-> obj player-force))
+         (set! (-> obj player-force y) (* -1.0 (-> obj info-override player-weight)))
+         )
+       )
+     )
+    (('ridden)
+     (let ((v1-7 (the-as object (-> arg3 param 0))))
+       (when (the-as uint v1-7)
+         (let* ((s5-1 (handle->process (-> (the-as collide-rider v1-7) rider-handle)))
+                (v1-11 (if (type? s5-1 process-focusable)
+                           (the-as process-focusable s5-1)
+                           )
+                       )
+                )
+           (when (and v1-11
+                      (logtest? (-> v1-11 mask) (process-mask target))
+                      (zero? (logand (-> v1-11 focus-status) (focus-status on-water under-water)))
+                      )
+             (when (not (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force)))
+               (logior! (-> obj flags) (rigid-body-object-flag player-contact-force))
+               (set! (-> obj player-force-position quad) (-> v1-11 root-override trans quad))
+               (vector-reset! (-> obj player-force))
+               (let* ((a1-5 (-> obj player-force-position))
+                      (f30-0 0.0)
+                      (f28-0 1.0)
+                      (f26-0 1.0)
+                      (f0-4 (+ (- -4096.0 (-> a1-5 y)) (rigid-body-platform-method-53 obj a1-5)))
+                      (f1-2 12288.0)
+                      (f0-8 (fmax f30-0 (fmin f28-0 (- f26-0 (* f0-4 (/ 1.0 f1-2))))))
+                      )
+                 (set! (-> obj player-force y) (* -1.0 (-> obj info-override player-weight) f0-8))
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (('bonk)
+     (when (>= (- (-> self clock frame-counter) (the-as int (-> obj player-bonk-timeout)))
+               (the-as time-frame (-> obj info-override player-force-timeout))
+               )
+       (set! (-> obj player-bonk-timeout) (the-as uint (-> self clock frame-counter)))
+       (let* ((s4-0 arg0)
+              (v1-31 (if (type? s4-0 process-drawable)
+                         s4-0
+                         )
+                     )
+              )
+         (when v1-31
+           (logior! (-> obj flags) (rigid-body-object-flag player-impulse-force))
+           (set! (-> obj player-force-position quad) (-> v1-31 root trans quad))
+           (let ((f0-14 (fmin
+                          (* 0.00012207031
+                             (the-as float (-> arg3 param 1))
+                             (-> obj info-override player-bonk-factor)
+                             (-> obj info-override player-weight)
+                             )
+                          (-> obj info-override player-force-clamp)
+                          )
+                        )
+                 )
+             (vector-reset! (-> obj player-force))
+             (set! (-> obj player-force y) (- f0-14))
+             )
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type rigid-body-object rigid-body-object-method-46) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  (none)
+  )
+
+(defmethod rigid-body-object-method-37 rigid-body-platform ((obj rigid-body-platform))
+  (if (logtest? (-> obj flags) (rigid-body-object-flag player-impulse-force))
+      (sound-play-by-name
+        (string->sound-name (-> obj info-override sound-name))
+        (new-sound-id)
+        1024
+        0
+        0
+        (sound-group sfx)
+        #t
+        )
+      )
+  (rigid-body-object-method-30 obj)
+  (quaternion-copy! (-> obj root-override-2 quat) (-> obj rbody state rotation))
+  (let ((v1-9 (-> obj rbody))
+        (a1-2 (-> obj root-override-2 trans))
+        )
+    (rigid-body-method-23 (-> v1-9 state) a1-2)
+    )
+  (rider-post)
+  (none)
+  )
+
+(defmethod rigid-body-object-method-31 rigid-body-platform ((obj rigid-body-platform) (arg0 rigid-body-object-constants))
+  (with-pp
+    (set! (-> obj info-override) (the-as rigid-body-platform-constants arg0))
+    (set! (-> obj rbody) (new 'process 'rigid-body-control obj))
+    (set! (-> obj control-point-array)
+          (new 'process 'rigid-body-control-point-inline-array (-> obj info-override control-point-count))
+          )
+    (update-transforms (-> obj root-override-2))
+    (let ((v1-5 (-> obj rbody))
+          (a1-3 (&-> (-> obj info-override) mass))
+          (a2-2 (-> obj root-override-2 trans))
+          (a3-0 (-> obj root-override-2 quat))
+          (t0-0 (method-of-object obj rigid-body-object-method-29))
+          )
+      (rigid-body-method-25 (-> v1-5 state) (the-as rigid-body-info a1-3) a2-2 a3-0 t0-0)
+      )
+    (set! (-> obj player-bonk-timeout) (the-as uint (-> pp clock frame-counter)))
+    (set! (-> obj player-force quad) (-> *null-vector* quad))
+    (set! (-> obj player-velocity quad) (-> *null-vector* quad))
+    (set! (-> obj player-velocity-prev quad) (-> *null-vector* quad))
+    (set! (-> obj root-override-2 max-iteration-count) (the-as uint 4))
+    (set! (-> obj max-time-step) (-> arg0 max-time-step))
+    (set! (-> obj water-anim) (the-as water-anim (entity-actor-lookup (-> obj entity) 'water-actor 0)))
+    0
+    (none)
+    )
+  )
+
+(defmethod rigid-body-object-method-32 rigid-body-platform ((obj rigid-body-platform))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> obj root-override-2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(define *rigid-body-platform-constants* (new 'static 'rigid-body-platform-constants
+                                          :mass 2.0
+                                          :inv-mass 0.5
+                                          :cm-joint (new 'static 'vector :w 1.0)
+                                          :linear-damping 1.0
+                                          :angular-damping 1.0
+                                          :bounce-factor 0.5
+                                          :friction-factor 0.1
+                                          :inertial-tensor-x (meters 4)
+                                          :inertial-tensor-y (meters 4)
+                                          :inertial-tensor-z (meters 4)
+                                          :max-time-step 0.033333335
+                                          :gravity (meters 80)
+                                          :idle-distance (meters 50)
+                                          :attack-force-scale 1.0
+                                          :name '*rigid-body-platform-constants*
+                                          :drag-factor 0.8
+                                          :buoyancy-factor 1.5
+                                          :max-buoyancy-depth (meters 1.5)
+                                          :player-weight (meters 6.6)
+                                          :player-bonk-factor 1.0
+                                          :player-dive-factor 1.0
+                                          :player-force-distance (meters 1000)
+                                          :player-force-clamp (meters 1000000)
+                                          :player-force-timeout #x1e
+                                          :explosion-force (meters 1000)
+                                          :control-point-count 1
+                                          :platform #t
+                                          :sound-name #f
+                                          )
+        )
+
+(defmethod rigid-body-object-method-33 rigid-body-platform ((obj rigid-body-platform))
+  (set! (-> obj float-height-offset) 0.0)
+  (rigid-body-object-method-31 obj *rigid-body-platform-constants*)
+  (let ((s5-0 (-> obj info-override control-point-count)))
+    (dotimes (s4-0 s5-0)
+      (let ((s3-0 (-> obj control-point-array data s4-0)))
+        (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
+          (set! (-> s3-0 local-pos x) (* 12288.0 (sin f30-0)))
+          (set! (-> s3-0 local-pos y) -10240.0)
+          (set! (-> s3-0 local-pos z) (* 12288.0 (cos f30-0)))
+          )
+        (set! (-> s3-0 local-pos w) 1.0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! rigid-body-platform ((obj rigid-body-platform) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (rigid-body-object-method-32 obj)
+  (process-drawable-from-entity! obj arg0)
+  (rigid-body-object-method-33 obj)
+  (rigid-body-object-method-34 obj)
+  0
+  (none)
+  )

@@ -7,6 +7,8 @@
 #include "deftype.h"
 
 #include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
+#include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -204,7 +206,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     // check for docstring
     std::optional<std::string> docstring;
     if (obj->is_pair() && car(obj).is_string()) {
-      docstring = car(obj).as_string()->data;
+      docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
       obj = cdr(obj);
     }
     auto& args = car(obj);
@@ -260,8 +262,8 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (id != -1) {
       // method id assert!
       if (id != info.id) {
-        printf("WARNING - ID assert failed on method %s of type %s (wanted %d got %d)\n",
-               method_name.c_str(), type->get_name().c_str(), id, info.id);
+        lg::print("WARNING - ID assert failed on method {} of type {} (wanted {} got {})\n",
+                  method_name.c_str(), type->get_name().c_str(), id, info.id);
         throw std::runtime_error("Method ID assert failed");
       }
     }
@@ -402,7 +404,7 @@ StructureDefResult parse_structure_def(
           fmt::format("Process heap underflow in type {}: heap-base is {} vs. auto-detected {}",
                       type->get_name(), flags.heap_base, auto_hb));
       //} else if (flags.heap_base != auto_hb) {
-      //  fmt::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
+      //  lg::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
       //             flags.heap_base, auto_hb);
     }
   }
@@ -587,7 +589,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
   iter = cdr(iter);
   // check for docstring
   if (iter->is_pair() && car(iter).is_string()) {
-    symbol_metadata.docstring = car(iter).as_string()->data;
+    symbol_metadata.docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
     iter = cdr(iter);
   }
   auto& field_list_obj = car(iter);
@@ -623,14 +625,10 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
       new_type->set_pack(true);
     }
     if (sr.allow_misaligned) {
-      fmt::print(
-          "[TypeSystem] :allow-misaligned was set on {}, which is a basic and cannot "
-          "be misaligned\n",
-          name);
-      throw std::runtime_error("invalid pack option on basic");
+      new_type->set_allow_misalign(true);
     }
     if (sr.always_stack_singleton) {
-      fmt::print(
+      lg::print(
           "[TypeSystem] :always-stack-singleton was set on {}, which is a basic and cannot "
           "be a stack singleton\n",
           name);

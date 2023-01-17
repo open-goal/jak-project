@@ -1,0 +1,54 @@
+name: build
+
+on: [push]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "Windows Latest MSVC",
+            os: windows-latest,
+            build_type: "Debug", cc: "cl", cxx: "cl",
+          }
+        # TODO: this is not working, since CMake is using generator for latest Visual Studio
+        #- {
+        #    name: "Windows Latest MinGW",
+        #    os: windows-latest,
+        #    build_type: "Debug", cc: "gcc", cxx: "g++"
+        #  }
+        - {
+            name: "Ubuntu Latest GCC",
+            os: ubuntu-latest,
+            build_type: "Debug", cc: "gcc", cxx: "g++"
+          }
+        - {
+            name: "macOS Latest Clang",
+            os: macos-latest,
+            build_type: "Debug", cc: "clang", cxx: "clang++"
+          }
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: submodule
+      run: git submodule update --init --recursive
+    - name: configure
+      shell: cmake -P {0}
+      run: |
+        set(ENV{CC} ${{matrix.config.cc}})
+        set(ENV{CXX} ${{matrix.config.cxx}})
+    - name: generate
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=${{matrix.config.build_type}} -DSQLITECPP_BUILD_EXAMPLES=ON -DSQLITECPP_BUILD_TESTS=ON -DSQLITECPP_RUN_CPPCHECK=OFF -DSQLITECPP_RUN_CPPLINT=OFF .. 
+    - name: build
+      run: cmake --build build --config ${{matrix.config.build_type}}
+    - name: test
+      run: |
+        cd build
+        ctest --verbose --output-on-failure

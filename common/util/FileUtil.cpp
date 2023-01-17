@@ -76,6 +76,11 @@ fs::path get_user_memcard_dir(GameVersion game_version) {
   return get_user_config_dir() / game_version_name / "saves";
 }
 
+fs::path get_user_misc_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "misc";
+}
+
 struct {
   bool initialized = false;
   fs::path path_to_data;
@@ -139,7 +144,7 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (project_path_override) {
     gFilePathInfo.path_to_data = *project_path_override;
     gFilePathInfo.initialized = true;
-    fmt::print("Using explicitly set project path: {}\n", project_path_override->string());
+    lg::info("Using explicitly set project path: {}", project_path_override->string());
     return true;
   }
 
@@ -147,7 +152,7 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (data_path) {
     gFilePathInfo.path_to_data = *data_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using data path: {}\n", data_path->string());
+    lg::info("Using data path: {}", data_path->string());
     return true;
   }
 
@@ -155,11 +160,11 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (development_repo_path) {
     gFilePathInfo.path_to_data = *development_repo_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using development repo path: {}\n", *development_repo_path);
+    lg::info("Using development repo path: {}", *development_repo_path);
     return true;
   }
 
-  fmt::print("Failed to initialize project path.\n");
+  lg::error("Failed to initialize project path.");
   return false;
 }
 
@@ -316,8 +321,21 @@ std::string base_name(const std::string& filename) {
       break;
     }
   }
-
   return filename.substr(pos);
+}
+
+std::string base_name_no_ext(const std::string& filename) {
+  size_t pos = 0;
+  ASSERT(!filename.empty());
+  for (size_t i = filename.size() - 1; i-- > 0;) {
+    if (filename.at(i) == '/' || filename.at(i) == '\\') {
+      pos = (i + 1);
+      break;
+    }
+  }
+  std::string file_name = filename.substr(pos);
+  return file_name.substr(0, file_name.find_last_of('.'));
+  ;
 }
 
 void ISONameFromAnimationName(char* dst, const char* src) {
@@ -524,12 +542,22 @@ std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std
   std::vector<fs::path> files = {};
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
     if (p.is_regular_file()) {
-      if (std::regex_match(fs::path(p.path()).filename().string(), pattern)) {
+      if (std::regex_match(p.path().filename().string(), pattern)) {
         files.push_back(p.path());
       }
     }
   }
   return files;
+}
+
+std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
+  std::vector<fs::path> dirs = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_directory()) {
+      dirs.push_back(p.path());
+    }
+  }
+  return dirs;
 }
 
 }  // namespace file_util

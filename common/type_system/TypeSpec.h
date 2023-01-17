@@ -94,7 +94,7 @@ class TypeSpec {
   void modify_tag(const std::string& tag_name, const std::string& tag_value);
   void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
 
-  const std::string base_type() const { return m_type; }
+  const std::string& base_type() const { return m_type; }
 
   bool has_single_arg() const {
     if (m_arguments) {
@@ -127,6 +127,12 @@ class TypeSpec {
     return m_arguments->at(idx);
   }
   const TypeSpec& last_arg() const {
+    ASSERT(m_arguments);
+    ASSERT(!m_arguments->empty());
+    return m_arguments->back();
+  }
+
+  TypeSpec& last_arg() {
     ASSERT(m_arguments);
     ASSERT(!m_arguments->empty());
     return m_arguments->back();

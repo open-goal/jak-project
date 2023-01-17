@@ -5,13 +5,17 @@
 ;; name in dgo: foreground-h
 ;; dgos: ENGINE, GAME
 
+(define-extern *foreground-draw-engine* engine)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none))
+(define-extern foreground-draw-hud (function draw-control dma-buffer float none))
+
 ;; DECOMP BEGINS
 
 (deftype mercneric-chain (structure)
   ((first      uint32                       :offset-assert   0)
    (next       uint32                       :offset-assert   4)
    (state      generic-bucket-state :inline :offset-assert   8)
-   (vu1-bucket int32                        :offset-assert  16)
+   (vu1-bucket bucket-id                    :offset-assert  16)
    )
   :pack-me
   :method-count-assert 9
@@ -22,7 +26,7 @@
 (deftype merc-chain (structure)
   ((first      dma-packet  :offset-assert   0)
    (patch      dma-packet  :offset-assert   4)
-   (vu1-bucket int32       :offset-assert   8)
+   (vu1-bucket bucket-id   :offset-assert   8)
    )
   :pack-me
   :method-count-assert 9
@@ -64,11 +68,11 @@
    (mercneric-used        uint32                    :offset-assert  12)
    (use-isometric         uint32                    :offset-assert  16)
    (base-start            dma-packet                :offset-assert  20)
-   (joint-ptr             uint32                    :offset-assert  24)
-   (bone-ptr              uint32                    :offset-assert  28)
+   (joint-ptr             (inline-array joint)      :offset-assert  24)
+   (bone-ptr              (inline-array bone)       :offset-assert  28)
    (num-bones             uint32                    :offset-assert  32)
-   (mtxs                  uint32                    :offset-assert  36)
-   (dma-buf               basic                     :offset-assert  40)
+   (mtxs                  (inline-array pris-mtx)   :offset-assert  36)
+   (dma-buf               dma-buffer                :offset-assert  40)
    (default-texture-index uint32                    :offset-assert  44)
    (mercneric-chain       mercneric-chain           :offset-assert  48)
    (level-buckets         foreground-level-buckets  :offset-assert  52)
@@ -80,7 +84,7 @@
 
 (deftype foreground-work (structure)
   ((regs           foreground-regs        :inline :offset-assert   0)
-   (draw-index-map uint16                 7       :offset         64)
+   (draw-index-map uint8                  7       :offset         64)
    (grid           foreground-bucket-grid :inline :offset-assert  80)
    (bounds         sphere                 :inline :offset-assert 2464)
    (lights         vu-lights              :inline :offset-assert 2480)
@@ -113,6 +117,7 @@
 
 (deftype merc-effect-bucket-info (structure)
   ((color-fade     rgba   :offset-assert   0)
+   (alpha          uint8  :offset          3)
    (merc-path      uint8  :offset-assert   4)
    (ignore-alpha   uint8  :offset-assert   5)
    (disable-draw   uint8  :offset-assert   6)

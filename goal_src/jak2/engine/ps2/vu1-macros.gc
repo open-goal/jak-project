@@ -148,11 +148,15 @@
    )
 )
 
-;; In the original game, init-for-transform stashed a bunch of stuff in registers, to be used by other functions.
-;; In OpenGOAL, this seems risky so we're going to back up this manually.
-;; This does mean this file now has code, but it's not a big deal.
-;; This seems like it is very old GOAL code and is really only used for debug and a few weird leftovers.
-;; In Jak 2, it's only used for the camera debug drawing code.
+;; In the original game, they sometimes stashed some values in vf registers across function calls.
+;; In OpenGOAL, we don't have a one-to-one mapping of vf's to x86 hardware registers, so we need
+;; to manually backup and restore these.
+
+;; it's used in a few places:
+;; - init-for-transforms sets up register for doing world -> screen transformations. only used for debug cam drawing
+;; - set-background-regs! sets up registers for background drawing and runs a VU0 program to premultiply some stuff
+;; - bsp also does a similar thing, but doesn't run the VU0 program
+
 (deftype transform-regs (structure)
   ;; Eventually we might want to actually name some of these fields to be more comprehensible?
   (;; vf0 not included!

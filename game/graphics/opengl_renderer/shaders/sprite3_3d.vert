@@ -28,7 +28,7 @@ out flat vec4 fragment_color;
 out vec3 tex_coord;
 out flat uvec2 tex_info;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
+const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
 
 vec4 matrix_transform(mat4 mtx, vec3 pt) {
     return mtx[3]

@@ -199,6 +199,8 @@
   ("pc-anim-util.o" "pc-anim-util") ;; added
   ("autosplit-h.o" "autosplit-h") ;; added
   ("autosplit.o" "autosplit") ;; added
+  ("speedruns-h.o" "speedruns-h") ;; added
+  ("speedruns.o" "speedruns") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
@@ -221,7 +223,7 @@
   ("collide-shape.o" "collide-shape")
   ("collide-shape-rider.o" "collide-shape-rider")
   ("collide.o" "collide")
-  ("collide-planes.o" "collide-planes")
+  ;; ("collide-planes.o" "collide-planes")
   ("merc-death.o" "merc-death")
   ("water-h.o" "water-h")
   ("camera.o" "camera")

@@ -32,7 +32,7 @@ jobs:
         run: choco install ${{ github.workspace }}/third-party/nasm/nasm.2.15.05.nupkg
 
       - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v1.3.0
+        uses: mikehardy/buildcache-action@v2.1.0
         with:
           cache_key: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
 
@@ -44,13 +44,13 @@ jobs:
 
       - name: Build Project
         shell: cmd
-        run: cmake --build build -j 2
+        run: cmake --build build --parallel %NUMBER_OF_PROCESSORS%
 
       - name: Run Tests
         timeout-minutes: 10
         env:
           GTEST_OUTPUT: "xml:opengoal-test-report.xml"
-        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=1 --gtest_filter="-*MANUAL_TEST*"
+        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=0 --gtest_filter="-*MANUAL_TEST*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3

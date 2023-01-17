@@ -7,6 +7,7 @@
 
 #include <stdexcept>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
@@ -196,8 +197,8 @@ std::string Type::get_name() const {
 
 std::string Type::get_runtime_name() const {
   if (!m_allow_in_runtime) {
-    fmt::print("[TypeSystem] Tried to use type {} as a runtime type, which is not allowed.\n",
-               get_name());
+    lg::print("[TypeSystem] Tried to use type {} as a runtime type, which is not allowed.\n",
+              get_name());
     throw std::runtime_error("get_runtime_name");
   }
   return m_runtime_name;
@@ -885,9 +886,9 @@ int BasicType::get_offset() const {
 }
 
 int BasicType::get_inline_array_start_alignment() const {
-  if (m_pack) {
+  if (m_pack || m_allow_misalign) {
     // make elements of inline array the minimum allowable alignment.
-    int alignment = 8;
+    int alignment = m_allow_misalign ? 4 : 8;
     // TODO - I don't know if GOAL actually did this check, maybe packed inline arrays could
     // violate these?
     for (const auto& field : m_fields) {

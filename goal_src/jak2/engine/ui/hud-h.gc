@@ -8,39 +8,58 @@
 (defenum hud-flags
   :type uint32
   :bitfield #t
+  (disable 0)
+  (should-die 1)
+  (show 2)
   )
+
+;; NOTE - for progress
+(define-extern hide-hud (function symbol none))
+(define-extern hud-hidden? (function symbol))
+(declare-type hud-sprite structure)
+(define-extern set-hud-piece-position! (function hud-sprite int int none))
+(define-extern show-hud (function object none))
+(declare-type hud process)
+(define-extern hud-init-by-other (function object :behavior hud))
+(define-extern hud-arriving (state hud))
+(define-extern hud-leaving (state float hud))
+(define-extern hud-in (state hud))
 
 ;; DECOMP BEGINS
 
 (deftype hud-string (basic)
-  ((text  string           :offset-assert   4)
-   (scale float            :offset-assert   8)
-   (color uint32           :offset-assert  12)
-   (flags uint32           :offset-assert  16)
-   (pos   vector4w :inline :offset-assert  32)
+  ((text  string       :offset-assert   4)
+   (scale float        :offset-assert   8)
+   (color font-color   :offset-assert  12)
+   (flags font-flags   :offset-assert  16)
+   (pos   int32      4 :offset         32)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
 
+
 (deftype hud-sprite (structure)
   ((pos     vector4w :inline :offset-assert   0)
    (color   vector4w :inline :offset-assert  16)
+   (color2  int32    4       :offset         16)
    (flags   uint32           :offset-assert  32)
    (scale-x float            :offset-assert  36)
    (scale-y float            :offset-assert  40)
    (angle   float            :offset-assert  44)
-   (tex     basic            :offset-assert  48)
+   (tex     texture          :offset-assert  48)
    )
   :method-count-assert 11
   :size-assert         #x34
   :flag-assert         #xb00000034
   (:methods
-    (hud-sprite-method-9 () none 9)
-    (hud-sprite-method-10 () none 10)
+    (draw (_type_ dma-buffer level) none 9)
+    (hud-sprite-method-10 (_type_) none 10)
     )
   )
+
 
 (deftype hud-box (structure)
   ((min   vector2  :inline :offset-assert   0)
@@ -51,26 +70,29 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (hud-box-method-9 () none 9)
-    (hud-box-method-10 () none 10)
-    (hud-box-method-11 () none 11)
-    (hud-box-method-12 () none 12)
-    (hud-box-method-13 () none 13)
-    (hud-box-method-14 () none 14)
-    (hud-box-method-15 () none 15)
+    (draw-box-prim-only (_type_ dma-buffer) none 9)
+    (draw-box-alpha-1 (_type_ dma-buffer) none 10)
+    (draw-box-alpha-2 (_type_ dma-buffer) none 11)
+    (draw-box-alpha-3 (_type_ dma-buffer) none 12)
+    (draw-scan-and-line (_type_ dma-buffer float) int 13)
+    (setup-scissor (_type_ dma-buffer) none 14)
+    (restore-scissor (_type_ dma-buffer) none 15)
     )
   )
 
+
 (deftype hud-icon (basic)
-  ((icon    (pointer manipy)         :offset-assert   4)
-   (pos     vector4w         :inline :offset-assert  16)
-   (scale-x float                    :offset-assert  32)
-   (scale-y float                    :offset-assert  36)
+  ((icon    (pointer manipy)   :offset-assert   4)
+   (pos     int32            4 :offset         16)
+   (scale-x float              :offset-assert  32)
+   (scale-y float              :offset-assert  36)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
+
 
 (deftype hud-value (basic)
   ((current int32   :offset-assert   4)
@@ -78,43 +100,45 @@
    (flags   uint16  :offset-assert  12)
    (counter uint16  :offset-assert  14)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype hud (process)
   ((trigger-time   time-frame            :offset-assert 128)
    (last-hide-time time-frame            :offset-assert 136)
    (offset         float                 :offset-assert 144)
    (flags          hud-flags             :offset-assert 148)
-   (values         hud-value  8 :inline  :offset-assert 152)
-   (strings        hud-string 14 :inline :offset-assert 288)
-   (sprites        hud-sprite 30 :inline :offset-assert 960)
-   (icons          hud-icon   2 :inline  :offset-assert 2880)
-   (gui-id         uint32                :offset-assert 2976)
+   (values         hud-value  8 :inline  :offset        148)
+   (strings        hud-string 14 :inline :offset        284)
+   (sprites        hud-sprite 30 :inline :offset        960)
+   (icons          hud-icon   2 :inline  :offset        2876)
+   (gui-id         sound-id              :offset        2976)
    )
   :heap-base #xb30
   :method-count-assert 27
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   (:methods
-    (hud-method-14 () none 14)
-    (hud-method-15 () none 15)
-    (hud-method-16 () none 16)
-    (hud-method-17 () none 17)
-    (hud-method-18 () none 18)
-    (hud-method-19 () none 19)
-    (hud-method-20 () none 20)
-    (hud-method-21 () none 21)
-    (hud-method-22 () none 22)
-    (hud-method-23 () none 23)
-    (hud-method-24 () none 24)
-    (hud-method-25 () none 25)
-    (hud-method-26 () none 26)
+    (hidden? (_type_) symbol 14)
+    (draw (_type_) none 15)
+    (update-values (_type_) none 16)
+    (init-callback (_type_) none 17)
+    (event-callback (_type_ process int symbol event-message-block) symbol 18)
+    (hud-method-19 (_type_) none 19)
+    (hud-method-20 (_type_) none 20)
+    (hud-method-21 (_type_) none 21)
+    (hud-method-22 (_type_) none 22)
+    (hud-method-23 (_type_) none 23)
+    (check-ready-and-maybe-show (_type_ symbol) symbol 24)
+    (update-value-callback (_type_ int int) none 25)
+    (alloc-string-if-needed (_type_ int) none 26)
     )
   )
+
 
 (deftype hud-ashelin (hud)
   ()
@@ -124,6 +148,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-cargo (hud)
   ()
   :heap-base #xb30
@@ -131,6 +156,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-citizen (hud)
   ()
@@ -140,6 +166,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-cpanel (hud)
   ()
   :heap-base #xb30
@@ -147,6 +174,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-dig-clasp (hud)
   ()
@@ -156,6 +184,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-gun (hud)
   ()
   :heap-base #xb30
@@ -163,6 +192,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-health (hud)
   ()
@@ -172,6 +202,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-dark-eco-symbol (hud)
   ()
   :heap-base #xb30
@@ -179,6 +210,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-helldog (hud)
   ()
@@ -188,6 +220,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-lurker (hud)
   ()
   :heap-base #xb30
@@ -195,6 +228,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-map (hud)
   ()
@@ -204,6 +238,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-moneybag (hud)
   ()
   :heap-base #xb30
@@ -211,6 +246,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-pegasus (hud)
   ()
@@ -220,6 +256,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-plasmite (hud)
   ()
   :heap-base #xb30
@@ -227,6 +264,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-dig-button (hud)
   ()
@@ -236,6 +274,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-predator (hud)
   ()
   :heap-base #xb30
@@ -243,6 +282,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-heatmeter (hud)
   ()
@@ -252,6 +292,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-progress (hud)
   ()
   :heap-base #xb30
@@ -259,6 +300,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-rocketsensor (hud)
   ()
@@ -268,6 +310,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-ruffians (hud)
   ()
   :heap-base #xb30
@@ -275,6 +318,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-score (hud)
   ()
@@ -284,6 +328,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-sig (hud)
   ()
   :heap-base #xb30
@@ -291,6 +336,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-skill (hud)
   ()
@@ -300,6 +346,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-skullgem (hud)
   ()
   :heap-base #xb30
@@ -307,6 +354,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-timer (hud)
   ()
@@ -316,6 +364,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-turret (hud)
   ()
   :heap-base #xb30
@@ -323,6 +372,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-squid (hud)
   ()
@@ -332,6 +382,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-gunturret (hud)
   ()
   :heap-base #xb30
@@ -339,6 +390,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-gruntegg (hud)
   ()
@@ -348,6 +400,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-crimsonhover (hud)
   ()
   :heap-base #xb30
@@ -355,6 +408,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-metalkor (hud)
   ()
@@ -364,6 +418,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-big-score (hud)
   ()
   :heap-base #xb30
@@ -371,6 +426,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-goal (hud)
   ()
@@ -380,6 +436,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-miss (hud)
   ()
   :heap-base #xb30
@@ -387,6 +444,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-race-timer (hud)
   ()
@@ -396,6 +454,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-race-lap-counter (hud)
   ()
   :heap-base #xb30
@@ -403,6 +462,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-race-turbo-counter (hud)
   ()
@@ -412,6 +472,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-race-position (hud)
   ()
   :heap-base #xb30
@@ -419,6 +480,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-race-map (hud)
   ()
@@ -428,6 +490,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-samos-old (hud)
   ()
   :heap-base #xb30
@@ -435,6 +498,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-samos-young (hud)
   ()
@@ -444,6 +508,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-lurker-button (hud)
   ()
   :heap-base #xb30
@@ -451,6 +516,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-widow (hud)
   ()
@@ -460,6 +526,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-race-final-stats (hud)
   ()
   :heap-base #xb30
@@ -467,6 +534,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-mech-air-tank (hud)
   ()
@@ -476,6 +544,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-homing-beacon (hud)
   ()
   :heap-base #xb30
@@ -484,6 +553,7 @@
   :flag-assert         #x1b0b300ba4
   )
 
+
 (deftype hud-dark-eco-pickup (hud)
   ()
   :heap-base #xb30
@@ -491,6 +561,7 @@
   :size-assert         #xba4
   :flag-assert         #x1b0b300ba4
   )
+
 
 (deftype hud-green-eco-pickup (hud)
   ()
