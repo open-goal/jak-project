@@ -658,20 +658,20 @@
 ;; definition for function under-sig-red-shot-overhead
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defbehavior under-sig-red-shot-overhead scene-player ((arg0 object) (arg1 vector) (arg2 sparticle-launch-state))
+(defbehavior under-sig-red-shot-overhead scene-player ((arg0 process-tree) (arg1 vector) (arg2 sparticle-launch-state))
   (when (not (-> self aborted?))
-    (let ((s4-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s4-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1
-            (the-as part-tracker s4-0)
-            (the-as process-tree arg0)
+    (let ((part (get-process *default-dead-pool* part-tracker #x4000)))
+      (when part
+        (let ((activate-func (method-of-type part-tracker activate)))
+          (activate-func
+            (the-as part-tracker part)
+            arg0
             (symbol->string (-> part-tracker symbol))
             (the-as pointer #x70004000)
             )
           )
         (let ((t9-2 run-function-in-process)
-              (a0-3 s4-0)
+              (a0-3 part)
               (a1-5 part-tracker-init)
               (a2-3 (-> *part-group-id-table* 518))
               (a3-1 0)
@@ -692,7 +692,7 @@
            t3-0
            )
           )
-        (-> s4-0 ppointer)
+        (-> part ppointer)
         )
       )
     (draw-beam (-> *part-id-table* 2291) arg1 (-> arg2 sprite rot-syvel) #f #t)
@@ -705,23 +705,23 @@
 ;; definition for function under-sig-red-shot-grunt
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defbehavior under-sig-red-shot-grunt scene-player ((arg0 object) (arg1 vector) (arg2 sparticle-launch-state))
-  (let ((a2-2 (vector-! (new 'stack-no-clear 'vector) arg1 (the-as vector arg0))))
-    (set! (-> *part-id-table* 2291 init-specs 4 initial-valuef) (vector-length a2-2))
-    (draw-beam (-> *part-id-table* 2291) (the-as vector arg0) a2-2 #f #t)
+(defbehavior under-sig-red-shot-grunt scene-player ((arg0 vector) (arg1 vector) (arg2 sparticle-launch-state))
+  (let ((beam-end (vector-! (new 'stack-no-clear 'vector) arg1 arg0)))
+    (set! (-> *part-id-table* 2291 init-specs 4 initial-valuef) (vector-length beam-end))
+    (draw-beam (-> *part-id-table* 2291) arg0 beam-end #f #t)
     )
-  (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when s5-0
-      (let ((s4-0 (method-of-type part-tracker activate)))
-        (s4-0
-          (the-as part-tracker s5-0)
+  (let ((part (get-process *default-dead-pool* part-tracker #x4000)))
+    (when part
+      (let ((activate-func (method-of-type part-tracker activate)))
+        (activate-func
+          (the-as part-tracker part)
           (command-get-process "grunt-fma" *target*)
           (symbol->string (-> part-tracker symbol))
           (the-as pointer #x70004000)
           )
         )
       (let ((t9-4 run-function-in-process)
-            (a0-7 s5-0)
+            (a0-7 part)
             (a1-6 part-tracker-init)
             (a2-5 (-> *part-group-id-table* 146))
             (a3-2 0)
@@ -742,7 +742,7 @@
          t3-0
          )
         )
-      (-> s5-0 ppointer)
+      (-> part ppointer)
       )
     )
   (none)
@@ -778,14 +778,14 @@
              ((arg0 object) (arg1 object) (arg2 sparticle-launch-state))
              (let ((f0-0 (ja-aframe-num 0)))
                (when (and (< 527.0 f0-0) (< f0-0 533.0))
-                 (let ((gp-0 (new 'stack-no-clear 'vector))
-                       (s5-0 (new 'stack-no-clear 'vector))
+                 (let ((vec1 (new 'stack-no-clear 'vector))
+                       (vec2 (new 'stack-no-clear 'vector))
                        )
                    (let ((v1-4 (the-as target (command-get-process "grunt-fma" *target*))))
-                     (set! (-> gp-0 quad) (-> self node-list data 52 bone transform trans quad))
-                     (set! (-> s5-0 quad) (-> v1-4 node-list data 3 bone transform trans quad))
+                     (set! (-> vec1 quad) (-> self node-list data 52 bone transform trans quad))
+                     (set! (-> vec2 quad) (-> v1-4 node-list data 3 bone transform trans quad))
                      )
-                   (under-sig-red-shot-grunt gp-0 s5-0 arg2)
+                   (under-sig-red-shot-grunt vec1 vec2 arg2)
                    )
                  )
                )

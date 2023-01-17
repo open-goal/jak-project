@@ -640,7 +640,11 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
       auto& draw = lev_bucket.draws[di];
       glUniform1i(m_uniforms.ignore_alpha, draw.ignore_alpha);
       if ((int)draw.texture != last_tex) {
-        glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
+        if (draw.texture < lev->textures.size()) {
+          glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
+        } else {
+          fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
+        }
         last_tex = draw.texture;
       }
 

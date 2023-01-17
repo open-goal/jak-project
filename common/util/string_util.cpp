@@ -16,6 +16,14 @@ bool starts_with(const std::string& s, const std::string& prefix) {
   return s.rfind(prefix) == 0;
 }
 
+bool ends_with(const std::string& s, const std::string& suffix) {
+  if (s.length() >= suffix.length()) {
+    return !s.compare(s.length() - suffix.length(), suffix.length(), suffix);
+  } else {
+    return false;
+  }
+}
+
 std::string ltrim(const std::string& s) {
   size_t start = s.find_first_not_of(WHITESPACE);
   return (start == std::string::npos) ? "" : s.substr(start);
@@ -28,6 +36,25 @@ std::string rtrim(const std::string& s) {
 
 std::string trim(const std::string& s) {
   return rtrim(ltrim(s));
+}
+
+std::string trim_newline_indents(const std::string& s) {
+  auto lines = split(s, '\n');
+  std::vector<std::string> trimmed_lines;
+  std::transform(lines.begin(), lines.end(), std::back_inserter(trimmed_lines),
+                 [](const std::string& line) { return ltrim(line); });
+  return join(trimmed_lines, "\n");
+}
+
+std::string join(const std::vector<std::string>& strs, const std::string& join_with) {
+  std::string out;
+  for (size_t i = 0; i < strs.size(); i++) {
+    out += strs.at(i);
+    if (i < strs.size() - 1) {
+      out += join_with;
+    }
+  }
+  return out;
 }
 
 int line_count(const std::string& str) {

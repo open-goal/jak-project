@@ -41,11 +41,11 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   for (auto& file : work.work_collection.source_files) {
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
-  auto art_group_info = find_art_files(offline_config.game_name);
 
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
+  dc.config->process_art_groups = false;  // not needed, art groups are stored in a json file
 
   std::vector<fs::path> dgo_paths;
   for (auto& x : offline_config.dgos) {
@@ -55,7 +55,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
                                                      std::vector<fs::path>{},
                                                      std::vector<fs::path>{}, *dc.config);
-  dc.db->dts.art_group_info = art_group_info;
+  dc.db->dts.art_group_info = dc.config->art_group_info_dump;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {

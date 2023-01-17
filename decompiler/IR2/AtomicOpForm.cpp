@@ -478,7 +478,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   // print warning about failed store, but only if decompilation passes without any major errors
   // TODO move this elsewhere! they CAN be deleted later and this would cause false positives.
   if (!env.func->warnings.has_errors()) {
-    env.func->warnings.warning("Failed store: {} at op {}", to_string(env), m_my_idx);
+    env.func->warnings.error("Failed store: {} at op {}", to_string(env), m_my_idx);
   }
   return pool.alloc_element<StoreElement>(this);
 }
@@ -739,7 +739,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
       auto source =
           pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
       if (!env.func->warnings.has_errors()) {
-        env.func->warnings.warning("Failed load: {} at op {}", to_string(env), m_my_idx);
+        env.func->warnings.error("Failed load: {} at op {}", to_string(env), m_my_idx);
       }
       return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind, ro,
                                                                input_type);
@@ -755,7 +755,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   if (!env.func->warnings.has_errors()) {
-    env.func->warnings.warning("Failed load: {} at op {}", to_string(env), m_my_idx);
+    env.func->warnings.error("Failed load: {} at op {}", to_string(env), m_my_idx);
   }
   return pool.alloc_single_element_form<LoadSourceElement>(
       nullptr, source, m_size, m_kind, std::optional<IR2_RegOffset>{}, TP_Type());

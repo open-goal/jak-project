@@ -231,6 +231,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
                           const std::string& name,
                           DecompilerTypeSystem& dts,
                           GameVersion version) {
+  (void)name;
   const auto* header = (const LinkHeaderV4*)&data.at(0);
   ASSERT(header->version == 4 || header->version == 2);
 
@@ -313,7 +314,8 @@ static void link_v2_or_v4(LinkedObjectFile& f,
           for (uint8_t i = 0; i < count; i++) {
             if (!f.pointer_link_word(0, code_ptr_offset - code_offset, 0,
                                      *((const uint32_t*)(&data.at(code_ptr_offset))))) {
-              lg::error("Skipping link in {} because it is out of range!", name.c_str());
+              // was this just a bug in the linker??
+              // lg::error("Skipping link in {} because it is out of range!", name.c_str());
             }
             f.stats.total_v2_pointers++;
             code_ptr_offset += 4;
@@ -679,13 +681,6 @@ static void link_v3(LinkedObjectFile& f,
       while (segment_size % 4) {
         segment_size++;
         adjusted = true;
-      }
-
-      if (adjusted) {
-        printf(
-            "Adjusted the size of segment %d in %s, this is fine, but rare (and may indicate a "
-            "bigger problem if it happens often)\n",
-            seg_id, name.c_str());
       }
     }
 

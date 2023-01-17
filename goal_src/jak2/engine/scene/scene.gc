@@ -992,7 +992,8 @@
                               (!= (-> *setting-control* user-current movie) (process->ppointer self))
                               )
                          *progress-process*
-                         (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3)
+                         ;; modified
+                         (#if STREAM_PLAY_HACK #f (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3))
                          )
                      )
             (suspend)
@@ -1069,7 +1070,7 @@
                                       )
                                (v1-167 (get-status *gui-control* (the-as sound-id a1-26)))
                                )
-                          (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active))))
+                          (#if STREAM_PLAY_HACK #f (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active)))))
                           )
                         )
                     )
@@ -1610,7 +1611,7 @@
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
   (process-entity-set! self (the-as entity-actor #f))
-  (stack-size-set! (-> self main-thread) 512)
+  (stack-size-set! (-> self main-thread) 1024)
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)
     ((array)

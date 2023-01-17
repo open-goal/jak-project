@@ -7,3 +7,603 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-gator amphibian amphibian-lod0-jg -1
+              ((amphibian-lod0-mg (meters 20)) (amphibian-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.5)
+              )
+
+(deftype gator (nav-enemy)
+  ((ocean-y         float              :offset-assert 604)
+   (lock-nav-target basic              :offset-assert 608)
+   (new-facing      vector     :inline :offset-assert 624)
+   (old-facing      vector     :inline :offset-assert 640)
+   (turn-time       time-frame         :offset-assert 656)
+   )
+  :heap-base #x220
+  :method-count-assert 182
+  :size-assert         #x298
+  :flag-assert         #xb602200298
+  (:methods
+    (attack-forward () _type_ :state 178)
+    (gator-method-179 (_type_) float 179)
+    (gator-method-180 (_type_ vector) vector 180)
+    (gator-method-181 (_type_ float float symbol) time-frame 181)
+    )
+  )
+
+
+(define *gator-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #xd :param0 #x64 :param1 #x64)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 13
+    :notice-anim 13
+    :hostile-anim 14
+    :hit-anim 6
+    :knocked-anim 6
+    :knocked-land-anim 7
+    :die-anim 12
+    :die-falling-anim 21
+    :victory-anim -1
+    :jump-wind-up-anim 13
+    :jump-in-air-anim 13
+    :jump-land-anim 13
+    :neck-joint -1
+    :look-at-joint 12
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "gator-hit")
+    :sound-die (static-sound-name "gator-die")
+    :notice-distance (meters 80)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 40)
+    :default-hit-points 1
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3.5)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 13
+    :turn-anim -1
+    :run-anim 14
+    :taunt-anim -1
+    :run-travel-speed (meters 16)
+    :run-acceleration (meters 8)
+    :run-turning-acceleration (meters 40)
+    :walk-travel-speed (meters 4)
+    :walk-acceleration (meters 8)
+    :walk-turning-acceleration (meters 10)
+    :maximum-rotation-rate (degrees 200.00002)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *gator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod enemy-method-74 gator ((obj gator) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit-knocked)
+     (when (= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
+       (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
+       0
+       )
+     ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+     )
+    (('track)
+     #f
+     )
+    (else
+      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod gator-method-179 gator ((obj gator))
+  (set! (-> obj ocean-y) (get-height *ocean* (-> obj root-override2 trans) #t))
+  (set! (-> obj root-override2 trans y) (+ -10240.0 (-> obj ocean-y)))
+  )
+
+(defmethod gator-method-180 gator ((obj gator) (arg0 vector))
+  (let ((a0-3 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root-override2 quat))))
+    (set! (-> arg0 quad) (-> a0-3 vector 2 quad))
+    )
+  arg0
+  )
+
+(defmethod gator-method-181 gator ((obj gator) (arg0 float) (arg1 float) (arg2 symbol))
+  (local-vars (v1-17 object) (a0-5 object))
+  (with-pp
+    (let ((f30-0 (vector-dot (-> obj new-facing) (-> obj old-facing)))
+          (s5-0 75)
+          (s4-0 (the-as art-joint-anim (if (> (-> obj skel active-channels) 0)
+                                           (-> obj skel root-channel 0 frame-group)
+                                           )
+                        )
+                )
+          )
+      (b! (not arg2) cfg-26 :delay (nop!))
+      (set! s5-0 18)
+      (b! (>= f30-0 (cos (* 182.04445 arg0))) cfg-8 :delay #f)
+      (if (< (-> (vector-cross! (new 'stack-no-clear 'vector) (-> obj new-facing) (-> obj old-facing)) y) 0.0)
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 40)))
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 39)))
+          )
+      (b! #t cfg-25 :delay (nop!))
+      (label cfg-8)
+      (let ((v1-16 (< (cos (* 182.04445 arg1)) f30-0)))
+        (b! v1-16 cfg-23 :likely-delay (set! v1-17 v1-16))
+        )
+      (let ((v1-20 (if (> (-> obj skel active-channels) 0)
+                       (-> obj skel root-channel 0 frame-group)
+                       )
+                   )
+            )
+        (b! (not v1-20) cfg-21 :likely-delay (set! a0-5 v1-20))
+        (let ((a1-3 (= v1-20 (-> obj draw art-group data 14))))
+          (b! a1-3 cfg-21 :likely-delay (set! a0-5 a1-3))
+          )
+        (let ((a1-4 (= v1-20 (-> obj draw art-group data 40))))
+          (b! a1-4 cfg-21 :likely-delay (set! a0-5 a1-4))
+          )
+        (set! a0-5 (= v1-20 (-> obj draw art-group data 39)))
+        )
+      (label cfg-21)
+      (b! (not a0-5) cfg-23 :delay (set! v1-17 #t))
+      (set! v1-17 #f)
+      (label cfg-23)
+      (if v1-17
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 14)))
+          )
+      (label cfg-25)
+      (b! #t cfg-48 :delay (nop!))
+      (label cfg-26)
+      (b! (>= f30-0 (cos (* 182.04445 arg0))) cfg-31 :delay #f)
+      (if (< (-> (vector-cross! (new 'stack-no-clear 'vector) (-> obj new-facing) (-> obj old-facing)) y) 0.0)
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 38)))
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 37)))
+          )
+      (b! #t cfg-48 :delay (nop!))
+      (label cfg-31)
+      (if (or (< (cos (* 182.04445 arg1)) f30-0) (let ((v1-41 (if (> (-> obj skel active-channels) 0)
+                                                                  (-> obj skel root-channel 0 frame-group)
+                                                                  )
+                                                              )
+                                                       )
+                                                   (not (and v1-41 (or (= v1-41 (-> obj draw art-group data 13))
+                                                                       (= v1-41 (-> obj draw art-group data 38))
+                                                                       (= v1-41 (-> obj draw art-group data 37))
+                                                                       )
+                                                             )
+                                                        )
+                                                   )
+              )
+          (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 13)))
+          )
+      (label cfg-48)
+      (let ((v1-50 (if (> (-> obj skel active-channels) 0)
+                       (-> obj skel root-channel 0 frame-group)
+                       )
+                   )
+            )
+        (when (and (not (and v1-50 (= v1-50 (the-as art-element s4-0))))
+                   (>= (- (-> pp clock frame-counter) (the-as time-frame s5-0)) (-> obj turn-time))
+                   )
+          (let ((f30-2 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+            (ja-channel-push! 1 (the-as time-frame s5-0))
+            (set! (-> obj skel root-channel 0 frame-group) s4-0)
+            (let ((s5-1 (-> obj skel root-channel 0)))
+              (set! (-> s5-1 num-func) num-func-identity)
+              (set! (-> s5-1 frame-num) (* f30-2 (the float (ja-num-frames 0))))
+              )
+            )
+          (let ((v0-4 (-> pp clock frame-counter)))
+            (set! (-> obj turn-time) v0-4)
+            v0-4
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod enemy-method-55 gator ((obj gator))
+  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+    (t9-0 obj)
+    )
+  (gator-method-179 obj)
+  (set! (-> obj old-facing quad) (-> obj new-facing quad))
+  (gator-method-180 obj (-> obj new-facing))
+  (none)
+  )
+
+(defmethod enemy-method-56 gator ((obj gator) (arg0 process) (arg1 event-message-block))
+  0
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-hostile gator ((obj gator))
+  (go (method-of-object obj hostile))
+  (none)
+  )
+
+(defmethod enemy-method-107 gator ((obj gator))
+  (let ((gp-0 ((method-of-type nav-enemy enemy-method-107) obj)))
+    (if (and gp-0 (< (+ 1024.0 (get-height *ocean* (get-trans gp-0 0) #t)) (-> (get-trans gp-0 1) y)))
+        (set! gp-0 (the-as process-focusable #f))
+        )
+    gp-0
+    )
+  )
+
+(defmethod enemy-method-98 gator ((obj gator) (arg0 process-focusable) (arg1 vector))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (when (and (= *target* arg0) (not arg1) (= (-> *target* control ground-pat material) (pat-material waterbottom)))
+      (set! (-> s4-0 quad) (-> (get-trans arg0 0) quad))
+      (set! (-> s4-0 y) (get-height *ocean* s4-0 #t))
+      (set! arg1 s4-0)
+      )
+    )
+  ((method-of-type nav-enemy enemy-method-98) obj arg0 arg1)
+  )
+
+(defstate hostile (gator)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((a0-1 (enemy-method-107 self)))
+      (when a0-1
+        (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (get-trans a0-1 0) (-> self root-override2 trans)))
+              (a0-4 (-> self nav state))
+              (s5-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s5-0 quad) (-> a0-4 heading quad))
+          0
+          (let ((v1-10 (vector-normalize-ret-len! gp-1 1.0)))
+            (if (and (>= #x47000000 (the-as int v1-10)) (< (cos 5461.3335) (vector-dot gp-1 s5-0)))
+                (go-virtual attack-forward)
+                )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (gator-method-181 self 2.0 0.5 #t)
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate attack-forward (gator)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior gator) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (let ((v1-2 self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
+          (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
+          )
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-2 enemy-flags))))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info-override callback-info))
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-5 enemy-flags))))
+      )
+    0
+    (let ((v1-8 (-> self nav state)))
+      (set! (-> v1-8 speed) (* 1.25 (-> self enemy-info-override run-travel-speed)))
+      )
+    0
+    (set! (-> self lock-nav-target) #f)
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-12 *game-info*)
+           (v0-0 (+ (-> v1-12 attack-id) 1))
+           )
+      (set! (-> v1-12 attack-id) v0-0)
+      (set! (-> self attack-id) v0-0)
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (handle->process (-> self focus handle))))
+      (if (not gp-0)
+          (enemy-method-72 self)
+          )
+      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      )
+    (cond
+      ((-> self lock-nav-target)
+       )
+      ((or (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+           (logtest? (-> self nav state flags) (nav-state-flag at-target))
+           )
+       (set! (-> self lock-nav-target) (the-as basic #t))
+       (let ((v1-16 (-> self nav)))
+         (set! (-> v1-16 target-speed) (-> self enemy-info-override walk-travel-speed))
+         )
+       0
+       (let ((v1-18 (-> self nav)))
+         (set! (-> v1-18 acceleration) 131072.0)
+         )
+       0
+       (let ((gp-1 (new 'stack-no-clear 'vector)))
+         (let ((a1-2 (-> self nav state)))
+           (set! (-> gp-1 quad) (-> a1-2 velocity quad))
+           )
+         (vector-normalize! gp-1 32768.0)
+         (vector+! gp-1 gp-1 (-> self root-override2 trans))
+         (let ((v1-24 (-> self nav state)))
+           (logclear! (-> v1-24 flags) (nav-state-flag directional-mode))
+           (logior! (-> v1-24 flags) (nav-state-flag target-poly-dirty))
+           (set! (-> v1-24 target-post quad) (-> gp-1 quad))
+           )
+         )
+       0
+       )
+      (else
+        (let ((a0-19 (-> self nav state))
+              (v1-27 (-> self focus-pos))
+              )
+          (logclear! (-> a0-19 flags) (nav-state-flag directional-mode))
+          (logior! (-> a0-19 flags) (nav-state-flag target-poly-dirty))
+          (set! (-> a0-19 target-post quad) (-> v1-27 quad))
+          )
+        0
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.07))
+    (ja-no-eval :group! (-> self draw art-group data 15)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
+                :frame-num (ja-aframe 0.0 0)
+                )
+    (ja-no-eval :group! (ja-group)
+                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (let ((a1-4 (new 'stack-no-clear 'vector)))
+        (let ((a2-2 (-> self nav state)))
+          (set! (-> a1-4 quad) (-> a2-2 target-post quad))
+          )
+        (if (and (-> self lock-nav-target) (< (vector-vector-distance (-> self root-override2 trans) a1-4) 8192.0))
+            (enemy-method-72 self)
+            )
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (enemy-method-72 self)
+    (none)
+    )
+  :post (the-as (function none :behavior gator) nav-enemy-travel-post)
+  )
+
+(defstate pacing (gator)
+  :virtual #t
+  :code (behavior ()
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (gator-method-181 self 2.0 0.5 #f)
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate stare (gator)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.017))
+        (go-virtual pacing)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (gator-method-181 self 2.0 0.5 #f)
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defmethod coin-flip? gator ((obj gator))
+  "@returns The result of a 50/50 RNG roll"
+  #f
+  )
+
+(defmethod enemy-method-114 gator ((obj gator))
+  "@abstract"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 19660.8)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot crate hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action deadly))
+      (set! (-> v1-15 transform-index) 12)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 transform-index) 20)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 transform-index) 22)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 4505.6)
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod enemy-method-115 gator ((obj gator))
+  "@abstract"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gator" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (enemy-method-113 obj *gator-nav-enemy-info*)
+  (let ((v1-5 (-> obj nav)))
+    (set! (-> v1-5 speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
+  (gator-method-179 obj)
+  (set! (-> obj turn-time) 0)
+  0
+  (none)
+  )

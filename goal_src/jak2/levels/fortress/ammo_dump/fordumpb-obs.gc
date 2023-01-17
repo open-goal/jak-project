@@ -7,3 +7,448 @@
 
 ;; DECOMP BEGINS
 
+(deftype fort-plat-orbit (process-drawable)
+  ((sync sync-linear :inline :offset-assert 200)
+   )
+  :heap-base #x60
+  :method-count-assert 21
+  :size-assert         #xd8
+  :flag-assert         #x15006000d8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-fort-plat-orbit fort-plat-orbit fort-plat-orbit-lod0-jg fort-plat-orbit-idle-ja
+              ((fort-plat-orbit-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 16 0 22)
+              )
+
+(defstate idle (fort-plat-orbit)
+  :virtual #t
+  :trans (the-as (function none :behavior fort-plat-orbit) rider-trans)
+  :code (behavior ()
+    (until #f
+      (let ((f30-0 (the float (ja-num-frames 0))))
+        (cond
+          ((logtest? (actor-option user17) (-> self fact options))
+           (let ((gp-0 (-> self skel root-channel 0)))
+             (set! (-> gp-0 num-func) num-func-identity)
+             (let ((f0-4 (+ (- 0.5 (* (get-current-phase-no-mod (-> self sync)) f30-0)) f30-0)))
+               (set! (-> gp-0 frame-num) (- f0-4 (* (the float (the int (/ f0-4 f30-0))) f30-0)))
+               )
+             )
+           )
+          (else
+            (ja :num-func num-func-identity :frame-num (* (get-current-phase-no-mod (-> self sync)) f30-0))
+            )
+          )
+        )
+      (update! (-> self sound))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior fort-plat-orbit) rider-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fort-plat-orbit ((obj fort-plat-orbit) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 6))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s3-0 local-sphere) 0.0 65536.0 0.0 90112.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-14 transform-index) 5)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 -16384.0 36864.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-16 transform-index) 6)
+      (set-vector! (-> v1-16 local-sphere) -16384.0 0.0 0.0 36864.0)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-18 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-18 transform-index) 7)
+      (set-vector! (-> v1-18 local-sphere) 0.0 0.0 16384.0 36864.0)
+      )
+    (let ((v1-20 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
+      (set! (-> v1-20 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-20 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-20 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-20 transform-index) 8)
+      (set-vector! (-> v1-20 local-sphere) 16384.0 0.0 0.0 36864.0)
+      )
+    (let ((v1-22 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 4) (the-as uint 0))))
+      (set! (-> v1-22 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-22 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-22 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-22 transform-index) 4)
+      (set-vector! (-> v1-22 local-sphere) 0.0 36864.0 0.0 49152.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-25 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-plat-orbit" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (let ((a1-23 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-34 0))
+      (if #t
+          (set! v1-34 (logior v1-34 1))
+          )
+      (set! (-> a1-23 sync-type) 'sync-linear)
+      (set! (-> a1-23 sync-flags) (the-as sync-flags v1-34))
+      )
+    (set! (-> a1-23 entity) (-> obj entity))
+    (set! (-> a1-23 period) (the-as uint 6000))
+    (set! (-> a1-23 percent) 0.0)
+    (initialize! (-> obj sync) a1-23)
+    )
+  (let ((a0-48 (-> obj skel root-channel 0)))
+    (set! (-> a0-48 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-48 frame-num) 0.0)
+    (joint-control-channel-group! a0-48 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (transform-post)
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "plat-orbit" :fo-max 70) (-> obj root trans))
+        )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype fort-plat-shuttle-plat (process-drawable)
+  ((path-pos   float  :offset-assert 200)
+   (path-speed float  :offset-assert 204)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xd0
+  :flag-assert         #x15005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-fort-plat-shuttle fort-plat-shuttle fort-plat-shuttle-lod0-jg fort-plat-shuttle-idle-ja
+              ((fort-plat-shuttle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -0.5 0 7.6)
+              )
+
+(defstate idle (fort-plat-shuttle-plat)
+  :virtual #t
+  :trans (the-as (function none :behavior fort-plat-shuttle-plat) rider-trans)
+  :code (behavior ()
+    (until (< 1.0 (-> self path-pos))
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (behavior ()
+    (+! (-> self path-pos) (* (-> self path-speed) (-> self clock seconds-per-frame)))
+    (let* ((f0-2 (-> self path-pos))
+           (f30-0 (if (< 0.5 f0-2)
+                      (- 1.0 f0-2)
+                      f0-2
+                      )
+                  )
+           (f0-4 (total-distance (-> self path)))
+           (f0-6 (fmin 40960.0 (* f30-0 f0-4)))
+           (f0-7 (lerp-scale 0.0 1.0 f0-6 0.0 40960.0))
+           )
+      (set-vector! (-> self draw color-mult) f0-7 f0-7 f0-7 1.0)
+      )
+    (get-point-in-path! (-> self path) (-> self root trans) (-> self path-pos) 'interp)
+    (update-trans! (-> self sound) (-> self root trans))
+    (update! (-> self sound))
+    (rider-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior fort-plat-shuttle-plat-init-by-other fort-plat-shuttle-plat ((arg0 float))
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+      (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+      (set! (-> s5-0 reaction) cshape-reaction-default)
+      (set! (-> s5-0 no-reaction)
+            (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+            )
+      (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
+        (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+        (set! (-> s4-0 prim-core action) (collide-action solid rideable pull-rider-can-collide))
+        (set! (-> s4-0 transform-index) 3)
+        (set-vector! (-> s4-0 local-sphere) 0.0 -2048.0 0.0 31129.6)
+        (set! (-> s5-0 total-prims) (the-as uint 1))
+        (set! (-> s5-0 root-prim) s4-0)
+        )
+      (pusher-init s5-0)
+      (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+      (let ((v1-16 (-> s5-0 root-prim)))
+        (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+        (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+        )
+      (set! (-> self root) s5-0)
+      )
+    (initialize-skeleton
+      self
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-plat-shuttle" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (set! (-> self path) (new 'process 'path-control self 'path 0.0 (the-as entity #f) #f))
+    (set! (-> self path-pos) arg0)
+    (get-point-in-path! (-> self path) (-> self root trans) arg0 'interp)
+    (set! (-> self path-speed) (/ 24576.0 (total-distance (-> self path))))
+    (.svf (&-> (-> self draw color-mult) quad) vf0)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (set! (-> self draw light-index) (the-as uint 1))
+    (set! (-> self sound)
+          (new 'process 'ambient-sound (static-sound-spec "plat-shuttle" :fo-max 70) (-> self root trans))
+          )
+    (go-virtual idle)
+    (none)
+    )
+  )
+
+(deftype fort-plat-shuttle (process-drawable)
+  ((next-spawn-time time-frame          :offset-assert 200)
+   (sync            sync-linear :inline :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 23
+  :size-assert         #xe0
+  :flag-assert         #x17006000e0
+  (:methods
+    (dormant () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (fort-plat-shuttle-method-22 (_type_) symbol 22)
+    )
+  )
+
+
+(defstate dormant (fort-plat-shuttle)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual idle)
+       )
+      )
+    )
+  :code (the-as (function none :behavior fort-plat-shuttle) sleep-code)
+  )
+
+(defstate idle (fort-plat-shuttle)
+  :virtual #t
+  :enter (behavior ()
+    (fort-plat-shuttle-method-22 self)
+    (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (-> self clock frame-counter) (-> self next-spawn-time))
+      (process-spawn fort-plat-shuttle-plat 0 :to self)
+      (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior fort-plat-shuttle) sleep-code)
+  )
+
+(defmethod fort-plat-shuttle-method-22 fort-plat-shuttle ((obj fort-plat-shuttle))
+  (with-pp
+    (let* ((f28-0 (total-distance (-> obj path)))
+           (s5-0 (-> obj sync))
+           (f26-0 81.92)
+           (a0-3 (- (-> pp clock frame-counter) (get-timeframe-offset! s5-0 0)))
+           (v1-6 (-> s5-0 period))
+           (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
+           (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
+           )
+      (while (>= 1.0 f30-0)
+        (if (>= f30-0 0.0)
+            (process-spawn fort-plat-shuttle-plat f30-0 :to obj)
+            )
+        (+! f30-0 f28-1)
+        )
+      )
+    #f
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fort-plat-shuttle ((obj fort-plat-shuttle) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-64 int))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-plat-shuttle" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (let ((s4-1 (new 'stack-no-clear 'sync-info-params)))
+    (let ((s3-1 1200))
+      0.0
+      (set! sv-64 0)
+      (let ((v1-7 (res-lump-data arg0 'sync (pointer float) :tag-ptr (the-as (pointer res-tag) (& sv-64)))))
+        (when v1-7
+          (set! s3-1 (the int (* 300.0 (-> v1-7 0))))
+          (-> v1-7 1)
+          )
+        )
+      (let ((v1-8 0))
+        (if #t
+            (set! v1-8 (logior v1-8 1))
+            )
+        (set! (-> s4-1 sync-type) 'sync-linear)
+        (set! (-> s4-1 sync-flags) (the-as sync-flags v1-8))
+        )
+      (set! (-> s4-1 entity) arg0)
+      (set! (-> s4-1 period) (the-as uint s3-1))
+      )
+    (set! (-> s4-1 percent) 0.0)
+    (initialize! (-> obj sync) s4-1)
+    )
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (if (logtest? (actor-option user17) (-> obj fact options))
+      (go (method-of-object obj dormant))
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(deftype fort-conveyor (conveyor)
+  ()
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  )
+
+
+(defskelgroup skel-fort-conveyor fort-conveyor fort-conveyor-lod0-jg fort-conveyor-idle-ja
+              ((fort-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 36)
+              )
+
+(defmethod get-art-group fort-conveyor ((obj fort-conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod reset-root! fort-conveyor ((obj fort-conveyor))
+  "Re-initializes the `root` [[trsqv]]"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 69632.0 90112.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> s5-0 rider-max-momentum) 8192.0)
+    (set! (-> obj root) s5-0)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod init! fort-conveyor ((obj fort-conveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (set! (-> obj belt-radius) 24576.0)
+  (set! (-> obj pull-y-threshold) 16384.0)
+  (cond
+    ((name= (-> obj name) "fort-conveyor-2")
+     (set! (-> obj speed) -21299.2)
+     (set-vector! (-> obj root scale) 1.0 1.0 0.9 1.0)
+     )
+    ((name= (-> obj name) "fort-conveyor-3")
+     (set! (-> obj speed) -18432.0)
+     (set-vector! (-> obj root scale) 1.0 1.0 0.79 1.0)
+     )
+    )
+  (none)
+  )
+
+(defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
+  "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+and return it as well.  Otherwise, set it to `0`"
+  (let* ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-2 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 1.0 'interp))
+         (a3-3 (vector+! (new 'stack-no-clear 'vector) s5-0 v1-2))
+         )
+    (vector-float*! a3-3 a3-3 0.5)
+    (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "fort-conveyor" :fo-max 50) a3-3)))
+      (set! (-> obj sound) v0-2)
+      v0-2
+      )
+    )
+  )

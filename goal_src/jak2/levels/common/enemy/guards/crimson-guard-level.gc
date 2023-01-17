@@ -7,3 +7,4316 @@
 
 ;; DECOMP BEGINS
 
+(define *crimson-guard-fact* (new 'static 'fact-info-enemy-defaults :idle-distance (meters 200)))
+
+(defskelgroup skel-crimson-guard-level crimson-guard crimson-guard-lod0-jg crimson-guard-idle-ja
+              ((crimson-guard-lod0-mg (meters 20)) (crimson-guard-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow crimson-guard-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype guard-level-anim-info (structure)
+  ((anim-index                int32  2 :offset-assert   0)
+   (anim-index-front          int32    :offset          0)
+   (anim-index-back           int32    :offset          4)
+   (unsigned-anim-index-front uint32   :offset          0)
+   (unsigned-anim-index-back  uint32   :offset          4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype guard-level-global-info (basic)
+  ((prev-yellow-hit         int8                            :offset-assert   4)
+   (prev-blue-hit           int8                            :offset-assert   5)
+   (knocked                 guard-level-anim-info :inline   :offset-assert   8)
+   (anim-knocked-front      int32                           :offset          8)
+   (anim-knocked-back       int32                           :offset         12)
+   (knocked-land            guard-level-anim-info :inline   :offset-assert  16)
+   (anim-knocked-front-land int32                           :offset         16)
+   (anim-knocked-back-land  int32                           :offset         20)
+   (yellow-hit-anim         guard-level-anim-info 2 :inline :offset-assert  24)
+   (yellow-land-anim        guard-level-anim-info 2 :inline :offset-assert  40)
+   (blue-hit-anim           guard-level-anim-info 1 :inline :offset-assert  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype guard-level-shoot-info (structure)
+  ((anim-index int32  :offset-assert   0)
+   (start      float  :offset-assert   4)
+   (end        float  :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+(define *crimson-guard-level-global-info*
+  (new 'static 'guard-level-global-info
+    :knocked (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 31 8))
+    :knocked-land (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 32 9))
+    :yellow-hit-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 13 15))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 15 13))
+      )
+    :yellow-land-anim (new 'static 'inline-array guard-level-anim-info 2
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 14 16))
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 16 14))
+      )
+    :blue-hit-anim (new 'static 'inline-array guard-level-anim-info 1
+      (new 'static 'guard-level-anim-info :anim-index (new 'static 'array int32 2 10 10))
+      )
+    )
+  )
+
+(define *crimson-guard-level-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 40)
+    :proximity-notice-distance (meters 4)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #xffffffffffffffff
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 5)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *crimson-guard-level-info* fact-defaults) *crimson-guard-fact*)
+
+(define *crimson-guard-level-blast-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 100)
+    :notice-distance-delta (meters 3)
+    :proximity-notice-distance (meters 100)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #xffffffffffffffff
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 3)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *crimson-guard-level-blast-info* fact-defaults) *crimson-guard-fact*)
+
+(define *crimson-guard-level-grenade-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 300)
+    :notice-distance-delta (meters 300)
+    :proximity-notice-distance (meters 300)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #xffffffffffffffff
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 3)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *crimson-guard-level-grenade-info* fact-defaults) *crimson-guard-fact*)
+
+(define *crimson-guard-level-sniper-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 40)
+    :proximity-notice-distance (meters 60)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #xffffffffffffffff
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 3)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *crimson-guard-level-sniper-info* fact-defaults) *crimson-guard-fact*)
+
+(define *crimson-guard-level-tazer-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 100)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 100)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #xffffffffffffffff
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 3)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *crimson-guard-level-tazer-info* fact-defaults) *crimson-guard-fact*)
+
+(deftype crimson-guard-level (nav-enemy)
+  ((info                    guard-level-global-info           :offset-assert 604)
+   (hit-face                uint32                            :offset-assert 608)
+   (anim-get-up-front       int32                             :offset-assert 612)
+   (anim-get-up-back        int32                             :offset-assert 616)
+   (small-hit               int32                             :offset-assert 620)
+   (yellow-anim             guard-level-anim-info   :inline   :offset-assert 624)
+   (flags                   int64                             :offset-assert 632)
+   (weapon                  int32                             :offset-assert 640)
+   (pad-kjh1n23             int32                             :offset-assert 644)
+   (last-time-see-target    int64                             :offset-assert 648)
+   (joint                   joint-mod                         :offset-assert 656)
+   (joint-enable            symbol                            :offset-assert 660)
+   (l-control               lightning-control                 :offset-assert 664)
+   (already-shot            uint32                            :offset-assert 668)
+   (miss-amount             float                             :offset-assert 672)
+   (pad-k1jh2n3             int32                             :offset-assert 676)
+   (next-shot               int64                             :offset-assert 680)
+   (anim-shoot              guard-level-shoot-info  3 :inline :offset-assert 688)
+   (target-pos              vector                  :inline   :offset-assert 736)
+   (target-pos-predict      vector                  :inline   :offset-assert 752)
+   (target-pos-predict-miss vector                  :inline   :offset-assert 768)
+   (target-vel-vec          vector                  :inline   :offset-assert 784)
+   (target-vel              float                             :offset-assert 800)
+   (target-self             vector                  :inline   :offset-assert 816)
+   (target-self-xz          vector                  :inline   :offset-assert 832)
+   (target-self-dist        float                             :offset-assert 848)
+   (target-self-xz-dist     float                             :offset-assert 852)
+   (target-y-angle          float                             :offset-assert 856)
+   (lazer-sound             sound-id                          :offset-assert 860)
+   (transport               handle                            :offset-assert 864)
+   (transport-side          uint32                            :offset-assert 872)
+   (other-side              uint32                            :offset-assert 876)
+   (start-target-pos        vector                  :inline   :offset-assert 880)
+   (start-target-vel        vector                  :inline   :offset-assert 896)
+   (trigger                 symbol                            :offset-assert 912)
+   (reachable-target-pos    vector                  :inline   :offset-assert 928)
+   )
+  :heap-base #x330
+  :method-count-assert 205
+  :size-assert         #x3b0
+  :flag-assert         #xcd033003b0
+  (:methods
+    (gun-shoot () _type_ :state 178)
+    (attack () _type_ :state 179)
+    (get-up-front () _type_ :state 180)
+    (get-up-back () _type_ :state 181)
+    (close-attack () _type_ :state 182)
+    (grenade-attack () _type_ :state 183)
+    (exit-transport () _type_ :state 184)
+    (blast-hostile () _type_ :state 185)
+    (grenade-hostile () _type_ :state 186)
+    (tazer-hostile () _type_ :state 187)
+    (roll-right () _type_ :state 188)
+    (roll-left () _type_ :state 189)
+    (arrest () _type_ :state 190)
+    (crimson-guard-level-method-191 (_type_) (pointer process) 191)
+    (crimson-guard-level-method-192 (_type_) none 192)
+    (crimson-guard-level-method-193 (_type_) symbol 193)
+    (crimson-guard-level-method-194 (_type_) symbol 194)
+    (crimson-guard-level-method-195 (_type_ vector vector vector) int 195)
+    (crimson-guard-level-method-196 (_type_ vector) none 196)
+    (crimson-guard-level-method-197 (_type_) quaternion 197)
+    (crimson-guard-level-method-198 (_type_) none 198)
+    (crimson-guard-level-method-199 (_type_ vector vector vector float) symbol 199)
+    (crimson-guard-level-method-200 (_type_) float 200)
+    (crimson-guard-level-method-201 (_type_ float) none 201)
+    (crimson-guard-level-method-202 (_type_ vector) float 202)
+    (crimson-guard-level-method-203 (_type_ int) none 203)
+    (crimson-guard-level-method-204 (_type_) none 204)
+    )
+  )
+
+
+(defmethod enemy-method-72 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s5-0 (-> obj focus aware)))
+    (cond
+      ((and (= s5-0 (enemy-aware enemy-aware-3)) (enemy-method-107 obj))
+       (go-hostile obj)
+       )
+      ((and (= s5-0 (enemy-aware enemy-aware-2)) (enemy-method-107 obj))
+       (go-hostile obj)
+       )
+      ((<= (the-as int s5-0) 0)
+       (go (method-of-object obj idle))
+       )
+      ((>= 1 (the-as int s5-0))
+       (go (method-of-object obj active))
+       )
+      ((= s5-0 (enemy-aware enemy-aware-4))
+       (go-flee obj)
+       )
+      (else
+        (go-stare obj)
+        )
+      )
+    )
+  (none)
+  )
+
+(defstate active (crimson-guard-level)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (logtest? (-> self flags) 4)
+      (logior! (-> self nav state flags) (nav-state-flag at-target))
+      (let ((v1-9 self))
+        (set! (-> v1-9 enemy-flags) (the-as enemy-flag (logclear (-> v1-9 enemy-flags) (enemy-flag enemy-flag36))))
+        (set! (-> v1-9 nav callback-info) *nav-enemy-null-callback-info*)
+        )
+      0
+      (let ((v1-12 self))
+        (set! (-> v1-12 enemy-flags) (the-as enemy-flag (logclear (-> v1-12 enemy-flags) (enemy-flag enemy-flag37))))
+        )
+      0
+      )
+    (none)
+    )
+  )
+
+(defstate stare (crimson-guard-level)
+  :virtual #t
+  :trans (behavior ()
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+      (let ((gp-0 (-> self focus aware)))
+        (cond
+          ((>= 1 (the-as int gp-0))
+           (go-virtual active)
+           )
+          ((and (= gp-0 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+           (go-hostile self)
+           )
+          ((and (= gp-0 (enemy-aware enemy-aware-2)) (enemy-method-107 self))
+           (if (logtest? (-> self flags) 1)
+               (go-virtual arrest)
+               (go-hostile self)
+               )
+           )
+          ((= gp-0 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defmethod enemy-method-74 crimson-guard-level ((obj crimson-guard-level) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+    (the-as
+      object
+      (cond
+        ((= v1-0 'event-death)
+         (when (<= (-> obj hit-points) 0)
+           (set! (-> obj root-override2 penetrated-by) (the-as penetrate -1))
+           (the-as object (do-effect (-> obj skel effect) 'death-default 0.0 -1))
+           )
+         )
+        ((or (= v1-0 'hit) (= v1-0 'hit-flinch) (= v1-0 'hit-knocked))
+         (speech-control-method-13 *speech-control* (the-as handle obj))
+         (let* ((s1-0 (handle->process (-> obj incoming attacker-handle)))
+                (a0-13 (if (type? s1-0 process-focusable)
+                           s1-0
+                           )
+                       )
+                )
+           (if (and a0-13 (logtest? (-> a0-13 mask) (process-mask target)))
+               (speech-control-method-12 *speech-control* obj (speech-type speech-type-0 speech-type-1 speech-type-3))
+               )
+           )
+         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         )
+        ((= v1-0 'trigger)
+         (let ((v0-0 (the-as object #t)))
+           (set! (-> obj trigger) (the-as symbol v0-0))
+           v0-0
+           )
+         )
+        ((= v1-0 'untrigger)
+         (set! (-> obj trigger) #f)
+         #f
+         )
+        ((= v1-0 'notify)
+         (let ((a0-21 (-> arg3 param 0))
+               (v1-16 (the-as object (-> arg3 param 1)))
+               )
+           (when (= a0-21 'attack)
+             (when (logtest? (-> (the-as process-focusable v1-16) mask) (process-mask target))
+               (if (logtest? (-> (the-as process-focusable v1-16) focus-status) (focus-status dead))
+                   (speech-control-method-12 *speech-control* obj (speech-type speech-type-1 speech-type-3))
+                   )
+               )
+             )
+           )
+         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         )
+        (else
+          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          )
+        )
+      )
+    )
+  )
+
+(defmethod crimson-guard-level-method-191 crimson-guard-level ((obj crimson-guard-level))
+  (let* ((s4-0 (-> obj target-pos-predict-miss))
+         (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 14)))
+         (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 15)))
+         (v1-3 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s4-0 v1-2) 1.0))
+         (s4-1 (new 'stack-no-clear 'projectile-init-by-other-params))
+         )
+    (set! (-> s4-1 ent) (-> obj entity))
+    (set! (-> s4-1 charge) 1.0)
+    (set! (-> s4-1 options) (projectile-options))
+    (set! (-> s4-1 notify-handle) (process->handle obj))
+    (set! (-> s4-1 owner-handle) (the-as handle #f))
+    (set! (-> s4-1 ignore-handle) (process->handle obj))
+    (let* ((a0-13 *game-info*)
+           (a1-12 (+ (-> a0-13 attack-id) 1))
+           )
+      (set! (-> a0-13 attack-id) a1-12)
+      (set! (-> s4-1 attack-id) a1-12)
+      )
+    (set! (-> s4-1 timeout) (new 'static 'handle :process #x4b0 :u64 #x4b0))
+    (set! (-> s4-1 pos quad) (-> s5-0 quad))
+    (set! (-> s4-1 vel quad) (-> v1-3 quad))
+    (vector-normalize! (-> s4-1 vel) 819200.0)
+    (spawn-projectile guard-shot s4-1 obj *default-dead-pool*)
+    )
+  )
+
+(defmethod crimson-guard-level-method-195 crimson-guard-level ((obj crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+      (let ((f0-0 1228.8)
+            (f30-0 6144.0)
+            )
+        (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+        (vector-! (-> s5-0 move-dist) arg1 arg0)
+        (let ((v1-4 s5-0))
+          (set! (-> v1-4 radius) f0-0)
+          (set! (-> v1-4 collide-with) (collide-spec backgnd))
+          (set! (-> v1-4 ignore-process0) obj)
+          (set! (-> v1-4 ignore-process1) (handle->process (-> obj focus handle)))
+          (set! (-> v1-4 ignore-pat)
+                (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
+                )
+          (set! (-> v1-4 action-mask) (collide-action solid))
+          )
+        (let ((f0-1 (fill-and-probe-using-line-sphere *collide-cache* s5-0)))
+          (cond
+            ((>= f0-1 0.0)
+             (vector-float*! (-> s5-0 move-dist) (-> s5-0 move-dist) f0-1)
+             (cond
+               ((< (vector-dot
+                     (-> s5-0 best-other-tri normal)
+                     (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
+                     )
+                   0.0
+                   )
+                (return 1)
+                )
+               (else
+                 )
+               )
+             )
+            (else
+              (vector-! (-> s5-0 move-dist) arg1 arg0)
+              )
+            )
+          )
+        (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+        (let ((a0-19 (-> s5-0 start-pos)))
+          (let ((v1-15 (-> s5-0 move-dist)))
+            (let ((a1-10 -0.1))
+              (.mov vf7 a1-10)
+              )
+            (.lvf vf5 (&-> v1-15 quad))
+            )
+          (.lvf vf4 (&-> arg0 quad))
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a0-19 quad) vf6)
+          )
+        (let ((a1-11 (-> s5-0 move-dist)))
+          (let ((v1-16 (-> s5-0 move-dist)))
+            (let ((a0-20 (-> s5-0 move-dist)))
+              (let ((a2-4 0.1))
+                (.mov vf7 a2-4)
+                )
+              (.lvf vf5 (&-> a0-20 quad))
+              )
+            (.lvf vf4 (&-> v1-16 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a1-11 quad) vf6)
+          )
+        (let ((v1-17 s5-0))
+          (set! (-> v1-17 radius) f30-0)
+          (set! (-> v1-17 collide-with) (collide-spec enemy obstacle hit-by-player-list hit-by-others-list))
+          (set! (-> v1-17 ignore-process0) obj)
+          (set! (-> v1-17 ignore-process1) (handle->process (-> obj focus handle)))
+          (set! (-> v1-17 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+          (set! (-> v1-17 action-mask) (collide-action solid))
+          )
+        )
+      (cond
+        ((< (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
+         0
+         )
+        (else
+          (let ((s4-1 (-> s5-0 best-other-tri collide-ptr)))
+            (if (and (if (type? s4-1 collide-shape-prim)
+                         s4-1
+                         )
+                     (< (vector-dot
+                          (-> s5-0 best-other-tri normal)
+                          (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
+                          )
+                        0.0
+                        )
+                     )
+                2
+                0
+                )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod crimson-guard-level-method-193 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s5-0 (get-trans obj 3))
+        (s4-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> s4-0 quad) (-> obj target-pos quad))
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) s4-0 s5-0)))
+      (vector-normalize! s3-1 409600.0)
+      (zero? (crimson-guard-level-method-195 obj s5-0 (vector+! (new 'stack-no-clear 'vector) s5-0 s3-1) s4-0))
+      )
+    )
+  )
+
+(defmethod crimson-guard-level-method-194 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 quad) (-> obj target-pos-predict-miss quad))
+    (let* ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 14)))
+           (a0-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 15)))
+           (s3-1 (vector-! (new 'stack-no-clear 'vector) s5-0 a0-3))
+           )
+      (vector-normalize! s3-1 409600.0)
+      (and (crimson-guard-level-method-193 obj)
+           (zero? (crimson-guard-level-method-195 obj s4-0 (vector+! (new 'stack-no-clear 'vector) s4-0 s3-1) s5-0))
+           )
+      )
+    )
+  )
+
+(defmethod crimson-guard-level-method-196 crimson-guard-level ((obj crimson-guard-level) (arg0 vector))
+  (local-vars
+    (sv-240 vector)
+    (sv-256 (function vector vector vector))
+    (sv-272 vector)
+    (sv-288 vector)
+    (sv-304 vector)
+    (sv-320 vector)
+    )
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (set! sv-240 arg0)
+      (let ((s0-0 (new 'stack-no-clear 'vector)))
+        (let ((v1-1 (-> obj root-override2 trans)))
+          (let ((a0-1 *y-vector*))
+            (let ((a1-2 8192.0))
+              (.mov vf7 a1-2)
+              )
+            (.lvf vf5 (&-> a0-1 quad))
+            )
+          (.lvf vf4 (&-> v1-1 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> s0-0 quad) vf6)
+        (set! sv-320 (new 'stack-no-clear 'vector))
+        (set! sv-304 (new 'stack-no-clear 'vector))
+        (let ((s1-0 (new 'stack-no-clear 'vector))
+              (s2-0 (new 'stack-no-clear 'vector))
+              (s5-0 (new 'stack-no-clear 'vector))
+              )
+          (-> obj node-list data 4 bone transform)
+          (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
+                (s3-0 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
+                )
+            (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat))
+            (set! (-> s0-0 quad) (-> obj root-override2 trans quad))
+            (cond
+              ((logtest? (enemy-flag dislike-combo) (-> obj enemy-flags))
+               (let ((a1-6 s0-0))
+                 (let ((v1-14 s0-0))
+                   (let ((a0-9 s4-0))
+                     (let ((a2-1 4096.0))
+                       (.mov vf7 a2-1)
+                       )
+                     (.lvf vf5 (&-> a0-9 quad))
+                     )
+                   (.lvf vf4 (&-> v1-14 quad))
+                   )
+                 (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                 (.mul.x.vf acc vf5 vf7 :mask #b111)
+                 (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                 (.svf (&-> a1-6 quad) vf6)
+                 )
+               )
+              (else
+                (let ((a1-7 s0-0))
+                  (let ((v1-15 s0-0))
+                    (let ((a0-10 s4-0))
+                      (let ((a2-3 2048.0))
+                        (.mov vf7 a2-3)
+                        )
+                      (.lvf vf5 (&-> a0-10 quad))
+                      )
+                    (.lvf vf4 (&-> v1-15 quad))
+                    )
+                  (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                  (.mul.x.vf acc vf5 vf7 :mask #b111)
+                  (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                  (.svf (&-> a1-7 quad) vf6)
+                  )
+                )
+              )
+            (let ((a1-8 s0-0))
+              (let ((v1-16 s0-0))
+                (let ((a0-11 s3-0))
+                  (let ((a2-5 8540.16))
+                    (.mov vf7 a2-5)
+                    )
+                  (.lvf vf5 (&-> a0-11 quad))
+                  )
+                (.lvf vf4 (&-> v1-16 quad))
+                )
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> a1-8 quad) vf6)
+              )
+            (vector-normalize! (vector-! sv-320 sv-240 s0-0) 1.0)
+            (set! sv-288 (new 'stack-no-clear 'vector))
+            (let ((v1-20 (-> sv-240 quad)))
+              (set! (-> sv-288 quad) v1-20)
+              )
+            (set! sv-256 vector-rotate90-around-y!)
+            (set! sv-272 (new 'stack-no-clear 'vector))
+            (let* ((a1-13 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) sv-288 s0-0) -2998.272))
+                   (v0-5 (sv-256 sv-272 a1-13))
+                   )
+              (vector+! sv-288 sv-288 v0-5)
+              )
+            (vector-normalize! (vector-! sv-320 sv-288 s0-0) 1.0)
+            (vector-z-quaternion! sv-304 (-> obj root-override2 quat))
+            (rot-zxy-from-vector! s2-0 sv-304)
+            (rot-zxy-from-vector! s1-0 sv-320)
+            (set! (-> s5-0 x) (fmax -14563.556 (fmin 14563.556 (deg- (-> s1-0 x) (-> s2-0 x)))))
+            (set! (-> s5-0 y) (fmax -14563.556 (fmin 14563.556 (deg- (-> s1-0 y) (-> s2-0 y)))))
+            (set! (-> s5-0 z) 0.0)
+            (let ((s2-1 (new 'stack-no-clear 'quaternion)))
+              (let ((s1-1 (new 'stack-no-clear 'quaternion)))
+                (quaternion-vector-angle! s2-1 s4-0 (-> s5-0 x))
+                (quaternion-vector-angle! s1-1 s3-0 (-> s5-0 y))
+                (quaternion*! s2-1 s1-1 s2-1)
+                )
+              (quaternion-pseudo-seek (-> obj joint quat) (-> obj joint quat) s2-1 (-> pp clock seconds-per-frame))
+              )
+            )
+          )
+        )
+      0
+      (none)
+      )
+    )
+  )
+
+(defmethod crimson-guard-level-method-197 crimson-guard-level ((obj crimson-guard-level))
+  (with-pp
+    (quaternion-pseudo-seek
+      (-> obj joint quat)
+      (-> obj joint quat)
+      *unity-quaternion*
+      (-> pp clock seconds-per-frame)
+      )
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod enemy-method-55 crimson-guard-level ((obj crimson-guard-level))
+  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+    (t9-0 obj)
+    )
+  (if (-> obj joint-enable)
+      (crimson-guard-level-method-196 obj (-> obj target-pos-predict-miss))
+      (crimson-guard-level-method-197 obj)
+      )
+  (case (-> obj root-override2 cur-pat event)
+    (((pat-event melt))
+     (if (not (and (-> obj next-state) (= (-> obj next-state name) 'die)))
+         (go (method-of-object obj die))
+         )
+     )
+    )
+  (none)
+  )
+
+(defmethod crimson-guard-level-method-200 crimson-guard-level ((obj crimson-guard-level))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (handle->process (-> obj focus handle))))
+      (when s5-0
+        (set! (-> obj target-pos quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
+        (if (= (-> obj focus aware) (enemy-aware enemy-aware-3))
+            (cloest-point-on-mesh (-> obj nav) (-> obj reachable-target-pos) (-> obj target-pos) (the-as nav-poly #f))
+            )
+        (set! (-> obj target-vel-vec quad) (-> (the-as process-focusable s5-0) root-override transv quad))
+        (set! (-> obj target-vel) (vector-length (-> obj target-vel-vec)))
+        (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (-> obj root-override2 trans) (-> obj target-pos))))
+          (let ((f0-2 (/ (vector-length s5-2) (if (= (-> obj weapon) 3)
+                                                  90112.0
+                                                  819200.0
+                                                  )
+                         )
+                      )
+                (a1-3 (-> obj target-pos-predict))
+                )
+            (let ((v1-20 (-> obj target-pos)))
+              (let ((a0-12 (-> obj target-vel-vec)))
+                (let ((a2-1 f0-2))
+                  (.mov vf7 a2-1)
+                  )
+                (.lvf vf5 (&-> a0-12 quad))
+                )
+              (.lvf vf4 (&-> v1-20 quad))
+              )
+            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+            (.mul.x.vf acc vf5 vf7 :mask #b111)
+            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.svf (&-> a1-3 quad) vf6)
+            )
+          (set! (-> s5-2 y) 0.0)
+          (vector-rotate90-around-y! s5-2 s5-2)
+          (if (-> obj other-side)
+              (vector-negate! s5-2 s5-2)
+              )
+          (vector-normalize! s5-2 (-> obj miss-amount))
+          (vector+! (-> obj target-pos-predict-miss) (-> obj target-pos-predict) s5-2)
+          )
+        (vector-! (-> obj target-self) (-> obj target-pos) (-> obj root-override2 trans))
+        (set! (-> obj target-self-xz quad) (-> obj target-self quad))
+        (set! (-> obj target-self-xz y) 0.0)
+        (set! (-> obj target-self-dist) (vector-length (-> obj target-self)))
+        (set! (-> obj target-self-xz-dist) (vector-length (-> obj target-self-xz)))
+        (set! (-> obj target-y-angle)
+              (deg-diff (quaternion-y-angle (-> obj root-override2 quat)) (vector-y-angle (-> obj target-self)))
+              )
+        )
+      )
+    )
+  )
+
+(defstate notice (crimson-guard-level)
+  :virtual #t
+  :enter (behavior ()
+    (talker-spawn-func (-> *talker-speech* 10) *entity-pool* (target-pos 0) (the-as region #f))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let ((v1-4 (logior (-> self enemy-flags) (enemy-flag use-notice-distance))))
+      (set! (-> self enemy-flags) (logclear v1-4 (enemy-flag called-dying)))
+      )
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (enemy-method-109 self 1)
+    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+      (let ((gp-1 (-> self on-notice)))
+        (if gp-1
+            (eval!
+              (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root-override2 trans))
+              (the-as pair gp-1)
+              )
+            )
+        )
+      )
+    (let ((gp-2 (-> self focus aware)))
+      (when (logtest? (-> self enemy-flags) (enemy-flag chase-startup))
+        (cond
+          ((and (= gp-2 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+           (go-hostile self)
+           )
+          ((and (= gp-2 (enemy-aware enemy-aware-2)) (enemy-method-107 self))
+           (go-hostile self)
+           )
+          ((= gp-2 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          (else
+            (go-stare self)
+            )
+          )
+        )
+      )
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-0 speech-type-1))
+    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override notice-anim))
+                  :num! (seek!
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override notice-anim)))
+                                frames
+                                num-frames
+                                )
+                            -1
+                            )
+                         )
+                    f30-0
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (vector-! gp-0 (target-pos 0) (-> self root-override2 trans))
+        (seek-toward-heading-vec! (-> self root-override2) gp-0 131072.0 (seconds 0.05))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (cond
+      ((logtest? (-> self flags) 2)
+       (go-virtual gun-shoot)
+       )
+      ((logtest? (-> self flags) 8)
+       (go-virtual grenade-attack)
+       )
+      (else
+        (enemy-method-72 self)
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate hostile (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (if (logtest? (-> self flags) 4)
+        (go-virtual gun-shoot)
+        )
+    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 1.0 3.0)))))
+    (none)
+    )
+  :exit (behavior ()
+    '()
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self focus aware)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+        (cond
+          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+           (go-stare self)
+           )
+          ((= gp-0 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (crimson-guard-level-method-200 self)
+    (when (handle->process (-> self focus handle))
+      (if (and (< (-> self target-self-xz-dist) 12288.0)
+               (enemy-method-96 self 3640.889 #t)
+               (nav-enemy-method-158 self (-> self target-pos))
+               )
+          (go-virtual close-attack)
+          )
+      (let ((v1-31 (-> self weapon)))
+        (cond
+          ((zero? v1-31)
+           )
+          ((= v1-31 1)
+           (if (< (-> self target-self-xz-dist) 28672.0)
+               (go-virtual attack)
+               )
+           )
+          ((= v1-31 3)
+           (if (and (< (-> self target-self-xz-dist) 12288.0)
+                    (enemy-method-96 self 3640.889 #t)
+                    (nav-enemy-method-158 self (-> self target-pos))
+                    )
+               (go-virtual close-attack)
+               )
+           (if (and (< (-> self target-self-xz-dist) 573440.0) (and (< 81920.0 (-> self target-self-xz-dist))
+                                                                    (enemy-method-96 self 1820.4445 #t)
+                                                                    (crimson-guard-level-method-193 self)
+                                                                    )
+                    )
+               (go-virtual grenade-attack)
+               )
+           )
+          )
+        )
+      )
+    (let ((a0-21 (-> self nav state))
+          (v1-62 (-> self target-pos))
+          )
+      (logclear! (-> a0-21 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-21 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-21 target-post quad) (-> v1-62 quad))
+      )
+    0
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-1 (* 2.0 (get-rand-float-range self 0.9 1.1))))
+      (until #f
+        (suspend)
+        (ja :num! (loop! f30-1))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate tazer-hostile (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy hostile) enter))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 0.5 1.5)))))
+    (none)
+    )
+  :exit (behavior ()
+    '()
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self focus aware)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+        (cond
+          ((or (>= 2 (the-as int gp-0)) (not (enemy-method-107 self)))
+           (go-stare self)
+           )
+          ((= gp-0 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (crimson-guard-level-method-200 self)
+    (when (handle->process (-> self focus handle))
+      (if (and (< (-> self target-self-xz-dist) 12288.0)
+               (enemy-method-96 self 3640.889 #t)
+               (nav-enemy-method-158 self (-> self target-pos))
+               )
+          (go-virtual close-attack)
+          )
+      (if (< (-> self target-self-xz-dist) 28672.0)
+          (go-virtual attack)
+          )
+      )
+    (let ((a0-13 (-> self nav state))
+          (v1-38 (-> self target-pos))
+          )
+      (logclear! (-> a0-13 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-13 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-13 target-post quad) (-> v1-38 quad))
+      )
+    0
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-1 (* 2.0 (get-rand-float-range self 0.9 1.1))))
+      (until #f
+        (suspend)
+        (ja :num! (loop! f30-1))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defstate blast-hostile (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy hostile) enter))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (nav-enemy-method-156 self)
+    (none)
+    )
+  :exit (behavior ()
+    '()
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self focus aware)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+        (cond
+          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+           (go-stare self)
+           )
+          ((= gp-0 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (crimson-guard-level-method-200 self)
+    (let ((a0-8 (handle->process (-> self focus handle))))
+      (when a0-8
+        (cond
+          ((and (< (-> self target-self-xz-dist) 81920.0) (= (-> self focus aware) (enemy-aware enemy-aware-3)))
+           (let ((gp-1 (-> self nav state))
+                 (v1-26 (get-trans (the-as process-focusable a0-8) 1))
+                 )
+             (logclear! (-> gp-1 flags) (nav-state-flag directional-mode))
+             (logior! (-> gp-1 flags) (nav-state-flag target-poly-dirty))
+             (set! (-> gp-1 target-post quad) (-> v1-26 quad))
+             )
+           0
+           (if (and (< (-> self target-self-xz-dist) 12288.0) (enemy-method-96 self 3640.889 #t))
+               (go-virtual close-attack)
+               )
+           )
+          (else
+            (if (logtest? (-> self nav state flags) (nav-state-flag at-target))
+                (nav-enemy-method-156 self)
+                )
+            (if (and (< (-> self target-self-xz-dist) 327680.0)
+                     (crimson-guard-level-method-193 self)
+                     (>= (- (-> self clock frame-counter) (-> self state-time)) (the int (* 300.0 (rand-vu-float-range 1.0 8.0))))
+                     )
+                (go-virtual gun-shoot)
+                )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-0 speech-type-3))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-1 (* 2.0 (get-rand-float-range self 0.9 1.1))))
+      (until #f
+        (suspend)
+        (ja :num! (loop! f30-1))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defstate grenade-hostile (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy hostile) enter))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (nav-enemy-method-156 self)
+    (none)
+    )
+  :exit (behavior ()
+    '()
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self focus aware)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+        (cond
+          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+           (go-stare self)
+           )
+          ((= gp-0 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (crimson-guard-level-method-200 self)
+    (let ((a0-8 (handle->process (-> self focus handle))))
+      (when a0-8
+        (cond
+          ((and (< (-> self target-self-xz-dist) 81920.0) (= (-> self focus aware) (enemy-aware enemy-aware-3)))
+           (let ((gp-1 (-> self nav state))
+                 (v1-26 (get-trans (the-as process-focusable a0-8) 1))
+                 )
+             (logclear! (-> gp-1 flags) (nav-state-flag directional-mode))
+             (logior! (-> gp-1 flags) (nav-state-flag target-poly-dirty))
+             (set! (-> gp-1 target-post quad) (-> v1-26 quad))
+             )
+           0
+           (if (and (< (-> self target-self-xz-dist) 12288.0) (enemy-method-96 self 3640.889 #t))
+               (go-virtual close-attack)
+               )
+           )
+          (else
+            (if (or (and (logtest? (-> self nav state flags) (nav-state-flag at-target))
+                         (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+                         )
+                    (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+                    )
+                (go-virtual grenade-attack)
+                )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-0 speech-type-3))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-1 (* 2.0 (get-rand-float-range self 0.9 1.1))))
+      (until #f
+        (suspend)
+        (ja :num! (loop! f30-1))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defstate arrest (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (nav-enemy-method-167 self)
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (vector-reset! (-> self root-override2 transv))
+    (let ((a0-9 (-> self nav state))
+          (v1-12 *null-vector*)
+          )
+      (set! (-> a0-9 velocity quad) (-> v1-12 quad))
+      )
+    0
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self last-time-see-target) (the-as int (-> self clock frame-counter)))
+    (set! (-> self miss-amount) 0.0)
+    (set! (-> self next-shot) (the-as int (-> self clock frame-counter)))
+    (set! (-> self joint-enable) #t)
+    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 3.0 5.0)))))
+    (none)
+    )
+  :exit (behavior ()
+    (set! (-> self joint-enable) #f)
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (none)
+    )
+  :trans (behavior ()
+    (crimson-guard-level-method-200 self)
+    (let ((v1-2 (-> self focus aware)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+        (cond
+          ((< (the-as int v1-2) 2)
+           (go-stare self)
+           )
+          ((= v1-2 (enemy-aware enemy-aware-3))
+           (go-hostile self)
+           )
+          ((= v1-2 (enemy-aware enemy-aware-4))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-0 speech-type-2 speech-type-3))
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (ja-no-eval :group! (-> self draw art-group data 19)
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1))
+                    f30-0
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (until #f
+      (if (or (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+              (< 10922.667 (fabs (-> self target-y-angle)))
+              )
+          (goto cfg-13)
+          )
+      (ja-no-eval :group! (-> self draw art-group data 20)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (label cfg-13)
+    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data 24)
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1))
+                    f30-1
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-1))
+        )
+      )
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    (none)
+    )
+  )
+
+(defstate gun-shoot (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self other-side) (the-as uint (if (< (rand-vu) 0.5)
+                                                #t
+                                                #f
+                                                )
+                                       )
+          )
+    (nav-enemy-method-166 self)
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (let ((v1-10 (-> self nav state)))
+      (set! (-> v1-10 speed) 0.0)
+      )
+    0
+    (let ((a0-8 (-> self nav state))
+          (v1-13 *null-vector*)
+          )
+      (set! (-> a0-8 velocity quad) (-> v1-13 quad))
+      )
+    0
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self last-time-see-target) (the-as int (-> self clock frame-counter)))
+    (crimson-guard-level-method-200 self)
+    (if (logtest? (-> self flags) 4)
+        (set! (-> self miss-amount) 16384.0)
+        (set! (-> self miss-amount) (lerp-scale 0.0 16384.0 (-> self target-self-dist) 40960.0 122880.0))
+        )
+    (set! (-> self next-shot) (the-as int (-> self clock frame-counter)))
+    (set! (-> self joint-enable) #t)
+    (none)
+    )
+  :exit (behavior ()
+    (set! (-> self joint-enable) #f)
+    (none)
+    )
+  :trans (behavior ()
+    (crimson-guard-level-method-200 self)
+    (let ((v1-4 (handle->process (-> self focus handle))))
+      (when v1-4
+        (when (not (and v1-4
+                        (zero? (logand (-> (the-as process-focusable v1-4) focus-status) (focus-status disable dead ignore grabbed)))
+                        )
+                   )
+          (if (logtest? (-> self flags) 4)
+              (set! (-> self miss-amount) 16384.0)
+              (set! (-> self miss-amount) (lerp-scale 0.0 16384.0 (-> self target-self-dist) 40960.0 122880.0))
+              )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (local-vars (v1-48 object))
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 0 anim-index))
+                  :num! (seek!
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-shoot 0 anim-index))) frames num-frames)
+                            -1
+                            )
+                         )
+                    f30-0
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (let ((v1-31 (handle->process (-> self focus handle))))
+      (when v1-31
+        (set! (-> self start-target-pos quad) (-> (the-as process-drawable v1-31) root trans quad))
+        (set! (-> self start-target-vel quad) (-> (the-as process-drawable v1-31) root transv quad))
+        )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (label cfg-10)
+    (when (crimson-guard-level-method-194 self)
+      (when (or (not (logtest? (-> self flags) 256)) (and (logtest? (-> self flags) 256) (-> self trigger)))
+        (set! v1-48 #t)
+        (goto cfg-23)
+        )
+      )
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+      (set! v1-48 #f)
+      (goto cfg-23)
+      )
+    (suspend)
+    (b! (not #f) cfg-10 :delay (set! v1-48 #f))
+    (label cfg-23)
+    (when v1-48
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (let ((gp-0 3))
+        (until #f
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 1 anim-index)) :num! min)
+          (set! (-> self already-shot) (the-as uint #t))
+          (let ((f0-7 (lerp-scale 1.0 0.2 (-> self target-self-dist) 81920.0 327680.0)))
+            (cond
+              ((logtest? (-> self flags) 4)
+               (if (< (-> self target-vel) 40.96)
+                   (set! (-> self miss-amount) (+ -12288.0 (-> self miss-amount)))
+                   )
+               )
+              ((logtest? (-> self draw status) (draw-control-status on-screen))
+               (when (handle->process (-> self focus handle))
+                 (if (< (-> self target-vel) 40.96)
+                     (set! (-> self miss-amount) (- (-> self miss-amount) (* 12288.0 f0-7)))
+                     (set! (-> self miss-amount) (- (-> self miss-amount) (* 4096.0 f0-7)))
+                     )
+                 )
+               )
+              (else
+                (set! (-> self miss-amount) (- (-> self miss-amount) (* 3276.8 f0-7)))
+                )
+              )
+            )
+          (if (< (-> self miss-amount) 0.0)
+              (set! (-> self miss-amount) 0.0)
+              )
+          (if (= gp-0 3)
+              (speech-control-method-12 *speech-control* self (speech-type speech-type-0 speech-type-3))
+              )
+          (crimson-guard-level-method-191 self)
+          (until (ja-done? 0)
+            (ja :num! (seek!))
+            (suspend)
+            )
+          (when (logtest? (-> self flags) 4)
+            (let ((s5-1 (-> self clock frame-counter)))
+              (until (>= (- (-> self clock frame-counter) s5-1) (seconds 1))
+                (suspend)
+                )
+              )
+            (until (crimson-guard-level-method-194 self)
+              (suspend)
+              )
+            )
+          (+! gp-0 -1)
+          (if (< gp-0 0)
+              (goto cfg-57)
+              )
+          )
+        )
+      #f
+      )
+    (label cfg-57)
+    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 2 anim-index))
+                  :num! (seek!
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-shoot 2 anim-index))) frames num-frames)
+                            -1
+                            )
+                         )
+                    f30-1
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-1))
+        )
+      )
+    (if (logtest? (-> self flags) 2)
+        (crimson-guard-level-method-204 self)
+        )
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    (none)
+    )
+  )
+
+(defmethod crimson-guard-level-method-199 crimson-guard-level ((obj crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (local-vars (sv-672 vector) (sv-688 vector) (sv-704 vector) (sv-720 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s4-0 quad) (-> arg0 quad))
+      (let ((s3-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s3-0 quad) (-> arg1 quad))
+        (vector-length arg1)
+        (let ((s2-0 (new 'stack-no-clear 'vector)))
+          (set! (-> s2-0 quad) (-> arg2 quad))
+          (let ((s1-0 (new 'stack-no-clear 'collide-query)))
+            (dotimes (s0-0 6)
+              (cond
+                (arg3
+                  (let ((v1-5 s1-0))
+                    (set! (-> v1-5 radius) 4096.0)
+                    (set! (-> v1-5 collide-with) (collide-spec backgnd obstacle))
+                    (set! (-> v1-5 ignore-process0) #f)
+                    (set! (-> v1-5 ignore-process1) #f)
+                    (set! (-> v1-5 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+                    (set! (-> v1-5 action-mask) (collide-action solid))
+                    )
+                  )
+                (else
+                  (let ((v1-6 s1-0))
+                    (set! (-> v1-6 radius) 4096.0)
+                    (set! (-> v1-6 collide-with) (collide-spec jak hit-by-others-list player-list))
+                    (set! (-> v1-6 ignore-process0) #f)
+                    (set! (-> v1-6 ignore-process1) #f)
+                    (set! (-> v1-6 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+                    (set! (-> v1-6 action-mask) (collide-action solid))
+                    )
+                  )
+                )
+              (set! (-> s1-0 start-pos quad) (-> s4-0 quad))
+              (set! (-> s1-0 move-dist quad) (-> s3-0 quad))
+              (set-from-point-offset-pad! (-> s1-0 bbox) (-> s1-0 start-pos) (-> s1-0 move-dist) (-> s1-0 radius))
+              (fill-using-bounding-box *collide-cache* s1-0)
+              (set! (-> s1-0 start-pos quad) (-> s4-0 quad))
+              (set! (-> s1-0 move-dist quad) (-> s3-0 quad))
+              (set! (-> s1-0 radius) 409.6)
+              (let ((f0-5 (probe-using-line-sphere *collide-cache* s1-0)))
+                (cond
+                  ((>= f0-5 0.0)
+                   (set! sv-672 (new 'stack-no-clear 'vector))
+                   (let ((v1-16 (-> s1-0 start-pos)))
+                     (let ((a0-20 (-> s1-0 move-dist)))
+                       (let ((a1-4 f0-5))
+                         (.mov vf7 a1-4)
+                         )
+                       (.lvf vf5 (&-> a0-20 quad))
+                       )
+                     (.lvf vf4 (&-> v1-16 quad))
+                     )
+                   (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                   (.mul.x.vf acc vf5 vf7 :mask #b111)
+                   (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                   (.svf (&-> sv-672 quad) vf6)
+                   (set! sv-688 (new 'stack-no-clear 'vector))
+                   (set! (-> s4-0 quad) (-> sv-672 quad))
+                   (+! (-> sv-672 x) (rand-vu-float-range -819.2 819.2))
+                   (+! (-> sv-672 y) (rand-vu-float-range -819.2 819.2))
+                   (+! (-> sv-672 z) (rand-vu-float-range -819.2 819.2))
+                   (set-point! (-> obj l-control) (-> obj l-control state points-to-draw) sv-672)
+                   (+! (-> obj l-control state points-to-draw) 1)
+                   (quaternion-from-two-vectors! (the-as quaternion sv-688) s2-0 (-> s1-0 best-other-tri normal))
+                   (vector-orient-by-quat! s3-0 s3-0 (the-as quaternion sv-688))
+                   (set! (-> s2-0 quad) (-> s1-0 best-other-tri normal quad))
+                   (vector-flatten! s3-0 s3-0 (-> s1-0 best-other-tri normal))
+                   )
+                  (else
+                    (vector+! (-> s1-0 start-pos) s4-0 s3-0)
+                    (let ((a1-14 (-> s1-0 start-pos)))
+                      (let ((v1-33 (-> s1-0 start-pos)))
+                        (let ((a0-35 s2-0))
+                          (let ((a2-7 -2048.0))
+                            (.mov vf7 a2-7)
+                            )
+                          (.lvf vf5 (&-> a0-35 quad))
+                          )
+                        (.lvf vf4 (&-> v1-33 quad))
+                        )
+                      (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                      (.mul.x.vf acc vf5 vf7 :mask #b111)
+                      (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                      (.svf (&-> a1-14 quad) vf6)
+                      )
+                    (vector-negate! (-> s1-0 move-dist) s3-0)
+                    (set! (-> s1-0 radius) 409.6)
+                    (let ((f0-14 (probe-using-line-sphere *collide-cache* s1-0)))
+                      (cond
+                        ((>= f0-14 0.0)
+                         (set! sv-704 (new 'stack-no-clear 'vector))
+                         (let ((v1-37 (-> s1-0 start-pos)))
+                           (let ((a0-38 (-> s1-0 move-dist)))
+                             (let ((a1-17 f0-14))
+                               (.mov vf7 a1-17)
+                               )
+                             (.lvf vf5 (&-> a0-38 quad))
+                             )
+                           (.lvf vf4 (&-> v1-37 quad))
+                           )
+                         (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                         (.mul.x.vf acc vf5 vf7 :mask #b111)
+                         (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                         (.svf (&-> sv-704 quad) vf6)
+                         (set! sv-720 (new 'stack-no-clear 'vector))
+                         (let ((a1-18 sv-704))
+                           (let ((v1-40 sv-704))
+                             (let ((a0-39 s2-0))
+                               (let ((a2-9 2048.0))
+                                 (.mov vf7 a2-9)
+                                 )
+                               (.lvf vf5 (&-> a0-39 quad))
+                               )
+                             (.lvf vf4 (&-> v1-40 quad))
+                             )
+                           (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                           (.mul.x.vf acc vf5 vf7 :mask #b111)
+                           (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                           (.svf (&-> a1-18 quad) vf6)
+                           )
+                         (set! (-> s4-0 quad) (-> sv-704 quad))
+                         (+! (-> sv-704 x) (rand-vu-float-range -819.2 819.2))
+                         (+! (-> sv-704 y) (rand-vu-float-range -819.2 819.2))
+                         (+! (-> sv-704 z) (rand-vu-float-range -819.2 819.2))
+                         (set-point! (-> obj l-control) (-> obj l-control state points-to-draw) sv-704)
+                         (+! (-> obj l-control state points-to-draw) 1)
+                         (quaternion-from-two-vectors! (the-as quaternion sv-720) s2-0 (-> s1-0 best-other-tri normal))
+                         (vector-orient-by-quat! s3-0 s3-0 (the-as quaternion sv-720))
+                         (set! (-> s2-0 quad) (-> s1-0 best-other-tri normal quad))
+                         (vector-flatten! s3-0 s3-0 (-> s1-0 best-other-tri normal))
+                         )
+                        (else
+                          (vector+! s4-0 s4-0 s3-0)
+                          (when (< s0-0 6)
+                            (set-point! (-> obj l-control) (-> obj l-control state points-to-draw) s4-0)
+                            (+! (-> obj l-control state points-to-draw) 1)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod crimson-guard-level-method-198 crimson-guard-level ((obj crimson-guard-level))
+  (local-vars (sv-784 vector))
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (let* ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 14)))
+             (v0-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 15)))
+             (s2-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s4-0 v0-1) 16384.0))
+             (s1-0
+               (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj target-pos-predict-miss) s4-0) 16384.0)
+               )
+             (s5-0 (new 'stack-no-clear 'vector))
+             (s3-0 (new 'stack-no-clear 'collide-query))
+             )
+        (when (< 1820.4445 (vector-vector-angle-safe s2-0 s1-0))
+          (let* ((a1-9 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) s2-0 s1-0) 1.0))
+                 (a2-1 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) a1-9 1820.4445))
+                 )
+            (vector-orient-by-quat! s1-0 s2-0 a2-1)
+            )
+          )
+        (let ((a0-12 s4-0))
+          (let ((v1-8 s4-0))
+            (let ((a1-12 0.2))
+              (.mov vf7 a1-12)
+              )
+            (.lvf vf5 (&-> s2-0 quad))
+            (.lvf vf4 (&-> v1-8 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a0-12 quad) vf6)
+          )
+        (vector+! s5-0 s4-0 s1-0)
+        (let ((v1-10 s3-0))
+          (set! (-> v1-10 radius) 409.6)
+          (set! (-> v1-10 collide-with) (collide-spec backgnd jak bot obstacle hit-by-others-list player-list))
+          (set! (-> v1-10 ignore-process0) #f)
+          (set! (-> v1-10 ignore-process1) #f)
+          (set! (-> v1-10 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+          (set! (-> v1-10 action-mask) (collide-action solid))
+          )
+        (set! (-> s3-0 start-pos quad) (-> s4-0 quad))
+        (set! (-> s3-0 move-dist quad) (-> s1-0 quad))
+        (set! (-> s3-0 ignore-process0) #f)
+        (set! (-> s3-0 ignore-process1) #f)
+        (set! (-> s3-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (fill-using-line-sphere *collide-cache* s3-0)
+        (set! (-> obj l-control state points-to-draw) 0)
+        (let ((f0-3 (probe-using-line-sphere *collide-cache* s3-0))
+              (s2-1 (new 'stack-no-clear 'vector))
+              )
+          (cond
+            ((>= f0-3 0.0)
+             (vector-float*! s1-0 (-> s3-0 move-dist) f0-3)
+             (vector+! s5-0 s4-0 s1-0)
+             (point-in-plane-<-point+normal! s2-1 s5-0 (-> s3-0 best-other-tri normal))
+             (vector-! s2-1 s2-1 s5-0)
+             (let ((s1-1 quaternion-vector-angle!)
+                   (s0-0 (new 'stack-no-clear 'quaternion))
+                   )
+               (set! sv-784 (-> s3-0 best-other-tri normal))
+               (let* ((a2-3 (rand-vu-float-range 0.0 65536.0))
+                      (a2-4 (s1-1 s0-0 sv-784 a2-3))
+                      )
+                 (vector-orient-by-quat! s2-1 s2-1 a2-4)
+                 )
+               )
+             (let ((s1-2 (get-process *default-dead-pool* part-tracker #x4000)))
+               (when s1-2
+                 (let ((t9-15 (method-of-type part-tracker activate)))
+                   (t9-15 (the-as part-tracker s1-2) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                   )
+                 (let ((t9-16 run-function-in-process)
+                       (a0-34 s1-2)
+                       (a1-25 part-tracker-init)
+                       (a2-9 (-> *part-group-id-table* 140))
+                       (a3-1 0)
+                       (t0-0 #f)
+                       (t1-0 #f)
+                       (t2-0 #f)
+                       (t3-0 *launch-matrix*)
+                       )
+                   (set! (-> t3-0 trans quad) (-> s4-0 quad))
+                   ((the-as (function object object object object object object object object none) t9-16)
+                    a0-34
+                    a1-25
+                    a2-9
+                    a3-1
+                    t0-0
+                    t1-0
+                    t2-0
+                    t3-0
+                    )
+                   )
+                 (-> s1-2 ppointer)
+                 )
+               )
+             (let ((s1-3 (get-process *default-dead-pool* part-tracker #x4000)))
+               (when s1-3
+                 (let ((t9-18 (method-of-type part-tracker activate)))
+                   (t9-18 (the-as part-tracker s1-3) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                   )
+                 (let ((t9-19 run-function-in-process)
+                       (a0-37 s1-3)
+                       (a1-28 part-tracker-init)
+                       (a2-14 (-> *part-group-id-table* 140))
+                       (a3-3 0)
+                       (t0-1 #f)
+                       (t1-1 #f)
+                       (t2-1 #f)
+                       (t3-1 *launch-matrix*)
+                       )
+                   (set! (-> t3-1 trans quad) (-> s5-0 quad))
+                   ((the-as (function object object object object object object object object none) t9-19)
+                    a0-37
+                    a1-28
+                    a2-14
+                    a3-3
+                    t0-1
+                    t1-1
+                    t2-1
+                    t3-1
+                    )
+                   )
+                 (-> s1-3 ppointer)
+                 )
+               )
+             (set-point! (-> obj l-control) 0 s4-0)
+             (set-point! (-> obj l-control) 1 s5-0)
+             (set! (-> obj l-control spec) (-> *lightning-spec-id-table* 13))
+             (+! (-> obj l-control state points-to-draw) 2)
+             (let* ((s4-1 (-> s3-0 best-other-tri collide-ptr))
+                    (v1-45 (if (type? s4-1 collide-shape-prim)
+                               (the-as collide-shape-prim s4-1)
+                               )
+                           )
+                    (s4-2 #t)
+                    )
+               (when v1-45
+                 (set! s4-2 #f)
+                 (when (logtest? (-> v1-45 prim-core collide-as) (collide-spec jak bot))
+                   (let ((a1-32 (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> a1-32 from) (process->ppointer pp))
+                     (set! (-> a1-32 num-params) 2)
+                     (set! (-> a1-32 message) 'attack)
+                     (set! (-> a1-32 param 0) (the-as uint #f))
+                     (let ((a0-50 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                       (let* ((a2-18 *game-info*)
+                              (a3-5 (+ (-> a2-18 attack-id) 1))
+                              )
+                         (set! (-> a2-18 attack-id) a3-5)
+                         (set! (-> a0-50 id) a3-5)
+                         )
+                       (set! (-> a0-50 mode) 'shock)
+                       (set! (-> a1-32 param 1) (the-as uint a0-50))
+                       )
+                     (send-event-function (-> v1-45 cshape process) a1-32)
+                     )
+                   )
+                 )
+               (crimson-guard-level-method-199 obj s5-0 s2-1 (-> s3-0 best-other-tri normal) (the-as float s4-2))
+               )
+             )
+            (else
+              (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
+                (when s3-1
+                  (let ((t9-26 (method-of-type part-tracker activate)))
+                    (t9-26 (the-as part-tracker s3-1) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                    )
+                  (let ((t9-27 run-function-in-process)
+                        (a0-56 s3-1)
+                        (a1-36 part-tracker-init)
+                        (a2-25 (-> *part-group-id-table* 140))
+                        (a3-8 0)
+                        (t0-3 #f)
+                        (t1-2 #f)
+                        (t2-2 #f)
+                        (t3-2 *launch-matrix*)
+                        )
+                    (set! (-> t3-2 trans quad) (-> s4-0 quad))
+                    ((the-as (function object object object object object object object object none) t9-27)
+                     a0-56
+                     a1-36
+                     a2-25
+                     a3-8
+                     t0-3
+                     t1-2
+                     t2-2
+                     t3-2
+                     )
+                    )
+                  (-> s3-1 ppointer)
+                  )
+                )
+              (let ((s3-2 (get-process *default-dead-pool* part-tracker #x4000)))
+                (when s3-2
+                  (let ((t9-29 (method-of-type part-tracker activate)))
+                    (t9-29 (the-as part-tracker s3-2) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                    )
+                  (let ((t9-30 run-function-in-process)
+                        (a0-59 s3-2)
+                        (a1-39 part-tracker-init)
+                        (a2-30 (-> *part-group-id-table* 140))
+                        (a3-10 0)
+                        (t0-4 #f)
+                        (t1-3 #f)
+                        (t2-3 #f)
+                        (t3-3 *launch-matrix*)
+                        )
+                    (set! (-> t3-3 trans quad) (-> s5-0 quad))
+                    ((the-as (function object object object object object object object object none) t9-30)
+                     a0-59
+                     a1-39
+                     a2-30
+                     a3-10
+                     t0-4
+                     t1-3
+                     t2-3
+                     t3-3
+                     )
+                    )
+                  (-> s3-2 ppointer)
+                  )
+                )
+              (set! (-> obj l-control state points-to-draw) 9)
+              (set! (-> obj l-control spec) (-> *lightning-spec-id-table* 14))
+              (let ((v1-67 s4-0))
+                (set! (-> obj l-control state meet data 0 quad) (-> v1-67 quad))
+                )
+              (let ((a0-65 (-> obj l-control))
+                    (v1-69 s5-0)
+                    )
+                (set! (-> a0-65 state meet data (+ (-> a0-65 state points-to-draw) -1) quad) (-> v1-69 quad))
+                )
+              )
+            )
+          )
+        )
+      (none)
+      )
+    )
+  )
+
+(defstate close-attack (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 3)))
+      (logior! (-> v1-3 prim-core action) (collide-action deadly))
+      )
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-8 *game-info*)
+           (a0-4 (+ (-> v1-8 attack-id) 1))
+           )
+      (set! (-> v1-8 attack-id) a0-4)
+      (set! (-> self attack-id) a0-4)
+      )
+    (let ((v1-9 (-> self nav)))
+      (set! (-> v1-9 target-speed) 0.0)
+      )
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 3)))
+      (logclear! (-> v1-3 prim-core action) (collide-action deadly))
+      )
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (crimson-guard-level-method-200 self)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 18)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defmethod crimson-guard-level-method-192 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 14))))
+    (new 'stack-no-clear 'vector)
+    (let ((s5-0 (new 'stack-no-clear 'traj3d-params)))
+      (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> obj target-pos-predict) s4-0)))
+        (set! (-> s3-1 y) 0.0)
+        (vector-rotate-around-y! s3-1 s3-1 (* 182.04445 (+ (if (zero? (rand-vu-int-count 2))
+                                                               90.0
+                                                               -90.0
+                                                               )
+                                                           (rand-vu-float-range -45.0 45.0)
+                                                           )
+                                              )
+                                 )
+        (if (logtest? (-> obj draw status) (draw-control-status on-screen))
+            (vector-normalize! s3-1 (* 4096.0 (rand-vu-float-range 1.0 4.0)))
+            (vector-normalize! s3-1 (* 4096.0 (rand-vu-float-range 4.0 15.0)))
+            )
+        (set! (-> s5-0 dest quad) (-> (vector+! (new 'stack-no-clear 'vector) s3-1 (-> obj target-pos-predict)) quad))
+        )
+      (set! (-> s5-0 src quad) (-> s4-0 quad))
+      (set! (-> s5-0 initial-tilt) 8192.0)
+      (set! (-> s5-0 gravity) 184320.0)
+      (when (traj3d-calc-initial-velocity-using-tilt s5-0)
+        (let ((a1-9 (new 'stack-no-clear 'projectile-init-by-other-params)))
+          (set! (-> a1-9 ent) (-> obj entity))
+          (set! (-> a1-9 charge) 1.0)
+          (set! (-> a1-9 options) (projectile-options))
+          (set! (-> a1-9 pos quad) (-> s5-0 src quad))
+          (set! (-> a1-9 vel quad) (-> s5-0 initial-velocity quad))
+          (set! (-> a1-9 notify-handle) (the-as handle #f))
+          (set! (-> a1-9 owner-handle) (the-as handle #f))
+          (set! (-> a1-9 ignore-handle) (process->handle obj))
+          (let* ((v1-24 *game-info*)
+                 (a0-23 (+ (-> v1-24 attack-id) 1))
+                 )
+            (set! (-> v1-24 attack-id) a0-23)
+            (set! (-> a1-9 attack-id) a0-23)
+            )
+          (set! (-> a1-9 timeout) (new 'static 'handle :process #x4b0 :u64 #x4b0))
+          (spawn-projectile vehicle-grenade a1-9 obj *default-dead-pool*)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate grenade-attack (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (let ((v1-6 self))
+      (set! (-> v1-6 enemy-flags) (the-as enemy-flag (logclear (-> v1-6 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-6 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-9 (-> self nav)))
+      (set! (-> v1-9 target-speed) 0.0)
+      )
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (crimson-guard-level-method-200 self)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 37)
+                :num! (seek! (ja-aframe 12.0 0))
+                :frame-num (ja-aframe 1.0 0)
+                )
+    (until (ja-done? 0)
+      (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+      (suspend)
+      (ja :num! (seek! (ja-aframe 12.0 0)))
+      )
+    (let ((gp-2 (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) gp-2) (the int (* 900.0 (you-suck-scale *game-info* #f))))
+        (ja-no-eval :group! (-> self draw art-group data 37)
+                    :num! (seek! (ja-aframe 12.0 0))
+                    :frame-num (ja-aframe 12.0 0)
+                    )
+        (until (ja-done? 0)
+          (seek-toward-heading-vec! (-> self root-override2) (-> self target-self-xz) 65536.0 (seconds 0.02))
+          (suspend)
+          (ja :num! (seek! (ja-aframe 12.0 0)))
+          )
+        (if (and (< (-> self target-self-xz-dist) 81920.0) (= (-> self focus aware) (enemy-aware enemy-aware-3)))
+            (go-hostile self)
+            )
+        (suspend)
+        )
+      )
+    (crimson-guard-level-method-192 self)
+    (ja-no-eval :group! (-> self draw art-group data 37)
+                :num! (seek! (ja-aframe 32.0 0))
+                :frame-num (ja-aframe 22.0 0)
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 32.0 0)))
+      )
+    (ja-no-eval :group! (-> self draw art-group data 37)
+                :num! (seek! (ja-aframe 37.0 0))
+                :frame-num (ja-aframe 33.0 0)
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 37.0 0)))
+      )
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defstate attack (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self joint-enable) #t)
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-5 *game-info*)
+           (a0-2 (+ (-> v1-5 attack-id) 1))
+           )
+      (set! (-> v1-5 attack-id) a0-2)
+      (set! (-> self attack-id) a0-2)
+      )
+    (let ((v1-6 self))
+      (set! (-> v1-6 enemy-flags) (the-as enemy-flag (logclear (-> v1-6 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-6 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-9 self))
+      (set! (-> v1-9 enemy-flags) (the-as enemy-flag (logclear (-> v1-9 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (set! (-> self miss-amount) 0.0)
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self next-shot) (the-as int (-> self clock frame-counter)))
+    (set! (-> self lazer-sound) (new 'static 'sound-id))
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (if (nonzero? (-> self lazer-sound))
+        (sound-stop (-> self lazer-sound))
+        )
+    (let ((v1-6 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 2)))
+      (logclear! (-> v1-6 prim-core action) (collide-action deadly))
+      )
+    (let ((v1-10 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 3)))
+      (logclear! (-> v1-10 prim-core action) (collide-action deadly))
+      )
+    (let ((v1-11 (-> self l-control))
+          (a0-5 0)
+          )
+      (let ((a1-3 (!= a0-5 (-> v1-11 state mode))))
+        (case a0-5
+          ((3)
+           (if a1-3
+               (set! (-> v1-11 state counter) 0.0)
+               )
+           )
+          ((1)
+           (set! (-> v1-11 state start-color) (-> v1-11 spec start-color))
+           (set! (-> v1-11 state end-color) (-> v1-11 spec end-color))
+           )
+          )
+        )
+      (set! (-> v1-11 state mode) (the-as lightning-mode a0-5))
+      )
+    (set! (-> self joint-enable) #f)
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (crimson-guard-level-method-200 self)
+    (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+             (< 32768.0 (-> self target-self-xz-dist))
+             )
+        (go-hostile self)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (local-vars (v1-69 symbol))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 19) :num! (seek! (ja-aframe 7.0 0)) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 7.0 0)))
+      )
+    (until #f
+      (let ((gp-2 #t))
+        (while (or (< 5461.3335 (fabs (-> self target-y-angle))) (>= (-> self next-shot) (-> self clock frame-counter)))
+          (when gp-2
+            (ja-channel-push! 1 (seconds 0.1))
+            (set! gp-2 #f)
+            )
+          (cond
+            ((< 5461.3335 (fabs (-> self target-y-angle)))
+             (ja-no-eval :group! (-> self draw art-group data 25)
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) frames num-frames) -1)))
+                         :frame-num 0.0
+                         )
+             (until (ja-done? 0)
+               (if (< 5461.3335 (fabs (-> self target-y-angle)))
+                   (seek-to-point-toward-point!
+                     (-> self root-override2)
+                     (-> self target-pos)
+                     (-> self nav max-rotation-rate)
+                     (seconds 0.2)
+                     )
+                   )
+               (suspend)
+               (ja :num! (seek!))
+               )
+             )
+            (else
+              (ja-no-eval :group! (-> self draw art-group data 20)
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
+                          :frame-num 0.0
+                          )
+              (until v1-69
+                (suspend)
+                (ja :num! (seek!))
+                (set! v1-69
+                      (or (ja-done? 0) (< (-> self target-self-xz-dist) 16384.0) (< 5461.3335 (fabs (-> self target-y-angle))))
+                      )
+                )
+              )
+            )
+          (when (< (-> self target-self-xz-dist) 16384.0)
+            (set! (-> self next-shot) 0)
+            0
+            )
+          )
+        )
+      (cond
+        ((and (crimson-guard-level-method-193 self)
+              (handle->process (-> self focus handle))
+              (zero? (logand (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
+                             (focus-status disable dead ignore grabbed)
+                             )
+                     )
+              )
+         (cond
+           ((< (-> self target-self-xz-dist) 16384.0)
+            (go-virtual close-attack)
+            )
+           (else
+             (ja-channel-push! 1 (seconds 0.1))
+             (ja-no-eval :group! (-> self draw art-group data 21)
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 21)) frames num-frames) -1)))
+                         :frame-num 0.0
+                         )
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))
+               )
+             (set! (-> self next-shot) (the-as int (+ (-> self clock frame-counter) (seconds 1))))
+             (let ((v1-124 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 2)))
+               (logior! (-> v1-124 prim-core action) (collide-action deadly))
+               )
+             (let* ((v1-125 *game-info*)
+                    (a0-34 (+ (-> v1-125 attack-id) 1))
+                    )
+               (set! (-> v1-125 attack-id) a0-34)
+               (set! (-> self attack-id) a0-34)
+               )
+             (set! (-> self lazer-sound) (sound-play "guard-zap"))
+             (let ((v1-127 (-> self l-control))
+                   (a0-38 1)
+                   )
+               (let ((a1-21 (!= a0-38 (-> v1-127 state mode))))
+                 (case a0-38
+                   ((3)
+                    (if a1-21
+                        (set! (-> v1-127 state counter) 0.0)
+                        )
+                    )
+                   ((1)
+                    (set! (-> v1-127 state start-color) (-> v1-127 spec start-color))
+                    (set! (-> v1-127 state end-color) (-> v1-127 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-127 state mode) (the-as lightning-mode a0-38))
+               )
+             (let ((gp-4 (-> self clock frame-counter))
+                   (s5-1 150)
+                   (f30-0 1.0)
+                   )
+               (ja-no-eval :group! (-> self draw art-group data 22) :num! (loop! f30-0) :frame-num 0.0)
+               (until (>= (- (-> self clock frame-counter) gp-4) s5-1)
+                 (crimson-guard-level-method-198 self)
+                 (suspend)
+                 (ja :num! (loop! f30-0))
+                 )
+               )
+             (let ((v1-150 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 2)))
+               (logclear! (-> v1-150 prim-core action) (collide-action deadly))
+               )
+             (let ((v1-151 (-> self l-control))
+                   (a0-44 3)
+                   )
+               (let ((a1-34 (!= a0-44 (-> v1-151 state mode))))
+                 (case a0-44
+                   ((3)
+                    (if a1-34
+                        (set! (-> v1-151 state counter) 0.0)
+                        )
+                    )
+                   ((1)
+                    (set! (-> v1-151 state start-color) (-> v1-151 spec start-color))
+                    (set! (-> v1-151 state end-color) (-> v1-151 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-151 state mode) (the-as lightning-mode a0-44))
+               )
+             (ja-no-eval :group! (-> self draw art-group data 23)
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 23)) frames num-frames) -1)))
+                         :frame-num 0.0
+                         )
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))
+               )
+             )
+           )
+         )
+        (else
+          (set! (-> self next-shot) (the-as int (+ (-> self clock frame-counter) (seconds 1))))
+          (suspend)
+          0
+          )
+        )
+      (when (not (handle->process (-> self focus handle)))
+        (ja-no-eval :group! (-> self draw art-group data 24)
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        #t
+        (goto cfg-81)
+        )
+      )
+    #f
+    (label cfg-81)
+    (go-virtual active)
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defstate get-up-front (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-1 (-> self root-override2 root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-as) (collide-spec enemy))
+      (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-with)
+            (collide-spec backgnd jak obstacle hit-by-others-list player-list pusher)
+            )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    '()
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-front))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-front))) frames num-frames)
+                          -1
+                          )
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self hit-face) (the-as uint -1))
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 *null-vector*)
+          )
+      (logior! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (set! (-> a0-0 travel quad) (-> v1-1 quad))
+      )
+    0
+    (enemy-method-55 self)
+    (none)
+    )
+  )
+
+(defstate get-up-back (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-1 (-> self root-override2 root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-as) (collide-spec enemy))
+      (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-with)
+            (collide-spec backgnd jak obstacle hit-by-others-list player-list pusher)
+            )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    '()
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-back))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-back))) frames num-frames) -1)
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self hit-face) (the-as uint -1))
+    (go-hostile self)
+    (none)
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 *null-vector*)
+          )
+      (logior! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (set! (-> a0-0 travel quad) (-> v1-1 quad))
+      )
+    0
+    (enemy-method-55 self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod crimson-guard-level-method-204 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
+        (s5-0 (-> obj root-override2))
+        (s3-0 (lambda ((arg0 crimson-guard-level) (arg1 collide-shape-moving) (arg2 vector))
+                (let ((s4-0 (new 'stack-no-clear 'vector))
+                      (s3-0 (new 'stack-no-clear 'vector))
+                      )
+                  (vector+! s3-0 (-> arg1 trans) arg2)
+                  (cloest-point-on-mesh (-> arg0 nav) s4-0 s3-0 (the-as nav-poly #f))
+                  (cond
+                    ((< 409.6 (vector-vector-distance s3-0 s4-0))
+                     #f
+                     )
+                    ((let ((a1-4 (new 'stack-no-clear 'vector)))
+                       (set! (-> a1-4 quad) (-> s4-0 quad))
+                       (set! (-> a1-4 w) (-> arg0 root-override2 nav-radius))
+                       (add-root-sphere-to-hash! (-> arg0 nav) a1-4 #x8046e)
+                       )
+                     #f
+                     )
+                    (else
+                      (let ((a1-5 (new 'stack-no-clear 'collide-query)))
+                        (set! (-> a1-5 start-pos quad) (-> arg1 trans quad))
+                        (vector-! (-> a1-5 move-dist) s4-0 (-> a1-5 start-pos))
+                        (let ((v1-10 a1-5))
+                          (set! (-> v1-10 radius) 2048.0)
+                          (set! (-> v1-10 collide-with) (-> arg1 root-prim prim-core collide-with))
+                          (set! (-> v1-10 ignore-process0) arg0)
+                          (set! (-> v1-10 ignore-process1) #f)
+                          (set! (-> v1-10 ignore-pat) (-> arg1 pat-ignore-mask))
+                          (set! (-> v1-10 action-mask) (collide-action solid))
+                          )
+                        (if (>= (fill-and-probe-using-line-sphere *collide-cache* a1-5) 0.0)
+                            #f
+                            #t
+                            )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+        )
+    (cond
+      ((s3-0 obj s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 24576.0))
+       (go (method-of-object obj roll-right))
+       )
+      ((s3-0 obj s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 -24576.0))
+       (go (method-of-object obj roll-left))
+       )
+      )
+    )
+  (none)
+  )
+
+(defstate roll-right (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :code (behavior ()
+    (vector-reset! (-> self root-override2 transv))
+    (vector-x-quaternion! (-> self root-override2 transv) (-> self root-override2 quat))
+    (set! (-> self root-override2 transv y) 24576.0)
+    (vector-xz-normalize! (-> self root-override2 transv) 40960.0)
+    (let ((v1-7 self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-7 enemy-flags)))
+          (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-7 enemy-flags))))
+          )
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-7 enemy-flags))))
+      (set! (-> v1-7 nav callback-info) (-> v1-7 enemy-info-override callback-info))
+      )
+    0
+    (ja-channel-push! 1 (seconds 0.1))
+    (cond
+      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+       (ja-no-eval :group! (-> self draw art-group data 40)
+                   :num! (seek! (ja-aframe 6.0 0))
+                   :frame-num (ja-aframe 0.0 0)
+                   )
+       (until (ja-done? 0)
+         (let ((a0-20 (handle->process (-> self focus handle))))
+           (if a0-20
+               (seek-toward-heading-vec!
+                 (-> self root-override2)
+                 (vector-!
+                   (new 'stack-no-clear 'vector)
+                   (get-trans (the-as process-focusable a0-20) 0)
+                   (-> self root-override2 trans)
+                   )
+                 32768.0
+                 (seconds 0.05)
+                 )
+               )
+           )
+         (suspend)
+         (ja :num! (seek! (ja-aframe 6.0 0)))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 41)
+                    :num! (seek! (ja-aframe 9.0 0))
+                    :frame-num (ja-aframe 0.0 0)
+                    )
+        (until (ja-done? 0)
+          (let ((a0-33 (handle->process (-> self focus handle))))
+            (if a0-33
+                (seek-toward-heading-vec!
+                  (-> self root-override2)
+                  (vector-!
+                    (new 'stack-no-clear 'vector)
+                    (get-trans (the-as process-focusable a0-33) 0)
+                    (-> self root-override2 trans)
+                    )
+                  32768.0
+                  (seconds 0.05)
+                  )
+                )
+            )
+          (suspend)
+          (ja :num! (seek! (ja-aframe 9.0 0)))
+          )
+        )
+      )
+    (let ((v1-59 self))
+      (set! (-> v1-59 enemy-flags) (the-as enemy-flag (logclear (-> v1-59 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-59 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (cond
+      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+       (ja-no-eval :group! (-> self draw art-group data 40)
+                   :num! (seek! (ja-aframe 11.0 0))
+                   :frame-num (ja-aframe 6.0 0)
+                   )
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek! (ja-aframe 11.0 0)))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 41)
+                    :num! (seek! (ja-aframe 11.0 0))
+                    :frame-num (ja-aframe 9.0 0)
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! (ja-aframe 11.0 0)))
+          )
+        )
+      )
+    (go-virtual gun-shoot)
+    (none)
+    )
+  :post (behavior ()
+    (let ((a0-0 self))
+      (when (logtest? (enemy-flag enemy-flag36) (-> a0-0 enemy-flags))
+        (vector-v++!
+          (-> self root-override2 transv)
+          (compute-acc-due-to-gravity (-> self root-override2) (new 'stack-no-clear 'vector) 0.0)
+          )
+        (let ((a2-1 (new 'stack-no-clear 'collide-query))
+              (a0-5 (-> self root-override2))
+              )
+          (set! (-> a2-1 collide-with) (-> a0-5 root-prim prim-core collide-with))
+          (set! (-> a2-1 ignore-process0) self)
+          (set! (-> a2-1 ignore-process1) #f)
+          (set! (-> a2-1 ignore-pat) (-> a0-5 pat-ignore-mask))
+          (set! (-> a2-1 action-mask) (collide-action solid))
+          (fill-cache-integrate-and-collide a0-5 (-> self root-override2 transv) a2-1 (meters 0))
+          )
+        )
+      )
+    (nav-enemy-simple-post)
+    (none)
+    )
+  )
+
+(defstate roll-left (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :code (behavior ()
+    (vector-reset! (-> self root-override2 transv))
+    (vector-x-quaternion! (-> self root-override2 transv) (-> self root-override2 quat))
+    (set! (-> self root-override2 transv y) 24576.0)
+    (vector-xz-normalize! (-> self root-override2 transv) -40960.0)
+    (let ((v1-7 self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-7 enemy-flags)))
+          (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-7 enemy-flags))))
+          )
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-7 enemy-flags))))
+      (set! (-> v1-7 nav callback-info) (-> v1-7 enemy-info-override callback-info))
+      )
+    0
+    (ja-channel-push! 1 (seconds 0.1))
+    (cond
+      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+       (ja-no-eval :group! (-> self draw art-group data 41)
+                   :num! (seek! (ja-aframe 9.0 0))
+                   :frame-num (ja-aframe 0.0 0)
+                   )
+       (until (ja-done? 0)
+         (let ((a0-20 (handle->process (-> self focus handle))))
+           (if a0-20
+               (seek-toward-heading-vec!
+                 (-> self root-override2)
+                 (vector-!
+                   (new 'stack-no-clear 'vector)
+                   (get-trans (the-as process-focusable a0-20) 0)
+                   (-> self root-override2 trans)
+                   )
+                 32768.0
+                 (seconds 0.05)
+                 )
+               )
+           )
+         (suspend)
+         (ja :num! (seek! (ja-aframe 9.0 0)))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 40)
+                    :num! (seek! (ja-aframe 6.0 0))
+                    :frame-num (ja-aframe 0.0 0)
+                    )
+        (until (ja-done? 0)
+          (let ((a0-33 (handle->process (-> self focus handle))))
+            (if a0-33
+                (seek-toward-heading-vec!
+                  (-> self root-override2)
+                  (vector-!
+                    (new 'stack-no-clear 'vector)
+                    (get-trans (the-as process-focusable a0-33) 0)
+                    (-> self root-override2 trans)
+                    )
+                  32768.0
+                  (seconds 0.05)
+                  )
+                )
+            )
+          (suspend)
+          (ja :num! (seek! (ja-aframe 6.0 0)))
+          )
+        )
+      )
+    (let ((v1-59 self))
+      (set! (-> v1-59 enemy-flags) (the-as enemy-flag (logclear (-> v1-59 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-59 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (cond
+      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+       (ja-no-eval :group! (-> self draw art-group data 41)
+                   :num! (seek! (ja-aframe 11.0 0))
+                   :frame-num (ja-aframe 9.0 0)
+                   )
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek! (ja-aframe 11.0 0)))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 40)
+                    :num! (seek! (ja-aframe 11.0 0))
+                    :frame-num (ja-aframe 6.0 0)
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! (ja-aframe 11.0 0)))
+          )
+        )
+      )
+    (go-virtual gun-shoot)
+    (none)
+    )
+  :post (-> (method-of-type crimson-guard-level roll-right) post)
+  )
+
+(defstate knocked (crimson-guard-level)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (the-as collide-shape-prim-group (-> self root-override2 root-prim))))
+      (logior! (-> v1-5 child 0 prim-core action) (collide-action no-standon))
+      (logclear! (-> v1-5 child 1 prim-core action) (collide-action no-standon))
+      (set! (-> v1-5 child 1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-5 child 1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (zero? (-> self hit-points))
+        (set! (-> self root-override2 penetrated-by) (the-as penetrate -1))
+        )
+    (set! (-> self hit-face)
+          (the-as uint (if (< (vector-dot
+                                (-> self root-override2 transv)
+                                (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat))
+                                )
+                              0.0
+                              )
+                           1
+                           0
+                           )
+                  )
+          )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (none)
+    )
+  )
+
+(defmethod enemy-method-77 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
+  (let ((v1-1 (-> obj root-override2 transv)))
+    (cond
+      ((< (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))) 57344.0)
+       (set! (-> obj small-hit) 1)
+       )
+      (else
+        (set! (-> obj small-hit) 0)
+        0
+        )
+      )
+    )
+  (cond
+    ((<= (-> obj hit-points) 0)
+     (ja-channel-push! 1 (seconds 0.01))
+     (let ((a1-2 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
+           (a0-5 (-> obj skel root-channel 0))
+           )
+       (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-2))
+       (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
+       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 frame-num) 0.0)
+       (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-2) num-func-seek!)
+       )
+     )
+    (else
+      (case (-> obj incoming knocked-type)
+        (((knocked-type knocked-type-4) (knocked-type knocked-type-5) (knocked-type knocked-type-7))
+         (ja-channel-push! 1 (seconds 0.01))
+         (cond
+           ((= (-> obj small-hit) 1)
+            (set! (-> obj yellow-anim anim-index-front) (get-rand-int obj 2))
+            (let ((a1-8
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            2
+                            )
+                        )
+                    )
+                  (a0-17 (-> obj skel root-channel 0))
+                  )
+              (set! (-> a0-17 frame-group) (the-as art-joint-anim a1-8))
+              (set! (-> a0-17 param 0) (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)))
+              (set! (-> a0-17 param 1) (-> arg0 0))
+              (set! (-> a0-17 frame-num) 0.0)
+              (joint-control-channel-group! a0-17 (the-as art-joint-anim a1-8) num-func-seek!)
+              )
+            )
+           (else
+             (let ((a1-9 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
+                   (a0-21 (-> obj skel root-channel 0))
+                   )
+               (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-9))
+               (set! (-> a0-21 param 0) (the float (+ (-> (the-as art-joint-anim a1-9) frames num-frames) -1)))
+               (set! (-> a0-21 param 1) (-> arg0 0))
+               (set! (-> a0-21 frame-num) 0.0)
+               (joint-control-channel-group! a0-21 (the-as art-joint-anim a1-9) num-func-seek!)
+               )
+             )
+           )
+         )
+        (((knocked-type knocked-type-6))
+         (ja-channel-push! 1 (seconds 0.01))
+         (let ((a0-24 (-> obj skel root-channel 0)))
+           (set! (-> a0-24 frame-group) (the-as art-joint-anim (-> obj draw art-group data 10)))
+           (set! (-> a0-24 param 0)
+                 (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 10)) frames num-frames) -1))
+                 )
+           (set! (-> a0-24 param 1) (-> arg0 0))
+           (set! (-> a0-24 frame-num) 0.0)
+           (joint-control-channel-group! a0-24 (the-as art-joint-anim (-> obj draw art-group data 10)) num-func-seek!)
+           )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (let ((a1-13 (-> obj draw art-group data (-> obj info knocked anim-index (-> obj hit-face))))
+                (a0-29 (-> obj skel root-channel 0))
+                )
+            (set! (-> a0-29 frame-group) (the-as art-joint-anim a1-13))
+            (set! (-> a0-29 param 0) (the float (+ (-> (the-as art-joint-anim a1-13) frames num-frames) -1)))
+            (set! (-> a0-29 param 1) (-> arg0 0))
+            (set! (-> a0-29 frame-num) 0.0)
+            (joint-control-channel-group! a0-29 (the-as art-joint-anim a1-13) num-func-seek!)
+            )
+          )
+        )
+      )
+    )
+  #t
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-hostile crimson-guard-level ((obj crimson-guard-level))
+  (let ((v1-0 (-> obj hit-face)))
+    (cond
+      ((zero? v1-0)
+       (go (method-of-object obj get-up-front))
+       )
+      ((= v1-0 1)
+       (go (method-of-object obj get-up-back))
+       )
+      ((logtest? (-> obj flags) 1)
+       (go (method-of-object obj tazer-hostile))
+       )
+      ((logtest? (-> obj flags) 2)
+       (go (method-of-object obj blast-hostile))
+       )
+      ((logtest? (-> obj flags) 8)
+       (go (method-of-object obj grenade-hostile))
+       )
+      (else
+        (go (method-of-object obj hostile))
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod enemy-method-78 crimson-guard-level ((obj crimson-guard-level) (arg0 (pointer float)))
+  (cond
+    ((<= (-> obj hit-points) 0)
+     (let ((a1-1 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
+           (a0-4 (-> obj skel root-channel 0))
+           )
+       (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-1))
+       (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-1) frames num-frames) -1)))
+       (set! (-> a0-4 param 1) (-> arg0 0))
+       (set! (-> a0-4 frame-num) 0.0)
+       (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-1) num-func-seek!)
+       )
+     (set! (-> obj hit-face) (the-as uint -1))
+     #t
+     )
+    (else
+      (case (-> obj incoming knocked-type)
+        (((knocked-type knocked-type-4) (knocked-type knocked-type-5) (knocked-type knocked-type-7))
+         (ja-channel-push! 1 (seconds 0.1))
+         (cond
+           ((= (-> obj small-hit) 1)
+            (let ((a1-6
+                    (-> obj
+                        draw
+                        art-group
+                        data
+                        (-> (the-as (array int32) (+ (+ (* (-> obj hit-face) 4) (* (-> obj yellow-anim unsigned-anim-index-front) 8))
+                                                     (the-as uint (-> obj info))
+                                                     )
+                                    )
+                            6
+                            )
+                        )
+                    )
+                  (a0-15 (-> obj skel root-channel 0))
+                  )
+              (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-6))
+              (set! (-> a0-15 param 0) (the float (+ (-> (the-as art-joint-anim a1-6) frames num-frames) -1)))
+              (set! (-> a0-15 param 1) (-> arg0 0))
+              (set! (-> a0-15 frame-num) 0.0)
+              (joint-control-channel-group! a0-15 (the-as art-joint-anim a1-6) num-func-seek!)
+              )
+            (set! (-> obj hit-face) (the-as uint -1))
+            #t
+            )
+           (else
+             (let ((a1-7 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
+                   (a0-19 (-> obj skel root-channel 0))
+                   )
+               (set! (-> a0-19 frame-group) (the-as art-joint-anim a1-7))
+               (set! (-> a0-19 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
+               (set! (-> a0-19 param 1) (-> arg0 0))
+               (set! (-> a0-19 frame-num) 0.0)
+               (joint-control-channel-group! a0-19 (the-as art-joint-anim a1-7) num-func-seek!)
+               )
+             #t
+             )
+           )
+         )
+        (((knocked-type knocked-type-6))
+         (ja-channel-push! 1 (seconds 0.01))
+         (let ((a0-22 (-> obj skel root-channel 0)))
+           (set! (-> a0-22 frame-group) (the-as art-joint-anim (-> obj draw art-group data 11)))
+           (set! (-> a0-22 param 0)
+                 (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 11)) frames num-frames) -1))
+                 )
+           (set! (-> a0-22 param 1) (-> arg0 0))
+           (set! (-> a0-22 frame-num) 0.0)
+           (joint-control-channel-group! a0-22 (the-as art-joint-anim (-> obj draw art-group data 11)) num-func-seek!)
+           )
+         (set! (-> obj hit-face) (the-as uint -1))
+         #t
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (let ((a1-11 (-> obj draw art-group data (-> obj info knocked-land anim-index (-> obj hit-face))))
+                (a0-27 (-> obj skel root-channel 0))
+                )
+            (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-11))
+            (set! (-> a0-27 param 0) (the float (+ (-> (the-as art-joint-anim a1-11) frames num-frames) -1)))
+            (set! (-> a0-27 param 1) (-> arg0 0))
+            (set! (-> a0-27 frame-num) 0.0)
+            (joint-control-channel-group! a0-27 (the-as art-joint-anim a1-11) num-func-seek!)
+            )
+          #t
+          )
+        )
+      )
+    )
+  )
+
+(defstate die-falling (crimson-guard-level)
+  :virtual #t
+  :code (behavior ()
+    (cond
+      ((enemy-method-133 self)
+       (ja-channel-push! 1 (seconds 0.2))
+       (let ((gp-0 (-> self draw art-group data (-> self enemy-info-override die-falling-anim)))
+             (f30-0 (get-rand-float-range self 0.8 1.2))
+             )
+         (ja-no-eval :group! gp-0
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
+                     :frame-num 0.0
+                     )
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek! max f30-0))
+           )
+         )
+       )
+      (else
+        (let ((gp-1 #t))
+          (let ((v1-24 (ja-group)))
+            (cond
+              ((and v1-24 (or (= v1-24 (-> self draw art-group data 33)) (= v1-24 (-> self draw art-group data 34))))
+               (ja-no-eval :num! (seek!))
+               (while (not (ja-done? 0))
+                 (suspend)
+                 (ja-eval)
+                 )
+               )
+              ((let ((v1-39 (ja-group)))
+                 (and v1-39 (= v1-39 (-> self draw art-group data 8)))
+                 )
+               (ja-no-eval :num! (seek!))
+               (while (not (ja-done? 0))
+                 (suspend)
+                 (ja-eval)
+                 )
+               (ja-channel-push! 1 (seconds 0.07))
+               (ja-no-eval :group! (-> self draw art-group data 9)
+                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+                           :frame-num 0.0
+                           )
+               (until (ja-done? 0)
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               (set! gp-1 #f)
+               )
+              ((let ((v1-79 (ja-group)))
+                 (and v1-79 (= v1-79 (-> self draw art-group data 31)))
+                 )
+               (ja-no-eval :num! (seek!))
+               (while (not (ja-done? 0))
+                 (suspend)
+                 (ja-eval)
+                 )
+               (ja-channel-push! 1 (seconds 0.07))
+               (ja-no-eval :group! (-> self draw art-group data 32)
+                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 32)) frames num-frames) -1)))
+                           :frame-num 0.0
+                           )
+               (until (ja-done? 0)
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               (set! gp-1 #f)
+               )
+              ((let ((v1-119 (ja-group)))
+                 (and v1-119 (= v1-119 (-> self draw art-group data 9)))
+                 )
+               (ja-no-eval :num! (seek!))
+               (while (not (ja-done? 0))
+                 (suspend)
+                 (ja-eval)
+                 )
+               (ja-channel-push! 1 (seconds 0.07))
+               (ja-no-eval :group! (-> self draw art-group data 34)
+                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) frames num-frames) -1)))
+                           :frame-num 0.0
+                           )
+               (until (ja-done? 0)
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               )
+              ((let ((v1-158 (ja-group)))
+                 (and v1-158 (= v1-158 (-> self draw art-group data 32)))
+                 )
+               (ja-no-eval :num! (seek!))
+               (while (not (ja-done? 0))
+                 (suspend)
+                 (ja-eval)
+                 )
+               (ja-channel-push! 1 (seconds 0.07))
+               (ja-no-eval :group! (-> self draw art-group data 33)
+                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) frames num-frames) -1)))
+                           :frame-num 0.0
+                           )
+               (until (ja-done? 0)
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               )
+              )
+            )
+          (when gp-1
+            (ja-channel-push! 1 (seconds 0.1))
+            (ja-no-eval :group! (-> self draw art-group data 17)
+                        :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)))
+                        :frame-num 0.0
+                        )
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek!))
+              )
+            )
+          )
+        )
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+(defmethod crimson-guard-level-method-201 crimson-guard-level ((obj crimson-guard-level) (arg0 float))
+  (let* ((s3-0 (handle->process (-> obj transport)))
+         (s4-0 (if (type? s3-0 process-focusable)
+                   (the-as process-focusable s3-0)
+                   )
+               )
+         )
+    (when s4-0
+      (let ((s2-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> s4-0 root-override trans))))
+            (s3-1 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> s3-1 x) (if (zero? (-> obj transport-side))
+                              -8192.0
+                              8192.0
+                              )
+              )
+        (set! (-> s3-1 y) 12288.0)
+        (set! (-> s3-1 z) (lerp-scale -16384.0 -49152.0 arg0 0.0 1.0))
+        (set! (-> s3-1 w) 1.0)
+        (quaternion-rotate-local-y! (-> obj root-override2 quat) (-> s4-0 root-override quat) 32768.0)
+        (vector-matrix*! (-> obj root-override2 trans) s3-1 s2-0)
+        )
+      )
+    )
+  (let ((f0-5 (fmax 0.0 (fmin 1.0 (* 3.3333333 arg0)))))
+    (set-vector! (-> obj draw color-mult) f0-5 f0-5 f0-5 1.0)
+    )
+  0
+  (none)
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+(defmethod crimson-guard-level-method-202 crimson-guard-level ((obj crimson-guard-level) (arg0 vector))
+  (local-vars
+    (f0-8 float)
+    (sv-768 vector)
+    (sv-784 vector)
+    (sv-800 nav-control)
+    (sv-816 nav-poly)
+    (sv-832 vector)
+    )
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
+          (f30-0 0.0)
+          )
+      (dotimes (s3-0 2)
+        (vector-normalize! s4-0 (* 4096.0 (+ 4.0 (* 2.0 (the float s3-0)))))
+        (dotimes (s2-0 6)
+          (set! sv-768 (new 'stack-no-clear 'vector))
+          (let ((s1-0 (new 'stack-no-clear 'vector))
+                (s0-0 (new 'stack 'collide-query))
+                )
+            (vector-rotate-around-y! sv-768 s4-0 (* 182.04445 (the float (+ (* 23 s2-0) -70))))
+            (let ((v1-10 s1-0))
+              (let ((a0-6 (-> obj root-override2 trans)))
+                (let ((a1-5 sv-768))
+                  (let ((a2-2 1.0))
+                    (.mov vf7 a2-2)
+                    )
+                  (.lvf vf5 (&-> a1-5 quad))
+                  )
+                (.lvf vf4 (&-> a0-6 quad))
+                )
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> v1-10 quad) vf6)
+              )
+            (if (enemy-method-126 obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                (set! (-> s1-0 y) (-> s0-0 best-other-tri intersect y))
+                )
+            (let ((v1-14 (-> obj nav))
+                  (a0-8 s1-0)
+                  (a1-7 (new 'stack-no-clear 'nav-find-poly-parms))
+                  )
+              (vector-! (-> a1-7 point) a0-8 (-> v1-14 state mesh bounds))
+              (set! (-> a1-7 y-threshold) (-> v1-14 nearest-y-threshold))
+              (set! (-> a1-7 ignore) (the-as uint 2))
+              (set! sv-816 (find-poly-containing-point-local (-> v1-14 state mesh) a1-7))
+              )
+            (when sv-816
+              (let* ((v1-18 s4-0)
+                     (f0-7 (-> sv-768 x))
+                     (f1-4 (-> sv-768 y))
+                     (f2-2 (-> sv-768 z))
+                     (f3-2 (-> v1-18 x))
+                     (f4-0 (-> v1-18 y))
+                     (f5-0 (-> v1-18 z))
+                     )
+                ;; (.mula.s f0-7 f3-2)
+                ;; (.madda.s f1-4 f4-0)
+                ;; (.madd.s f0-8 f2-2 f5-0)
+                (set! f0-8 (+ (* f0-7 f3-2) (* f1-4 f4-0) (* f2-2 f5-0)))
+                )
+              (let ((f28-0 f0-8))
+                #t
+                (new 'stack-no-clear 'vector)
+                (let ((a1-8 (new 'stack-no-clear 'vector)))
+                  (set! (-> a1-8 quad) (-> s1-0 quad))
+                  (set! (-> a1-8 w) 8192.0)
+                  (when (not (add-root-sphere-to-hash! (-> obj nav) a1-8 32))
+                    (when (< f30-0 f28-0)
+                      (set! f30-0 f28-0)
+                      (set! sv-784 (new 'stack-no-clear 'vector))
+                      (let ((a3-3 (new 'stack-no-clear 'vector)))
+                        (set! sv-800 (-> obj nav))
+                        (set! sv-832 sv-784)
+                        (let* ((v1-30 s1-0)
+                               (a0-18 (-> sv-800 state mesh))
+                               (t9-7 (method-of-object a0-18 project-point-onto-plane-of-poly-local))
+                               (a2-7 sv-832)
+                               (t0-2 (vector-! (new 'stack-no-clear 'vector) v1-30 (-> sv-800 state mesh bounds)))
+                               )
+                          (t9-7 a0-18 sv-816 a2-7 a3-3 t0-2)
+                          )
+                        )
+                      (let ((v1-31 sv-832))
+                        (let ((a0-21 (-> sv-800 state mesh bounds)))
+                          (.mov.vf vf6 vf0 :mask #b1000)
+                          (.lvf vf4 (&-> sv-832 quad))
+                          (.lvf vf5 (&-> a0-21 quad))
+                          )
+                        (.add.vf vf6 vf4 vf5 :mask #b111)
+                        (.svf (&-> v1-31 quad) vf6)
+                        )
+                      0
+                      (set! (-> s1-0 y) (-> sv-784 y))
+                      (if (enemy-method-126 obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                          (set! (-> s1-0 y) (-> s0-0 best-other-tri intersect y))
+                          )
+                      (set! (-> arg0 quad) (-> s1-0 quad))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      f30-0
+      )
+    )
+  )
+
+(defmethod enemy-method-93 crimson-guard-level ((obj crimson-guard-level))
+  (let ((s5-0 (-> obj nav state))
+        (v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
+        )
+    (set! (-> s5-0 heading quad) (-> v1-2 quad))
+    )
+  0
+  (let ((s5-1 (-> obj nav state)))
+    (set! (-> (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)) quad)
+          (-> s5-1 travel quad)
+          )
+    )
+  (let ((a0-5 (-> obj nav state))
+        (v1-9 *null-vector*)
+        )
+    (set! (-> a0-5 velocity quad) (-> v1-9 quad))
+    )
+  0
+  ((method-of-type nav-enemy enemy-method-93) obj)
+  (none)
+  )
+
+(defmethod enemy-method-89 crimson-guard-level ((obj crimson-guard-level) (arg0 enemy-jump-info))
+  #f
+  )
+
+(defmethod enemy-method-87 crimson-guard-level ((obj crimson-guard-level) (arg0 enemy-jump-info))
+  (let ((a0-1 (-> obj skel root-channel 0)))
+    (set! (-> a0-1 param 0) 1.0)
+    (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+    )
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((s4-0 (-> obj skel root-channel 0)))
+    (set! (-> s4-0 frame-group) (the-as art-joint-anim (-> obj draw art-group data 38)))
+    (set! (-> s4-0 param 0) (ja-aframe 3.0 0))
+    (set! (-> s4-0 param 1) (-> arg0 anim-speed))
+    (set! (-> s4-0 frame-num) (ja-aframe 0.0 0))
+    (joint-control-channel-group! s4-0 (the-as art-joint-anim (-> obj draw art-group data 38)) num-func-seek!)
+    )
+  #t
+  )
+
+(defmethod enemy-method-88 crimson-guard-level ((obj crimson-guard-level) (arg0 enemy-jump-info))
+  (let ((a0-1 (-> obj skel root-channel 0)))
+    (set! (-> a0-1 param 0) 1.0)
+    (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+    )
+  (ja-channel-push! 1 (seconds 0.01))
+  (let ((s4-0 (-> obj skel root-channel 0)))
+    (set! (-> s4-0 frame-group) (the-as art-joint-anim (-> obj draw art-group data 38)))
+    (set! (-> s4-0 param 0) (ja-aframe 9.0 0))
+    (set! (-> s4-0 param 1) (-> arg0 anim-speed))
+    (set! (-> s4-0 frame-num) (ja-aframe 4.0 0))
+    (joint-control-channel-group! s4-0 (the-as art-joint-anim (-> obj draw art-group data 38)) num-func-seek!)
+    )
+  #t
+  )
+
+(defmethod enemy-method-90 crimson-guard-level ((obj crimson-guard-level) (arg0 int) (arg1 enemy-jump-info))
+  (local-vars (s5-0 symbol))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (not (enemy-method-89 obj arg1))
+       )
+      ((= v1-0 1)
+       (set! s5-0 (ja-done? 0))
+       (let ((s4-1 (-> obj skel root-channel 0)))
+         (set! (-> s4-1 param 0) (ja-aframe 3.0 0))
+         (set! (-> s4-1 param 1) (-> arg1 anim-speed))
+         (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim #f) num-func-seek!)
+         )
+       (ja-blend-eval)
+       s5-0
+       )
+      ((= v1-0 2)
+       (enemy-method-87 obj arg1)
+       #f
+       )
+      ((= v1-0 3)
+       (set! s5-0 (ja-done? 0))
+       (let ((s4-2 (-> obj skel root-channel 0)))
+         (set! (-> s4-2 param 0) (ja-aframe 3.0 0))
+         (set! (-> s4-2 param 1) (-> arg1 anim-speed))
+         (joint-control-channel-group-eval! s4-2 (the-as art-joint-anim #f) num-func-seek!)
+         )
+       (ja-blend-eval)
+       s5-0
+       )
+      ((= v1-0 4)
+       (not (enemy-method-88 obj arg1))
+       )
+      ((= v1-0 5)
+       (set! s5-0 (ja-done? 0))
+       (let ((s4-3 (-> obj skel root-channel 0)))
+         (set! (-> s4-3 param 0) (ja-aframe 9.0 0))
+         (set! (-> s4-3 param 1) (-> arg1 anim-speed))
+         (joint-control-channel-group-eval! s4-3 (the-as art-joint-anim #f) num-func-seek!)
+         )
+       (ja-blend-eval)
+       s5-0
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )
+
+(defstate exit-transport (crimson-guard-level)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior crimson-guard-level)
+    enemy-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (logior! (-> self nav flags) (nav-control-flag output-sphere-hash))
+    (nav-enemy-method-166 self)
+    (let ((v1-7 (-> self nav)))
+      (set! (-> v1-7 target-speed) (-> self enemy-info-override run-travel-speed))
+      )
+    0
+    (set! (-> self already-shot) (the-as uint #f))
+    (none)
+    )
+  :exit (behavior ()
+    (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
+    (logclear! (-> self nav flags) (nav-control-flag output-sphere-hash))
+    (none)
+    )
+  :trans (behavior ()
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (when (not (-> self already-shot))
+        (crimson-guard-level-method-201 self 1.0)
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (set! (-> gp-0 quad) (-> self root-override2 trans quad))
+          (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat)))
+                (s5-0 (new 'stack 'collide-query))
+                )
+            (let ((a0-3 gp-0))
+              (let ((v1-8 gp-0))
+                (let ((a1-4 20480.0))
+                  (.mov vf7 a1-4)
+                  )
+                (.lvf vf5 (&-> s4-0 quad))
+                (.lvf vf4 (&-> v1-8 quad))
+                )
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> a0-3 quad) vf6)
+              )
+            (if (enemy-method-126 self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
+                )
+            )
+          )
+        (when (!= (crimson-guard-level-method-202 self (-> self event-param-point)) 0.0)
+          (let* ((v1-16 (-> self nav))
+                 (a1-7 (-> self event-param-point))
+                 (f0-3 (-> v1-16 extra-nav-sphere w))
+                 )
+            (set! (-> v1-16 extra-nav-sphere quad) (-> a1-7 quad))
+            (set! (-> v1-16 extra-nav-sphere w) f0-3)
+            )
+          0
+          (let ((v1-19 (-> self nav)))
+            (set! (-> v1-19 extra-nav-sphere w) (-> self nav-radius-backup))
+            )
+          0
+          (let ((v1-21 (-> self nav)))
+            (logior! (-> v1-21 shape nav-flags) (nav-flags has-extra-sphere))
+            )
+          0
+          (set! (-> self already-shot) (the-as uint #t))
+          )
+        (crimson-guard-level-method-201 self 0.0)
+        )
+      (none)
+      )
+    )
+  :code (behavior ()
+    (while (not (-> self already-shot))
+      (suspend)
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (ja-channel-set! 1)
+    (let ((gp-0 (-> self clock frame-counter))
+          (s5-0 150)
+          (f30-0 2.0)
+          )
+      (ja-no-eval :group! (-> self draw art-group data 6) :num! (loop! f30-0) :frame-num 0.0)
+      (until (>= (- (-> self clock frame-counter) gp-0) s5-0)
+        (crimson-guard-level-method-201
+          self
+          (* 0.006666667 (the float (- (-> self clock frame-counter) (-> self state-time))))
+          )
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+    (send-event self 'jump 0 (-> self event-param-point))
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (ja-post)
+    (none)
+    )
+  )
+
+(defmethod enemy-method-114 crimson-guard-level ((obj crimson-guard-level))
+  "@abstract"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 24576.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 6144.0 0.0 6144.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 9830.4 0.0 6144.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot obstacle hit-by-others-list player-list pusher))
+      (set! (-> v1-17 prim-core action) (collide-action semi-solid))
+      (set! (-> v1-17 transform-index) 14)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 2048.0 4096.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot obstacle hit-by-others-list player-list pusher))
+      (set! (-> v1-19 prim-core action) (collide-action semi-solid))
+      (set! (-> v1-19 transform-index) 14)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 -12288.0 6144.0)
+      )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch nav-enemy vs crimson-guard-level.
+(defmethod relocate crimson-guard-level ((obj crimson-guard-level) (arg0 int))
+  (if (nonzero? (-> obj joint))
+      (&+! (-> obj joint) arg0)
+      )
+  (if (nonzero? (-> obj l-control))
+      (&+! (-> obj l-control) arg0)
+      )
+  (the-as
+    crimson-guard-level
+    ((the-as (function nav-enemy int nav-enemy) (find-parent-method crimson-guard-level 7)) obj arg0)
+    )
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod crimson-guard-level-method-203 crimson-guard-level ((obj crimson-guard-level) (arg0 int))
+  "TODO - probably a flag"
+  (cond
+    ((= arg0 1)
+     (setup-masks (-> obj draw) 16 0)
+     (set! (-> obj weapon) 1)
+     (set! (-> obj root-override2 nav-radius) 10240.0)
+     )
+    ((= arg0 3)
+     (setup-masks (-> obj draw) 16 0)
+     (set! (-> obj weapon) 3)
+     (set! (-> obj root-override2 nav-radius) 10240.0)
+     )
+    ((zero? arg0)
+     (setup-masks (-> obj draw) 8 0)
+     (set! (-> obj weapon) 0)
+     (set! (-> obj root-override2 nav-radius) 6144.0)
+     )
+    )
+  (none)
+  )
+
+(defmethod nav-enemy-method-156 crimson-guard-level ((obj crimson-guard-level))
+  (cond
+    ((logtest? (-> obj flags) 36)
+     (let ((v1-3 (-> obj nav state))
+           (a0-2 (-> obj root-override2 trans))
+           )
+       (logclear! (-> v1-3 flags) (nav-state-flag directional-mode))
+       (logior! (-> v1-3 flags) (nav-state-flag target-poly-dirty))
+       (set! (-> v1-3 target-post quad) (-> a0-2 quad))
+       )
+     0
+     )
+    (else
+      ((method-of-type nav-enemy nav-enemy-method-156) obj)
+      )
+    )
+  (none)
+  )
+
+(defmethod enemy-method-115 crimson-guard-level ((obj crimson-guard-level))
+  "@abstract"
+  (local-vars (sv-16 int))
+  (let ((f0-0 (res-lump-float (-> obj entity) 'rotoffset)))
+    (if (!= f0-0 0.0)
+        (quaternion-rotate-y! (-> obj root-override2 quat) (-> obj root-override2 quat) f0-0)
+        )
+    )
+  (set! sv-16 0)
+  (let ((v1-6 (res-lump-data (-> obj entity) 'trans-offset vector :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+    (when v1-6
+      (+! (-> obj root-override2 trans x) (-> v1-6 x))
+      (+! (-> obj root-override2 trans y) (-> v1-6 y))
+      (+! (-> obj root-override2 trans z) (-> v1-6 z))
+      )
+    )
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-crimson-guard-level" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (let ((a0-13 (-> obj entity)))
+    (set! (-> obj flags) (the-as int ((method-of-object a0-13 get-property-value)
+                                      a0-13
+                                      'crimson-guard-level-flags
+                                      'interp
+                                      -1000000000.0
+                                      (the-as uint128 1)
+                                      (the-as (pointer res-tag) #f)
+                                      *res-static-buf*
+                                      )
+                                 )
+          )
+    )
+  (set! (-> obj info) *crimson-guard-level-global-info*)
+  (enemy-method-113 obj *crimson-guard-level-info*)
+  (cond
+    ((logtest? (-> obj flags) 1)
+     (enemy-method-113 obj *crimson-guard-level-tazer-info*)
+     )
+    ((logtest? (-> obj flags) 4)
+     (enemy-method-113 obj *crimson-guard-level-sniper-info*)
+     )
+    ((logtest? (-> obj flags) 2)
+     (enemy-method-113 obj *crimson-guard-level-blast-info*)
+     )
+    ((logtest? (-> obj flags) 8)
+     (enemy-method-113 obj *crimson-guard-level-grenade-info*)
+     )
+    (else
+      (enemy-method-113 obj *crimson-guard-level-info*)
+      )
+    )
+  (let ((v1-34 (-> obj nav)))
+    (set! (-> v1-34 speed-scale) 1.0)
+    )
+  0
+  (set! (-> obj draw lod-set lod 0 dist) 143360.0)
+  (set! (-> obj draw lod-set lod 1 dist) 491520.0)
+  (set! (-> obj joint) (new 'process 'joint-mod (joint-mod-mode joint-set*-world) obj 4))
+  (set! (-> obj l-control) (new 'process 'lightning-control (-> *lightning-spec-id-table* 13) obj 0.0))
+  (set! (-> obj l-control state points-to-draw) 0)
+  (let ((v1-45 (get-rand-int obj 2)))
+    (if (logtest? (-> obj flags) 4)
+        (set! v1-45 0)
+        )
+    (cond
+      ((zero? v1-45)
+       (set! (-> obj anim-shoot 0 anim-index) 19)
+       (set! (-> obj anim-shoot 0 start) 1.0)
+       (set! (-> obj anim-shoot 0 end) 12.0)
+       (set! (-> obj anim-shoot 1 anim-index) 26)
+       (set! (-> obj anim-shoot 1 start) 12.0)
+       (set! (-> obj anim-shoot 1 end) 22.0)
+       (set! (-> obj anim-shoot 2 anim-index) 24)
+       (set! (-> obj anim-shoot 2 start) 20.0)
+       (set! (-> obj anim-shoot 2 end) 30.0)
+       )
+      ((= v1-45 1)
+       (set! (-> obj anim-shoot 0 anim-index) 27)
+       (set! (-> obj anim-shoot 0 start) 2.0)
+       (set! (-> obj anim-shoot 0 end) 9.0)
+       (set! (-> obj anim-shoot 1 anim-index) 29)
+       (set! (-> obj anim-shoot 1 start) 18.0)
+       (set! (-> obj anim-shoot 1 end) 26.0)
+       (set! (-> obj anim-shoot 2 anim-index) 30)
+       (set! (-> obj anim-shoot 2 start) 26.0)
+       (set! (-> obj anim-shoot 2 end) 35.0)
+       )
+      )
+    )
+  (setup-masks (-> obj draw) 0 -1)
+  (cond
+    ((logtest? (-> obj flags) 1)
+     (crimson-guard-level-method-203 obj 1)
+     )
+    ((logtest? (-> obj flags) 2)
+     (set! (-> obj fact-info-override trig-dist) 409600.0)
+     (crimson-guard-level-method-203 obj 0)
+     )
+    ((logtest? (-> obj flags) 4)
+     (crimson-guard-level-method-203 obj 0)
+     )
+    ((logtest? (-> obj flags) 8)
+     (set! (-> obj fact-info-override trig-dist) 819200.0)
+     (crimson-guard-level-method-203 obj 3)
+     )
+    ((logtest? (-> obj flags) 16)
+     (crimson-guard-level-method-203 obj 0)
+     )
+    )
+  (cond
+    ((logtest? (-> obj flags) 128)
+     (setup-masks (-> obj draw) 5 0)
+     (set-vector! (-> obj root-override2 scale) 1.1 1.1 1.1 1.0)
+     (set! (-> obj hit-points) (* (-> obj hit-points) 2))
+     (set-vector! (-> obj joint scale) 1.1 1.0 1.1 1.0)
+     (let* ((a0-45 (-> obj neck))
+            (t9-22 (method-of-object a0-45 trs-set!))
+            (a1-22 #f)
+            (a2-10 #f)
+            (a3-5 (new 'stack-no-clear 'vector))
+            )
+       (set! (-> a3-5 x) 0.9090909)
+       (set! (-> a3-5 y) 1.0)
+       (set! (-> a3-5 z) 0.9090909)
+       (set! (-> a3-5 w) 1.0)
+       (t9-22 a0-45 (the-as vector a1-22) (the-as quaternion a2-10) a3-5)
+       )
+     (mode-set! (-> obj neck) (joint-mod-mode rotate2))
+     (set! (-> obj joint parented-scale?) #t)
+     (set! (-> obj neck parented-scale?) #t)
+     )
+    (else
+      (setup-masks (-> obj draw) 3 0)
+      )
+    )
+  (set! (-> obj hit-face) (the-as uint -1))
+  (set! (-> obj anim-get-up-front) 33)
+  (set! (-> obj anim-get-up-back) 34)
+  (set! (-> obj joint-enable) #f)
+  (set! (-> obj fact-info-override pickup-type) (pickup-type ammo-random))
+  (set! (-> obj fact-info-override pickup-amount) 10.0)
+  (set! (-> obj fact-info-override pickup-spawn-amount) 1.0)
+  (set! (-> obj trigger) #f)
+  (set! (-> obj root-override2 pause-adjust-distance) 409600.0)
+  (transform-post)
+  0
+  (none)
+  )
+
+(deftype crimson-guard-level-params (structure)
+  ((pos            vector     :inline :offset-assert   0)
+   (quat           quaternion :inline :offset-assert  16)
+   (nav-mesh       nav-mesh           :offset-assert  32)
+   (handle         uint64             :offset-assert  40)
+   (transport-side uint32             :offset-assert  48)
+   (weapon         int32              :offset-assert  52)
+   (proc           process            :offset-assert  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior crimson-guard-level-init-by-other crimson-guard-level ((arg0 crimson-guard-level-params))
+  (enemy-method-114 self)
+  (set! (-> self root-override2 trans quad) (-> arg0 pos quad))
+  (quaternion-copy! (-> self root-override2 quat) (-> arg0 quat))
+  (vector-identity! (-> self root-override2 scale))
+  (set! (-> self transport-side) (-> arg0 transport-side))
+  (add-process-drawable-to-navmesh (-> arg0 nav-mesh) self #t)
+  (set! (-> arg0 proc) self)
+  (set! (-> self transport) (the-as handle (-> arg0 handle)))
+  (enemy-method-115 self)
+  (crimson-guard-level-method-203 self (-> arg0 weapon))
+  (logior! (-> self flags) 96)
+  (go-virtual exit-transport)
+  (none)
+  )
