@@ -48,7 +48,7 @@ std::string trim_newline_indents(const std::string& s) {
 
 std::string join(const std::vector<std::string>& strs, const std::string& join_with) {
   std::string out;
-  for (int i = 0; i < strs.size(); i++) {
+  for (size_t i = 0; i < strs.size(); i++) {
     out += strs.at(i);
     if (i < strs.size() - 1) {
       out += join_with;

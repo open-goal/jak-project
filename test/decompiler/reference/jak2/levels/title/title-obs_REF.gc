@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: title-obs.gc
-;; name in dgo: title-obs
-;; dgos: TITLE
-
-(declare-type title-control process)
-(define-extern *title-control* (pointer title-control))
-
-;; DECOMP BEGINS
-
+;; definition of type title-control
 (deftype title-control (process)
   ((selected    int32                         :offset-assert 128)
    (sprites     hud-sprite          2 :inline :offset-assert 144)
@@ -37,7 +29,36 @@
     )
   )
 
+;; definition for method 3 of type title-control
+(defmethod inspect title-control ((obj title-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tselected: ~D~%" (-> obj selected))
+  (format #t "~2Tsprites[2] @ #x~X~%" (-> obj sprites))
+  (format #t "~2Tsprite-pos: ~`vector`P~%" (-> obj sprite-pos))
+  (format #t "~2Tsprite-draw: ~D~%" (-> obj sprite-draw))
+  (format #t "~2Tbuffer[2] @ #x~X~%" (-> obj buffer))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~2Tbuffer: ~A~%" s5-0 (-> obj buffer s5-0))
+    )
+  (format #t "~2Twant[2] @ #x~X~%" (-> obj want))
+  (format #t "~2Twant-name[2] @ #x~X~%" (-> obj want-name))
+  (format #t "~2Thave[2] @ #x~X~%" (-> obj have))
+  (format #t "~2Tdraw: ~D~%" (-> obj draw))
+  (format #t "~2Tdraw-name: ~A~%" (-> obj draw-name))
+  (format #t "~2Tactive: ~A~%" (-> obj active))
+  (format #t "~2Tspark-time: ~D~%" (-> obj spark-time))
+  (format #t "~2Tgui-id: ~D~%" (-> obj gui-id))
+  (label cfg-7)
+  obj
+  )
 
+;; definition for method 7 of type title-control
 ;; WARN: Return type mismatch process vs title-control.
 (defmethod relocate title-control ((obj title-control) (arg0 int))
   (dotimes (v1-0 2)
@@ -48,6 +69,7 @@
   (the-as title-control ((method-of-type process relocate) obj arg0))
   )
 
+;; definition for method 10 of type title-control
 (defmethod deactivate title-control ((obj title-control))
   (dotimes (s5-0 2)
     (set-pending-file (-> obj buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
@@ -59,18 +81,22 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defskelgroup skel-jak-logo jak-logo jak-logo-lod0-jg -1
               ((jak-logo-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 10 0 20)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-jak-stand jak-stand jak-stand-lod0-jg -1
               ((jak-stand-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 10 0 20)
               :origin-joint-index 3
               )
 
+;; definition for function title-plug-lightning
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch time-frame vs none.
 (defun title-plug-lightning ((arg0 process-drawable) (arg1 vector) (arg2 cspace))
   (local-vars (sv-32 cspace) (sv-48 int) (sv-64 symbol) (sv-80 int) (sv-96 vector))
@@ -122,6 +148,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (scene-method-16
   (new 'static 'scene
     :name "title-disk-intro"
@@ -432,6 +459,8 @@
     )
   )
 
+;; definition for function title-screen-change
+;; WARN: Return type mismatch int vs none.
 (defbehavior title-screen-change title-control ((arg0 symbol) (arg1 int) (arg2 symbol) (arg3 int) (arg4 symbol) (arg5 symbol))
   (when arg5
     (let ((s1-0 (the-as int (-> *setting-control* user-current language))))
@@ -476,6 +505,7 @@
   (none)
   )
 
+;; definition for function wait-for-press
 (defun wait-for-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
   (with-pp
     (let ((s3-0 (-> pp clock frame-counter))
@@ -498,6 +528,8 @@
     )
   )
 
+;; definition for function title-menu
+;; WARN: Return type mismatch int vs object.
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior title-menu title-control ()
   (local-vars (sv-112 font-context))
@@ -570,6 +602,8 @@
   -1
   )
 
+;; definition for function title-fade-out
+;; WARN: Return type mismatch int vs none.
 (defun title-fade-out ((arg0 float))
   (with-pp
     (setup *screen-filter* (new 'static 'vector) (new 'static 'vector :w 128.0) arg0 (bucket-id screen-filter))
@@ -595,6 +629,8 @@
     )
   )
 
+;; definition for function title-progress
+;; WARN: Return type mismatch int vs none.
 (defun title-progress ((arg0 symbol))
   (with-pp
     (setup
@@ -624,6 +660,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate startup (title-control)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -810,6 +847,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -827,6 +865,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; failed to figure out what this is:
 (defstate idle (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -841,6 +880,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; failed to figure out what this is:
 (defstate scrap-book (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -912,6 +952,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; definition for function title-control-init
 ;; WARN: Return type mismatch object vs none.
 (defbehavior title-control-init title-control ()
   (stack-size-set! (-> self main-thread) 2048)
@@ -1010,6 +1051,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-title (target)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
@@ -1063,6 +1105,7 @@
   :post target-no-move-post
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-title-sign-naughtydog
   :id 1285
   :flags (unk-4 unk-6)
@@ -1074,6 +1117,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5462
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
     (sp-flt spt-num 1.0)
@@ -1093,6 +1137,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5460
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1117,6 +1162,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5461
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1141,6 +1187,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-title-sign-big-praxis
   :id 1286
   :flags (unk-4 unk-6)
@@ -1152,6 +1199,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5465
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
     (sp-flt spt-num 1.0)
@@ -1170,6 +1218,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5463
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1194,6 +1243,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5464
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1218,6 +1268,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-title-sign-wanted
   :id 1287
   :flags (unk-4 unk-6)
@@ -1229,6 +1280,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5468
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
     (sp-flt spt-num 1.0)
@@ -1247,6 +1299,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5466
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1271,6 +1324,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5467
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1295,6 +1349,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-title-sign-scea
   :id 1288
   :flags (unk-4 unk-6)
@@ -1303,6 +1358,7 @@
   :parts ((sp-item 5469 :flags (is-3d launch-asap bit7)) (sp-item 5470 :flags (is-3d launch-asap bit7)))
   )
 
+;; failed to figure out what this is:
 (defpart 5469
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1327,6 +1383,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5470
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc12))
     (sp-flt spt-num 1.0)
@@ -1351,6 +1408,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (when (= (scf-get-territory) 1)
   (let ((v1-82 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-82
@@ -1374,6 +1432,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (when (= (scf-get-territory) 2)
   (let ((v1-89 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-89
@@ -1397,6 +1456,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (when (= (scf-get-territory) 3)
   (let ((v1-96 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-96
@@ -1420,6 +1480,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpartgroup group-title-plug
   :id 1289
   :linger-duration (seconds 2)
@@ -1438,6 +1499,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5471
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
     (sp-flt spt-num 1.0)
@@ -1456,6 +1518,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5472
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
     (sp-flt spt-num 1.0)
@@ -1474,6 +1537,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defpart 5473
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x92 :page #xc))
     (sp-rnd-flt spt-num 1.0 1.0 1.0)

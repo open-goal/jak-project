@@ -859,6 +859,14 @@
 "TOMB"
 "TWEAKVAL")
 
+;; intro cutscenes
+(copy-strs "INSHUT" "INVORTEX" "INCSQUAR" "INPRISON")
+
+;; jak ambient
+(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6")
+
+(copy-vag-files "ENG")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
@@ -2521,33 +2529,29 @@
 ;;   "lbrnermk"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LCGUARD
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LCGUARD
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LCGUARD.DGO" "lcguard.gd")
+(cgo "LCGUARD.DGO" "lcguard.gd")
 
-;; (copy-textures 2691)
+(copy-textures 2691)
 
-;; (copy-gos
-;;   "crimson-guard-highres-ag"
-;;   "lcguard"
-;;   )
+(copy-gos
+  "lcguard"
+  )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LCITYLOW
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LCITYLOW
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LCITYLOW.DGO" "lcitylow.gd")
+(cgo "LCITYLOW.DGO" "lcitylow.gd")
 
-;; (copy-textures 2755 2756 3388)
+(copy-textures 2755 2756 3388)
 
-;; (copy-gos
-;;   "barons-ship-lores-ag"
-;;   "searchlight-ag"
-;;   "pal-windmill-ag"
-;;   "lcitylow"
-;;   )
+(copy-gos
+  "lcitylow"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LDJAKBRN
@@ -2715,21 +2719,19 @@
 ;;   "lhipout"
 ;;   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; LINTCSTB
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; LINTCSTB
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LINTCSTB.DGO" "lintcstb.gd")
+(cgo "LINTCSTB.DGO" "lintcstb.gd")
 
-;; (copy-textures 2752 2754 3243)
+(copy-textures 2752 2754 3243)
 
-;; (copy-gos
-;;   "keira-highres-ag"
-;;   "samos-highres-ag"
-;;   "rift-rider-break-ag"
-;;   "rift-rider-ag"
-;;   "lintcstb"
-;;   )
+(copy-gos
+  "rift-rider-break-ag"
+  "rift-rider-ag"
+  "lintcstb"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LJAKDAX
@@ -3861,7 +3863,7 @@
   "ruins-vis"
   )
 
-(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2")
+(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2" "RUTVICTO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SAG
@@ -4257,26 +4259,27 @@
   "throne-vis"
   )
 
-;; ;;;;;;;;;;;;;;;;;;;;;
-;; ;; TITLE
-;; ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; TITLE
+;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TITLE.DGO" "title.gd")
+(cgo "TITLE.DGO" "title.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/title/title-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/title/title-obs.gc"
+  )
 
-;; (copy-textures 3091 3090)
+(copy-textures 3091 3090)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-logo-ag"
-;;   "jak-stand-ag"
-;;   "title"
-;;   )
+(copy-gos
+  "jak-logo-ag"
+  "jak-stand-ag"
+  "title"
+  )
+
+(copy-strs "DESCREEN" "TIDINTRO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOA
