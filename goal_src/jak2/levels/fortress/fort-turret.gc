@@ -432,7 +432,7 @@
    (gun-tilt        float               :offset-assert 580)
    (desired-twist   float               :offset-assert 584)
    (desired-tilt    float               :offset-assert 588)
-   (los-clear       basic               :offset-assert 592)
+   (los-clear       symbol              :offset-assert 592)
    (flash-state     basic               :offset-assert 596)
    (flash-index     uint32              :offset-assert 600)
    (can-shoot       symbol              :offset-assert 604)
@@ -540,8 +540,12 @@
 
 (set! (-> *fort-turret-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-55 fort-turret ((obj fort-turret))
-  (let ((t9-0 (method-of-type enemy enemy-method-55)))
+(defmethod track-target! fort-turret ((obj fort-turret))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type enemy track-target!)))
     (t9-0 obj)
     )
   (let ((s5-0 (-> obj root-override2)))
@@ -747,12 +751,12 @@
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
       (if (>= 2 (the-as int (-> self focus aware)))
           (go-stare self)
           )
       )
-    (set! (-> self root-override2 penetrated-by) (enemy-method-59 self))
+    (set! (-> self root-override2 penetrated-by) (get-penetrate-info self))
     (fort-turret-method-141 self)
     (if (or (>= (- (-> self clock frame-counter) (the-as int (-> self target-timeout))) (seconds 0.5))
             (< (- (-> self clock frame-counter) (-> self last-hit-time)) (seconds 2))
@@ -838,12 +842,12 @@
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
       (if (>= 2 (the-as int (-> self focus aware)))
           (go-stare self)
           )
       )
-    (set! (-> self root-override2 penetrated-by) (enemy-method-59 self))
+    (set! (-> self root-override2 penetrated-by) (get-penetrate-info self))
     (set! (-> self desired-twist) (* 8192.0 (cos (get-scaled-val! (-> self sync) 32768.0 0))))
     (fort-turret-method-140 self 0.1 91.022224)
     (fort-turret-method-141 self)
@@ -879,12 +883,12 @@
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
       (if (>= 2 (the-as int (-> self focus aware)))
           (go-stare self)
           )
       )
-    (set! (-> self root-override2 penetrated-by) (enemy-method-59 self))
+    (set! (-> self root-override2 penetrated-by) (get-penetrate-info self))
     (fort-turret-method-141 self)
     (if (and (< (- (-> self clock frame-counter) (the-as int (-> self target-timeout))) (seconds 0.5))
              (>= (- (-> self clock frame-counter) (-> self last-hit-time)) (seconds 2))
@@ -904,9 +908,11 @@
     )
   )
 
-(defmethod enemy-method-74 fort-turret ((obj fort-turret) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler fort-turret ((obj fort-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
-    (if (and (= arg2 'notify) (< 1 (the-as int arg1)) (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
+    (if (and (= arg2 'notify) (< 1 arg1) (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
         (set! (-> obj last-hit-time) (-> pp clock frame-counter))
         )
     (case arg2
@@ -929,12 +935,12 @@
           #f
           )
          (else
-           ((method-of-type enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+           ((method-of-type enemy general-event-handler) obj arg0 arg1 arg2 arg3)
            )
          )
        )
       (else
-        ((method-of-type enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -943,7 +949,7 @@
 (defstate die (fort-turret)
   :virtual #t
   :enter (behavior ()
-    (enemy-method-132 self)
+    (dispose! self)
     (let ((v1-3 (-> self root-override2 root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -989,19 +995,25 @@
     (none)
     )
   :post (behavior ()
-    (enemy-method-55 self)
+    (track-target! self)
     (none)
     )
   )
 
+(defmethod coin-flip? fort-turret ((obj fort-turret))
+  "@returns The result of a 50/50 RNG roll"
+  #f
+  )
 
 ;; WARN: Return type mismatch int vs penetrate.
-(defmethod enemy-method-59 fort-turret ((obj fort-turret))
+(defmethod get-penetrate-info fort-turret ((obj fort-turret))
+  "@returns the allowed way(s) this enemy can take damage
+@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
-(defmethod enemy-method-114 fort-turret ((obj fort-turret))
-  "@abstract"
+(defmethod init-enemy-collision! fort-turret ((obj fort-turret))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1052,11 +1064,6 @@
   (none)
   )
 
-(defmethod coin-flip? fort-turret ((obj fort-turret))
-  "@returns The result of a 50/50 RNG roll"
-  #f
-  )
-
 ;; WARN: Return type mismatch enemy vs fort-turret.
 (defmethod relocate fort-turret ((obj fort-turret) (arg0 int))
   (if (nonzero? (-> obj gun-tilt-jm))
@@ -1068,14 +1075,14 @@
   (the-as fort-turret ((method-of-type enemy relocate) obj arg0))
   )
 
-(defmethod enemy-method-115 fort-turret ((obj fort-turret))
-  "@abstract"
+(defmethod init-enemy! fort-turret ((obj fort-turret))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-turret" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *fort-turret-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *fort-turret-enemy-info*)
   (set! (-> obj invincible) #f)
   (if (logtest? (the-as int (res-lump-value (-> obj entity) 'enemy-options uint128 :time -1000000000.0)) 1)
       (set! (-> obj invincible) #t)
