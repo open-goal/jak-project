@@ -200,45 +200,88 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
-    // (name args return-type [:no-virtual] [:replace] [:state] [id])
-    auto method_name = symbol_string(car(obj));
-    obj = cdr(obj);
-    // check for docstring
+    // (name args return-type [:no-virtual] [:replace] [:state] [:behavior] [id])
+    // or alternatively
+    // (:override-doc "new-docstring" [id])
+    // - this effectively does a :replace without having to re-define the name and signature and
+    // keep that in-sync
+    std::string method_name;
+    TypeSpec function_typespec("function");
     std::optional<std::string> docstring;
-    if (obj->is_pair() && car(obj).is_string()) {
-      docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
-      obj = cdr(obj);
-    }
-    auto& args = car(obj);
-    obj = cdr(obj);
-    auto& return_type = car(obj);
-    obj = cdr(obj);
-
+    goos::Object args;
+    goos::Object return_type;
     bool no_virtual = false;
     bool replace_method = false;
-    TypeSpec function_typespec("function");
+    bool overriding_doc = false;
 
-    if (!obj->is_empty_list() && car(obj).is_symbol(":no-virtual")) {
+    if (!obj->is_empty_list() && car(obj).is_symbol(":override-doc")) {
       obj = cdr(obj);
-      no_virtual = true;
+      if (car(obj).is_string()) {
+        docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
+        overriding_doc = true;
+        obj = cdr(obj);
+      } else {
+        throw std::runtime_error("Specified :override-doc with no docstring!");
+      }
     }
 
-    if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
+    if (!overriding_doc) {
+      // name
+      method_name = symbol_string(car(obj));
       obj = cdr(obj);
-      replace_method = true;
+
+      // docstring
+      if (obj->is_pair() && car(obj).is_string()) {
+        docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
+        obj = cdr(obj);
+      }
+
+      // args
+      args = car(obj);
+      obj = cdr(obj);
+
+      // return type
+      return_type = car(obj);
+      obj = cdr(obj);
+
+      // Iterate through the remainder of the form's supported keywords
+      // this int is assumed to be the id, and always at the end!
+      //
+      // Doing it like this makes the ordering not critical
+      while (!obj->is_empty_list() && car(obj).is_symbol()) {
+        const auto& keyword = car(obj).as_symbol()->name;
+        if (keyword == ":no-virtual") {
+          no_virtual = true;
+        } else if (keyword == ":replace") {
+          replace_method = true;
+        } else if (keyword == ":state") {
+          auto behavior_tag = function_typespec.try_get_tag("behavior");
+          function_typespec = TypeSpec("state");
+          if (behavior_tag) {
+            function_typespec.add_new_tag("behavior", behavior_tag.value());
+          }
+        } else if (keyword == ":behavior") {
+          obj = cdr(obj);
+          if (!car(obj).is_symbol()) {
+            lg::print(
+                ":behavior tag used without providing the process type name in a method "
+                "declaration. {}::{}\n",
+                type->get_name(), method_name.c_str());
+            throw std::runtime_error("Bad usage of :behavior in a method declaration");
+          }
+          function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
+        }
+        obj = cdr(obj);
+      }
+
+      // fill in args now that we've finalized the function spec
+      for_each_in_list(args, [&](const goos::Object& o) {
+        function_typespec.add_arg(parse_typespec(type_system, o));
+      });
+      function_typespec.add_arg(parse_typespec(type_system, return_type));
     }
 
-    if (!obj->is_empty_list() && car(obj).is_symbol(":state")) {
-      obj = cdr(obj);
-      function_typespec = TypeSpec("state");
-    }
-
-    if (!obj->is_empty_list() && car(obj).is_symbol(":behavior")) {
-      obj = cdr(obj);
-      function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
-      obj = cdr(obj);
-    }
-
+    // determine the method id, it should be the last in the list
     int id = -1;
     if (!obj->is_empty_list() && car(obj).is_int()) {
       auto& id_obj = car(obj);
@@ -247,16 +290,17 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     }
 
     if (!obj->is_empty_list()) {
-      throw std::runtime_error("too many things in method def: " + def.print());
+      throw std::runtime_error("found symbols after the `id` in a method defintion: " +
+                               def.print());
     }
 
-    for_each_in_list(args, [&](const goos::Object& o) {
-      function_typespec.add_arg(parse_typespec(type_system, o));
-    });
-    function_typespec.add_arg(parse_typespec(type_system, return_type));
-
-    auto info = type_system->declare_method(type, method_name, docstring, no_virtual,
-                                            function_typespec, replace_method, id);
+    MethodInfo info;
+    if (overriding_doc) {
+      info = type_system->override_method(type, method_name, id, docstring);
+    } else {
+      info = type_system->declare_method(type, method_name, docstring, no_virtual,
+                                         function_typespec, replace_method, id);
+    }
 
     // check the method assert
     if (id != -1) {

@@ -29,7 +29,8 @@ struct MethodInfo {
   TypeSpec type;
   std::string defined_in_type;
   bool no_virtual = false;
-  bool overrides_method_type_of_parent = false;
+  bool overrides_parent = false;
+  bool only_overrides_docstring = false;
   std::optional<std::string> docstring;
 
   bool operator==(const MethodInfo& other) const;
@@ -88,6 +89,7 @@ class Type {
   bool get_my_method(int id, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
+  int get_num_methods() const;
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
