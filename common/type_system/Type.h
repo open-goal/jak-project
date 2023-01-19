@@ -117,6 +117,10 @@ class Type {
   bool gen_inspect() const { return m_generate_inspect; }
 
   DefinitionMetadata m_metadata;
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_virtual_state_definition_meta = {};
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_state_definition_meta = {};
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);

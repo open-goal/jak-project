@@ -6,8 +6,11 @@
 
 #include "deftype.h"
 
+#include <unordered_map>
+
 #include "common/goos/ParseHelpers.h"
 #include "common/log/log.h"
+#include "common/type_system/state.h"
 #include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
@@ -197,7 +200,42 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
                             skip_in_decomp);
 }
 
-void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
+struct StructureDefResult {
+  TypeFlags flags;
+  bool generate_runtime_type = true;
+  bool pack_me = false;
+  bool allow_misaligned = false;
+  bool final = false;
+  bool always_stack_singleton = false;
+
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      virtual_state_definitions;
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      state_definitions;
+
+  void append_virtual_state_def(const std::string& state_name,
+                                const StateHandler handler,
+                                DefinitionMetadata data) {
+    if (virtual_state_definitions.count(state_name) == 0) {
+      virtual_state_definitions[state_name] = std::unordered_map<std::string, DefinitionMetadata>();
+    }
+    virtual_state_definitions[state_name][handler_kind_to_name(handler)] = data;
+  }
+
+  void append_state_def(const std::string& state_name,
+                        const StateHandler handler,
+                        DefinitionMetadata data) {
+    if (state_definitions.count(state_name) == 0) {
+      state_definitions[state_name] = std::unordered_map<std::string, DefinitionMetadata>();
+    }
+    state_definitions[state_name][handler_kind_to_name(handler)] = data;
+  }
+};
+
+void declare_method(Type* type,
+                    TypeSystem* type_system,
+                    const goos::Object& def,
+                    StructureDefResult& struct_def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
     // (name args return-type [:no-virtual] [:replace] [:state] [:behavior] [id])
@@ -260,6 +298,28 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
           if (behavior_tag) {
             function_typespec.add_new_tag("behavior", behavior_tag.value());
           }
+          // parse state docstrings if available
+          if (car(cdr(obj)).is_list()) {
+            obj = cdr(obj);
+            auto docstring_list = &car(obj);
+            auto elem = docstring_list;
+            while (!elem->is_empty_list() && car(elem).is_symbol()) {
+              const auto& handler = car(elem).as_symbol()->name;
+              const auto handler_kind = handler_keyword_to_kind(handler);
+
+              // Get the docstring
+              elem = cdr(elem);
+              if (!car(elem).is_string()) {
+                throw std::runtime_error("Missing a docstring for a state handler!");
+              }
+              DefinitionMetadata def_meta;
+              // TODO - definition location info
+              def_meta.docstring = car(elem).as_string()->data;
+              struct_def.append_virtual_state_def(method_name, handler_kind, def_meta);
+
+              elem = cdr(elem);
+            }
+          }
         } else if (keyword == ":behavior") {
           obj = cdr(obj);
           if (!car(obj).is_symbol()) {
@@ -314,12 +374,38 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
   });
 }
 
-void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def) {
+void declare_state(Type* type,
+                   TypeSystem* type_system,
+                   const goos::Object& def,
+                   StructureDefResult& struct_def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
     if (obj->is_list()) {
-      // (name ,@args)
+      // (name [(:event "docstring"...)] ,@args)
       auto state_name = symbol_string(car(obj));
+
+      if (car(cdr(obj)).is_list()) {
+        obj = cdr(obj);
+        auto docstring_list = &car(obj);
+        auto elem = docstring_list;
+        while (!elem->is_empty_list() && car(elem).is_symbol()) {
+          const auto& handler = car(elem).as_symbol()->name;
+          const auto handler_kind = handler_keyword_to_kind(handler);
+
+          // Get the docstring
+          elem = cdr(elem);
+          if (!car(elem).is_string()) {
+            throw std::runtime_error("Missing a docstring for a state handler!");
+          }
+          DefinitionMetadata def_meta;
+          // TODO - definition location info
+          def_meta.docstring = car(elem).as_string()->data;
+          struct_def.append_state_def(state_name, handler_kind, def_meta);
+
+          elem = cdr(elem);
+        }
+      }
+
       auto args = cdr(obj);
 
       TypeSpec state_typespec("state");
@@ -341,15 +427,6 @@ void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def)
     }
   });
 }
-
-struct StructureDefResult {
-  TypeFlags flags;
-  bool generate_runtime_type = true;
-  bool pack_me = false;
-  bool allow_misaligned = false;
-  bool final = false;
-  bool always_stack_singleton = false;
-};
 
 StructureDefResult parse_structure_def(
     StructureType* type,
@@ -379,9 +456,9 @@ StructureDefResult parse_structure_def(
 
       auto list_name = symbol_string(first);
       if (list_name == ":methods") {
-        declare_method(type, ts, *opt_list);
+        declare_method(type, ts, *opt_list, result);
       } else if (list_name == ":states") {
-        declare_state(type, ts, *opt_list);
+        declare_state(type, ts, *opt_list, result);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
@@ -505,7 +582,8 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
       opt_list = cdr(opt_list);
 
       if (symbol_string(first) == ":methods") {
-        declare_method(type, ts, *opt_list);
+        auto dummy = StructureDefResult();
+        declare_method(type, ts, *opt_list, dummy);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
@@ -648,6 +726,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
   auto parent_type_name = deftype_parent_list(parent_list_obj);
   auto parent_type = ts->make_typespec(parent_type_name);
   DeftypeResult result;
+  std::optional<StructureDefResult> structure_result;
 
   if (is_type("basic", parent_type, ts)) {
     auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
@@ -665,6 +744,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
         parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
+    structure_result = sr;
     if (sr.pack_me) {
       new_type->set_pack(true);
     }
@@ -694,6 +774,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
         parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
+    structure_result = sr;
     if (sr.pack_me) {
       new_type->set_pack(true);
     }
@@ -730,5 +811,11 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
 
   result.type = ts->make_typespec(name);
   result.type_info = ts->lookup_type(result.type);
+
+  if (structure_result) {
+    result.type_info->m_state_definition_meta = structure_result->state_definitions;
+    result.type_info->m_virtual_state_definition_meta = structure_result->virtual_state_definitions;
+  }
+
   return result;
 }

@@ -18,6 +18,11 @@ TypeSpec state_to_go_function(const TypeSpec& state_type, const TypeSpec& return
   return result;
 }
 
+StateHandler handler_keyword_to_kind(std::string keyword) {
+  // Remove the first character (should be a :)
+  return handler_name_to_kind(keyword.erase(0, 1));
+}
+
 StateHandler handler_name_to_kind(const std::string& name) {
   if (name == "enter") {
     return StateHandler::ENTER;
