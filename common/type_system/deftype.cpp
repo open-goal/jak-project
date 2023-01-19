@@ -384,7 +384,7 @@ void declare_state(Type* type,
       // (name [(:event "docstring"...)] ,@args)
       auto state_name = symbol_string(car(obj));
 
-      if (car(cdr(obj)).is_list()) {
+      if (!cdr(obj)->is_empty_list() && car(cdr(obj)).is_list()) {
         obj = cdr(obj);
         auto docstring_list = &car(obj);
         auto elem = docstring_list;
