@@ -2466,21 +2466,21 @@
 ;; ;; LBBUSH
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBBUSH.DGO" "lbbush.gd")
+(cgo "LBBUSH.DGO" "lbbush.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/side_missions/ctywide-bbush.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/side_missions/ctywide-bbush.gc"
+  )
 
-;; (copy-textures 3336 3465)
+(copy-textures 3336 3465)
 
-;; (copy-gos
-;;   "hovering-mine-ag"
-;;   "homing-beacon-ag"
-;;   "lbbush"
-;;   )
+(copy-gos
+  "hovering-mine-ag"
+  "homing-beacon-ag"
+  "lbbush"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBOMBBOT
