@@ -772,9 +772,8 @@ TEST_F(WithGameTests, StaticLambdaArray) {
 }
 
 TEST_F(WithGameTests, StaticTypeArray) {
-  // TODO - doesn't compile yet!
-  /*shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-types.gc",
-                                          {"hello-world\n1234\n0\n"});*/
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-types.gc",
+                                          {"matched!\n0\n"});
 }
 
 TEST_F(WithGameTests, MethodReplace) {
