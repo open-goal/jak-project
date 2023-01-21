@@ -944,36 +944,6 @@
 ;; flags    (num-effects, effect-alpha-ignore, effect-disable)
 ;; fades    (u32 x N), padding to qw aligned
 
-
-(defun pc-draw-bones ((dc draw-control) (dma-buf pointer))
-  "Add a dma packet to tell the PC renderer which model we are renderering."
-  (let ((packet (the-as dma-packet dma-buf)))
-    ;; merc draw asm will check this.
-    (when (zero? (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc))
-      (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
-      )
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
-    (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-    (set! dma-buf (the pointer (&+ packet 16)))
-    )
-
-  (let ((data-ptr (the-as (pointer uint128) dma-buf)))
-    (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
-    )
-  (&+! dma-buf (* 16 10))
-
-  ;; merc linking needs this.
-  (let ((packet (the-as dma-packet dma-buf)))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
-    (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag))
-    (set! dma-buf (the pointer (&+ packet 16)))
-    )
-
-  dma-buf
-  )
-
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer))
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
@@ -1539,7 +1509,6 @@
                       )
                     )
                   (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data)))
-                  ; (set! s2-0 (pc-draw-bones arg0 (the pointer s2-0)))
                   ; (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))

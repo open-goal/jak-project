@@ -359,11 +359,15 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
   }
 
   auto init = dma.read_and_advance();
+  int skip_count = 2;
+  if (render_state->version == GameVersion::Jak2) {
+    skip_count = 1;
+  }
 
   while (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
     flush_pending_model(render_state, prof);
     init_pc_model(init, render_state);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < skip_count; i++) {
       auto link = dma.read_and_advance();
       ASSERT(link.vifcode0().kind == VifCode::Kind::NOP);
       ASSERT(link.vifcode1().kind == VifCode::Kind::NOP);
