@@ -664,7 +664,7 @@ TEST_F(FormRegressionTestJak1, DmaSyncCrash) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTestJak1, DmaSendDraft) {
+TEST_F(FormRegressionTestJak1, DmaSend) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -64\n"
