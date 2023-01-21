@@ -651,7 +651,7 @@
   )
 
 (#x02b5
-  "ELHAGYOTT:" ;; MISSED - mi lenne jó ebben a környezetben?
+  "MEGLÓGOTT:"
   )
 
 (#x02b6
@@ -659,7 +659,7 @@
   )
 
 (#x0300
-  "HOZZ 90 ORB-OT A SZERENCSEJÁTÉKOSNAK" ;; gambler.... lehetne kártyás? úgyis kártyázik szerintem
+  "HOZZ 90 ORB-OT A SZERENCSEJÁTÉKOSNAK"
   )
 
 (#x0301
@@ -679,11 +679,11 @@
   )
 
 (#x0305
-  "JUSS EL A MOCSÁR KÖZEPÉBE"
+  "JUSS EL A MOCSÁR MÉLYÉBE"
   )
 
 (#x0306
-  "A RUDAKON HINTÁZVA JUSS ÁT A KÁTRÁNYON" ;; rudakon vagy póznákon?
+  "JUSS ÁT A KÁTRÁNYON A PÓZNÁKON HIMBÁLÓZVA"
   )
 
 (#x0307
@@ -691,7 +691,7 @@
   )
 
 (#x0308
-  "ROBBANTS SZIKLÁKAT A KÁTRÁNYBAN"
+  "ROBBANTSD SZÉT A KÁTRÁNYBAN LÉVŐ SZIKLÁKAT"
   )
 
 (#x0309
@@ -711,7 +711,7 @@
   )
 
 (#x030d
-  "MÁSSZ FEL A CSÚSZDACSÖVÖN";; "CLIMB THE SLIDE TUBE" - biztos rosszul fordítom, ki kell találni valamit
+  "JUSS FEL A CSÚSZÓS CSŐ TETEJÉRE";; "CLIMB THE SLIDE TUBE"
   )
 
 (#x030e
@@ -735,7 +735,7 @@
   )
 
 (#x0313
-  "GYŐZD LE A REKORD IDŐT A SZURDOKBAN" ;; "BEAT RECORD TIME ON THE GORGE"
+  "DÖNTSD MEG A REKORD IDŐT A SZURDOKBAN" ;; "BEAT RECORD TIME ON THE GORGE"
   )
 
 (#x0314
@@ -747,7 +747,7 @@
   )
 
 (#x0316
-  "GYÓGYÍTSD MEG A DARK ECO ÁLTAL FERTŐZÖTT NÖVÉNYEKET"
+  "PERMETEZD MEG A DARK ECO ÁLTAL FERTŐZÖTT NÖVÉNYEKET"
   )
 
 (#x0317
@@ -767,7 +767,7 @@
   )
 
 (#x031b
-  "PRECURSOR-MEDENCE" ;; ENNEK BIZTOS HOGY KELL VALAMI TELJESEN ÚJ NÉV
+  "PRECURSOR-VÖLGY"
   )
 
 (#x031c
@@ -779,7 +779,7 @@
   )
 
 (#x031e
-  "HEGYI HÁGÓ" ;; MOUNTAIN PASS
+  "HEGYSZOROS" ;; MOUNTAIN PASS
   )
 
 (#x031f
@@ -831,7 +831,7 @@
   )
 
 (#x0377
-  "VERSENY ELHAGYVA" ;; RACE ABORTED
+  "VERSENY MEGSZAKÍTVA"
   )
 
 (#x0400
@@ -939,7 +939,7 @@
   )
 
 (#x041a
-  "HEGYI HÁGÓ" ;; MOUNTAIN PASS
+  "HEGYSZOROS" ;; MOUNTAIN PASS
   )
 
 (#x041b
@@ -983,7 +983,7 @@
   )
 
 (#x0426
-  "JUSS FEL A RUDAKHOZ" ;; LAUNCH TO THE POLES"
+  "JUSS FEL A PÓZNÁKHOZ" ;; LAUNCH TO THE POLES"
   )
 
 (#x042b
@@ -1011,7 +1011,7 @@
   )
 
 (#x0600
-  "ÉRD EL A HEGYI HÁGÓ VÉGÉT" ;; "REACH THE END OF THE MOUNTAIN PASS"
+  "ÉRD EL A HEGYSZOROS VÉGÉT" ;; "REACH THE END OF THE MOUNTAIN PASS"
   )
 
 (#x0601
@@ -1019,7 +1019,7 @@
   )
 
 (#x0602
-  "HEGYI HÁGÓ" ;; MOUNTAIN PASS
+  "HEGYSZOROS" ;; MOUNTAIN PASS
   )
 
 (#x0603
