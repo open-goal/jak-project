@@ -32,12 +32,6 @@ void main() {
       color.a = 1;
     }
 
-
-    if (ignore_alpha == 0 && color.w < 0.128) {
-        discard;
-    }
-
-
   color.xyz *= 0.5;
   color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
 
