@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
@@ -161,6 +162,10 @@ struct MercFragment {
   std::string print() const;
 };
 
+struct MercExtraInfo {
+  std::optional<MercShader> shader;
+};
+
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?
   std::vector<MercFragment> frag_geo;
@@ -177,6 +182,7 @@ struct MercEffect {
   // (dummy1           uint8                  :offset-assert 26) ??
   u8 envmap_or_effect_usage;
   // (extra-info       merc-extra-info        :offset-assert 28) ??
+  MercExtraInfo extra_info;
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);
   std::string print();

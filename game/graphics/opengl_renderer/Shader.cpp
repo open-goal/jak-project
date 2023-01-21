@@ -94,6 +94,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::SPRITE_DISTORT_INSTANCED) = {"sprite_distort_instanced", version};
   at(ShaderId::POST_PROCESSING) = {"post_processing", version};
   at(ShaderId::DEPTH_CUE) = {"depth_cue", version};
+  at(ShaderId::EMERC) = {"emerc", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

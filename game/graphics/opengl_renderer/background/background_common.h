@@ -34,6 +34,7 @@ struct DoubleDraw {
   DoubleDrawKind kind = DoubleDrawKind::NONE;
   float aref_first = 0.;
   float aref_second = 0.;
+  float color_mult = 1.;
 };
 
 DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader);

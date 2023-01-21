@@ -4,7 +4,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+Merc2::Merc2(const std::string& name, int my_id, bool envmap)
+    : BucketRenderer(name, my_id), m_use_emerc(envmap) {
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
 
@@ -37,7 +38,7 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
 /*!
  * Handle the merc renderer switching to a different model.
  */
-void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state) {
+void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state, bool envmap) {
   // determine the name. We've packed this in a separate PC-port specific packet.
   char name[128];
   strcpy(name, (const char*)setup.data);
@@ -45,15 +46,42 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
   // get the model from the loader
   m_current_model = render_state->loader->get_merc_model(name);
 
-  // update stats
-  m_stats.num_models++;
-  if (m_current_model) {
-    for (const auto& effect : m_current_model->model->effects) {
-      m_stats.num_effects++;
-      m_stats.num_predicted_draws += effect.draws.size();
-      for (const auto& draw : effect.draws) {
-        m_stats.num_predicted_tris += draw.num_triangles;
+  if (envmap) {
+    // we'd expect everything to have an envmap shader here, but for now let's not be strict.
+    // we might end up combining things one day.
+    bool has_some_envmap = false;
+    if (m_current_model) {
+      for (const auto& effect : m_current_model->model->effects) {
+        if (effect.has_envmap) {
+          m_stats.num_envmap_effects++;
+          has_some_envmap = true;
+          for (const auto& draw : effect.draws) {
+            m_stats.num_envmap_tris += draw.num_triangles;
+          }
+        }
       }
+      if (has_some_envmap) {
+        m_stats.num_envmap_models++;
+      } else {
+        m_stats.num_envmap_models_missing_envmap++;
+        m_current_model.reset();  // just skip!
+      }
+    } else {
+      m_stats.num_missing_models++;
+    }
+  } else {
+    // update stats
+    if (m_current_model) {
+      m_stats.num_models++;
+      for (const auto& effect : m_current_model->model->effects) {
+        m_stats.num_effects++;
+        m_stats.num_predicted_draws += effect.draws.size();
+        for (const auto& draw : effect.draws) {
+          m_stats.num_predicted_tris += draw.num_triangles;
+        }
+      }
+    } else {
+      m_stats.num_missing_models++;
     }
   }
 }
@@ -61,19 +89,20 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
 /*!
  * Once-per-frame initialization
  */
-void Merc2::init_for_frame(SharedRenderState* render_state) {
+void Merc2::init_for_frame(SharedRenderState* render_state,
+                           ShaderId shader,
+                           const Uniforms& uniforms) {
   // reset state
   m_current_model = std::nullopt;
-  m_stats = {};
 
   // activate the merc shader used for all draws
-  render_state->shaders[ShaderId::MERC2].activate();
+  render_state->shaders[shader].activate();
 
   // set uniforms that we know from render_state
-  glUniform4f(m_uniforms.fog_color, render_state->fog_color[0] / 255.f,
+  glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
-  glUniform1i(m_uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
+  glUniform1i(uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Merc2::draw_debug_window() {
@@ -84,40 +113,54 @@ void Merc2::draw_debug_window() {
   ImGui::Text("Bones    : %d", m_stats.num_bones_uploaded);
   ImGui::Text("Lights   : %d", m_stats.num_lights);
   ImGui::Text("Dflush   : %d", m_stats.num_draw_flush);
+
+  ImGui::Text("EModels  : %d", m_stats.num_envmap_models);
+  ImGui::Text("EEffects : %d", m_stats.num_envmap_effects);
+  ImGui::Text("ETris    : %d", m_stats.num_envmap_tris);
+  ImGui::Text("EMissing : %d", m_stats.num_envmap_models_missing_envmap);
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
-  const auto& shader = shaders[ShaderId::MERC2];
+  init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms);
+  if (m_use_emerc) {
+    init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms);
+    m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
+  }
+}
+
+void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms) {
   auto id = shader.id();
-  shaders[ShaderId::MERC2].activate();
-  m_uniforms.light_direction[0] = glGetUniformLocation(id, "light_dir0");
-  m_uniforms.light_direction[1] = glGetUniformLocation(id, "light_dir1");
-  m_uniforms.light_direction[2] = glGetUniformLocation(id, "light_dir2");
-  m_uniforms.light_color[0] = glGetUniformLocation(id, "light_col0");
-  m_uniforms.light_color[1] = glGetUniformLocation(id, "light_col1");
-  m_uniforms.light_color[2] = glGetUniformLocation(id, "light_col2");
-  m_uniforms.light_ambient = glGetUniformLocation(id, "light_ambient");
+  shader.activate();
+  uniforms->light_direction[0] = glGetUniformLocation(id, "light_dir0");
+  uniforms->light_direction[1] = glGetUniformLocation(id, "light_dir1");
+  uniforms->light_direction[2] = glGetUniformLocation(id, "light_dir2");
+  uniforms->light_color[0] = glGetUniformLocation(id, "light_col0");
+  uniforms->light_color[1] = glGetUniformLocation(id, "light_col1");
+  uniforms->light_color[2] = glGetUniformLocation(id, "light_col2");
+  uniforms->light_ambient = glGetUniformLocation(id, "light_ambient");
 
-  m_uniforms.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
-  m_uniforms.perspective[0] = glGetUniformLocation(id, "perspective0");
-  m_uniforms.perspective[1] = glGetUniformLocation(id, "perspective1");
-  m_uniforms.perspective[2] = glGetUniformLocation(id, "perspective2");
-  m_uniforms.perspective[3] = glGetUniformLocation(id, "perspective3");
+  uniforms->hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
+  uniforms->perspective[0] = glGetUniformLocation(id, "perspective0");
+  uniforms->perspective[1] = glGetUniformLocation(id, "perspective1");
+  uniforms->perspective[2] = glGetUniformLocation(id, "perspective2");
+  uniforms->perspective[3] = glGetUniformLocation(id, "perspective3");
 
-  m_uniforms.fog = glGetUniformLocation(id, "fog_constants");
-  m_uniforms.decal = glGetUniformLocation(id, "decal_enable");
+  uniforms->fog = glGetUniformLocation(id, "fog_constants");
+  uniforms->decal = glGetUniformLocation(id, "decal_enable");
 
-  m_uniforms.fog_color = glGetUniformLocation(id, "fog_color");
-  m_uniforms.perspective_matrix = glGetUniformLocation(id, "perspective_matrix");
-  m_uniforms.ignore_alpha = glGetUniformLocation(id, "ignore_alpha");
+  uniforms->fog_color = glGetUniformLocation(id, "fog_color");
+  uniforms->perspective_matrix = glGetUniformLocation(id, "perspective_matrix");
+  uniforms->ignore_alpha = glGetUniformLocation(id, "ignore_alpha");
 
-  m_uniforms.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
+  uniforms->gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
 }
 
 /*!
  * Main merc2 rendering.
  */
 void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  m_stats = {};
+
   // skip if disabled
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -126,15 +169,28 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     return;
   }
 
-  init_for_frame(render_state);
+  DmaFollower dma_copy = dma;
+  render_pass(dma, render_state, prof, m_merc_uniforms, ShaderId::MERC2, false);
+  if (m_use_emerc) {
+    render_pass(dma_copy, render_state, prof, m_emerc_uniforms, ShaderId::EMERC, true);
+  }
+}
+
+void Merc2::render_pass(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof,
+                        const Uniforms& uniforms,
+                        ShaderId sid,
+                        bool envmap) {
+  init_for_frame(render_state, sid, uniforms);
 
   // iterate through the dma chain, filling buckets
-  handle_all_dma(dma, render_state, prof);
+  handle_all_dma(dma, render_state, prof, uniforms, envmap);
 
   // flush model data to buckets
-  flush_pending_model(render_state, prof);
+  flush_pending_model(render_state, prof, uniforms, envmap);
   // flush buckets to draws
-  flush_draw_buckets(render_state, prof);
+  flush_draw_buckets(render_state, prof, uniforms, envmap);
 }
 
 u32 Merc2::alloc_lights(const VuLights& lights) {
@@ -170,7 +226,9 @@ void Merc2::handle_matrix_dma(const DmaTransfer& dma) {
  */
 void Merc2::handle_all_dma(DmaFollower& dma,
                            SharedRenderState* render_state,
-                           ScopedProfilerNode& prof) {
+                           ScopedProfilerNode& prof,
+                           const Uniforms& uniforms,
+                           bool envmap) {
   // process the first tag. this is just jumping to the merc-specific dma.
   auto data0 = dma.read_and_advance();
   ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
@@ -191,11 +249,11 @@ void Merc2::handle_all_dma(DmaFollower& dma,
   }
   // if we reach here, there's stuff to draw
   // this handles merc-specific setup DMA
-  handle_setup_dma(dma, render_state);
+  handle_setup_dma(dma, render_state, uniforms);
 
   // handle each merc transfer
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    handle_merc_chain(dma, render_state, prof);
+    handle_merc_chain(dma, render_state, prof, uniforms, envmap);
   }
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
@@ -209,7 +267,9 @@ void set_uniform(GLuint uniform, const math::Vector4f& val) {
 }
 }  // namespace
 
-void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) {
+void Merc2::handle_setup_dma(DmaFollower& dma,
+                             SharedRenderState* render_state,
+                             const Uniforms& uniforms) {
   auto first = dma.read_and_advance();
 
   // 10 quadword setup packet
@@ -256,13 +316,13 @@ void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) 
   //             m_low_memory.perspective[1].to_string_aligned(),
   //             m_low_memory.perspective[2].to_string_aligned(),
   //             m_low_memory.perspective[3].to_string_aligned());
-  set_uniform(m_uniforms.hvdf_offset, m_low_memory.hvdf_offset);
-  set_uniform(m_uniforms.fog, m_low_memory.fog);
+  set_uniform(uniforms.hvdf_offset, m_low_memory.hvdf_offset);
+  set_uniform(uniforms.fog, m_low_memory.fog);
   for (int i = 0; i < 4; i++) {
-    set_uniform(m_uniforms.perspective[i], m_low_memory.perspective[i]);
+    set_uniform(uniforms.perspective[i], m_low_memory.perspective[i]);
   }
   // todo rm.
-  glUniformMatrix4fv(m_uniforms.perspective_matrix, 1, GL_FALSE, &m_low_memory.perspective[0].x());
+  glUniformMatrix4fv(uniforms.perspective_matrix, 1, GL_FALSE, &m_low_memory.perspective[0].x());
 
   // 1 qw with another 4 vifcodes.
   u32 vifcode_final_data[4];
@@ -309,7 +369,9 @@ bool tag_is_nothing_cnt(const DmaFollower& dma) {
 
 void Merc2::handle_merc_chain(DmaFollower& dma,
                               SharedRenderState* render_state,
-                              ScopedProfilerNode& prof) {
+                              ScopedProfilerNode& prof,
+                              const Uniforms& uniforms,
+                              bool envmap) {
   while (tag_is_nothing_next(dma)) {
     auto nothing = dma.read_and_advance();
     ASSERT(nothing.size_bytes == 0);
@@ -332,8 +394,8 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   if (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
     // we got a PC PORT packet. this contains some extra data to set up the model
-    flush_pending_model(render_state, prof);
-    init_pc_model(init, render_state);
+    flush_pending_model(render_state, prof, uniforms, envmap);
+    init_pc_model(init, render_state, envmap);
 
     ASSERT(tag_is_nothing_cnt(dma) || tag_is_nothing_next(dma));
     init = dma.read_and_advance();  // dummy tag in pc port
@@ -369,7 +431,6 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
   u32 mscal_addr = -1;
   while (setting_up) {
     next = dma.read_and_advance();
-    // fmt::print("next: {}", dma.current_tag().print());
     u32 offset_in_data = 0;
     //    fmt::print("START {} : {} {}\n", next.size_bytes, next.vifcode0().print(),
     //               next.vifcode1().print());
@@ -381,6 +442,10 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
       case VifCode::Kind::STMOD:
         ASSERT(vif0.immediate == 0 || vif0.immediate == 1);
         // m_vif.stmod = vif0.immediate;
+        break;
+      case VifCode::Kind::PC_PORT2:
+        memcpy(m_fade_buffer, next.data, 4 * kMaxEffect);
+        continue;
         break;
       default:
         ASSERT(false);
@@ -476,7 +541,10 @@ u32 Merc2::alloc_bones(int count) {
 /*!
  * Flush a model to draw buckets
  */
-void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void Merc2::flush_pending_model(SharedRenderState* render_state,
+                                ScopedProfilerNode& prof,
+                                const Uniforms& uniforms,
+                                bool envmap) {
   if (!m_current_model) {
     return;
   }
@@ -488,13 +556,13 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
 
   if (m_next_free_light >= MAX_LIGHTS) {
     fmt::print("MERC2 out of lights, consider increasing MAX_LIGHTS\n");
-    flush_draw_buckets(render_state, prof);
+    flush_draw_buckets(render_state, prof, uniforms, envmap);
   }
 
   if (m_next_free_bone_vector + m_opengl_buffer_alignment + bone_count * 8 >
       MAX_SHADER_BONE_VECTORS) {
     fmt::print("MERC2 out of bones, consider increasing MAX_SHADER_BONE_VECTORS\n");
-    flush_draw_buckets(render_state, prof);
+    flush_draw_buckets(render_state, prof, uniforms, envmap);
   }
 
   // find a level bucket
@@ -511,9 +579,9 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     if (m_next_free_level_bucket >= m_level_draw_buckets.size()) {
       // out of room, flush
       // fmt::print("MERC2 out of levels, consider increasing MAX_LEVELS\n");
-      flush_draw_buckets(render_state, prof);
+      flush_draw_buckets(render_state, prof, uniforms, envmap);
       // and retry the whole thing.
-      flush_pending_model(render_state, prof);
+      flush_pending_model(render_state, prof, uniforms, envmap);
       return;
     }
     // alloc a new one
@@ -525,9 +593,9 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
   if (lev_bucket->next_free_draw + model->max_draws >= lev_bucket->draws.size()) {
     // out of room, flush
     fmt::print("MERC2 out of draws, consider increasing MAX_DRAWS_PER_LEVEL\n");
-    flush_draw_buckets(render_state, prof);
+    flush_draw_buckets(render_state, prof, uniforms, envmap);
     // and retry the whole thing.
-    flush_pending_model(render_state, prof);
+    flush_pending_model(render_state, prof, uniforms, envmap);
     return;
   }
 
@@ -543,23 +611,32 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
 
     u8 ignore_alpha = (m_current_ignore_alpha_bits & (1 << ei));
     auto& effect = model->effects[ei];
+    if (envmap && !effect.has_envmap) {
+      continue;
+    }
     for (auto& mdraw : effect.draws) {
       Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
       draw->first_index = mdraw.first_index;
       draw->index_count = mdraw.index_count;
-      draw->mode = mdraw.mode;
-      draw->texture = mdraw.tree_tex_id;
+      draw->mode = envmap ? effect.envmap_mode : mdraw.mode;
+      draw->texture = envmap ? effect.envmap_texture : mdraw.tree_tex_id;
       draw->first_bone = first_bone;
       draw->light_idx = lights;
       draw->num_triangles = mdraw.num_triangles;
-      draw->ignore_alpha = ignore_alpha;
+      draw->ignore_alpha = envmap ? false : ignore_alpha;
+      for (int i = 0; i < 4; i++) {
+        draw->fade[i] = envmap ? m_fade_buffer[4 * ei + i] : 0;
+      }
     }
   }
 
   m_current_model = std::nullopt;
 }
 
-void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfilerNode& prof) {
+void Merc2::flush_draw_buckets(SharedRenderState* render_state,
+                               ScopedProfilerNode& prof,
+                               const Uniforms& uniforms,
+                               bool envmap) {
   m_stats.num_draw_flush++;
 
   for (u32 li = 0; li < m_next_free_level_bucket; li++) {
@@ -638,7 +715,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
 
     for (u32 di = 0; di < lev_bucket.next_free_draw; di++) {
       auto& draw = lev_bucket.draws[di];
-      glUniform1i(m_uniforms.ignore_alpha, draw.ignore_alpha);
+      glUniform1i(uniforms.ignore_alpha, draw.ignore_alpha);
       if ((int)draw.texture != last_tex) {
         if (draw.texture < lev->textures.size()) {
           glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
@@ -649,18 +726,27 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
       }
 
       if ((int)draw.light_idx != last_light) {
-        set_uniform(m_uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
-        set_uniform(m_uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
-        set_uniform(m_uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
-        set_uniform(m_uniforms.light_color[0], m_lights_buffer[draw.light_idx].color0);
-        set_uniform(m_uniforms.light_color[1], m_lights_buffer[draw.light_idx].color1);
-        set_uniform(m_uniforms.light_color[2], m_lights_buffer[draw.light_idx].color2);
-        set_uniform(m_uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
+        set_uniform(uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
+        set_uniform(uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
+        set_uniform(uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
+        set_uniform(uniforms.light_color[0], m_lights_buffer[draw.light_idx].color0);
+        set_uniform(uniforms.light_color[1], m_lights_buffer[draw.light_idx].color1);
+        set_uniform(uniforms.light_color[2], m_lights_buffer[draw.light_idx].color2);
+        set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
         last_light = draw.light_idx;
       }
       setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
 
-      glUniform1i(m_uniforms.decal, draw.mode.get_decal());
+      glUniform1i(uniforms.decal, draw.mode.get_decal());
+
+      if (envmap) {
+        math::Vector4f fade =
+            math::Vector4f(draw.fade[0], draw.fade[1], draw.fade[2], draw.fade[3]) / 255.f;
+        set_uniform(uniforms.fade, fade);
+
+        // hack checkerboard
+        // glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
+      }
 
       prof.add_draw_call();
       prof.add_tri(draw.num_triangles);
