@@ -32,14 +32,10 @@ class Merc2 : public BucketRenderer {
     u32 w1;
     math::Vector3f direction2;
     u32 w2;
-    math::Vector3f color0;
-    u32 w3;
-    math::Vector3f color1;
-    u32 w4;
-    math::Vector3f color2;
-    u32 w5;
-    math::Vector3f ambient;
-    u32 w6;
+    math::Vector4f color0;
+    math::Vector4f color1;
+    math::Vector4f color2;
+    math::Vector4f ambient;
   };
 
   void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
@@ -100,7 +96,7 @@ class Merc2 : public BucketRenderer {
 
   Uniforms m_merc_uniforms, m_emerc_uniforms;
 
-  void init_shader_common(Shader& shader, Uniforms* uniforms);
+  void init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights);
   void init_for_frame(SharedRenderState* render_state, ShaderId shader);
   void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state);
   void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -162,7 +158,8 @@ class Merc2 : public BucketRenderer {
                 u32 num_draws,
                 const Uniforms& uniforms,
                 ScopedProfilerNode& prof,
-                bool set_fade);
+                bool set_fade,
+                SharedRenderState* render_state);
 
   static constexpr int MAX_LIGHTS = 1024;
   VuLights m_lights_buffer[MAX_LIGHTS];

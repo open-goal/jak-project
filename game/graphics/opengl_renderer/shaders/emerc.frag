@@ -20,12 +20,8 @@ void main() {
     if (gfx_hack_no_tex == 0) {
       vec4 T0 = texture(tex_T0, vtx_st);
 
-      if (decal_enable == 0) {
-          color.rgb = vtx_color * T0.rgb;
-      } else {
-          color.rgb = T0.rgb * 0.5;
-      }
       color.a = T0.a;
+      color.rgb = T0.rgb * vtx_color;
       color *= 2;
     } else {
       color.rgb = vtx_color;
@@ -33,6 +29,4 @@ void main() {
     }
 
   color.xyz *= 0.5;
-  color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
-
 }

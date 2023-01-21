@@ -121,21 +121,23 @@ void Merc2::draw_debug_window() {
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
-  init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms);
-  init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms);
+  init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms, true);
+  init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms, false);
   m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
 }
 
-void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms) {
+void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights) {
   auto id = shader.id();
   shader.activate();
-  uniforms->light_direction[0] = glGetUniformLocation(id, "light_dir0");
-  uniforms->light_direction[1] = glGetUniformLocation(id, "light_dir1");
-  uniforms->light_direction[2] = glGetUniformLocation(id, "light_dir2");
-  uniforms->light_color[0] = glGetUniformLocation(id, "light_col0");
-  uniforms->light_color[1] = glGetUniformLocation(id, "light_col1");
-  uniforms->light_color[2] = glGetUniformLocation(id, "light_col2");
-  uniforms->light_ambient = glGetUniformLocation(id, "light_ambient");
+  if (include_lights) {
+    uniforms->light_direction[0] = glGetUniformLocation(id, "light_dir0");
+    uniforms->light_direction[1] = glGetUniformLocation(id, "light_dir1");
+    uniforms->light_direction[2] = glGetUniformLocation(id, "light_dir2");
+    uniforms->light_color[0] = glGetUniformLocation(id, "light_col0");
+    uniforms->light_color[1] = glGetUniformLocation(id, "light_col1");
+    uniforms->light_color[2] = glGetUniformLocation(id, "light_col2");
+    uniforms->light_ambient = glGetUniformLocation(id, "light_ambient");
+  }
 
   uniforms->hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
 
@@ -505,18 +507,27 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     u8 ignore_alpha = (m_current_ignore_alpha_bits & (1 << ei));
     auto& effect = model->effects[ei];
     if (effect.has_envmap) {
-      for (auto& mdraw : effect.draws) {
-        Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
-        draw->first_index = mdraw.first_index;
-        draw->index_count = mdraw.index_count;
-        draw->mode = effect.envmap_mode;
-        draw->texture = effect.envmap_texture;
-        draw->first_bone = first_bone;
-        draw->light_idx = lights;
-        draw->num_triangles = mdraw.num_triangles;
-        draw->ignore_alpha = false;
-        for (int i = 0; i < 4; i++) {
-          draw->fade[i] = m_fade_buffer[4 * ei + i];
+      bool nonzero_fade = false;
+      for (int i = 0; i < 4; i++) {
+        if (m_fade_buffer[4 * ei + i]) {
+          nonzero_fade = true;
+          break;
+        }
+      }
+      if (nonzero_fade) {
+        for (auto& mdraw : effect.draws) {
+          Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
+          draw->first_index = mdraw.first_index;
+          draw->index_count = mdraw.index_count;
+          draw->mode = effect.envmap_mode;
+          draw->texture = effect.envmap_texture;
+          draw->first_bone = first_bone;
+          draw->light_idx = lights;
+          draw->num_triangles = mdraw.num_triangles;
+          draw->ignore_alpha = false;
+          for (int i = 0; i < 4; i++) {
+            draw->fade[i] = m_fade_buffer[4 * ei + i];
+          }
         }
       }
     }
@@ -593,7 +604,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNo
     );
 
     glVertexAttribPointer(4,                                            // location 1 in the shader
-                          3,                                            // 3 values per vert
+                          4,                                            // 3 values per vert
                           GL_UNSIGNED_BYTE,                             // floats
                           GL_TRUE,                                      // normalized
                           sizeof(tfrag3::MercVertex),                   // stride
@@ -615,11 +626,12 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNo
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     switch_to_merc2(render_state);
-    do_draws(lev_bucket.draws.data(), lev, lev_bucket.next_free_draw, m_merc_uniforms, prof, false);
+    do_draws(lev_bucket.draws.data(), lev, lev_bucket.next_free_draw, m_merc_uniforms, prof, false,
+             render_state);
     if (lev_bucket.next_free_envmap_draw) {
       switch_to_emerc(render_state);
       do_draws(lev_bucket.envmap_draws.data(), lev, lev_bucket.next_free_envmap_draw,
-               m_emerc_uniforms, prof, true);
+               m_emerc_uniforms, prof, true, render_state);
     }
   }
 
@@ -633,7 +645,8 @@ void Merc2::do_draws(const Draw* draw_array,
                      u32 num_draws,
                      const Uniforms& uniforms,
                      ScopedProfilerNode& prof,
-                     bool set_fade) {
+                     bool set_fade,
+                     SharedRenderState* render_state) {
   int last_tex = -1;
   int last_light = -1;
   for (u32 di = 0; di < num_draws; di++) {
@@ -648,7 +661,7 @@ void Merc2::do_draws(const Draw* draw_array,
       last_tex = draw.texture;
     }
 
-    if ((int)draw.light_idx != last_light) {
+    if ((int)draw.light_idx != last_light && !set_fade) {
       set_uniform(uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
       set_uniform(uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
       set_uniform(uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
@@ -666,6 +679,8 @@ void Merc2::do_draws(const Draw* draw_array,
       math::Vector4f fade =
           math::Vector4f(draw.fade[0], draw.fade[1], draw.fade[2], draw.fade[3]) / 255.f;
       set_uniform(uniforms.fade, fade);
+      ASSERT(draw.mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
+      // glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
     }
 
     prof.add_draw_call();

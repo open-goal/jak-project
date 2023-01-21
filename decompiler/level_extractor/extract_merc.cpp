@@ -241,6 +241,10 @@ DrawMode process_draw_mode(const MercShader& info, bool enable_alpha_test) {
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   mode.set_tcc(info.tex0.tcc());
   mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
+  if (info.tex0.tfx() != GsTex0::TextureFunction::DECAL) {
+    ASSERT(info.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  }
+
   mode.set_filt_enable(info.tex1.mmag());
 
   // the alpha matters (maybe?)
@@ -711,6 +715,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false);
     result.envmap_mode.set_ab(true);
     u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
+    ASSERT(result.envmap_mode.get_tcc_enable());
+    ASSERT(result.envmap_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
 
     // texture the texture page/texture index, and convert to a PC port texture ID
     u32 tpage = new_tex >> 20;
@@ -814,6 +820,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
       merc_state.merc_draw_mode.mode = process_draw_mode(shader, result.has_envmap);
+      if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
+        ASSERT(false);
+      }
       u32 new_tex = remap_texture(shader.original_tex, map);
 
       // texture the texture page/texture index, and convert to a PC port texture ID
