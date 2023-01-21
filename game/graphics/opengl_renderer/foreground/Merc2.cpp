@@ -4,8 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-Merc2::Merc2(const std::string& name, int my_id, bool envmap)
-    : BucketRenderer(name, my_id), m_use_emerc(envmap) {
+Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
 
@@ -123,10 +122,8 @@ void Merc2::draw_debug_window() {
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
   init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms);
-  if (m_use_emerc) {
-    init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms);
-    m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
-  }
+  init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms);
+  m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
 }
 
 void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms) {

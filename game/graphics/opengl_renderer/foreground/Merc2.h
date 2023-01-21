@@ -3,13 +3,12 @@
 
 class Merc2 : public BucketRenderer {
  public:
-  Merc2(const std::string& name, int my_id, bool envmap);
+  Merc2(const std::string& name, int my_id);
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
  private:
-  bool m_use_emerc = false;
   enum MercDataMemory {
     LOW_MEMORY = 0,
     BUFFER_BASE = 442,
