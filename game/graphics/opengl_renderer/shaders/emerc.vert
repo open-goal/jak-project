@@ -19,10 +19,6 @@ uniform vec3 light_ambient;
 
 // camera control
 uniform vec4 hvdf_offset;
-uniform vec4 perspective0;
-uniform vec4 perspective1;
-uniform vec4 perspective2;
-uniform vec4 perspective3;
 uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;
@@ -149,6 +145,12 @@ void main() {
       //madd.xyzw vf10, vf10, Q
       vf10 = ACC + vf10 * qqq;
       st_mod = vf10.xy;
+
+      // this is required to make jak 1's envmapping look right
+      // otherwise it behaves like the envmap texture is mirrored.
+      // TODO: see if this is right for jak 2 or not.
+      // It _might_ make sense that this exists because we skip the multiply by Q
+      // below, and Q is negative (no idea how that works out with clamp).
       st_mod.x = 1 - vf10.x;
       st_mod.y = 1 - vf10.y;
 

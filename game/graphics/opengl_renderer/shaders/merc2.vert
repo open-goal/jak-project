@@ -19,10 +19,6 @@ uniform vec3 light_ambient;
 
 // camera control
 uniform vec4 hvdf_offset;
-uniform vec4 perspective0;
-uniform vec4 perspective1;
-uniform vec4 perspective2;
-uniform vec4 perspective3;
 uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;

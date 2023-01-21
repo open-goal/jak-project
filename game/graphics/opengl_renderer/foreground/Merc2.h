@@ -9,8 +9,6 @@ class Merc2 : public BucketRenderer {
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
  private:
-
-
   bool m_use_emerc = false;
   enum MercDataMemory {
     LOW_MEMORY = 0,
@@ -45,10 +43,8 @@ class Merc2 : public BucketRenderer {
     u32 w6;
   };
 
-  void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state, bool envmap);
+  void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
   u32 alloc_lights(const VuLights& lights);
-  void set_lights(const DmaTransfer& dma);
-  void handle_matrix_dma(const DmaTransfer& dma);
 
   u32 alloc_bones(int count);
 
@@ -67,7 +63,6 @@ class Merc2 : public BucketRenderer {
     math::Vector4f tmat[4];
     math::Vector4f nmat[3];
     math::Vector4f pad;
-
     std::string to_string() const;
   };
 
@@ -77,6 +72,7 @@ class Merc2 : public BucketRenderer {
 
   static constexpr int MAX_LEVELS = 3;
   static constexpr int MAX_DRAWS_PER_LEVEL = 1024;
+  static constexpr int MAX_EVNMAP_DRAWS_PER_LEVEL = 512;
 
   math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
   ShaderMercMat m_skel_matrix_buffer[MAX_SKEL_BONES];
@@ -87,7 +83,6 @@ class Merc2 : public BucketRenderer {
     GLuint light_ambient;
 
     GLuint hvdf_offset;
-    GLuint perspective[4];
     GLuint fog;
 
     GLuint tbone;
@@ -107,26 +102,16 @@ class Merc2 : public BucketRenderer {
   Uniforms m_merc_uniforms, m_emerc_uniforms;
 
   void init_shader_common(Shader& shader, Uniforms* uniforms);
-  void render_pass(DmaFollower& dma,
-                   SharedRenderState* render_state,
-                   ScopedProfilerNode& prof,
-                   const Uniforms& uniforms,
-                   ShaderId sid, bool envmap);
-  void init_for_frame(SharedRenderState* render_state, ShaderId shader, const Uniforms& uniforms);
-  void handle_setup_dma(DmaFollower& dma,
-                        SharedRenderState* render_state,
-                        const Uniforms& uniforms);
-  void handle_all_dma(DmaFollower& dma,
-                      SharedRenderState* render_state,
-                      ScopedProfilerNode& prof,
-                      const Uniforms& uniforms, bool envmap);
-  void flush_pending_model(SharedRenderState* render_state,
-                           ScopedProfilerNode& prof,
-                           const Uniforms& uniforms, bool envmap);
+  void init_for_frame(SharedRenderState* render_state, ShaderId shader);
+  void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state);
+  void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_merc_chain(DmaFollower& dma,
                          SharedRenderState* render_state,
-                         ScopedProfilerNode& prof,
-                         const Uniforms& uniforms, bool envmap);
+                         ScopedProfilerNode& prof);
+
+  void switch_to_merc2(SharedRenderState* render_state);
+  void switch_to_emerc(SharedRenderState* render_state);
 
   GLuint m_vao;
 
@@ -143,13 +128,9 @@ class Merc2 : public BucketRenderer {
     int num_lights = 0;
     int num_draw_flush = 0;
 
-    int num_envmap_models = 0;
     int num_envmap_effects = 0;
     int num_envmap_tris = 0;
-    int num_envmap_models_missing_envmap = 0;
   } m_stats;
-
-
 
   struct Draw {
     u32 first_index;
@@ -166,13 +147,23 @@ class Merc2 : public BucketRenderer {
   struct LevelDrawBucket {
     const LevelData* level = nullptr;
     std::vector<Draw> draws;
+    std::vector<Draw> envmap_draws;
     u32 next_free_draw = 0;
+    u32 next_free_envmap_draw = 0;
 
     void reset() {
       level = nullptr;
       next_free_draw = 0;
+      next_free_envmap_draw = 0;
     }
   };
+
+  void do_draws(const Draw* draw_array,
+                const LevelData* lev,
+                u32 num_draws,
+                const Uniforms& uniforms,
+                ScopedProfilerNode& prof,
+                bool set_fade);
 
   static constexpr int MAX_LIGHTS = 1024;
   VuLights m_lights_buffer[MAX_LIGHTS];
@@ -184,7 +175,5 @@ class Merc2 : public BucketRenderer {
   u32 m_next_free_bone_vector = 0;
   size_t m_opengl_buffer_alignment = 0;
 
-  void flush_draw_buckets(SharedRenderState* render_state,
-                          ScopedProfilerNode& prof,
-                          const Uniforms& uniforms, bool envmap);
+  void flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof);
 };

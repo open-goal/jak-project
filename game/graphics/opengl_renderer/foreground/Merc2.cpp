@@ -32,77 +32,80 @@ Merc2::Merc2(const std::string& name, int my_id, bool envmap)
   for (int i = 0; i < MAX_LEVELS; i++) {
     auto& draws = m_level_draw_buckets.emplace_back();
     draws.draws.resize(MAX_DRAWS_PER_LEVEL);
+    draws.envmap_draws.resize(MAX_EVNMAP_DRAWS_PER_LEVEL);
   }
 }
 
 /*!
  * Handle the merc renderer switching to a different model.
  */
-void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state, bool envmap) {
-  // determine the name. We've packed this in a separate PC-port specific packet.
+void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state) {
+  //  ;; name   (128 char, 8 qw)
+  //  ;; lights (7 qw x 1)
+  //  ;; matrix slot string (128 char, 8 qw)
+  //  ;; matrices (7 qw x N)
+  //  ;; flags    (num-effects, effect-alpha-ignore, effect-disable)
+  //  ;; fades    (u32 x N), padding to qw aligned
+
+  // Part 1: name
+  const u8* input_data = setup.data;
   char name[128];
   strcpy(name, (const char*)setup.data);
-
-  // get the model from the loader
   m_current_model = render_state->loader->get_merc_model(name);
+  input_data += 128;
 
-  if (envmap) {
-    // we'd expect everything to have an envmap shader here, but for now let's not be strict.
-    // we might end up combining things one day.
-    bool has_some_envmap = false;
-    if (m_current_model) {
-      for (const auto& effect : m_current_model->model->effects) {
-        if (effect.has_envmap) {
-          m_stats.num_envmap_effects++;
-          has_some_envmap = true;
-          for (const auto& draw : effect.draws) {
-            m_stats.num_envmap_tris += draw.num_triangles;
-          }
-        }
-      }
-      if (has_some_envmap) {
-        m_stats.num_envmap_models++;
-      } else {
-        m_stats.num_envmap_models_missing_envmap++;
-        m_current_model.reset();  // just skip!
-      }
-    } else {
-      m_stats.num_missing_models++;
+  // Part 2: lights
+  memcpy(&m_current_lights, input_data, sizeof(VuLights));
+  input_data += sizeof(VuLights);
+
+  // Part 3: matrix slot string
+  auto* matrix_array = (const u32*)(input_data + 128);
+  int i;
+  for (i = 0; i < 128; i++) {
+    if (input_data[i] == 0xff) {
+      break;
     }
-  } else {
-    // update stats
-    if (m_current_model) {
-      m_stats.num_models++;
-      for (const auto& effect : m_current_model->model->effects) {
-        m_stats.num_effects++;
+    u32 addr;
+    memcpy(&addr, &matrix_array[i * 4], 4);
+    const u8* real_addr = setup.data - setup.data_offset + addr;
+    memcpy(&m_skel_matrix_buffer[input_data[i]], real_addr, sizeof(MercMat));
+  }
+  input_data += 128 + 16 * i;
+
+  // Part 4: flags
+  auto* flags = (const u32*)input_data;
+  int num_effects = flags[0];
+  m_current_ignore_alpha_bits = flags[1];
+  m_current_effect_enable_bits = flags[2];
+  input_data += 16;
+
+  // Part 5: fades
+  for (int ei = 0; ei < num_effects; ei++) {
+    for (int j = 0; j < 4; j++) {
+      m_fade_buffer[ei * 4 + j] = input_data[ei * 4 + j];
+    }
+  }
+
+  if (m_current_model) {
+    m_stats.num_models++;
+    for (const auto& effect : m_current_model->model->effects) {
+      bool envmap = effect.has_envmap;
+      m_stats.num_effects++;
+      m_stats.num_predicted_draws += effect.draws.size();
+      if (envmap) {
+        m_stats.num_envmap_effects++;
         m_stats.num_predicted_draws += effect.draws.size();
-        for (const auto& draw : effect.draws) {
+      }
+      for (const auto& draw : effect.draws) {
+        m_stats.num_predicted_tris += draw.num_triangles;
+        if (envmap) {
           m_stats.num_predicted_tris += draw.num_triangles;
         }
       }
-    } else {
-      m_stats.num_missing_models++;
     }
+  } else {
+    m_stats.num_missing_models++;
   }
-}
-
-/*!
- * Once-per-frame initialization
- */
-void Merc2::init_for_frame(SharedRenderState* render_state,
-                           ShaderId shader,
-                           const Uniforms& uniforms) {
-  // reset state
-  m_current_model = std::nullopt;
-
-  // activate the merc shader used for all draws
-  render_state->shaders[shader].activate();
-
-  // set uniforms that we know from render_state
-  glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
-              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
-              render_state->fog_intensity / 255);
-  glUniform1i(uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Merc2::draw_debug_window() {
@@ -114,10 +117,8 @@ void Merc2::draw_debug_window() {
   ImGui::Text("Lights   : %d", m_stats.num_lights);
   ImGui::Text("Dflush   : %d", m_stats.num_draw_flush);
 
-  ImGui::Text("EModels  : %d", m_stats.num_envmap_models);
   ImGui::Text("EEffects : %d", m_stats.num_envmap_effects);
   ImGui::Text("ETris    : %d", m_stats.num_envmap_tris);
-  ImGui::Text("EMissing : %d", m_stats.num_envmap_models_missing_envmap);
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
@@ -140,10 +141,6 @@ void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms) {
   uniforms->light_ambient = glGetUniformLocation(id, "light_ambient");
 
   uniforms->hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
-  uniforms->perspective[0] = glGetUniformLocation(id, "perspective0");
-  uniforms->perspective[1] = glGetUniformLocation(id, "perspective1");
-  uniforms->perspective[2] = glGetUniformLocation(id, "perspective2");
-  uniforms->perspective[3] = glGetUniformLocation(id, "perspective3");
 
   uniforms->fog = glGetUniformLocation(id, "fog_constants");
   uniforms->decal = glGetUniformLocation(id, "decal_enable");
@@ -153,6 +150,25 @@ void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms) {
   uniforms->ignore_alpha = glGetUniformLocation(id, "ignore_alpha");
 
   uniforms->gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
+}
+
+void Merc2::switch_to_merc2(SharedRenderState* render_state) {
+  render_state->shaders[ShaderId::MERC2].activate();
+
+  // set uniforms that we know from render_state
+  glUniform4f(m_merc_uniforms.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
+  glUniform1i(m_merc_uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
+}
+
+void Merc2::switch_to_emerc(SharedRenderState* render_state) {
+  render_state->shaders[ShaderId::EMERC].activate();
+  // set uniforms that we know from render_state
+  glUniform4f(m_emerc_uniforms.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
+  glUniform1i(m_emerc_uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 /*!
@@ -168,29 +184,16 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     }
     return;
   }
-
-  DmaFollower dma_copy = dma;
-  render_pass(dma, render_state, prof, m_merc_uniforms, ShaderId::MERC2, false);
-  if (m_use_emerc) {
-    render_pass(dma_copy, render_state, prof, m_emerc_uniforms, ShaderId::EMERC, true);
-  }
-}
-
-void Merc2::render_pass(DmaFollower& dma,
-                        SharedRenderState* render_state,
-                        ScopedProfilerNode& prof,
-                        const Uniforms& uniforms,
-                        ShaderId sid,
-                        bool envmap) {
-  init_for_frame(render_state, sid, uniforms);
+  m_current_model = std::nullopt;
+  switch_to_merc2(render_state);
 
   // iterate through the dma chain, filling buckets
-  handle_all_dma(dma, render_state, prof, uniforms, envmap);
+  handle_all_dma(dma, render_state, prof);
 
   // flush model data to buckets
-  flush_pending_model(render_state, prof, uniforms, envmap);
+  flush_pending_model(render_state, prof);
   // flush buckets to draws
-  flush_draw_buckets(render_state, prof, uniforms, envmap);
+  flush_draw_buckets(render_state, prof);
 }
 
 u32 Merc2::alloc_lights(const VuLights& lights) {
@@ -202,23 +205,10 @@ u32 Merc2::alloc_lights(const VuLights& lights) {
   return light_idx;
 }
 
-/*!
- * Store light values
- */
-void Merc2::set_lights(const DmaTransfer& dma) {
-  memcpy(&m_current_lights, dma.data, sizeof(VuLights));
-}
-
 std::string Merc2::ShaderMercMat::to_string() const {
   return fmt::format("tmat:\n{}\n{}\n{}\n{}\n", tmat[0].to_string_aligned(),
                      tmat[1].to_string_aligned(), tmat[2].to_string_aligned(),
                      tmat[3].to_string_aligned());
-}
-
-void Merc2::handle_matrix_dma(const DmaTransfer& dma) {
-  int slot = dma.vif0() & 0xff;
-  ASSERT(slot < MAX_SKEL_BONES);
-  memcpy(&m_skel_matrix_buffer[slot], dma.data, sizeof(MercMat));
 }
 
 /*!
@@ -226,9 +216,7 @@ void Merc2::handle_matrix_dma(const DmaTransfer& dma) {
  */
 void Merc2::handle_all_dma(DmaFollower& dma,
                            SharedRenderState* render_state,
-                           ScopedProfilerNode& prof,
-                           const Uniforms& uniforms,
-                           bool envmap) {
+                           ScopedProfilerNode& prof) {
   // process the first tag. this is just jumping to the merc-specific dma.
   auto data0 = dma.read_and_advance();
   ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
@@ -249,11 +237,11 @@ void Merc2::handle_all_dma(DmaFollower& dma,
   }
   // if we reach here, there's stuff to draw
   // this handles merc-specific setup DMA
-  handle_setup_dma(dma, render_state, uniforms);
+  handle_setup_dma(dma, render_state);
 
   // handle each merc transfer
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    handle_merc_chain(dma, render_state, prof, uniforms, envmap);
+    handle_merc_chain(dma, render_state, prof);
   }
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
@@ -267,9 +255,7 @@ void set_uniform(GLuint uniform, const math::Vector4f& val) {
 }
 }  // namespace
 
-void Merc2::handle_setup_dma(DmaFollower& dma,
-                             SharedRenderState* render_state,
-                             const Uniforms& uniforms) {
+void Merc2::handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state) {
   auto first = dma.read_and_advance();
 
   // 10 quadword setup packet
@@ -310,19 +296,17 @@ void Merc2::handle_setup_dma(DmaFollower& dma,
 
   // 8 qw's of low memory data
   memcpy(&m_low_memory, first.data + 16, sizeof(LowMemory));
-  //  fmt::print("low\nhvdf: {}\nfog: {}\nmat:\n{}\n{}\n{}\n{}\n\n",
-  //             m_low_memory.hvdf_offset.to_string_aligned(), m_low_memory.fog.to_string_aligned(),
-  //             m_low_memory.perspective[0].to_string_aligned(),
-  //             m_low_memory.perspective[1].to_string_aligned(),
-  //             m_low_memory.perspective[2].to_string_aligned(),
-  //             m_low_memory.perspective[3].to_string_aligned());
-  set_uniform(uniforms.hvdf_offset, m_low_memory.hvdf_offset);
-  set_uniform(uniforms.fog, m_low_memory.fog);
-  for (int i = 0; i < 4; i++) {
-    set_uniform(uniforms.perspective[i], m_low_memory.perspective[i]);
-  }
-  // todo rm.
-  glUniformMatrix4fv(uniforms.perspective_matrix, 1, GL_FALSE, &m_low_memory.perspective[0].x());
+
+  switch_to_merc2(render_state);
+  set_uniform(m_merc_uniforms.hvdf_offset, m_low_memory.hvdf_offset);
+  set_uniform(m_merc_uniforms.fog, m_low_memory.fog);
+  glUniformMatrix4fv(m_merc_uniforms.perspective_matrix, 1, GL_FALSE,
+                     &m_low_memory.perspective[0].x());
+  switch_to_emerc(render_state);
+  set_uniform(m_emerc_uniforms.hvdf_offset, m_low_memory.hvdf_offset);
+  set_uniform(m_emerc_uniforms.fog, m_low_memory.fog);
+  glUniformMatrix4fv(m_emerc_uniforms.perspective_matrix, 1, GL_FALSE,
+                     &m_low_memory.perspective[0].x());
 
   // 1 qw with another 4 vifcodes.
   u32 vifcode_final_data[4];
@@ -361,17 +345,11 @@ bool tag_is_nothing_next(const DmaFollower& dma) {
   return dma.current_tag().kind == DmaTag::Kind::NEXT && dma.current_tag().qwc == 0 &&
          dma.current_tag_vif0() == 0 && dma.current_tag_vif1() == 0;
 }
-bool tag_is_nothing_cnt(const DmaFollower& dma) {
-  return dma.current_tag().kind == DmaTag::Kind::CNT && dma.current_tag().qwc == 0 &&
-         dma.current_tag_vif0() == 0 && dma.current_tag_vif1() == 0;
-}
 }  // namespace
 
 void Merc2::handle_merc_chain(DmaFollower& dma,
                               SharedRenderState* render_state,
-                              ScopedProfilerNode& prof,
-                              const Uniforms& uniforms,
-                              bool envmap) {
+                              ScopedProfilerNode& prof) {
   while (tag_is_nothing_next(dma)) {
     auto nothing = dma.read_and_advance();
     ASSERT(nothing.size_bytes == 0);
@@ -385,109 +363,26 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   auto init = dma.read_and_advance();
 
+  while (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
+    flush_pending_model(render_state, prof);
+    init_pc_model(init, render_state);
+    for (int i = 0; i < 2; i++) {
+      auto link = dma.read_and_advance();
+      ASSERT(link.vifcode0().kind == VifCode::Kind::NOP);
+      ASSERT(link.vifcode1().kind == VifCode::Kind::NOP);
+      ASSERT(link.size_bytes == 0);
+    }
+    init = dma.read_and_advance();
+  }
+
   if (init.vifcode0().kind == VifCode::Kind::FLUSHA) {
+    int num_skipped = 0;
     while (dma.current_tag_offset() != render_state->next_bucket) {
       dma.read_and_advance();
+      num_skipped++;
     }
+    ASSERT(num_skipped < 4);
     return;
-  }
-
-  if (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
-    // we got a PC PORT packet. this contains some extra data to set up the model
-    flush_pending_model(render_state, prof, uniforms, envmap);
-    init_pc_model(init, render_state, envmap);
-
-    ASSERT(tag_is_nothing_cnt(dma) || tag_is_nothing_next(dma));
-    init = dma.read_and_advance();  // dummy tag in pc port
-    if (init.vifcode0().kind != VifCode::Kind::STROW) {
-      init = dma.read_and_advance();
-    }
-    if (init.vifcode0().kind != VifCode::Kind::STROW) {
-      init = dma.read_and_advance();
-    }
-    if (init.vifcode0().kind != VifCode::Kind::STROW) {
-      while (dma.current_tag_offset() != render_state->next_bucket) {
-        auto skip = dma.read_and_advance();
-        ASSERT(skip.vifcode0().kind == VifCode::Kind::NOP);
-        ASSERT(skip.vifcode1().kind == VifCode::Kind::NOP);
-      }
-      return;
-    }
-  }
-
-  // row stuff.
-  ASSERT(init.vifcode0().kind == VifCode::Kind::STROW);
-  ASSERT(init.size_bytes == 16);
-  // m_vif.row[0] = init.vif1();
-  // memcpy(m_vif.row + 1, init.data, 12);
-  u32 extra;
-  memcpy(&extra, init.data + 12, 4);
-  // ASSERT(extra == 0);
-  m_current_effect_enable_bits = extra;
-  m_current_ignore_alpha_bits = extra >> 16;
-  DmaTransfer next;
-
-  bool setting_up = true;
-  u32 mscal_addr = -1;
-  while (setting_up) {
-    next = dma.read_and_advance();
-    u32 offset_in_data = 0;
-    //    fmt::print("START {} : {} {}\n", next.size_bytes, next.vifcode0().print(),
-    //               next.vifcode1().print());
-    auto vif0 = next.vifcode0();
-    switch (vif0.kind) {
-      case VifCode::Kind::NOP:
-      case VifCode::Kind::FLUSHE:
-        break;
-      case VifCode::Kind::STMOD:
-        ASSERT(vif0.immediate == 0 || vif0.immediate == 1);
-        // m_vif.stmod = vif0.immediate;
-        break;
-      case VifCode::Kind::PC_PORT2:
-        memcpy(m_fade_buffer, next.data, 4 * kMaxEffect);
-        continue;
-        break;
-      default:
-        ASSERT(false);
-    }
-
-    auto vif1 = next.vifcode1();
-    switch (vif1.kind) {
-      case VifCode::Kind::UNPACK_V4_8: {
-        VifCodeUnpack up(vif1);
-        offset_in_data += 4 * vif1.num;
-      } break;
-      case VifCode::Kind::UNPACK_V4_32: {
-        VifCodeUnpack up(vif1);
-        if (up.addr_qw == 132 && vif1.num == 8) {
-          set_lights(next);
-        } else if (vif1.num == 7) {
-          handle_matrix_dma(next);
-        }
-        offset_in_data += 16 * vif1.num;
-      } break;
-      case VifCode::Kind::MSCAL:
-        // fmt::print("cal\n");
-        mscal_addr = vif1.immediate;
-        ASSERT(next.size_bytes == 0);
-        setting_up = false;
-        break;
-      default:
-        ASSERT(false);
-    }
-
-    ASSERT(offset_in_data <= next.size_bytes);
-    if (offset_in_data < next.size_bytes) {
-      ASSERT((offset_in_data % 4) == 0);
-      u32 leftover = next.size_bytes - offset_in_data;
-      if (leftover < 16) {
-        for (u32 i = 0; i < leftover; i++) {
-          ASSERT(next.data[offset_in_data + i] == 0);
-        }
-      } else {
-        ASSERT(false);
-      }
-    }
   }
 }
 
@@ -517,16 +412,6 @@ u32 Merc2::alloc_bones(int count) {
       shader_mat[bv++] = skel_mat.nmat[j];
     }
 
-    // we could include the effect of the perspective matrix here.
-    //        for (int j = 0; j < 3; j++) {
-    //          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
-    //          tbone_buffer[i][j].w() += p.w() * bone_mat[j].z();
-    //          tbone_buffer[i][j] *= scale;
-    //        }
-    //
-    //        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) +
-    //        m_low_memory.perspective[3]; tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
-
     m_next_free_bone_vector += 8;
   }
 
@@ -541,10 +426,7 @@ u32 Merc2::alloc_bones(int count) {
 /*!
  * Flush a model to draw buckets
  */
-void Merc2::flush_pending_model(SharedRenderState* render_state,
-                                ScopedProfilerNode& prof,
-                                const Uniforms& uniforms,
-                                bool envmap) {
+void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (!m_current_model) {
     return;
   }
@@ -556,13 +438,13 @@ void Merc2::flush_pending_model(SharedRenderState* render_state,
 
   if (m_next_free_light >= MAX_LIGHTS) {
     fmt::print("MERC2 out of lights, consider increasing MAX_LIGHTS\n");
-    flush_draw_buckets(render_state, prof, uniforms, envmap);
+    flush_draw_buckets(render_state, prof);
   }
 
   if (m_next_free_bone_vector + m_opengl_buffer_alignment + bone_count * 8 >
       MAX_SHADER_BONE_VECTORS) {
     fmt::print("MERC2 out of bones, consider increasing MAX_SHADER_BONE_VECTORS\n");
-    flush_draw_buckets(render_state, prof, uniforms, envmap);
+    flush_draw_buckets(render_state, prof);
   }
 
   // find a level bucket
@@ -579,9 +461,9 @@ void Merc2::flush_pending_model(SharedRenderState* render_state,
     if (m_next_free_level_bucket >= m_level_draw_buckets.size()) {
       // out of room, flush
       // fmt::print("MERC2 out of levels, consider increasing MAX_LEVELS\n");
-      flush_draw_buckets(render_state, prof, uniforms, envmap);
+      flush_draw_buckets(render_state, prof);
       // and retry the whole thing.
-      flush_pending_model(render_state, prof, uniforms, envmap);
+      flush_pending_model(render_state, prof);
       return;
     }
     // alloc a new one
@@ -593,9 +475,19 @@ void Merc2::flush_pending_model(SharedRenderState* render_state,
   if (lev_bucket->next_free_draw + model->max_draws >= lev_bucket->draws.size()) {
     // out of room, flush
     fmt::print("MERC2 out of draws, consider increasing MAX_DRAWS_PER_LEVEL\n");
-    flush_draw_buckets(render_state, prof, uniforms, envmap);
+    flush_draw_buckets(render_state, prof);
     // and retry the whole thing.
-    flush_pending_model(render_state, prof, uniforms, envmap);
+    flush_pending_model(render_state, prof);
+    return;
+  }
+
+  if (lev_bucket->next_free_envmap_draw + model->max_draws >= lev_bucket->envmap_draws.size()) {
+    // out of room, flush
+    fmt::print("MERC2 out of envmap draws, consider increasing MAX_ENVMAP_DRAWS_PER_LEVEL\n");
+    // or, use a more accurate max_draws for envmap.
+    flush_draw_buckets(render_state, prof);
+    // and retry the whole thing.
+    flush_pending_model(render_state, prof);
     return;
   }
 
@@ -611,21 +503,34 @@ void Merc2::flush_pending_model(SharedRenderState* render_state,
 
     u8 ignore_alpha = (m_current_ignore_alpha_bits & (1 << ei));
     auto& effect = model->effects[ei];
-    if (envmap && !effect.has_envmap) {
-      continue;
+    if (effect.has_envmap) {
+      for (auto& mdraw : effect.draws) {
+        Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
+        draw->first_index = mdraw.first_index;
+        draw->index_count = mdraw.index_count;
+        draw->mode = effect.envmap_mode;
+        draw->texture = effect.envmap_texture;
+        draw->first_bone = first_bone;
+        draw->light_idx = lights;
+        draw->num_triangles = mdraw.num_triangles;
+        draw->ignore_alpha = false;
+        for (int i = 0; i < 4; i++) {
+          draw->fade[i] = m_fade_buffer[4 * ei + i];
+        }
+      }
     }
     for (auto& mdraw : effect.draws) {
       Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
       draw->first_index = mdraw.first_index;
       draw->index_count = mdraw.index_count;
-      draw->mode = envmap ? effect.envmap_mode : mdraw.mode;
-      draw->texture = envmap ? effect.envmap_texture : mdraw.tree_tex_id;
+      draw->mode = mdraw.mode;
+      draw->texture = mdraw.tree_tex_id;
       draw->first_bone = first_bone;
       draw->light_idx = lights;
       draw->num_triangles = mdraw.num_triangles;
-      draw->ignore_alpha = envmap ? false : ignore_alpha;
+      draw->ignore_alpha = ignore_alpha;
       for (int i = 0; i < 4; i++) {
-        draw->fade[i] = envmap ? m_fade_buffer[4 * ei + i] : 0;
+        draw->fade[i] = 0;
       }
     }
   }
@@ -633,10 +538,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state,
   m_current_model = std::nullopt;
 }
 
-void Merc2::flush_draw_buckets(SharedRenderState* render_state,
-                               ScopedProfilerNode& prof,
-                               const Uniforms& uniforms,
-                               bool envmap) {
+void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   m_stats.num_draw_flush++;
 
   for (u32 li = 0; li < m_next_free_level_bucket; li++) {
@@ -704,8 +606,6 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state,
                            (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array
     );
 
-    int last_tex = -1;
-    int last_light = -1;
     m_stats.num_bones_uploaded += m_next_free_bone_vector;
 
     glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
@@ -713,51 +613,65 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state,
                     m_shader_bone_vector_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    for (u32 di = 0; di < lev_bucket.next_free_draw; di++) {
-      auto& draw = lev_bucket.draws[di];
-      glUniform1i(uniforms.ignore_alpha, draw.ignore_alpha);
-      if ((int)draw.texture != last_tex) {
-        if (draw.texture < lev->textures.size()) {
-          glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
-        } else {
-          fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
-        }
-        last_tex = draw.texture;
-      }
-
-      if ((int)draw.light_idx != last_light) {
-        set_uniform(uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
-        set_uniform(uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
-        set_uniform(uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
-        set_uniform(uniforms.light_color[0], m_lights_buffer[draw.light_idx].color0);
-        set_uniform(uniforms.light_color[1], m_lights_buffer[draw.light_idx].color1);
-        set_uniform(uniforms.light_color[2], m_lights_buffer[draw.light_idx].color2);
-        set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
-        last_light = draw.light_idx;
-      }
-      setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
-
-      glUniform1i(uniforms.decal, draw.mode.get_decal());
-
-      if (envmap) {
-        math::Vector4f fade =
-            math::Vector4f(draw.fade[0], draw.fade[1], draw.fade[2], draw.fade[3]) / 255.f;
-        set_uniform(uniforms.fade, fade);
-
-        // hack checkerboard
-        // glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
-      }
-
-      prof.add_draw_call();
-      prof.add_tri(draw.num_triangles);
-      glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
-                        sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
-      glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
-                     (void*)(sizeof(u32) * draw.first_index));
+    switch_to_merc2(render_state);
+    do_draws(lev_bucket.draws.data(), lev, lev_bucket.next_free_draw, m_merc_uniforms, prof, false);
+    if (lev_bucket.next_free_envmap_draw) {
+      switch_to_emerc(render_state);
+      do_draws(lev_bucket.envmap_draws.data(), lev, lev_bucket.next_free_envmap_draw,
+               m_emerc_uniforms, prof, true);
     }
   }
 
   m_next_free_light = 0;
   m_next_free_bone_vector = 0;
   m_next_free_level_bucket = 0;
+}
+
+void Merc2::do_draws(const Draw* draw_array,
+                     const LevelData* lev,
+                     u32 num_draws,
+                     const Uniforms& uniforms,
+                     ScopedProfilerNode& prof,
+                     bool set_fade) {
+  int last_tex = -1;
+  int last_light = -1;
+  for (u32 di = 0; di < num_draws; di++) {
+    auto& draw = draw_array[di];
+    glUniform1i(uniforms.ignore_alpha, draw.ignore_alpha);
+    if ((int)draw.texture != last_tex) {
+      if (draw.texture < lev->textures.size()) {
+        glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
+      } else {
+        fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
+      }
+      last_tex = draw.texture;
+    }
+
+    if ((int)draw.light_idx != last_light) {
+      set_uniform(uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
+      set_uniform(uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
+      set_uniform(uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
+      set_uniform(uniforms.light_color[0], m_lights_buffer[draw.light_idx].color0);
+      set_uniform(uniforms.light_color[1], m_lights_buffer[draw.light_idx].color1);
+      set_uniform(uniforms.light_color[2], m_lights_buffer[draw.light_idx].color2);
+      set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
+      last_light = draw.light_idx;
+    }
+    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
+
+    glUniform1i(uniforms.decal, draw.mode.get_decal());
+
+    if (set_fade) {
+      math::Vector4f fade =
+          math::Vector4f(draw.fade[0], draw.fade[1], draw.fade[2], draw.fade[3]) / 255.f;
+      set_uniform(uniforms.fade, fade);
+    }
+
+    prof.add_draw_call();
+    prof.add_tri(draw.num_triangles);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
+                      sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
+    glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
+                   (void*)(sizeof(u32) * draw.first_index));
+  }
 }

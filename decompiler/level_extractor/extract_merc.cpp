@@ -701,7 +701,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         size_t effect_idx,
                                         bool dump,
                                         const TextureDB& tex_db,
-                                        tfrag3::Level& out) {
+                                        tfrag3::Level& out,
+                                        GameVersion version) {
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
@@ -717,10 +718,23 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 tex_combo = (((u32)tpage) << 16) | tidx;
     result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo);
   } else if (input_effect.envmap_or_effect_usage) {
-    u32 env = 0x10000000;  // jak 1, check for jak 2.
-    u32 tpage = env >> 20;
-    u32 tidx = (env >> 8) & 0b1111'1111'1111;
-    u32 tex_combo = (((u32)tpage) << 16) | tidx;
+    u32 tex_combo = 0;
+    switch (version) {
+      case GameVersion::Jak1: {
+        u32 env = 0x10000000;  // jak 1, check for jak 2.
+        u32 tpage = env >> 20;
+        u32 tidx = (env >> 8) & 0b1111'1111'1111;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak2: {
+        u32 tpage = 0x1f;
+        u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
+
     result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo);
 
     DrawMode mode;
@@ -941,7 +955,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
-                  bool dump_level) {
+                  bool dump_level,
+                  GameVersion version) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -961,8 +976,8 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, map,
-                                                    ctrls[ci].name, ci, ei, dump_level, tex_db,
-                                                    out));
+                                                    ctrls[ci].name, ci, ei, dump_level, tex_db, out,
+                                                    version));
     }
   }
 
