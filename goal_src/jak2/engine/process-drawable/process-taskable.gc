@@ -17,8 +17,8 @@
 
 (defbehavior process-taskable-anim-loop process-taskable ((arg0 (function process-taskable object)))
   "Takes in a function and loops as long as it's return value is truthy
-   Seen take in - `true-func` which takes no args TODO - seems fishy
-                - a `(process-taskable process) lambda"
+Seen take in - `true-func` which takes no args TODO - seems fishy
+- a `(process-taskable process) lambda"
   (while (arg0 self)
     (let ((s5-0 (get-art-elem self)))
       (when (!= (ja-group) s5-0)
@@ -43,7 +43,7 @@
 ;; WARN: Return type mismatch art-joint-anim vs art-element.
 (defmethod get-art-elem process-taskable ((obj process-taskable))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (the-as art-element (if (> (-> obj skel active-channels) 0)
                           (-> obj skel root-channel 0 frame-group)
                           )
@@ -76,15 +76,15 @@
 (defstate hide (process-taskable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'say)
-                       (let ((v0-0 (-> self clock frame-counter)))
-                         (set! (-> self want-to-say) v0-0)
-                         v0-0
-                         )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('say)
+                      (let ((v0-0 (-> self clock frame-counter)))
+                        (set! (-> self want-to-say) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
@@ -105,7 +105,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((v1-1 (game-task-control-method-9 (-> self task))))
+    (let ((v1-1 (get-current-task-event (-> self task))))
       (if (and (nonzero? (-> v1-1 action)) (or (not (logtest? (-> self draw status) (draw-control-status on-screen)))
                                                (logtest? (-> v1-1 flags) (game-task-flags gatflag-01))
                                                (< (- (-> self clock frame-counter) (-> self birth-time)) (seconds 0.1))
@@ -172,7 +172,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((gp-0 (game-task-control-method-9 (-> self task))))
+    (let ((gp-0 (get-current-task-event (-> self task))))
       (cond
         ((= (-> gp-0 action) (game-task-action hide))
          (if (or (not (logtest? (-> self draw status) (draw-control-status on-screen)))
@@ -267,16 +267,16 @@
                          )
                    )
                (let ((v1-84 s5-1))
-                 (set! (-> v1-84 width) (the float (the-as float #x154)))
+                 (set! (-> v1-84 width) (the float 340))
                  )
                (let ((v1-85 s5-1))
-                 (set! (-> v1-85 height) (the float (the-as float #x50)))
+                 (set! (-> v1-85 height) (the float 80))
                  )
                (let ((v1-86 s5-1))
                  (set! (-> v1-86 scale) 0.9)
                  )
                (set! (-> s5-1 flags) (font-flags shadow kerning left large))
-               (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) s5-1 #f 44 320)
+               (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) s5-1 #f 44 (bucket-id progress))
                )
              (when (cpad-pressed? 0 triangle)
                (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
@@ -430,7 +430,7 @@
   (set! (-> obj talk-height) (res-lump-float (-> obj entity) 'height :default 8192.0))
   (set! (-> obj slave) (the-as handle #f))
   (set! (-> obj draw shadow-ctrl)
-        (new 'process 'shadow-control 0.0 0.0 614400.0 0.000000000000000000000000000000000000000000084 245760.0)
+        (new 'process 'shadow-control 0.0 0.0 614400.0 (shadow-flags shdf02 shdf03 shdf04 disable-draw) 245760.0)
         )
   (let ((s5-0 0))
     (let ((v1-15 (the-as joint (get-art-by-name-method (-> obj draw jgeo) "main" (the-as type #f)))))
@@ -457,6 +457,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! process-taskable ((obj process-taskable) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (stack-size-set! (-> obj main-thread) 512)
   (process-taskable-method-31 obj)
   (process-drawable-from-entity! obj arg0)
@@ -472,26 +478,8 @@
       (format (clear *temp-string*) "skel-~S" (-> obj draw art-group name))
       (let ((s4-3 (s4-2 s5-1 *temp-string* (the-as (pointer uint32) #f))))
         (when s4-3
-          (let* ((s3-2 (get-process *default-dead-pool* manipy #x4000))
-                 (s5-2
-                   (when s3-2
-                     (let ((t9-12 (method-of-type manipy activate)))
-                       (t9-12 (the-as manipy s3-2) obj (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((t9-13 run-function-in-process)
-                           (a0-14 s3-2)
-                           (a1-10 manipy-init)
-                           (a2-9 (-> obj root-override trans))
-                           (a3-3 (-> obj entity))
-                           (t1-2 #f)
-                           )
-                       0
-                       ((the-as (function object object object object object object none) t9-13) a0-14 a1-10 a2-9 a3-3 s4-3 t1-2)
-                       )
-                     (-> s3-2 ppointer)
-                     )
-                   )
-                 )
+          (let ((s5-2 (process-spawn manipy :init manipy-init (-> obj root-override trans) (-> obj entity) s4-3 #f 0 :to obj))
+                )
             (send-event (ppointer->process s5-2) 'anim-mode 'mirror)
             (send-event (ppointer->process s5-2) 'mirror #t)
             )
@@ -503,5 +491,3 @@
   (go (method-of-object obj hide))
   (none)
   )
-
-

@@ -5,6 +5,12 @@
 ;; name in dgo: collectables
 ;; dgos: GAME, ENGINE
 
+
+(define-extern runs-on-orb-pickup (function process-tree none))
+(define-extern runs-on-fly-pickup (function none))
+(define-extern runs-on-cell-pickup (function symbol none))
+(define-extern runs-on-eco-pickup (function pickup-type process-tree none))
+
 (declare-type vent process-drawable)
 (declare-type eco eco-collectable)
 
@@ -789,6 +795,7 @@
        (sound-play "pill-pickup")
        )
       )
+    (runs-on-eco-pickup (-> self fact pickup-type) (ppointer->process (-> self parent)))  ;; trigger hook for mod base
     (if (nonzero? (-> self part))
         (kill-and-free-particles (-> self part))
         )
@@ -1198,7 +1205,9 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (process-entity-status! self (entity-perm-status dead) #t)
+    (runs-on-orb-pickup (ppointer->process (-> self parent)))  ;; trigger hook for mod base
     (convert-to-hud-object self (the-as hud (ppointer->process (-> *hud-parts* money))))
+
     (none)
     )
   )
@@ -1594,6 +1603,7 @@
   :code (behavior ((arg0 object) (arg1 handle))
     (local-vars (sv-96 res-tag))
     (sound-play "pu-powercell")
+    (runs-on-cell-pickup 'pickup)
     (clear-collide-with-as (-> self root-override))
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self draw status) (draw-status hidden))
@@ -1952,6 +1962,7 @@
         (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'show)
         )
       )
+    (runs-on-cell-pickup 'cutscene-end)
     (convert-to-hud-object self (the-as hud (ppointer->process (-> *hud-parts* fuel-cell))))
     (none)
     )
@@ -2191,6 +2202,7 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status complete) #t)
     (sound-play "buzzer-pickup")
+    (runs-on-fly-pickup)
     (case (-> (level-get-target-inside *level*) name)
       (('training)
        (level-hint-spawn
@@ -2890,13 +2902,14 @@
 
 (defstate vent-wait-for-touch (vent)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (or (= arg2 'touch) (= arg2 'attack))
+    (when (and (or (= arg2 'touch) (= arg2 'attack))
              (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-1 from) self)
                (set! (-> a1-1 num-params) 2)
                (set! (-> a1-1 message) 'get-pickup)
                (set! (-> a1-1 param 0) (the-as uint (-> self fact pickup-type)))
                (set! (-> a1-1 param 1) (the-as uint (-> self fact pickup-amount)))
+               (runs-on-eco-pickup (-> self fact pickup-type) self)
                (and (= (send-event-function arg0 a1-1) #t)
                     (or (logtest? (-> self fact options) (fact-options powerup)) (send-event arg0 'powerup))
                     )

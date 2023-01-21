@@ -20,11 +20,11 @@
 (define *CAM_POINT_WATCH-bank* (new 'static 'cam-point-watch-bank :speed 1600.0 :rot-speed (degrees 0.6)))
 
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (if (= v1-0 'teleport)
                          #f
-                         (cam-standard-event-handler arg0 arg1 arg2 arg3)
+                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
                          )
               )
       )
@@ -42,7 +42,7 @@
       (let ((s5-0 (new-stack-vector0))
             (gp-0 (new-stack-vector0))
             )
-        (when (zero? (logand (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+        (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
           (let ((f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
                 (f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
                 (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0))
@@ -66,7 +66,7 @@
           (let ((s4-0 (new-stack-vector0)))
             (let ((s3-0 (new-stack-matrix0)))
               (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
-              (vector-matrix*! s4-0 (the-as vector (&-> self stack 112)) s3-0)
+              (vector-matrix*! s4-0 (-> self tracking inv-mat vector 2) s3-0)
               (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
               (vector-matrix*! s4-0 s4-0 s3-0)
               )
@@ -126,18 +126,12 @@
                  (+! (-> arg1 y) f26-0)
                  (+! (-> arg1 z) f22-0)
                  (+! (-> arg0 x) f24-0)
-                 (let ((f0-13 (+ (-> arg0 y) f0-12)))
-                   (set! (-> arg0 y) f0-13)
-                   f0-13
-                   )
+                 (set! (-> arg0 y) (+ (-> arg0 y) f0-12))
                  )
                )
              (else
                (+! (-> arg0 y) (* (- (-> v1-0 x)) (-> *CAM_FREE-bank* rot-speed)))
-               (let ((f0-17 (+ (-> arg0 x) (* (-> v1-0 y) (-> *CAM_FREE-bank* rot-speed)))))
-                 (set! (-> arg0 x) f0-17)
-                 f0-17
-                 )
+               (set! (-> arg0 x) (+ (-> arg0 x) (* (-> v1-0 y) (-> *CAM_FREE-bank* rot-speed))))
                )
              )
            )
@@ -145,17 +139,11 @@
        )
       ((logtest? (-> *mouse* button0-abs 0) 2)
        (+! (-> arg1 x) (* (-> v1-0 x) (-> *CAM_FREE-bank* speed)))
-       (let ((f0-21 (+ (-> arg1 z) (* (-> v1-0 y) (-> *CAM_FREE-bank* speed)))))
-         (set! (-> arg1 z) f0-21)
-         f0-21
-         )
+       (set! (-> arg1 z) (+ (-> arg1 z) (* (-> v1-0 y) (-> *CAM_FREE-bank* speed))))
        )
       ((logtest? (-> *mouse* button0-abs 0) 4)
        (+! (-> arg1 x) (* (-> v1-0 x) (-> *CAM_FREE-bank* speed)))
-       (let ((f0-25 (+ (-> arg1 y) (* (-> v1-0 y) (-> *CAM_FREE-bank* speed)))))
-         (set! (-> arg1 y) f0-25)
-         f0-25
-         )
+       (set! (-> arg1 y) (+ (-> arg1 y) (* (-> v1-0 y) (-> *CAM_FREE-bank* speed))))
        )
       )
     )
@@ -356,7 +344,7 @@
               )
             )
           )
-        (when (zero? (logand (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+        (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
           (let ((f28-14 (analog-input (the-as int (-> *cpad-list* cpads arg3 leftx)) 128.0 48.0 110.0 -1.0))
                 (f30-14 (analog-input (the-as int (-> *cpad-list* cpads arg3 lefty)) 128.0 48.0 110.0 -1.0))
                 (f26-0 (analog-input (the-as int (-> *cpad-list* cpads arg3 rightx)) 128.0 48.0 110.0 -1.0))
@@ -448,11 +436,11 @@
   )
 
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (if (= v1-0 'teleport)
                          #f
-                         (cam-standard-event-handler arg0 arg1 arg2 arg3)
+                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
                          )
               )
       )
@@ -468,7 +456,7 @@
   :code (behavior ()
     (until #f
       (let ((a2-0 (-> *camera* local-down)))
-        (if (logtest? (-> self options) 8)
+        (if (logtest? (-> self options) (cam-slave-options-u32 ALLOW_Z_ROT))
             (set! a2-0 (the-as vector #f))
             )
         (cam-free-floating-move
@@ -484,7 +472,3 @@
     (none)
     )
   )
-
-
-
-

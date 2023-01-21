@@ -218,7 +218,7 @@
                            )
                        )
                  )
-            (gui-control-method-9
+            (add-process
               *gui-control*
               obj
               (gui-channel guard)
@@ -256,21 +256,19 @@
 (defstate active (guard-conversation)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'trigger)
-                        (let ((v0-0 #t))
-                          (set! (-> self triggered?) v0-0)
-                          v0-0
-                          )
+    (the-as object (case event-type
+                     (('trigger)
+                      (let ((v0-0 #t))
+                        (set! (-> self triggered?) v0-0)
+                        v0-0
                         )
-                       ((= v1-0 'untrigger)
-                        (set! (-> self triggered?) #f)
-                        #f
-                        )
-                       )
-              )
-      )
+                      )
+                     (('untrigger)
+                      (set! (-> self triggered?) #f)
+                      #f
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (let ((gp-0 #t))
@@ -296,11 +294,11 @@
           (go-virtual die)
           )
       )
-    (if (nonzero? (gui-control-method-17
+    (if (nonzero? (get-status
                     *gui-control*
                     (the-as
                       sound-id
-                      (gui-control-method-14 *gui-control* (the-as string #f) (gui-channel guard) (gui-action none))
+                      (lookup-gui-connection-id *gui-control* (the-as string #f) (gui-channel guard) (gui-action none))
                       )
                     )
                   )
@@ -317,7 +315,7 @@
 (defstate notice (guard-conversation)
   :virtual #t
   :code (behavior ()
-    (gui-control-method-16
+    (set-action!
       *gui-control*
       (gui-action stop)
       (the-as sound-id 1)
@@ -328,7 +326,7 @@
       (the-as process #f)
       )
     (let ((v1-2 (rand-vu-int-count 3)))
-      (gui-control-method-9
+      (add-process
         *gui-control*
         self
         (gui-channel guard)
@@ -348,14 +346,14 @@
         0
         )
       )
-    (until (= (gui-control-method-17
+    (until (= (get-status
                 *gui-control*
                 (the-as
                   sound-id
-                  (gui-control-method-14 *gui-control* (the-as string #f) (gui-channel guard) (gui-action none))
+                  (lookup-gui-connection-id *gui-control* (the-as string #f) (gui-channel guard) (gui-action none))
                   )
                 )
-              (gui-action none)
+              (gui-status unknown)
               )
       (suspend)
       )
@@ -377,6 +375,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! guard-conversation ((obj guard-conversation) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> obj triggered?) #f)
   (set! (-> obj root) (new 'process 'trsqv))

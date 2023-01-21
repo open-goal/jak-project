@@ -544,6 +544,16 @@
     )
   )
 
+;; hack for the smoothed matrix from vectors to handle cases where they accidentally set turnvf to 0.
+;; this causes the smoothing to go away on ps2, due to some behavior of inf/nan that differ.
+;; if we cheat this to a small but nonzero value, it behaves like on ps2.
+(defmacro int-to-float-nonzero-hack (f)
+  `(if (= ,f 0)
+       0.00000000001
+       (the float ,f)
+       )
+  )
+
 (defun matrix-from-two-vectors-smooth! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
   "This function can help smoothly rotate from a current heading vector to a target one.
    It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
@@ -554,7 +564,7 @@
     (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
            (f0-1 (vector-dot arg1 arg2))
            (f0-2 (acos f0-1))
-           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-2)) (the float arg4))))
+           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-2)) (int-to-float-nonzero-hack arg4))))
            (f30-0 (fmax (fmin f0-2 f1-2) (- f1-2)))
            )
       (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))
@@ -570,7 +580,7 @@
     (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
            (f0-1 (vector-dot arg1 arg2))
            (f0-3 (- (acos f0-1)))
-           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-3)) (the float arg4))))
+           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-3)) (int-to-float-nonzero-hack arg4))))
            (f30-0 (fmax (fmin f0-3 f1-2) (- f1-2)))
            )
       (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))

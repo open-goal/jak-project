@@ -333,7 +333,7 @@
 
 (defmethod draw-laser-sight guard-shot ((obj guard-shot))
   "TODO - confirm If applicable, draw the laser sight particles
-       :virtual"
+:virtual"
   (draw-beam (-> *part-id-table* 610) (-> obj tail-pos) (-> obj starting-dir) #f #t)
   (let* ((a0-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> obj starting-dir) 2048.0))
          (v1-2 (vector+! (new 'stack-no-clear 'vector) (-> obj tail-pos) a0-3))
@@ -547,8 +547,8 @@
         (set! (-> v1-5 notify-radius) 122880.0)
         (set! (-> v1-5 danger-level) 1.0)
         (set! (-> v1-5 decay-rate) 0.0)
-        (set! (-> v1-5 flags) (the-as uint 1))
-        (set! (-> v1-5 danger-type) (the-as uint 0))
+        (set! (-> v1-5 flags) (traffic-danger-flags tdf0))
+        (set! (-> v1-5 danger-type) (traffic-danger-type tdt0))
         (set! (-> v1-5 handle) (the-as uint #f))
         (send-event *traffic-manager* 'add-danger-sphere v1-5)
         )
@@ -657,7 +657,7 @@
 
 (defmethod init-proj-settings! guard-shot ((obj guard-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   (set! (-> obj hit-actor?) #f)
   (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
   (set! (-> obj attack-mode) 'guard-shot)
@@ -680,8 +680,8 @@
   )
 
 
-(defskelgroup skel-vehicle-grenade eco-canister 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-vehicle-grenade eco-canister eco-canister-dark-lod0-jg eco-canister-dark-idle-ja
+              ((eco-canister-dark-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 0.3)
               :texture-level 6
               )
@@ -738,7 +738,7 @@
 
 (defmethod init-proj-settings! vehicle-grenade ((obj vehicle-grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   (set! (-> obj attack-mode) 'eco-dark)
   (initialize-skeleton
     obj
@@ -773,7 +773,7 @@
 
 (defmethod play-impact-sound! vehicle-grenade ((obj vehicle-grenade))
   "Plays impact sound
-       :virtual"
+:virtual"
   (let* ((a2-0 (-> obj root-override))
          (v1-0 (-> a2-0 status))
          )
@@ -792,25 +792,25 @@
 (defstate impact (vehicle-grenade)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (when (= v1-0 'touched)
-                       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                         (set! (-> a1-2 from) (process->ppointer self))
-                         (set! (-> a1-2 num-params) 2)
-                         (set! (-> a1-2 message) 'attack)
-                         (set! (-> a1-2 param 0) (-> event param 0))
-                         (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                           (set! (-> v1-5 id) (-> self attack-id))
-                           (set! (-> v1-5 mode) 'explode)
-                           (set! (-> a1-2 param 1) (the-as uint v1-5))
-                           )
-                         (if (send-event-function proc a1-2)
-                             #t
-                             )
-                         )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('touched)
+                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                        (set! (-> a1-2 from) (process->ppointer self))
+                        (set! (-> a1-2 num-params) 2)
+                        (set! (-> a1-2 message) 'attack)
+                        (set! (-> a1-2 param 0) (-> event param 0))
+                        (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                          (set! (-> v1-5 id) (-> self attack-id))
+                          (set! (-> v1-5 mode) 'explode)
+                          (set! (-> a1-2 param 1) (the-as uint v1-5))
+                          )
+                        (if (send-event-function proc a1-2)
+                            #t
+                            )
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
@@ -846,7 +846,7 @@
                                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                           :fade-start-factor 0.2
                                           :fade-time 120.0
-                                          :texture #xc08300
+                                          :texture (new 'static 'texture-id :index #x83 :page #xc)
                                           :reduction 0.6
                                           :num-points 16
                                           :box-size 2048.0
@@ -865,7 +865,7 @@
                                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                           :fade-start-factor 0.2
                                           :fade-time 120.0
-                                          :texture #xc08300
+                                          :texture (new 'static 'texture-id :index #x83 :page #xc)
                                           :reduction 0.6
                                           :num-points 16
                                           :box-size 2048.0
@@ -1021,7 +1021,7 @@
 
 (defmethod init-proj-settings! guard-lazer-shot ((obj guard-lazer-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+:virtual"
   (set! (-> obj attack-mode) 'shock)
   (set! (-> obj max-speed) 131072.0)
   (set! (-> obj timeout) (seconds 0.125))

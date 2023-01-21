@@ -7,8 +7,8 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-cty-guard-turret-button cty-guard-turret-button 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-cty-guard-turret-button cty-guard-turret-button cty-guard-turret-button-lod0-jg cty-guard-turret-button-idle-ja
+              ((cty-guard-turret-button-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3)
               )
 
@@ -111,15 +111,18 @@
 (defstate pop-up (cty-guard-turret-button)
   :virtual #t
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)) 0.4)
+    (ja-no-eval :group! cty-guard-turret-button-pop-up-ja
+                :num! (seek!
+                  (the float (+ (-> (the-as art-joint-anim cty-guard-turret-button-pop-up-ja) frames num-frames) -1))
+                  0.4
+                  )
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.4))
       )
-    (ja :group! (-> self draw art-group data 2) :num! min)
+    (ja :group! cty-guard-turret-button-idle-ja :num! min)
     (go-virtual up-idle)
     (none)
     )
@@ -131,18 +134,18 @@
 
 (defmethod idle-state-transition cty-guard-turret-button ((obj cty-guard-turret-button))
   "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
-  (setup-masks (-> obj draw) (the-as uint 0) -1)
+  (setup-masks (-> obj draw) 0 -1)
   (cond
     ((logtest? (-> obj button-status) (button-status pressed))
      (format #t "off~%")
-     (setup-masks (-> obj draw) (the-as uint 4) 0)
-     (setup-masks (-> obj draw) (the-as uint 1) 0)
+     (setup-masks (-> obj draw) 4 0)
+     (setup-masks (-> obj draw) 1 0)
      (go (method-of-object obj down-idle))
      )
     (else
       (format #t "on~%")
-      (setup-masks (-> obj draw) (the-as uint 4) 0)
-      (setup-masks (-> obj draw) (the-as uint 2) 0)
+      (setup-masks (-> obj draw) 4 0)
+      (setup-masks (-> obj draw) 2 0)
       (go (method-of-object obj pop-up))
       )
     )
@@ -153,9 +156,9 @@
   :enter (behavior ()
     (sound-play "gturret-button")
     (format #t "going-down off~%")
-    (setup-masks (-> self draw) (the-as uint 0) -1)
-    (setup-masks (-> self draw) (the-as uint 4) 0)
-    (setup-masks (-> self draw) (the-as uint 1) 0)
+    (setup-masks (-> self draw) 0 -1)
+    (setup-masks (-> self draw) 4 0)
+    (setup-masks (-> self draw) 1 0)
     (press! self #t)
     (none)
     )

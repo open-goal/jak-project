@@ -14,6 +14,8 @@
 (declare-type collide-shape-prim-group basic)
 (declare-type collide-cache-prim structure)
 (declare-type collide-shape-prim basic)
+(declare-type collide-cache basic)
+(declare-type rigid-body structure)
 
 (defenum penetrate
   :bitfield #t
@@ -270,8 +272,9 @@
 (defenum nav-flags
   :type uint8
   :bitfield #t
-  (nav-flags0 0)
-  (nav-flags1 1)
+  (has-root-sphere 0)
+  (has-extra-sphere 1)
+  (has-child-spheres 2)
   )
 ;; ---nav-flags
 
@@ -371,7 +374,7 @@
 
 (deftype collide-prim-core (structure)
   ((world-sphere vector         :inline :offset-assert   0)
-   (collide-as   collide-spec           :offset-assert  16)
+   (collide-as   collide-spec           :offset         16)
    (collide-with collide-spec           :offset-assert  20)
    (action       collide-action         :offset-assert  24)
    (prim-type    prim-type              :offset-assert  28)
@@ -405,8 +408,8 @@
   (:methods
     (new (symbol type collide-shape uint int) _type_ 0)
     (debug-draw (_type_) none 9)
-    (add-fg-prim-using-box () none 10)
-    (add-fg-prim-using-line-sphere () none 11)
+    (add-fg-prim-using-box (_type_ collide-cache) none 10)
+    (add-fg-prim-using-line-sphere (_type_ collide-cache object) none 11)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 12)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 13)
     (collide-shape-prim-method-14 () none 14)
@@ -559,11 +562,11 @@
     (move-to-ground (_type_ float float symbol collide-spec) none 60)
     (move-to-ground-point (_type_ vector vector vector) none 61)
     (compute-acc-due-to-gravity (_type_ vector float) vector 62)
-    (collide-shape-moving-method-63 () none 63)
+    (collide-shape-moving-method-63 (_type_ rigid-body float) none 63)
     (try-snap-to-surface (_type_ vector float float float) symbol 64)
     (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol 65)
     (step-collison! (_type_ vector vector float int) float 66)
-    (collide-shape-moving-method-67 () none 67)
+    (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none 67)
     )
   )
 
@@ -616,7 +619,7 @@
     )
   )
 
-;; WARN: Return type mismatch uint8 vs int.
+;; WARN: Return type mismatch uint vs int.
 (defmethod length collide-shape-prim-group ((obj collide-shape-prim-group))
   (the-as int (-> obj num-children))
   )
@@ -626,7 +629,7 @@
     (set! (-> s5-0 actor-hash-index) -1)
     (set! (-> s5-0 process) arg0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> s5-0 nav-flags) (nav-flags nav-flags0))
+    (set! (-> s5-0 nav-flags) (nav-flags has-root-sphere))
     (set! (-> s5-0 event-self) #f)
     (set! (-> s5-0 event-other) #f)
     (set! (-> s5-0 riders) (the-as (inline-array collide-rider) #f))

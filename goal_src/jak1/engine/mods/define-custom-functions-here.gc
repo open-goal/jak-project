@@ -1,0 +1,397 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: define-custom-functions-here.gc
+;; name in dgo: define-custom-functions-here
+;; dgos: TODO
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; What is this file for.
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#| This file is a place where you can define custom functions and GOAL code
+ to call inside of put-custom-code-here.gc for example I have defined a function that increases
+ the powercell count by one when it is called
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Useful GOAL modding documentation
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#| 
+Checks the condition and if it is true it does first argument if false it does optional second argument
+(if (condition) (do if true) (do if false))
+
+Gives a random FLOAT or INT between the provided ranges when called
+(rand-vu-float-range 0.0 2.0)
+(rand-vu-int-range 0 10)
+
+if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't dance
+(if (= (rand-vu-int-range 0 10) 1) (DANCE!) (Don't dance))
+
+
+|#
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Define Custom Variables to use in mods
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Define Custom Functions to call in mods
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; add your own unique custom functions here!
+
+;; Macros can be used more-or-less just like functions
+(defmacro current-cell-count ()
+  `(-> *game-info* fuel)
+  )
+
+(defmacro set-current-cell-count (count)
+  `(set! (-> *game-info* fuel) ,count)
+  )
+  
+(defun increase-power-cell-by-one ()
+  (set-current-cell-count (+ (current-cell-count) 1))
+  ;; with the two macros defined above, this is equivalent to
+  ;; (set! (-> *game-info* fuel) (+ (-> *game-info* fuel) 1))
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Define Approved Custom Functions/Macros to call in all mods
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are included with the mod base and you are welcome to use them in your mods!
+
+(defmacro current-checkpoint-name ()
+  `(-> *game-info* current-continue name)
+  )
+
+(defun set-current-checkpoint-by-name ((name string))
+  (set-continue! *game-info* name)
+  )
+
+(defmacro current-level-name ()
+  `(-> (level-get-target-inside *level*) name)
+  )
+  
+(defmacro current-orb-count ()
+  `(-> *game-info* money)
+  )
+
+(defmacro current-cutscene ()
+  `(-> *art-control* active-stream)
+  )
+
+;;This function moves an actor to the given coordinates
+;;example (move-actor farmer-3 3.0 74.0 -120.0)
+(defun move-actor ((actor-name string) (x float) (y float) (z float))
+  (when (entity-by-name actor-name)
+    (let* ((entity-actor (entity-by-name actor-name))
+           (actor (-> entity-actor extra process))
+           )
+      (when actor
+        (case (-> actor type)
+          ((fuel-cell)
+              (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the fuel-cell actor) base) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the fuel-cell actor) root-override trans) (meters x) (meters y) (meters z) 1.0)
+            (when (name= (-> (the fuel-cell actor) state name) 'wait)
+              ;; only move collision when idle (messes up glowing in cutscene)
+              (set! (-> (the fuel-cell actor) root-override root-prim world-sphere x) (meters x))
+              (set! (-> (the fuel-cell actor) root-override root-prim world-sphere y) (meters y))
+              (set! (-> (the fuel-cell actor) root-override root-prim world-sphere z) (meters z))
+              )
+            )
+          ((orb-cache-top)
+            ;; don't move while its activated (let it go up/down)
+            (when (not (name= (-> (the orb-cache-top actor) state name) 'orb-cache-top-activate))
+              (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the orb-cache-top actor) basetrans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the orb-cache-top actor) root-override trans) (meters x) (meters y) (meters z) 1.0)
+              (set! (-> (the orb-cache-top actor) root-override root-prim world-sphere x) (meters x))
+              (set! (-> (the orb-cache-top actor) root-override root-prim world-sphere y) (meters y))
+              (set! (-> (the orb-cache-top actor) root-override root-prim world-sphere z) (meters z))
+              (set-vector! (-> (the orb-cache-top actor) draw origin) (meters x) (meters y) (meters z) 1.0)
+              (let ((radius (-> (the process-drawable actor) draw radius))
+                    (bounds (res-lump-data entity-actor 'visvol (inline-array vector)))
+                    )
+                (set-vector! (-> bounds 0) (- (meters x) radius) (meters y) (- (meters z) radius) 1.0)
+                (set-vector! (-> bounds 1) (+ (meters x) radius) (meters y) (+ (meters z) radius) 1.0)
+                )
+              )
+            )
+          ((money)
+            ;; don't move orbs if being blue-eco-sucked
+            (when (not (logtest? (-> (the money actor) flags) (collectable-flags suck)))
+              (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the money actor) base) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the money actor) root-override trans) (meters x) (meters y) (meters z) 1.0)
+              (set! (-> (the money actor) root-override root-prim world-sphere x) (meters x))
+              (set! (-> (the money actor) root-override root-prim world-sphere y) (meters y))
+              (set! (-> (the money actor) root-override root-prim world-sphere z) (meters z))
+              )
+            )
+          ((crate crate-buzzer)
+            ;; only move crates if they're not jumping
+            (when (= (-> (the crate actor) smush amp) 0.0)
+              (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the crate actor) base) (meters x) (meters y) (meters z) 1.0)
+              (set-vector! (-> (the crate actor) root-override trans) (meters x) (meters y) (meters z) 1.0)
+              (set! (-> (the crate actor) root-override root-prim world-sphere x) (meters x))
+              (set! (-> (the crate actor) root-override root-prim world-sphere y) (meters y))
+              (set! (-> (the crate actor) root-override root-prim world-sphere z) (meters z))
+              )
+            )
+          ((darkvine)
+            (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+            (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+            (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+          )
+          (else
+            (format 0 "unexpected actor type ~S ~S ~S~%" actor-name (-> entity-actor type) (-> actor type))
+            (set-vector! (-> entity-actor trans) (meters x) (meters y) (meters z) 1.0)
+            (set-vector! (-> entity-actor extra trans) (meters x) (meters y) (meters z) 1.0)
+            ;; (set-vector! (-> (the process-drawable actor) root trans) (meters x) (meters y) (meters z) 1.0)
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;;Draws a debug sphere on the actor, takes in a string actor name and a radius for the sphere in meters
+(defun draw-debug-sphere-on-actor ((actorName string)(radius float))
+  (when *debug-segment*
+    (when (process-by-ename actorName)
+      (add-debug-sphere #t (bucket-id debug)  (-> (the-as process-drawable (process-by-ename actorName)) root trans) (meters radius) (static-rgba 0 #xff 0 #x40))
+    )
+  )
+  (none)
+)
+
+
+;;This function moves a given actor to jaks current position, then prints a (move-actors) call in gk.exe
+(defun move-to-jak ((arg0 string))
+(format #t "move-actor code:  (move-actor ~a ~m ~m ~m)~%" arg0(-> (target-pos 0) x) (-> (target-pos 0) y) (-> (target-pos 0) z))
+  (when (process-by-ename arg0)
+    (set-vector!  (-> (-> (the process-drawable (process-by-ename arg0))root)trans) (-> (target-pos 0) x) (-> (target-pos 0) y) (-> (target-pos 0) z) 1.0)
+    (if (type-type? (-> (process-by-ename arg0) type) crate)
+    (begin
+        (set! (-> (the crate (process-by-ename arg0)) base y) (-> (target-pos 0) y))
+    )
+    (none)
+    )
+
+     (if (type-type? (-> (process-by-ename arg0) type) money)
+    (begin
+        (set! (-> (the money (process-by-ename arg0)) base y) (-> (target-pos 0) y))
+    )
+    (none)
+    )
+
+     (if (type-type? (-> (process-by-ename arg0) type) fuel-cell)
+    (begin
+        (set! (-> (the fuel-cell (process-by-ename arg0)) base y) (-> (target-pos 0) y))
+    )
+    (none)
+    )
+  )
+)
+
+;; quick macro for setting vector xyz in meters, leaving w alone
+(defmacro set-vector-meters! (dst x y z)
+  `(set-vector! ,dst (meters ,x) (meters ,y) (meters ,z) (-> ,dst w))
+  )
+
+;; quick macro for constructing static vector with w=1
+(defmacro static-vector-meters (x y z)
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w 1.0)
+  )
+
+;; prints vector xyz in meters
+(defmacro print-vector-meters (vec &key (dst #t))
+  `(format ,dst "~m ~m ~m~%" (-> ,vec x) (-> ,vec y) (-> ,vec z))
+  )
+
+;; takes a path-control and xyz values to offsets every node in the path by
+(defmacro shift-path! (path x y z)
+  `(let ((voff (static-vector-meters ,x ,y ,z)))
+    (dotimes (idx (-> ,path num-cverts))
+      (vector+! (-> ,path cverts idx) (-> ,path cverts idx) voff)
+      )
+    )
+  )
+
+;; prints all the nodes in a path in meters
+(defmacro path-print-meters (path)
+  `(dotimes (idx (-> ,path num-cverts))
+    (print-vector-meters (-> ,path cverts idx))
+    )
+  )
+
+;; prints the position (root trans) of a process-drawable
+(defmacro pd-pos-m (procname)
+  `(let* ((obj (the process-drawable (process-by-ename ,procname)))
+          (vec (-> obj root trans)))
+    (format 0 "~m ~m ~m~%" (-> vec x) (-> vec y) (-> vec z) 4096.0)
+    (none)
+    )
+  )
+
+;;This function moves an actor based on jaks position + an offset
+(defun move-to-behind-jak ((arg0 string) (arg1 meters) (arg2 meters))
+ (when (process-by-ename arg0)
+    (set-vector!  (-> (-> (the process-drawable (process-by-ename arg0))root)trans) (-(-> (target-pos 0) x) (meters arg1)) (+ (-> (target-pos 0) y) (meters arg2)) (-(-> (target-pos 0) z)(meters arg1)) 1.0)
+    (if (type-type? (-> (process-by-ename arg0) type) money)
+    (begin
+        (set! (-> (the money (process-by-ename arg0)) base y) (->  (target-pos 0) y) )
+    )
+    (none)
+    )
+    (if (type-type? (-> (process-by-ename arg0) type) fuel-cell)
+    (begin
+        (set! (-> (the fuel-cell (process-by-ename arg0)) base y) (->  (target-pos 0) y) )
+    )
+    (none)
+    )
+  )
+)
+
+;;This turns on play hints
+(defun turnonplayhints ()
+(set! (-> *setting-control* default play-hints) #t)
+)
+
+;;This turns off playhints
+(defun turnoffplayhints()
+(set! (-> *setting-control* default play-hints) #f)
+)
+
+;;This turns on collision render when called
+(defun turnonCollisionmode()
+  (set! *collision-renderer* #t)
+  (logclear! *vu1-enable-user-menu* (vu1-renderer-mask tfrag trans-tfrag tie tie-near))
+)
+
+;;This turns off collision render when called
+(defun turnoffCollisionmode()
+  (set! *collision-renderer* #f)
+  (logior! *vu1-enable-user-menu* (vu1-renderer-mask tfrag trans-tfrag tie tie-near))
+)
+
+;;This makes it thunder in the current level
+(defun thunderTime()
+  (set! (-> (level-get-target-inside *level*) mood-func)update-mood-village2)
+  (set! (-> (level-get-target-inside *level*) mood) *village2-mood*)
+)
+
+;;This makes the current level dark when called
+(defun DarkesetGlitchTime()
+  (set! (-> (level-get-target-inside *level*) mood-func)update-mood-finalboss )
+  (set! (-> (level-get-target-inside *level*) mood) *finalboss-mood*)
+)
+
+;;This needs fixed
+(defun rainyTime()
+  (set! (-> (level-get-target-inside *level*) mood-func)update-mood-swamp)
+  (set! (-> (level-get-target-inside *level*) mood) *swamp-mood*)
+)
+
+;;This needs fixed
+(defun snowingTime()
+  (set! (-> (level-get-target-inside *level*) mood-func)update-mood-snow)
+  (set! (-> (level-get-target-inside *level*) mood) *snow-mood*)
+)
+
+;;This makes the current levels weather the same as village1
+(defun defaultWeatherTime()
+  (set! (-> (level-get-target-inside *level*) mood-func)update-mood-village1)
+  (set! (-> (level-get-target-inside *level*) mood) *village1-mood*)
+)
+
+;;This moves jak to a provided coordinate example call
+;;(tp-jak 0.0 12.0 32.32)
+(defun tp-jak ((arg0 float)(arg1 float)(arg2 float))
+  (set! (-> (target-pos 0) x) (meters arg0))
+  (set! (-> (target-pos 0) y) (meters arg1))
+  (set! (-> (target-pos 0) z) (meters arg2))
+)
+
+;;This returns true or false depending on if jak is within a provided distance from an actor
+(defun close? ((actor-ename string) (dist float))
+  (and 
+    (process-by-ename actor-ename)
+    (<= 
+      (vector-vector-distance 
+        (target-pos 0) 
+        (-> (the process-drawable (process-by-ename actor-ename)) root trans)
+        )
+      dist
+      )
+    )
+  )
+
+
+;;This returns true or false if jak is within a bubble defined by coordiantes and width
+(defun in-bubble? ((x float) (y float) (z float) (w float))
+  (<= 
+    (vector-vector-distance 
+      (target-pos 0) 
+      (set-vector! (new-stack-vector0) x y z 1.0)
+      )
+    (/ w 2.0)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Jak Color functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun draw-xyz ((jak target) (x float) (y float) (z float))
+  (set! (-> jak draw color-mult x) x)
+  (set! (-> jak draw color-mult y) y)
+  (set! (-> jak draw color-mult z) z)
+)
+(defun draw-normal ((jak target))
+  (draw-xyz jak 1.0 1.0 1.0)
+)
+(defun draw-white ((jak target))
+  (draw-xyz jak 10.0 10.0 10.0)
+)
+(defun draw-black ((jak target))
+  (draw-xyz jak 0.0 0.0 0.0)
+)
+(defun draw-red ((jak target))
+  (draw-xyz jak 3.0 0.0 0.0)
+)
+(defun draw-green ((jak target))
+  (draw-xyz jak 0.0 3.0 0.0)
+)
+(defun draw-blue ((jak target))
+  (draw-xyz jak 0.0 0.0 3.0)
+)
+(defun draw-yellow ((jak target))
+  (draw-xyz jak 3.0 3.0 0.0)
+)
+(defun draw-pink ((jak target))
+  (draw-xyz jak 3.0 0.0 3.0)
+)
+(defun draw-light-blue ((jak target))
+  (draw-xyz jak 0.0 3.0 3.0)
+)
+
+
+
+

@@ -5,5 +5,2465 @@
 ;; name in dgo: hiphog-scenes
 ;; dgos: HIPHOG
 
+(declare-type whack-a-metal process-drawable)
+(define-extern whack-a-metal-init (function entity-actor none :behavior whack-a-metal))
+
 ;; DECOMP BEGINS
 
+(defskelgroup skel-hip-door-b hip-door-a hip-door-a-lod0-jg hip-door-a-idle-ja
+              ((hip-door-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 5)
+              )
+
+(deftype hip-door-b (com-airlock)
+  ()
+  :heap-base #x100
+  :method-count-assert 28
+  :size-assert         #x174
+  :flag-assert         #x1c01000174
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! hip-door-b ((obj hip-door-b) (entiy entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape penetrated-by) (penetrate))
+    (let ((cshape-group (new 'process 'collide-shape-prim-group cshape (the-as uint 2) 0)))
+      (set! (-> cshape total-prims) (the-as uint 3))
+      (set! (-> cshape-group prim-core collide-as) (collide-spec obstacle))
+      (set! (-> cshape-group prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> cshape-group prim-core action) (collide-action solid))
+      (set-vector! (-> cshape-group local-sphere) 0.0 8192.0 0.0 20480.0)
+      (set! (-> cshape root-prim) cshape-group)
+      )
+    (let ((cshape-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> cshape-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> cshape-mesh prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> cshape-mesh prim-core action) (collide-action solid))
+      (set! (-> cshape-mesh transform-index) 4)
+      (set-vector! (-> cshape-mesh local-sphere) 0.0 8192.0 0.0 16384.0)
+      )
+    (let ((cshape-mesh2 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 1) (the-as uint 0))))
+      (set! (-> cshape-mesh2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> cshape-mesh2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> cshape-mesh2 prim-core action) (collide-action solid))
+      (set! (-> cshape-mesh2 transform-index) 5)
+      (set-vector! (-> cshape-mesh2 local-sphere) 0.0 8192.0 0.0 16384.0)
+      )
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root prim-core collide-with))
+      )
+    (set! (-> obj root-override) cshape)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-door-b" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! obj)
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
+  (set! (-> obj door-radius) 8192.0)
+  (go (method-of-object obj close) #t)
+  (none)
+  )
+
+(defskelgroup skel-hip-whack-a-metal hip-whack-a-metal hip-whack-a-metal-lod0-jg hip-whack-a-metal-idle-ja
+              ((hip-whack-a-metal-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -1 1 3.8)
+              :origin-joint-index 3
+              )
+
+(deftype hip-whack-a-metal (process-taskable)
+  ()
+  :heap-base #xa0
+  :method-count-assert 38
+  :size-assert         #x120
+  :flag-assert         #x2600a00120
+  )
+
+
+(defstate hide (hip-whack-a-metal)
+  :virtual #t
+  :enter (the-as (function none :behavior hip-whack-a-metal) #f)
+  :exit (the-as (function none :behavior hip-whack-a-metal) #f)
+  :code (behavior ()
+    (ja-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch draw-control vs none.
+(defmethod init-art! hip-whack-a-metal ((obj hip-whack-a-metal))
+  "@see [[initialize-skeleton]]"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-whack-a-metal" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (none)
+  )
+
+(defmethod get-art-elem hip-whack-a-metal ((obj hip-whack-a-metal))
+  "Checks various things such the current actor, task status, etc to determine the right art-group data to use
+@returns the appropriate [[art-element]] for the given NPC"
+  (case (-> (get-current-task-event (-> obj task)) action)
+    (((game-task-action play))
+     (set! (-> obj talk-message) (game-text-id text-x186))
+     )
+    (else
+      (set! (-> obj talk-message) (game-text-id text-x181))
+      )
+    )
+  (-> obj draw art-group data 2)
+  )
+
+(defstate play-game (hip-whack-a-metal)
+  :virtual #t
+  :code (behavior ((arg0 game-task-event))
+    (set-setting! 'borrow '((hiphog 0 lwhack special)) 0 0)
+    (process-taskable-anim-loop
+      (the-as (function process-taskable object) (lambda () (!= (level-status *level* 'lwhack) 'active)))
+      )
+    (let ((gp-0 (get-process *default-dead-pool* whack-a-metal #x4000)))
+      (set! (-> self slave)
+            (ppointer->handle (when gp-0
+                                (let ((t9-3 (method-of-type process activate)))
+                                  (t9-3 gp-0 self (symbol->string (-> whack-a-metal symbol)) (the-as pointer #x70004000))
+                                  )
+                                (run-now-in-process gp-0 whack-a-metal-init (-> self entity))
+                                (-> gp-0 ppointer)
+                                )
+                              )
+            )
+      )
+    (process-taskable-anim-loop (lambda ((arg0 process-taskable)) (handle->process (-> arg0 slave))))
+    (remove-setting! 'borrow)
+    (go-virtual idle)
+    (none)
+    )
+  )
+
+(deftype hip-mirror (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-hip-mirror hip-mirror hip-mirror-lod0-jg hip-mirror-idle-ja
+              ((hip-mirror-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 12)
+              )
+
+(defstate idle (hip-mirror)
+  :virtual #t
+  :code (the-as (function none :behavior hip-mirror) sleep-code)
+  :post (behavior ()
+    (let* ((f0-0 (vector-vector-distance (math-camera-pos) (-> self root trans)))
+           (f0-1 (lerp-scale 1.0 0.0 f0-0 40960.0 122880.0))
+           )
+      (ja :num-func num-func-identity :frame-num (ja-aframe f0-1 0))
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! hip-mirror ((obj hip-mirror) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj entity)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-mirror" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj skel status) (joint-control-status blend-shape))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(defpartgroup group-krew-spit
+  :id 758
+  :flags (unk-4)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 3321 :flags (bit7)))
+  )
+
+(defpart 3321
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x21 :page #xc))
+    (sp-rnd-flt spt-num 5.0 2.0 1.0)
+    (sp-flt spt-z (meters -0.05))
+    (sp-rnd-flt spt-scale-x (meters 0.01) (meters 0.005) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 64.0 32.0 1.0)
+    (sp-rnd-flt spt-b 128.0 32.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-omega 0.4096)
+    (sp-rnd-flt spt-vel-z (meters 0.006666667) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-fade-a -0.85333335 -0.85333335 1.0)
+    (sp-rnd-flt spt-accel-y -0.27306667 0.13653333 1.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12 use-global-acc)
+    (sp-func spt-func 'sparticle-motion-blur)
+    (sp-int-plain-rnd spt-next-time 0 224 1)
+    (sp-launcher-by-id spt-next-launcher 3322)
+    (sp-rnd-flt spt-launchrot-x (degrees -45.0) (degrees 90.0) 1.0)
+    (sp-rnd-flt spt-launchrot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 3322
+  :init-specs ((sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 3323)
+    )
+  )
+
+(defpart 3323
+  :init-specs ((sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 64.0 32.0 1.0)
+    (sp-rnd-flt spt-b 128.0 32.0 1.0)
+    (sp-int-plain-rnd spt-next-time 0 449 1)
+    (sp-launcher-by-id spt-next-launcher 3322)
+    )
+  )
+
+(defun hiphog-activate ()
+  (let ((mirror (entity-by-name "hip-mirror-2")))
+    (when mirror
+      (set! (-> *math-camera* mirror-trans quad) (-> mirror extra trans quad))
+      (vector-rotate-y! (-> *math-camera* mirror-normal) (new 'static 'vector :x 1.0 :w 1.0) -10297.162)
+      )
+    )
+  )
+
+(defpartgroup group-whack-gun-yellow-shot-fired
+  :id 759
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 3324))
+  )
+
+(defpartgroup group-whack-gun-smoke :id 760 :bounds (static-bspherem 0 0 0 2) :parts ((sp-item 3325)))
+
+(defpart 3324
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbd :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0.51))
+    (sp-flt spt-y (meters 0.05))
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters 0.08571429))
+    (sp-flt spt-rotvel-z (degrees 5.142857))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -3.6571429)
+    (sp-int spt-timer 35)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    )
+  )
+
+(defpart 3325
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0.5))
+    (sp-flt spt-y (meters 0.05))
+    (sp-rnd-flt spt-scale-x (meters 0.25) (meters 0.25) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-vel-y (meters 0.001))
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    )
+  )
+
+(defpartgroup group-hiphog-sig-gun-glow
+  :id 761
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 3326 :flags (bit6)))
+  )
+
+(defpart 3326
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.5))
+    (sp-flt spt-rot-x 409.6)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 192.0)
+    (sp-flt spt-b 64.0)
+    (sp-flt spt-a 16.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
+    (sp-flt spt-userdata 819.2)
+    )
+  )
+
+(defskelgroup skel-computerpaper computerpaper computerpaper-lod0-jg -1
+              ((computerpaper-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-hip-bottle-b hip-bottle-b hip-bottle-b-lod0-jg -1
+              ((hip-bottle-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 4
+              )
+
+(defskelgroup skel-hip-bottle-c hip-bottle-c hip-bottle-c-lod0-jg -1
+              ((hip-bottle-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 4
+              )
+
+(defskelgroup skel-hip-mug hip-mug hip-mug-lod0-jg -1
+              ((hip-mug-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-krew-moneybag krew-moneybag krew-moneybag-lod0-jg -1
+              ((krew-moneybag-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :origin-joint-index 3
+              )
+
+(deftype sig-npc (process-taskable)
+  ()
+  :heap-base #xa0
+  :method-count-assert 38
+  :size-assert         #x120
+  :flag-assert         #x2600a00120
+  )
+
+
+(defmethod get-art-elem sig-npc ((obj sig-npc))
+  "Checks various things such the current actor, task status, etc to determine the right art-group data to use
+@returns the appropriate [[art-element]] for the given NPC"
+  (if (task-node-open? (game-task-node forest-hunt-introduction))
+      (-> obj draw art-group data 4)
+      (-> obj draw art-group data 4)
+      )
+  )
+
+(defmethod init-art! sig-npc ((obj sig-npc))
+  "@see [[initialize-skeleton]]"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sig-highres" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw light-index) (the-as uint 10))
+  (none)
+  )
+
+(defpartgroup group-hiphog-krew-light
+  :id 762
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 3327 :flags (bit6)))
+  )
+
+(defpart 3327
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-flt spt-rot-x 2048.0)
+    (sp-flt spt-rot-z (degrees -17.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 117.0)
+    (sp-flt spt-g 80.0)
+    (sp-flt spt-b 54.0)
+    (sp-flt spt-a 48.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 1024.0)
+    )
+  )
+
+(defpartgroup group-hiphog-time-map-glow
+  :id 763
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 3328 :flags (bit6)))
+  )
+
+(defpart 3328
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 0.1))
+    (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.1) 1.0)
+    (sp-flt spt-rot-x 409.6)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 192.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 24.0)
+    (sp-rnd-flt spt-a 48.0 16.0 1.0)
+    (sp-flt spt-omega 494387.2)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 1024.0)
+    )
+  )
+
+(defpartgroup group-hiphog-time-map-glow-fx
+  :id 764
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 3330 :binding 3329)
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3329 :flags (start-dead launch-asap))
+    (sp-item 3331)
+    )
+  )
+
+(defpart 3330
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbc :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 0.15))
+    (sp-flt spt-scale-x (meters 0.02))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 32.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-3)
+    )
+  )
+
+(defpart 3329
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x29 :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 160) 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 2.2222223) 1.0)
+    (sp-flt spt-z (meters 0.2))
+    (sp-rnd-flt spt-scale-x (meters 0.01) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 64.0 1.0)
+    (sp-rnd-flt spt-g 64.0 16.0 1.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-omega 0.0 655360.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0) (meters 0.07703704) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-flt spt-vel-z (meters 0))
+    (sp-flt spt-accel-x 0.0)
+    (sp-flt spt-accel-y 0.0)
+    (sp-flt spt-accel-z 0.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-3 ready-to-launch)
+    (sp-int-plain-rnd spt-next-time 75 74 1)
+    (sp-launcher-by-id spt-next-launcher 3332)
+    )
+  )
+
+(defpart 3333
+  :init-specs ((sp-flt spt-a 128.0))
+  )
+
+(defpart 3331
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-rnd-flt spt-num 1.0 1.0 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 0.1) 1.0)
+    (sp-rnd-flt spt-y (meters -0.15) (meters 0.6) 1.0)
+    (sp-flt spt-scale-x (meters 0.01))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-rnd-flt spt-b 0.0 128.0 1.0)
+    (sp-rnd-flt spt-a 32.0 16.0 1.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    (sp-int-plain-rnd spt-next-time 100 74 1)
+    (sp-launcher-by-id spt-next-launcher 3332)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(scene-method-16 (new 'static 'scene
+                   :name "atoll-2-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "atoll-2-intro"
+                   :parts 19
+                   :command-list '((0
+                       (kill "krew-highres-1")
+                       (part-tracker
+                         "group-hiphog-sig-gun-glow"
+                         entity
+                         "sig-highres"
+                         joint
+                         "blast"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 660)
+                         )
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 251)
+                         )
+                       )
+                     (1042 (part-tracker
+                             "group-hiphog-sig-gun-glow"
+                             entity
+                             "sig-highres"
+                             joint
+                             "blast"
+                             track
+                             #t
+                             duration
+                             (frame-range 1042 1387)
+                             )
+                           )
+                     (1600 (part-tracker
+                             "group-hiphog-sig-gun-glow"
+                             entity
+                             "sig-highres"
+                             joint
+                             "blast"
+                             track
+                             #t
+                             duration
+                             (frame-range 1600 1658)
+                             )
+                           )
+                     (1767 (part-tracker
+                             "group-hiphog-sig-gun-glow"
+                             entity
+                             "sig-highres"
+                             joint
+                             "blast"
+                             track
+                             #t
+                             duration
+                             (frame-range 1767 2200)
+                             )
+                           )
+                     (1775 (part-tracker
+                             "group-hiphog-krew-light"
+                             entity
+                             "krew-highres"
+                             joint
+                             "lightEnd"
+                             track
+                             #t
+                             duration
+                             (frame-range 1775 2200)
+                             )
+                           )
+                     (2170 (fadeout (frame-time-30 30)))
+                     (10000 (task-close! "atoll-sig-introduction"))
+                     )
+                   :cut-list '(251 660 1041 1387 1515 1658 1766 2137)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sig-highres"
+                       :level 'lguard
+                       :art-group "skel-sig-highres"
+                       :prefix ""
+                       :draw-frames '((min 660) (1041 1387) (1515 1658) (1766 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x20
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "atoll-2-intro-demo"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "atoll-2-intro"
+                   :parts 19
+                   :command-list '((0 (kill "krew-highres-1")) (10000 (task-close! "atoll-sig-introduction")))
+                   :cut-list '(251 660 1041 1387 1515 1658 1766)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sig-highres"
+                       :level 'lguard
+                       :art-group "skel-sig-highres"
+                       :prefix ""
+                       :draw-frames '((min 660) (1041 1387) (1515 1658) (1766 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-demo"
+                   :end-point-obj "hiphog-demo-end"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x20
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "sewer-1-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1002000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "sewer-1-intro"
+                   :parts 31
+                   :command-list '((0 (kill "krew-highres-1") (fadein (frame-time-30 5)) (part-tracker
+                                                                             "group-hiphog-krew-light"
+                                                                             entity
+                                                                             "krew-highres"
+                                                                             joint
+                                                                             "lightEnd"
+                                                                             track
+                                                                             #t
+                                                                             duration
+                                                                             (frame-range 0 436)
+                                                                             )
+                        )
+                     (837 (part-tracker
+                            "group-hiphog-krew-light"
+                            entity
+                            "krew-highres"
+                            joint
+                            "lightEnd"
+                            track
+                            #t
+                            duration
+                            (frame-range 837 2851)
+                            )
+                          )
+                     (2933 (part-tracker
+                             "group-hiphog-krew-light"
+                             entity
+                             "krew-highres"
+                             joint
+                             "lightEnd"
+                             track
+                             #t
+                             duration
+                             (frame-range 2933 3700)
+                             )
+                           )
+                     (10000 (task-close! "sewer-enemy-introduction"))
+                     )
+                   :cut-list '(220 436 837 1089 1256 1326 1350 1430 1457 1547 1583 1798 2433 2596 2851 2932 3442 3633)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min 2851) (2932 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-movie-all"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x28
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "sewer-1-res"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "sewer-1-res"
+                   :parts 11
+                   :command-list '((0
+                       (kill "krew-highres-1")
+                       (kill "hip-door-b-1")
+                       (kill "hip-door-a-6")
+                       (fadein (seconds (new 'static 'bfloat :data 1.0)))
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 433)
+                         )
+                       )
+                     (48 (restore "hip-door-b-1") (restore "hip-door-a-6"))
+                     (528 (part-tracker
+                            "group-hiphog-krew-light"
+                            entity
+                            "krew-highres"
+                            joint
+                            "lightEnd"
+                            track
+                            #t
+                            duration
+                            (frame-range 528 696)
+                            )
+                          )
+                     (725 (part-tracker
+                            "group-hiphog-krew-light"
+                            entity
+                            "krew-highres"
+                            joint
+                            "lightEnd"
+                            track
+                            #t
+                            duration
+                            (frame-range 725 1250)
+                            )
+                          )
+                     (10000 (task-close! "sewer-enemy-talk-to-krew"))
+                     )
+                   :cut-list '(48 95 200 433 527 696 724 1042)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min 1042))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min 1042))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min 433) (527 696) (724 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x2a
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "sewer-2-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-24"
+    :art-group "scenecamera"
+    :anim "sewer-2-intro"
+    :parts 23
+    :command-list '((0 (kill "krew-highres-1") (fadein (frame-time-30 10)) (part-tracker
+                                                               "group-hiphog-krew-light"
+                                                               entity
+                                                               "krew-highres"
+                                                               joint
+                                                               "lightEnd"
+                                                               track
+                                                               #t
+                                                               duration
+                                                               (frame-range 0 2750)
+                                                               )
+         )
+      (80 (kill "hiphog-part-8"))
+      (379 (restore "hiphog-part-8"))
+      (2070 (part-tracker
+              "group-krew-spit"
+              entity
+              "krew-highres"
+              joint
+              "tongueMaster"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 2070.0) (new 'static 'bfloat :data 2090.0))
+              )
+            )
+      (2745 (fadeout (frame-time-30 5)))
+      (10000 (task-close! "sewer-board-introduction"))
+      )
+    :cut-list '(81 380 617 879 975 1036 1300 1347 1555 1660 1881 2035 2091 2201 2031 2561)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'hiphog
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x3
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'hiphog
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x3
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "krew-highres"
+        :level 'lguard
+        :art-group "skel-krew-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x3
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "hiphog-start"
+    :end-point-obj "hiphog-movie"
+    :borrow '((hiphog 0 lguard special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    :scene-task #x7e
+    )
+  )
+
+(scene-method-16 (new 'static 'scene
+                   :name "krew-delivery-res"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "krew-delivery-res"
+                   :parts 23
+                   :command-list '((0 (kill "krew-highres-1") (fadein (seconds (new 'static 'bfloat :data 0.166))))
+                     (247
+                       (part-tracker
+                         "group-hiphog-sig-gun-glow"
+                         entity
+                         "sig-highres"
+                         joint
+                         "blast"
+                         track
+                         #t
+                         duration
+                         (frame-range 247 366)
+                         )
+                       )
+                     (366
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 366 1583)
+                         )
+                       )
+                     (432
+                       (part-tracker
+                         "group-hiphog-sig-gun-glow"
+                         entity
+                         "sig-highres"
+                         joint
+                         "blast"
+                         track
+                         #t
+                         duration
+                         (frame-range 432 801)
+                         )
+                       )
+                     (1167
+                       (part-tracker
+                         "group-hiphog-sig-gun-glow"
+                         entity
+                         "sig-highres"
+                         joint
+                         "blast"
+                         track
+                         #t
+                         duration
+                         (frame-range 1167 2416)
+                         )
+                       )
+                     (1789
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 1789 1881)
+                         )
+                       )
+                     (2078
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 2078 2700)
+                         )
+                       )
+                     (2695 (fadeout (seconds (new 'static 'bfloat :data 0.166))))
+                     (10000
+                       (unless (task-closed? "city-krew-delivery-resolution") (talker-spawn "miss011"))
+                       (task-close! "city-krew-delivery-resolution")
+                       )
+                     )
+                   :cut-list '(61 246 316 366 431 528 591 801 1166 1306 1421 1583 1788 1881 2077 2281 2350 2416 2601)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min 1421) (1583 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "gun"
+                       :level #f
+                       :art-group "skel-gun"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       :no-draw-seg #x4
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min 1583) (1788 1881) (2077 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sig-highres"
+                       :level 'lguard
+                       :art-group "skel-sig-highres"
+                       :prefix ""
+                       :draw-frames '((min 61) (246 366) (431 801) (1166 2416) (2601 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-movie"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x19
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "city-meet-brutter-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "city-meet-brutter-intro"
+                   :parts 20
+                   :command-list '((0 (kill "krew-highres-1") (kill "hip-door-b-1") (kill "hip-door-a-6"))
+                     (126
+                       (restore "hip-door-b-1")
+                       (restore "hip-door-a-6")
+                       (want-display 'ctyport #f)
+                       (want-display 'ctywide #f)
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 126 2300)
+                         )
+                       )
+                     (10000
+                       (unless (task-closed? "city-meet-brutter-introduction") (talker-spawn "miss003"))
+                       (task-close! "city-meet-brutter-introduction")
+                       )
+                     )
+                   :cut-list '(40 126 410 487 1245 1290 1786 1853)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min 126) (410 1290) (1786 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "crimson-guard-highres"
+                       :level 'lguard
+                       :art-group "skel-crimson-guard-highres"
+                       :prefix ""
+                       :draw-frames '((min 93))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "gun-upgrade-a"
+                       :level 'lguard
+                       :art-group "skel-gun-upgrade-a"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-movie-all"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x7a
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "city-keira-delivery-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "city-keira-delivery-intro"
+                   :parts 21
+                   :command-list '((0 (kill "krew-highres-1") (fadein (frame-time-30 5)))
+                     (91
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 91 1066)
+                         )
+                       )
+                     (1886
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 1886 2425)
+                         )
+                       )
+                     (10000
+                       (unless (task-closed? "city-keira-delivery-introduction") (talker-spawn "miss007"))
+                       (task-close! "city-keira-delivery-introduction")
+                       )
+                     )
+                   :cut-list '(91 191 337 403 501 636 681 741 1066 1341 1441 1629 1666 1885 1992 2275 2371 2416)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min 2371))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min 1066) (1441 1666) (1885 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "palmpilot"
+                       :level 'lguard
+                       :art-group "skel-palmpilot"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "computerpaper"
+                       :level 'lguard
+                       :art-group "skel-computerpaper"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x3c
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "city-krew-collection-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "city-krew-collection-intro"
+                   :parts 28
+                   :command-list '((0 (kill "krew-highres-1") (fadein (seconds (new 'static 'bfloat :data 0.166))))
+                     (1200
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 1200 3260)
+                         )
+                       )
+                     (3257 (fadeout (seconds (new 'static 'bfloat :data 0.1))))
+                     (10000 (task-close! "city-krew-collection-introduction"))
+                     )
+                   :cut-list '(123
+                      236
+                      341
+                      401
+                      511
+                      636
+                      691
+                      751
+                      906
+                      1056
+                      1181
+                      1461
+                      1551
+                      1611
+                      1676
+                      1724
+                      1911
+                      2021
+                      2131
+                      2206
+                      2321
+                      2436
+                      2661
+                      2751
+                      2851
+                      2936
+                      3111
+                      )
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min 401) (511 636) (691 max))
+                       :scissor-frames '((2321 2436))
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min 751) (906 1461) (1551 2021) (2131 2436) (2661 2851) (2936 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'ltess
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "hip-bottle-b"
+                       :level 'ltess
+                       :art-group "skel-hip-bottle-b"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "hip-bottle-c"
+                       :level 'ltess
+                       :art-group "skel-hip-bottle-c"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tess-highres"
+                       :level 'ltess
+                       :art-group "skel-tess-highres"
+                       :prefix ""
+                       :draw-frames '((min 2206) (2436 2936) (3111 max))
+                       :scissor-frames '((341 401))
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 ltess special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x48
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "city-krew-collection-res"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "city-krew-collection-res"
+                   :parts 4
+                   :command-list '((0 (kill "krew-highres-1") (fadein (frame-time-30 5)))
+                     (100
+                       (part-tracker
+                         "group-hiphog-krew-light"
+                         entity
+                         "krew-highres"
+                         joint
+                         "lightEnd"
+                         track
+                         #t
+                         duration
+                         (frame-range 100 480)
+                         )
+                       )
+                     (10000
+                       (unless (task-closed? "city-krew-collection-resolution") (talker-spawn "miss002"))
+                       (task-close! "city-krew-collection-resolution")
+                       )
+                     )
+                   :cut-list '(30 171 260 304)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((171 260))
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "gun-upgrade-a"
+                       :level 'lguard
+                       :art-group "skel-gun-upgrade-a"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-moneybag"
+                       :level 'lsack
+                       :art-group "skel-krew-moneybag"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((ctywide 0 lsack display) (hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x4a
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "forest-hunt-camo-metal-heads-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "forest-hunt-camo-metal-heads-intro"
+                   :parts 14
+                   :command-list '((0 (kill "krew-highres-1")) (10000 (task-close! "forest-hunt-introduction")))
+                   :cut-list '(181 380 640 721 849 1005 1200 1514)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tess-highres"
+                       :level 'ltess
+                       :art-group "skel-tess-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sig-highres"
+                       :level 'ltess
+                       :art-group "skel-sig-highres"
+                       :prefix ""
+                       :draw-frames '((min 181) (721 849) (1005 max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 ltess special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #x81
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "sewer-blow-up-statue-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "sewer-blow-up-statue-intro"
+                   :parts 22
+                   :command-list '((0 (kill "krew-highres-1") (fadein (frame-time-30 5)))
+                     (301 (part-tracker
+                            "group-hiphog-sig-gun-glow"
+                            entity
+                            "sig-highres"
+                            joint
+                            "blast"
+                            track
+                            #t
+                            duration
+                            (frame-range 301 2550)
+                            )
+                          )
+                     (478 (part-tracker
+                            "group-hiphog-krew-light"
+                            entity
+                            "krew-highres"
+                            joint
+                            "lightEnd"
+                            track
+                            #t
+                            duration
+                            (frame-range 478 2550)
+                            )
+                          )
+                     (10000 (task-close! "sewer-escort-introduction"))
+                     )
+                   :cut-list '(301 478 591 915 1026 1263 1358 1475 1565 1671 1747 1801 1911 2024 2135 2350 2450 2550)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lguard
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sig-highres"
+                       :level 'lguard
+                       :art-group "skel-sig-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "hip-mug"
+                       :level 'lguard
+                       :art-group "skel-hip-mug"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lguard special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #xad
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "city-errol-challenge-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-24"
+                   :art-group "scenecamera"
+                   :anim "city-errol-challenge-intro"
+                   :parts 18
+                   :command-list '((65 (part-tracker
+                           "group-hiphog-krew-light"
+                           entity
+                           "krew-highres"
+                           joint
+                           "lightEnd"
+                           track
+                           #t
+                           duration
+                           (frame-range 65 2130)
+                           )
+                         )
+                     (2125 (fadeout (frame-time-30 5)))
+                     (10000 (task-close! "city-errol-challenge-introduction"))
+                     )
+                   :cut-list '(65 131 177 220 299 374 509 588 707 946 1094 1319 1464 1540 1585 1923 2030)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'hiphog
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'hiphog
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((1464 1540))
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "errol-highres"
+                       :level 'lerltess
+                       :art-group "skel-errol-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tess-highres"
+                       :level 'lerltess
+                       :art-group "skel-tess-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x3
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "krew-highres"
+                       :level 'lerltess
+                       :art-group "skel-krew-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((130 177) (508 588))
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "hiphog-start"
+                   :end-point-obj "hiphog-movie"
+                   :borrow '((hiphog 0 lerltess special))
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   :scene-task #xbc
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "city-whack-a-metal-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-24"
+    :art-group "scenecamera"
+    :anim "city-whack-a-metal-intro"
+    :parts 6
+    :command-list '((0 (fadein (frame-time-30 5))) (10000 (task-close! "city-whack-wait") (talker-spawn "whack01")))
+    :cut-list '(39 236 320 592)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'hiphog
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'hiphog
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tess-highres"
+        :level 'lwhack
+        :art-group "skel-tess-highres"
+        :prefix ""
+        :draw-frames '((min 235) (320 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "hiphog-start"
+    :end-point-obj "hiphog-movie"
+    :borrow '((hiphog 0 lwhack special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :save #f
+    :scene-task #xdf
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "city-whack-a-metal-res"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-24"
+    :art-group "scenecamera"
+    :anim "city-whack-a-metal-res"
+    :parts 24
+    :command-list '((0 (setting-reset gem mode #t))
+      (5
+        (part-tracker
+          "group-hiphog-time-map-glow"
+          entity
+          "time-map"
+          joint
+          "time_map_glow"
+          track
+          #t
+          duration
+          (frame-time-30 30)
+          )
+        (part-tracker
+          "group-hiphog-time-map-glow-fx"
+          entity
+          "time-map"
+          joint
+          "time_map_glow"
+          track
+          #t
+          duration
+          (frame-time-30 28)
+          )
+        )
+      (612
+        (part-tracker
+          "group-whack-gun-yellow-shot-fired"
+          entity
+          "gun"
+          joint
+          "barrelExtend"
+          track
+          #t
+          duration
+          (frame-range 612 618)
+          )
+        )
+      (617
+        (part-tracker "group-whack-gun-smoke" entity "gun" joint "barrelExtend" track #t duration (frame-time 1))
+        )
+      (631
+        (part-tracker
+          "group-whack-gun-yellow-shot-fired"
+          entity
+          "gun"
+          joint
+          "barrelExtend"
+          track
+          #t
+          duration
+          (frame-range 631 637)
+          )
+        )
+      (636
+        (part-tracker "group-whack-gun-smoke" entity "gun" joint "barrelExtend" track #t duration (frame-time 1))
+        )
+      (674
+        (part-tracker
+          "group-whack-metal-head-puff"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 674 704)
+          )
+        (part-tracker
+          "group-whack-metal-head-puff"
+          entity
+          "particleman"
+          joint
+          "particleB"
+          track
+          #t
+          duration
+          (frame-range 674 704)
+          )
+        )
+      (10000 (talker-spawn "vin015"))
+      )
+    :cut-list '(-20 1 56 107 175 258 290 508 531 577 608 647 674 707 759 832 851 999 1040 1099 1129 1179 1223)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'lwhack
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'hiphog
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'hiphog
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 673) (707 max))
+        :scissor-frames '((174 258))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tess-highres"
+        :level 'lwhack
+        :art-group "skel-tess-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "gun"
+        :level #f
+        :art-group "skel-gun"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((174 258))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x4
+        )
+      (new 'static 'scene-actor
+        :name "time-map"
+        :level 'lwhack
+        :art-group "skel-time-map"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "grunt-fma"
+        :level 'lwhack
+        :art-group "skel-grunt-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((508 531))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "grunt-fma"
+        :level 'lwhack
+        :art-group "skel-grunt-fma"
+        :prefix "b-"
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "hiphog-start"
+    :end-point-obj "hiphog-movie"
+    :borrow '((hiphog 0 lwhack special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    :scene-task #xe3
+    )
+  )

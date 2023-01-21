@@ -10,6 +10,24 @@
 (define-extern level-update-after-load (function level login-state level))
 (define-extern *level-type-list* type)
 
+(defun give-all-stuff ()
+  (send-event *target* 'get-pickup 18 #x447a0000)
+  (send-event *target* 'get-pickup 17 #x447a0000)
+  (send-event *target* 'get-pickup 13 #x447a0000)
+  (send-event *target* 'get-pickup 14 #x447a0000)
+  (send-event *target* 'get-pickup 15 #x447a0000)
+  (send-event *target* 'get-pickup 16 #x447a0000)
+  (send-event *target* 'get-pickup 7 #x42c80000)
+  (logior! (-> *game-info* features) (game-feature gun gun-yellow gun-red gun-blue gun-dark board darkjak))
+  (let ((v0-7
+          (logior (-> *game-info* debug-features) (game-feature gun gun-yellow gun-red gun-blue gun-dark board darkjak))
+          )
+        )
+    (set! (-> *game-info* debug-features) v0-7)
+    v0-7
+    )
+  )
+
 (defmacro test-play ()
   "Temporary start macro"
   `(begin
@@ -28,7 +46,9 @@
            (suspend)
            )
          (set! *display-profile* #t)
-         (set! *stats-profile-bars* #t))
+         (give-all-stuff)
+         ;;(set! *stats-profile-bars* #t)
+         )
        )
 
      )
@@ -1291,7 +1311,7 @@
              )
             )
           )
-        ;; (goto cfg-1)
+        (goto cfg-1)
         )
 
       ;; next is nav-meshes
@@ -1303,12 +1323,12 @@
              (+! (-> lstate state) 1)
              )
             (else
-              (entity-nav-mesh-method-27 (-> lev-bsp nav-meshes (the-as uint login-state-pos)))
+              (initialize-nav-mesh! (-> lev-bsp nav-meshes (the-as uint login-state-pos)))
               (+! (-> lstate pos) 1)
               )
             )
           )
-        ;; (goto cfg-1)
+        (goto cfg-1)
         )
 
 
@@ -1324,6 +1344,11 @@
 
   ;; name
   (set! (-> lev nickname) (the-as string (-> lev bsp nickname)))
+
+  ;; added: tombc has the wrong nickname in the bsp file...
+  (if (and (= (-> lev bsp name) 'tombc) (= (-> lev bsp nickname) 'toa))
+      (set! (-> lev nickname) (the-as string 'toc))
+      )
 
   ;; subdivide distances
   (let ((close-dist (-> lev bsp subdivide-close))
@@ -2222,10 +2247,9 @@
     )
   (start-debug "PLAY: starting dproc~%")
   (on #t)
-  (format 0 "SKIP: initialize game info~%")
-  ; (if arg1
-  ;     (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
-  ;     )
+  (if arg1
+      (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+      )
   (kmemclose)
   (kmemclose)
   0
@@ -2664,10 +2688,10 @@
   (local-vars (v1-101 symbol))
   (camera-pos)
   (new 'static 'boxed-array :type symbol :length 0 :allocated-length 6)
-  ;; (update *setting-control*)
-  ;; (update *gui-control* #t)
-  ;; (update *art-control* #t)
-  ;; (clear-rec *art-control*)
+  (update *setting-control*)
+  (update *gui-control* #t)
+  (update *art-control* #t)
+  (clear-rec *art-control*)
   (dotimes (s5-0 6)
     (load-continue (-> obj level s5-0))
     )
@@ -2683,7 +2707,6 @@
     )
   (update! *load-state*)
 
-  #|
   (dotimes (s5-2 (-> obj length))
     (let ((s4-1 (-> obj level s5-2)))
       (when (= (-> s4-1 status) 'active)
@@ -2745,7 +2768,6 @@
         )
       )
     )
-    |#
   (dotimes (v1-88 (-> obj length))
     (let ((a0-48 (-> obj level v1-88)))
       (when (= (-> a0-48 status) 'active)
