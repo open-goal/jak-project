@@ -162,13 +162,13 @@
 
 (set! (-> *tomb-beetle-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-74 tomb-beetle ((obj tomb-beetle) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler tomb-beetle ((obj tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (with-pp
     (let ((v1-0 (new 'static 'array int64 2 -1 0)))
       (case arg2
         (('cue-chase)
          (set! (-> obj round) (-> arg3 param 0))
-         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
         (('attack)
          (when (and (-> obj next-state) (let ((a1-4 (-> obj next-state name)))
@@ -199,7 +199,7 @@
            )
          )
         (else
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
         )
       )
@@ -503,7 +503,7 @@
       (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (set! (-> self state-timeout) (the-as uint (the int (* 300.0 (rand-vu-float-range 0.2 0.8)))))
+    (set! (-> self state-timeout) (the-as time-frame (the int (* 300.0 (rand-vu-float-range 0.2 0.8)))))
     (none)
     )
   :trans (behavior ()
@@ -567,7 +567,7 @@
     )
   :code (behavior ()
     (set! (-> self state-timeout)
-          (the-as uint (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.8)))))
+          (the-as time-frame (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.8)))))
           )
     (let ((v1-6 (ja-group)))
       (cond
@@ -994,7 +994,7 @@
     )
   )
 
-(defmethod enemy-method-114 tomb-beetle ((obj tomb-beetle))
+(defmethod init-enemy-collision! tomb-beetle ((obj tomb-beetle))
   "@abstract"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1042,14 +1042,14 @@
   (none)
   )
 
-(defmethod enemy-method-115 tomb-beetle ((obj tomb-beetle))
+(defmethod init-enemy! tomb-beetle ((obj tomb-beetle))
   "@abstract"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-beetle" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *tomb-beetle-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *tomb-beetle-nav-enemy-info*)
   (let ((v1-5 (-> obj nav)))
     (set! (-> v1-5 sphere-mask) (the-as uint #x800fa))
     )

@@ -72,7 +72,9 @@
 
 ;; definition for method 18 of type curve-control
 (defmethod total-distance curve-control ((obj curve-control))
-  "Calcuate the total path length by summing the distance between each adjacent [[curve]] vertex"
+  "Will lazily calculate and set the [[curve]]'s `length`
+@returns total path length of the [[curve]]
+@see [[curve-length]]"
   (let ((f0-0 (-> obj curve length)))
     (when (= f0-0 0.0)
       (set! f0-0 (curve-length (-> obj curve)))
@@ -325,8 +327,7 @@ using the fractional component of `idx` as the interpolant, return this result
 
 ;; definition for method 12 of type curve-control
 (defmethod displacement-between-two-points-copy! curve-control ((obj curve-control) (ret vector) (percent float) (mag float))
-  "Calls [[path-control::26]] with the provided args
-@see [[path-control::26]]"
+  "Calls [[path-control::26]] with the `idx` at a given percent along the path @see [[path-control::26]]"
   (displacement-between-two-points! obj ret (/ percent (the float (+ (-> obj curve num-cverts) -1))) mag)
   )
 
@@ -354,11 +355,7 @@ using the fractional component of `idx` as the interpolant, return this result
 
 ;; definition for method 13 of type curve-control
 (defmethod displacement-between-two-points-normalized! curve-control ((obj curve-control) (ret vector) (idx float))
-  "Calls [[path-control::26], with the provided `idx`
-@param! ret The [[vector]] the result is stored within
-@param  idx The vertex index
-@returns The resulting displacement vector, normalized
-@see [[path-control::26]]"
+  "@see [[curve-control::12]]"
   (displacement-between-points-at-percent-normalized!
     obj
     ret

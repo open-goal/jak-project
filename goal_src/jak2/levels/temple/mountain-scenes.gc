@@ -1734,31 +1734,31 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-buried-rocks ((obj mtn-plat-buried-rocks) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-plat-buried-rocks ((obj mtn-plat-buried-rocks) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 122880.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 0.0 122880.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((v1-5 (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj
     (the-as
@@ -1804,28 +1804,28 @@ This commonly includes things such as:
 
 (defmethod init-plat-collision! mtn-plat-buried ((obj mtn-plat-buried))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) cshape-reaction-default)
-    (set! (-> s5-0 no-reaction)
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
           (the-as (function collide-shape-moving collide-query vector vector object) nothing)
           )
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
-      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 19660.8)
-      (set! (-> s5-0 total-prims) (the-as uint 1))
-      (set! (-> s5-0 root-prim) s4-0)
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid rideable))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 0.0 19660.8)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (pusher-init s5-0)
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (let ((v1-15 (-> s5-0 root-prim)))
-      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
-      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+    (pusher-init cshape)
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root-override) cshape)
     )
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 100) (-> obj root-override trans))
@@ -1885,9 +1885,9 @@ otherwise, [[plat::34]]
       )
     (set! (-> self path-pos) (get-norm! (-> self sync) 0))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (let ((t9-3 (-> (method-of-type plat plat-idle) enter)))
-      (if t9-3
-          (t9-3)
+    (let ((func (-> (method-of-type plat plat-idle) enter)))
+      (if func
+          (func)
           )
       )
     (none)
@@ -2400,14 +2400,14 @@ otherwise, [[plat::34]]
         )
       (355 (apply ,(lambda :behavior scene-player
                      ()
-                     (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-                       (set! (-> v1-0 command) (sound-command set-param))
-                       (set! (-> v1-0 id) (-> self user-sound 0))
-                       (set! (-> v1-0 params volume) -4)
-                       (set! (-> v1-0 auto-time) 48)
-                       (set! (-> v1-0 auto-from) 2)
-                       (set! (-> v1-0 params mask) (the-as uint 17))
-                       (-> v1-0 id)
+                     (let ((sound-set-param (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+                       (set! (-> sound-set-param command) (sound-command set-param))
+                       (set! (-> sound-set-param id) (-> self user-sound 0))
+                       (set! (-> sound-set-param params volume) -4)
+                       (set! (-> sound-set-param auto-time) 48)
+                       (set! (-> sound-set-param auto-from) 2)
+                       (set! (-> sound-set-param params mask) (the-as uint 17))
+                       (-> sound-set-param id)
                        )
                      (none)
                      )
@@ -2962,7 +2962,7 @@ otherwise, [[plat::34]]
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens ((obj mtn-lens) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-lens ((obj mtn-lens) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2970,7 +2970,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton
     obj
@@ -3000,7 +3000,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens-base ((obj mtn-lens-base) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-lens-base ((obj mtn-lens-base) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3008,7 +3008,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton
     obj
@@ -3049,31 +3049,31 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-lens-floor ((obj mtn-lens-floor) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-lens-floor ((obj mtn-lens-floor) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 3)
-      (set-vector! (-> v1-2 local-sphere) 0.0 -4096.0 0.0 26624.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 -4096.0 0.0 26624.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> obj root) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton
     obj
@@ -3107,7 +3107,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-shard ((obj mtn-shard) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-shard ((obj mtn-shard) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3115,7 +3115,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton
     obj
@@ -3136,7 +3136,7 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-a ((obj mtn-step-plat-rocks-a) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-step-plat-rocks-a ((obj mtn-step-plat-rocks-a) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3144,35 +3144,35 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
-      (set! (-> s4-0 total-prims) (the-as uint 4))
-      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
-      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 20480.0)
-      (set! (-> s4-0 root-prim) s3-0)
-      (pusher-init s4-0)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 3) 0)))
+      (set! (-> cshape total-prims) (the-as uint 4))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set! (-> prim-group transform-index) 3)
+      (set-vector! (-> prim-group local-sphere) 0.0 12288.0 0.0 20480.0)
+      (set! (-> cshape root-prim) prim-group)
+      (pusher-init cshape)
       (let* ((s2-0 '((0 4 16384) (1 7 16384) (2 12 16384)))
              (s1-0 (car s2-0))
              )
         (while (not (null? s2-0))
-          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
+          (let ((prim-mesh (method-of-type collide-shape-prim-mesh new)))
             (set! sv-32 'process)
             (set! sv-48 collide-shape-prim-mesh)
-            (set! sv-64 s4-0)
+            (set! sv-64 cshape)
             (let ((a3-2 (command-get-int (car s1-0) 0))
                   (t0-1 0)
                   )
-              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+              (set! sv-16 (prim-mesh sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
               )
             )
-          (let ((s0-1 sv-16))
-            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
-            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
-            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
-            (set! (-> s0-1 transform-index) (command-get-int (car (cdr s1-0)) 0))
+          (let ((_prim-mesh sv-16))
+            (set! (-> _prim-mesh prim-core collide-as) (-> prim-group prim-core collide-as))
+            (set! (-> _prim-mesh prim-core collide-with) (-> prim-group prim-core collide-with))
+            (set! (-> _prim-mesh prim-core action) (-> prim-group prim-core action))
+            (set! (-> _prim-mesh transform-index) (command-get-int (car (cdr s1-0)) 0))
             )
           (set-vector! (-> sv-16 local-sphere) 0.0 0.0 0.0 (command-get-float (car (cdr (cdr s1-0))) 0.0))
           (set! s2-0 (cdr s2-0))
@@ -3180,14 +3180,14 @@ This commonly includes things such as:
           )
         )
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-24 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-24 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-24 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj
     (the-as
@@ -3220,7 +3220,7 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-b ((obj mtn-step-plat-rocks-b) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-step-plat-rocks-b ((obj mtn-step-plat-rocks-b) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3228,16 +3228,16 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 17) 0)))
-      (set! (-> s4-0 total-prims) (the-as uint 18))
-      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
-      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 -12288.0 0.0 40960.0)
-      (set! (-> s4-0 root-prim) s3-0)
-      (pusher-init s4-0)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 17) 0)))
+      (set! (-> cshape total-prims) (the-as uint 18))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set! (-> prim-group transform-index) 3)
+      (set-vector! (-> prim-group local-sphere) 0.0 -12288.0 0.0 40960.0)
+      (set! (-> cshape root-prim) prim-group)
+      (pusher-init cshape)
       (let* ((s2-0 '((0 6 16384)
                      (1 7 16384)
                      (2 8 16384)
@@ -3260,21 +3260,21 @@ This commonly includes things such as:
              (s1-0 (car s2-0))
              )
         (while (not (null? s2-0))
-          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
+          (let ((prim-mesh (method-of-type collide-shape-prim-mesh new)))
             (set! sv-32 'process)
             (set! sv-48 collide-shape-prim-mesh)
-            (set! sv-64 s4-0)
+            (set! sv-64 cshape)
             (let ((a3-2 (command-get-int (car s1-0) 0))
                   (t0-1 0)
                   )
-              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+              (set! sv-16 (prim-mesh sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
               )
             )
-          (let ((s0-1 sv-16))
-            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
-            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
-            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
-            (set! (-> s0-1 transform-index) (command-get-int (car (cdr s1-0)) 0))
+          (let ((_prim-mesh sv-16))
+            (set! (-> _prim-mesh prim-core collide-as) (-> prim-group prim-core collide-as))
+            (set! (-> _prim-mesh prim-core collide-with) (-> prim-group prim-core collide-with))
+            (set! (-> _prim-mesh prim-core action) (-> prim-group prim-core action))
+            (set! (-> _prim-mesh transform-index) (command-get-int (car (cdr s1-0)) 0))
             )
           (set-vector! (-> sv-16 local-sphere) 0.0 0.0 0.0 (command-get-float (car (cdr (cdr s1-0))) 0.0))
           (set! s2-0 (cdr s2-0))
@@ -3282,14 +3282,14 @@ This commonly includes things such as:
           )
         )
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-24 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-24 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-24 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj
     (the-as
@@ -3322,7 +3322,7 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-step-plat-rocks-c ((obj mtn-step-plat-rocks-c) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-step-plat-rocks-c ((obj mtn-step-plat-rocks-c) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3330,16 +3330,16 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 24) 0)))
-      (set! (-> s4-0 total-prims) (the-as uint 25))
-      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
-      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 32768.0 57344.0)
-      (set! (-> s4-0 root-prim) s3-0)
-      (pusher-init s4-0)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 24) 0)))
+      (set! (-> cshape total-prims) (the-as uint 25))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set! (-> prim-group transform-index) 3)
+      (set-vector! (-> prim-group local-sphere) 0.0 0.0 32768.0 57344.0)
+      (set! (-> cshape root-prim) prim-group)
+      (pusher-init cshape)
       (let* ((s2-0 '((0 4 16384)
                      (1 6 16384)
                      (2 9 16384)
@@ -3369,21 +3369,21 @@ This commonly includes things such as:
              (s1-0 (car s2-0))
              )
         (while (not (null? s2-0))
-          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
+          (let ((prim-mesh (method-of-type collide-shape-prim-mesh new)))
             (set! sv-32 'process)
             (set! sv-48 collide-shape-prim-mesh)
-            (set! sv-64 s4-0)
+            (set! sv-64 cshape)
             (let ((a3-2 (command-get-int (car s1-0) 0))
                   (t0-1 0)
                   )
-              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+              (set! sv-16 (prim-mesh sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
               )
             )
-          (let ((s0-1 sv-16))
-            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
-            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
-            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
-            (set! (-> s0-1 transform-index) (command-get-int (car (cdr s1-0)) 0))
+          (let ((_prim-mesh sv-16))
+            (set! (-> _prim-mesh prim-core collide-as) (-> prim-group prim-core collide-as))
+            (set! (-> _prim-mesh prim-core collide-with) (-> prim-group prim-core collide-with))
+            (set! (-> _prim-mesh prim-core action) (-> prim-group prim-core action))
+            (set! (-> _prim-mesh transform-index) (command-get-int (car (cdr s1-0)) 0))
             )
           (set-vector! (-> sv-16 local-sphere) 0.0 0.0 0.0 (command-get-float (car (cdr (cdr s1-0))) 0.0))
           (set! s2-0 (cdr s2-0))
@@ -3391,14 +3391,14 @@ This commonly includes things such as:
           )
         )
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-24 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-24 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-24 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root-override) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj
     (the-as

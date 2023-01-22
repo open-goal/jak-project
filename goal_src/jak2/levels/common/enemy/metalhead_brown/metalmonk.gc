@@ -307,8 +307,12 @@
     )
   )
 
-(defmethod enemy-method-55 metalmonk ((obj metalmonk))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! metalmonk ((obj metalmonk))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (set! (-> obj old-facing quad) (-> obj new-facing quad))
@@ -317,7 +321,9 @@
   (none)
   )
 
-(defmethod enemy-method-74 metalmonk ((obj metalmonk) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler metalmonk ((obj metalmonk) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked 'hit-flinch)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -350,7 +356,7 @@
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (enemy-method-73 obj)
+             (kill-prefer-falling obj)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
              (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
@@ -369,7 +375,7 @@
      #t
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -534,7 +540,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -548,7 +554,7 @@
           )
       )
     (let ((gp-0 (handle->process (-> self focus handle))))
-      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                (and gp-0
                     (or (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
                                 20480.0
@@ -775,7 +781,7 @@
                            )
                          )
                )
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
       )
     (none)
@@ -794,7 +800,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1023,8 +1029,8 @@
   (none)
   )
 
-(defmethod enemy-method-114 metalmonk ((obj metalmonk))
-  "@abstract"
+(defmethod init-enemy-collision! metalmonk ((obj metalmonk))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1148,8 +1154,8 @@
     )
   )
 
-(defmethod enemy-method-115 metalmonk ((obj metalmonk))
-  "@abstract"
+(defmethod init-enemy! metalmonk ((obj metalmonk))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1157,7 +1163,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *metalmonk-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *metalmonk-nav-enemy-info*)
   (let ((v1-8 (-> obj neck)))
     (set! (-> v1-8 up) (the-as uint 1))
     (set! (-> v1-8 nose) (the-as uint 2))
