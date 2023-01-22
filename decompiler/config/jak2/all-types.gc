@@ -13206,7 +13206,7 @@
    (delay         uint16  :offset-assert 14)
    (pos           uint16  :offset-assert 16)
    (neg           uint16  :offset-assert 18)
-   (on-close      basic   :offset-assert 20)
+   (on-close      pair    :offset-assert 20)
    )
   :pack-me
   :method-count-assert 14
@@ -43906,8 +43906,8 @@
 ;; consite-texture                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *kor-transform-texture-anim-array* texture-anim-array)
-;; (define-extern set-kor-texture-morph! function)
+(define-extern *kor-transform-texture-anim-array* texture-anim-array)
+(define-extern set-kor-texture-morph! (function float symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; consite-part                   ;;
@@ -43936,7 +43936,6 @@
 ;; consite-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype consite-break-scaffold (process-drawable)
   ()
   :method-count-assert 21
@@ -43946,9 +43945,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype consite-bomb-elevator-hinges (process-drawable)
   ()
   :method-count-assert 21
@@ -43958,9 +43955,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype consite-bomb-elevator (process-drawable)
   ()
   :method-count-assert 21
@@ -43970,9 +43965,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype consite-silo-doors (process-drawable)
   ()
   :method-count-assert 21
@@ -43982,9 +43975,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype baron-npc (process-taskable)
   ()
   :method-count-assert 38
@@ -43993,10 +43984,9 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern consite-bomb-elevator-hinges-init-by-other function)
-;; (define-extern consite-activate function)
+(define-extern consite-bomb-elevator-hinges-init-by-other (function consite-bomb-elevator entity-actor none :behavior consite-bomb-elevator-hinges))
+(define-extern consite-activate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-indax                   ;;
@@ -46560,13 +46550,12 @@
 ;; ctywide-bbush                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype race-ring (process-drawable)
-  ((last-target-pos       vector        :inline :offset-assert 204)
-   (keep-part-track-alive symbol                :offset-assert 220) ;; guessed by decompiler
-   (part-track            uint64                :offset-assert 228) ;; handle
-   (rot-y                 float                 :offset-assert 236)
-   (cyl                   cylinder-flat :inline :offset-assert 252)
+  ((last-target-pos       vector        :inline :offset-assert 208)
+   (keep-part-track-alive symbol                :offset-assert 224) ;; guessed by decompiler
+   (part-track            handle                :offset-assert 232) ;; handle
+   (rot-y                 float                 :offset-assert 240)
+   (cyl                   cylinder-flat :inline :offset-assert 256)
    )
   :method-count-assert 24
   :size-assert         #x128
@@ -46574,30 +46563,27 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (race-ring-method-22 () none 22)
-    (race-ring-method-23 () none 23)
+    (race-ring-method-22 (_type_) none 22)
+    (race-ring-method-23 (_type_) none 23)
     )
   )
-|#
 
-#|
+(declare-type city-race-ring-info structure)
 (deftype bb-ring-info (structure)
   ((time      time-frame         :offset-assert 0)
    (start-pos vector :inline :offset-assert 16)
    (rotation  float          :offset-assert 32)
-   (rings     basic          :offset-assert 36)
+   (rings     (array city-race-ring-info)          :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype bush-collect (process-drawable)
-  ((minimap   connection-minimap  :offset-assert 196)
-   (trans-y   float               :offset-assert 200)
-   (beep-time float               :offset-assert 204)
+  ((minimap   connection-minimap  :offset-assert 200)
+   (trans-y   float               :offset-assert 204)
+   (beep-time float               :offset-assert 208)
    )
   :method-count-assert 24
   :size-assert         #xd4
@@ -46605,67 +46591,60 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (bush-collect-method-22 () none 22)
-    (bush-collect-method-23 () none 23)
+    (bush-collect-method-22 (_type_) none 22)
+    (bush-collect-method-23 (_type_) none 23)
     )
   )
-|#
 
-#|
 (deftype burning-bush-collection-info (structure)
   ((pos     vector             :inline :offset-assert 0)
-   (handle  uint64                     :offset-assert 16)
+   (handle  handle                     :offset-assert 16)
    (minimap connection-minimap         :offset-assert 24)
    )
   :method-count-assert 10
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (burning-bush-collection-info-method-9 () none 9)
+    (burning-bush-collection-info-method-9 (_type_ object) none 9)
     )
   )
-|#
 
-#|
 (deftype bb-collection-info (structure)
   ((user-data uint32  :offset-assert 0)
    (time      time-frame  :offset-assert 8)
-   (colls     basic   :offset-assert 16)
+   (colls     (array burning-bush-collection-info)   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype burning-bush-get-on-info (structure)
   ((trans        vector     :inline :offset-assert 0)
    (quat         quaternion :inline :offset-assert 16)
    (camera-trans vector     :inline :offset-assert 32)
-   (camera-rot   UNKNOWN    9       :offset-assert 48)
+   (camera-rot   float      9       :offset-assert 48)
    (time         float              :offset-assert 84)
    )
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-;; (define-extern race-ring-set-particle-rotation-callback function) ;; (function part-tracker none)
-;; (define-extern race-ring-init-by-other function)
-;; (define-extern race-ring-spawn function)
-;; (define-extern *bb-ring-info* array)
-;; (define-extern *city-race-ring-edit-info* object)
-;; (define-extern bush-collect-init-by-other function)
-;; (define-extern bush-collect-dark-eco-init-by-other function)
-;; (define-extern bush-collect-homing-beacon-init-by-other function)
-;; (define-extern bush-collect-spawn function)
-;; (define-extern bush-collect-homing-beacon-spawn function)
-;; (define-extern bush-collect-dark-eco-spawn function)
-;; (define-extern *bb-collection-info* array)
-;; (define-extern *city-bb-collection-edit-info* object)
-;; (define-extern *burning-bush-get-on-info* array)
+(define-extern race-ring-set-particle-rotation-callback (function part-tracker none))
+(define-extern race-ring-init-by-other (function city-race-ring-info none :behavior race-ring))
+(define-extern race-ring-spawn (function task-manager city-race-ring-info process))
+(define-extern *bb-ring-info* (array bb-ring-info))
+(define-extern *city-race-ring-edit-info* (pointer int32))
+(define-extern bush-collect-init-by-other (function vector none :behavior bush-collect))
+(define-extern bush-collect-dark-eco-init-by-other (function vector none :behavior bush-collect))
+(define-extern bush-collect-homing-beacon-init-by-other (function vector none :behavior bush-collect))
+(define-extern bush-collect-spawn (function task-manager vector (pointer bush-collect)))
+(define-extern bush-collect-homing-beacon-spawn (function task-manager vector (pointer bush-collect)))
+(define-extern bush-collect-dark-eco-spawn (function task-manager vector (pointer bush-collect)))
+(define-extern *bb-collection-info* (array bb-collection-info))
+(define-extern *city-bb-collection-edit-info* (pointer int32))
+(define-extern *burning-bush-get-on-info* (array burning-bush-get-on-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; delivery-task                  ;;

@@ -1534,8 +1534,6 @@
   "baron-consite+0-ag"
   "consite-break-scaffold-a-ag"
   "consite-break-scaffold-ag"
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "baron-highres-ag"
   "crimson-guard-highres-ag"
   "consite-bomb-elevator-ag"
@@ -1550,25 +1548,22 @@
 ;; ;; COB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "COB.DGO" "cob.gd")
+(cgo "COB.DGO" "cob.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/consite/consiteb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/consite/consiteb-part.gc"
+  )
 
-;; (copy-textures 3032 3033 3142 3180 3239)
+(copy-textures 3032 3033 3142 3180 3239)
 
-;; (copy-gos
-;;   "kor-transform-ag"
-;;   "kor-break-ag"
-;;   "metalkor-highres-ag"
-;;   "com-airlock-inner-ag"
-;;   "door-ctyinda-ag"
-;;   "kor-break-ray-ag"
-;;   "consiteb-vis"
-;;   )
+(copy-gos
+  "kor-transform-ag"
+  "kor-break-ag"
+  "kor-break-ray-ag"
+  "consiteb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; CPA
@@ -2471,21 +2466,21 @@
 ;; ;; LBBUSH
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBBUSH.DGO" "lbbush.gd")
+(cgo "LBBUSH.DGO" "lbbush.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/side_missions/ctywide-bbush.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/side_missions/ctywide-bbush.gc"
+  )
 
-;; (copy-textures 3336 3465)
+(copy-textures 3336 3465)
 
-;; (copy-gos
-;;   "hovering-mine-ag"
-;;   "homing-beacon-ag"
-;;   "lbbush"
-;;   )
+(copy-gos
+  "hovering-mine-ag"
+  "homing-beacon-ag"
+  "lbbush"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBOMBBOT
