@@ -234,7 +234,9 @@
   obj
   )
 
-(defmethod enemy-method-74 amphibian ((obj amphibian) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler amphibian ((obj amphibian) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit-knocked)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -272,7 +274,7 @@
          )
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -338,8 +340,9 @@
   (none)
   )
 
-(defmethod enemy-method-56 amphibian ((obj amphibian) (arg0 process) (arg1 event-message-block))
-  (let* ((t9-0 (method-of-type nav-enemy enemy-method-56))
+(defmethod damage-amount-from-attack amphibian ((obj amphibian) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+  (let* ((t9-0 (method-of-type nav-enemy damage-amount-from-attack))
          (v0-0 (t9-0 obj arg0 arg1))
          )
     (let ((v1-1 (-> obj hit-points)))
@@ -807,7 +810,7 @@
       ((and (= s5-0 (enemy-aware enemy-aware-2)) (-> obj enemy-info-override use-pacing))
        (go (method-of-object obj pacing))
        )
-      ((= s5-0 (enemy-aware enemy-aware-4))
+      ((= s5-0 (enemy-aware unaware))
        (go (method-of-object obj flee))
        )
       (else
@@ -838,10 +841,14 @@
   (none)
   )
 
-(defmethod enemy-method-55 amphibian ((obj amphibian))
+(defmethod track-target! amphibian ((obj amphibian))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (set! (-> obj prev-ry) (-> obj prev-ry1))
   (set! (-> obj prev-ry1) (quaternion-y-angle (-> obj root-override2 quat)))
-  ((method-of-type nav-enemy enemy-method-55) obj)
+  ((method-of-type nav-enemy track-target!) obj)
   (none)
   )
 
@@ -1117,7 +1124,7 @@
       (set! (-> self nav state heading quad) (-> gp-2 quad))
       )
     0
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1317,7 +1324,7 @@
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (go-virtual attack-spin)
       )
-    (let ((a0-2 (enemy-method-107 self)))
+    (let ((a0-2 (get-enemy-target self)))
       (when a0-2
         (let* ((s5-0 (get-trans a0-2 0))
                (f30-0 (vector-vector-xz-distance s5-0 (-> self root-override2 trans)))
@@ -1376,7 +1383,7 @@
       )
     (let ((gp-0 (handle->process (-> self focus handle))))
       (if (not gp-0)
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
       (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
       )
@@ -1518,7 +1525,7 @@
       (suspend)
       (ja-eval)
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
@@ -1552,7 +1559,7 @@
       )
     (let ((gp-0 (handle->process (-> self focus handle))))
       (if (not gp-0)
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
       (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
       )
@@ -1629,7 +1636,7 @@
       (suspend)
       (ja-eval)
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
@@ -1723,7 +1730,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
@@ -1737,8 +1744,8 @@
   (the-as amphibian ((method-of-type nav-enemy relocate) obj arg0))
   )
 
-(defmethod enemy-method-114 amphibian ((obj amphibian))
-  "@abstract"
+(defmethod init-enemy-collision! amphibian ((obj amphibian))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1815,15 +1822,15 @@
   (none)
   )
 
-(defmethod enemy-method-115 amphibian ((obj amphibian))
-  "@abstract"
+(defmethod init-enemy! amphibian ((obj amphibian))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (set! (-> obj attacker-handle) (the-as handle #f))
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-amphibian" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *amphibian-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *amphibian-nav-enemy-info*)
   (set! (-> obj tongue-mod) (new 'process 'amphibian-joint-mod obj 14))
   (let ((v1-6 (-> obj neck)))
     (set! (-> v1-6 up) (the-as uint 1))

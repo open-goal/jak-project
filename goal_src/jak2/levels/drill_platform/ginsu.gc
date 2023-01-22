@@ -107,10 +107,10 @@
     )
   )
 
-(defskelgroup skel-ginsu ginsu ginsu-lod0-jg ginsu-idle-ja
-              ((ginsu-lod0-mg (meters 20)) (ginsu-lod1-mg (meters 40)) (ginsu-lod2-mg (meters 999999)))
+(defskelgroup skel-ginsu ginsu 0 5
+              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
               :bounds (static-spherem 0 0 0 2.5)
-              :shadow ginsu-shadow-mg
+              :shadow 4
               :origin-joint-index 8
               )
 
@@ -134,20 +134,20 @@
 
 
 (deftype ginsu (nav-enemy)
-  ((blade-jm            joint-mod                :offset-assert 604)
-   (blade-speed         cam-float-seeker :inline :offset-assert 608)
-   (blade-angle         float                    :offset-assert 632)
-   (desired-distance    float                    :offset-assert 636)
-   (spiral-time         time-frame               :offset-assert 640)
-   (blade-part          part-spawner             :offset-assert 648)
-   (ambush-path         path-control             :offset-assert 652)
-   (path-pos            float                    :offset-assert 656)
-   (ambush-started      symbol                   :offset-assert 660)
-   (blade-sound         uint32                   :offset-assert 664)
-   (blade-sound-playing symbol                   :offset-assert 668)
-   (grind-sound         uint32                   :offset-assert 672)
-   (grind-sound-playing symbol                   :offset-assert 676)
-   (grind-timer         time-frame               :offset-assert 680)
+  ((blade-jm            joint-mod                        :offset-assert 604)
+   (blade-speed         cam-float-seeker         :inline :offset-assert 608)
+   (blade-angle         float                            :offset-assert 632)
+   (desired-distance    float                            :offset-assert 636)
+   (spiral-time         time-frame                       :offset-assert 640)
+   (blade-part          sparticle-launch-control         :offset-assert 648)
+   (ambush-path         path-control                     :offset-assert 652)
+   (path-pos            float                            :offset-assert 656)
+   (ambush-started      symbol                           :offset-assert 660)
+   (blade-sound         uint32                           :offset-assert 664)
+   (blade-sound-playing symbol                           :offset-assert 668)
+   (grind-sound         uint32                           :offset-assert 672)
+   (grind-sound-playing symbol                           :offset-assert 676)
+   (grind-timer         time-frame                       :offset-assert 680)
    )
   :heap-base #x230
   :method-count-assert 184
@@ -307,8 +307,8 @@
           (vector-negate! (the-as vector (-> s5-0 vector)) (the-as vector (-> s5-0 vector)))
           (set! (-> s5-0 vector 0 w) 0.0)
           )
+        (spawn-with-matrix (-> obj blade-part) s5-0)
         )
-      (run-logic? (-> obj blade-part))
       )
     )
   0
@@ -326,10 +326,14 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod enemy-method-55 ginsu ((obj ginsu))
+(defmethod track-target! ginsu ((obj ginsu))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (with-pp
     (ginsu-method-180 obj)
-    (let ((t9-1 (method-of-type nav-enemy enemy-method-55)))
+    (let ((t9-1 (method-of-type nav-enemy track-target!)))
       (t9-1 obj)
       )
     (cond
@@ -490,7 +494,9 @@
   )
 
 ;; WARN: disable def twice: 11. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod enemy-method-74 ginsu ((obj ginsu) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ginsu ((obj ginsu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-1 object))
   (with-pp
     (case arg2
@@ -515,7 +521,7 @@
       (('touch 'bonk 'attack)
        (cond
          ((or (!= arg0 *target*) (logtest? (focus-status dark) (-> *target* focus-status)))
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
          (else
            (let ((v1-15 (new 'stack-no-clear 'event-message-block)))
@@ -544,7 +550,7 @@
        v0-1
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -587,7 +593,7 @@
         (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
         )
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
-    (set! (-> self starting-time) (the-as uint (-> self clock frame-counter)))
+    (set! (-> self starting-time) (-> self clock frame-counter))
     (set! (-> self spiral-time) (-> self clock frame-counter))
     (set! (-> self desired-distance) (vector-length (ginsu-method-181 self (new 'stack-no-clear 'vector))))
     (none)
@@ -663,7 +669,7 @@
     0
     (set! (-> self state-time) (-> self clock frame-counter))
     (ja-channel-push! 1 (seconds 0.2))
-    (ja :group! ginsu-idle-ja :num! min)
+    (ja :group! (-> self draw art-group data 5) :num! min)
     (none)
     )
   :exit (behavior ()
@@ -736,7 +742,7 @@
       )
     0
     (set! (-> self state-time) (-> self clock frame-counter))
-    (ja :group! ginsu-attack-ja :num! min)
+    (ja :group! (-> self draw art-group data 15) :num! min)
     (none)
     )
   :exit (behavior ()
@@ -802,7 +808,7 @@
     (when (-> self ambush-started)
       (when (zero? (-> self skel active-channels))
         (ja-channel-push! 1 0)
-        (ja :group! ginsu-idle-ja :num! min)
+        (ja :group! (-> self draw art-group data 5) :num! min)
         )
       (vector-seek! (-> self root-override2 scale) (new 'static 'vector :x 1.0 :y 1.0 :z 1.0) 0.02)
       (+! (-> self path-pos) (/ 2048.0 (total-distance (-> self ambush-path))))
@@ -917,9 +923,11 @@
   )
 
 (defmethod deactivate ginsu ((obj ginsu))
-  (if (nonzero? (-> obj blade-part))
-      ((the-as (function none :behavior part-spawner) (method-of-object (-> obj blade-part) active)))
+  (when (nonzero? (-> obj blade-part))
+    (let ((a0-1 (-> obj blade-part)))
+      ((the-as (function sparticle-launch-control none) (method-of-object a0-1 kill-and-free-particles)) a0-1)
       )
+    )
   (if (-> obj blade-sound-playing)
       (sound-stop (the-as sound-id (-> obj blade-sound)))
       )
@@ -977,8 +985,8 @@
   (none)
   )
 
-(defmethod enemy-method-114 ginsu ((obj ginsu))
-  "@abstract"
+(defmethod init-enemy-collision! ginsu ((obj ginsu))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1043,8 +1051,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 ginsu ((obj ginsu))
-  "@abstract"
+(defmethod init-enemy! ginsu ((obj ginsu))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1052,7 +1060,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *ginsu-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *ginsu-nav-enemy-info*)
   (logclear! (-> obj nav flags) (nav-control-flag update-heading-from-facing))
   (set! (-> obj enemy-flags) (the-as enemy-flag (logclear (-> obj enemy-flags) (enemy-flag enemy-flag43))))
   (logclear! (-> obj nav flags) (nav-control-flag limit-rotation-rate))
@@ -1072,7 +1080,7 @@
   (set! (-> obj blade-jm) (new 'process 'joint-mod (joint-mod-mode joint-set*) obj 8))
   (init (-> obj blade-speed) 1.0 0.01 0.1 0.9)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 475) obj))
-  (set! (-> obj blade-part) (the-as part-spawner (create-launch-control (-> *part-group-id-table* 476) obj)))
+  (set! (-> obj blade-part) (create-launch-control (-> *part-group-id-table* 476) obj))
   (set! (-> obj ambush-path) (new 'process 'curve-control obj 'intro -1000000000.0))
   (set! (-> obj ambush-started) #f)
   (set! (-> obj path-pos) 0.0)

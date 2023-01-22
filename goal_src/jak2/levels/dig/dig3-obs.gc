@@ -239,7 +239,7 @@
   )
 
 (deftype dig-spikey-step (process-drawable)
-  ((smush         smush-control :inline :offset-assert 208)
+  ((smush         smush-control :inline :offset-assert 200)
    (init-quat     quaternion    :inline :offset-assert 240)
    (shudder-angle float                 :offset-assert 256)
    (rot-angle     float                 :offset-assert 260)
@@ -276,26 +276,16 @@
           (suspend)
           )
         )
-      ((method-of-type smush-control activate!)
-       (the-as smush-control (&-> self stack 72))
-       -1.0
-       60
-       225
-       1.0
-       1.0
-       (-> self clock)
-       )
+      (activate! (-> self smush) -1.0 60 225 1.0 1.0 (-> self clock))
       (sound-play "spikey-shake" :position (-> self root trans))
       (let ((gp-3 (-> self clock frame-counter)))
         (until (>= (- (-> self clock frame-counter) gp-3) (seconds 0.75))
-          (set! (-> self shudder-angle)
-                (* 364.0889 ((method-of-type smush-control update!) (the-as smush-control (&-> self stack 72))))
-                )
+          (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
           (suspend)
           )
         )
       (set! (-> self shudder-angle) 0.0)
-      ((method-of-type smush-control set-zero!) (the-as smush-control (&-> self stack 72)))
+      (set-zero! (-> self smush))
       (let ((gp-4 (-> self clock frame-counter)))
         (until (>= (- (-> self clock frame-counter) gp-4) (seconds 0.25))
           (suspend)
@@ -495,7 +485,7 @@ This commonly includes things such as:
   (-> arg0 status)
   )
 
-(defmethod init-collision! dig-spikey-sphere ((obj dig-spikey-sphere))
+(defmethod init-proj-collision! dig-spikey-sphere ((obj dig-spikey-sphere))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))

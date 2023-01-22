@@ -81,6 +81,12 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
           // TODO - get definition info for the state definitions specifically
           add_symbol(state.first, state.second, dtr.type_info->m_metadata);
         }
+        // add state documentation to the DTS
+        virtual_state_metadata.emplace(dtr.type.base_type(),
+                                       dtr.type_info->m_virtual_state_definition_meta);
+        for (const auto& [state_name, meta] : dtr.type_info->m_state_definition_meta) {
+          state_metadata.emplace(state_name, meta);
+        }
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
         auto type_name = car(*rest);

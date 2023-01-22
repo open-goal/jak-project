@@ -193,7 +193,9 @@
     )
   )
 
-(defmethod enemy-method-59 enemy ((obj enemy))
+(defmethod get-penetrate-info enemy ((obj enemy))
+  "@returns the allowed way(s) this enemy can take damage
+@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (penetrated-by-all&hit-points->penetrated-by (-> obj penetrated-by-all) (-> obj hit-points))
   )
 
@@ -287,10 +289,14 @@
     )
   )
 
-(defmethod enemy-method-55 enemy ((obj enemy))
+(defmethod track-target! enemy ((obj enemy))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (with-pp
     (if (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-control-status on-screen)))
-        (set! (-> obj last-draw-time) (the-as uint (-> pp clock frame-counter)))
+        (set! (-> obj last-draw-time) (-> pp clock frame-counter))
         )
     (enemy-method-129 obj)
     (if (logtest? (enemy-flag use-trigger) (-> obj enemy-flags))
@@ -318,10 +324,10 @@
         )
       )
     (when (and (logtest? (-> obj enemy-flags) (enemy-flag attackable-backup))
-               (>= (- (-> pp clock frame-counter) (the-as int (-> obj auto-reset-penetrate-time))) (seconds 0.1))
+               (>= (- (-> pp clock frame-counter) (-> obj auto-reset-penetrate-time)) (seconds 0.1))
                )
       (logclear! (-> obj enemy-flags) (enemy-flag attackable-backup))
-      (set! (-> obj root-override2 penetrated-by) (enemy-method-59 obj))
+      (set! (-> obj root-override2 penetrated-by) (get-penetrate-info obj))
       (let ((v1-48 0))
         (if (logtest? (penetrate knocked) (-> obj root-override2 penetrate-using))
             (set! v1-48 (logior (shl 1 32) v1-48))
@@ -346,7 +352,7 @@
 
 (defmethod enemy-method-136 enemy ((obj enemy))
   (with-pp
-    (when (or (>= (- (-> pp clock frame-counter) (the-as int (-> obj hit-focus-time))) (seconds 2))
+    (when (or (>= (- (-> pp clock frame-counter) (-> obj hit-focus-time)) (seconds 2))
               (and (handle->process (-> obj focus handle))
                    (zero? (logand (-> (the-as process-focusable (handle->process (-> obj focus handle))) focus-status)
                                   (focus-status disable dead ignore grabbed)
@@ -392,7 +398,8 @@
   )
 
 ;; WARN: Return type mismatch process vs process-focusable.
-(defmethod enemy-method-107 enemy ((obj enemy))
+(defmethod get-enemy-target enemy ((obj enemy))
+  "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
   (let ((v0-0 (handle->process (-> obj focus handle))))
     (if (and v0-0
              (not (and v0-0
@@ -406,9 +413,9 @@
     )
   )
 
-(defmethod enemy-method-63 enemy ((obj enemy) (arg0 process-focusable) (arg1 symbol))
+(defmethod enemy-method-63 enemy ((obj enemy) (arg0 process-focusable) (arg1 enemy-aware))
   (if arg1
-      (enemy-focus-method-13 (-> obj focus) arg0 (the-as enemy-aware arg1))
+      (enemy-focus-method-13 (-> obj focus) arg0 arg1)
       (try-update-focus (-> obj focus) arg0 obj)
       )
   )
@@ -422,7 +429,7 @@
                  )
            )
       (when (enemy-method-53 obj (the-as process-focusable s5-0))
-        (enemy-method-63 obj (the-as process-focusable s5-0) #f)
+        (enemy-method-63 obj (the-as process-focusable s5-0) (the-as enemy-aware #f))
         (logior! (-> obj focus flags) (enemy-flag lock-focus))
         )
       )
@@ -528,10 +535,11 @@
   (none)
   )
 
-(defmethod enemy-method-72 enemy ((obj enemy))
+(defmethod react-to-focus enemy ((obj enemy))
+  "@TODO - flesh out docs"
   (let ((s5-0 (-> obj focus aware)))
     (cond
-      ((and (= s5-0 (enemy-aware enemy-aware-3)) (enemy-method-107 obj))
+      ((and (= s5-0 (enemy-aware enemy-aware-3)) (get-enemy-target obj))
        (go-hostile obj)
        )
       ((<= (the-as int s5-0) 0)
@@ -540,7 +548,7 @@
       ((>= 1 (the-as int s5-0))
        (go (method-of-object obj active))
        )
-      ((= s5-0 (enemy-aware enemy-aware-4))
+      ((= s5-0 (enemy-aware unaware))
        (go-flee obj)
        )
       (else
@@ -554,13 +562,14 @@
 (defmethod enemy-method-93 enemy ((obj enemy))
   (if (logtest? (enemy-flag alert) (-> obj enemy-flags))
       (go-directed obj)
-      (enemy-method-72 obj)
+      (react-to-focus obj)
       )
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-73 enemy ((obj enemy))
+(defmethod kill-prefer-falling enemy ((obj enemy))
+  "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (if (-> obj enemy-info use-die-falling)
       (go (method-of-object obj die-falling))
       (go (method-of-object obj die))
@@ -670,8 +679,8 @@
                                         (or (not v1-10) (zero? (logand (-> obj focus flags) (enemy-flag lock-focus))))
                                         )
                     )
-            (enemy-method-63 obj (the-as process-focusable s5-0) #f)
-            (set! (-> obj hit-focus-time) (the-as uint (-> pp clock frame-counter)))
+            (enemy-method-63 obj (the-as process-focusable s5-0) (the-as enemy-aware #f))
+            (set! (-> obj hit-focus-time) (-> pp clock frame-counter))
             (let ((v0-3 (logior (-> obj enemy-flags) (enemy-flag look-at-focus))))
               (set! (-> obj enemy-flags) v0-3)
               v0-3
@@ -686,7 +695,7 @@
 (defmethod enemy-method-49 enemy ((obj enemy))
   (logior! (-> obj enemy-flags) (enemy-flag attackable-backup))
   (let ((v0-0 (-> self clock frame-counter)))
-    (set! (-> obj auto-reset-penetrate-time) (the-as uint v0-0))
+    (set! (-> obj auto-reset-penetrate-time) v0-0)
     v0-0
     )
   )
@@ -777,13 +786,15 @@
   (none)
   )
 
-(defmethod enemy-method-109 enemy ((obj enemy) (arg0 int))
+(defmethod look-at-target! enemy ((obj enemy) (arg0 enemy-flag))
+  "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
+@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   (case arg0
-    ((1)
+    (((enemy-flag lock-focus))
      (logclear! (-> obj enemy-flags) (enemy-flag death-start))
      (logior! (-> obj enemy-flags) (enemy-flag lock-focus))
      )
-    ((2)
+    (((enemy-flag death-start))
      (logclear! (-> obj enemy-flags) (enemy-flag lock-focus))
      (logior! (-> obj enemy-flags) (enemy-flag death-start))
      )
@@ -795,7 +806,8 @@
   (none)
   )
 
-(defmethod enemy-method-110 enemy ((obj enemy))
+(defmethod stop-looking-at-target! enemy ((obj enemy))
+  "Will unset [[enemy-flag::death-start]] and [[enemy-flag::lock-focus]] and call [[joint-mod::shut-down]] if applicable"
   (when (nonzero? (-> obj neck))
     (logclear! (-> obj enemy-flags) (enemy-flag lock-focus death-start))
     (shut-down (-> obj neck))
@@ -813,7 +825,9 @@
     )
   )
 
-(defmethod enemy-method-126 enemy ((obj enemy) (arg0 collide-query) (arg1 vector) (arg2 collide-spec) (arg3 float) (arg4 float) (arg5 float))
+(defmethod enemy-above-ground? enemy ((obj enemy) (arg0 collide-query) (arg1 vector) (arg2 collide-spec) (arg3 float) (arg4 float) (arg5 float))
+  "@returns if the enemy is above the ground or not
+@see [[above-ground?]]"
   (above-ground? (-> obj root-override2) arg0 arg1 arg2 arg3 arg4 arg5)
   )
 
@@ -993,14 +1007,14 @@
   (none)
   )
 
-(defmethod enemy-method-114 enemy ((obj enemy))
-  "@abstract"
+(defmethod init-enemy-collision! enemy ((obj enemy))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   0
   (none)
   )
 
-(defmethod enemy-method-115 enemy ((obj enemy))
-  "@abstract"
+(defmethod init-enemy! enemy ((obj enemy))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   0
   (none)
   )
@@ -1011,7 +1025,9 @@
   (none)
   )
 
-(defmethod enemy-method-112 enemy ((obj enemy) (arg0 enemy-info))
+(defmethod set-enemy-info! enemy ((obj enemy) (arg0 enemy-info))
+  "In addition to setting the `enemy-info`, also init the `neck-joint` if applicable from it
+@param info Set `enemy-info` accordingly"
   (set! (-> obj enemy-info) arg0)
   (when (and (!= (-> obj enemy-info neck-joint) -1) (zero? (-> obj neck)))
     (set! (-> obj neck) (new 'process 'joint-mod (joint-mod-mode flex-blend) obj (-> obj enemy-info neck-joint)))
@@ -1026,7 +1042,8 @@
   (none)
   )
 
-(defmethod enemy-method-113 enemy ((obj enemy) (arg0 enemy-info))
+(defmethod init-enemy-behaviour-and-stats! enemy ((obj enemy) (arg0 enemy-info))
+  "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
   (local-vars (sv-16 res-tag))
   (when (coin-flip? obj)
     (let ((a0-2 (-> obj node-list data 2)))
@@ -1039,7 +1056,7 @@
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (logior! (-> obj mask) (process-mask actor-pause))
   (logior! (-> obj enemy-flags) (enemy-flag notice))
-  (enemy-method-112 obj arg0)
+  (set-enemy-info! obj arg0)
   (let ((a1-2 (-> obj enemy-info idle-anim-script)))
     (if a1-2
         (idle-control-method-9 (-> obj idle-anim-player) a1-2)
@@ -1123,12 +1140,12 @@
       )
   (let ((s4-0 (-> obj root-override2)))
     (set! (-> obj penetrated-by-all) (-> s4-0 penetrated-by))
-    (set! (-> s4-0 penetrated-by) (enemy-method-59 obj))
+    (set! (-> s4-0 penetrated-by) (get-penetrate-info obj))
     (set! (-> s4-0 event-self) 'touched)
     )
-  (set! (-> obj penetrated-flinch) (the-as penetrate (-> arg0 penetrate-flinch)))
-  (set! (-> obj penetrated-knocked) (the-as penetrate (-> arg0 penetrate-knocked)))
-  (set! (-> obj reaction-time) (the-as uint (get-rand-int-range obj 30 180)))
+  (set! (-> obj penetrated-flinch) (-> arg0 penetrate-flinch))
+  (set! (-> obj penetrated-knocked) (-> arg0 penetrate-knocked))
+  (set! (-> obj reaction-time) (get-rand-int-range obj 30 180))
   (let* ((v1-79 (-> obj enemy-flags))
          (a0-28 (-> obj fact-info-override enemy-options))
          (v1-80 (logior (enemy-flag
@@ -1177,11 +1194,11 @@
   (if (-> arg1 scale z)
       (set! (-> self enemy-flags) (the-as enemy-flag (logior (enemy-flag vulnerable-backup) (-> self enemy-flags))))
       )
-  (enemy-method-114 self)
+  (init-enemy-collision! self)
   (set! (-> self root-override2 trans quad) (-> arg1 trans quad))
   (quaternion-copy! (-> self root-override2 quat) (-> arg1 quat))
   (vector-identity! (-> self root-override2 scale))
-  (enemy-method-115 self)
+  (init-enemy! self)
   (when (> (-> self enemy-info gem-joint) 0)
     (cond
       ((and (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status save)))
@@ -1240,9 +1257,9 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (enemy-method-114 obj)
+  (init-enemy-collision! obj)
   (process-drawable-from-entity! obj arg0)
-  (enemy-method-115 obj)
+  (init-enemy! obj)
   (when (>= (-> obj enemy-info gem-joint) 0)
     (cond
       ((and (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status save)))
@@ -1292,7 +1309,12 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod enemy-method-98 enemy ((obj enemy) (arg0 process-focusable) (arg1 vector))
+(defmethod in-aggro-range? enemy ((obj enemy) (arg0 process-focusable) (arg1 vector))
+  "Should the enemy activate.
+- if `activate-distance` is `0.0`, always true
+- otherwise, check if the provided process is close enough
+@param proc The process used to distance check
+@returns true/false"
   #t
   )
 
@@ -1325,11 +1347,12 @@ This commonly includes things such as:
                (enemy-method-97 obj)
                (return #f)
                )
-             (let ((v1-14 (enemy-method-61
-                            obj
-                            (the-as int (enemy-method-57 obj (the-as process-focusable a1-0) (the-as enemy-best-focus #f)))
-                            )
-                          )
+             (let ((v1-14
+                     (enemy-method-61
+                       obj
+                       (the-as int (update-target-awareness! obj (the-as process-focusable a1-0) (the-as enemy-best-focus #f)))
+                       )
+                     )
                    )
                (set! (-> gp-0 aware) (the-as enemy-aware v1-14))
                (if (>= 1 v1-14)
@@ -1376,7 +1399,7 @@ This commonly includes things such as:
                              )
                        )
                   (if (and a1-1 (and a1-1 (zero? (logand (-> a1-1 focus-status) (focus-status disable dead)))) (!= obj a1-1))
-                      (enemy-method-57 obj a1-1 gp-0)
+                      (update-target-awareness! obj a1-1 gp-0)
                       )
                   )
                 )
@@ -1403,7 +1426,7 @@ This commonly includes things such as:
                                )
                          )
                     (if (and a1-3 (and a1-3 (zero? (logand (-> a1-3 focus-status) (focus-status disable dead)))) (!= obj a1-3))
-                        (enemy-method-57 obj a1-3 gp-0)
+                        (update-target-awareness! obj a1-3 gp-0)
                         )
                     )
                   )
@@ -1429,7 +1452,7 @@ This commonly includes things such as:
                                )
                          )
                     (if (and a1-5 (and a1-5 (zero? (logand (-> a1-5 focus-status) (focus-status disable dead)))) (!= obj a1-5))
-                        (enemy-method-57 obj a1-5 gp-0)
+                        (update-target-awareness! obj a1-5 gp-0)
                         )
                     )
                   )
@@ -1447,7 +1470,7 @@ This commonly includes things such as:
         (enemy-method-63
           obj
           (the-as process-focusable s4-1)
-          (the-as symbol (enemy-method-61 obj (the-as int (-> gp-0 aware))))
+          (the-as enemy-aware (enemy-method-61 obj (the-as int (-> gp-0 aware))))
           )
         s4-1
         )
@@ -1456,7 +1479,10 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch int vs enemy-aware.
-(defmethod enemy-method-57 enemy ((obj enemy) (arg0 process-focusable) (arg1 enemy-best-focus))
+(defmethod update-target-awareness! enemy ((obj enemy) (arg0 process-focusable) (arg1 enemy-best-focus))
+  "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
+@TODO - flesh out docs
+@returns the value that sets `aware`"
   (let ((f30-0 (vector-vector-distance (get-trans arg0 0) (-> obj root-override2 trans)))
         (s3-1 #f)
         (s2-0 #f)
@@ -1464,7 +1490,7 @@ This commonly includes things such as:
     (cond
       ((< f30-0 (-> obj enemy-info proximity-notice-distance))
        (set! s3-1 #t)
-       (set! s2-0 (enemy-method-98 obj arg0 (the-as vector #f)))
+       (set! s2-0 (in-aggro-range? obj arg0 (the-as vector #f)))
        )
       (else
         (let ((f0-1 (the-as float (-> obj enemy-info notice-distance))))
@@ -1472,7 +1498,7 @@ This commonly includes things such as:
               (set! f0-1 (+ (the-as meters f0-1) (-> obj enemy-info notice-distance-delta)))
               )
           (when (or (< f30-0 f0-1) (zero? (logand (-> obj enemy-flags) (enemy-flag enable-on-notice))))
-            (set! s2-0 (enemy-method-98 obj arg0 (the-as vector #f)))
+            (set! s2-0 (in-aggro-range? obj arg0 (the-as vector #f)))
             (if s2-0
                 (set! s3-1 #t)
                 )
@@ -1568,12 +1594,10 @@ This commonly includes things such as:
       (v1-1
         (when (not (logtest? (-> obj enemy-flags) (enemy-flag spawn-gem)))
           (logior! (-> obj enemy-flags) (enemy-flag spawn-gem))
-          (set! (-> obj notice-time) (the-as uint (-> self clock frame-counter)))
+          (set! (-> obj notice-time) (-> self clock frame-counter))
           )
         (if (and (not (logtest? (-> obj enemy-flags) (enemy-flag chase-startup)))
-                 (< (- (-> self clock frame-counter) (the-as int (-> obj notice-time)))
-                    (the-as time-frame (-> obj reaction-time))
-                    )
+                 (< (- (-> self clock frame-counter) (-> obj notice-time)) (-> obj reaction-time))
                  )
             (set! v1-1 #f)
             )
@@ -1586,7 +1610,7 @@ This commonly includes things such as:
       (v1-1
         arg0
         )
-      ((or (zero? arg0) (>= (- (-> self clock frame-counter) (the-as int (-> obj last-draw-time))) (seconds 2)))
+      ((or (zero? arg0) (>= (- (-> self clock frame-counter) (-> obj last-draw-time)) (seconds 2)))
        0
        )
       (else
@@ -1615,7 +1639,9 @@ This commonly includes things such as:
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 814]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 850]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 933]
-(defmethod enemy-method-74 enemy ((obj enemy) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler enemy ((obj enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (s5-5 rgbaf) (sv-432 process) (sv-448 event-message-block))
   (with-pp
     (the-as
@@ -1664,7 +1690,7 @@ This commonly includes things such as:
                            (collide-action)
                            )
                           )
-                     (set! (-> obj auto-reset-penetrate-time) (the-as uint (-> pp clock frame-counter)))
+                     (set! (-> obj auto-reset-penetrate-time) (-> pp clock frame-counter))
                      )
                  )
                )
@@ -1680,7 +1706,7 @@ This commonly includes things such as:
               (set! (-> v1-31 prim-core collide-with) (collide-spec))
               )
             0
-            (enemy-method-73 obj)
+            (kill-prefer-falling obj)
             )
            )
          )
@@ -1711,7 +1737,7 @@ This commonly includes things such as:
                     (enemy-method-108 obj (the-as enemy arg0) arg3)
                     (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
                       (set! (-> a1-13 from) (process->ppointer arg0))
-                      (set! (-> a1-13 num-params) (the-as int arg1))
+                      (set! (-> a1-13 num-params) arg1)
                       (set! (-> a1-13 message) (the-as symbol s2-1))
                       (set! (-> a1-13 param 0) (-> arg3 param 0))
                       (set! (-> a1-13 param 1) (-> arg3 param 1))
@@ -1747,7 +1773,7 @@ This commonly includes things such as:
            (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
            (process-contact-action arg0)
            (send-event arg0 'get-attack-count 1)
-           (enemy-method-73 obj)
+           (kill-prefer-falling obj)
            )
          #t
          )
@@ -1790,7 +1816,7 @@ This commonly includes things such as:
          (process-contact-action arg0)
          (send-event arg0 'get-attack-count 1)
          (if (zero? (-> obj hit-points))
-             (enemy-method-73 obj)
+             (kill-prefer-falling obj)
              (go (method-of-object obj hit))
              )
          )
@@ -1832,7 +1858,7 @@ This commonly includes things such as:
            (logclear! (-> obj enemy-flags) (enemy-flag alert victory called-dying))
            (if (logtest? (enemy-option ambush) (-> obj fact-info-override enemy-options))
                (go-ambush obj)
-               (enemy-method-72 obj)
+               (react-to-focus obj)
                )
            #t
            )
@@ -1873,7 +1899,7 @@ This commonly includes things such as:
         ((= arg2 'instant-death)
          (when (and (> (-> obj hit-points) 0) (zero? (-> obj fated-time)))
            (set! (-> obj hit-points) 0)
-           (set! (-> obj root-override2 penetrated-by) (enemy-method-59 obj))
+           (set! (-> obj root-override2 penetrated-by) (get-penetrate-info obj))
            (let ((s5-2 (enemy-method-50 obj (new 'stack-no-clear 'vector))))
              (vector-z-quaternion! s5-2 (-> obj root-override2 quat))
              (vector-float*! s5-2 s5-2 -1.0)
@@ -1890,12 +1916,12 @@ This commonly includes things such as:
            (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
            (enemy-method-62 obj)
            (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
-           (enemy-method-73 obj)
+           (kill-prefer-falling obj)
            )
          )
         ((= arg2 'die-fast)
          (logior! (-> obj draw status) (draw-control-status no-draw))
-         (enemy-method-132 obj)
+         (dispose! obj)
          (send-event (ppointer->process (-> obj parent)) 'child-die)
          (let ((s5-3 (-> obj on-death)))
            (if s5-3
@@ -1971,7 +1997,8 @@ This commonly includes things such as:
     )
   )
 
-(defmethod enemy-method-56 enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let ((v1-0 (the-as attack-info (-> arg1 param 1))))
     (if (logtest? (attack-info-mask damage) (-> v1-0 mask))
         (the int (-> v1-0 damage))
@@ -1998,18 +2025,18 @@ This commonly includes things such as:
 
 (defmethod enemy-method-48 enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
   (with-pp
-    (let* ((v1-1 (enemy-method-56 obj arg0 arg1))
+    (let* ((v1-1 (damage-amount-from-attack obj arg0 arg1))
            (s5-0 (-> obj hit-points))
            (s4-1 (max 0 (- s5-0 v1-1)))
            )
       (when (and (zero? s4-1) (nonzero? s5-0) (= (-> obj incoming knocked-type) (knocked-type knocked-type-6)))
         (cond
           ((zero? (-> obj fated-time))
-           (set! (-> obj fated-time) (the-as uint (-> pp clock frame-counter)))
+           (set! (-> obj fated-time) (-> pp clock frame-counter))
            (set! s4-1 1)
            )
           (else
-            (if (< (- (-> pp clock frame-counter) (the-as int (-> obj fated-time))) (seconds 1))
+            (if (< (- (-> pp clock frame-counter) (-> obj fated-time)) (seconds 1))
                 (set! s4-1 1)
                 )
             )
@@ -2017,7 +2044,7 @@ This commonly includes things such as:
         )
       (set! (-> obj hit-points) s4-1)
       (if (not (logtest? (-> obj enemy-flags) (enemy-flag attackable-backup)))
-          (set! (-> obj root-override2 penetrated-by) (enemy-method-59 obj))
+          (set! (-> obj root-override2 penetrated-by) (get-penetrate-info obj))
           )
       (- s5-0 s4-1)
       )
@@ -2116,11 +2143,11 @@ This commonly includes things such as:
   )
 
 (defbehavior enemy-event-handler enemy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (enemy-method-74 self arg0 arg1 arg2 arg3)
+  (general-event-handler self arg0 arg1 arg2 arg3)
   )
 
 (defbehavior enemy-simple-post enemy ()
-  (enemy-method-55 self)
+  (track-target! self)
   (update-transforms (-> self root-override2))
   0
   (none)
@@ -2149,7 +2176,7 @@ This commonly includes things such as:
       )
     )
   (enemy-method-111 self)
-  (enemy-method-55 self)
+  (track-target! self)
   (none)
   )
 
@@ -2185,7 +2212,7 @@ This commonly includes things such as:
       (move-to-point! gp-0 s5-1)
       )
     )
-  (enemy-method-55 self)
+  (track-target! self)
   0
   (none)
   )
@@ -2195,10 +2222,10 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (logclear! (-> self enemy-flags) (enemy-flag spawn-gem chase-startup use-notice-distance))
     (logior! (-> self enemy-flags) (enemy-flag enable-on-notice))
-    (set! (-> self state-timeout) (the-as uint 150))
+    (set! (-> self state-timeout) (seconds 0.5))
     (if (-> self on-notice)
         (logior! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
         )
@@ -2217,7 +2244,7 @@ This commonly includes things such as:
     (none)
     )
   :trans (behavior ()
-    (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self state-timeout)))
+    (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
              (> (the-as int (-> self focus aware)) 0)
              )
         (go-virtual active)
@@ -2232,7 +2259,7 @@ This commonly includes things such as:
   :post (behavior ()
     (idle-control-method-10 (-> self idle-anim-player) self)
     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
-        (set! (-> self last-draw-time) (the-as uint (-> self clock frame-counter)))
+        (set! (-> self last-draw-time) (-> self clock frame-counter))
         )
     (enemy-method-129 self)
     (ja-post)
@@ -2279,7 +2306,7 @@ This commonly includes things such as:
   :enter (-> (method-of-type enemy dormant) enter)
   :exit (-> (method-of-type enemy dormant) exit)
   :trans (behavior ()
-    (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self state-timeout)))
+    (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
                (> (the-as int (-> self focus aware)) 0)
                )
       (if (logtest? (enemy-option ambush) (-> self fact-info-override enemy-options))
@@ -2292,7 +2319,7 @@ This commonly includes things such as:
   :code (the-as (function none :behavior enemy) sleep-code)
   :post (behavior ()
     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
-        (set! (-> self last-draw-time) (the-as uint (-> self clock frame-counter)))
+        (set! (-> self last-draw-time) (-> self clock frame-counter))
         )
     (enemy-method-129 self)
     (none)
@@ -2373,7 +2400,7 @@ This commonly includes things such as:
       (set! (-> self enemy-flags) (logclear v1-3 (enemy-flag called-dying)))
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
@@ -2388,10 +2415,10 @@ This commonly includes things such as:
     (let ((gp-1 (-> self focus aware)))
       (when (logtest? (-> self enemy-flags) (enemy-flag chase-startup))
         (cond
-          ((and (= gp-1 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+          ((and (= gp-1 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
            )
-          ((= gp-1 (enemy-aware enemy-aware-4))
+          ((= gp-1 (enemy-aware unaware))
            (go-flee self)
            )
           (else
@@ -2426,7 +2453,7 @@ This commonly includes things such as:
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post enemy-simple-post
@@ -2437,7 +2464,7 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
     (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -2459,12 +2486,12 @@ This commonly includes things such as:
         (go-virtual victory)
         )
     (let ((gp-0 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
-          ((or (>= 2 (the-as int gp-0)) (not (enemy-method-107 self)))
+          ((or (>= 2 (the-as int gp-0)) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -2504,10 +2531,10 @@ This commonly includes things such as:
           ((>= 1 (the-as int gp-0))
            (go-virtual active)
            )
-          ((and (= gp-0 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+          ((and (= gp-0 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -2564,7 +2591,7 @@ This commonly includes things such as:
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post enemy-simple-post
@@ -2575,14 +2602,14 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (logclear! (-> self enemy-flags) (enemy-flag dangerous-backup))
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
   :trans (behavior ()
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
-      (if (!= (-> self focus aware) (enemy-aware enemy-aware-4))
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
+      (if (!= (-> self focus aware) (enemy-aware unaware))
           (go-stare self)
           )
       )
@@ -2616,7 +2643,7 @@ This commonly includes things such as:
   (set! (-> arg0 dest-pos quad) (-> obj event-param-point quad))
   (set! (-> arg0 start-pos quad) (-> obj root-override2 trans quad))
   (let ((s4-0 (new 'stack-no-clear 'collide-query)))
-    (if (enemy-method-126
+    (if (enemy-above-ground?
           obj
           s4-0
           (-> arg0 dest-pos)
@@ -2948,7 +2975,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (logclear! (-> self mask) (process-mask actor-pause))
     (enemy-method-135 self 0)
     (none)
@@ -3055,7 +3082,7 @@ This commonly includes things such as:
       )
     (logclear! (-> obj enemy-flags) (enemy-flag directed))
     (if (and (enemy-method-102 obj) (zero? (logand (-> obj focus-status) (focus-status dead))))
-        (enemy-method-73 obj)
+        (kill-prefer-falling obj)
         )
     (let ((s5-1 (-> obj root-override2))
           (a1-2 (new 'stack-no-clear 'collide-query))
@@ -3330,7 +3357,7 @@ This commonly includes things such as:
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
     (logclear! (-> self mask) (process-mask actor-pause))
     (let* ((v1-8 *game-info*)
@@ -3376,7 +3403,7 @@ This commonly includes things such as:
         (set! (-> self desired-angle) (enemy-method-51 self))
         )
     (if (zero? (-> self hit-points))
-        (enemy-method-132 self)
+        (dispose! self)
         (enemy-method-135 self 0)
         )
     (logclear! (-> self focus-status) (focus-status dangerous))
@@ -3443,7 +3470,7 @@ This commonly includes things such as:
         (set! (-> gp-0 move-count) 0)
         (until (enemy-method-80 self gp-0)
           (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
-              (enemy-method-73 self)
+              (kill-prefer-falling self)
               )
           (if (logtest? (-> self root-override2 status) (collide-status on-surface))
               (+! (-> gp-0 on-surface-count) 1)
@@ -3479,7 +3506,7 @@ This commonly includes things such as:
                    (enemy-method-102 self)
                    )
                )
-          (enemy-method-73 self)
+          (kill-prefer-falling self)
           )
       (while (not (enemy-method-79 self 4 gp-0))
         (suspend)
@@ -3504,7 +3531,7 @@ This commonly includes things such as:
           (cleanup-for-death self)
           )
          (else
-           (enemy-method-73 self)
+           (kill-prefer-falling self)
            )
          )
        )
@@ -3517,7 +3544,8 @@ This commonly includes things such as:
   :post enemy-falling-post
   )
 
-(defmethod enemy-method-132 enemy ((obj enemy))
+(defmethod dispose! enemy ((obj enemy))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (not (logtest? (enemy-flag recover-applied-velocity) (-> obj enemy-flags)))
     (set! (-> obj enemy-flags)
           (the-as enemy-flag (logior (enemy-flag recover-applied-velocity) (-> obj enemy-flags)))
@@ -3555,7 +3583,7 @@ This commonly includes things such as:
     (if (-> obj skel effect)
         (logior! (-> obj skel effect flags) (effect-control-flag ecf1))
         )
-    (enemy-method-110 obj)
+    (stop-looking-at-target! obj)
     )
   (none)
   )
@@ -3564,7 +3592,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (enemy-method-132 self)
+    (dispose! self)
     (let ((v1-3 (-> self root-override2 root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -3622,7 +3650,7 @@ This commonly includes things such as:
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (enemy-method-132 self)
+    (dispose! self)
     (let ((v1-3 (-> self root-override2 root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
