@@ -18366,7 +18366,7 @@
     (target-mech-jump float float surface)
     target-mech-punch
     target-mech-stance
-    (target-mech-start handle)
+    (target-mech-start handle float)
     target-mech-walk
     target-pilot-edge-grab
     (target-pilot-start handle)
@@ -47376,21 +47376,18 @@
 ;; under-shoot-block              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype under-block-spawner (basic)
-  ((col            int8    :offset-assert 4)
-   (row            int8    :offset-assert 5)
-   (active-handle  uint64  :offset-assert 8)
-   (waiting-handle uint64  :offset-assert 16)
+  ((col            int8        :offset-assert 4)
+   (row            int8        :offset-assert 5)
+   (active-handle  handle      :offset-assert 8)
+   (waiting-handle handle      :offset-assert 16)
    (exploded-time  time-frame  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype under-block-slot (basic)
   ((col int8  :offset-assert 4)
    (row int8  :offset-assert 5)
@@ -47399,51 +47396,47 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype under-block-puzzle (basic)
-  ((auto-unlock?           basic          :offset-assert 4)
-   (cells-wide             int8           :offset-assert 8)
-   (cells-tall             int8           :offset-assert 9)
-   (last-block-id          int8           :offset-assert 10)
-   (slot-mask              uint8          :offset-assert 11)
-   (slot-mask-full         uint8          :offset-assert 12)
-   (prev-special-attack-id uint32         :offset-assert 16)
-   (orient-ry              float          :offset-assert 20)
-   (spawners               basic          :offset-assert 24)
-   (slots                  basic          :offset-assert 28)
-   (cells                  uint32         :offset-assert 32)
-   (pulse-ops              uint32         :offset-assert 36)
-   (origin                 vector :inline :offset-assert 48)
-   (local-to-world         matrix :inline :offset-assert 64)
+  ((auto-unlock?           symbol                      :offset-assert 4)
+   (cells-wide             int8                        :offset-assert 8)
+   (cells-tall             int8                        :offset-assert 9)
+   (last-block-id          int8                        :offset-assert 10)
+   (slot-mask              uint8                       :offset-assert 11)
+   (slot-mask-full         uint8                       :offset-assert 12)
+   (prev-special-attack-id uint32                      :offset-assert 16)
+   (orient-ry              float                       :offset-assert 20)
+   (spawners               (array under-block-spawner) :offset-assert 24)
+   (slots                  (array under-block-slot)    :offset-assert 28)
+   (cells                  (pointer uint32)            :offset-assert 32)
+   (pulse-ops              (pointer uint32)            :offset-assert 36)
+   (origin                 vector              :inline :offset-assert 48)
+   (local-to-world         matrix              :inline :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype under-block (process-focusable)
-  ((puzzle             basic          :offset-assert 200)
-   (my-parent          uint32         :offset-assert 204)
-   (prev-attack-id     uint32         :offset-assert 208)
-   (spawner-id         int8           :offset-assert 212)
-   (my-id              int8           :offset-assert 213)
-   (col                int8           :offset-assert 214)
-   (row                int8           :offset-assert 215)
-   (prev-col           int8           :offset-assert 216)
-   (prev-row           int8           :offset-assert 217)
-   (move-dir-x         int8           :offset-assert 218)
-   (move-dir-z         int8           :offset-assert 219)
-   (pulse-op           int8           :offset-assert 220)
-   (pulse-pc           int8           :offset-assert 221)
-   (pulse-ctr          int8           :offset-assert 222)
-   (flags              uint64         :offset-assert 228)
-   (activated-time     time-frame         :offset-assert 236)
-   (rot-axis           vector :inline :offset-assert 252)
-   (away-from-focal-pt vector :inline :offset-assert 268)
+  ((puzzle             under-block-puzzle :offset-assert 204)
+   (my-parent          (pointer process)  :offset-assert 208)
+   (prev-attack-id     uint32             :offset-assert 212)
+   (spawner-id         int8               :offset-assert 216)
+   (my-id              int8               :offset-assert 217)
+   (col                int8               :offset-assert 218)
+   (row                int8               :offset-assert 219)
+   (prev-col           int8               :offset-assert 220)
+   (prev-row           int8               :offset-assert 221)
+   (move-dir-x         int8               :offset-assert 222)
+   (move-dir-z         int8               :offset-assert 223)
+   (pulse-op           int8               :offset-assert 224)
+   (pulse-pc           int8               :offset-assert 225)
+   (pulse-ctr          int8               :offset-assert 226)
+   (flags              uint64             :offset-assert 232)
+   (activated-time     time-frame         :offset-assert 240)
+   (rot-axis           vector     :inline :offset-assert 256)
+   (away-from-focal-pt vector     :inline :offset-assert 272)
    )
   :method-count-assert 51
   :size-assert         #x120
@@ -47463,49 +47456,46 @@
     (fall () _type_ :state 38)
     (explode () _type_ :state 39)
     (die-fast () _type_ :state 40)
-    (under-block-method-41 () none 41)
-    (under-block-method-42 () none 42)
-    (under-block-method-43 () none 43)
-    (under-block-method-44 () none 44)
-    (under-block-method-45 () none 45)
-    (under-block-method-46 () none 46)
-    (under-block-method-47 () none 47)
-    (under-block-method-48 () none 48)
-    (under-block-method-49 () none 49)
-    (under-block-method-50 () none 50)
+    (under-block-method-41 (_type_) none 41)
+    (under-block-method-42 (_type_) none 42)
+    (under-block-method-43 (_type_) none 43)
+    (under-block-method-44 (_type_) none 44)
+    (under-block-method-45 (_type_) none 45)
+    (under-block-method-46 (_type_) none 46)
+    (under-block-method-47 (_type_) none 47)
+    (under-block-method-48 (_type_) none 48)
+    (under-block-method-49 (_type_) none 49)
+    (under-block-method-50 (_type_) none 50)
     )
   )
-|#
 
-#|
 (deftype under-shoot-block (process-drawable)
-  ((puzzle        basic   :offset-assert 196)
-   (actor-group   uint32  :offset-assert 200)
-   (allow-unlock? basic   :offset-assert 204)
+  ((puzzle        under-block-puzzle    :offset-assert 200)
+   (actor-group   (pointer actor-group) :offset-assert 204)
+   (allow-unlock? symbol                :offset-assert 208)
    )
   :method-count-assert 29
-  :size-assert         #xe0
-  :flag-assert         #x1d006000e0
+  :size-assert         #xd4
+  :flag-assert         #x1d006000d4
   (:methods
     (idle () _type_ :state 20)
     (victory-locked () _type_ :state 21)
     (victory () _type_ :state 22)
     (beaten () _type_ :state 23)
-    (under-shoot-block-method-24 () none 24)
-    (under-shoot-block-method-25 () none 25)
-    (under-shoot-block-method-26 () none 26)
-    (under-shoot-block-method-27 () none 27)
-    (under-shoot-block-method-28 () none 28)
+    (under-shoot-block-method-24 (_type_ int) none 24)
+    (under-shoot-block-method-25 (_type_ int int float float) none 25)
+    (under-shoot-block-method-26 (_type_) none 26)
+    (under-shoot-block-method-27 (_type_ symbol) none 27)
+    (under-shoot-block-method-28 (_type_) none 28)
     )
   )
-|#
 
-;; (define-extern *under-block-puzzles* array)
-;; (define-extern *under-shoot-block-exploder-params* joint-exploder-static-params)
-;; (define-extern under-block-event-handler function)
-;; (define-extern cshape-reaction-under-block function)
-;; (define-extern under-block-init-by-other function)
-;; (define-extern under-shoot-block-event-handler function)
+(define-extern *under-block-puzzles* (array under-block-puzzle))
+(define-extern *under-shoot-block-exploder-params* joint-exploder-static-params)
+(define-extern under-block-event-handler (function process int symbol event-message-block object :behavior under-block))
+(define-extern cshape-reaction-under-block (function control-info collide-query vector none :behavior under-block))
+(define-extern under-block-init-by-other (function none :behavior under-block))
+(define-extern under-shoot-block-event-handler (function process int symbol event-message-block object :behavior under-shoot-block))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; underb-master                  ;;
