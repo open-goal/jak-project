@@ -372,7 +372,7 @@ void OceanTexture::handle_ocean_texture_jak2(DmaFollower& dma,
     ASSERT(data.vifcode0().kind == VifCode::Kind::MSCALF);
     ASSERT(data.vifcode0().immediate == TexVu1Prog::REST);
     ASSERT(data.vifcode1().kind == VifCode::Kind::STMOD);  // not sure why...
-    run_L2_PC();
+    run_L2_PC_jak2();
   }
 
   // last call
