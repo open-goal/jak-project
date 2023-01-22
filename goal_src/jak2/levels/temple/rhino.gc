@@ -313,7 +313,9 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 272]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 318]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 323]
-(defmethod enemy-method-74 rhino ((obj rhino) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler rhino ((obj rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars
     (sv-96 int)
     (sv-112 symbol)
@@ -342,10 +344,10 @@
            ((zero? (-> obj hit-points))
             (set! (-> *rhino-nav-enemy-info* die-anim) 15)
             (set! (-> obj frame-die-smush) 11.0)
-            (enemy-method-73 obj)
+            (kill-prefer-falling obj)
             )
            (else
-             ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+             ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
              )
            )
          )
@@ -354,7 +356,7 @@
            ((zero? (-> obj hit-points))
             (set! (-> *rhino-nav-enemy-info* die-anim) 14)
             (set! (-> obj frame-die-smush) 16.0)
-            (enemy-method-73 obj)
+            (kill-prefer-falling obj)
             )
            (else
              (let* ((s5-0 arg0)
@@ -503,10 +505,10 @@
            (set! (-> v1-74 prim-core collide-with) (collide-spec))
            )
          0
-         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
         (else
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
         )
       )
@@ -558,7 +560,7 @@
          )
        )
       (else
-        (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self state-timeout)))
+        (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
                  (> (the-as int (-> self focus aware)) 0)
                  )
             (go-virtual active)
@@ -573,7 +575,7 @@
   :virtual #t
   :enter (behavior ()
     (remove-setting! 'sound-mode)
-    (enemy-method-132 self)
+    (dispose! self)
     (set! (-> self hit-points) 0)
     0
     (none)
@@ -687,7 +689,8 @@
     )
   )
 
-(defmethod enemy-method-56 rhino ((obj rhino) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack rhino ((obj rhino) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (-> arg1 param 1)
   (let ((f30-0 (the float (penetrate-using->damage (the-as penetrate (-> obj incoming penetrate-using))))))
     (cond
@@ -964,7 +967,7 @@
                 (vector-vector-xz-distance (get-trans (the-as process-focusable a0-37) 0) (-> self root-override2 trans))
                 )
              (ja-channel-push! 1 (seconds 0.075))
-             (enemy-method-72 self)
+             (react-to-focus self)
              )
             (else
               (go-virtual run-away)
@@ -973,7 +976,7 @@
           )
         (else
           (ja-channel-push! 1 (seconds 0.075))
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
         )
       )
@@ -1097,7 +1100,7 @@
               (vector-! gp-0 s2-0 (-> self root-override2 trans))
               (vector-normalize! gp-0 (+ 16384.0 (vector-length gp-0)))
               (vector+! s4-0 (-> self root-override2 trans) gp-0)
-              (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+              (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                 (if (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable s3-0) 0) (-> self root-override2 trans))
                             40960.0
                             )
@@ -1109,7 +1112,7 @@
               (cond
                 ((-> self charge-straight)
                  (cond
-                   ((>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+                   ((>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                     (if (< (vector-vector-xz-distance (get-trans (the-as process-focusable s3-0) 0) (-> self root-override2 trans))
                            20480.0
                            )
@@ -1623,8 +1626,8 @@
     )
   )
 
-(defmethod enemy-method-114 rhino ((obj rhino))
-  "@abstract"
+(defmethod init-enemy-collision! rhino ((obj rhino))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1706,8 +1709,8 @@
     )
   )
 
-(defmethod enemy-method-115 rhino ((obj rhino))
-  "@abstract"
+(defmethod init-enemy! rhino ((obj rhino))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1715,7 +1718,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *rhino-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *rhino-nav-enemy-info*)
   (let ((v1-8 (-> obj neck)))
     (set! (-> v1-8 up) (the-as uint 1))
     (set! (-> v1-8 nose) (the-as uint 2))

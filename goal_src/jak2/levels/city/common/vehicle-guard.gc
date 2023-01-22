@@ -7,3 +7,81 @@
 
 ;; DECOMP BEGINS
 
+(deftype turret-barrel-info (structure)
+  ((local-pos vector :inline :offset-assert 0)
+   (local-dir vector :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype turret-control-info (structure)
+  ((joint-index  int8            :offset-assert 0)
+   (barrel-count int8            :offset-assert 1)
+   (shot-speed   float           :offset-assert 4)
+   (attack-range float           :offset-assert 8)
+   (rot-min      float 2       :offset-assert 12)
+   (rot-max      float 2       :offset-assert 20)
+   (rot-x-min    float           :offset 12)
+   (rot-x-max    float           :offset 20)
+   (rot-y-min    float           :offset 16)
+   (rot-y-max    float           :offset 24)
+   (local-pos    vector  :inline :offset-assert 32)
+   (local-dir    vector  :inline :offset-assert 48)
+   (barrel-array turret-barrel-info 4    :inline   :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
+
+(defenum turret-flag
+    :bitfield #t
+    :type uint8
+    (firing 0)
+    (aiming 1)
+    (should-shoot 2)
+    (targetting-laser 3)
+    (display-marks 4)
+    (no-rot-y-clamp 5)
+    )
+
+(deftype turret-control (structure)
+  (
+    (info                 turret-control-info         :offset-assert 0)
+    (guard-settings       traffic-guard-type-settings :offset-assert 4)
+    (flags                turret-flag                     :offset-assert 8)
+    (shot-count           int8                        :offset-assert 9)
+    (burst-count          int16                       :offset-assert 10)
+    (target-dist          float                       :offset-assert 12)
+    (inaccuracy           float                       :offset-assert 16)
+    (aim-offset-angle     degrees                     :offset-assert 20)
+    (aim-rot              float 2                     :offset-assert 24) ;; elt size: 4
+    (aim-rot-vel          float 2                     :offset-assert 32) ;; elt size: 4
+    (aim-rot-offset       float 2                     :offset-assert 40) ;; elt size: -8
+    (aim-rot-x            float                       :offset 24)
+    (aim-rot-y            float                       :offset 28)
+    (aim-rot-vel-x        float                       :offset 32)
+    (aim-rot-vel-y        float                       :offset 36)
+    (target-in-sight-time time-frame                  :offset-assert 48)
+    (aim-acquire-time     time-frame                  :offset-assert 56)
+    (shoot-time           time-frame                  :offset-assert 64)
+    (owner-handle         handle                       :offset-assert 72)
+  )
+  :pack-me
+  :method-count-assert 18
+  :size-assert         #x50
+  :flag-assert         #x1200000050
+  (:methods
+    (turret-control-method-9 (_type_ vehicle vector vector) none 9)
+    (turret-control-method-10 (_type_ vehicle) none 10)
+    (turret-control-method-11 (_type_ object object vector) none 11)
+    (turret-control-method-12 (_type_ joint-mod-rotate-local) none 12)
+    (turret-control-method-13 (_type_) none 13)
+    (turret-control-method-14 (_type_) none 14)
+    (turret-control-method-15 (_type_ turret-control-info) none 15)
+    (turret-control-method-16 (_type_ float float) none 16)
+    (turret-control-method-17 (_type_ vehicle) none 17)
+    )
+  )

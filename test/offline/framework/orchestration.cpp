@@ -330,7 +330,7 @@ void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig
                fmt::format("[{}/{}]", status->curr_step, status->total_steps), status->curr_file);
     threads_shown++;
   }
-  if (threads_hidden != 0) {
+  if (threads_hidden > 0) {
     fmt::print(
         fmt::fg(fmt::color::gray), "\33[2K\r+{} other threads. [{} | {} | {}]\n", threads_hidden,
         fmt::styled(g_offline_test_thread_manager.num_threads_pending(),

@@ -78,24 +78,24 @@
 (defstate die (fort-trap-door)
   :virtual #t
   :enter (behavior ()
-    (let ((v1-1 (-> self root-override root-prim)))
-      (set! (-> v1-1 prim-core collide-as) (collide-spec))
-      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+    (let ((root-prim (-> self root-override root-prim)))
+      (set! (-> root-prim prim-core collide-as) (collide-spec))
+      (set! (-> root-prim prim-core collide-with) (collide-spec))
       )
     0
     (sound-play "trapdoor")
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) (process->ppointer self))
-      (set! (-> a1-1 num-params) 0)
-      (set! (-> a1-1 message) 'trigger)
-      (let ((t9-2 send-event-function)
-            (v1-6 (-> self notify-actor))
+    (let ((evt (new 'stack-no-clear 'event-message-block)))
+      (set! (-> evt from) (process->ppointer self))
+      (set! (-> evt num-params) 0)
+      (set! (-> evt message) 'trigger)
+      (let ((func send-event-function)
+            (actor (-> self notify-actor))
             )
-        (t9-2
-          (if v1-6
-              (-> v1-6 extra process)
+        (func
+          (if actor
+              (-> actor extra process)
               )
-          a1-1
+          evt
           )
         )
       )
@@ -105,27 +105,29 @@
     ((lambda ()
        (with-pp
          (sound-play "wcrate-break")
-         (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-           (let* ((s5-1 *target*)
-                  (a0-4 (if (type? s5-1 process-focusable)
-                            s5-1
-                            )
-                        )
+         (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+           (let* ((target *target*)
+                  (target-proc (if (type? target process-focusable)
+                                   target
+                                   )
+                               )
                   )
-             (when a0-4
-               (set! (-> gp-1 fountain-rand-transv-lo quad) (-> (get-trans a0-4 0) quad))
-               (set! (-> gp-1 fountain-rand-transv-lo y) (+ -16384.0 (-> gp-1 fountain-rand-transv-lo y)))
+             (when target-proc
+               (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> (get-trans target-proc 0) quad))
+               (set! (-> exploder-tuning fountain-rand-transv-lo y)
+                     (+ -16384.0 (-> exploder-tuning fountain-rand-transv-lo y))
+                     )
                )
              )
-           (set! (-> gp-1 fountain-rand-transv-hi x) 24576.0)
-           (set! (-> gp-1 fountain-rand-transv-hi y) 81920.0)
-           (set! (-> gp-1 fountain-rand-transv-hi z) 12288.0)
-           (set! (-> gp-1 fountain-rand-transv-hi w) 32768.0)
+           (set! (-> exploder-tuning fountain-rand-transv-hi x) 24576.0)
+           (set! (-> exploder-tuning fountain-rand-transv-hi y) 81920.0)
+           (set! (-> exploder-tuning fountain-rand-transv-hi z) 12288.0)
+           (set! (-> exploder-tuning fountain-rand-transv-hi w) 32768.0)
            (process-spawn
              joint-exploder
              (art-group-get-by-name *level* "skel-fort-trap-door-explode" (the-as (pointer uint32) #f))
              5
-             gp-1
+             exploder-tuning
              *fort-trap-door-exploder-params*
              :to pp
              )
@@ -135,8 +137,8 @@
      )
     (suspend)
     (ja-channel-set! 0)
-    (let ((gp-0 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
+    (let ((frame-counter (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) frame-counter) (seconds 1))
         (suspend)
         )
       )
@@ -151,42 +153,46 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-trap-door ((obj fort-trap-door) (arg0 entity-actor))
+(defmethod init-from-entity! fort-trap-door ((obj fort-trap-door) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
-    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
-      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
-      (set! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 transform-index) 0)
-      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 20480.0)
-      (set! (-> s4-0 total-prims) (the-as uint 1))
-      (set! (-> s4-0 root-prim) v1-2)
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 0.0 20480.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
       )
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (let ((v1-5 (-> s4-0 root-prim)))
-      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
-      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    (set! (-> obj root-override) (the-as collide-shape-moving cshape))
     )
   (set! (-> (the-as collide-shape-moving (-> obj root-override)) penetrated-by) (penetrate flop))
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-trap-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (let ((a0-14 (-> obj skel root-channel 0)))
-    (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
-    (set! (-> a0-14 frame-num) 0.0)
-    (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+  (set! (-> obj notify-actor) (entity-actor-lookup entity 'alt-actor 0))
+  (let ((channel (-> obj skel root-channel 0)))
+    (set! (-> channel frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> channel frame-num) 0.0)
+    (joint-control-channel-group!
+      channel
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
     )
   (transform-post)
   (go (method-of-object obj idle))
@@ -216,18 +222,18 @@ This commonly includes things such as:
         )
 
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod art-init! water-anim-fortress ((obj water-anim-fortress))
-  "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience."
-  (let ((t9-0 (method-of-type water-anim art-init!)))
-    (t9-0 obj)
+(defmethod init-water! water-anim-fortress ((obj water-anim-fortress))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((parent-method (method-of-type water-anim init-water!)))
+    (parent-method obj)
     )
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) ripple)
     (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 close-fade-dist) 163840.0)
-    (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-water-anim-fortress)
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple close-fade-dist) 163840.0)
+    (set! (-> ripple far-fade-dist) 245760.0)
+    (set! (-> ripple waveform) ripple-for-water-anim-fortress)
     )
   (none)
   )

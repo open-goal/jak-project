@@ -862,7 +862,9 @@ const std::unordered_map<
           {"ai-task-pool",
            {{"tasks", ArrayFieldDecompMeta(TypeSpec("uint32"),
                                            4,
-                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
+                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"bot-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}},
+          {"hal3-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

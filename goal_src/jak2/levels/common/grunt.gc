@@ -76,7 +76,7 @@
     (wait-for-focus () _type_ :state 182)
     (spin-attack () _type_ :state 183)
     (grunt-method-184 (_type_ float) process-focusable 184)
-    (grunt-method-185 (_type_) nav-enemy-info 185)
+    (get-enemy-info (_type_) nav-enemy-info 185)
     )
   )
 
@@ -272,7 +272,9 @@
 
 (set! (-> *grunt-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-74 grunt ((obj grunt) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler grunt ((obj grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -305,7 +307,7 @@
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (enemy-method-73 obj)
+             (kill-prefer-falling obj)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
              (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
@@ -324,7 +326,7 @@
      #t
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -492,7 +494,7 @@
           )
       (if (< v1-1 (-> a0-0 curve num-cverts))
           (set! (-> self unknown-byte-1ji2n3) v1-1)
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
       )
     (until #f
@@ -665,7 +667,7 @@
          (vf2 :class vf)
          )
     (init-vf0-vector)
-    (let ((gp-0 (enemy-method-107 obj)))
+    (let ((gp-0 (get-enemy-target obj)))
       (when gp-0
         (let ((v1-3 (get-trans gp-0 0))
               (s4-0 (new 'stack-no-clear 'vector))
@@ -866,7 +868,7 @@
       )
     (ja :num-func num-func-identity :frame-num (ja-aframe 3.0 0))
     (let ((gp-3 (-> self focus aware)))
-      (if (or (not (enemy-method-107 self)) (!= gp-3 3))
+      (if (or (not (get-enemy-target self)) (!= gp-3 3))
           (go-stare self)
           )
       )
@@ -962,7 +964,7 @@
         )
       )
     (let ((gp-3 (-> self focus aware)))
-      (if (or (not (enemy-method-107 self)) (!= gp-3 3))
+      (if (or (not (get-enemy-target self)) (!= gp-3 3))
           (go-stare self)
           )
       )
@@ -1424,7 +1426,8 @@
   :post (-> (method-of-type nav-enemy idle) post)
   )
 
-(defmethod enemy-method-132 grunt ((obj grunt))
+(defmethod dispose! grunt ((obj grunt))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> obj minimap)
     (logior! (-> obj minimap flags) (minimap-flag fade-out))
     (set! (-> obj minimap) #f)
@@ -1441,8 +1444,8 @@
   (the-as grunt ((method-of-type nav-enemy relocate) obj arg0))
   )
 
-(defmethod enemy-method-114 grunt ((obj grunt))
-  "@abstract"
+(defmethod init-enemy-collision! grunt ((obj grunt))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1537,18 +1540,19 @@
   (none)
   )
 
-(defmethod grunt-method-185 grunt ((obj grunt))
+(defmethod get-enemy-info grunt ((obj grunt))
+  "@returns the [[nav-enemy-info]] associated with this type of grunt"
   *grunt-nav-enemy-info*
   )
 
-(defmethod enemy-method-115 grunt ((obj grunt))
-  "@abstract"
+(defmethod init-enemy! grunt ((obj grunt))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj (grunt-method-185 obj))
+  (init-enemy-behaviour-and-stats! obj (get-enemy-info obj))
   (let ((v1-6 (-> obj neck)))
     (set! (-> v1-6 up) (the-as uint 1))
     (set! (-> v1-6 nose) (the-as uint 2))
