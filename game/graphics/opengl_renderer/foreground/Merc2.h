@@ -67,7 +67,7 @@ class Merc2 : public BucketRenderer {
 
   static constexpr int MAX_LEVELS = 3;
   static constexpr int MAX_DRAWS_PER_LEVEL = 1024;
-  static constexpr int MAX_EVNMAP_DRAWS_PER_LEVEL = 512;
+  static constexpr int MAX_ENVMAP_DRAWS_PER_LEVEL = 1024;
 
   math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
   ShaderMercMat m_skel_matrix_buffer[MAX_SKEL_BONES];

@@ -31,7 +31,7 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   for (int i = 0; i < MAX_LEVELS; i++) {
     auto& draws = m_level_draw_buckets.emplace_back();
     draws.draws.resize(MAX_DRAWS_PER_LEVEL);
-    draws.envmap_draws.resize(MAX_EVNMAP_DRAWS_PER_LEVEL);
+    draws.envmap_draws.resize(MAX_ENVMAP_DRAWS_PER_LEVEL);
   }
 }
 
