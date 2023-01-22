@@ -753,7 +753,9 @@
   :post mammoth-walk-post
   )
 
-(defmethod enemy-method-74 mammoth ((obj mammoth) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler mammoth ((obj mammoth) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -771,7 +773,7 @@
      (send-event arg0 'get-attack-count 1)
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -1419,10 +1421,14 @@
     )
   )
 
-(defmethod enemy-method-55 mammoth ((obj mammoth))
+(defmethod track-target! mammoth ((obj mammoth))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (local-vars (sv-752 lightning-spec) (sv-768 int) (sv-784 symbol) (sv-800 mammoth))
   (with-pp
-    (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+    (let ((t9-0 (method-of-type nav-enemy track-target!)))
       (t9-0 obj)
       )
     (mammoth-update-ik)
@@ -1593,8 +1599,8 @@
     )
   )
 
-(defmethod enemy-method-114 mammoth ((obj mammoth))
-  "@abstract"
+(defmethod init-enemy-collision! mammoth ((obj mammoth))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1688,15 +1694,15 @@
   (none)
   )
 
-(defmethod enemy-method-115 mammoth ((obj mammoth))
-  "@abstract"
+(defmethod init-enemy! mammoth ((obj mammoth))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (with-pp
     (initialize-skeleton
       obj
       (the-as skeleton-group (art-group-get-by-name *level* "skel-mammoth" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (enemy-method-113 obj *mammoth-nav-enemy-info*)
+    (init-enemy-behaviour-and-stats! obj *mammoth-nav-enemy-info*)
     (logclear! (-> obj mask) (process-mask actor-pause))
     (set-vector! (-> obj root-override2 scale) 1.5 1.5 1.5 1.0)
     (set! (-> obj y-level) -40959590.0)

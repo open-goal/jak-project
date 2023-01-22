@@ -24,7 +24,7 @@
   )
 
 ;; definition for method 28 of type spyder-shot
-;; WARN: Return type mismatch int vs sound-id.
+;; WARN: Return type mismatch int vs none.
 (defmethod play-impact-sound spyder-shot ((obj spyder-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
@@ -36,7 +36,8 @@
        )
       )
     )
-  (the-as sound-id 0)
+  0
+  (none)
   )
 
 ;; definition for method 31 of type spyder-shot
@@ -160,7 +161,72 @@
     :default-hit-points 8
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -238,7 +304,9 @@
 (set! (-> *spyder-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type spyder
-(defmethod enemy-method-74 spyder ((obj spyder) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler spyder ((obj spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('hit-knocked)
@@ -269,7 +337,7 @@
        (if (type? (-> arg0 parent 0) enemy)
            (logior! (-> obj status-flags) 2)
            )
-       ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
        )
       (('notify)
        (cond
@@ -278,7 +346,7 @@
             ((= (-> arg3 param 1) (handle->process (-> obj focus handle)))
              (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-6 from) (process->ppointer arg0))
-               (set! (-> a1-6 num-params) (the-as int arg1))
+               (set! (-> a1-6 num-params) arg1)
                (set! (-> a1-6 message) 'victory)
                (set! (-> a1-6 param 0) (-> arg3 param 0))
                (set! (-> a1-6 param 1) (-> arg3 param 1))
@@ -290,12 +358,12 @@
                )
              )
             (else
-              ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+              ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
               )
             )
           )
          (else
-           ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+           ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
            )
          )
        )
@@ -306,10 +374,10 @@
          (sound-play "spyder-uncloak")
          )
        (send-event obj 'cue-chase)
-       ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -659,13 +727,17 @@
   )
 
 ;; definition for method 55 of type spyder
-(defmethod enemy-method-55 spyder ((obj spyder))
+(defmethod track-target! spyder ((obj spyder))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (spyder-method-185 obj)
   (spyder-method-184 obj (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat)))
   (update-trans! (-> obj sound) (-> obj root-override2 trans))
   (update! (-> obj sound))
   (spyder-method-182 obj)
-  (let ((t9-6 (method-of-type nav-enemy enemy-method-55)))
+  (let ((t9-6 (method-of-type nav-enemy track-target!)))
     (t9-6 obj)
     )
   (set! (-> obj status-flags) (logand -2 (-> obj status-flags)))
@@ -877,7 +949,7 @@
           )
       )
     (spyder-method-181 self)
-    (enemy-method-109 self 2)
+    (look-at-target! self (enemy-flag death-start))
     (set! (-> self status-flags) (logand -3 (-> self status-flags)))
     (when (!= (-> self dest-fade) 128.0)
       (set! (-> self shock-effect-end) (+ (-> self clock frame-counter) (seconds 1)))
@@ -893,7 +965,7 @@
           )
       )
     (set! (-> self status-flags) (logand -33 (-> self status-flags)))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (none)
     )
   :trans (behavior ()
@@ -1049,7 +1121,7 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-4 enemy-flags))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
     (none)
     )
@@ -1065,7 +1137,7 @@
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info-override use-victory))
         (go-virtual victory)
         )
-    (if (or (>= 2 (the-as int (-> self focus aware))) (not (enemy-method-107 self)))
+    (if (or (>= 2 (the-as int (-> self focus aware))) (not (get-enemy-target self)))
         (go-stare self)
         )
     (none)
@@ -1249,7 +1321,7 @@
 
 ;; definition for method 63 of type spyder
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 spyder ((obj spyder) (arg0 process-focusable) (arg1 symbol))
+(defmethod enemy-method-63 spyder ((obj spyder) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 obj arg0 arg1)
                        (set-dst-proc! (-> obj los) (-> obj focus handle))
@@ -1260,8 +1332,8 @@
 
 ;; definition for method 114 of type spyder
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 spyder ((obj spyder))
-  "@abstract"
+(defmethod init-enemy-collision! spyder ((obj spyder))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1380,14 +1452,14 @@
 ;; definition for method 115 of type spyder
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 spyder ((obj spyder))
-  "@abstract"
+(defmethod init-enemy! spyder ((obj spyder))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spyder" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *spyder-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *spyder-nav-enemy-info*)
   (let ((v1-5 (-> obj neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))

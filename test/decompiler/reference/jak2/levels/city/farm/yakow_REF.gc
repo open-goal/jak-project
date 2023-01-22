@@ -74,7 +74,72 @@
     :default-hit-points 5
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -150,12 +215,15 @@
 (set! (-> *yakow-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 56 of type yakow
-(defmethod enemy-method-56 yakow ((obj yakow) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack yakow ((obj yakow) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 
 ;; definition for method 74 of type yakow
-(defmethod enemy-method-74 yakow ((obj yakow) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler yakow ((obj yakow) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('attack)
      (let ((v1-1 (the-as object (-> arg3 param 1))))
@@ -166,7 +234,7 @@
        )
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -247,7 +315,7 @@
     )
   :post (behavior ()
     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
-        (set! (-> self last-draw-time) (the-as uint (-> self clock frame-counter)))
+        (set! (-> self last-draw-time) (-> self clock frame-counter))
         )
     (enemy-method-129 self)
     (ja-post)
@@ -413,8 +481,8 @@
 
 ;; definition for method 114 of type yakow
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 yakow ((obj yakow))
-  "@abstract"
+(defmethod init-enemy-collision! yakow ((obj yakow))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -461,14 +529,14 @@
 
 ;; definition for method 115 of type yakow
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 yakow ((obj yakow))
-  "@abstract"
+(defmethod init-enemy! yakow ((obj yakow))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-yakow" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *yakow-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *yakow-nav-enemy-info*)
   (let ((v1-5 (-> obj nav)))
     (set! (-> v1-5 speed-scale) 1.0)
     )

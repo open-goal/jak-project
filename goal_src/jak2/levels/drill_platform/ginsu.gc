@@ -326,10 +326,14 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod enemy-method-55 ginsu ((obj ginsu))
+(defmethod track-target! ginsu ((obj ginsu))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (with-pp
     (ginsu-method-180 obj)
-    (let ((t9-1 (method-of-type nav-enemy enemy-method-55)))
+    (let ((t9-1 (method-of-type nav-enemy track-target!)))
       (t9-1 obj)
       )
     (cond
@@ -490,7 +494,9 @@
   )
 
 ;; WARN: disable def twice: 11. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod enemy-method-74 ginsu ((obj ginsu) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ginsu ((obj ginsu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-1 object))
   (with-pp
     (case arg2
@@ -515,7 +521,7 @@
       (('touch 'bonk 'attack)
        (cond
          ((or (!= arg0 *target*) (logtest? (focus-status dark) (-> *target* focus-status)))
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
          (else
            (let ((v1-15 (new 'stack-no-clear 'event-message-block)))
@@ -544,7 +550,7 @@
        v0-1
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -587,7 +593,7 @@
         (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
         )
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
-    (set! (-> self starting-time) (the-as uint (-> self clock frame-counter)))
+    (set! (-> self starting-time) (-> self clock frame-counter))
     (set! (-> self spiral-time) (-> self clock frame-counter))
     (set! (-> self desired-distance) (vector-length (ginsu-method-181 self (new 'stack-no-clear 'vector))))
     (none)
@@ -979,8 +985,8 @@
   (none)
   )
 
-(defmethod enemy-method-114 ginsu ((obj ginsu))
-  "@abstract"
+(defmethod init-enemy-collision! ginsu ((obj ginsu))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1045,8 +1051,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 ginsu ((obj ginsu))
-  "@abstract"
+(defmethod init-enemy! ginsu ((obj ginsu))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1054,7 +1060,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *ginsu-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *ginsu-nav-enemy-info*)
   (logclear! (-> obj nav flags) (nav-control-flag update-heading-from-facing))
   (set! (-> obj enemy-flags) (the-as enemy-flag (logclear (-> obj enemy-flags) (enemy-flag enemy-flag43))))
   (logclear! (-> obj nav flags) (nav-control-flag limit-rotation-rate))

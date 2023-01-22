@@ -5778,6 +5778,32 @@
   (ten 10)
   )
 
+;; +++level-h:bigmap-id
+(defenum bigmap-id
+  :type uint32
+  (bigmap-id-0 0)
+  (bigmap-id-1 1)
+  (bigmap-id-2 2)
+  (bigmap-id-3 3)
+  (bigmap-id-4 4)
+  (bigmap-id-5 5)
+  (bigmap-id-6 6)
+  (bigmap-id-7 7)
+  (bigmap-id-8 8)
+  (bigmap-id-9 9)
+  (bigmap-id-10 10)
+  (bigmap-id-11 11)
+  (bigmap-id-12 12)
+  (bigmap-id-13 13)
+  (sewer-default 14)
+  (sewer-with-board-area 15)
+  (bigmap-id-16 16)
+  (bigmap-id-17 17)
+  (bigmap-id-18 18)
+  (bigmap-id-19 19)
+  (bigmap-id-20 20))
+;; ---level-h:bigmap-id
+
 (deftype level-load-info (basic)
   ((name-list           symbol 6  :offset-assert 4 :score -1)
    (index               int16     :offset-assert 28)
@@ -5834,7 +5860,7 @@
    (draw-priority       float     :offset-assert 224)
    (level-flags         uint32    :offset-assert 228)
    (fog-height          float     :offset-assert 232)
-   (bigmap-id           uint32    :offset-assert 236)
+   (bigmap-id           bigmap-id    :offset-assert 236)
    (ocean-near-translucent? symbol :offset-assert 240)
    (ocean-far?          symbol    :offset-assert 244)
    (mood-range          mood-range :inline :offset-assert 256)
@@ -7452,7 +7478,7 @@
     (get-trail-for-connection "Get a trail for connection. If arg1 is set, allow allocating a new one." (_type_ connection-minimap symbol) minimap-trail 10)
     (get-icon-draw-pos "Follow the path from the start until it reaches the border of the map, then get this position."
                        (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
-    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12) ;; int can be #f / vector can be a symbol
+    (add-icon! "Add an icon to the map!" (_type_ process uint int vector int) connection-minimap 12) ;; int can be #f / vector can be a symbol or entity-actor
     (free-trail-by-connection "Free the trail associated with this connection." (_type_ connection-minimap) none 13)
     (update-trails "Main function to do trail search per-frame" (_type_) none 14)
     (draw-1 (_type_ dma-buffer vector4w symbol) none 15) ;; hud sprite 1 draw
@@ -12925,7 +12951,7 @@
    (sub-task-list          (array game-task-node-info) :offset-assert 252)
    (mission-list           (array game-task-node-info) :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
-   (unknown-pad6           (array uint16)               :offset-assert 264)
+   (unknown-pad6           (array uint16)               :offset-assert 264) ;; TODO - speech related
    (level-opened           uint8             32 :offset-assert 268)
    (total-deaths           int32                :offset-assert 300)
    (continue-deaths        int32                :offset-assert 304)
@@ -13187,7 +13213,10 @@
   :flag-assert         #xe00000018
   (:methods
     (talker-speech-class-method-9 (_type_) symbol 9)
-    (talker-speech-class-method-10 (_type_) none 10)
+    (play-communicator-speech!
+      "Plays the provided [[talker-speech-class]]
+       @TODO - understand the array from [[game-info]] better"
+      (_type_) none 10)
     (talker-speech-class-method-11 (_type_) none 11)
     (talker-speech-class-method-12 (_type_ int) none 12)
     (talker-speech-class-method-13 (_type_ int) none 13)
@@ -14846,6 +14875,7 @@
 ;; penetrate-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++penetrate-h:penetrate
 (defenum penetrate
   :bitfield #t
   :type uint64
@@ -14882,7 +14912,39 @@
   (eco-blue          30) ;; hi 16384
   (eco-green         31) ;; hi 32768
   (knocked           32) ;; hihi 1
+  (penetrate-33      33)
+  (penetrate-34      34)
+  (penetrate-35      35)
+  (penetrate-36      36)
+  (penetrate-37      37)
+  (penetrate-38      38)
+  (penetrate-39      39)
+  (penetrate-40      40)
+  (penetrate-41      41)
+  (penetrate-42      42)
+  (penetrate-43      43)
+  (penetrate-44      44)
+  (penetrate-45      45)
+  (penetrate-46      46)
+  (penetrate-47      47)
+  (penetrate-48      48)
+  (penetrate-49      49)
+  (penetrate-50      50)
+  (penetrate-51      51)
+  (penetrate-52      52)
+  (penetrate-53      53)
+  (penetrate-54      54)
+  (penetrate-55      55)
+  (penetrate-56      56)
+  (penetrate-57      57)
+  (penetrate-58      58)
+  (penetrate-59      59)
+  (penetrate-60      60)
+  (penetrate-61      61)
+  (penetrate-62      62)
+  (penetrate-63      63)
   )
+;; ---penetrate-h:penetrate
 
 (define-extern penetrate-using->damage (function penetrate int))
 (define-extern penetrated-by-all&hit-points->penetrated-by (function penetrate int penetrate))
@@ -16336,7 +16398,9 @@
     (set-collide-as! (_type_ collide-spec) none 48)
     (modify-collide-as! (_type_ int collide-spec collide-spec) none 49)
     (send-shoves (_type_ process touching-shapes-entry float float float) symbol 50)
-    (above-ground? (_type_ collide-query vector object float float float) symbol 51)
+    (above-ground?
+      "@returns if we are above ground or not"
+      (_type_ collide-query vector collide-spec float float float) symbol 51)
     (water-info-init!
       "Initialize a [[water-info]] with the currently loaded regions."
       (_type_ water-info collide-action) water-info 52)
@@ -18022,11 +18086,11 @@
       (_type_) none 25)
     (spawn-shell-particles "TODO - confirm" (_type_) none 26)
     (unknown-particles "TODO - confirm" (_type_) none 27)
-    (play-impact-sound (_type_ projectile-options) sound-id 28)
+    (play-impact-sound (_type_ projectile-options) none 28)
     (stop-sound!
       "Stops the current `sound-id` if set, re-init the `sound-id` after being stopped"
       (_type_) none 29)
-    (init-collision!
+    (init-proj-collision!
       "Init the [[projectile]]'s [[collide-shape]]"
       (_type_) none 30)
     (init-proj-settings!
@@ -23211,7 +23275,7 @@
   "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
    otherwise, an explicit [[vector]] can be provided"
   (function sound-name sound-id int int int sound-group object sound-id :behavior process-drawable))
-(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id :behavior process-drawable))
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id :behavior process-drawable)) ;; vector or symbol for final arg?
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-stop (function sound-id int))
 (define-extern sound-continue (function sound-id int))
@@ -32264,7 +32328,7 @@
     "Set a [[water-anim]]'s `trans` as specified by the [[vector]] and update `water-height`."
     (_type_ vector) int 22)
     (get-ripple-height (_type_ vector) float 23)
-    (art-init! "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience." (_type_) none 24)
+    (init-water! "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]" (_type_) none 24)
     (reset-root! "Reset a [[water-anim]]'s `root`." (_type_) trsqv 25)
     (water-anim-init! "Initialize a [[water-anim]]." (_type_) none 26)
     (water-anim-method-27 "Empty." (_type_) none 27)
@@ -32425,7 +32489,7 @@
   (enemy-aware-1 1)
   (enemy-aware-2 2)
   (enemy-aware-3 3)
-  (enemy-aware-4 4)
+  (unaware 4)
   )
 ;; ---enemy-h:enemy-aware
 
@@ -32476,8 +32540,8 @@
    (default-hit-points                  int32           :offset-assert 156)
    (gnd-collide-with                    collide-spec          :offset-assert 160)
    (overlaps-others-collide-with-filter collide-spec          :offset-assert 164)
-   (penetrate-flinch                    uint64          :offset-assert 168)
-   (penetrate-knocked                   uint64          :offset-assert 176)
+   (penetrate-flinch                    penetrate          :offset-assert 168)
+   (penetrate-knocked                   penetrate          :offset-assert 176)
    (movement-gravity                    meters          :offset-assert 184)
    (friction                            float           :offset-assert 188)
    (slip-factor                         float           :offset-assert 192)
@@ -32577,7 +32641,7 @@
   (knocked-type-1 1)
   (knocked-type-2 2)
   (knocked-type-3 3)
-  (knocked-type-4 4)
+  (knocked-type-4 4) ;; what the heck is this! (its on gator, and cant trigger it for the life of me)
   (knocked-type-5 5)
   (knocked-type-6 6)
   (knocked-type-7 7)
@@ -32625,14 +32689,14 @@
    (penetrated-by-all           penetrate                      :offset-assert 256)
    (penetrated-flinch           penetrate                      :offset-assert 264)
    (penetrated-knocked          penetrate                      :offset-assert 272)
-   (reaction-time               uint64                      :offset-assert 280)
-   (notice-time                 uint64                      :offset-assert 288)
-   (state-timeout               uint64                      :offset-assert 296)
-   (auto-reset-penetrate-time   uint64                      :offset-assert 304)
-   (hit-focus-time              uint64                      :offset-assert 312)
-   (last-draw-time              uint64                      :offset-assert 320)
-   (starting-time               uint64                      :offset-assert 328)
-   (fated-time                  uint64                      :offset-assert 336)
+   (reaction-time               time-frame                      :offset-assert 280)
+   (notice-time                 time-frame                      :offset-assert 288)
+   (state-timeout               time-frame                      :offset-assert 296)
+   (auto-reset-penetrate-time   time-frame                      :offset-assert 304)
+   (hit-focus-time              time-frame                      :offset-assert 312)
+   (last-draw-time              time-frame                      :offset-assert 320)
+   (starting-time               time-frame                      :offset-assert 328)
+   (fated-time                  time-frame                      :offset-assert 336)
    (focus-pos                   vector            :inline   :offset-assert 352)
    (event-param-point           vector            :inline   :offset-assert 368)
    (jump-dest                   vector            :inline   :offset        368)
@@ -32682,17 +32746,31 @@
       "TODO"
       (_type_ process-focusable) symbol 53)
     (enemy-method-54 (_type_) enemy-flag 54)
-    (enemy-method-55 (_type_) none 55)
-    (enemy-method-56 (_type_ process event-message-block) int 56)
-    (enemy-method-57 (_type_ process-focusable enemy-best-focus) enemy-aware 57)
+    (track-target!
+      "Does a lot of various things relating to interacting with the target
+       - tracks when the enemy was last drawn
+       - looks at the target and handles attacking
+       @TODO Not extremely well understood yet"
+      (_type_) none 55)
+    (damage-amount-from-attack
+      "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+      (_type_ process event-message-block) int 56)
+    (update-target-awareness!
+      "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
+       @TODO - flesh out docs
+       @returns the value that sets `aware`"
+      (_type_ process-focusable enemy-best-focus) enemy-aware 57)
     (enemy-method-58 (_type_ process event-message-block) symbol 58)
-    (enemy-method-59 (_type_) penetrate 59)
+    (get-penetrate-info
+      "@returns the allowed way(s) this enemy can take damage
+       @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
+      (_type_) penetrate 59)
     (coin-flip?
       "@returns The result of a 50/50 RNG roll"
       (_type_) symbol 60)
     (enemy-method-61 (_type_ int) int :behavior enemy 61)
     (enemy-method-62 (_type_) none 62)
-    (enemy-method-63 (_type_ process-focusable symbol) symbol 63)
+    (enemy-method-63 (_type_ process-focusable enemy-aware) symbol 63)
     (enemy-method-64 (_type_) none 64)
     (enemy-method-65 (_type_) none 65)
     (go-ambush (_type_) none 66)
@@ -32701,9 +32779,16 @@
     (go-directed (_type_) none 69)
     (go-hostile (_type_) none 70)
     (go-flee (_type_) none 71)
-    (enemy-method-72 (_type_) none 72)
-    (enemy-method-73 (_type_) none 73)
-    (enemy-method-74 (_type_ process object symbol event-message-block) object 74)
+    (react-to-focus
+      "@TODO - flesh out docs"
+      (_type_) none 72)
+    (kill-prefer-falling
+      "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
+      (_type_) none 73)
+    (general-event-handler
+      "Handles various events for the enemy
+       @TODO - unsure if there is a pattern for the events and this should have a more specific name"
+      (_type_ process int symbol event-message-block) object 74)
     (enemy-method-75 (_type_ process touching-shapes-entry) none 75)
     (enemy-method-76 (_type_ process event-message-block) symbol 76)
     (enemy-method-77 (_type_ (pointer float)) symbol 77)
@@ -32730,7 +32815,13 @@
     (enemy-method-95 (_type_ vector float) symbol 95)
     (enemy-method-96 (_type_ float symbol) symbol 96)
     (enemy-method-97 (_type_) process 97)
-    (enemy-method-98 (_type_ process-focusable vector) symbol 98)
+    (in-aggro-range?
+      "Should the enemy activate.
+       - if `activate-distance` is `0.0`, always true
+       - otherwise, check if the provided process is close enough
+       @param proc The process used to distance check
+       @returns true/false"
+      (_type_ process-focusable vector) symbol 98)
     (enemy-method-99 (_type_ process-focusable) symbol 99)
     (enemy-method-100 (_type_) symbol 100)
     (enemy-method-101 (_type_) none 101)
@@ -32739,15 +32830,31 @@
     (enemy-method-104 (_type_ process uint uint) symbol :behavior process 104)
     (enemy-method-105 (_type_ process) enemy-flag 105)
     (enemy-method-106 (_type_ process object int attack-info) none :behavior enemy 106)
-    (enemy-method-107 (_type_) process-focusable 107)
+    (get-enemy-target
+      "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
+      (_type_) process-focusable 107)
     (enemy-method-108 (_type_ enemy event-message-block) int 108)
-    (enemy-method-109 (_type_ int) none 109)
-    (enemy-method-110 (_type_) none 110)
+    (look-at-target!
+      "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
+       @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
+       (_type_ enemy-flag) none 109)
+    (stop-looking-at-target!
+      "Will unset [[enemy-flag::death-start]] and [[enemy-flag::lock-focus]] and call [[joint-mod::shut-down]] if applicable"
+      (_type_) none 110)
     (enemy-method-111 (_type_) none :behavior enemy 111)
-    (enemy-method-112 (_type_ enemy-info) none 112)
-    (enemy-method-113 (_type_ enemy-info) none 113)
-    (enemy-method-114 "@abstract" (_type_) none 114)
-    (enemy-method-115 "@abstract" (_type_) none 115)
+    (set-enemy-info!
+      "In addition to setting the `enemy-info`, also init the `neck-joint` if applicable from it
+       @param info Set `enemy-info` accordingly"
+      (_type_ enemy-info) none 112)
+    (init-enemy-behaviour-and-stats!
+      "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
+      (_type_ enemy-info) none 113)
+    (init-enemy-collision!
+      "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+      (_type_) none 114)
+    (init-enemy!
+      "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+      (_type_) none 115)
     (go-idle (_type_) none 116)
     (get-rand-float
       "@returns the result of calling [[rand-vu]]"
@@ -32776,13 +32883,18 @@
     (enemy-method-123 "TODO" (_type_ float) symbol 123)
     (enemy-method-124 "TODO" (_type_) collide-spec 124)
     (enemy-method-125 (_type_ collide-query collide-spec float float float) pat-surface 125)
-    (enemy-method-126 (_type_ collide-query vector collide-spec float float float) symbol 126)
+    (enemy-above-ground?
+      "@returns if the enemy is above the ground or not
+       @see [[above-ground?]]"
+      (_type_ collide-query vector collide-spec float float float) symbol 126)
     (enemy-method-127 (_type_ float float symbol collide-spec) symbol 127)
     (enemy-method-128 (_type_ vector move-above-ground-params) none 128)
     (enemy-method-129 (_type_) none 129)
     (enemy-method-130 (_type_ float) symbol 130)
     (enemy-method-131 (_type_ int) uint 131)
-    (enemy-method-132 (_type_) none 132)
+    (dispose!
+      "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
+      (_type_) none 132)
     (enemy-method-133 (_type_) symbol 133)
     (enemy-method-134 (_type_ process attack-info) process-focusable 134)
     (enemy-method-135 (_type_ int) sound-id 135)
@@ -32854,8 +32966,13 @@
   :size-assert         #x25c
   :flag-assert         #xb201e0025c
   (:methods
-    (enemy-method-112 (_type_ nav-enemy-info) float :replace 112)
-    (enemy-method-113 (_type_ nav-enemy-info) none :replace 113)
+    (set-enemy-info!
+      "In addition to setting the `enemy-info`, also init the `neck-joint` if applicable from it
+       @param info Set `enemy-info` accordingly"
+      (_type_ nav-enemy-info) none :replace 112)
+    (init-enemy-behaviour-and-stats!
+      "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
+      (_type_ nav-enemy-info) none :replace 113)
     (taunt () _type_ :state 137)
     (pacing () _type_ :state 138)
     (circling () _type_ :state 139)
@@ -33589,7 +33706,7 @@
   (elevator-flags-13)
   (elevator-flags-14)
   (elevator-flags-15)
-  (elevator-flags-16)
+  (airlock-opened)
   (elevator-flags-17)
   )
 ;; ---elevator:elevator-flags
@@ -34391,7 +34508,9 @@
     (wait-for-focus () _type_ :state 182)
     (spin-attack () _type_ :state 183)
     (grunt-method-184 (_type_ float) process-focusable 184)
-    (grunt-method-185 (_type_) nav-enemy-info 185)
+    (get-enemy-info
+      "@returns the [[nav-enemy-info]] associated with this type of grunt"
+      (_type_) nav-enemy-info 185)
     )
   )
 
@@ -35999,13 +36118,29 @@
    (current-path     int32           :offset 972)
    (num-paths        int32           :offset 976)
    (display-path     int32           :offset 980)
-   (targetted-timer  uint64          :offset 984)
+   (targetted-timer  time-frame          :offset 984)
    )
   :method-count-assert 138
   :size-assert         #x3e0
   :flag-assert         #x8a036003e0
   (:methods
-    (pegasus-method-137 (_type_) none 137)
+    (run-logic?
+      "Calls [[process-tree::12]] if we are considered in-range of the [[pegasus]], otherwise returns [[#t]]"
+      (_type_) symbol :replace 12)
+    (damage-amount-from-attack
+      "Only attacks from the jetboard will deal max damage (6), but by default it will return `1`.
+       This is why the scouts are technically killable by other means
+       @returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
+       @see [[*pegasus-enemy-info*]]"
+      (_type_ process event-message-block) int :replace 56)
+    (update-target-awareness!
+      "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
+       For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
+       @returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
+      (_type_ process-focusable enemy-best-focus) enemy-aware :replace 57)
+    (track-how-long-aimed-at!
+      "Updates `targetted-timer` with the `frame-counter` while Jak is aiming at the [[pegasus]]"
+      (_type_) none 137)
     )
   (:states
     pegasus-debug
@@ -36013,15 +36148,68 @@
   )
 
 (define-extern *pegasus-enemy-info* enemy-info)
-(define-extern pegasus-draw-section (function float float rgba none :behavior pegasus))
-(define-extern pegasus-show-runs (function symbol :behavior pegasus))
-(define-extern pegasus-rotate (function symbol float none :behavior pegasus))
-(define-extern pegasus-loop-on-same-path (function none :behavior pegasus))
-(define-extern pegasus-choose-path (function symbol :behavior pegasus))
-(define-extern pegasus-move (function float symbol symbol none :behavior pegasus))
-(define-extern pegasus-calc-speed (function float float float float symbol :behavior pegasus))
-(define-extern pegasus-calc-anim-speed (function float :behavior pegasus))
-(define-extern pegasus-fly-code (function int none :behavior pegasus))
+(define-extern pegasus-draw-section
+  "Draws the [[pegasus]] curve section between the two provided points.
+   @param path-percent-a Percentage along the path for the first point
+   @param path-percent-b Percentage along the path for the second point
+   param color The color to draw the curve with
+   @see [[curve-control]]"
+  (function float float rgba none :behavior pegasus))
+(define-extern pegasus-show-runs
+  "When [[*display-path-marks*]] is enabled, allow the user to cycle through the displayed path
+   - Pressing [[up]] on the D-Pad will increment the path index
+   - Pressing [[down]] on the D-Pad will decrement the path index
+   Additional debug text will be displayed as well.  This is useful as many paths overlap other paths"
+  (function none :behavior pegasus))
+(define-extern pegasus-rotate
+  "Rotates the [[pegasus]] along the path, factoring in the current speed and the target's position
+   @param influenced-by-target? Whether or not to care about [[target]]'s position
+   @param angle The hopeful angle to use when constructing the rotation matrix, ultimately limited to `0.25` (radians?) though
+   @see [[target-pos]] and [[matrix-from-two-vectors-max-angle-partial!]]
+   @TODO - `float` should be `degrees` -- The usual amount passed in is `(degrees 100.0835)`"
+  (function symbol float none :behavior pegasus))
+(define-extern pegasus-loop-on-same-path
+  "Creates an endless loop on the same path as the name suggests
+   - If we are beyond the end of the path, start again near the beginning (1%)
+   - If we are far before the beginning, start at the beginning (0%)
+   - If we are atleast 1% into the path, step back 1%
+   - If we are less than 0% somehow, slowly add 1%
+   Ultimately this appears to be some sort of safe-guard to get things back into a somewhat working state
+   if there are unexpected path conditions -- but the results of this are not great!
+   Another potential explaination is to make it easy during development to identify and debug a bad path
+   In practice, this is never called"
+  (function none :behavior pegasus))
+(define-extern pegasus-choose-path
+  "Determines the next path the pegasus should take if we have completed the current path it's on
+   There are many fail-safes here if something goes wrong to try to keep the pegasus behaving
+   @see [[pegasus-look-on-same-path]]
+   @TODO - understand the path selection better"
+  (function symbol :behavior pegasus))
+(define-extern pegasus-move
+  "Moves the pegasus along the path by smoothly interpolating along it
+   @param explicit-y-vel Normally `0.0` but this value is used when the pegasus needs to switch direction
+   @param adjust-y-offset? Normally [[#f]] which forces the movement to reflect the result of the collison query - the [[pegasus]] will stay close to the ground.  [[#t]] ignores this"
+  (function float symbol none :behavior pegasus))
+(define-extern pegasus-calc-speed
+  "Calculates the pegasus' speed based on a number of factors:
+   - Speed up as the target gets closer (up to a max) and slow down as the target is further away (up to a min)
+   This function also is what causes the pegasus to flip around
+   @param min-dist TODO
+   @param max-dist TODO
+   @param max-speed The maximum speed the pegasus can go
+   @param min-speed The minimum speed the pegasus can go
+   @returns If there should be a reaction to the target via [[enemy::72]]"
+  (function float float float float symbol :behavior pegasus))
+(define-extern pegasus-calc-anim-speed
+  "Based on `speed`, adjust how fast the pegasus should animate.
+   The faster it's moving the fast it flaps it's wings, etc
+   @TODO understand the magic values here better
+   @returns The anim speed, it can be no lower than `1.5`"
+  (function float :behavior pegasus))
+(define-extern pegasus-fly-code
+  "Handles the flying animations and sounds
+   @TODO - cleanup a bit more"
+  (function int none :behavior pegasus))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wren                           ;;
@@ -36889,7 +37077,9 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-dig-lava-bloops (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-dig-lava-bloops
+  "Ensure the lava bloop splats where it originated"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-tube                    ;;
@@ -36997,8 +37187,12 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-forexitb-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-forexitb-drop-water-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-forexitb-drop-userdata
+  "Ensure water pipe spray at the end of fortress does not go below the provided value, render splash when it reaches"
+  (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-forexitb-drop-water-userdata
+  "Ensure water pipe drip at the end of fortress does not go below the provided value, render splash when it reaches"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-turret-shot             ;;
@@ -37225,7 +37419,9 @@
 ;; drill-part2                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern check-drop-level-drill-drillbit-rubble-sparks (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-drill-drillbit-rubble-sparks
+  "Ensure the rubble spark particle effects don't go below a predefined y value, draw splat effect when they do"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-mech-master              ;;
@@ -38282,7 +38478,7 @@
    (time-flip           float          :offset-assert 368)
    (disable-track-under basic          :offset-assert 372)
    (dest-angle          float          :offset-assert 376)
-   (on-shake            basic          :offset-assert 380)
+   (on-shake            symbol          :offset-assert 380)
    (hint-count          float          :offset-assert 384)
    )
   :method-count-assert 37
@@ -38378,7 +38574,9 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern check-drop-level-mountain-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-mountain-drop-userdata
+  "Ensure the waterfall drops don't go below the specified y-value"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hopper                         ;;
@@ -39773,8 +39971,12 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern birth-func-ctyfarma-drip (function int sparticle-cpuinfo sparticle-launchinfo none))
-(define-extern check-drop-level-ctyfarma-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-ctyfarma-drip
+  "Create a new dirt drip, don't go below the ocean or the ground"
+  (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-ctyfarma-drop-userdata
+  "Ensure water drop particle effects don't go below the provided y-value, render the splash"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyfarmb-part                  ;;
@@ -39787,8 +39989,12 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern birth-func-ctyfarmb-drip (function int sparticle-cpuinfo sparticle-launchinfo none))
-(define-extern check-drop-level-ctyfarmb-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-ctyfarmb-drip
+  "Create a new dirt drip, don't go below the ocean or the ground"
+  (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-ctyfarmb-drop-userdata
+  "Ensure water drop particle effects don't go below the provided y-value, render the splash"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; yakow                          ;;
@@ -40305,9 +40511,13 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern birth-func-atoll-bird-wing (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern check-drop-level-atoll-drop (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern check-drop-level-atoll-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern birth-func-atoll-bird-wing "@TODO - particle docs" (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern check-drop-level-atoll-drop
+  "Ensure water drop particle effects don't go below the ocean level, render the splash"
+  (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-atoll-drop-userdata
+  "Ensure water drop particle effects don't go below the provided y-value, render the splash"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-obs                      ;;
@@ -40479,7 +40689,7 @@
   ((left-eye           joint-mod          :offset-assert 604)
    (right-eye          joint-mod          :offset-assert 608)
    (look-at-other      handle         :offset-assert 616)
-   (neck-away-from     basic          :offset-assert 624)
+   (neck-away-from     symbol          :offset-assert 624)
    (look-at-other-time time-frame         :offset-assert 632)
    (pad-iuj1n23i1      uint32 3 :offset-assert 640)
    (slow-timer         time-frame         :offset-assert 656)
@@ -40492,8 +40702,12 @@
   :flag-assert         #xb7024002c0
   (:methods
     (fodder-method-178 (_type_) none 178)
-    (fodder-method-179 (_type_ vector) float 179)
-    (fodder-method-180 (_type_) symbol 180)
+    (look-at-position!
+      "Adjusts the eyes to look at particular position, or the focused target
+       @param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
+       @return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
+      (_type_ vector) float 179)
+    (fodder-method-180 "@TODO no idea, never seems to do anything because the actor-group-count is always 0" (_type_) symbol 180)
     (fodder-method-181 (_type_ symbol) none 181)
     (fodder-method-182 (_type_) float 182)
     )
@@ -40799,10 +41013,18 @@
   :flag-assert         #x10003000b0
   )
 
-(define-extern sewer-drop-birth-func (function int sparticle-cpuinfo sparticle-launchinfo none))
-(define-extern check-drop-level-sewer-drop (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern sewer-drop2-birth-func (function int sparticle-cpuinfo sparticle-launchinfo none))
-(define-extern check-drop2-level-sewer-drop (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern sewer-drop-birth-func
+  "Resets the timer to birth a new water drop"
+  (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop-level-sewer-drop
+  "Prevent the water drop from going below the ocean, display the splash on the surface or ground, play associated sounds"
+  (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern sewer-drop2-birth-func
+  "Resets the timer to birth a new water drop"
+  (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern check-drop2-level-sewer-drop
+  "Prevent the water drop from going below the ocean, display the splash on the surface or ground, play associated sounds"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-ocean                    ;;
@@ -40823,8 +41045,8 @@
 (deftype sew-blade (process-drawable)
   ((y-min        float    :offset-assert 200)
    (y-max        float    :offset-assert 204)
-   (snd-water    uint128  :offset-assert 208)
-   (snd-no-water uint128  :offset-assert 224)
+   (snd-water    sound-name  :offset-assert 208)
+   (snd-no-water sound-name  :offset-assert 224)
    (last-sound   int32    :offset-assert 240)
    (attack-id    uint32   :offset-assert 244)
    )
@@ -40832,7 +41054,9 @@
   :size-assert         #xf8
   :flag-assert         #x15008000f8
   (:methods
-    (sew-blade-method-20 (_type_) none 20)
+    (update-sound!
+      "Updates the sound of the [[sew-blade]] based on if it's under or above the water"
+      (_type_) none 20)
     )
   )
 
@@ -40905,8 +41129,13 @@
   (:methods
     (idle () _type_ :state 20)
     (pressed () _type_ :state 21)
-    (sew-light-switch-method-22 (_type_) none 22)
-    (sew-light-switch-method-23 (_type_ symbol) none 23)
+    (init-switch-collision!
+      "Initializes the collision on the switch"
+      (_type_) none 22)
+    (broadcast-to-actors
+      "Broadcast event to all associated [[entity]]s via the `actor-group`s
+       @param `event-type` the symbol to broadcast"
+      (_type_ symbol) none 23)
     )
   )
 
@@ -40921,14 +41150,31 @@
   :flag-assert         #x1100100090
   (:methods
     (idle () _type_ :state 14)
-    (sew-light-control-method-15 (_type_ symbol symbol) float 15)
-    (sew-light-control-method-16 (_type_ object vector float) symbol 16)
+    (press!
+      "Turns the lights on (or off)
+       @param switched-on? Should the sewer lights be turned on or off?
+       @param should-turret-flash? Should the turret have it's `flash` set as well"
+      (_type_ symbol symbol) float 15)
+    (sew-light-control-method-16
+      "@unused
+       @TODO - not done yet, no callers?"
+      (_type_ object vector float) symbol 16)
     )
   )
 
-(define-extern sew-tri-blade-joint-callback (function draw-control cspace-array joint-control none))
-(define-extern sew-light-control-init-by-other (function entity-actor entity-actor none :behavior sew-light-control))
-(define-extern sewer-startup (function none))
+(define-extern sew-tri-blade-joint-callback
+  "Handles the rotation and transformation of the [[sew-tri-blade]]"
+  (function draw-control cspace-array joint-control none))
+(define-extern sew-light-control-init-by-other
+  "Creates a [[sew-light-control]] given two entities for the turret and switch itself
+   @param switch The entity for the switch
+   @param turret The entity for the turret"
+  (function entity-actor entity-actor none :behavior sew-light-control))
+(define-extern sewer-startup
+  "Basic house-keeping for starting the sewer area:
+   - sets up the bigmap
+   - spawns the first switch and turret"
+   (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-obs2                     ;;
@@ -40941,7 +41187,10 @@
   :size-assert         #x174
   :flag-assert         #x3201000174
   (:methods
-    (sew-elevator-method-49 (_type_ symbol) none 49)
+    (configure-collision
+      "Appropriately sets the collision on the elevator
+       @param collide-with-jak? If set, the elevator will collide with Jak"
+      (_type_ symbol) none 49)
     )
   )
 
@@ -41017,7 +41266,9 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (sew-mine-method-22 (_type_) none 22)
+    (init-mine!
+      "Initializes the mine's particles and sets `last-time` to `0`"
+      (_type_) none 22)
     )
   )
 
@@ -41047,9 +41298,9 @@
   ((deadly-radius      float   :offset-assert 204)
    (prev-deadly-radius float   :offset-assert 208)
    (attack-id          uint32  :offset-assert 212)
-   (first-wall?        basic   :offset-assert 216)
+   (first-wall?        symbol   :offset-assert 216)
    (anim               spool-anim   :offset-assert 220)
-   (art-name           basic   :offset-assert 224)
+   (art-name           string   :offset-assert 224)
    )
   :method-count-assert 30
   :size-assert         #xe4
@@ -41057,7 +41308,9 @@
   (:methods
     (idle () _type_ :state 27)
     (hit (symbol) _type_ :state 28)
-    (sew-wall-method-29 (_type_) none 29)
+    (attack-target!
+      "If the target is close enough to the wall, hit it!"
+      (_type_) none 29)
     )
   )
 
@@ -41086,9 +41339,15 @@
     )
   )
 
-(define-extern sew-mar-statue-debris-init-by-other (function none :behavior sew-mar-statue-debris))
-(define-extern sew-mar-statue-debris-b-init-by-other (function none :behavior sew-mar-statue-debris-b))
-(define-extern sew-mar-statue-event-handler (function process int symbol event-message-block object :behavior sew-mar-statue))
+(define-extern sew-mar-statue-debris-init-by-other
+  "Initializes a [[sew-mar-statue--debris]]"
+  (function none :behavior sew-mar-statue-debris))
+(define-extern sew-mar-statue-debris-b-init-by-other
+  "Initializes a [[sew-mar-statue--debris-b]]"
+  (function none :behavior sew-mar-statue-debris-b))
+(define-extern sew-mar-statue-event-handler
+  "Event handler for the [[sew-mar-statue]], normally hidden, but once `trigger`ed it will spawn the debris"
+  (function process int symbol event-message-block object :behavior sew-mar-statue))
 (define-extern *sew-scare-grunt-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41227,8 +41486,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gator (nav-enemy)
+  "Cannot take damage due to it overriding [[enemy::56]]"
   ((ocean-y         float          :offset-assert 604)
-   (lock-nav-target basic          :offset-assert 608)
+   (lock-nav-target symbol          :offset-assert 608)
    (new-facing      vector :inline :offset-assert 624)
    (old-facing      vector :inline :offset-assert 640)
    (turn-time       time-frame         :offset-assert 656)
@@ -41238,9 +41498,17 @@
   :flag-assert         #xb602200298
   (:methods
     (attack-forward () _type_ :state 178)
-    (gator-method-179 (_type_) float 179)
-    (gator-method-180 (_type_ vector) vector 180)
-    (gator-method-181 (_type_ float float symbol) time-frame 181)
+    (adjust-depth!
+      "Changes the height based on the ocean depth
+       @see [[get-height]]"
+      (_type_) float 179)
+    (update-facing!
+      "Updates the `new-facing` vector"
+      (_type_ vector) vector 180)
+    (encircle-target!
+      "Core movement for the [[gator]], circles the target, charges at the target, etc
+       @params TODO - not sure, they all dont seem to do very much and this method is a mess"
+      (_type_ float float symbol) time-frame 181)
     )
   )
 
@@ -41384,10 +41652,10 @@
    (gun-tilt          float                     :offset-assert 564)
    (desired-twist     float                     :offset-assert 568)
    (desired-tilt      float                     :offset-assert 572)
-   (los-clear         basic                     :offset-assert 576)
+   (los-clear         symbol                    :offset-assert 576)
    (smoke-part        sparticle-launch-control                     :offset-assert 580)
    (casing-part       sparticle-launch-control                     :offset-assert 584)
-   (flash-state       basic                     :offset-assert 588)
+   (flash-state       symbol                     :offset-assert 588)
    (can-shoot         symbol                     :offset-assert 592)
    (last-hit-time     time-frame                    :offset-assert 600)
    (init-mat          matrix            :inline :offset-assert 608)
@@ -41397,11 +41665,21 @@
   :size-assert         #x2a4
   :flag-assert         #x8e023002a4
   (:methods
-    (sew-gunturret-method-137 (_type_ symbol) none 137)
-    (sew-gunturret-method-138 (_type_) none 138)
-    (sew-gunturret-method-139 (_type_) none 139)
-    (sew-gunturret-method-140 (_type_ symbol) none 140)
-    (sew-gunturret-method-141 (_type_) none 141)
+    (aim-turret!
+      "Calculates the angle and tilt for the turret to either aim at the target, or it's default direction
+       @param aim-at-target? Whether or not the turret should aim at the target, will ignore the target if #f"
+      (_type_ symbol) none 137)
+    (update-collision!
+      "Updates the collision for the turret based on it's aiming direction"
+      (_type_) none 138)
+    (set-aim-at-default!
+      "Aims the turret at it's default direction.  Sets `aim-pos` accordingly"
+      (_type_) none 139)
+    (fire-turret!
+      "Actually fires the turret, sets `flash-state` to [[#t]]
+       @param fire-sound? Whether to play the fire sound effect or not"
+      (_type_ symbol) none 140)
+    (init-turret-params! (_type_) none 141)
     )
   )
 
@@ -41411,7 +41689,9 @@
   :size-assert         #x2a4
   :flag-assert         #x8e023002a4
   (:methods
-    (pal-gun-turret-method-140 (_type_ symbol) float :replace 140)
+    (fire-turret!
+      "@overrides Calls [[sew-gunturret::140]] but also customizes the turret flash via [[set-palcab-turret-flash!]]"
+      (_type_ symbol) float :replace 140)
     )
   )
 
@@ -41816,7 +42096,9 @@
     )
   )
 
-(define-extern check-drop-level-palace-roof-rain (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-palace-roof-rain
+  "Ensure the rain on the palace roof doesn't go through the roof and displays the splash effect when it makes impact"
+  (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern *metalkor-head-lightning-shock-skel* lightning-spec)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43143,7 +43425,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern death-precursor death-info)
-;; (define-extern start-precursor-effect (function object none))
+(define-extern start-precursor-effect (function object none))
 (define-extern birth-func-pecker-feather-color (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43290,7 +43572,7 @@
    (gun-tilt        float               :offset-assert 580)
    (desired-twist   float               :offset-assert 584)
    (desired-tilt    float               :offset-assert 588)
-   (los-clear       basic               :offset-assert 592)
+   (los-clear       symbol               :offset-assert 592)
    (flash-state     basic               :offset-assert 596)
    (flash-index     uint32              :offset-assert 600)
    (can-shoot       symbol               :offset-assert 604)

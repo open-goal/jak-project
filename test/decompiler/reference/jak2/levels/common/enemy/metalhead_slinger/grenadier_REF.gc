@@ -174,7 +174,72 @@
     :default-hit-points 14
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -252,7 +317,9 @@
 (set! (-> *grenadier-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type grenadier
-(defmethod enemy-method-74 grenadier ((obj grenadier) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler grenadier ((obj grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('hit-knocked)
@@ -266,14 +333,14 @@
          (logior! (-> obj status-flags) 1)
          (set! (-> obj suppress-knockaside-timer) (-> pp clock frame-counter))
          )
-       ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
        )
       (('notify)
        (cond
          ((and (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
           (let ((v1-23 (new 'stack-no-clear 'event-message-block)))
             (set! (-> v1-23 from) (process->ppointer arg0))
-            (set! (-> v1-23 num-params) (the-as int arg1))
+            (set! (-> v1-23 num-params) arg1)
             (set! (-> v1-23 message) 'victory)
             (set! (-> v1-23 param 0) (-> arg3 param 0))
             (set! (-> v1-23 param 1) (-> arg3 param 1))
@@ -285,12 +352,12 @@
             )
           )
          (else
-           ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+           ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
            )
          )
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -498,7 +565,7 @@
           )
       )
     (grenadier-method-181 self)
-    (enemy-method-109 self 2)
+    (look-at-target! self (enemy-flag death-start))
     (set! (-> self status-flags) (logand -2 (-> self status-flags)))
     (none)
     )
@@ -515,7 +582,7 @@
                (f30-0 (vector-vector-distance gp-0 s5-0))
                )
           (cond
-            ((and (< f30-0 12288.0) (enemy-method-107 self))
+            ((and (< f30-0 12288.0) (get-enemy-target self))
              (go-virtual spin-kick)
              )
             ((< f30-0 40960.0)
@@ -864,7 +931,7 @@
       (set! (-> v1-11 attack-id) a0-19)
       (set! (-> self attack-id) a0-19)
       )
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (none)
     )
   :exit (behavior ()
@@ -1156,7 +1223,7 @@
           )
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1213,8 +1280,12 @@
   )
 
 ;; definition for method 55 of type grenadier
-(defmethod enemy-method-55 grenadier ((obj grenadier))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! grenadier ((obj grenadier))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 34))))
@@ -1225,8 +1296,8 @@
 
 ;; definition for method 114 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 grenadier ((obj grenadier))
-  "@abstract"
+(defmethod init-enemy-collision! grenadier ((obj grenadier))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1331,14 +1402,14 @@
 
 ;; definition for method 115 of type grenadier
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 grenadier ((obj grenadier))
-  "@abstract"
+(defmethod init-enemy! grenadier ((obj grenadier))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grenadier" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *grenadier-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *grenadier-nav-enemy-info*)
   (let ((v1-5 (-> obj neck)))
     (when v1-5
       (set! (-> v1-5 up) (the-as uint 1))

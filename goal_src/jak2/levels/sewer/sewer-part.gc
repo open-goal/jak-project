@@ -181,6 +181,7 @@
   )
 
 (defun sewer-drop-birth-func ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  "Resets the timer to birth a new water drop"
   (when (>= (get-height *ocean* (-> arg2 launchrot) #t) (-> arg2 launchrot y))
     (set! (-> arg1 timer) 0)
     0
@@ -190,6 +191,7 @@
   )
 
 (defun check-drop-level-sewer-drop ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  "Prevent the water drop from going below the ocean, display the splash on the surface or ground, play associated sounds"
   (let ((f30-0 (-> arg1 key origin trans y))
         (f28-0 (-> arg2 vector 0 y))
         (s5-0 #f)
@@ -330,23 +332,26 @@
   )
 
 (defun sewer-drop2-birth-func ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  "Resets the timer to birth a new water drop"
   (when (>= (get-height *ocean* (-> arg2 launchrot) #t) (-> arg2 launchrot y))
     (set! (-> arg1 timer) 0)
     0
     )
-  (let ((s4-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> s4-0 start-pos quad) (-> arg2 launchrot quad))
-    (set-vector! (-> s4-0 move-dist) 0.0 -204800.0 0.0 1.0)
-    (let ((v1-6 s4-0))
-      (set! (-> v1-6 radius) 40.96)
-      (set! (-> v1-6 collide-with) (collide-spec backgnd))
-      (set! (-> v1-6 ignore-process0) #f)
-      (set! (-> v1-6 ignore-process1) #f)
-      (set! (-> v1-6 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-      (set! (-> v1-6 action-mask) (collide-action solid))
+  (let ((cquery (new 'stack-no-clear 'collide-query)))
+    (set! (-> cquery start-pos quad) (-> arg2 launchrot quad))
+    (set-vector! (-> cquery move-dist) 0.0 -204800.0 0.0 1.0)
+    (let ((_cquery cquery))
+      (set! (-> _cquery radius) 40.96)
+      (set! (-> _cquery collide-with) (collide-spec backgnd))
+      (set! (-> _cquery ignore-process0) #f)
+      (set! (-> _cquery ignore-process1) #f)
+      (set! (-> _cquery ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1)
+            )
+      (set! (-> _cquery action-mask) (collide-action solid))
       )
-    (if (>= (fill-and-probe-using-line-sphere *collide-cache* s4-0) 0.0)
-        (set! (-> arg1 user-float) (-> s4-0 best-other-tri intersect y))
+    (if (>= (fill-and-probe-using-line-sphere *collide-cache* cquery) 0.0)
+        (set! (-> arg1 user-float) (-> cquery best-other-tri intersect y))
         (set! (-> arg1 user-float) (+ -204800.0 (-> arg2 launchrot y)))
         )
     )
@@ -355,6 +360,7 @@
   )
 
 (defun check-drop2-level-sewer-drop ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  "Prevent the water drop from going below the ocean, display the splash on the surface or ground, play associated sounds"
   (-> arg1 key)
   (let ((f30-0 (-> arg1 user-float))
         (f28-0 (-> arg2 vector 0 y))
