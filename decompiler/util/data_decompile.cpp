@@ -736,6 +736,7 @@ const std::unordered_map<
           {"nav-network-info",
            {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
           {"sig-path", {{"samples", ArrayFieldDecompMeta(TypeSpec("sig-path-sample"), 64)}}},
+          {"city-ambush-info", {{"array", ArrayFieldDecompMeta(TypeSpec("city-ambush-spot"), 32)}}},
           {"fort-robotank-segment",
            {{"event-tbl", ArrayFieldDecompMeta(TypeSpec("fort-robotank-segment-event"), 32)}}},
           {"race-info",

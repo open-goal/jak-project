@@ -65,6 +65,9 @@ bool convert_to_expressions(
     FormStack stack(true);
     // and add all entries
     for (auto& entry : top_level_form->elts()) {
+      if (f.state_handler_as_anon_func == "(anon-function 98 ctywide-obs)") {
+        int x = 0;
+      }
       entry->push_to_stack(f.ir2.env, pool, stack);
     }
 

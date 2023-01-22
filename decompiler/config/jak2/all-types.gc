@@ -7000,8 +7000,16 @@
   (text-x24e #x024e)
   (text-x24f #x024f)
   (text-x277 #x0277)
+  (text-x278 #x0278)
+  (text-x27a #x027a)
+  (text-x27b #x027b)
+  (text-x27c #x027c)
+  (text-x27d #x027d)
+  (text-x27e #x027e)
+  (text-x27f #x027f)
   (scene-subtitles-enabled #x30d)
   (scene-subtitles-disabled #x30e)
+  (text-x30f #x30f)
   (progress-unknown-continue #x310)
 )
 ;; ---text-id-h:game-text-id
@@ -49009,7 +49017,7 @@
     (set-alert-level (_type_ object) none 32)
     (set-max-alert-level (_type_ object) none 33)
     (set-alert-duration (_type_ object) none 34)
-    (get-alert-level (_type_) none 35)
+    (get-alert-level (_type_) int 35)
     (get-target "@returns [[*target*]]" (_type_) target 36)
     (set-object-target-level (_type_ int float) none 37)
     (set-object-target-count (_type_ int int) none 38)
@@ -49191,12 +49199,12 @@
    (engine-pitch-offset               float                        :offset-assert 664)
    (engine-pitch-mod-amp              float                        :offset-assert 668)
    (engine-sound-select               int8                         :offset-assert 672)
-   (engine-sound                      uint128                      :offset-assert 688)
-   (thrust-sound                      uint128                      :offset-assert 704)
-   (scrape-sound                      uint128                      :offset-assert 720)
-   (glance-sound                      uint128                      :offset-assert 736)
-   (impact-sound                      uint128                      :offset-assert 752)
-   (extra-sound                       uint128                      :offset-assert 768)
+   (engine-sound                      sound-name                      :offset-assert 688)
+   (thrust-sound                      sound-name                      :offset-assert 704)
+   (scrape-sound                      sound-name                      :offset-assert 720)
+   (glance-sound                      sound-name                      :offset-assert 736)
+   (impact-sound                      sound-name                      :offset-assert 752)
+   (extra-sound                       sound-name                      :offset-assert 768)
    (explosion-part                    int32                        :offset-assert 784)
    (headlight-count                   int8                         :offset-assert 788)
    (taillight-count                   int8                         :offset-assert 789)
@@ -49591,7 +49599,7 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (city-race-ring-info-method-9 () none 9)
+    (city-race-ring-info-method-9 (_type_ symbol) none 9)
     )
   )
 
@@ -49606,13 +49614,13 @@
 
 (deftype city-ambush-info (structure)
   ((count int16   :offset-assert 0)
-   (array uint32  :offset-assert 4)
+   (array (inline-array city-ambush-spot)  :offset-assert 4)
    )
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
   (:methods
-    (city-ambush-info-method-9 () none 9)
+    (city-ambush-info-method-9 (_type_ traffic-object-spawn-params) none 9)
     )
   )
 
@@ -50562,7 +50570,7 @@
 ;; (define-extern race-manager-event-handler function)
 (define-extern *race-manager* race-manager)
 ;; (define-extern race-manager-init-by-other function)
-(define-extern race-start (function int symbol symbol object))
+(define-extern race-start (function int symbol symbol process))
 ;; (define-extern race-kill function)
 (define-extern type-from-race-vehicle-type (function int type))
 ;; (define-extern race-vehicle-entity-hack function)
@@ -51557,9 +51565,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *security-texture-anim-array* texture-anim-array)
-;; (define-extern set-security-color! function)
-;; (define-extern set-security-flash! function)
-;; (define-extern set-security-texture-masks! function)
+(define-extern set-security-color! (function vector vector))
+(define-extern set-security-flash! (function vector vector))
+(define-extern set-security-texture-masks! (function texture-masks none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-part                   ;;
@@ -51606,7 +51614,7 @@
   (:methods
     (idle-open () _type_ :state 20)
     (idle-close () _type_ :state 21)
-    (security-wall-method-22 (_type_) none 22)
+    (security-wall-method-22 (_type_ path-control float) vector 22)
     (security-wall-method-23 (_type_) none 23)
     (security-wall-method-24 (_type_) none 24)
     )
@@ -51642,9 +51650,9 @@
 (deftype cty-guard-turret (process-focusable)
   (
     (incoming-attack-id uint32        :offset-assert 204)
-    (jm-turret          symbol        :offset-assert 208)
-    (jm-gunsL           symbol        :offset-assert 212)
-    (jm-gunsR           symbol        :offset-assert 216)
+    (jm-turret          joint-mod        :offset-assert 208)
+    (jm-gunsL           joint-mod        :offset-assert 212)
+    (jm-gunsR           joint-mod        :offset-assert 216)
     (angle-turret       degrees       :offset-assert 220)
     (angle-guns         degrees       :offset-assert 224)
     (last-no-zero       int64         :offset-assert 232)
@@ -51668,12 +51676,12 @@
     (cty-guard-turret-method-32 (_type_) none 32)
     (cty-guard-turret-method-33 (_type_) none 33)
     (cty-guard-turret-method-34 (_type_) none 34)
-    (cty-guard-turret-method-35 (_type_) none 35))
+    (cty-guard-turret-method-35 (_type_) quaternion 35))
   )
 
 (deftype parking-spot (process-drawable)
   (
-    (vehicle     int64                      :offset-assert 200)
+    (vehicle     handle                     :offset-assert 200)
     (spawned     symbol                     :offset-assert 208)
     (minimap     connection-minimap         :offset-assert 212)
     (test-sphere sphere                     :inline :offset-assert 224)
@@ -51685,7 +51693,7 @@
     (idle () _type_ :state 20)
     (parking-spot-method-21 (_type_) none 21)
     (parking-spot-method-22 (_type_) none 22)
-    (parking-spot-method-23 (_type_) none 23)
+    (parking-spot-method-23 (_type_ uint) none 23)
     (parking-spot-method-24 (_type_) none 24))
   )
 
@@ -51693,7 +51701,7 @@
   (
     (sound-id           uint32 :offset-assert 204)
     (sound-index        uint32 :offset-assert 208)
-    (handle             int64  :offset-assert 216)
+    (handle             handle  :offset-assert 216)
     (y-rot              float  :offset-assert 224)
     (hit-points         int32  :offset-assert 228)
     (incoming-attack-id uint32 :offset-assert 232)
@@ -51706,7 +51714,7 @@
     (broken () _type_ :state 28)
     (propa-method-29 (_type_) none 29)
     (propa-method-30 (_type_) none 30)
-    (propa-method-31 (_type_) none 31))
+    (propa-method-31 (_type_ vector) none 31))
   )
 
 (deftype baron-statue (process-drawable)
@@ -51720,9 +51728,9 @@
 
 (deftype burning-bush (process-focusable)
   (
-    (task       symbol  :offset-assert 204)
-    (part-off   symbol  :offset-assert 208)
-    (part-alert symbol  :offset-assert 212)
+    (task       game-task-control  :offset-assert 204)
+    (part-off   sparticle-launch-control  :offset-assert 208)
+    (part-alert sparticle-launch-control  :offset-assert 212)
     (angle      degrees :offset-assert 216)
     (time       float   :offset-assert 220)
   )
@@ -51735,7 +51743,7 @@
     (menu () _type_ :state 29)
     (burning-bush-method-30 (_type_) none 30)
     (burning-bush-method-31 (_type_) none 31)
-    (burning-bush-method-32 (_type_) none 32))
+    (burning-bush-method-32 (_type_) object 32))
   )
 
 (deftype barons-ship-lores (process-drawable)
@@ -51780,40 +51788,38 @@
   )
 
 (define-extern *fruit-check-ground-counter* int)
-;; (define-extern fruit-check-ground-bounce function)
-;; (define-extern fruit-sparticle-next-on-mode-1 function)
-;; (define-extern fruit-stand-event-handler function)
+(define-extern fruit-check-ground-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo matrix float))
+(define-extern fruit-sparticle-next-on-mode-1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern fruit-stand-event-handler (function process int symbol event-message-block object :behavior fruit-stand))
 (define-extern *cty-guard-turret-exploder-params* joint-exploder-static-params)
-;; (define-extern cty-guard-turret-event-handler function)
+(define-extern cty-guard-turret-event-handler (function process int symbol event-message-block object :behavior cty-guard-turret))
 (define-extern *propa-sounds* (array string))
 (define-extern *propa-sounds-class-3* (array string))
 (define-extern *propa-sounds-class-2* (array string))
 (define-extern *propa-sounds-class-1* (array string))
 (define-extern *propa-sounds-metalheads* (array string))
 (define-extern *propa-sounds-baron-construction* (array string))
-;; (define-extern propa-pu->knocked-type function)
+(define-extern propa-pu->knocked-type (function penetrate knocked-type))
 (define-extern *ctyn-lamp-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-tasks                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype city-bb-racepoint-info (structure)
   ((bike-pos   vector :inline :offset-assert 0)
    (end-pos    vector :inline :offset-assert 16)
    (bike-angle float          :offset-assert 32)
-   (map        basic          :offset-assert 36)
+   (map        symbol          :offset-assert 36)
    (time       float          :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-;; (define-extern wait-for-speech-end function)
-;; (define-extern *city-bb-racepoint-info* array)
+(define-extern wait-for-speech-end (function sound-id none))
+(define-extern *city-bb-racepoint-info* (array city-bb-racepoint-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-scenes                 ;;
@@ -51830,32 +51836,24 @@
 ;; ctyport-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype boat-manager (process)
-  ((mesh  basic     :offset-assert 124)
-   (paths UNKNOWN 4 :offset-assert 128)
+  ((mesh  basic     :offset-assert 128)
+   (paths path-control 4 :offset-assert 132)
    )
   :method-count-assert 16
   :size-assert         #x94
   :flag-assert         #x1000200094
   (:methods
-    (boat-manager-method-9 () none 9)
-    (boat-manager-method-10 () none 10)
-    (boat-manager-method-11 () none 11)
-    (boat-manager-method-12 () none 12)
-    (boat-manager-method-13 () none 13)
     (idle () _type_ :state 14)
     (boat-manager-method-15 () none 15)
     )
   )
-|#
 
-#|
 (deftype boat-base (vehicle)
-  ((angle      float   :offset-assert 876)
-   (y-rot      float   :offset-assert 880)
-   (path-num   uint32  :offset-assert 884)
-   (path-index float   :offset-assert 888)
+  ((angle      float   :offset-assert 880)
+   (y-rot      float   :offset-assert 884)
+   (path-num   uint32  :offset-assert 888)
+   (path-index float   :offset-assert 892)
    )
   :method-count-assert 149
   :size-assert         #x380
@@ -51868,12 +51866,10 @@
     (boat-base-method-148 () none 148)
     )
   )
-|#
 
-#|
 (deftype barge (boat-base)
-  ((engine   uint32  :offset-assert 892)
-   (bow-wash uint32  :offset-assert 896)
+  ((engine   uint32  :offset-assert 896)
+   (bow-wash uint32  :offset-assert 900)
    )
   :method-count-assert 149
   :size-assert         #x388
@@ -51881,10 +51877,9 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *barge-constants* object)
-;; (define-extern *boat-nav-callback-info* object)
+(define-extern *barge-constants* rigid-body-vehicle-constants)
+(define-extern *boat-nav-callback-info* nav-callback-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-pilot                   ;;
