@@ -531,7 +531,7 @@
       )
     0
     (let ((gp-1 (new 'stack-no-clear 'collide-query)))
-      (if (enemy-method-126 self gp-1 (-> self root-override2 trans) (collide-spec backgnd) 8192.0 81920.0 1024.0)
+      (if (enemy-above-ground? self gp-1 (-> self root-override2 trans) (collide-spec backgnd) 8192.0 81920.0 1024.0)
           (set! (-> self base-height) (-> gp-1 best-other-tri intersect y))
           (set! (-> self base-height) (-> self root-override2 trans y))
           )
@@ -618,7 +618,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior mantis) enemy-event-handler)
   :code (behavior ()
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self root-override2 trans y) (-> self base-height))
     (ja-channel-push! 1 0)
     (ja-no-eval :group! mantis-ground-crawl-out-ja
@@ -656,7 +656,7 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self state-time) (-> self clock frame-counter))
     (set! (-> self root-override2 trans y) (+ -18841.6 (-> self base-height)))
     (let ((gp-0 (-> self root-override2)))
@@ -1247,7 +1247,7 @@
   :event (the-as (function process int symbol event-message-block object :behavior mantis) enemy-event-handler)
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
     (let ((v1-6 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-6 enemy-flags)))
@@ -1263,7 +1263,7 @@
       )
     0
     (logclear! (-> self mask) (process-mask actor-pause))
-    (set! (-> self starting-time) (the-as uint (-> self clock frame-counter)))
+    (set! (-> self starting-time) (-> self clock frame-counter))
     (none)
     )
   :trans (behavior ()
@@ -1308,9 +1308,9 @@
                   (go-virtual crawl)
                   )
               )
-            (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+            (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                      (>= (the-as int (-> self focus aware)) 3)
-                     (enemy-method-107 self)
+                     (get-enemy-target self)
                      )
                 (go-hostile self)
                 )
@@ -1335,7 +1335,9 @@
   )
 
 ;; definition for method 74 of type mantis
-(defmethod enemy-method-74 mantis ((obj mantis) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler mantis ((obj mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('track)
@@ -1382,7 +1384,7 @@
                       (>= f0-0 (* f1-0 f1-0))
                       )
                     )
-               (enemy-method-73 obj)
+               (kill-prefer-falling obj)
                )
               ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
                (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
@@ -1401,7 +1403,7 @@
        #t
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -1601,9 +1603,13 @@
 ;; definition for method 55 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod enemy-method-55 mantis ((obj mantis))
+(defmethod track-target! mantis ((obj mantis))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (local-vars (s5-0 vector))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (logclear! (-> obj flags) (mantis-flag tracked))
@@ -1979,8 +1985,8 @@
 
 ;; definition for method 114 of type mantis
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod enemy-method-114 mantis ((obj mantis))
-  "@abstract"
+(defmethod init-enemy-collision! mantis ((obj mantis))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2085,15 +2091,15 @@
 ;; definition for method 115 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 mantis ((obj mantis))
-  "@abstract"
+(defmethod init-enemy! mantis ((obj mantis))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (with-pp
     (initialize-skeleton
       obj
       (the-as skeleton-group (art-group-get-by-name *level* "skel-mantis" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (enemy-method-113 obj *mantis-nav-enemy-info*)
+    (init-enemy-behaviour-and-stats! obj *mantis-nav-enemy-info*)
     (set! (-> obj flags) (mantis-flag))
     (set! (-> obj my-up-vector quad) (-> *y-vector* quad))
     (set! (-> obj gspot-normal quad) (-> *y-vector* quad))

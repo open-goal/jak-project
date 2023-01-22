@@ -50,7 +50,72 @@
     :default-hit-points 100
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak civilian enemy vehicle-sphere hit-by-others-list player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.7
     :attack-shove-back (meters 3)
@@ -124,7 +189,9 @@
 
 (set! (-> *kor-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-74 kor ((obj kor) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler kor ((obj kor) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('arrest)
@@ -164,7 +231,7 @@
        (go (method-of-object obj arrested))
        )
       (else
-        ((method-of-type bot enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -302,8 +369,8 @@
     )
   )
 
-(defmethod enemy-method-114 kor ((obj kor))
-  "@abstract"
+(defmethod init-enemy-collision! kor ((obj kor))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -393,15 +460,15 @@
   (none)
   )
 
-(defmethod enemy-method-115 kor ((obj kor))
-  "@abstract"
+(defmethod init-enemy! kor ((obj kor))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init! obj)
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *kor-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *kor-nav-enemy-info*)
   (let ((v1-7 (-> obj neck)))
     (set! (-> v1-7 up) (the-as uint 1))
     (set! (-> v1-7 nose) (the-as uint 2))
@@ -409,7 +476,7 @@
     (set-vector! (-> v1-7 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-7 ignore-angle) 30947.555)
     )
-  (let ((t9-4 (method-of-type bot enemy-method-115)))
+  (let ((t9-4 (method-of-type bot init-enemy!)))
     (t9-4 obj)
     )
   (set! (-> obj my-simple-focus) (process-spawn simple-focus :to obj))
@@ -426,7 +493,8 @@
   (none)
   )
 
-(defmethod enemy-method-72 kor ((obj kor))
+(defmethod react-to-focus kor ((obj kor))
+  "@TODO - flesh out docs"
   (kor-method-232 obj)
   (none)
   )
@@ -514,7 +582,8 @@
     )
   )
 
-(defmethod enemy-method-56 kor ((obj kor) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack kor ((obj kor) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
 

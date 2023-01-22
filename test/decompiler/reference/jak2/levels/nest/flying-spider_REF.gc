@@ -24,6 +24,7 @@
   )
 
 ;; definition for method 28 of type flying-spider-shot
+;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-impact-sound flying-spider-shot ((obj flying-spider-shot) (arg0 projectile-options))
   (if (zero? arg0)
       (sound-play "fly-spider-shot")
@@ -32,6 +33,7 @@
        arg0
        )
       )
+  (none)
   )
 
 ;; definition for function spawn-flying-spider-projectile
@@ -492,7 +494,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((a0-1 (enemy-method-107 self)))
+    (let ((a0-1 (get-enemy-target self)))
       (cond
         ((or (not a0-1) (>= 2 (the-as int (-> self focus aware))))
          (go-stare self)
@@ -518,7 +520,7 @@
         (suspend)
         (ja :num! (seek!))
         )
-      (if (enemy-method-107 self)
+      (if (get-enemy-target self)
           (go-virtual attack-fire)
           )
       )
@@ -614,7 +616,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior flying-spider) enemy-event-handler)
   :enter (behavior ()
-    (enemy-method-132 self)
+    (dispose! self)
     (set! (-> self state-time) (-> self clock frame-counter))
     (set! (-> self hit-points) 0)
     (enemy-method-103 self)
@@ -658,7 +660,9 @@
   )
 
 ;; definition for method 74 of type flying-spider
-(defmethod enemy-method-74 flying-spider ((obj flying-spider) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler flying-spider ((obj flying-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -691,7 +695,7 @@
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (enemy-method-73 obj)
+             (kill-prefer-falling obj)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
              (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
@@ -715,17 +719,21 @@
        (set! (-> v1-52 prim-core collide-with) (collide-spec))
        )
      0
-     ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
 
 ;; definition for method 55 of type flying-spider
-(defmethod enemy-method-55 flying-spider ((obj flying-spider))
-  ((method-of-type nav-enemy enemy-method-55) obj)
+(defmethod track-target! flying-spider ((obj flying-spider))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  ((method-of-type nav-enemy track-target!) obj)
   (none)
   )
 
@@ -831,14 +839,18 @@
 
 ;; definition for method 109 of type flying-spider
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-109 flying-spider ((obj flying-spider) (arg0 int))
+(defmethod look-at-target! flying-spider ((obj flying-spider) (arg0 enemy-flag))
+  "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
+@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   0
   (none)
   )
 
 ;; definition for method 59 of type flying-spider
 ;; WARN: Return type mismatch int vs penetrate.
-(defmethod enemy-method-59 flying-spider ((obj flying-spider))
+(defmethod get-penetrate-info flying-spider ((obj flying-spider))
+  "@returns the allowed way(s) this enemy can take damage
+@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
@@ -855,8 +867,8 @@
 
 ;; definition for method 114 of type flying-spider
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod enemy-method-114 flying-spider ((obj flying-spider))
-  "@abstract"
+(defmethod init-enemy-collision! flying-spider ((obj flying-spider))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -921,14 +933,14 @@
 ;; definition for method 115 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 flying-spider ((obj flying-spider))
-  "@abstract"
+(defmethod init-enemy! flying-spider ((obj flying-spider))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flying-spider" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *flying-spider-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *flying-spider-nav-enemy-info*)
   (let ((v1-5 (-> obj neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))

@@ -691,8 +691,12 @@
 ;; definition for method 55 of type spydroid
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-55 spydroid ((obj spydroid))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! spydroid ((obj spydroid))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (when (< (-> obj root-override2 scale x) 1.0)
@@ -787,7 +791,9 @@
 
 ;; definition for method 74 of type spydroid
 ;; INFO: Used lq/sq
-(defmethod enemy-method-74 spydroid ((obj spydroid) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler spydroid ((obj spydroid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v1-6 vector) (sv-144 vector))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -898,16 +904,16 @@
                         (logtest? (penetrate dark-bomb) (-> (the-as attack-info v1-30) penetrate-using))
                         )
                    )
-               ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+               ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
                )
            )
          )
         (('jump)
          (set! (-> obj floor) (-> (the-as vector (-> arg3 param 1)) y))
-         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
         (else
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
         )
       )
@@ -1119,7 +1125,7 @@
           (t9-0)
           )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1134,7 +1140,7 @@
           )
       )
     (let ((a0-1 (handle->process (-> self focus handle))))
-      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                (and a0-1 (let ((f0-0 (vector-vector-xz-distance-squared
                                        (get-trans (the-as process-focusable a0-1) 0)
                                        (-> self root-override2 trans)
@@ -1375,8 +1381,8 @@
 
 ;; definition for method 114 of type spydroid
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 spydroid ((obj spydroid))
-  "@abstract"
+(defmethod init-enemy-collision! spydroid ((obj spydroid))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1454,14 +1460,14 @@
 
 ;; definition for method 115 of type spydroid
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 spydroid ((obj spydroid))
-  "@abstract"
+(defmethod init-enemy! spydroid ((obj spydroid))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spydroid" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *spydroid-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *spydroid-nav-enemy-info*)
   (dotimes (s5-1 4)
     (set! (-> obj lightning s5-1)
           (new
