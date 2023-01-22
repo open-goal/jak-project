@@ -293,7 +293,9 @@
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 33]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 38]
-(defmethod enemy-method-74 sig ((obj sig) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler sig ((obj sig) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (let ((v1-0 arg2))
     (the-as object (cond
                      ((= v1-0 'untrigger)
@@ -311,14 +313,18 @@
                         )
                       )
                      (else
-                       ((method-of-type bot enemy-method-74) obj arg0 arg1 arg2 arg3)
+                       ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
                        )
                      )
             )
     )
   )
 
-(defmethod enemy-method-55 sig ((obj sig))
+(defmethod track-target! sig ((obj sig))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (with-pp
     (let ((v1-2 (-> obj skel top-anim frame-group)))
       (cond
@@ -364,15 +370,13 @@
           )
         )
       )
-    (let ((t9-2 (method-of-type bot enemy-method-55)))
+    (let ((t9-2 (method-of-type bot track-target!)))
       (t9-2 obj)
       )
     (when (logtest? (-> obj bot-flags) (bot-flags too-far-fail))
       (let ((f0-0 (vector-vector-distance (-> obj root-override2 trans) (target-pos 0))))
         (when (or (>= f0-0 491520.0)
-                  (and (>= f0-0 102400.0)
-                       (>= (- (-> pp clock frame-counter) (the-as int (-> obj last-draw-time))) (seconds 10))
-                       )
+                  (and (>= f0-0 102400.0) (>= (- (-> pp clock frame-counter) (-> obj last-draw-time)) (seconds 10)))
                   )
           (process-entity-status! obj (entity-perm-status no-kill) #f)
           (cleanup-for-death obj)
@@ -471,8 +475,8 @@
   (none)
   )
 
-(defmethod enemy-method-114 sig ((obj sig))
-  "@abstract"
+(defmethod init-enemy-collision! sig ((obj sig))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -561,8 +565,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 sig ((obj sig))
-  "@abstract"
+(defmethod init-enemy! sig ((obj sig))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init! obj)
   (set! (-> obj channel) (the-as uint 21))
   (set! (-> obj notice-enemy-dist) 122880.0)
@@ -577,7 +581,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sig" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *sig-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *sig-nav-enemy-info*)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 147) obj))
   (add-connection *part-engine* obj 23 obj 671 (new 'static 'sphere :y 327.68 :z 7536.64 :r 163840.0))
   (set! (-> obj skel interp-select 0) (the-as int (the-as uint #x1ffc007ffff0)))
@@ -594,7 +598,7 @@
     (set-vector! (-> v1-26 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-26 ignore-angle) 30947.555)
     )
-  (let ((t9-10 (method-of-type bot enemy-method-115)))
+  (let ((t9-10 (method-of-type bot init-enemy!)))
     (t9-10 obj)
     )
   (set! (-> obj my-simple-focus) (process-spawn simple-focus :to obj))
@@ -645,7 +649,7 @@
   (bot-method-223 obj #t)
   (cond
     ((not (bot-method-214 obj))
-     (enemy-method-72 obj)
+     (react-to-focus obj)
      )
     ((sig-method-246 obj)
      (go (method-of-object obj whip))
@@ -660,7 +664,8 @@
   (none)
   )
 
-(defmethod enemy-method-72 sig ((obj sig))
+(defmethod react-to-focus sig ((obj sig))
+  "@TODO - flesh out docs"
   (cond
     ((bot-method-214 obj)
      (go-hostile obj)

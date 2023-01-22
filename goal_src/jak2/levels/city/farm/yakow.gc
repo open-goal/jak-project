@@ -7,3 +7,516 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-yakow yakow yakow-lod0-jg yakow-idle-ja
+              ((yakow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 4)
+              )
+
+(deftype yakow (nav-enemy)
+  ((incoming-attack-id uint32  :offset-assert 604)
+   (grazing            basic   :offset-assert 608)
+   )
+  :heap-base #x1f0
+  :method-count-assert 179
+  :size-assert         #x264
+  :flag-assert         #xb301f00264
+  (:methods
+    (kicked () _type_ :state 178)
+    )
+  )
+
+
+(define *yakow-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x3 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 6
+    :hit-anim 3
+    :knocked-anim 7
+    :knocked-land-anim 7
+    :die-anim -1
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint 5
+    :look-at-joint 6
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "yakow-hit")
+    :sound-die (static-sound-name "yakow-die")
+    :notice-distance (meters 30)
+    :notice-distance-delta (meters 10)
+    :default-hit-points 5
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 16384.0
+    :knocked-soft-vxz-hi 16384.0
+    :knocked-soft-vy-lo 16384.0
+    :knocked-soft-vy-hi 16384.0
+    :knocked-medium-vxz-lo 16384.0
+    :knocked-medium-vxz-hi 16384.0
+    :knocked-medium-vy-lo 16384.0
+    :knocked-medium-vy-hi 16384.0
+    :knocked-hard-vxz-lo 16384.0
+    :knocked-hard-vxz-hi 16384.0
+    :knocked-hard-vy-lo 16384.0
+    :knocked-hard-vy-hi 16384.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 16384.0
+    :knocked-yellow-vxz-hi 16384.0
+    :knocked-yellow-vy-lo 16384.0
+    :knocked-yellow-vy-hi 16384.0
+    :knocked-red-vxz-lo 16384.0
+    :knocked-red-vxz-hi 16384.0
+    :knocked-red-vy-lo 16384.0
+    :knocked-red-vy-hi 16384.0
+    :knocked-blue-vxz-lo 16384.0
+    :knocked-blue-vxz-hi 16384.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 16384.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #t
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim -1
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 6)
+    :run-acceleration (meters 1)
+    :run-turning-acceleration (meters 1)
+    :walk-travel-speed (meters 2.13)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 1)
+    :maximum-rotation-rate (degrees 50.000004)
+    :notice-nav-radius (meters 1)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *yakow-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod damage-amount-from-attack yakow ((obj yakow) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+  0
+  )
+
+(defmethod general-event-handler yakow ((obj yakow) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (case arg2
+    (('attack)
+     (let ((v1-1 (the-as object (-> arg3 param 1))))
+       (when (!= (-> (the-as attack-info v1-1) id) (-> obj incoming-attack-id))
+         (set! (-> obj incoming-attack-id) (-> (the-as attack-info v1-1) id))
+         (go (method-of-object obj kicked))
+         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod enemy-method-123 yakow ((obj yakow) (arg0 float))
+  "TODO"
+  (>= arg0 (rand-vu))
+  )
+
+;; WARN: Function (method 156 yakow) has a return type of none, but the expression builder found a return statement.
+(defmethod nav-enemy-method-156 yakow ((obj yakow))
+  (dotimes (s5-0 16)
+    (let ((f30-1 (* 4096.0 (get-rand-float-range obj -10.0 10.0)))
+          (f0-2 (* 4096.0 (get-rand-float-range obj -10.0 10.0)))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s4-0 quad) (-> obj root-override2 trans quad))
+      (+! (-> s4-0 x) f30-1)
+      (+! (-> s4-0 z) f0-2)
+      (let ((v1-7 (-> obj nav))
+            (a0-6 s4-0)
+            (a1-2 (new 'stack-no-clear 'nav-find-poly-parms))
+            )
+        (vector-! (-> a1-2 point) a0-6 (-> v1-7 state mesh bounds))
+        (set! (-> a1-2 y-threshold) (-> v1-7 nearest-y-threshold))
+        (set! (-> a1-2 ignore) (the-as uint 2))
+        (when (find-poly-containing-point-local (-> v1-7 state mesh) a1-2)
+          (let ((v1-12 (-> obj nav state)))
+            (logclear! (-> v1-12 flags) (nav-state-flag directional-mode))
+            (logior! (-> v1-12 flags) (nav-state-flag target-poly-dirty))
+            (set! (-> v1-12 target-post quad) (-> s4-0 quad))
+            )
+          0
+          (return #f)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate idle (yakow)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.15))
+    (until #f
+      (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
+        (ja-no-eval :group! yakow-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim yakow-idle-ja) frames num-frames) -1)) f30-0)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      (when (rand-vu-percent? 0.25)
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! yakow-graze-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim yakow-graze-ja) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (ja-channel-push! 1 (seconds 0.1))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
+        (set! (-> self last-draw-time) (-> self clock frame-counter))
+        )
+    (enemy-method-129 self)
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate active (yakow)
+  :virtual #t
+  :trans (behavior ()
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+      (if (< (the-as int (-> self focus aware)) 1)
+          (go-virtual idle)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+                    :num! (seek!
+                      (the float
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
+                                  frames
+                                  num-frames
+                                  )
+                              -1
+                              )
+                           )
+                      f30-0
+                      )
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        (when (enemy-method-123 self 0.2)
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.6))
+          (let ((v1-37 self))
+            (set! (-> v1-37 enemy-flags) (the-as enemy-flag (logclear (-> v1-37 enemy-flags) (enemy-flag enemy-flag36))))
+            (set! (-> v1-37 nav callback-info) *nav-enemy-null-callback-info*)
+            )
+          0
+          (nav-enemy-method-167 self)
+          (until #f
+            (let ((f28-0 (rand-vu-float-range 0.9 1.1)))
+              (ja-no-eval :group! yakow-idle-ja
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim yakow-idle-ja) frames num-frames) -1)) f28-0)
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek! max f28-0))
+                )
+              )
+            (when (rand-vu-percent? 0.25)
+              (ja-channel-push! 1 (seconds 0.1))
+              (ja-no-eval :group! yakow-graze-ja
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim yakow-graze-ja) frames num-frames) -1)))
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek!))
+                )
+              (ja-channel-push! 1 (seconds 0.1))
+              )
+            (if (enemy-method-123 self 0.2)
+                (goto cfg-15)
+                )
+            )
+          #f
+          (label cfg-15)
+          (let ((v1-97 (-> self nav state)))
+            (set! (-> v1-97 speed) 0.0)
+            )
+          0
+          (let ((a0-23 (-> self nav state))
+                (v1-100 *null-vector*)
+                )
+            (set! (-> a0-23 velocity quad) (-> v1-100 quad))
+            )
+          0
+          (let ((v1-103 self))
+            (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-103 enemy-flags)))
+                (set! (-> v1-103 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-103 enemy-flags))))
+                )
+            (set! (-> v1-103 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-103 enemy-flags))))
+            (set! (-> v1-103 nav callback-info) (-> v1-103 enemy-info-override callback-info))
+            )
+          0
+          (nav-enemy-method-165 self)
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.6))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+                      :num! (seek!
+                        (the float
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
+                                    frames
+                                    num-frames
+                                    )
+                                -1
+                                )
+                             )
+                        f30-0
+                        )
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (ja-blend-eval)
+            (suspend)
+            (ja :num! (seek! max f30-0))
+            )
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate kicked (yakow)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-0 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :exit (behavior ()
+    '()
+    (none)
+    )
+  :trans (behavior ()
+    '()
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! yakow-kicked-in-place-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim yakow-kicked-in-place-ja) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual active)
+    (none)
+    )
+  :post (the-as (function none :behavior yakow) ja-post)
+  )
+
+(defmethod init-enemy-collision! yakow ((obj yakow))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-7 local-sphere) 0.0 4096.0 0.0 10240.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) 10240.0)
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! yakow ((obj yakow))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-yakow" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *yakow-nav-enemy-info*)
+  (let ((v1-5 (-> obj nav)))
+    (set! (-> v1-5 speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> obj root-override2 dynam) 327680.0)
+  0
+  (none)
+  )

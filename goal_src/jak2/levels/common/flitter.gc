@@ -730,7 +730,7 @@
       (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self state-time) (-> self clock frame-counter))
     (let ((gp-0 (-> self root-override2)))
       (vector-reset! (-> gp-0 transv))
@@ -927,7 +927,7 @@
 
 (defbehavior flitter-fall-and-play-death-anim flitter ((arg0 art-joint-anim) (arg1 float) (arg2 time-frame))
   (local-vars (v1-29 symbol))
-  (enemy-method-110 self)
+  (stop-looking-at-target! self)
   (set! (-> self skel root-channel 0 frame-group) arg0)
   (let ((s4-1 (enemy-method-50 self (new 'stack-no-clear 'vector)))
         (s3-0 (-> self root-override2))
@@ -1064,7 +1064,7 @@
                           )
                     )
                   )
-                (if (and (enemy-method-107 self)
+                (if (and (get-enemy-target self)
                          (>= (- (-> self clock frame-counter) (the-as int (-> self off-screen-timer))) (seconds 0.3))
                          )
                     (go-hostile self)
@@ -1294,7 +1294,7 @@
         (ja :num! (seek!))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior flitter) nav-enemy-travel-post)
@@ -1309,7 +1309,8 @@
     )
   )
 
-(defmethod enemy-method-132 flitter ((obj flitter))
+(defmethod dispose! flitter ((obj flitter))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> obj minimap)
     (logior! (-> obj minimap flags) (minimap-flag fade-out))
     (set! (-> obj minimap) #f)
@@ -1318,8 +1319,8 @@
   (none)
   )
 
-(defmethod enemy-method-114 flitter ((obj flitter))
-  "@abstract"
+(defmethod init-enemy-collision! flitter ((obj flitter))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1371,14 +1372,14 @@
   )
 
 ;; WARN: Return type mismatch connection-minimap vs none.
-(defmethod enemy-method-115 flitter ((obj flitter))
-  "@abstract"
+(defmethod init-enemy! flitter ((obj flitter))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flitter" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *flitter-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *flitter-nav-enemy-info*)
   (set! (-> obj move-angle) 10922.667)
   (set! (-> obj heading) (the-as basic (if (= (rand-vu-int-range 0 1) 1)
                                            #t

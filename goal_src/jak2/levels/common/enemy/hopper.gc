@@ -278,14 +278,15 @@
 
 (set! (-> *hopper-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-73 hopper ((obj hopper))
+(defmethod kill-prefer-falling hopper ((obj hopper))
+  "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cond
     ((-> obj can-go-knocked?)
      (set! (-> obj can-go-knocked?) #f)
      (go (method-of-object obj knocked))
      )
     (else
-      ((method-of-type nav-enemy enemy-method-73) obj)
+      ((method-of-type nav-enemy kill-prefer-falling) obj)
       )
     )
   (none)
@@ -530,7 +531,7 @@
                              )
                            0
                            (set! (-> s5-0 y) (-> s2-0 y))
-                           (if (enemy-method-126 obj s3-1 s5-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                           (if (enemy-above-ground? obj s3-1 s5-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
                                (set! (-> s5-0 y) (-> s3-1 best-other-tri intersect y))
                                )
                            )
@@ -659,7 +660,7 @@
                        )
                   (cond
                     ((< (vector-vector-xz-distance (-> self best-point) (get-trans (the-as process-focusable gp-0) 0)) 8192.0)
-                     (when (enemy-method-107 self)
+                     (when (get-enemy-target self)
                        (cond
                          ((zero? s5-0)
                           (set! (-> self jump-start-anim) (the-as uint 34))
@@ -795,7 +796,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -862,7 +863,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (new 'stack 'collide-query)))
         (get-point-in-path! (-> self path-intro) gp-0 1.0 'exact)
-        (if (enemy-method-126 self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+        (if (enemy-above-ground? self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
             (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
             )
         )
@@ -874,7 +875,8 @@
     )
   )
 
-(defmethod enemy-method-132 hopper ((obj hopper))
+(defmethod dispose! hopper ((obj hopper))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> obj minimap)
     (logior! (-> obj minimap flags) (minimap-flag fade-out))
     (set! (-> obj minimap) #f)
@@ -894,8 +896,8 @@
     )
   )
 
-(defmethod enemy-method-114 hopper ((obj hopper))
-  "@abstract"
+(defmethod init-enemy-collision! hopper ((obj hopper))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -958,8 +960,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 hopper ((obj hopper))
-  "@abstract"
+(defmethod init-enemy! hopper ((obj hopper))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -967,7 +969,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *hopper-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *hopper-nav-enemy-info*)
   (set! (-> obj can-go-knocked?) #t)
   (let ((v1-9 (-> obj neck)))
     (set! (-> v1-9 up) (the-as uint 1))

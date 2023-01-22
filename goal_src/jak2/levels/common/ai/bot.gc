@@ -347,8 +347,9 @@
   (none)
   )
 
-(defmethod enemy-method-56 bot ((obj bot) (arg0 process) (arg1 event-message-block))
-  (let* ((t9-0 (method-of-type nav-enemy enemy-method-56))
+(defmethod damage-amount-from-attack bot ((obj bot) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+  (let* ((t9-0 (method-of-type nav-enemy damage-amount-from-attack))
          (v0-0 (t9-0 obj arg0 arg1))
          )
     (let ((v1-1 (-> obj bot-flags)))
@@ -419,7 +420,10 @@
   )
 
 ;; WARN: Return type mismatch int vs enemy-aware.
-(defmethod enemy-method-57 bot ((obj bot) (arg0 process-focusable) (arg1 enemy-best-focus))
+(defmethod update-target-awareness! bot ((obj bot) (arg0 process-focusable) (arg1 enemy-best-focus))
+  "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
+@TODO - flesh out docs
+@returns the value that sets `aware`"
   (the-as enemy-aware 3)
   )
 
@@ -734,7 +738,9 @@
 ;; WARN: disable def twice: 280. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 5]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 9]
-(defmethod enemy-method-74 bot ((obj bot) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler bot ((obj bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-0 none))
   (with-pp
     (let ((v1-0 arg2))
@@ -753,7 +759,7 @@
               (-> obj waypoint waypoint-id)
               )
              (else
-               ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+               ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
                )
              )
            )
@@ -846,7 +852,7 @@
               #t
               )
              (else
-               ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+               ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
                )
              )
            )
@@ -858,7 +864,7 @@
                           s5-2
                           )
                   (logior! (-> obj enemy-flags) (enemy-flag look-at-focus))
-                  (set! (-> obj hit-focus-time) (the-as uint (-> pp clock frame-counter)))
+                  (set! (-> obj hit-focus-time) (-> pp clock frame-counter))
                   )
                 )
               #t
@@ -873,7 +879,7 @@
               #t
               )
              (else
-               ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+               ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
                )
              )
            )
@@ -914,7 +920,7 @@
               )
              (else
                (if (and (-> obj next-state) (= (-> obj next-state name) 'hidden))
-                   (enemy-method-72 obj)
+                   (react-to-focus obj)
                    )
                )
              )
@@ -933,7 +939,7 @@
            v0-0
            )
           (else
-            ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+            ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
             )
           )
         )
@@ -1085,7 +1091,7 @@
 ;; WARN: Using new Jak 2 rtype-of
 (defmethod bot-check-too-far bot ((obj bot))
   "Call the current [[bot-waypoint]]'s `check-too-far` function if available, otherwise use the default `course` one.
-      If the player is too far, play a warning speech."
+If the player is too far, play a warning speech."
   (with-pp
     (let ((result 0))
       (let ((too-far-check (-> obj delay-too-far-check)))
@@ -1156,7 +1162,11 @@
     )
   )
 
-(defmethod enemy-method-55 bot ((obj bot))
+(defmethod track-target! bot ((obj bot))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (set! (-> obj travel-prev-ry) (-> obj travel-prev-ry1))
   (set! (-> obj travel-prev-ry1) (quaternion-y-angle (-> obj root-override2 quat)))
   (let ((f0-4 (/ (the float (-> obj hit-points)) (the float (-> obj enemy-info-override default-hit-points)))))
@@ -1185,7 +1195,7 @@
         )
       )
     )
-  (let ((t9-4 (method-of-type nav-enemy enemy-method-55)))
+  (let ((t9-4 (method-of-type nav-enemy track-target!)))
     (t9-4 obj)
     )
   (when (not (logtest? (-> obj bot-flags) (bot-flags bf09)))
@@ -1475,8 +1485,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 bot ((obj bot))
-  "@abstract"
+(defmethod init-enemy! bot ((obj bot))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (process-entity-status! obj (entity-perm-status bit-4) #t)
   (set! (-> obj ai-ctrl) (new 'process 'ai-task-control *bot-task-pool*))
   (logclear! (-> obj mask) (process-mask enemy))
