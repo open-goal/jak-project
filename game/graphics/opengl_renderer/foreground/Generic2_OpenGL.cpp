@@ -268,6 +268,9 @@ void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
       setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
       setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
                        first.mode.get_clamp_t_enable(), render_state);
+      // if (alpha == DrawMode::AlphaBlend::SRC_0_DST_DST) {
+      //  glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
+      // }
       glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * bucket.idx_idx));
       prof.add_draw_call();
