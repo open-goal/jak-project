@@ -668,7 +668,6 @@
 (define-extern run-function-in-process (function process function object object object object object object object))
 (define-extern set-to-run-bootstrap (function none))
 (define-extern set-to-run (function cpu-thread function object object object object object object pointer))
-(define-extern dead-state (state process))
 (define-extern entity-deactivate-handler (function process entity-actor none))
 (define-extern *listener-process* process)
 (define-extern *null-process* process)
@@ -11038,6 +11037,8 @@
   :method-count-assert 14
   :size-assert         #xd0
   :flag-assert         #xe005000d0
+  (:states
+    time-of-day-tick)
   )
 
 (deftype time-of-day-palette (basic)
@@ -15028,6 +15029,9 @@
     (relocate-nav (_type_ int) none 18)
     (evaluate-joint-control (_type_) none 19)
     )
+  (:states
+    (process-drawable-art-error string)
+    process-drawable-idle)
   )
 
 (deftype process-drawable-reserved (process-drawable)
@@ -16775,6 +16779,8 @@
   :method-count-assert 14
   :size-assert         #xd8
   :flag-assert         #xe006000d8
+  (:states
+    othercam-running)
   )
 
 (deftype explosion (process-drawable)
@@ -18078,8 +18084,7 @@
     (impact () _type_ :state 22)
     (moving () _type_ :state 23)
     (draw-laser-sight
-      "TODO - confirm If applicable, draw the laser sight particles
-       :virtual"
+      "TODO - confirm If applicable, draw the laser sight particles"
       (_type_) none 24)
     (spawn-impact-particles
       "Spawns associated particles with the projectile if applicable"
@@ -18094,8 +18099,7 @@
       "Init the [[projectile]]'s [[collide-shape]]"
       (_type_) none 30)
     (init-proj-settings!
-      "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-       :virtual"
+      "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
       (_type_) none 31)
     (go-moving! (_type_) none 32)
     (go-sitting! (_type_) none 33)
@@ -18118,8 +18122,7 @@
       "TODO - queries the collision cache, return true/false"
       (_type_) symbol 38)
     (play-impact-sound!
-      "Plays impact sound
-       :virtual"
+      "Plays impact sound"
        (_type_) sound-id :behavior projectile 39)
     )
   )
@@ -18259,20 +18262,150 @@
     (init-target (_type_ continue-point symbol) none :behavior target 28)
     )
   (:states
+    (target-attack-air symbol)
+    (target-attack-uppercut float float)
+    (target-attack-uppercut-jump float float)
+    target-attack
+    target-board-duck-stance
+    (target-board-clone-anim handle)
+    target-board-falling
+    (target-board-flip float float symbol)
+    (target-board-get-off object symbol) ;; unused arg0
+    target-board-get-on
+    (target-board-grab symbol)
+    (target-board-grenade handle)
+    target-board-halfpipe
+    (target-board-hit vector attack-info)
+    target-board-hit-ground
+    (target-board-hold float float symbol)
+    (target-board-jump meters meters symbol)
+    target-board-jump-kick
+    (target-board-pegasus handle)
+    (target-board-ride-edge symbol object object float)
+    target-board-stance
+    (target-board-start object)
+    (target-board-trickx float float symbol)
+    (target-board-turn-to vector time-frame)
+    (target-board-wall-kick vector float)
     target-carry-drop
-    target-carry-stance
-    target-carry-walk
     target-carry-falling
     (target-carry-hit-ground symbol)
     (target-carry-jump float float)
+    target-carry-pickup
+    target-carry-stance
     target-carry-throw
-    (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
-    (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
-    target-indax-start
-    (target-racing-start handle)
+    target-carry-walk
+    (target-clone-anim handle)
+    (target-continue continue-point)
+    target-darkjak-bomb0
+    (target-darkjak-bomb1 float float)
+    target-darkjak-get-off
+    (target-darkjak-get-on int)
+    target-darkjak-giant
+    target-darkjak-running-attack
+    (target-death symbol)
+    (target-demo symbol)
+    (target-double-jump float float)
+    (target-duck-high-jump float float symbol)
+    (target-duck-high-jump-jump float float symbol)
+    (target-duck-stance symbol)
+    (target-duck-walk symbol)
+    target-edge-grab
+    (target-edge-grab-jump float float)
+    target-edge-grab-off
+    (target-falling symbol)
+    target-float
+    (target-flop float float float)
+    (target-flop-hit-ground symbol)
     (target-flut-start handle)
+    target-gun-stance
+    target-gun-walk
+    (target-grab symbol)
+    target-hide
+    (target-high-jump float float object)
+    (target-hit symbol attack-info)
+    (target-hit-ground symbol)
+    (target-hit-ground-hard float)
+    target-ice-stance ;; called in (trans target-stance), but not defined
+    target-ice-walk ;; called in (trans target-walk), but not defined
+    target-indax-attack
+    (target-indax-attack-air symbol)
+    (target-indax-death symbol)
+    (target-indax-double-jump float float)
+    (target-indax-falling symbol)
+    (target-indax-hit symbol attack-info)
+    (target-indax-hit-ground symbol)
+    (target-indax-jump float float surface)
+    target-indax-running-attack
+    target-indax-stance
+    target-indax-start
+    target-indax-trip
+    target-indax-walk
+    (target-jump float float surface)
+    (target-jump-forward float float)
+    (target-launch float symbol vector int)
+    target-load-wait
+    target-look-around
+    target-mech-carry-drag
+    target-mech-carry-drop
+    target-mech-carry-falling
+    (target-mech-carry-hit-ground symbol)
+    (target-mech-carry-jump float float)
+    target-mech-carry-pickup
+    target-mech-carry-stance
+    target-mech-carry-throw
+    target-mech-carry-walk
+    (target-mech-clone-anim handle)
+    (target-mech-death symbol)
+    (target-mech-falling symbol)
+    target-mech-get-off
+    (target-mech-get-on handle)
+    target-mech-grab
+    (target-mech-hit symbol attack-info)
+    (target-mech-hit-ground symbol)
+    (target-mech-jump float float surface)
+    target-mech-punch
+    target-mech-stance
+    (target-mech-start handle)
+    target-mech-walk
+    target-pilot-edge-grab
+    (target-pilot-start handle)
+    (target-play-anim string handle)
+    (target-pole-cycle handle)
+    (target-pole-flip-forward float float float)
+    (target-pole-flip-forward-jump float float)
+    (target-pole-flip-up object object float)
+    (target-pole-flip-up-jump float float)
+    (target-racing-start handle)
+    target-roll
+    (target-roll-flip float float)
+    target-running-attack
+    target-slide-down
+    target-slide-down-to-ground
+    target-stance
+    target-stance-ambient
+    target-stance-look-around
+    target-startup
+    target-swim-down
+    (target-swim-jump float float)
+    (target-swim-jump-jump float float surface)
+    target-swim-stance
+    target-swim-up
+    target-swim-walk
+    (target-title symbol)
+    target-tube
+    (target-tube-death symbol)
+    (target-tube-hit symbol attack-info)
+    (target-tube-jump float float)
     (target-tube-start handle)
-
+    target-turn-around
+    (target-turret-get-on handle)
+    target-wade-stance
+    target-wade-walk
+    target-walk
+    (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
+    (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
+    target-yellow-jump-blast ;; called in (code target-flop), but not defined, causes crash on PCSX2
     )
   )
 
@@ -20848,6 +20981,8 @@
   :method-count-assert 14
   :size-assert         #x22c
   :flag-assert         #xe01b0022c
+  (:states
+    cam-combiner-active)
   )
 
 ;; +++camera-h:camera-blend-to-type
@@ -20939,7 +21074,9 @@
     cam-robotboss ;; TODO - state docstrings "A holdout from jak 1?"
     cam-point-watch
     cam-free-floating
-    cam-remote))
+    cam-remote
+    cam-launcher-longfall
+    cam-launcher-shortfall))
 
 (deftype camera-master (process)
   ((master-options      cam-master-options-u32           :offset-assert 128)
@@ -20990,6 +21127,8 @@
     (camera-master-method-15 (_type_ vector) vector 15)
     (camera-master-method-16 (_type_ symbol) int 16)
     )
+  (:states
+    cam-master-active)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -21164,6 +21303,11 @@
     (update-value-callback (_type_ int int) none 25) ;; (get-icon-scale-x (_type_) float 25)
     (alloc-string-if-needed (_type_ int) none 26) ;; (get-icon-scale-y (_type_) float 26)
     )
+  (:states
+    hud-arriving
+    hud-hidden
+    hud-in
+    (hud-leaving float))
   )
 
 (deftype hud-money (hud)
@@ -22394,14 +22538,12 @@
   :flag-assert         #x1b00000024
   (:methods
      (new (symbol type process symbol float) _type_ 0)
-     ;; TODO - child docstrings
-     ;; 10
-     ;; 12 - "Calls [[path-control::26]] with the `idx` at a given percent along the path @see [[path-control::26]]"
-     ;; 26
-     ;; 15
-     ;; 16
-     ;; 13 - different, just calls [[curve-evaluate!]]
-     ;; 18 - "Returns total path length of the [[curve]], will lazily calculate and set the [[curve]]'s `length` via [[curve::4]]"
+     (:override-doc "Calls [[path-control::26]] with the `idx` at a given percent along the path @see [[path-control::26]]" 12)
+     (:override-doc "@see [[curve-control::12]]" 13)
+     (:override-doc
+      "Will lazily calculate and set the [[curve]]'s `length`
+       @returns total path length of the [[curve]]
+       @see [[curve-length]]" 18)
     )
   )
 
@@ -22753,8 +22895,7 @@
   ;; Failed to read fields.
   (:methods
     (debug-draw (_type_) none 9)
-    (nav-state-method-10
-      "Virtual/Stub" (_type_) none 10)
+    (nav-state-method-10 (_type_) none 10)
     (plan-over-pat1-polys-using-route (_type_ nav-gap-info) symbol 11)
     (get-velocity (_type_ vector) vector 12)
     (get-travel (_type_ vector) vector 13)
@@ -22802,7 +22943,7 @@
     (reset! (_type_ nav-control) none 47)
     (nav-state-method-48 () none 48)
     (navigate-using-best-dir-use-existing-avoid-spheres (_type_ nav-avoid-spheres-params) none 49)
-    (nav-state-method-50 "Virtual/Stub" (_type_) none 50)
+    (nav-state-method-50 (_type_) none 50)
     (navigate-using-route-portals (_type_) none 51)
     (navigate-using-best-dir-recompute-avoid-spheres-1 (_type_) none 52)
     (navigate-within-poly (_type_) none 53)
@@ -26392,7 +26533,6 @@
 (define-extern time-of-day-effect (function none))
 (define-extern time-of-day-update (function none :behavior time-of-day-proc))
 (define-extern update-counters (function float :behavior time-of-day-proc))
-(define-extern time-of-day-tick (state time-of-day-proc))
 (define-extern init-time-of-day (function object :behavior time-of-day-proc)) ;;
 (define-extern start-time-of-day (function (pointer process)))
 (define-extern time-of-day-setup (function symbol symbol))
@@ -27172,7 +27312,6 @@
 (define-extern master-choose-entity (function cam-setting-data symbol :behavior camera-master))
 (define-extern cam-master-set-entity (function cam-setting-data none))
 (define-extern cam-master-activate-slave (function symbol none))
-(define-extern cam-master-active (state camera-master))
 (define-extern cam-master-init (function none :behavior camera-master))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27331,7 +27470,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern cam-helper-temp (function (pointer camera-slave) (pointer camera-slave) float matrix :behavior camera-combiner))
-(define-extern cam-combiner-active (state camera-combiner))
 (define-extern cam-combiner-init (function none :behavior camera-combiner))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27638,7 +27776,6 @@
 (define-extern cam-layout-do-action (function clm-item-action symbol :behavior cam-layout)) ;;
 (define-extern cam-layout-function-call (function symbol string int basic symbol :behavior cam-layout)) ;;
 (define-extern cam-layout-do-menu (function clm symbol :behavior cam-layout)) ;;
-(define-extern cam-layout-active (state cam-layout)) ;;
 (define-extern cam-layout-init (function object :behavior cam-layout)) ;;
 (define-extern cam-layout-stop (function symbol))
 (define-extern cam-layout-start (function symbol))
@@ -27781,8 +27918,6 @@
 (define-extern draw-joint-axes (function process-drawable none))
 (define-extern draw-root (function process-drawable none))
 ;; (define-extern empty-state state) ;; (state process)
-(define-extern process-drawable-art-error (state string process-drawable))
-(define-extern process-drawable-idle (state process-drawable))
 (define-extern skeleton-group->draw-control (function process-drawable skeleton-group (pointer cspace-array) draw-control))
 (define-extern ja-done? (function int symbol :behavior process-drawable))
 (define-extern ja-min? (function int symbol :behavior process-drawable)) ;;
@@ -27975,9 +28110,7 @@
 (define-extern ja-anim-done? (function process symbol)) ;;
 (define-extern camera-pov-from (function pair uint process))
 (define-extern cam-launcher-joystick (function vector :behavior camera-slave))
-(define-extern cam-launcher-shortfall (state camera-slave))
 (define-extern cam-launcher-long-joystick(function vector :behavior camera-slave))
-(define-extern cam-launcher-longfall (state camera-slave))
 (define-extern launcher-init-by-other (function vector float int float none :behavior launcher))
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
 (define-extern explosion-init-by-other (function explosion-init-params object :behavior explosion))
@@ -28998,90 +29131,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern target-falling-trans (function symbol time-frame none :behavior target))
-(define-extern target-startup (state target))
-(define-extern target-stance (state target))
-(define-extern target-walk (state target))
-(define-extern target-ice-walk (state target)) ;; called in (trans target-walk), but not defined
-(define-extern target-ice-stance (state target)) ;; called in (trans target-stance), but not defined
-(define-extern target-turn-around (state target))
-(define-extern target-slide-down (state target))
 (define-extern *slide-down-mods* surface)
 (define-extern *slide-jump-mods* surface)
-(define-extern target-slide-down-to-ground (state target))
 (define-extern init-var-jump (function float float symbol symbol vector float vector :behavior target))
 (define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
 (define-extern *duck-mods* surface)
-(define-extern target-duck-stance (state symbol target))
-(define-extern target-duck-walk (state symbol target))
 (define-extern target-jump-top-anim (function none :behavior target))
-(define-extern target-jump (state float float surface target))
-(define-extern target-jump-forward (state float float target))
-(define-extern target-double-jump (state float float target))
-(define-extern target-high-jump (state float float object target))
-(define-extern target-duck-high-jump (state float float symbol target))
-(define-extern target-duck-high-jump-jump (state float float symbol target))
-(define-extern target-falling (state symbol target))
-(define-extern target-hit-ground (state symbol target))
 (define-extern *attack-mods* surface)
 (define-extern *attack-end-mods* surface)
-(define-extern target-attack (state target))
 (define-extern *run-attack-mods* surface)
-(define-extern target-running-attack (state target))
 (define-extern *jump-attack-mods* surface)
-(define-extern target-attack-air (state symbol target))
 (define-extern *uppercut-mods* surface)
 (define-extern *uppercut-jump-mods* surface)
-(define-extern target-attack-uppercut (state float float target))
-(define-extern target-attack-uppercut-jump (state float float target))
-(define-extern target-flop (state float float float target))
-(define-extern target-flop-hit-ground (state symbol target))
-(define-extern target-roll (state target))
-(define-extern target-roll-flip (state float float target))
 (define-extern target-land-effect (function none :behavior target)) ;; called in (code target-roll-flip), but not actually defined anywhere?
-(define-extern target-yellow-jump-blast (state target)) ;; called in (code target-flop), but not defined, causes crash on PCSX2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target2                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *trip-mods* surface)
-(define-extern target-load-wait (state target))
-(define-extern target-stance-ambient (state target))
-(define-extern target-stance-look-around (state target))
 (define-extern *look-around-mods* surface)
-(define-extern target-look-around (state target))
-(define-extern target-grab (state symbol target))
-(define-extern target-pole-cycle (state handle target))
-(define-extern target-pole-flip-up (state object object float target))
-(define-extern target-pole-flip-up-jump (state float float target))
-(define-extern target-pole-flip-forward (state float float float target))
-(define-extern target-pole-flip-forward-jump (state float float target))
-(define-extern target-edge-grab (state target))
-(define-extern target-edge-grab-jump (state float float target))
-(define-extern target-edge-grab-off (state target))
 (define-extern *hit-ground-hard-mods* surface)
-(define-extern target-hit-ground-hard (state float target))
 (define-extern *hide-mods* surface)
-(define-extern target-hide (state target))
-(define-extern target-launch (state float symbol vector int target))
-(define-extern target-play-anim (state string handle target))
-(define-extern target-clone-anim (state handle target))
 (define-extern *float-mods* surface)
-(define-extern target-float (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-swim                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern target-wade-stance (state target))
-(define-extern target-wade-walk (state target))
 (define-extern target-swim-tilt (function float float float float float :behavior target))
-(define-extern target-swim-stance (state target))
-(define-extern target-swim-walk (state target))
-(define-extern target-swim-down (state target))
-(define-extern target-swim-up (state target))
-(define-extern target-swim-jump-jump (state float float surface target))
-(define-extern target-swim-jump (state float float target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-carry                   ;;
@@ -29091,7 +29169,6 @@
 (define-extern *carry-jump-mods* surface)
 (define-extern target-carry-update (function none :behavior target))
 (define-extern target-carry-post (function none :behavior target))
-(define-extern target-carry-pickup (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-darkjak                 ;;
@@ -29102,14 +29179,8 @@
 (define-extern *darkjak-trans-mods* surface)
 (define-extern target-darkjak-end-mode (function none :behavior target))
 (define-extern target-darkjak-process (function none :behavior target)) ;; only arg6 used
-(define-extern target-darkjak-get-on (state int target))
-(define-extern target-darkjak-get-off (state target))
-(define-extern target-darkjak-running-attack (state target))
 (define-extern target-darkjak-bomb-collide (function float float none :behavior target))
-(define-extern target-darkjak-bomb0 (state target))
 (define-extern target-bomb1-fire-shot (function (pointer handle) int int int none :behavior target))
-(define-extern target-darkjak-bomb1 (state float float target))
-(define-extern target-darkjak-giant (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-death                   ;;
@@ -29126,7 +29197,6 @@
 
 (define-extern *auto-continue* symbol) ;;
 (define-extern next-continue (function continue-point continue-point))
-(define-extern target-continue (state continue-point target))
 (define-extern *smack-mods* surface)
 (define-extern *smack-up-mods* surface)
 (define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target)) ;;
@@ -29135,7 +29205,6 @@
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
 (define-extern target-hit-setup-anim (function attack-info none :behavior target)) ;;
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
-(define-extern target-hit (state symbol attack-info target))
 (define-extern *death-spool-array* (array spool-anim)) ;;
 (define-extern death-movie-remap (function int int int)) ;;
 (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
@@ -29144,7 +29213,6 @@
 (define-extern target-death-anim (function spool-anim none :behavior target)) ;;
 (define-extern target-death-main (function symbol none :behavior target))
 (define-extern target-death-reset (function symbol symbol none :behavior target))
-(define-extern target-death (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-gun                     ;;
@@ -29352,8 +29420,6 @@
 ;; gun-states                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern target-gun-stance (state target))
-(define-extern target-gun-walk (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; board-util                     ;;
@@ -29422,27 +29488,6 @@
 (define-extern target-board-ground-check (function none :behavior target))
 (define-extern target-board-halfpipe-check (function collide-action :behavior target))
 (define-extern target-board-jump-trans (function none :behavior target))
-(define-extern target-board-start (state object target))
-(define-extern target-board-stance (state target))
-(define-extern target-board-duck-stance (state target))
-(define-extern target-board-jump (state meters meters symbol target))
-(define-extern target-board-halfpipe (state target))
-(define-extern target-board-falling (state target))
-(define-extern target-board-jump-kick (state target))
-(define-extern target-board-wall-kick (state vector float target))
-(define-extern target-board-flip (state float float symbol target))
-(define-extern target-board-hold (state float float symbol target))
-(define-extern target-board-trickx (state float float symbol target))
-(define-extern target-board-hit-ground (state target))
-(define-extern target-board-turn-to (state vector time-frame target))
-(define-extern target-board-ride-edge (state symbol object object float target))
-(define-extern target-board-grenade (state handle target))
-(define-extern target-board-get-on (state target))
-(define-extern target-board-pegasus (state handle target))
-(define-extern target-board-get-off (state object symbol target)) ;; unused arg0
-(define-extern target-board-grab (state symbol target))
-(define-extern target-board-clone-anim (state handle target))
-(define-extern target-board-hit (state vector attack-info target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-h                         ;;
@@ -30413,7 +30458,6 @@
 (define-extern pov-camera-play-and-reposition (function art-joint-anim vector float none :behavior pov-camera))
 (define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)) ;;
 (define-extern othercam-calc (function float float)) ;;
-(define-extern othercam-running (state othercam))
 (define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam)) ;; (function process-taskable symbol symbol symbol none :behavior othercam)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30514,10 +30558,6 @@
 
 (define-extern *hud-sprite-work* hud-sprite-work)
 (define-extern hud-create-icon (function hud int int (pointer manipy)))
-(define-extern hud-hidden (state hud)) ;; (state hud)
-(define-extern hud-arriving (state hud)) ;;
-(define-extern hud-in (state hud)) ;; (state hud)
-(define-extern hud-leaving (state float hud)) ;; (state int hud)
 (define-extern hud-init-by-other (function object :behavior hud))
 (define-extern hide-hud (function symbol none))
 (define-extern enable-hud (function none))
@@ -31197,13 +31237,12 @@
   :method-count-assert 20
   :size-assert         #xcc
   :flag-assert         #x14005000cc
-  (:methods
-    )
+  (:states
+    viewer-process)
   )
 
 (define-extern *viewer* viewer)
 (define-extern *viewer-sg* skeleton-group) ;; skeleton-group
-(define-extern viewer-process (state viewer)) ;;
 (define-extern viewer-string string) ;;
 (define-extern viewer-ja-name string) ;; string
 (define-extern viewer-geo-name string) ;; string
@@ -31225,11 +31264,11 @@
   :heap-base 16
   :size-assert         #x8c
   :flag-assert         #xe0010008c
-  ;; Failed to read fields.
+  (:states
+    part-tester-idle)
   )
 
 (define-extern *part-tester-name* string)
-(define-extern part-tester-idle (state part-tester))
 (define-extern part-tester-init-by-other (function vector none :behavior process-drawable))
 (define-extern *debug-part-dead-pool* dead-pool)
 (define-extern start-part (function none))
@@ -34083,10 +34122,11 @@
     (adjust-bbox-for-limits-along-axis (_type_ joint-exploder-list int) joint-exploder-list 28) ;; (TODO-RENAME-28 (_type_ joint-exploder-list) none 28)
     (adjust-bbox-for-limits (_type_ joint-exploder-list) none 29)
     )
+  (:states
+    joint-exploder-shatter)
   )
 
 (define-extern joint-exploder-joint-callback (function draw-control cspace-array joint-control none))
-(define-extern joint-exploder-shatter (state joint-exploder))
 (define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-tuning joint-exploder-static-params none :behavior joint-exploder))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34761,7 +34801,7 @@
     (get-params
       "@returns [[*default-elec-gate-params*]] by default"
       (_type_) elec-gate-params 23)
-    (elec-gate-method-24 "virtual" (_type_) none 24)
+    (elec-gate-method-24 (_type_) none 24)
     (set-palette!
       "Sets the [[elec-gate]]'s `palette-id` appropriately"
       (_type_) none 25)
@@ -37140,12 +37180,7 @@
 (define-extern tube-sounds (function sound-id :behavior target))
 (define-extern tube-thrust (function float float none :behavior target))
 (define-extern target-tube-post (function none :behavior target))
-(define-extern target-tube-start (state handle target))
 (define-extern target-tube-turn-anim (function none :behavior target))
-(define-extern target-tube (state target))
-(define-extern target-tube-jump (state float float target))
-(define-extern target-tube-hit (state symbol attack-info target))
-(define-extern target-tube-death (state symbol target))
 (define-extern distance-from-tangent (function path-control float vector vector vector vector float))
 (define-extern find-target-point (function vector float :behavior slide-control))
 
@@ -37328,7 +37363,6 @@
 ;; (define-extern target-turret-post function)
 ;; (define-extern target-turret-stance state)
 ;; (define-extern *turret-get-on-mods* object)
-(define-extern target-turret-get-on (state handle target))
 ;; (define-extern target-turret-get-off state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38801,9 +38835,9 @@
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (reset-task! "Virtual" (_type_) none 9)
-    (ai-task-method-10 "Virtual" (_type_ bot) none 10)
-    (ai-task-method-11 "Virtual" (_type_ bot) none 11)
+    (reset-task! (_type_) none 9)
+    (ai-task-method-10 (_type_ bot) none 10)
+    (ai-task-method-11 (_type_ bot) none 11)
     )
   )
 
@@ -43407,7 +43441,6 @@
 ;; (define-extern demo-wait-for-press function)
 ;; (define-extern demo-menu function)
 ;; (define-extern demo-control-init function)
-(define-extern target-demo (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; credits                        ;;
@@ -43992,19 +44025,7 @@
 (define-extern target-indax-exit (function none :behavior target))
 (define-extern target-indax-real-post (function none :behavior target))
 (define-extern target-indax-post (function none :behavior target))
-(define-extern target-indax-stance (state target))
-(define-extern target-indax-walk (state target))
-(define-extern target-indax-falling (state symbol target))
-(define-extern target-indax-jump (state float float surface target))
-(define-extern target-indax-double-jump (state float float target))
-(define-extern target-indax-hit-ground (state symbol target))
-(define-extern target-indax-trip (state target))
-(define-extern target-indax-attack (state target))
-(define-extern target-indax-attack-air (state symbol target))
-(define-extern target-indax-running-attack (state target))
 (define-extern target-indax-hit-setup-anim (function attack-info none :behavior target))
-(define-extern target-indax-hit (state symbol attack-info target))
-(define-extern target-indax-death (state symbol target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tomb-boulder                   ;;
@@ -44592,7 +44613,6 @@
 (define-extern title-fade-out (function float none))
 (define-extern title-progress (function symbol none))
 (define-extern title-control-init (function none :behavior title-control))
-(define-extern target-title (state symbol target))
 (define-extern *title-control* (pointer title-control))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44678,31 +44698,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *mech-exploder-params* joint-exploder-static-params)
-(define-extern target-mech-start (state handle target))
-(define-extern target-mech-stance (state target))
-(define-extern target-mech-walk (state target))
 (define-extern target-mech-punch-pick (function symbol int :behavior target))
-(define-extern target-mech-punch (state target))
-(define-extern target-mech-falling (state symbol target))
-(define-extern target-mech-jump (state float float surface target))
-(define-extern target-mech-hit-ground (state symbol target))
-(define-extern target-mech-hit (state symbol attack-info target))
-(define-extern target-mech-death (state symbol target))
 (define-extern target-mech-carry-update (function none :behavior target))
 (define-extern target-mech-carry-post (function none :behavior target))
-(define-extern target-mech-carry-pickup (state target))
-(define-extern target-mech-carry-drop (state target))
-(define-extern target-mech-carry-stance (state target))
-(define-extern target-mech-carry-walk (state target))
-(define-extern target-mech-carry-drag (state target))
-(define-extern target-mech-carry-falling (state target))
-(define-extern target-mech-carry-hit-ground (state symbol target))
-(define-extern target-mech-carry-jump (state float float target))
-(define-extern target-mech-carry-throw (state target))
-(define-extern target-mech-get-on (state handle target))
-(define-extern target-mech-get-off (state target))
-(define-extern target-mech-grab (state target))
-(define-extern target-mech-clone-anim (state handle target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; grunt-mech                     ;;
@@ -51872,7 +51870,6 @@
 ;; pilot-states                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern target-pilot-start (state handle target))
 ;; (define-extern target-pilot-bike-anim-loop function)
 ;; (define-extern target-pilot-car-anim-loop function)
 ;; (define-extern target-daxter-pilot-car-anim-loop function)
@@ -51886,7 +51883,6 @@
 ;; (define-extern target-pilot-get-off state)
 ;; (define-extern target-pilot-grab state)
 ;; (define-extern target-pilot-clone-anim state)
-(define-extern target-pilot-edge-grab (state target))
 ;; (define-extern target-pilot-hit state)
 ;; (define-extern target-pilot-death state)
 

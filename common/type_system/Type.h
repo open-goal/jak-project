@@ -29,7 +29,8 @@ struct MethodInfo {
   TypeSpec type;
   std::string defined_in_type;
   bool no_virtual = false;
-  bool overrides_method_type_of_parent = false;
+  bool overrides_parent = false;
+  bool only_overrides_docstring = false;
   std::optional<std::string> docstring;
 
   bool operator==(const MethodInfo& other) const;
@@ -88,6 +89,7 @@ class Type {
   bool get_my_method(int id, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
+  int get_num_methods() const;
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
@@ -115,6 +117,10 @@ class Type {
   bool gen_inspect() const { return m_generate_inspect; }
 
   DefinitionMetadata m_metadata;
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_virtual_state_definition_meta = {};
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_state_definition_meta = {};
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);

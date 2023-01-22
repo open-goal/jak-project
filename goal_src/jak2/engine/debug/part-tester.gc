@@ -5,12 +5,13 @@
 ;; name in dgo: part-tester
 ;; dgos: ENGINE, GAME
 
+(define-extern *part-tester* (pointer process))
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
 (declare-file (debug))
 (when *debug-segment*
-;; failed to figure out what this is:
 (defpartgroup group-part-tester
   :id 127
   :flags (unk-4 unk-6)
@@ -19,7 +20,6 @@
   :parts ((sp-item 209))
   )
 
-;; definition of type part-tester
 (deftype part-tester (process)
   ((root      trsqv                     :offset-assert 128)
    (part      sparticle-launch-control  :offset-assert 132)
@@ -29,29 +29,14 @@
   :method-count-assert 14
   :size-assert         #x8c
   :flag-assert         #xe0010008c
-  )
-(define-extern *part-tester* (pointer process))
-
-;; definition for method 3 of type part-tester
-(defmethod inspect part-tester ((obj part-tester))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
+  (:states
+    part-tester-idle
     )
-  (let ((t9-0 (method-of-type process inspect)))
-    (t9-0 obj)
-    )
-  (format #t "~2Troot: ~A~%" (-> obj root))
-  (format #t "~2Tpart: ~A~%" (-> obj part))
-  (format #t "~2Told-group: ~A~%" (-> obj old-group))
-  (label cfg-4)
-  obj
   )
 
-;; definition for symbol *part-tester-name*, type string
+
 (define *part-tester-name* (the-as string #f))
 
-;; definition for method 10 of type part-tester
 (defmethod deactivate part-tester ((obj part-tester))
   (if (nonzero? (-> obj part))
       (kill-and-free-particles (-> obj part))
@@ -60,7 +45,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate part-tester-idle (part-tester)
   :code (behavior ()
     (until #f
@@ -112,8 +96,6 @@
     )
   )
 
-;; definition for function part-tester-init-by-other
-;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior part-tester-init-by-other process-drawable ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
@@ -123,10 +105,8 @@
   (none)
   )
 
-;; definition (perm) for symbol *debug-part-dead-pool*, type dead-pool
 (define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 "*debug-part-dead-pool*"))
 
-;; definition for function start-part
 ;; WARN: Return type mismatch (pointer process) vs none.
 (defun start-part ()
   (kill-by-type part-tester *active-pool*)
@@ -142,6 +122,3 @@
   )
 
 )
-
-
-

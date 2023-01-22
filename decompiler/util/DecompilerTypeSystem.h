@@ -17,8 +17,19 @@ class DecompilerTypeSystem {
 
   std::unordered_map<std::string, TypeSpec> symbol_types;
   std::unordered_set<std::string> symbols;
-  std::unordered_map<std::string, DefinitionMetadata> symbol_metadata_map;
   std::vector<std::string> symbol_add_order;
+
+  // TODO - these are needed to propagate the info from the `Type` to the final result
+  // as only the `TypeSpec` is available at that point
+  std::unordered_map<std::string, DefinitionMetadata> symbol_metadata_map;
+  // {type_name : {method_name : {handler : doc}}}
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>>
+      virtual_state_metadata;
+  // {state_name : {handler : doc}}
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      state_metadata;
 
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
