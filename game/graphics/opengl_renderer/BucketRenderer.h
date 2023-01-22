@@ -95,7 +95,7 @@ class BucketRenderer {
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
   virtual void init_shaders(ShaderLibrary&) {}
-  virtual void init_textures(TexturePool&) {}
+  virtual void init_textures(TexturePool&, GameVersion) {}
 
  protected:
   std::string m_name;
@@ -111,7 +111,7 @@ class RenderMux : public BucketRenderer {
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary&) override;
-  void init_textures(TexturePool&) override;
+  void init_textures(TexturePool&, GameVersion) override;
   void set_idx(u32 i) { m_render_idx = i; };
 
  private:
