@@ -38,7 +38,7 @@
   ((left-eye           joint-mod          :offset-assert 604)
    (right-eye          joint-mod          :offset-assert 608)
    (look-at-other      handle             :offset-assert 616)
-   (neck-away-from     basic              :offset-assert 624)
+   (neck-away-from     symbol             :offset-assert 624)
    (look-at-other-time time-frame         :offset-assert 632)
    (pad-iuj1n23i1      uint32     3       :offset-assert 640)
    (slow-timer         time-frame         :offset-assert 656)
@@ -52,7 +52,7 @@
   :flag-assert         #xb7024002c0
   (:methods
     (fodder-method-178 (_type_) none 178)
-    (fodder-method-179 (_type_ vector) float 179)
+    (look-at-position! (_type_ vector) float 179)
     (fodder-method-180 (_type_) symbol 180)
     (fodder-method-181 (_type_ symbol) none 181)
     (fodder-method-182 (_type_) float 182)
@@ -181,9 +181,11 @@
 
 (set! (-> *fodder-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-109 fodder ((obj fodder) (arg0 int))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-109)))
-    (t9-0 obj arg0)
+(defmethod look-at-target! fodder ((obj fodder) (arg0 enemy-flag))
+  "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
+@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
+  (let ((parent-method (method-of-type nav-enemy look-at-target!)))
+    (parent-method obj arg0)
     )
   (if (nonzero? (-> obj left-eye))
       (mode-set! (-> obj left-eye) (joint-mod-mode polar-look-at))
@@ -195,9 +197,10 @@
   (none)
   )
 
-(defmethod enemy-method-110 fodder ((obj fodder))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-110)))
-    (t9-0 obj)
+(defmethod stop-looking-at-target! fodder ((obj fodder))
+  "Will unset [[enemy-flag::death-start]] and [[enemy-flag::lock-focus]] and call [[joint-mod::shut-down]] if applicable"
+  (let ((parent-method (method-of-type nav-enemy stop-looking-at-target!)))
+    (parent-method obj)
     )
   (if (nonzero? (-> obj left-eye))
       (shut-down (-> obj left-eye))
@@ -209,24 +212,27 @@
   (none)
   )
 
-(defmethod fodder-method-179 fodder ((obj fodder) (arg0 vector))
-  (when (not arg0)
-    (let ((a0-2 (handle->process (-> obj focus handle))))
-      (if a0-2
-          (set! arg0 (get-trans (the-as process-focusable a0-2) 2))
+(defmethod look-at-position! fodder ((obj fodder) (position vector))
+  "Adjusts the eyes to look at particular position, or the focused target
+@param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
+@return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
+  (when (not position)
+    (let ((focus-proc (handle->process (-> obj focus handle))))
+      (if focus-proc
+          (set! position (get-trans (the-as process-focusable focus-proc) 2))
           (return 0.0)
           )
       )
     )
   (when (nonzero? (-> obj left-eye))
-    (target-set! (-> obj left-eye) arg0)
+    (target-set! (-> obj left-eye) position)
     (when (nonzero? (-> obj left-eye))
       (set! (-> obj left-eye polar-external-tilt-max) (-> obj right-eye polar-internal-tilt-max))
       (set! (-> obj left-eye polar-external-radius) (-> obj right-eye polar-internal-radius))
       )
     )
   (when (nonzero? (-> obj right-eye))
-    (target-set! (-> obj right-eye) arg0)
+    (target-set! (-> obj right-eye) position)
     (when (nonzero? (-> obj right-eye))
       (set! (-> obj right-eye polar-external-tilt-max) (-> obj left-eye polar-internal-tilt-max))
       (set! (-> obj right-eye polar-external-radius) (-> obj left-eye polar-internal-radius))
@@ -235,46 +241,52 @@
   )
 
 (defmethod fodder-method-180 fodder ((obj fodder))
+  "@TODO no idea, never seems to do anything because the actor-group-count is always 0"
   (with-pp
     (when (>= (- (-> pp clock frame-counter) (-> obj look-at-other-time)) (seconds 0.25))
-      (dotimes (s5-0 (-> obj actor-group-count))
-        (let ((s4-0 (-> obj actor-group s5-0)))
-          (dotimes (s3-0 (-> s4-0 length))
-            (let* ((s1-0 (-> s4-0 data s3-0 actor extra process))
-                   (s2-0 (if (type? s1-0 fodder)
-                             (the-as fodder s1-0)
-                             )
-                         )
+      (dotimes (group-idx (-> obj actor-group-count))
+        (let ((group (-> obj actor-group group-idx)))
+          (dotimes (actor-idx (-> group length))
+            (let* ((actor-proc (-> group data actor-idx actor extra process))
+                   (fodder-proc (if (type? actor-proc fodder)
+                                    (the-as fodder actor-proc)
+                                    )
+                                )
                    )
-              (when (and s2-0 (!= s2-0 obj) (>= (- (-> pp clock frame-counter) (-> s2-0 look-at-other-time)) (seconds 0.25)))
-                (let* ((s1-2 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 root-override2 trans) (-> obj root-override2 trans)))
-                       (f0-0 (vector-length s1-2))
+              (when (and fodder-proc
+                         (!= fodder-proc obj)
+                         (>= (- (-> pp clock frame-counter) (-> fodder-proc look-at-other-time)) (seconds 0.25))
+                         )
+                (let* ((dir-to-other-fodder
+                         (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root-override2 trans) (-> obj root-override2 trans))
+                         )
+                       (dir-length (vector-length dir-to-other-fodder))
                        )
-                  (when (< f0-0 8192.0)
-                    (vector-float*! s1-2 s1-2 (/ 1.0 f0-0))
+                  (when (< dir-length 8192.0)
+                    (vector-float*! dir-to-other-fodder dir-to-other-fodder (/ 1.0 dir-length))
                     (let ((f30-0 (vector-dot
-                                   s1-2
+                                   dir-to-other-fodder
                                    (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root-override2 quat)) vector 2)
                                    )
                                  )
                           )
                       (when (< (cos 14563.556) f30-0)
-                        (let ((v1-29 (ja-channel-float! (the-as art-joint-anim (-> obj draw art-group data 15)) 0.0 0.0 0.0)))
-                          (when v1-29
+                        (let ((channel (ja-channel-float! (the-as art-joint-anim (-> obj draw art-group data 15)) 0.0 0.0 0.0)))
+                          (when channel
                             (set! (-> obj skel interp-select 0) #xe00010)
                             (set! (-> obj skel interp-select 1) 0)
-                            (set! (-> v1-29 param 0) 1.0)
-                            (set! (-> v1-29 param 1) 1.0)
-                            (set! (-> v1-29 param 2) 1.0)
-                            (set! (-> v1-29 num-func) num-func-interp1-play!)
+                            (set! (-> channel param 0) 1.0)
+                            (set! (-> channel param 1) 1.0)
+                            (set! (-> channel param 2) 1.0)
+                            (set! (-> channel num-func) num-func-interp1-play!)
                             )
                           )
                         (set! (-> obj look-at-other-time) (-> pp clock frame-counter))
-                        (set! (-> obj look-at-other) (process->handle s2-0))
+                        (set! (-> obj look-at-other) (process->handle fodder-proc))
                         (set! (-> obj neck-away-from) #f)
-                        (set! (-> s2-0 look-at-other-time) (-> pp clock frame-counter))
-                        (set! (-> s2-0 look-at-other) (process->handle obj))
-                        (set! (-> s2-0 neck-away-from) (the-as basic #t))
+                        (set! (-> fodder-proc look-at-other-time) (-> pp clock frame-counter))
+                        (set! (-> fodder-proc look-at-other) (process->handle obj))
+                        (set! (-> fodder-proc neck-away-from) #t)
                         )
                       )
                     )
@@ -289,26 +301,30 @@
     )
   )
 
-(defmethod enemy-method-55 fodder ((obj fodder))
+(defmethod track-target! fodder ((obj fodder))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (with-pp
-    (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
-      (t9-0 obj)
+    (let ((parent-method (method-of-type nav-enemy track-target!)))
+      (parent-method obj)
       )
-    (let ((v1-1 (the-as process-drawable #f)))
+    (let ((proc (the-as process-drawable #f)))
       (cond
         ((and (< (- (-> pp clock frame-counter) (-> obj look-at-other-time)) (seconds 0.5))
               (begin
-                (let ((s5-0 (handle->process (-> obj look-at-other))))
-                  (set! v1-1 (if (type? s5-0 process-drawable)
-                                 (the-as process-drawable s5-0)
+                (let ((other-proc (handle->process (-> obj look-at-other))))
+                  (set! proc (if (type? other-proc process-drawable)
+                                 (the-as process-drawable other-proc)
                                  )
                         )
                   )
-                v1-1
+                proc
                 )
               )
-         (let ((s5-1 (vector<-cspace! (new 'static 'vector) (-> v1-1 node-list data 5))))
-           (fodder-method-179 obj s5-1)
+         (let ((s5-1 (vector<-cspace! (new 'static 'vector) (-> proc node-list data 5))))
+           (look-at-position! obj s5-1)
            (cond
              ((zero? (-> obj neck))
               )
@@ -328,7 +344,7 @@
            )
          )
         ((logtest? (-> obj enemy-flags) (enemy-flag lock-focus))
-         (fodder-method-179 obj (the-as vector #f))
+         (look-at-position! obj (the-as vector #f))
          )
         )
       )
@@ -339,9 +355,9 @@
 (defstate idle (fodder)
   :virtual #t
   :post (behavior ()
-    (let ((t9-0 (-> (method-of-type nav-enemy idle) post)))
-      (if t9-0
-          ((the-as (function none) t9-0))
+    (let ((func (-> (method-of-type nav-enemy idle) post)))
+      (if func
+          ((the-as (function none) func))
           )
       )
     (update-transforms (-> self root-override2))
@@ -352,9 +368,9 @@
 (defstate active (fodder)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
-      (if t9-0
-          (t9-0)
+    (let ((func (-> (method-of-type nav-enemy active) enter)))
+      (if func
+          (func)
           )
       )
     (logclear! (-> self enemy-flags) (enemy-flag spawn-gem chase-startup use-notice-distance))
@@ -382,9 +398,9 @@
           (ja :num! (seek! max f30-0))
           )
         (when (enemy-method-123 self 0.8)
-          (let ((v1-33 self))
-            (set! (-> v1-33 enemy-flags) (the-as enemy-flag (logclear (-> v1-33 enemy-flags) (enemy-flag enemy-flag36))))
-            (set! (-> v1-33 nav callback-info) *nav-enemy-null-callback-info*)
+          (let ((_self self))
+            (set! (-> _self enemy-flags) (the-as enemy-flag (logclear (-> _self enemy-flags) (enemy-flag enemy-flag36))))
+            (set! (-> _self nav callback-info) *nav-enemy-null-callback-info*)
             )
           0
           (set! (-> self state-time) (-> self clock frame-counter))
@@ -402,7 +418,7 @@
               )
             (ja-no-eval :num! (loop!))
             (ja-channel-push! 1 (seconds 0.25))
-            (dotimes (gp-0 (rand-vu-int-range 4 7))
+            (dotimes (num-chews (rand-vu-int-range 4 7))
               (ja-no-eval :group! fodder-chew-ja
                           :num! (seek! (the float (+ (-> (the-as art-joint-anim fodder-chew-ja) frames num-frames) -1)) f30-0)
                           :frame-num 0.0
@@ -414,12 +430,12 @@
                 )
               )
             )
-          (let ((v1-93 self))
-            (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-93 enemy-flags)))
-                (set! (-> v1-93 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-93 enemy-flags))))
+          (let ((__self self))
+            (if (not (logtest? (enemy-flag enemy-flag36) (-> __self enemy-flags)))
+                (set! (-> __self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> __self enemy-flags))))
                 )
-            (set! (-> v1-93 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-93 enemy-flags))))
-            (set! (-> v1-93 nav callback-info) (-> v1-93 enemy-info-override callback-info))
+            (set! (-> __self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> __self enemy-flags))))
+            (set! (-> __self nav callback-info) (-> __self enemy-info-override callback-info))
             )
           0
           (ja-no-eval :num! (loop!))
@@ -458,7 +474,7 @@
     (let ((f30-0 (get-rand-float-range self 0.8 1.2))
           (gp-0 (new 'stack-no-clear 'vector))
           )
-      (enemy-method-110 self)
+      (stop-looking-at-target! self)
       (if (nonzero? (-> self neck))
           (mode-set! (-> self neck) (joint-mod-mode look-at))
           )
@@ -519,7 +535,7 @@
           (if (nonzero? (-> self neck))
               (target-set! (-> self neck) gp-0)
               )
-          (fodder-method-179 self gp-0)
+          (look-at-position! self gp-0)
           (suspend)
           (ja :num! (seek! max (* 2.0 f30-0)))
           )
@@ -528,8 +544,8 @@
     (label cfg-22)
     (get-rand-float-range self 0.8 1.2)
     (new 'stack-no-clear 'vector)
-    (enemy-method-109 self 1)
-    (enemy-method-110 self)
+    (look-at-target! self (enemy-flag lock-focus))
+    (stop-looking-at-target! self)
     (if (nonzero? (-> self left-eye))
         (shut-down (-> self left-eye))
         )
@@ -538,7 +554,7 @@
         )
     (let ((gp-1 (-> self focus aware)))
       (cond
-        ((and (= gp-1 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+        ((and (= gp-1 (enemy-aware enemy-aware-3)) (get-enemy-target self))
          (go-hostile self)
          )
         ((>= 1 (the-as int gp-1))
@@ -583,9 +599,9 @@
 (defstate hostile (fodder)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
-      (if t9-0
-          (t9-0)
+    (let ((func (-> (method-of-type nav-enemy hostile) enter)))
+      (if func
+          (func)
           )
       )
     (fodder-method-181 self #t)
@@ -996,8 +1012,8 @@
   #f
   )
 
-(defmethod enemy-method-114 fodder ((obj fodder))
-  "@abstract"
+(defmethod init-enemy-collision! fodder ((obj fodder))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1084,8 +1100,8 @@
   (set! (-> arg0 ignore-angle) 30947.555)
   )
 
-(defmethod enemy-method-115 fodder ((obj fodder))
-  "@abstract"
+(defmethod init-enemy! fodder ((obj fodder))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1093,7 +1109,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *fodder-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *fodder-nav-enemy-info*)
   (when (zero? (-> obj left-eye))
     (set! (-> obj left-eye) (new 'process 'joint-mod (joint-mod-mode flex-blend) obj 23))
     (fodder-setup-eye-control (-> obj left-eye))

@@ -17,7 +17,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
@@ -78,7 +78,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -182,7 +182,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -314,7 +314,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -506,7 +506,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self plasma flags) (logand -29 (-> self plasma flags)))
@@ -658,7 +658,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (if (logtest? (-> self bot-flags) (bot-flags attacked))
@@ -842,7 +842,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (if (logtest? (-> self bot-flags) (bot-flags attacked))
@@ -953,7 +953,7 @@
       (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-5 enemy-flags))))
       )
     0
-    (enemy-method-110 self)
+    (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self skel top-anim interp) 1.0)
     (set! (-> self player-blocking) 0.0)
@@ -978,7 +978,7 @@
        (go-virtual traveling-blocked)
        )
       ((and (nav-enemy-method-163 self)
-            (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+            (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
             )
        (go-stare2 self)
        )
@@ -1024,7 +1024,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -1261,7 +1261,7 @@
     (if (logtest? (-> self bot-flags) (bot-flags attacked))
         (reset-attacker! self)
         )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (behavior ()
@@ -1290,7 +1290,7 @@
     (nav-enemy-method-167 self)
     (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
     (if (not (handle->process (-> self focus handle)))
-        (enemy-method-72 self)
+        (react-to-focus self)
         )
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
@@ -1330,7 +1330,7 @@
           (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
                    (or (not (bot-method-214 self)) (not (sig-method-245 self)))
                    )
-              (enemy-method-72 self)
+              (react-to-focus self)
               )
           (suspend)
           (ja :num! (seek! f30-1))
@@ -1353,7 +1353,7 @@
     (if (logtest? (-> self bot-flags) (bot-flags attacked))
         (reset-attacker! self)
         )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior sig) nav-enemy-simple-post)
@@ -1372,7 +1372,7 @@
     (bot-method-223 self #t)
     (cond
       ((and (nav-enemy-method-163 self)
-            (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+            (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
             )
        (go-stare2 self)
        )
@@ -1552,7 +1552,7 @@
     (set! (-> self enemy-flags) v1-39)
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1665,7 +1665,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -1728,7 +1728,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self bot-flags) (logior (bot-flags bf24) (-> self bot-flags)))
@@ -1801,7 +1801,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -1871,7 +1871,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self bot-flags) (logior (bot-flags bf24) (-> self bot-flags)))
@@ -1950,7 +1950,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (none)
@@ -2020,7 +2020,7 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self travel-anim-interp) 0.0)
     (vector-reset! (-> self root-override2 transv))
@@ -2051,7 +2051,3 @@
     )
   :post (the-as (function none :behavior sig) nav-enemy-simple-post)
   )
-
-
-
-

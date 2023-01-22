@@ -165,7 +165,9 @@
 
 (set! (-> *rapid-gunner-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-74 rapid-gunner ((obj rapid-gunner) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler rapid-gunner ((obj rapid-gunner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-flinch)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -189,7 +191,7 @@
          )
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -390,8 +392,13 @@
     )
   )
 
-(defmethod enemy-method-98 rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 vector))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-98)))
+(defmethod in-aggro-range? rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 vector))
+  "Should the enemy activate.
+- if `activate-distance` is `0.0`, always true
+- otherwise, check if the provided process is close enough
+@param proc The process used to distance check
+@returns true/false"
+  (let ((t9-0 (method-of-type nav-enemy in-aggro-range?)))
     (and (t9-0 obj arg0 arg1)
          (or (not (logtest? (-> obj fact-info-override enemy-options) (enemy-option user8)))
              (and (not (logtest? (-> arg0 focus-status) (focus-status in-air)))
@@ -489,8 +496,12 @@
   (none)
   )
 
-(defmethod enemy-method-55 rapid-gunner ((obj rapid-gunner))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! rapid-gunner ((obj rapid-gunner))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (los-control-method-9 (-> obj los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
@@ -526,7 +537,7 @@
   :virtual #t
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag use-notice-distance))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
@@ -593,7 +604,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (behavior ()
@@ -1321,7 +1332,7 @@
   )
 
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 symbol))
+(defmethod enemy-method-63 rapid-gunner ((obj rapid-gunner) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 obj arg0 arg1)
                        (set-dst-proc! (-> obj los) (-> obj focus handle))
@@ -1330,8 +1341,8 @@
     )
   )
 
-(defmethod enemy-method-114 rapid-gunner ((obj rapid-gunner))
-  "@abstract"
+(defmethod init-enemy-collision! rapid-gunner ((obj rapid-gunner))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1420,8 +1431,8 @@
     )
   )
 
-(defmethod enemy-method-115 rapid-gunner ((obj rapid-gunner))
-  "@abstract"
+(defmethod init-enemy! rapid-gunner ((obj rapid-gunner))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-48 int))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1436,7 +1447,7 @@
       (the-as skeleton-group (art-group-get-by-name *level* "skel-rapid-gunner" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (enemy-method-113 obj *rapid-gunner-nav-enemy-info*)
+    (init-enemy-behaviour-and-stats! obj *rapid-gunner-nav-enemy-info*)
     (set! (-> obj neck up) (the-as uint 1))
     (set! (-> obj neck nose) (the-as uint 2))
     (set! (-> obj neck ear) (the-as uint 0))

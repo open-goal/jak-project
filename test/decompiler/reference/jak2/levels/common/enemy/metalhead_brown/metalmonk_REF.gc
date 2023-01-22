@@ -163,7 +163,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -366,8 +431,12 @@
 ;; definition for method 55 of type metalmonk
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-55 metalmonk ((obj metalmonk))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! metalmonk ((obj metalmonk))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (set! (-> obj old-facing quad) (-> obj new-facing quad))
@@ -377,7 +446,9 @@
   )
 
 ;; definition for method 74 of type metalmonk
-(defmethod enemy-method-74 metalmonk ((obj metalmonk) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler metalmonk ((obj metalmonk) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked 'hit-flinch)
      (logclear! (-> obj mask) (process-mask actor-pause))
@@ -410,7 +481,7 @@
                     (>= f0-0 (* f1-0 f1-0))
                     )
                   )
-             (enemy-method-73 obj)
+             (kill-prefer-falling obj)
              )
             ((or (= s5-1 (knocked-type knocked-type-4)) (= s5-1 (knocked-type knocked-type-6)))
              (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
@@ -429,7 +500,7 @@
      #t
      )
     (else
-      ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -602,7 +673,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -617,7 +688,7 @@
           )
       )
     (let ((gp-0 (handle->process (-> self focus handle))))
-      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
                (and gp-0
                     (or (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
                                 20480.0
@@ -847,7 +918,7 @@
                            )
                          )
                )
-          (enemy-method-72 self)
+          (react-to-focus self)
           )
       )
     (none)
@@ -866,7 +937,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -1104,8 +1175,8 @@
 
 ;; definition for method 114 of type metalmonk
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 metalmonk ((obj metalmonk))
-  "@abstract"
+(defmethod init-enemy-collision! metalmonk ((obj metalmonk))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1233,8 +1304,8 @@
 
 ;; definition for method 115 of type metalmonk
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 metalmonk ((obj metalmonk))
-  "@abstract"
+(defmethod init-enemy! metalmonk ((obj metalmonk))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -1242,7 +1313,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *metalmonk-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *metalmonk-nav-enemy-info*)
   (let ((v1-8 (-> obj neck)))
     (set! (-> v1-8 up) (the-as uint 1))
     (set! (-> v1-8 nose) (the-as uint 2))
