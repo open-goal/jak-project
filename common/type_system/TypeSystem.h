@@ -160,6 +160,10 @@ class TypeSystem {
 
   int get_load_size_allow_partial_def(const TypeSpec& ts) const;
 
+  MethodInfo override_method(Type* type,
+                             const std::string& type_name,
+                             const int method_id,
+                             const std::optional<std::string>& docstring);
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
                             const std::optional<std::string>& docstring,

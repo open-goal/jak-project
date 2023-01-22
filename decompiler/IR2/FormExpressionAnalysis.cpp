@@ -200,7 +200,7 @@ Form* try_cast_simplify(Form* in,
       auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
       if (g && g->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
         auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
-        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
+        if (f && f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
           auto& func_name = f->expr().get_arg(0).get_str();
           if (func_name == "rand-vu-int-range" || func_name == "nav-enemy-rnd-int-range") {
             std::vector<Form*> new_forms;

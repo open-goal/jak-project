@@ -37,7 +37,8 @@ std::string reg_kind_to_string(RegClass kind) {
 bool MethodInfo::operator==(const MethodInfo& other) const {
   return id == other.id && name == other.name && type == other.type &&
          defined_in_type == other.defined_in_type && other.no_virtual == no_virtual &&
-         other.overrides_method_type_of_parent == overrides_method_type_of_parent;
+         other.overrides_parent == overrides_parent &&
+         only_overrides_docstring == other.only_overrides_docstring;
 }
 
 std::string MethodInfo::diff(const MethodInfo& other) const {
@@ -62,10 +63,16 @@ std::string MethodInfo::diff(const MethodInfo& other) const {
     result += fmt::format("no_virtual: {} vs. {}\n", no_virtual, other.no_virtual);
   }
 
-  if (overrides_method_type_of_parent != other.overrides_method_type_of_parent) {
-    result += fmt::format("overrides_method_type_of_parent: {} vs. {}\n",
-                          overrides_method_type_of_parent, other.overrides_method_type_of_parent);
+  if (overrides_parent != other.overrides_parent) {
+    result +=
+        fmt::format("overrides_parent: {} vs. {}\n", overrides_parent, other.overrides_parent);
   }
+
+  if (only_overrides_docstring != other.only_overrides_docstring) {
+    result += fmt::format("only_overrides_docstring: {} vs. {}\n", only_overrides_docstring,
+                          other.only_overrides_docstring);
+  }
+
   return result;
 }
 
@@ -220,8 +227,36 @@ std::string Type::get_parent() const {
  * to check if two types are really identical.
  */
 bool Type::common_type_info_equal(const Type& other) const {
+  // Check if methods only differ because of documentation overrides
+  bool methods_the_same = true;
+  for (const auto& method : m_methods) {
+    if (method.only_overrides_docstring) {
+      // skip these methods, as we _expect_ to not find them in one or the other!
+      // this is a all-types vs normal code wrinkle
+      continue;
+    }
+    // For each method, find it's matching id, it should only be allowed to be different
+    // if its just the docstring
+    bool found_method = false;
+    for (const auto& _method : other.m_methods) {
+      if (method.id == _method.id) {
+        if (method == _method) {
+          found_method = true;
+          break;
+        } else {
+          methods_the_same = false;
+          break;
+        }
+      }
+    }
+    if (!methods_the_same || !found_method) {
+      methods_the_same = false;
+      break;
+    }
+  }
+
   // clang-format off
-  return m_methods == other.m_methods &&
+  return methods_the_same &&
          m_states == other.m_states &&
          m_new_method_info == other.m_new_method_info &&
          m_new_method_info_defined == other.m_new_method_info_defined &&
@@ -347,7 +382,7 @@ bool Type::get_my_method(int id, MethodInfo* out) const {
  */
 bool Type::get_my_last_method(MethodInfo* out) const {
   for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
-    if (!it->overrides_method_type_of_parent) {
+    if (!it->overrides_parent && !it->only_overrides_docstring) {
       *out = *it;
       return true;
     }
@@ -368,11 +403,26 @@ bool Type::get_my_new_method(MethodInfo* out) const {
 }
 
 /*!
+ * Get the number of legitimate methods / overridden methods.  Ignore that which are inherited just
+ * for documentation overrides
+ */
+int Type::get_num_methods() const {
+  int num = 0;
+  for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
+    if (it->only_overrides_docstring) {
+      continue;
+    }
+    num++;
+  }
+  return num;
+}
+
+/*!
  * Add a method defined specifically for this type.
  */
 const MethodInfo& Type::add_method(const MethodInfo& info) {
   for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
-    if (!it->overrides_method_type_of_parent) {
+    if (!it->overrides_parent && !it->only_overrides_docstring) {
       ASSERT(it->id + 1 == info.id);
       break;
     }
