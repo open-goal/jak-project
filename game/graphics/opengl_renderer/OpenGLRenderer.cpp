@@ -298,7 +298,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
-    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
   }
   m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
@@ -523,7 +523,7 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
-    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak1);
   }
   sky_cpu_blender->init_textures(*m_render_state.texture_pool);
   sky_gpu_blender->init_textures(*m_render_state.texture_pool);

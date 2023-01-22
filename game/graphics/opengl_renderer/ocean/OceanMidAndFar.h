@@ -20,7 +20,7 @@ class OceanMidAndFar : public BucketRenderer {
   void render_jak1(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void render_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window() override;
-  void init_textures(TexturePool& pool) override;
+  void init_textures(TexturePool& pool, GameVersion version) override;
 
  private:
   void handle_ocean_far(DmaFollower& dma,

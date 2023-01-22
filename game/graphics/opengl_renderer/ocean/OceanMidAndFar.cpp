@@ -10,8 +10,8 @@ void OceanMidAndFar::draw_debug_window() {
   m_direct.draw_debug_window();
 }
 
-void OceanMidAndFar::init_textures(TexturePool& pool) {
-  m_texture_renderer.init_textures(pool);
+void OceanMidAndFar::init_textures(TexturePool& pool, GameVersion version) {
+  m_texture_renderer.init_textures(pool, version);
 }
 
 void OceanMidAndFar::render(DmaFollower& dma,
@@ -121,25 +121,25 @@ void OceanMidAndFar::render_jak2(DmaFollower& dma,
   auto final_next = dma.read_and_advance();
   ASSERT(final_next.vifcode0().kind == VifCode::Kind::NOP &&
          final_next.vifcode1().kind == VifCode::Kind::NOP && final_next.size_bytes == 0);
-  // for (int i = 0; i < 4; i++) {
-  //   dma.read_and_advance();
-  // }
-  // ASSERT(dma.current_tag_offset() == render_state->next_bucket);
-
-  auto transfers = 0;
-  // print the entire chain
-  printf("START OCEAN MID FAR DMA!!!!!!!\n");
-  while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto data = dma.read_and_advance();
-    printf(
-        "dma transfer %d:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
-        "%d\n\n",
-        transfers, dma.current_tag().print().c_str(), data.size_bytes,
-        data.vifcode0().print().c_str(), data.vif0(), data.vifcode1().print().c_str(),
-        data.vifcode1().num, data.vifcode1().immediate);
-    transfers++;
+  for (int i = 0; i < 2; i++) {
+    dma.read_and_advance();
   }
-  printf("transfers: %d\n\n", transfers);
+  ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+
+  // auto transfers = 0;
+  // // print the entire chain
+  // printf("START OCEAN MID FAR DMA!!!!!!!\n");
+  // while (dma.current_tag_offset() != render_state->next_bucket) {
+  //   auto data = dma.read_and_advance();
+  //   printf(
+  //       "dma transfer %d:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
+  //       "%d\n\n",
+  //       transfers, dma.current_tag().print().c_str(), data.size_bytes,
+  //       data.vifcode0().print().c_str(), data.vif0(), data.vifcode1().print().c_str(),
+  //       data.vifcode1().num, data.vifcode1().immediate);
+  //   transfers++;
+  // }
+  // printf("transfers: %d\n\n", transfers);
 
   m_direct.flush_pending(render_state, prof);
   m_direct.set_mipmap(false);

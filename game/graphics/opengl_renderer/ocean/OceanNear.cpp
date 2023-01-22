@@ -13,8 +13,8 @@ OceanNear::OceanNear(const std::string& name, int my_id)
 
 void OceanNear::draw_debug_window() {}
 
-void OceanNear::init_textures(TexturePool& pool) {
-  m_texture_renderer.init_textures(pool);
+void OceanNear::init_textures(TexturePool& pool, GameVersion version) {
+  m_texture_renderer.init_textures(pool, version);
 }
 
 static bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
