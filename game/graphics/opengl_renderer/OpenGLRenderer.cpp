@@ -129,6 +129,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TFragment>("tfrag-l4-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L4_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 4);
   init_bucket_renderer<Tie3>("tie-l4-tfrag", BucketCategory::TIE, BucketId::TIE_L4_TFRAG, 4);
+  init_bucket_renderer<Merc2>("merc-l4-tfrag", BucketCategory::MERC, BucketId::MERC_L4_TFRAG);
   // 60
   init_bucket_renderer<TextureUploadHandler>("tex-l5-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L5_TFRAG);
@@ -180,7 +181,17 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 2);
   // 150
   init_bucket_renderer<Merc2>("merc-l2-alpha", BucketCategory::MERC, BucketId::MERC_L2_ALPHA);
+  init_bucket_renderer<TextureUploadHandler>("tex-l3-alpha", BucketCategory::TEX,
+                                             BucketId::TEX_L3_ALPHA);
+  init_bucket_renderer<TFragment>("tfrag-t-l3-alpha", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_T_L3_ALPHA,
+                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 3);
   // 160
+  init_bucket_renderer<TextureUploadHandler>("tex-l4-alpha", BucketCategory::TEX,
+                                             BucketId::TEX_L4_ALPHA);
+  init_bucket_renderer<TFragment>("tfrag-t-l4-alpha", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_T_L4_ALPHA,
+                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 4);
   // 170
   init_bucket_renderer<TextureUploadHandler>("tex-l5-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L5_ALPHA);

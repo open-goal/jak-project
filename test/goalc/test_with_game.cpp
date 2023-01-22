@@ -771,6 +771,11 @@ TEST_F(WithGameTests, StaticLambdaArray) {
                                           {"2\n1\n0\n"});
 }
 
+TEST_F(WithGameTests, StaticTypeArray) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-types.gc",
+                                          {"matched!\n0\n"});
+}
+
 TEST_F(WithGameTests, StaticArraySubtypeDraft) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-subtype.gc",
                                           {"length - 2\ntest\n1\n0\n"});
