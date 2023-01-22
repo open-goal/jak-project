@@ -1534,8 +1534,6 @@
   "baron-consite+0-ag"
   "consite-break-scaffold-a-ag"
   "consite-break-scaffold-ag"
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "baron-highres-ag"
   "crimson-guard-highres-ag"
   "consite-bomb-elevator-ag"
@@ -1550,25 +1548,22 @@
 ;; ;; COB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "COB.DGO" "cob.gd")
+(cgo "COB.DGO" "cob.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/consite/consiteb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/consite/consiteb-part.gc"
+  )
 
-;; (copy-textures 3032 3033 3142 3180 3239)
+(copy-textures 3032 3033 3142 3180 3239)
 
-;; (copy-gos
-;;   "kor-transform-ag"
-;;   "kor-break-ag"
-;;   "metalkor-highres-ag"
-;;   "com-airlock-inner-ag"
-;;   "door-ctyinda-ag"
-;;   "kor-break-ray-ag"
-;;   "consiteb-vis"
-;;   )
+(copy-gos
+  "kor-transform-ag"
+  "kor-break-ag"
+  "kor-break-ray-ag"
+  "consiteb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; CPA
@@ -1702,47 +1697,47 @@
 ;; ;; CTYKORA
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "CTYKORA.DGO" "ctykora.gd")
+(cgo "CTYKORA.DGO" "ctykora.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/common/ai/ai-task-h.gc"
-;;   "levels/common/ai/bot-h.gc"
-;;   "levels/common/ai/bot.gc"
-;;   "levels/common/ai/bot-states.gc"
-;;   "levels/undefined/hal-h.gc"
-;;   "levels/undefined/hal-task.gc"
-;;   "levels/undefined/hal.gc"
-;;   "levels/city/slums/kor/kid-h.gc"
-;;   "levels/city/slums/kor/kor-h.gc"
-;;   "levels/city/slums/kor/hal3-course.gc"
-;;   "levels/city/slums/kor/kid-task.gc"
-;;   "levels/city/slums/kor/kid.gc"
-;;   "levels/city/slums/kor/kid-states.gc"
-;;   "levels/city/slums/kor/kor-task.gc"
-;;   "levels/city/slums/kor/kor.gc"
-;;   "levels/city/slums/kor/kor-states.gc"
-;;   "levels/city/slums/kor/kid3-course.gc"
-;;   "levels/city/slums/kor/kor3-course.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  ;; "levels/common/ai/ai-task-h.gc"
+  ;; "levels/common/ai/bot-h.gc"
+  ;; "levels/common/ai/bot.gc"
+  ;; "levels/common/ai/bot-states.gc"
+  ;; "levels/undefined/hal-h.gc"
+  ;; "levels/undefined/hal-task.gc"
+  ;; "levels/undefined/hal.gc"
+  "levels/city/slums/kor/kid-h.gc"
+  "levels/city/slums/kor/kor-h.gc"
+  "levels/city/slums/kor/hal3-course.gc"
+  "levels/city/slums/kor/kid-task.gc"
+  "levels/city/slums/kor/kid.gc"
+  "levels/city/slums/kor/kid-states.gc"
+  "levels/city/slums/kor/kor-task.gc"
+  "levels/city/slums/kor/kor.gc"
+  "levels/city/slums/kor/kor-states.gc"
+  "levels/city/slums/kor/kid3-course.gc"
+  "levels/city/slums/kor/kor3-course.gc"
+  )
 
-;; (copy-textures 1451 2727 3224)
+(copy-textures 1451 2727 3224)
 
-;; (copy-gos
-;;   "jak-dark-on+0-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "kor-highres-ag"
-;;   "atoll-hellcat-ag"
-;;   "kor-ag"
-;;   "kid-highres-ag"
-;;   "crimson-guard-highres-ag"
-;;   "kid-ag"
-;;   "crimson-guard-lowres-ag"
-;;   "transport-ag"
-;;   "ctykora"
-;;   )
+(copy-gos
+  "jak-dark-on+0-ag"
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  ;; "kor-highres-ag"
+  ;; "atoll-hellcat-ag"
+  "kor-ag"
+  ;; "kid-highres-ag"
+  ;; "crimson-guard-highres-ag"
+  ;; "kid-ag"
+  ;; "crimson-guard-lowres-ag"
+  ;; "transport-ag"
+  "ctykora"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; D3A
@@ -2471,21 +2466,21 @@
 ;; ;; LBBUSH
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBBUSH.DGO" "lbbush.gd")
+(cgo "LBBUSH.DGO" "lbbush.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/side_missions/ctywide-bbush.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/side_missions/ctywide-bbush.gc"
+  )
 
-;; (copy-textures 3336 3465)
+(copy-textures 3336 3465)
 
-;; (copy-gos
-;;   "hovering-mine-ag"
-;;   "homing-beacon-ag"
-;;   "lbbush"
-;;   )
+(copy-gos
+  "hovering-mine-ag"
+  "homing-beacon-ag"
+  "lbbush"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBOMBBOT
@@ -4213,27 +4208,27 @@
 ;; ;; TBO
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TBO.DGO" "tbo.gd")
+(cgo "TBO.DGO" "tbo.gd")
 
-;; (copy-textures 1628 1629 2229 2247)
+(copy-textures 1628 1629 2229 2247)
 
-;; (copy-gos
-;;   "baron-widow+0-ag"
-;;   "tomb-boss-catwalk-ag"
-;;   "tomb-boss-bridge-ag"
-;;   "widow-ag"
-;;   "tomb-boss-pillar-ag"
-;;   "spydroid-ag"
-;;   "baron-pod-ag"
-;;   "tomb-boss-firepot-ag"
-;;   "baron-ag"
-;;   "tomb-boss-debris-ag"
-;;   "heart-mar-ag"
-;;   "widow-bomb-ag"
-;;   "tomb-wing-door-ag"
-;;   "particleman-ag"
-;;   "tombboss-vis"
-;;   )
+(copy-gos
+  "baron-widow+0-ag"
+  "tomb-boss-catwalk-ag"
+  "tomb-boss-bridge-ag"
+  "widow-ag"
+  "tomb-boss-pillar-ag"
+  ;; "spydroid-ag"
+  "baron-pod-ag"
+  "tomb-boss-firepot-ag"
+  "baron-ag"
+  "tomb-boss-debris-ag"
+  "heart-mar-ag"
+  "widow-bomb-ag"
+  ;; "tomb-wing-door-ag"
+  ;; "particleman-ag"
+  "tombboss-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; THR
@@ -4418,16 +4413,16 @@
 ;; ;; TOMBEXT
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "TOMBEXT.DGO" "tombext.gd")
+(cgo "TOMBEXT.DGO" "tombext.gd")
 
-;; (copy-textures 2525)
+(copy-textures 2525)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "tomb-boss-explode-ag"
-;;   "baron-highres-ag"
-;;   "tombext"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  "tomb-boss-explode-ag"
+  ;; "baron-highres-ag"
+  "tombext"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; UNB
