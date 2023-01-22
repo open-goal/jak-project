@@ -247,8 +247,14 @@ void CommonOceanRenderer::handle_near_adgif(const u8* data, u32 offset, u32 coun
         most_recent_tbp = reg.tbp0();
       } break;
       case GsRegisterAddress::ALPHA_1: {
-        // ignore, we've hardcoded alphas.
+        GsAlpha reg(value);
+        if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+            reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+            reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+          m_current_bucket = VertexBucket::ENV_MAP;
+        }
       } break;
+
       case GsRegisterAddress::FRAME_1: {
         u32 mask = value >> 32;
         if (mask) {
