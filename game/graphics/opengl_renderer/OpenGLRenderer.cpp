@@ -88,13 +88,14 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   using namespace jak2;
   m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
   m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
+
   // 0
   init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::SPECIAL_BUCKET_2);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_PRE);
   init_bucket_renderer<DirectRenderer>("sky-draw", BucketCategory::OTHER, BucketId::SKY_DRAW, 1024);
-  init_bucket_renderer<SkipRenderer>("ocean-mid-far", BucketCategory::OCEAN,
-                                     BucketId::OCEAN_MID_FAR);
+  init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
+                                       BucketId::OCEAN_MID_FAR);
   init_bucket_renderer<TextureUploadHandler>("tex-l0-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L0_TFRAG);
   init_bucket_renderer<TFragment>("tfrag-l0-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L0_TFRAG,
@@ -279,7 +280,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_POST);
   // 310
-  init_bucket_renderer<SkipRenderer>("bucket-310", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);
+  init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
@@ -309,7 +310,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
-    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
   }
   m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
@@ -534,7 +535,7 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
     }
 
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
-    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool);
+    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak1);
   }
   sky_cpu_blender->init_textures(*m_render_state.texture_pool);
   sky_gpu_blender->init_textures(*m_render_state.texture_pool);
