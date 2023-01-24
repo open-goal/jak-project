@@ -782,7 +782,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   window_fb.multisampled = false;
 
   // see if the render FBO is still applicable
-  if (!m_fbo_state.render_fbo || window_resized ||
+  if (settings.save_screenshot || window_resized || !m_fbo_state.render_fbo ||
       !m_fbo_state.render_fbo->matches(settings.game_res_w, settings.game_res_h,
                                        settings.msaa_samples)) {
     // doesn't match, set up a new one for these settings
@@ -794,7 +794,10 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.resources.resolve_buffer.clear();
 
     // first, see if we can just render straight to the display framebuffer.
-    if (window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
+    // note: we always force a separate fbo on a screenshot so that it won't capture overlays.
+    //       as an added bonus it also doesn't break the sprite distort buffer...
+    if (!settings.save_screenshot &&
+        window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
       // it matches - no need for extra framebuffers.
       lg::info("FBO Setup: rendering directly to window framebuffer");
       m_fbo_state.render_fbo = &m_fbo_state.resources.window;
