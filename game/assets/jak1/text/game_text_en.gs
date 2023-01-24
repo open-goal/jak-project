@@ -362,6 +362,9 @@
 (#x1501 "CUTSCENE SKIPS"
         "CUTSCENE SKIPS")
 
+(#x1502 "LEVEL SELECT"
+        "LEVEL SELECT")
+
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
 

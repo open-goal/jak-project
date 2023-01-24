@@ -1,28 +1,43 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(define *speedrun-setup-function* (the-as (function none) #f))
 (defun speedrun-mode-update ()
   "A per frame update for speedrunning related stuff"
   (when (-> *pc-settings* speedrunner-mode?)
     ;; Update auto-splitter
     (update-autosplit-info-jak1)
     ;; Draw info to the screen
-    (speedrun-draw-settings))
+    (speedrun-draw-settings)
+    ;; Run setup function, if any is set
+    (when (and *target* *speedrun-setup-function*
+               (>= (- (-> *display* base-frame-counter) (-> *game-info* blackout-time)) (seconds 0.1)))
+      (*speedrun-setup-function*)
+      (set! *speedrun-setup-function* #f)
+      )
+    )
   (none))
+
+(defmacro speedrun-set-common-settings ()
+  `(begin
+    ;; disable hints (this seems to be overriden by your slot 1 save though)
+    (set! (-> *setting-control* default play-hints) #f)
+    ;; ensure `force actors` is not enabled
+    (set! (-> *pc-settings* force-actors?) #f)
+    ;; force FPS to `60`
+    (set-frame-rate! *pc-settings* 60)
+    ;; skip intro cutscene
+    (close-specific-task! (game-task intro) (task-status need-resolution))
+    (none)
+    )
+  )
 
 (defun speedrun-start-run ()
   ;; randomize game id so the autosplitter knows to restart
   (update-autosplit-jak1-new-game)
   ;; spawn at the warp gate checkpoint
   (initialize! *game-info* 'game (the-as game-save #f) "game-start")
-  ;; disable hints (this seems to be overriden by your slot 1 save though)
-  (set! (-> *setting-control* default play-hints) #f)
-  ;; ensure `force actors` is not enabled
-  (set! (-> *pc-settings* force-actors?) #f)
-  ;; force FPS to `60`
-  (set-frame-rate! *pc-settings* 60)
-  ;; skip intro cutscene
-  (close-specific-task! (game-task intro) (task-status need-resolution))
+  (speedrun-set-common-settings)
   ;; enable auto saving by default
   (set! (-> *setting-control* default auto-save) #t)
   (none))
