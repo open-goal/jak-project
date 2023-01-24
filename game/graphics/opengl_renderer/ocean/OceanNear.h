@@ -9,16 +9,23 @@ class OceanNear : public BucketRenderer {
  public:
   OceanNear(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void render_jak1(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void render_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window() override;
-  void init_textures(TexturePool& pool) override;
+  void init_textures(TexturePool& pool, GameVersion version) override;
 
  private:
   void run_call0_vu2c();
+  void run_call0_vu2c_jak2();
   void run_call39_vu2c();
+  void run_call39_vu2c_jak2();
   void run_L15_vu2c();
+  void run_L15_vu2c_jak2();
   void run_L21_vu2c();
+  void run_L21_vu2c_jak2();
   void run_L23_vu2c();
   void run_L25_vu2c();
+  void run_L25_vu2c_jak2();
   void run_L30_vu2c();
   void run_L32_vu2c();
 

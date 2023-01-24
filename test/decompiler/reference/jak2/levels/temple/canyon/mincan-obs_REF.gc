@@ -1,0 +1,517 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type water-anim-mincan
+(deftype water-anim-mincan (water-anim)
+  ()
+  :heap-base #x80
+  :method-count-assert 29
+  :size-assert         #x100
+  :flag-assert         #x1d00800100
+  )
+
+;; definition for method 3 of type water-anim-mincan
+(defmethod inspect water-anim-mincan ((obj water-anim-mincan))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((func (method-of-type water-anim inspect)))
+    (func obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol ripple-for-water-anim-mincan, type ripple-wave-set
+(define ripple-for-water-anim-mincan (new 'static 'ripple-wave-set
+                                       :count 3
+                                       :converted #f
+                                       :normal-scale 1.0
+                                       :wave (new 'static 'inline-array ripple-wave 4
+                                         (new 'static 'ripple-wave :scale 5.0 :xdiv -1 :speed 2.75)
+                                         (new 'static 'ripple-wave :scale 5.0 :xdiv -2 :zdiv 1 :speed 1.53)
+                                         (new 'static 'ripple-wave :scale 5.0 :xdiv 1 :zdiv 1 :speed 2.61)
+                                         (new 'static 'ripple-wave)
+                                         )
+                                       )
+        )
+
+;; definition for method 24 of type water-anim-mincan
+;; WARN: Return type mismatch int vs none.
+(defmethod init-water! water-anim-mincan ((obj water-anim-mincan))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((func (method-of-type water-anim init-water!)))
+    (func obj)
+    )
+  (let ((ripple-control (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) ripple-control)
+    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> ripple-control global-scale) 3072.0)
+    (set! (-> ripple-control close-fade-dist) 163840.0)
+    (set! (-> ripple-control far-fade-dist) 245760.0)
+    (set! (-> ripple-control waveform) ripple-for-water-anim-mincan)
+    )
+  0
+  (none)
+  )
+
+;; definition of type mincan-lighthouse-lens
+(deftype mincan-lighthouse-lens (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (erect () _type_ :state 21)
+    )
+  )
+
+;; definition for method 3 of type mincan-lighthouse-lens
+(defmethod inspect mincan-lighthouse-lens ((obj mincan-lighthouse-lens))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((func (method-of-type process-drawable inspect)))
+    (func obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mincan-lighthouse-lens mincan-lighthouse mincan-lighthouse-lens-lod0-jg mincan-lighthouse-lens-idle-ja
+              ((mincan-lighthouse-lens-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :origin-joint-index 9
+              )
+
+;; failed to figure out what this is:
+(defstate idle (mincan-lighthouse-lens)
+  :virtual #t
+  :trans (behavior ()
+    (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
+        (go-virtual erect)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 7)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lighthouse-lens) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate erect (mincan-lighthouse-lens)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 8)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lighthouse-lens) ja-post)
+  )
+
+;; definition for method 11 of type mincan-lighthouse-lens
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! mincan-lighthouse-lens ((obj mincan-lighthouse-lens) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-mincan-lighthouse-lens" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition for function mincan-lighthouse-lens-init-by-other
+;; WARN: Return type mismatch object vs none.
+(defbehavior mincan-lighthouse-lens-init-by-other mincan-lighthouse-lens ((arg0 mincan-lighthouse) (entity entity-actor))
+  "Given an [[entity-actor]], create the [[mincan-lighthouse-lens]]"
+  (set! (-> self root) (new 'process 'trsqv))
+  (process-drawable-from-entity! self entity)
+  (initialize-skeleton
+    self
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-mincan-lighthouse-lens" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition of type mincan-lighthouse
+(deftype mincan-lighthouse (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (erect () _type_ :state 21)
+    )
+  )
+
+;; definition for method 3 of type mincan-lighthouse
+(defmethod inspect mincan-lighthouse ((obj mincan-lighthouse))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mincan-lighthouse mincan-lighthouse mincan-lighthouse-lod0-jg mincan-lighthouse-idle-ja
+              ((mincan-lighthouse-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -20 0 62.5)
+              :origin-joint-index 6
+              )
+
+;; failed to figure out what this is:
+(defstate idle (mincan-lighthouse)
+  :virtual #t
+  :trans (behavior ()
+    (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
+        (go-virtual erect)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 2)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lighthouse) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate erect (mincan-lighthouse)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 3)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lighthouse) ja-post)
+  )
+
+;; definition for method 11 of type mincan-lighthouse
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! mincan-lighthouse ((obj mincan-lighthouse) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-lighthouse" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (process-spawn mincan-lighthouse-lens obj arg0 :to obj)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type mincan-lens
+(deftype mincan-lens (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (closed () _type_ :state 20)
+    (open () _type_ :state 21)
+    )
+  )
+
+;; definition for method 3 of type mincan-lens
+(defmethod inspect mincan-lens ((obj mincan-lens))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mincan-lens mincan-lens mincan-lens-lod0-jg mincan-lens-idle-ja
+              ((mincan-lens-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 15)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate closed (mincan-lens)
+  :virtual #t
+  :trans (behavior ()
+    (if (task-node-closed? (game-task-node canyon-insert-items-resolution))
+        (go-virtual open)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 3)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lens) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate open (mincan-lens)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 2)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-lens) transform-post)
+  )
+
+;; definition for method 11 of type mincan-lens
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! mincan-lens ((obj mincan-lens) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 7) 0)))
+      (set! (-> cshape total-prims) (the-as uint 8))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set-vector! (-> prim-group local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> cshape root-prim) prim-group)
+      )
+    (let ((mesh-1 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 6) (the-as uint 0))))
+      (set! (-> mesh-1 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-1 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-1 prim-core action) (collide-action solid))
+      (set! (-> mesh-1 transform-index) 3)
+      (set-vector! (-> mesh-1 local-sphere) 0.0 0.0 0.0 20480.0)
+      )
+    (let ((mesh-2 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 4) (the-as uint 0))))
+      (set! (-> mesh-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-2 prim-core action) (collide-action solid))
+      (set! (-> mesh-2 transform-index) 3)
+      (set-vector! (-> mesh-2 local-sphere) 0.0 0.0 32768.0 8192.0)
+      )
+    (let ((mesh-3 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 5) (the-as uint 0))))
+      (set! (-> mesh-3 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-3 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-3 prim-core action) (collide-action solid))
+      (set! (-> mesh-3 transform-index) 3)
+      (set-vector! (-> mesh-3 local-sphere) 0.0 32768.0 0.0 28672.0)
+      )
+    (let ((mesh-4 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-4 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-4 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-4 prim-core action) (collide-action solid))
+      (set! (-> mesh-4 transform-index) 4)
+      (set-vector! (-> mesh-4 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+      )
+    (let ((mesh-5 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 1) (the-as uint 0))))
+      (set! (-> mesh-5 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-5 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-5 prim-core action) (collide-action solid))
+      (set! (-> mesh-5 transform-index) 7)
+      (set-vector! (-> mesh-5 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+      )
+    (let ((mesh-6 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 2) (the-as uint 0))))
+      (set! (-> mesh-6 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-6 prim-core action) (collide-action solid))
+      (set! (-> mesh-6 transform-index) 10)
+      (set-vector! (-> mesh-6 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+      )
+    (let ((mesh-7 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 3) (the-as uint 0))))
+      (set! (-> mesh-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> mesh-7 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> mesh-7 prim-core action) (collide-action solid))
+      (set! (-> mesh-7 transform-index) 13)
+      (set-vector! (-> mesh-7 local-sphere) 0.0 12288.0 -36864.0 28672.0)
+      )
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-lens" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object obj closed))
+  (none)
+  )
+
+;; definition of type mincan-cogs
+(deftype mincan-cogs (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type mincan-cogs
+(defmethod inspect mincan-cogs ((obj mincan-cogs))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mincan-cogs mincan-cogs mincan-cogs-lod0-jg mincan-cogs-idle-ja
+              ((mincan-cogs-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 70)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (mincan-cogs)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior mincan-cogs) ja-post)
+  )
+
+;; definition for method 11 of type mincan-cogs
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! mincan-cogs ((obj mincan-cogs) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mincan-cogs" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )

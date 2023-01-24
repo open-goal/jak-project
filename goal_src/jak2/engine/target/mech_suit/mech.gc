@@ -145,7 +145,7 @@
   :code (behavior ()
     (change-parent self *entity-pool*)
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 3))
+    (ja :group! mech-mech-idle-ja)
     (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
     (set! (-> self root-override penetrated-by) (penetrate))
     0.0
@@ -228,7 +228,7 @@
     (case event-type
       (('draw)
        (ja-channel-set! 1)
-       (ja :group! (-> self draw art-group data 3))
+       (ja :group! mech-mech-idle-ja)
        (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
        (set! (-> self root-override penetrated-by) (penetrate))
        (transform-post)
@@ -399,6 +399,12 @@
   )
 
 (defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (mech-init arg0 (the-as matrix3 #f) (the-as handle #f) 100.0)
   (none)
   )
@@ -416,7 +422,10 @@
   )
 
 
-(defskelgroup skel-mech-target mech 42 44 ((43 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+(defskelgroup skel-mech-target mech mech-target-lod0-jg mech-target-idle-ja
+              ((mech-target-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate idle (mech-target)
   :virtual #t

@@ -55,7 +55,10 @@
   )
 
 
-(defskelgroup skel-generic-button mtn-dice-button 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-generic-button mtn-dice-button mtn-dice-button-lod0-jg mtn-dice-button-idle-ja
+              ((mtn-dice-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 (defmethod move-to! basebutton ((obj basebutton) (vec vector) (quat quaternion))
   (logclear! (-> obj button-status) (button-status button-status-2))
@@ -295,9 +298,9 @@
 
 (defmethod send-event! basebutton ((obj basebutton) (event-type symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
-       - the `notify-actor`
-       - every [[entity-actor]] in the `actor-group` array
-       @see [[entity-actor]]"
+- the `notify-actor`
+- every [[entity-actor]] in the `actor-group` array
+@see [[entity-actor]]"
   (when event-type
     (let ((event (new 'stack-no-clear 'event-message-block)))
       (set! (-> event from) (process->ppointer self))
@@ -420,6 +423,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! basebutton ((obj basebutton) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (reset! obj)
   (set! (-> obj button-id) -1)

@@ -766,9 +766,14 @@ TEST_F(WithGameTests, StaticLambda) {
                                           {"Add: 30 sub: -10\n0\n"});
 }
 
-TEST_F(WithGameTests, StaticLambdaArrayDraft) {
+TEST_F(WithGameTests, StaticLambdaArray) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-lambdas.gc",
                                           {"2\n1\n0\n"});
+}
+
+TEST_F(WithGameTests, StaticTypeArray) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-types.gc",
+                                          {"matched!\n0\n"});
 }
 
 TEST_F(WithGameTests, MethodReplace) {

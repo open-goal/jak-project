@@ -17,8 +17,8 @@
 
 (defbehavior process-taskable-anim-loop process-taskable ((arg0 (function process-taskable object)))
   "Takes in a function and loops as long as it's return value is truthy
-   Seen take in - `true-func` which takes no args TODO - seems fishy
-                - a `(process-taskable process) lambda"
+Seen take in - `true-func` which takes no args TODO - seems fishy
+- a `(process-taskable process) lambda"
   (while (arg0 self)
     (let ((s5-0 (get-art-elem self)))
       (when (!= (ja-group) s5-0)
@@ -43,7 +43,7 @@
 ;; WARN: Return type mismatch art-joint-anim vs art-element.
 (defmethod get-art-elem process-taskable ((obj process-taskable))
   "Checks various things such the current actor, task status, etc to determine the right art-group data to use
-       @returns the appropriate [[art-element]] for the given NPC"
+@returns the appropriate [[art-element]] for the given NPC"
   (the-as art-element (if (> (-> obj skel active-channels) 0)
                           (-> obj skel root-channel 0 frame-group)
                           )
@@ -105,7 +105,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((v1-1 (game-task-control-method-9 (-> self task))))
+    (let ((v1-1 (get-current-task-event (-> self task))))
       (if (and (nonzero? (-> v1-1 action)) (or (not (logtest? (-> self draw status) (draw-control-status on-screen)))
                                                (logtest? (-> v1-1 flags) (game-task-flags gatflag-01))
                                                (< (- (-> self clock frame-counter) (-> self birth-time)) (seconds 0.1))
@@ -172,7 +172,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((gp-0 (game-task-control-method-9 (-> self task))))
+    (let ((gp-0 (get-current-task-event (-> self task))))
       (cond
         ((= (-> gp-0 action) (game-task-action hide))
          (if (or (not (logtest? (-> self draw status) (draw-control-status on-screen)))
@@ -457,6 +457,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! process-taskable ((obj process-taskable) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (stack-size-set! (-> obj main-thread) 512)
   (process-taskable-method-31 obj)
   (process-drawable-from-entity! obj arg0)

@@ -32,7 +32,7 @@
     (idle () _type_ :state 21)
     (move-to-point! (_type_ vector) int 22)
     (get-ripple-height (_type_ vector) float 23)
-    (art-init! (_type_) none 24)
+    (init-water! (_type_) none 24)
     (reset-root! (_type_) trsqv 25)
     (water-anim-init! (_type_) none 26)
     (water-anim-method-27 (_type_) none 27)
@@ -94,8 +94,8 @@
               :bounds (static-spherem 0 0 0 32)
               )
 
-(defskelgroup skel-water-anim-mountain-dark-eco-dice water-anim-mountain-dark-eco 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-water-anim-mountain-dark-eco-dice water-anim-mountain-dark-eco water-anim-mountain-dark-eco-dice-lod0-jg -1
+              ((water-anim-mountain-dark-eco-dice-lod0-mg (meters 999999)))
               :bounds (static-spherem -20 0 0 110)
               )
 
@@ -144,13 +144,13 @@
               :bounds (static-spherem 0 0 0 22)
               )
 
-(defskelgroup skel-water-anim-tomb-dark-eco-stair-block water-anim-tomb-dark-eco 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-water-anim-tomb-dark-eco-stair-block water-anim-tomb-dark-eco water-anim-tomb-dark-eco-stair-block-lod0-jg -1
+              ((water-anim-tomb-dark-eco-stair-block-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 80)
               )
 
-(defskelgroup skel-water-anim-tomb-dark-eco-raised-block water-anim-tomb-dark-eco 2 -1
-              ((3 (meters 999999)))
+(defskelgroup skel-water-anim-tomb-dark-eco-raised-block water-anim-tomb-dark-eco water-anim-tomb-dark-eco-raised-block-lod0-jg -1
+              ((water-anim-tomb-dark-eco-raised-block-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 80)
               )
 
@@ -499,8 +499,8 @@
   (none)
   )
 
-(defmethod art-init! water-anim ((obj water-anim))
-  "Initialize a [[water-anim]]'s [[skeleton-group]], joints and ambience."
+(defmethod init-water! water-anim ((obj water-anim))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((s5-0 (-> obj look)))
     (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
         (go process-drawable-art-error "skel group")
@@ -616,18 +616,24 @@
   (reset-root! self)
   (water-anim-init! self)
   (offset! self)
-  (art-init! self)
+  (init-water! self)
   (go-virtual idle)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! water-anim ((obj water-anim) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (water-anim-method-27 obj)
   (reset-root! obj)
   (water-anim-init! obj)
   (offset! obj)
-  (art-init! obj)
+  (init-water! obj)
   (go (method-of-object obj idle))
   (none)
   )

@@ -88,7 +88,7 @@
                                        :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                        :fade-start-factor 0.2
                                        :fade-time 120.0
-                                       :texture #xc08300
+                                       :texture (new 'static 'texture-id :index #x83 :page #xc)
                                        :reduction 0.42
                                        :num-points 16
                                        :box-size 8601.6
@@ -107,7 +107,7 @@
                                        :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                        :fade-start-factor 0.2
                                        :fade-time 120.0
-                                       :texture #xc08300
+                                       :texture (new 'static 'texture-id :index #x83 :page #xc)
                                        :reduction 0.42
                                        :num-points 12
                                        :box-size 3072.0
@@ -730,7 +730,7 @@
 
 (defmethod set-elec-scale-if-close! elec-gate ((obj elec-gate) (arg0 float))
   "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
-       @see [[elec-gate::29]]"
+@see [[elec-gate::29]]"
   (if (< (vector-vector-distance (-> obj root trans) (target-pos 0)) 327680.0)
       (set-elec-scale! obj arg0)
       )
@@ -801,9 +801,9 @@
 
 (defmethod set-state! elec-gate ((obj elec-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
-       make the gate `idle`.
+make the gate `idle`.
 
-       Otherwise, the gate will be `active`."
+Otherwise, the gate will be `active`."
   (if (or (logtest? (actor-option user17) (-> obj fact options))
           (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
           )
@@ -815,6 +815,12 @@
   )
 
 (defmethod init-from-entity! elec-gate ((obj elec-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj entity) arg0)
@@ -852,10 +858,10 @@
     (set! (-> obj dividing-wall pos quad) (-> s5-3 quad))
     (set! (-> obj dividing-wall dir quad) (-> v1-28 quad))
     (vector+float*! (the-as vector (-> obj plane)) s5-3 v1-28 12288.0)
-    (set! (-> (the-as vector (&-> obj stack 320)) quad) (-> v1-28 quad))
+    (set! (-> (the-as vector (-> obj plane 0 dir)) quad) (-> v1-28 quad))
     (vector-float*! v1-28 v1-28 -1.0)
-    (vector+float*! (the-as vector (&-> obj stack 336)) s5-3 v1-28 12288.0)
-    (set! (-> (the-as vector (&-> obj stack 352)) quad) (-> v1-28 quad))
+    (vector+float*! (the-as vector (-> obj plane 1)) s5-3 v1-28 12288.0)
+    (set! (-> (the-as vector (-> obj plane 1 dir)) quad) (-> v1-28 quad))
     )
   (set! (-> obj wall-xz)
         (vector-vector-distance
@@ -900,8 +906,8 @@
 
 (defmethod set-elec-scale! fort-elec-gate ((obj fort-elec-gate) (scale float))
   "Calls associated mood functions to set the scale with the value provided
-       @see mood-funcs
-       @see mood-funcs2"
+@see mood-funcs
+@see mood-funcs2"
   (set-fordumpa-electricity-scale! scale)
   (set-forresca-electricity-scale! scale (-> obj palette-id))
   (set-forrescb-electricity-scale! scale (-> obj palette-id))
@@ -928,8 +934,8 @@
 
 (defmethod set-elec-scale! drill-elec-gate ((obj drill-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-       @see mood-funcs
-       @see mood-funcs2"
+@see mood-funcs
+@see mood-funcs2"
   (set-drill-electricity-scale! arg0 (-> obj palette-id))
   0
   (none)
@@ -962,8 +968,8 @@
 
 (defmethod set-elec-scale! castle-elec-gate ((obj castle-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-       @see mood-funcs
-       @see mood-funcs2"
+@see mood-funcs
+@see mood-funcs2"
   (set-castle-electricity-scale! arg0)
   0
   (none)
@@ -978,7 +984,7 @@
                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                       :fade-start-factor 0.2
                                       :fade-time 120.0
-                                      :texture #xc08300
+                                      :texture (new 'static 'texture-id :index #x83 :page #xc)
                                       :reduction 0.42
                                       :num-points 16
                                       :box-size 16793.6
@@ -997,7 +1003,7 @@
                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
                                       :fade-start-factor 0.2
                                       :fade-time 120.0
-                                      :texture #xc08300
+                                      :texture (new 'static 'texture-id :index #x83 :page #xc)
                                       :reduction 0.42
                                       :num-points 12
                                       :box-size 17408.0
@@ -1030,8 +1036,8 @@
 
 (defmethod set-elec-scale! palroof-elec-gate ((obj palroof-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-       @see mood-funcs
-       @see mood-funcs2"
+@see mood-funcs
+@see mood-funcs2"
   (set-palroof-electricity-scale! arg0 (-> obj palette-id))
   0
   (none)

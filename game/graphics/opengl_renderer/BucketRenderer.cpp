@@ -99,9 +99,9 @@ void RenderMux::draw_debug_window() {
   m_renderers[m_render_idx]->draw_debug_window();
 }
 
-void RenderMux::init_textures(TexturePool& tp) {
+void RenderMux::init_textures(TexturePool& tp, GameVersion version) {
   for (auto& rend : m_renderers) {
-    rend->init_textures(tp);
+    rend->init_textures(tp, version);
   }
 }
 

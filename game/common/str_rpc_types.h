@@ -58,7 +58,7 @@ struct RPC_Str_Cmd_Jak2 {
   char basename[48];  // 32
 };
 
-struct RPC_Play_Cmd {
+struct RPC_Play_Cmd_Jak1 {
   u16 rsvd;
   u16 result;
   u32 address;
@@ -66,6 +66,39 @@ struct RPC_Play_Cmd {
   u32 maxlen;
   char name[48];
 };
+
+struct SoundStreamName {
+  char chars[48];
+};
+
+struct RPC_Play_Cmd_Jak2 {
+  u16 rsvd;
+  u16 result;
+  u32 address;
+  u32 section;
+  u32 maxlen;
+  u32 id[4];
+  SoundStreamName names[4];
+  u32 pad[8];
+};
+static_assert(sizeof(RPC_Play_Cmd_Jak2) == 256);
+
+/*
+ *
+(deftype play-chunk-msg (structure)
+  ((rsvd     uint16                      :offset-assert   0)
+   (result   uint16                      :offset-assert   2)
+   (address  pointer                     :offset-assert   4)
+   (section  uint32                      :offset-assert   8)
+   (maxlen   uint32                      :offset-assert  12)
+   (id       uint32            4         :offset-assert  16)
+   (basename sound-stream-name 4 :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #xe0
+  :flag-assert         #x9000000e0
+  )
+ */
 
 constexpr int STR_RPC_RESULT_ERROR = 1;
 constexpr int STR_RPC_RESULT_DONE = 0;

@@ -127,109 +127,180 @@
   )
 
 ;; definition for symbol *crimson-guard-level-info*, type nav-enemy-info
-(define *crimson-guard-level-info* (new 'static 'nav-enemy-info
-                                     :use-die-falling #t
-                                     :use-victory #f
-                                     :use-jump-blocked #f
-                                     :debug-draw-neck #f
-                                     :jump-debug-draw #f
-                                     :move-to-ground #t
-                                     :hover-if-no-ground #f
-                                     :idle-anim-script (new 'static 'array uint32 4 #x1010401 #x0 #x0 #x0)
-                                     :idle-anim 4
-                                     :notice-anim 7
-                                     :hostile-anim 6
-                                     :hit-anim 4
-                                     :knocked-anim 8
-                                     :knocked-land-anim 9
-                                     :die-anim 17
-                                     :die-falling-anim 39
-                                     :victory-anim 4
-                                     :jump-wind-up-anim 5
-                                     :jump-in-air-anim 5
-                                     :jump-land-anim 5
-                                     :neck-joint 6
-                                     :look-at-joint 6
-                                     :bullseye-joint 5
-                                     :sound-hit (static-sound-name "guard-hit")
-                                     :sound-die (static-sound-name "guard-die")
-                                     :notice-distance (meters 150)
-                                     :notice-distance-delta (meters 40)
-                                     :proximity-notice-distance (meters 4)
-                                     :default-hit-points 4
-                                     :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
-                                     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-                                     :penetrate-knocked #xffffffffffffffff
-                                     :movement-gravity (meters -100)
-                                     :friction 0.5
-                                     :attack-shove-back (meters 3)
-                                     :attack-shove-up (meters 2)
-                                     :attack-mode 'generic
-                                     :attack-damage 2
-                                     :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
-                                     :jump-height-min (meters 3)
-                                     :jump-height-factor 0.5
-                                     :knocked-seek-ry-clamp 6371.5557
-                                     :knocked-soft-vxz-lo 32768.0
-                                     :knocked-soft-vxz-hi 53248.0
-                                     :knocked-soft-vy-lo 61440.0
-                                     :knocked-soft-vy-hi 61440.0
-                                     :knocked-medium-vxz-lo 147456.0
-                                     :knocked-medium-vxz-hi 196608.0
-                                     :knocked-medium-vy-lo 135168.0
-                                     :knocked-medium-vy-hi 151552.0
-                                     :knocked-hard-vxz-lo 40960.0
-                                     :knocked-hard-vxz-hi 61440.0
-                                     :knocked-hard-vy-lo 98304.0
-                                     :knocked-hard-vy-hi 106496.0
-                                     :knocked-huge-vxz-lo 164659.2
-                                     :knocked-huge-vxz-hi 249036.8
-                                     :knocked-huge-vy-lo 183500.8
-                                     :knocked-huge-vy-hi 217907.2
-                                     :knocked-yellow-vxz-lo 32768.0
-                                     :knocked-yellow-vxz-hi 49152.0
-                                     :knocked-yellow-vy-lo 32768.0
-                                     :knocked-yellow-vy-hi 49152.0
-                                     :knocked-red-vxz-lo 65536.0
-                                     :knocked-red-vxz-hi 81920.0
-                                     :knocked-red-vy-lo 61440.0
-                                     :knocked-red-vy-hi 61440.0
-                                     :knocked-blue-vxz-lo 32768.0
-                                     :knocked-blue-vxz-hi 65536.0
-                                     :knocked-blue-vy-lo 16384.0
-                                     :knocked-blue-vy-hi 32768.0
-                                     :shadow-size (meters 2)
-                                     :shadow-max-y (meters 1)
-                                     :shadow-min-y (meters -1)
-                                     :shadow-locus-dist (meters 150)
-                                     :gem-joint -1
-                                     :gem-offset (new 'static 'sphere :r 163840.0)
-                                     :callback-info #f
-                                     :use-momentum #f
-                                     :use-frustration #t
-                                     :use-stop-chase #f
-                                     :use-circling #f
-                                     :use-pacing #f
-                                     :walk-anim 5
-                                     :turn-anim 5
-                                     :run-anim 6
-                                     :taunt-anim -1
-                                     :run-travel-speed (meters 12)
-                                     :run-acceleration (meters 2)
-                                     :run-turning-acceleration (meters 50)
-                                     :walk-travel-speed (meters 3)
-                                     :walk-acceleration (meters 1)
-                                     :walk-turning-acceleration (meters 8)
-                                     :maximum-rotation-rate (degrees 720.0)
-                                     :notice-nav-radius (meters 5)
-                                     :frustration-distance (meters 8)
-                                     :frustration-time (seconds 2)
-                                     :blocked-time (seconds 0.3)
-                                     :circle-dist-lo 20480.0
-                                     :circle-dist-hi 61440.0
-                                     :nav-mesh #f
-                                     )
-        )
+(define *crimson-guard-level-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 6
+    :hit-anim 4
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 17
+    :die-falling-anim 39
+    :victory-anim 4
+    :jump-wind-up-anim 5
+    :jump-in-air-anim 5
+    :jump-land-anim 5
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "guard-hit")
+    :sound-die (static-sound-name "guard-die")
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 40)
+    :proximity-notice-distance (meters 4)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 32768.0
+    :knocked-yellow-vy-hi 49152.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim 5
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :notice-nav-radius (meters 5)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 2)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
 
 ;; failed to figure out what this is:
 (set! (-> *crimson-guard-level-info* fact-defaults) *crimson-guard-fact*)
@@ -244,7 +315,12 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 4 #x1010401 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 4
     :notice-anim 7
     :hostile-anim 6
@@ -268,7 +344,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.5
     :attack-shove-back (meters 3)
@@ -353,7 +494,12 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 4 #x1010401 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 4
     :notice-anim 7
     :hostile-anim 6
@@ -377,7 +523,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.5
     :attack-shove-back (meters 3)
@@ -462,7 +673,12 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 4 #x1010401 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 4
     :notice-anim 7
     :hostile-anim 6
@@ -486,7 +702,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.5
     :attack-shove-back (meters 3)
@@ -571,7 +852,12 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 4 #x1010401 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 4
     :notice-anim 7
     :hostile-anim 6
@@ -595,7 +881,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list pusher)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.5
     :attack-shove-back (meters 3)
@@ -792,13 +1143,14 @@
   )
 
 ;; definition for method 72 of type crimson-guard-level
-(defmethod enemy-method-72 crimson-guard-level ((obj crimson-guard-level))
+(defmethod react-to-focus crimson-guard-level ((obj crimson-guard-level))
+  "@TODO - flesh out docs"
   (let ((s5-0 (-> obj focus aware)))
     (cond
-      ((and (= s5-0 (enemy-aware enemy-aware-3)) (enemy-method-107 obj))
+      ((and (= s5-0 (enemy-aware enemy-aware-3)) (get-enemy-target obj))
        (go-hostile obj)
        )
-      ((and (= s5-0 (enemy-aware enemy-aware-2)) (enemy-method-107 obj))
+      ((and (= s5-0 (enemy-aware enemy-aware-2)) (get-enemy-target obj))
        (go-hostile obj)
        )
       ((<= (the-as int s5-0) 0)
@@ -807,7 +1159,7 @@
       ((>= 1 (the-as int s5-0))
        (go (method-of-object obj active))
        )
-      ((= s5-0 (enemy-aware enemy-aware-4))
+      ((= s5-0 (enemy-aware unaware))
        (go-flee obj)
        )
       (else
@@ -853,16 +1205,16 @@
           ((>= 1 (the-as int gp-0))
            (go-virtual active)
            )
-          ((and (= gp-0 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+          ((and (= gp-0 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
            )
-          ((and (= gp-0 (enemy-aware enemy-aware-2)) (enemy-method-107 self))
+          ((and (= gp-0 (enemy-aware enemy-aware-2)) (get-enemy-target self))
            (if (logtest? (-> self flags) 1)
                (go-virtual arrest)
                (go-hostile self)
                )
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -874,7 +1226,9 @@
 
 ;; definition for method 74 of type crimson-guard-level
 ;; WARN: Return type mismatch none vs object.
-(defmethod enemy-method-74 crimson-guard-level ((obj crimson-guard-level) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler crimson-guard-level ((obj crimson-guard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (let ((v1-0 arg2))
     (the-as
       object
@@ -897,7 +1251,7 @@
                (speech-control-method-12 *speech-control* obj (speech-type speech-type-0 speech-type-1 speech-type-3))
                )
            )
-         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
         ((= v1-0 'trigger)
          (let ((v0-0 (the-as object #t)))
@@ -921,10 +1275,10 @@
                )
              )
            )
-         ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
         (else
-          ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
         )
       )
@@ -1253,8 +1607,12 @@
 
 ;; definition for method 55 of type crimson-guard-level
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-55 crimson-guard-level ((obj crimson-guard-level))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! crimson-guard-level ((obj crimson-guard-level))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (if (-> obj joint-enable)
@@ -1344,7 +1702,7 @@
       (set! (-> self enemy-flags) (logclear v1-4 (enemy-flag called-dying)))
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (enemy-method-109 self 1)
+    (look-at-target! self (enemy-flag lock-focus))
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-1 (-> self on-notice)))
@@ -1359,13 +1717,13 @@
     (let ((gp-2 (-> self focus aware)))
       (when (logtest? (-> self enemy-flags) (enemy-flag chase-startup))
         (cond
-          ((and (= gp-2 (enemy-aware enemy-aware-3)) (enemy-method-107 self))
+          ((and (= gp-2 (enemy-aware enemy-aware-3)) (get-enemy-target self))
            (go-hostile self)
            )
-          ((and (= gp-2 (enemy-aware enemy-aware-2)) (enemy-method-107 self))
+          ((and (= gp-2 (enemy-aware enemy-aware-2)) (get-enemy-target self))
            (go-hostile self)
            )
-          ((= gp-2 (enemy-aware enemy-aware-4))
+          ((= gp-2 (enemy-aware unaware))
            (go-flee self)
            )
           (else
@@ -1412,7 +1770,7 @@
        (go-virtual grenade-attack)
        )
       (else
-        (enemy-method-72 self)
+        (react-to-focus self)
         )
       )
     (none)
@@ -1436,7 +1794,7 @@
     (if (logtest? (-> self flags) 4)
         (go-virtual gun-shoot)
         )
-    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 1.0 3.0)))))
+    (set! (-> self reaction-time) (the-as time-frame (the int (* 300.0 (get-rand-float-range self 1.0 3.0)))))
     (none)
     )
   :exit (behavior ()
@@ -1445,12 +1803,12 @@
     )
   :trans (behavior ()
     (let ((gp-0 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
-          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+          ((or (< (the-as int gp-0) 2) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -1526,7 +1884,7 @@
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 0.5 1.5)))))
+    (set! (-> self reaction-time) (the-as time-frame (the int (* 300.0 (get-rand-float-range self 0.5 1.5)))))
     (none)
     )
   :exit (behavior ()
@@ -1535,12 +1893,12 @@
     )
   :trans (behavior ()
     (let ((gp-0 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
-          ((or (>= 2 (the-as int gp-0)) (not (enemy-method-107 self)))
+          ((or (>= 2 (the-as int gp-0)) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -1606,12 +1964,12 @@
     )
   :trans (behavior ()
     (let ((gp-0 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
-          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+          ((or (< (the-as int gp-0) 2) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -1689,12 +2047,12 @@
     )
   :trans (behavior ()
     (let ((gp-0 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
-          ((or (< (the-as int gp-0) 2) (not (enemy-method-107 self)))
+          ((or (< (the-as int gp-0) 2) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -1782,7 +2140,7 @@
     (set! (-> self miss-amount) 0.0)
     (set! (-> self next-shot) (the-as int (-> self clock frame-counter)))
     (set! (-> self joint-enable) #t)
-    (set! (-> self reaction-time) (the-as uint (the int (* 300.0 (get-rand-float-range self 3.0 5.0)))))
+    (set! (-> self reaction-time) (the-as time-frame (the int (* 300.0 (get-rand-float-range self 3.0 5.0)))))
     (none)
     )
   :exit (behavior ()
@@ -1793,7 +2151,7 @@
   :trans (behavior ()
     (crimson-guard-level-method-200 self)
     (let ((v1-2 (-> self focus aware)))
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
         (cond
           ((< (the-as int v1-2) 2)
            (go-stare self)
@@ -1801,7 +2159,7 @@
           ((= v1-2 (enemy-aware enemy-aware-3))
            (go-hostile self)
            )
-          ((= v1-2 (enemy-aware enemy-aware-4))
+          ((= v1-2 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -1827,7 +2185,7 @@
         )
       )
     (until #f
-      (if (or (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+      (if (or (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
               (< 10922.667 (fabs (-> self target-y-angle)))
               )
           (goto cfg-13)
@@ -3001,7 +3359,7 @@
       (set! (-> a0-0 travel quad) (-> v1-1 quad))
       )
     0
-    (enemy-method-55 self)
+    (track-target! self)
     (none)
     )
   )
@@ -3067,7 +3425,7 @@
       (set! (-> a0-0 travel quad) (-> v1-1 quad))
       )
     0
-    (enemy-method-55 self)
+    (track-target! self)
     (none)
     )
   )
@@ -3830,7 +4188,7 @@
               (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
               (.svf (&-> v1-10 quad) vf6)
               )
-            (if (enemy-method-126 obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+            (if (enemy-above-ground? obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
                 (set! (-> s1-0 y) (-> s0-0 best-other-tri intersect y))
                 )
             (let ((v1-14 (-> obj nav))
@@ -3888,7 +4246,7 @@
                         )
                       0
                       (set! (-> s1-0 y) (-> sv-784 y))
-                      (if (enemy-method-126 obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                      (if (enemy-above-ground? obj s0-0 s1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
                           (set! (-> s1-0 y) (-> s0-0 best-other-tri intersect y))
                           )
                       (set! (-> arg0 quad) (-> s1-0 quad))
@@ -4072,7 +4430,7 @@
               (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
               (.svf (&-> a0-3 quad) vf6)
               )
-            (if (enemy-method-126 self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+            (if (enemy-above-ground? self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
                 (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
                 )
             )
@@ -4137,8 +4495,8 @@
 
 ;; definition for method 114 of type crimson-guard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 crimson-guard-level ((obj crimson-guard-level))
-  "@abstract"
+(defmethod init-enemy-collision! crimson-guard-level ((obj crimson-guard-level))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -4278,8 +4636,8 @@
 ;; definition for method 115 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 crimson-guard-level ((obj crimson-guard-level))
-  "@abstract"
+(defmethod init-enemy! crimson-guard-level ((obj crimson-guard-level))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 int))
   (let ((f0-0 (res-lump-float (-> obj entity) 'rotoffset)))
     (if (!= f0-0 0.0)
@@ -4316,22 +4674,22 @@
           )
     )
   (set! (-> obj info) *crimson-guard-level-global-info*)
-  (enemy-method-113 obj *crimson-guard-level-info*)
+  (init-enemy-behaviour-and-stats! obj *crimson-guard-level-info*)
   (cond
     ((logtest? (-> obj flags) 1)
-     (enemy-method-113 obj *crimson-guard-level-tazer-info*)
+     (init-enemy-behaviour-and-stats! obj *crimson-guard-level-tazer-info*)
      )
     ((logtest? (-> obj flags) 4)
-     (enemy-method-113 obj *crimson-guard-level-sniper-info*)
+     (init-enemy-behaviour-and-stats! obj *crimson-guard-level-sniper-info*)
      )
     ((logtest? (-> obj flags) 2)
-     (enemy-method-113 obj *crimson-guard-level-blast-info*)
+     (init-enemy-behaviour-and-stats! obj *crimson-guard-level-blast-info*)
      )
     ((logtest? (-> obj flags) 8)
-     (enemy-method-113 obj *crimson-guard-level-grenade-info*)
+     (init-enemy-behaviour-and-stats! obj *crimson-guard-level-grenade-info*)
      )
     (else
-      (enemy-method-113 obj *crimson-guard-level-info*)
+      (init-enemy-behaviour-and-stats! obj *crimson-guard-level-info*)
       )
     )
   (let ((v1-34 (-> obj nav)))
@@ -4469,7 +4827,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior crimson-guard-level-init-by-other crimson-guard-level ((arg0 crimson-guard-level-params))
-  (enemy-method-114 self)
+  (init-enemy-collision! self)
   (set! (-> self root-override2 trans quad) (-> arg0 pos quad))
   (quaternion-copy! (-> self root-override2 quat) (-> arg0 quat))
   (vector-identity! (-> self root-override2 scale))
@@ -4477,7 +4835,7 @@
   (add-process-drawable-to-navmesh (-> arg0 nav-mesh) self #t)
   (set! (-> arg0 proc) self)
   (set! (-> self transport) (the-as handle (-> arg0 handle)))
-  (enemy-method-115 self)
+  (init-enemy! self)
   (crimson-guard-level-method-203 self (-> arg0 weapon))
   (logior! (-> self flags) 96)
   (go-virtual exit-transport)

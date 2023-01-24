@@ -629,7 +629,125 @@
     )
   )
 
-(defun pc-draw-bones ((dc draw-control) (dma-buf pointer))
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int))
+  "Send a request to PC Merc2 to draw the given object.
+   Only draws the effects which match this texture index.
+   Just places a single big dma packet, you have to patch the end yourself."
+  (let ((start-packet (the-as dma-packet dma-buf))
+        (qwc-total 0))
+    (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> start-packet vif0) (new 'static 'vif-tag))
+    (set! (-> start-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! dma-buf (the pointer (&+ start-packet 16)))
+
+    ;; NAME: 128 char, 8 qw
+    (let ((data-ptr (the-as (pointer uint128) dma-buf)))
+      (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
+      )
+    (&+! dma-buf (* 16 8))
+    (+! qwc-total 8)
+
+    ;; LIGHTS:
+    (quad-copy! dma-buf (the pointer (-> (-> *foreground* merc-bucket-info) light)) 7)
+    (&+! dma-buf (* 16 7))
+    (+! qwc-total 7)
+
+
+    (let ((matrix-slot-string (the (pointer uint8) dma-buf)) ;; matrix slot list (so PC knows what order they come in)
+          (enable-mask 0)
+          (ignore-alpha-mask 0)
+          (matrix-out-idx 0)
+          )
+      (&+! dma-buf (* 16 8))
+      (+! qwc-total 8)
+      ;; flag of matrices we've already transferred and can de-dup
+      (let ((transferred-matrices (new 'stack-no-clear 'array 'uint8 128)))
+        (dotimes (i 128) (set! (-> transferred-matrices i) 0))
+
+        (let ((merc-ctrl (-> dc lod-set lod (-> dc cur-lod) geo)))
+
+          ;; loop to: grab matrices and populate flags
+          (dotimes (effect-idx (-> merc-ctrl header effect-count))
+
+            ;; check to skip fragment. only draw if:
+            ;; We want to use "merc"
+            ;; We aren't disabled (new feature in jak 2)
+            ;; We match the texture index for the bucket.
+            (when (and (zero? (-> (-> *foreground* merc-bucket-info) effect effect-idx merc-path))
+                       (zero? (-> (-> *foreground* merc-bucket-info) effect effect-idx disable-draw))
+                       (= tex-idx (-> merc-ctrl effect effect-idx texture-index))
+                       )
+              ;; set enable bit for pc render
+              (logior! enable-mask (ash 1 effect-idx))
+              ;; set alpha bit for pc render
+              (when (nonzero? (-> (-> *foreground* merc-bucket-info) effect effect-idx ignore-alpha))
+                (logior! ignore-alpha-mask (ash 1 effect-idx))
+                )
+              (let* ((effect (-> merc-ctrl effect effect-idx))
+                     (frag (-> effect frag-ctrl))
+                     )
+                ;; iterate over fragments
+                (dotimes (frag-idx (-> effect frag-count))
+                  ;; matrices
+                  (dotimes (mat-xfer-idx (-> frag mat-xfer-count))
+                    (let ((mat-idx (-> frag mat-dest-data mat-xfer-idx matrix-number)))
+                      (if (>= mat-idx 128) ;; pc merc2 limit
+                          (break!)
+                          )
+                      (when (zero? (-> transferred-matrices mat-idx))
+                        ;; transfer it.
+                        (set! (-> transferred-matrices mat-idx) 1)
+                        (set! (-> matrix-slot-string matrix-out-idx) mat-idx)
+                        (+! matrix-out-idx 1)
+                        (set! (-> (the (pointer pointer) dma-buf)) (&+ matrix-buf (* 128 mat-idx)))
+                        (&+! dma-buf 16)
+                        (+! qwc-total 1)
+                        )
+                      )
+                    )
+                  (&+! frag (* 2 (-> frag mat-xfer-count)))
+                  (&+! frag (size-of merc-fragment-control))
+                  )
+                )
+              )
+            ) ;; end effect loop
+
+          ;; end matrix string
+          (while (< matrix-out-idx 128)
+            (set! (-> matrix-slot-string matrix-out-idx) #xff)
+            (+! matrix-out-idx 1)
+            )
+
+          ;; flags
+          (let ((flags (the (pointer uint32) dma-buf)))
+            (set! (-> flags 0) (-> merc-ctrl header effect-count))
+            (set! (-> flags 1) ignore-alpha-mask)
+            (set! (-> flags 2) enable-mask)
+            )
+          (&+! dma-buf (* 16 1))
+          (+! qwc-total 1)
+
+          ;; fades
+          (let ((fades (the (pointer uint32) dma-buf)))
+            (dotimes (i (-> merc-ctrl header effect-count))
+              (set! (-> fades i) (the-as uint (-> (-> *foreground* merc-bucket-info) effect i color-fade)))
+              )
+            )
+
+          (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
+            (&+! dma-buf (* 16 num-fades))
+            (+! qwc-total num-fades)
+            )
+          )
+        )
+      )
+
+    (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-total))
+    dma-buf
+    )
+  )
+
+(defun pc-draw-bones ((dc draw-control) (dma-buf pointer) (matrix-buf pointer))
   "Add a dma packet to tell the PC renderer which model we are renderering."
   (let ((use-flags (new 'stack-no-clear 'array 'uint8 7))
         (mctrl (-> dc mgeo))
@@ -650,15 +768,7 @@
         ;; this one is used, update the model for pc.
         ;; create dma-packet to send the name:
         (let ((packet (the-as dma-packet dma-buf)))
-          (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
-          (set! (-> packet vif0) (new 'static 'vif-tag))
-          (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-          (set! dma-buf (the pointer (&+ packet 16)))
-          ;; send the name
-          (let ((data-ptr (the-as (pointer uint128) dma-buf)))
-            (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
-            )
-          (&+! dma-buf (* 16 10))
+          (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i))
 
           ;; create a patch packet
           (let ((patch-packet (the-as dma-packet dma-buf)))
@@ -690,56 +800,8 @@
 
         )
       )
-
-
-
-
     )
   dma-buf
-  ; (let ((packet (the-as dma-packet dma-buf)))
-  ;   ;; merc draw asm will check this.
-  ;   (when (zero? (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc))
-  ;     (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
-  ;     )
-  ;   (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
-  ;   (set! (-> packet vif0) (new 'static 'vif-tag))
-  ;   (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-  ;   (set! dma-buf (the pointer (&+ packet 16)))
-  ;   )
-
-  ; (let ((data-ptr (the-as (pointer uint128) dma-buf)))
-  ;   (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
-  ;   )
-  ; (&+! dma-buf (* 16 10))
-
-  ; ;; merc linking needs this.
-  ; (let ((packet (the-as dma-packet dma-buf)))
-  ;   (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
-  ;   (set! (-> packet vif0) (new 'static 'vif-tag))
-  ;   (set! (-> packet vif1) (new 'static 'vif-tag))
-  ;   (set! dma-buf (the pointer (&+ packet 16)))
-  ;   )
-
-  ; dma-buf
-
-  ;; ra is start packet
-  ;  lw s4, 0(a3)       ;; s4 = first
-  ;  lw gp, 4(a3)       ;; gp = patch
-  ;  movz s4, ra, s4    ;; check first, if zero, set s4 to this packet
-  ;  sq r0, 0(a2)
-  ;  lui s5, 8192
-  ;  sw s4, 0(a3)       ;; store first
-  ;  or s4, a2, r0
-  ;  sw s5, 0(a2)
-  ;  daddiu a2, a2, 16
-  ;  beq gp, r0, L117
-  ;  sw s4, 4(a3)
-  ;  branch non-likely
-
-  ;  sll r0, r0, 0
-  ;  sw ra, 4(gp)
-  ;; L117
-
   )
 
 (defun foreground-draw ((dc draw-control) (dma-buf dma-buffer) (dist-in float))
@@ -991,6 +1053,7 @@
                                       )
                                     (set! (-> (the-as merc-effect-bucket-info v1-74) alpha) (the-as uint 128))
                                     )
+                                  ;(format 0 "envmap stat: ~A ~A~%" (-> dc process name) (logtest? (-> geo effect effect-idx effect-bits) (effect-bits emerc)))
                                   (cond
                                     ((and (logtest? (-> dc status) (draw-control-status force-vu1))
                                           (logtest? (-> geo effect effect-idx effect-bits) (effect-bits emerc))
@@ -1006,6 +1069,7 @@
                                           )
                                       )
                                     )
+
                                   (set! (-> bucket-info effect effect-idx ignore-alpha)
                                         (the-as uint (if (logtest? (-> geo effect effect-idx effect-bits) (effect-bits ignore-alpha))
                                                          1
@@ -1033,7 +1097,8 @@
                                    )
                                  )
                                )
-                             )
+                             ) ;; end if envmap
+
                             (else
                               (cond
                                 ((logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
@@ -1070,7 +1135,8 @@
                           (set! effect-mask (shr effect-mask 1))
                           )
                         )
-                      ;; massive hack
+
+                      ;; massive hack use merc for everything..
                       (when (or (nonzero? (-> (scratchpad-object foreground-work) regs mercneric-used))
                                 (nonzero? (-> (scratchpad-object foreground-work) regs emerc-used))
                                 )
@@ -1079,6 +1145,10 @@
                         (set! (-> (scratchpad-object foreground-work) regs merc-used) 1)
                         (dotimes (effect-idx (the-as int (-> geo header effect-count)))
                           (set! (-> bucket-info effect effect-idx merc-path) 0)
+                          (when (logtest? (-> geo effect effect-idx effect-usage) 1)
+                            (set! (-> bucket-info effect effect-idx ignore-alpha) 1)
+                            )
+
                           )
                         )
 
@@ -1128,12 +1198,12 @@
                             )
 
                           ;; added
-                          (set! dma-ptr (pc-draw-bones dc dma-ptr))
+                          (set! dma-ptr (pc-draw-bones dc dma-ptr (the pointer (-> (scratchpad-object foreground-work) regs mtxs))))
 
-                          (if (nonzero? (-> bucket-info need-mercprime-if-merc))
-                              (set! dma-ptr (foreground-merc dc (-> (scratchpad-object foreground-work) regs mtxs) dma-ptr 32 17 bucket-info))
-                              (set! dma-ptr (foreground-merc dc (-> (scratchpad-object foreground-work) regs mtxs) dma-ptr 35 20 bucket-info))
-                              )
+                          ; (if (nonzero? (-> bucket-info need-mercprime-if-merc))
+                          ;     (set! dma-ptr (foreground-merc dc (-> (scratchpad-object foreground-work) regs mtxs) dma-ptr 32 17 bucket-info))
+                          ;     (set! dma-ptr (foreground-merc dc (-> (scratchpad-object foreground-work) regs mtxs) dma-ptr 35 20 bucket-info))
+                          ;     )
                           )
                         )
                       )
@@ -1180,4 +1250,5 @@
 
 ;; todo foreground-draw-hud
 
-(define *foreground-draw-engine* (new 'global 'engine 'draw 768 connection))
+;; changed to perm.
+(define-perm *foreground-draw-engine* engine (new 'global 'engine 'draw 768 connection))
