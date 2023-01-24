@@ -10,7 +10,6 @@
   (file "game/assets/jak1/subtitle/game_subtitle_de.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_es.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_ptbr.gd")
-  (file "game/assets/jak1/subtitle/game_subtitle_hu.gd")
   )
 
 
