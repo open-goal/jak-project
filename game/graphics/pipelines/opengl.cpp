@@ -481,10 +481,7 @@ void render_game_frame(int game_width,
       options.draw_region_height = window_fb_height;
     }
 
-    want_hotkey_screenshot =
-        want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled;
-    if (want_hotkey_screenshot) {
-      want_hotkey_screenshot = false;
+    if (want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled) {
       options.save_screenshot = true;
       std::string screenshot_file_name = make_hotkey_screenshot_file_name();
       options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
@@ -502,6 +499,7 @@ void render_game_frame(int game_width,
       }
       options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
+    want_hotkey_screenshot = false;
 
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
