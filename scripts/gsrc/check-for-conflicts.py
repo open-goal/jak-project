@@ -13,7 +13,7 @@ for dirpath, subdirs, files in os.walk("./goal_src"):
       lines = f.readlines()
       for line in lines:
         if "<<<<<<<" in line:
-          files_with_unresolved_conflicts.append(filename)
+          files_with_unresolved_conflicts.append(os.path.join(dirpath, filename))
           break
 
 if len(files_with_unresolved_conflicts) == 0:
