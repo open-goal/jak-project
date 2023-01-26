@@ -585,6 +585,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
+  m_last_pmode_alp = settings.pmode_alp_register;
+
   if (settings.draw_render_debug_window) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
@@ -595,17 +597,15 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
-  m_last_pmode_alp = settings.pmode_alp_register;
-
   m_profiler.finish();
-  if (settings.draw_profiler_window) {
-    m_profiler.draw();
-  }
-
   //  if (m_profiler.root_time() > 0.018) {
   //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);
   //    fmt::print("{}\n", m_profiler.to_string());
   //  }
+
+  if (settings.draw_profiler_window) {
+    m_profiler.draw();
+  }
 
   if (settings.draw_small_profiler_window) {
     SmallProfilerStats stats;
