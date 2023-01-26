@@ -95,6 +95,13 @@ with open(gsrc_path) as f:
 # This means that all changes will be flagged as a conflict and will not be able to be
 # merged into the repo without being explicitly resolved
 if update_with_merge:
+    subprocess.run(
+        [
+            "git",
+            "restore",
+            gsrc_path
+        ]
+    )
     shutil.copyfile(gsrc_path, gsrc_path.replace(".gc", ".before.gc"))
     Path(gsrc_path.replace(".gc", ".empty.gc")).touch()
 
@@ -221,20 +228,26 @@ with open(gsrc_path, "w") as f:
 
 # If we need to merge, now is the time!
 if update_with_merge:
+    shutil.move(gsrc_path, gsrc_path.replace(".gc", ".after.gc"))
+    shutil.move(gsrc_path.replace(".gc", ".before.gc"), gsrc_path)
     subprocess.run(
         [
             "git",
             "merge-file",
             gsrc_path,
             gsrc_path.replace(".gc", ".empty.gc"),
-            gsrc_path.replace(".gc", ".before.gc"),
+            gsrc_path.replace(".gc", ".after.gc"),
             "-L",
-            "After Updating",
+            "Before Updating",
             "-L",
             "ignored",
             "-L",
-            "Before Updating",
+            "After Updating",
         ]
     )
-    os.remove(gsrc_path.replace(".gc", ".empty.gc"))
-    os.remove(gsrc_path.replace(".gc", ".before.gc"))
+    if os.path.exists(gsrc_path.replace(".gc", ".empty.gc")):
+        os.remove(gsrc_path.replace(".gc", ".empty.gc"))
+    if os.path.exists(gsrc_path.replace(".gc", ".before.gc")):
+        os.remove(gsrc_path.replace(".gc", ".before.gc"))
+    if os.path.exists(gsrc_path.replace(".gc", ".after.gc")):
+        os.remove(gsrc_path.replace(".gc", ".after.gc"))
