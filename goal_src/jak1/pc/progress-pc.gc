@@ -223,7 +223,7 @@
 (define *title-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id new-game) :scale #t :param3 (game-option-menu save-game-title))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id load-game) :scale #t :param3 (game-option-menu load-game))
-    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id level-select) :scale #t :param3 (game-option-menu level-select))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id checkpoint-select) :scale #t :param3 (game-option-menu checkpoint-select))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id options) :scale #t :param3 (game-option-menu settings-title))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id secrets) :scale #t :param3 (game-option-menu secrets))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id quit-game) :scale #t :param3 (game-option-menu quit-title))
@@ -271,12 +271,13 @@
 
 (define *secrets* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id cheats) :scale #t :param3 (game-option-menu cheats))
-    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id level-select) :scale #t :param3 (game-option-menu level-select))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id checkpoint-select) :scale #t :param3 (game-option-menu checkpoint-select)
+      :option-disabled-func (lambda () (not (task-closed? (game-task finalboss-movies) (task-status need-reminder)))))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
 
-(define *level-select-options*
+(define *checkpoint-select-options*
   (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id training-level-name) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id village1-level-name) :scale #t)
@@ -769,7 +770,7 @@
   (set! (-> *options-remap* (progress-screen quit-title))                 *yes-no-options*)
   (set! (-> *options-remap* (progress-screen secrets))                    *secrets-title*)
   (set! (-> *options-remap* (progress-screen cheats))                     *cheats*)
-  (set! (-> *options-remap* (progress-screen level-select))               *level-select-options*)
+  (set! (-> *options-remap* (progress-screen checkpoint-select))               *checkpoint-select-options*)
   (set! (-> *options-remap* (progress-screen music-player))               *music-player-options*)
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
@@ -1318,7 +1319,7 @@
                   )
                 ;; Full game runs
                  (((game-text-id speedrun-new-full-game))
-                  (start-speedrun (speedrun-category full-game-any))
+                  (start-speedrun (speedrun-category full-game))
                   )
                  ;; Individual Levels
                  (((game-text-id speedrun-il-training))
@@ -1974,9 +1975,15 @@
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                  (set! option-str #f)
                  )
+             ;; if autosave disabled, update text and lock it
              (when (and (not (-> *setting-control* default auto-save))
                       (= (game-text-id disable-auto-save) (-> options index name)))
                  (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f))
+                 (true! locked?))
+             ;; checkpoint-select only unlocked after beating finalboss
+             (when (and (not (task-closed? (game-task finalboss-movies) (task-status need-reminder)))
+                      (= (game-text-id checkpoint-select) (-> options index name)))
+                 (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-beat-game) #f))
                  (true! locked?))
              )
             (((game-option-type button-music))
@@ -2459,7 +2466,7 @@
          (hide-progress-icons)
          (draw-options self 128 21 0.82)
          )
-        (((progress-screen camera-options) (progress-screen level-select) (progress-screen speedrun-options) (progress-screen speedrun-il-options))
+        (((progress-screen camera-options) (progress-screen checkpoint-select) (progress-screen speedrun-options) (progress-screen speedrun-il-options))
          ;; camera options lines are a bit too big
          (hide-progress-icons)
          (draw-options self 115 25 0.65)
