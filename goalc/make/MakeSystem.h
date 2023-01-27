@@ -30,6 +30,10 @@ class MakeSystem {
                            goos::Arguments&,
                            const std::shared_ptr<goos::EnvironmentObject>& env);
 
+  goos::Object handle_get_gsrc_path(const goos::Object& obj,
+                                    goos::Arguments&,
+                                    const std::shared_ptr<goos::EnvironmentObject>& env);
+
   goos::Object handle_map_path(const goos::Object& obj,
                                goos::Arguments& args,
                                const std::shared_ptr<goos::EnvironmentObject>& env);
@@ -37,6 +41,10 @@ class MakeSystem {
   goos::Object handle_set_output_prefix(const goos::Object& obj,
                                         goos::Arguments& args,
                                         const std::shared_ptr<goos::EnvironmentObject>& env);
+
+  goos::Object handle_set_gsrc_folder(const goos::Object& obj,
+                                      goos::Arguments& args,
+                                      const std::shared_ptr<goos::EnvironmentObject>& env);
 
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
@@ -76,4 +84,6 @@ class MakeSystem {
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;
   PathMap m_path_map;
+  std::vector<std::string> m_gsrc_folder;
+  std::map<std::string, std::string> m_gsrc_files = {};
 };
