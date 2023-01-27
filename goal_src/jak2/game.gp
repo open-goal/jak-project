@@ -3734,11 +3734,13 @@
   ;; "jak-highres-ag"
   "squid-ag"
   "squid-break-ag"
-  "baron-highres-ag"
-  "baron-ag"
+  ;; "baron-highres-ag"
+  ;; "baron-ag"
   "squid-collision-ag"
   "palboss"
   )
+
+(copy-strs "PAOWRB" "PABRES")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; PALOUT
