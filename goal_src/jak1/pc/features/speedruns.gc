@@ -6,19 +6,11 @@
 (defun start-speedrun ((category speedrun-category))
   ;; randomize game id so the autosplitter knows to restart
   (update-autosplit-jak1-new-game)
-  ;; disable hints (this seems to be overriden by your slot 1 save though)
-  (set! (-> *setting-control* default play-hints) #f)
-  ;; ensure `force actors` is not enabled
-  (set! (-> *pc-settings* force-actors?) #f)
-  ;; force FPS to `60`
-  (set-frame-rate! *pc-settings* 60)
-  ;; enable auto saving by default
-  (set! (-> *setting-control* default auto-save) #t)
   ;; turn on speedrun verification display and flip flags for setting up speedrun after initialize!
   (set! (-> *speedrun-info* should-display?) #t)
   (set! (-> *speedrun-info* needs-game-info-setup?) #t)
   (set! (-> *speedrun-info* needs-post-blackout-setup?) #t)
-
+  ;; start new game with specified checkpoint
   (set! (-> *speedrun-info* category) category)
   (case category
     (((speedrun-category full-game))
@@ -90,6 +82,14 @@
       (initialize! *game-info* 'game (the-as game-save #f) "citadel-entrance")
       )
     )
+  ;; disable hints (this seems to be overriden by your slot 1 save though)
+  (set! (-> *setting-control* default play-hints) #f)
+  ;; ensure `force actors` is not enabled
+  (set! (-> *pc-settings* force-actors?) #f)
+  ;; force FPS to `60`
+  (set-frame-rate! *pc-settings* 60)
+  ;; enable auto saving by default
+  (set! (-> *setting-control* default auto-save) #t)
   (none)
   )
 
@@ -256,6 +256,8 @@
       (set! (-> *speedrun-info* should-display?) #t)
       ;; reset actors to ensure any above changes take effect
       (reset-actors 'life)
+      ;; autosave any changes back to file
+      (auto-save-command 'auto-save 0 0 *default-pool*)
     )
   (none)
   )
@@ -277,8 +279,8 @@
     )
   (none))
 
-(defun speedrun-start-run ()
-  ;; start a full game speedrun using any% as a placeholder for now
+(defun speedrun-start-full-game-run ()
+  ;; start a full game speedrun, save file is already selected so don't default to first slot
   (start-speedrun (speedrun-category full-game))
   (none))
 
