@@ -3,16 +3,23 @@
 
 (define *speedrun-info* (new 'static 'speedrun-info-jak1 :should-display? #t :needs-game-info-setup? #f :needs-post-blackout-setup? #f))
 
-(defun start-speedrun ((category speedrun-category))
-  ;; randomize game id so the autosplitter knows to restart
+(defun is-speedrun-category? ((category symbol))
+  (and (-> *pc-settings* speedrunner-mode?)
+        (name= category (enum->string speedrun-category (-> *speedrun-info* category)))
+        )
+  )
+
+(defun start-speedrun ((category speedrun-category));; randomize game id so the autosplitter knows to restart
   (update-autosplit-jak1-new-game)
   ;; turn on speedrun verification display and flip flags for setting up speedrun after initialize!
   (set! (-> *speedrun-info* should-display?) #t)
   (set! (-> *speedrun-info* needs-game-info-setup?) #t)
   (set! (-> *speedrun-info* needs-post-blackout-setup?) #t)
-  ;; start new game with specified checkpoint
-  (set! (-> *speedrun-info* category) category)
-  (case category
+  ;; start new game with specified checkpoint, if any (otherwise we're resetting current category)
+  (if category
+    (set! (-> *speedrun-info* category) category)
+    )
+  (case (-> *speedrun-info* category)
     (((speedrun-category full-game))
       ;; spawn at the warp gate checkpoint
       (initialize! *game-info* 'game (the-as game-save #f) "game-start")
