@@ -53,6 +53,8 @@ std::string combine_path(const std::string& parent, const std::string& child);
 bool file_exists(const std::string& path);
 std::string base_name(const std::string& filename);
 std::string base_name_no_ext(const std::string& filename);
+std::string split_path_at(const fs::path& path, const std::vector<std::string>& folders);
+std::string convert_to_unix_path_separators(const std::string& path);
 void MakeISOName(char* dst, const char* src);
 void ISONameFromAnimationName(char* dst, const char* src);
 void assert_file_exists(const char* path, const char* error_message);
