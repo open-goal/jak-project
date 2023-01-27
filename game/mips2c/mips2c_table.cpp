@@ -210,6 +210,7 @@ namespace method_39_nav_state { extern void link(); }
 namespace method_17_nav_engine { extern void link(); }
 namespace method_18_nav_engine { extern void link(); }
 namespace method_21_nav_engine { extern void link(); }
+namespace method_53_squid { extern void link(); }
 
 }
 // clang-format on
@@ -350,7 +351,8 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_20_nav_engine::link, jak2::method_43_nav_mesh::link,
        jak2::nav_dma_send_to_spr_no_flush::link, jak2::nav_dma_send_from_spr_no_flush::link,
        jak2::method_17_nav_engine::link, jak2::method_18_nav_engine::link,
-       jak2::method_21_nav_engine::link}}},
+       jak2::method_21_nav_engine::link}},
+     {"squid-setup", {jak2::method_53_squid::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
