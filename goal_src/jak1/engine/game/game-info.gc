@@ -504,7 +504,6 @@
   )
 
 (declare-type vent process-drawable)
-(define-extern hide-speedrun-display (function none))
 (defmethod pickup-collectable! fact-info-target ((obj fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
   "Pickup a thing!"
   (case kind
@@ -600,8 +599,10 @@
     (((pickup-type money))
      ;; get money.
      (when (< 0.0 amount)
-      ;; make sure any speedrun display is hidden
-      (hide-speedrun-display)
+       (#when PC_PORT
+        ;; make sure any speedrun display is hidden
+        (hide-speedrun-display)
+        )
        ;; play sound.
        (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
            (sound-play "money-pickup")
@@ -617,8 +618,10 @@
                     (>= (the-as uint 1) (the-as uint s4-2))
                     )
                 )
-           ;; make sure any speedrun display is hidden
-           (hide-speedrun-display)
+           (#when PC_PORT
+            ;; make sure any speedrun display is hidden
+            (hide-speedrun-display)
+            )
            (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
            )
        )
@@ -628,8 +631,10 @@
      ;; buzzer
      (let ((buzz-count (adjust (-> (the-as target (-> obj process)) game) 'buzzer amount source-handle)))
        (when (!= buzz-count (-> obj buzzer))
-           ;; make sure any speedrun display is hidden
-           (hide-speedrun-display)
+           (#when PC_PORT
+             ;; make sure any speedrun display is hidden
+             (hide-speedrun-display)
+            )
            (set! (-> obj buzzer-pickup-time) (-> *display* base-frame-counter))
            )
        (set! (-> obj buzzer) buzz-count)
