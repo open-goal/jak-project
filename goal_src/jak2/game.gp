@@ -2877,20 +2877,19 @@
 ;; ;; LPOWER
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LPOWER.DGO" "lpower.gd")
+(cgo "LPOWER.DGO" "lpower.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/power_station/power_switches/ctypower.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/power_station/power_switches/ctypower.gc"
+  )
 
-;; (copy-textures 3348)
+(copy-textures 3348)
 
-;; (copy-gos
-;;   "cty-guard-turret-button-ag"
-;;   "lpower"
-;;   )
+(copy-gos
+  "lpower"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LPROTECT
