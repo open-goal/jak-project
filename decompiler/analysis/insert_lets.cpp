@@ -907,6 +907,15 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
   }
 
   auto* cond = in->body()->try_as_element<CondNoElseElement>();
+  std::optional<TypeSpec> cast_type;
+  if (!cond) {
+    auto* casted = in->body()->try_as_element<CastElement>();
+    if (casted) {
+      cast_type = casted->type();
+      cond = casted->source()->try_as_element<CondNoElseElement>();
+    }
+  }
+
   if (!cond) {
     return nullptr;
   }
@@ -972,8 +981,12 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
     return nullptr;
   }
 
-  return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, nullptr);
-  return nullptr;
+  auto* case_elt = pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, nullptr);
+  if (cast_type) {
+    return pool.alloc_element<CastElement>(*cast_type, pool.alloc_single_form(nullptr, case_elt));
+  } else {
+    return case_elt;
+  }
 }
 
 FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool& pool) {
@@ -1263,7 +1276,16 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      if (set_fn2) {
+      if (env.version == GameVersion::Jak2 && set_fn && !set_fn2) {
+        // jak 2-specific made-up thing!
+        // this has only appeared once so far.
+        if (set_fn->to_form(env).is_float(0.0)) {
+          num_form = pool.form<ConstantTokenElement>("zero");
+          set_fn = nullptr;
+        } else {
+          return nullptr;
+        }
+      } else if (set_fn2) {
         auto obj_fn2 = set_fn2->to_form(env);
         if (obj_fn2.is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("min");
@@ -1496,7 +1518,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           args.push_back(as_func->elts().at(1));
         } else {
           auto init_func = as_func->elts().at(1)->to_form(env);
-          if (init_func.is_symbol("manipy-init") && proc_type == "manipy") {
+          if (init_func.is_symbol("manipy-init") && proc_type == "manipy" &&
+              env.version == GameVersion::Jak1) {
             head = "manipy-spawn";
           } else {
             args.push_back(pool.form<ConstantTokenElement>(proc_type));
@@ -2024,7 +2047,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   last_part = dynamic_cast<LetElement*>(in->body()->at(in->body()->size() - 1));
   if (!last_part) {
-    lg::error("NO LAST PART AHH wtf!!");
+    // lg::error("NO LAST PART AHH wtf!!");
     return nullptr;
   }
 

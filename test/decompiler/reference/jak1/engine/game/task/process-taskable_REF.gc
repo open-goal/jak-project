@@ -794,43 +794,41 @@
 (defstate be-clone (process-taskable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as shadow-geo (cond
-                           ((= v1-0 'shadow)
-                            (the-as shadow-geo (cond
-                                                 ((-> event param 0)
-                                                  (let ((v0-0 (-> self shadow-backup)))
-                                                    (set! (-> self draw shadow) v0-0)
-                                                    v0-0
-                                                    )
+    (the-as shadow-geo (case event-type
+                         (('shadow)
+                          (the-as shadow-geo (cond
+                                               ((-> event param 0)
+                                                (let ((v0-0 (-> self shadow-backup)))
+                                                  (set! (-> self draw shadow) v0-0)
+                                                  v0-0
                                                   )
-                                                 (else
-                                                   (set! (-> self draw shadow) #f)
-                                                   (the-as shadow-geo #f)
-                                                   )
+                                                )
+                                               (else
+                                                 (set! (-> self draw shadow) #f)
+                                                 (the-as shadow-geo #f)
                                                  )
-                                    )
-                            )
-                           ((= v1-0 'shadow-min-max)
-                            (let ((v1-5 (-> self draw shadow-ctrl)))
-                              (let ((a0-5 v1-5))
-                                (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> event param 0))))
-                                )
-                              0
-                              (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
+                                               )
+                                  )
+                          )
+                         (('shadow-min-max)
+                          (let ((v1-5 (-> self draw shadow-ctrl)))
+                            (let ((a0-5 v1-5))
+                              (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> event param 0))))
                               )
-                            (the-as shadow-geo 0)
+                            0
+                            (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
                             )
-                           ((= v1-0 'end-mode)
-                            (the-as shadow-geo (if (should-display? self)
-                                                   (the-as shadow-geo (go-virtual idle))
-                                                   (the-as shadow-geo (go-virtual hidden))
-                                                   )
-                                    )
-                            )
-                           )
-              )
-      )
+                          (the-as shadow-geo 0)
+                          )
+                         (('end-mode)
+                          (the-as shadow-geo (if (should-display? self)
+                                                 (the-as shadow-geo (go-virtual idle))
+                                                 (the-as shadow-geo (go-virtual hidden))
+                                                 )
+                                  )
+                          )
+                         )
+            )
     )
   :enter (behavior ((arg0 handle))
     (logior! (-> self skel status) (janim-status blerc))
@@ -871,46 +869,44 @@
 (defstate idle (process-taskable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (the-as
-             symbol
-             (if (-> self bounce-away)
-                 (the-as
-                   symbol
-                   (send-event proc 'shove #f (static-attack-info ((shove-back (meters 3)) (shove-up (meters 1)))))
-                   )
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (the-as
+           symbol
+           (if (-> self bounce-away)
+               (the-as
+                 symbol
+                 (send-event proc 'shove #f (static-attack-info ((shove-back (meters 3)) (shove-up (meters 1)))))
                  )
-             )
+               )
            )
-          ((= v1-0 'touch)
-           (the-as symbol (send-shove-back
-                            (-> self root-override)
-                            proc
-                            (the-as touching-shapes-entry (-> event param 0))
-                            0.7
-                            6144.0
-                            16384.0
-                            )
-                   )
+         )
+        (('touch)
+         (the-as symbol (send-shove-back
+                          (-> self root-override)
+                          proc
+                          (the-as touching-shapes-entry (-> event param 0))
+                          0.7
+                          6144.0
+                          16384.0
+                          )
+                 )
+         )
+        (('clone)
+         (the-as symbol (go-virtual be-clone (the-as handle (-> event param 0))))
+         )
+        (('play-anim)
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (let ((v0-0 #t))
+           (set! (-> self been-kicked) v0-0)
+           v0-0
            )
-          ((= v1-0 'clone)
-           (the-as symbol (go-virtual be-clone (the-as handle (-> event param 0))))
-           )
-          ((= v1-0 'play-anim)
-           (logclear! (-> self mask) (process-mask actor-pause))
-           (let ((v0-0 #t))
-             (set! (-> self been-kicked) v0-0)
-             v0-0
-             )
-           )
-          ((= v1-0 'hidden-other)
-           (the-as symbol (go-virtual hidden-other))
-           )
-          )
+         )
+        (('hidden-other)
+         (the-as symbol (go-virtual hidden-other))
+         )
         )
       )
     )

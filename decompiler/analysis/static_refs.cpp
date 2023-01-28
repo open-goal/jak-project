@@ -20,10 +20,11 @@ bool kind_for_lambda(FunctionName::FunctionKind k) {
 bool try_convert_lambda(const Function& parent_function,
                         FormPool& pool,
                         Form* f,
-                        bool defstate_behavior) {
+                        bool defstate_behavior,
+                        const DecompilerTypeSystem& dts) {
   auto atom = form_as_atom(f);
   if (atom && atom->is_static_addr()) {
-    auto lab = parent_function.ir2.env.file->labels.at(atom->label());
+    auto& lab = parent_function.ir2.env.file->labels.at(atom->label());
     auto& env = parent_function.ir2.env;
     const auto& info = parent_function.ir2.env.file->label_db->lookup(lab.name);
 
@@ -43,7 +44,7 @@ bool try_convert_lambda(const Function& parent_function,
       }
       goos::Object result;
       if (defstate_behavior) {
-        result = final_output_defstate_anonymous_behavior(*other_func);
+        result = final_output_defstate_anonymous_behavior(*other_func, dts);
       } else {
         result = final_output_lambda(*other_func);
       }
@@ -57,10 +58,11 @@ bool try_convert_lambda(const Function& parent_function,
 }
 }  // namespace
 
+// TODO - important entry point!
 int insert_static_refs(Form* top_level_form,
                        FormPool& pool,
                        const Function& function,
-                       const DecompilerTypeSystem&) {
+                       const DecompilerTypeSystem& dts) {
   int replaced = 0;
 
   // first, look for defstates and lambdas to behaviors.
@@ -69,7 +71,7 @@ int insert_static_refs(Form* top_level_form,
     if (as_defstate) {
       for (auto& e : as_defstate->entries()) {
         if (e.is_behavior) {
-          if (try_convert_lambda(function, pool, e.val, true)) {
+          if (try_convert_lambda(function, pool, e.val, true, dts)) {
             replaced++;
           }
         }
@@ -79,7 +81,7 @@ int insert_static_refs(Form* top_level_form,
 
   // next, all the rest.
   top_level_form->apply_form([&](Form* f) {
-    if (try_convert_lambda(function, pool, f, false)) {
+    if (try_convert_lambda(function, pool, f, false, dts)) {
       replaced++;
     }
   });

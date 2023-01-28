@@ -999,7 +999,7 @@ struct ExecutionContext {
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
 
-  void sqrts(int src, int dst) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
+  void sqrts(int dst, int src) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
 
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
@@ -1307,6 +1307,25 @@ struct ExecutionContext {
     }
   }
 
+  s32 float_to_int_sat(float f) {
+    if (f >= (float)INT32_MAX) {
+      return INT32_MAX;
+    } else if (f <= (float)INT32_MIN) {
+      return INT32_MIN;
+    } else {
+      return f;
+    }
+  }
+
+  void vftoi4_sat(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = float_to_int_sat(s.f[i] * 16.f);
+      }
+    }
+  }
+
   void vftoi0(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
@@ -1533,9 +1552,13 @@ inline void get_fake_spad_addr2(int dst, void* sym_addr, u32 offset, ExecutionCo
   c->gprs[dst].du64[0] = val + offset;
 }
 
+inline void* align4_ptr(void* spad_sym_addr) {
+  return (void*)align4(((uintptr_t)spad_sym_addr - 3));
+}
+
 inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   sadr -= spad_addr_goal;
 
   ASSERT((madr & 0xf) == 0);
@@ -1551,7 +1574,7 @@ inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
 
 inline void spad_to_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
 
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1569,7 +1592,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
                                                      u32 sadr,
                                                      u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
 
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1593,7 +1616,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
 
 inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   sadr -= spad_addr_goal;
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1608,7 +1631,7 @@ inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
 
 inline void spad_from_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
   ASSERT(sadr < 0x4000);

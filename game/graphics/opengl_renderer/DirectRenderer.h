@@ -81,6 +81,7 @@ class DirectRenderer : public BucketRenderer {
   void handle_rgbaq(u64 val);
   void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_st_packed(const u8* data);
+  void handle_uv_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,

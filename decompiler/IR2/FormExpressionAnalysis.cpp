@@ -200,7 +200,7 @@ Form* try_cast_simplify(Form* in,
       auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
       if (g && g->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
         auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
-        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
+        if (f && f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
           auto& func_name = f->expr().get_arg(0).get_str();
           if (func_name == "rand-vu-int-range" || func_name == "nav-enemy-rnd-int-range") {
             std::vector<Form*> new_forms;
@@ -717,6 +717,31 @@ void LoadSourceElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+namespace {
+FormElement* label_to_form_element(const Env& env, const SimpleAtom& atom, FormPool& pool) {
+  auto lab = env.file->labels.at(atom.label());
+  if (env.file->is_string(lab.target_segment, lab.offset)) {
+    auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
+    return pool.alloc_element<StringConstantElement>(str);
+  } else {
+    // look for a label hint:
+    const auto& hint = env.file->label_db->lookup(lab.name);
+    if (!hint.known) {
+      throw std::runtime_error(
+          fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
+    }
+    if (hint.is_value) {
+      return nullptr;
+    }
+    if (hint.result_type.base_type() == "function") {
+      return nullptr;
+    } else {
+      return pool.alloc_element<DecompiledDataElement>(lab, hint);
+    }
+  }
+}
+}  // namespace
+
 void SimpleExpressionElement::update_from_stack_identity(const Env& env,
                                                          FormPool& pool,
                                                          FormStack& stack,
@@ -729,30 +754,13 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(x);
     }
   } else if (arg.is_static_addr()) {
-    auto lab = env.file->labels.at(arg.label());
-    if (env.file->is_string(lab.target_segment, lab.offset)) {
-      auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
-      result->push_back(pool.alloc_element<StringConstantElement>(str));
+    auto as_label_form_element = label_to_form_element(env, arg, pool);
+    if (as_label_form_element) {
+      result->push_back(as_label_form_element);
     } else {
-      // look for a label hint:
-      const auto& hint = env.file->label_db->lookup(lab.name);
-      if (!hint.known) {
-        throw std::runtime_error(
-            fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
-      }
-      if (hint.is_value) {
-        result->push_back(this);
-        return;
-      }
-      if (hint.result_type.base_type() == "function") {
-        result->push_back(this);
-        return;
-      } else {
-        result->push_back(pool.alloc_element<DecompiledDataElement>(lab, hint));
-        return;
-      }
+      result->push_back(this);
     }
-
+    return;
   } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list() ||
              arg.is_sym_val_ptr()) {
     result->push_back(this);
@@ -804,10 +812,11 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
         auto int_constant = get_goal_integer_constant(frm, env);
         if (int_constant && u64_valid_for_float_constant(*int_constant)) {
           float flt;
-
           memcpy(&flt, &int_constant.value(), sizeof(float));
-          result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
-          return;
+          if (proper_float(flt)) {
+            result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+            return;
+          }
         }
       }
       // converting something else to an FPR, put an expression around it.
@@ -1035,8 +1044,21 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
                         allow_side_effects);
   } else {
+    // arg1 might be a label.
+    // do arg0 like a normal var
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+
+    // then try to simplify the label
+    if (m_expr.get_arg(1).is_label()) {
+      auto as_lab = label_to_form_element(env, m_expr.get_arg(1), pool);
+      if (as_lab) {
+        args.push_back(pool.alloc_single_form(nullptr, as_lab));
+      } else {
+        args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+      }
+    } else {
+      args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    }
   }
 
   bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), true);
@@ -1982,15 +2004,22 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     return;
   }
 
+  // (-> (the-as process-drawable (-> v1-32 0)) pid)
+  // (-> v1-61 0 pid)
+  auto just_deref_matcher = Matcher::match_or(
+      {Matcher::deref(Matcher::any_reg(0), false,
+                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+       Matcher::deref({Matcher::cast_to_any(4, Matcher::deref(Matcher::any_reg(0), false,
+                                                              {DerefTokenMatcher::integer(0)}))},
+                      false, {DerefTokenMatcher::string("pid")})});
+
   // jak 1:
   // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
   // jak 2:
   // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
-  auto pid_deref_matcher = Matcher::op_fixed(
-      FixedOperatorKind::SHL,
-      {Matcher::deref(Matcher::any_reg(0), false,
-                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
-       Matcher::integer(32)});
+  auto pid_deref_matcher =
+      Matcher::op_fixed(FixedOperatorKind::SHL, {just_deref_matcher, Matcher::integer(32)});
+
   auto make_handle_matcher = Matcher::op_fixed(
       FixedOperatorKind::LOGIOR,
       {env.version == GameVersion::Jak1
@@ -2002,6 +2031,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
   auto handle_mr = match(make_handle_matcher, element);
+
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
@@ -2009,7 +2039,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     if (var_name == env.get_variable_name(var_b) &&
         (env.version == GameVersion::Jak1 ||
          var_name == env.get_variable_name(handle_mr.maps.regs.at(2).value())) &&
-        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
+        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process-tree")}),
                        env.get_variable_type(var_a, true))) {
       auto* menv = const_cast<Env*>(&env);
       menv->disable_use(var_a);
@@ -2796,6 +2826,10 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
       token_matchers = {DerefTokenMatcher::string("quad")};
     }
 
+    if (env.version == GameVersion::Jak2) {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
     auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
                                 Matcher::cast("uint128", Matcher::integer(0)));
 
@@ -2880,8 +2914,7 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
         } else {
           matcher = Matcher::set(
               Matcher::deref(Matcher::any_reg(0), false,
-                             {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                              DerefTokenMatcher::string("quad")}),
+                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
               Matcher::cast("uint128", Matcher::integer(0)));
         }
 

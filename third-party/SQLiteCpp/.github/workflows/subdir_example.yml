@@ -1,0 +1,43 @@
+name: subdir_example
+
+on: [push]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "Windows Latest MSVC",
+            os: windows-latest,
+            build_type: "Debug", cc: "cl", cxx: "cl",
+          }
+        - {
+            name: "Ubuntu Latest GCC",
+            os: ubuntu-latest,
+            build_type: "Debug", cc: "gcc", cxx: "g++"
+          }
+        - {
+            name: "macOS Latest Clang",
+            os: macos-latest,
+            build_type: "Debug", cc: "clang", cxx: "clang++"
+          }
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      shell: cmake -P {0}
+      run: |
+        set(ENV{CC} ${{matrix.config.cc}})
+        set(ENV{CXX} ${{matrix.config.cxx}})
+    - name: generate
+      run: |
+        cd examples/example2
+        mkdir build
+        cd build
+        cmake -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=${{matrix.config.build_type}} .. 
+    - name: build
+      run: cmake --build examples/example2/build --config ${{matrix.config.build_type}}

@@ -52,6 +52,14 @@ Config read_config_file(const fs::path& path_to_config_file, const std::string& 
   config.streamed_audio_file_names =
       inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
 
+  if (cfg.contains("art_group_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({cfg.at("art_group_dump_file").get<std::string>()}));
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> serialized =
+        parse_commented_json(json_data, "art_group_dump_file");
+    config.art_group_info_dump = serialized;
+  }
+
   if (cfg.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
   }
@@ -64,6 +72,7 @@ Config read_config_file(const fs::path& path_to_config_file, const std::string& 
   config.process_game_text = cfg.at("process_game_text").get<bool>();
   config.process_game_count = cfg.at("process_game_count").get<bool>();
   config.process_art_groups = cfg.at("process_art_groups").get<bool>();
+  config.dump_art_group_info = cfg.at("dump_art_group_info").get<bool>();
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
   config.find_functions = cfg.at("find_functions").get<bool>();

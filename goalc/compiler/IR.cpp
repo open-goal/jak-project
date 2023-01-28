@@ -7,6 +7,7 @@
 #include "goalc/emitter/IGen.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 using namespace emitter;
 namespace {
@@ -239,7 +240,11 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    if (dest_reg.is_xmm()) {
+      gen->add_instr(IGen::movq_xmm64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    } else {
+      gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    }
   } else if (m_name == "#t") {
     gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
                                            true_symbol_offset(gen->version())),
@@ -1006,7 +1011,7 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
   } else {
     throw std::runtime_error(
         fmt::format("IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})",
-                    m_value->ireg().reg_class, m_size));
+                    fmt::underlying(m_value->ireg().reg_class), m_size));
   }
 }
 
@@ -1934,7 +1939,7 @@ IR_SplatVF::IR_SplatVF(bool use_color,
 
 std::string IR_SplatVF::print() {
   return fmt::format(".splat.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                     m_src->print(), m_element);
+                     m_src->print(), fmt::underlying(m_element));
 }
 
 RegAllocInstr IR_SplatVF::to_rai() {

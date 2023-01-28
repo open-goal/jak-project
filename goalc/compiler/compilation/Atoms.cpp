@@ -140,6 +140,7 @@ const std::unordered_map<
 
         // COMPILER CONTROL
         {"repl-help", &Compiler::compile_repl_help},
+        {"repl-keybinds", &Compiler::compile_repl_keybinds},
         {":clear", &Compiler::compile_repl_clear_screen},
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
@@ -177,6 +178,7 @@ const std::unordered_map<
         // DEBUGGING
         {"dbs", &Compiler::compile_dbs},
         {"dbg", &Compiler::compile_dbg},
+        {"dbgc", &Compiler::compile_dbg_and_continue},
         {":cont", &Compiler::compile_cont},
         {":stop", &Compiler::compile_stop},
         {":break", &Compiler::compile_break},

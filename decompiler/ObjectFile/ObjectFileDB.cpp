@@ -313,6 +313,55 @@ void ObjectFileDB::get_objs_from_dgo(const fs::path& filename, const Config& con
 }
 
 /*!
+ * Are two object files the same?
+ * Unfortunately they seemed to have a memory bug in their art-group generator, so there's some
+ * uninitialized padding bytes.
+ */
+bool are_objects_the_same(const std::string& obj_name,
+                          size_t size_a,
+                          const u8* a,
+                          size_t size_b,
+                          const u8* b) {
+  if (size_a != size_b) {
+    return false;
+  }
+
+  // if they are byte-for-byte the same, it's a match
+  if (!memcmp(a, b, size_a)) {
+    return true;
+  }
+
+  // if it's an art group...
+  if (obj_name.size() > 3 && !obj_name.compare(obj_name.length() - 3, 3, "-ag")) {
+    // count up the number of differing bytes, and the location of the first one.
+    size_t first_diff = 0;
+    size_t last_diff = 0;
+    int num_diffs = 0;
+    bool found_first_diff = false;
+    for (size_t i = 0; i < size_a; i++) {
+      if (a[i] != b[i]) {
+        num_diffs++;
+        last_diff = i;
+        if (!found_first_diff) {
+          first_diff = i;
+          found_first_diff = true;
+        }
+      }
+    }
+
+    // find the gap between "code" (really data here) and link table. This has up to 15 bytes of
+    // uninitialized memory.
+    const auto* header = (const LinkHeaderV4*)a;
+    int link_data_offset = header->code_size + sizeof(LinkHeaderV4);
+    int start_off_diff_from_code_end = link_data_offset - (int)first_diff;
+    if (num_diffs < 16 && start_off_diff_from_code_end < 16 && (int)last_diff < link_data_offset) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/*!
  * Add an object file to the ObjectFileDB
  */
 void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
@@ -337,10 +386,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   bool duplicated = false;
   // first, check to see if we already got it...
   for (auto& e : obj_files_by_name[obj_name]) {
-    if (e.data.size() == obj_size && e.record.hash == hash) {
-      // just to make sure we don't have a hash collision.
-      ASSERT(!memcmp(obj_data, e.data.data(), obj_size));
-
+    if (are_objects_the_same(obj_name, e.data.size(), e.data.data(), obj_size, obj_data)) {
       // already got it!
       e.reference_count++;
       auto& rec = e.record;

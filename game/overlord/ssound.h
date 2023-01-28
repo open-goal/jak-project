@@ -18,6 +18,7 @@ extern s32 gMusicVol;
 extern VolumePair gPanTable[361];
 extern u32 gStreamSRAM;
 extern u32 gTrapSRAM;
+extern u8 gMirrorMode;
 
 struct Vec3w {
   s32 x;
@@ -36,9 +37,11 @@ struct SoundParams {
   s32 volume;
   Vec3w trans;
   u8 group;
+  u8 reg[3];
 };
 
 struct Sound {
+  char name[16];
   s32 id;
   s32 sound_handle;
   s32 is_music;
@@ -57,7 +60,7 @@ struct Curve {
 
 void InitSound_Overlord();
 void SetCurve(s32 curve, s32 fallof, s32 ease);
-void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle);
+void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle);
 void KillSoundsInGroup(u8 group);
 void PrintActiveSounds();
 void SetMusicVol();

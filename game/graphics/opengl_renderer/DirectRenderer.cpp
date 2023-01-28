@@ -278,13 +278,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
-  if (state.fogging_enable) {
-    //    ASSERT(false);
-  }
+
   if (state.aa_enable) {
-    ASSERT(false);
-  }
-  if (state.use_uv) {
     ASSERT(false);
   }
   if (state.ctxt) {
@@ -580,6 +575,9 @@ void DirectRenderer::render_gif(const u8* data,
             case GifTag::RegisterDescriptor::TEX0_1:
               handle_tex0_1_packed(data + offset);
               break;
+            case GifTag::RegisterDescriptor::UV:
+              handle_uv_packed(data + offset);
+              break;
             default:
               ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
                                             reg_descriptor_name(reg_desc[reg])));
@@ -769,6 +767,15 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.Q, data + 8, 4);
 }
 
+void DirectRenderer::handle_uv_packed(const u8* data) {
+  u32 u, v;
+  memcpy(&u, data, 4);
+  memcpy(&v, data + 4, 4);
+  m_prim_building.st_reg.x() = u;
+  m_prim_building.st_reg.y() = v;
+  m_prim_building.Q = 16.f;
+}
+
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   // TODO update Q from st.
   m_prim_building.rgba_reg[0] = data[0];
@@ -790,7 +797,7 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, !adc);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, !adc);
 }
 
 void DirectRenderer::handle_xyz2_packed(const u8* data,
@@ -1083,7 +1090,7 @@ void DirectRenderer::handle_xyzf2(u64 val,
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x << 16, y << 16, z << 8, f, render_state, prof, true);
+  handle_xyzf2_common(x << 16, y << 16, z, f, render_state, prof, true);
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {
@@ -1140,7 +1147,7 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
   v.rgba = rgba;
   v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
   v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
-  v.xyzf[2] = (float)vert[2] / (float)UINT32_MAX;
+  v.xyzf[2] = (float)vert[2] / (float)0xffffff;
   v.xyzf[3] = (float)vert[3];
   v.stq = st;
   v.tex_unit = unit;

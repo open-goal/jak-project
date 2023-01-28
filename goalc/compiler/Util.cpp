@@ -1,5 +1,6 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
+#include "common/util/json_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
@@ -8,7 +9,7 @@ void Compiler::save_repl_history() {
   m_repl->save_history();
 }
 
-void Compiler::print_to_repl(const std::string_view& str) {
+void Compiler::print_to_repl(const std::string& str) {
   m_repl->print_to_repl(str);
 }
 

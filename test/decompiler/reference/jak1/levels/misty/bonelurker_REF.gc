@@ -126,18 +126,18 @@
 ;; definition for function bonelurker-stunned-event-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior bonelurker-stunned-event-handler bonelurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'attack)
-                     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
-                       (nav-enemy-set-hit-from-direction arg0)
-                       (send-event arg0 'get-attack-count 1)
-                       (logclear! (-> self mask) (process-mask actor-pause))
-                       (go-virtual nav-enemy-die)
-                       'die
-                       )
-                     )
-            )
-    )
+  (the-as object (case arg2
+                   (('attack)
+                    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+                      (nav-enemy-set-hit-from-direction arg0)
+                      (send-event arg0 'get-attack-count 1)
+                      (logclear! (-> self mask) (process-mask actor-pause))
+                      (go-virtual nav-enemy-die)
+                      'die
+                      )
+                    )
+                   )
+          )
   )
 
 ;; failed to figure out what this is:

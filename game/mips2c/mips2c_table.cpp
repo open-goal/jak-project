@@ -181,6 +181,35 @@ namespace method_39_spatial_hash { extern void link(); }
 namespace method_36_spatial_hash { extern void link(); }
 namespace method_37_spatial_hash { extern void link(); }
 namespace method_35_spatial_hash { extern void link(); }
+namespace method_10_collide_shape_prim_mesh { extern void link(); }
+namespace method_10_collide_shape_prim_sphere { extern void link(); }
+namespace method_10_collide_shape_prim_group { extern void link(); }
+namespace method_11_collide_shape_prim_mesh { extern void link(); }
+namespace method_11_collide_shape_prim_sphere { extern void link(); }
+namespace method_11_collide_shape_prim_group { extern void link(); }
+namespace method_9_collide_cache_prim { extern void link(); }
+namespace method_10_collide_cache_prim { extern void link(); }
+namespace method_17_collide_cache { extern void link(); }
+namespace method_9_collide_puss_work { extern void link(); }
+namespace method_10_collide_puss_work { extern void link(); }
+namespace bones_mtx_calc { extern void link(); }
+namespace foreground_check_longest_edge_asm { extern void link(); }
+namespace foreground_merc { extern void link(); }
+namespace add_light_sphere_to_light_group { extern void link(); }
+namespace light_hash_add_items { extern void link(); }
+namespace light_hash_count_items { extern void link(); }
+namespace light_hash_get_bucket_index { extern void link(); }
+namespace nav_state_patch_pointers { extern void link(); }
+namespace method_45_nav_mesh { extern void link(); }
+namespace method_20_nav_engine { extern void link(); }
+namespace method_43_nav_mesh { extern void link(); }
+namespace nav_dma_send_to_spr_no_flush { extern void link(); }
+namespace nav_dma_send_from_spr_no_flush { extern void link(); }
+namespace method_17_nav_engine { extern void link(); }
+namespace method_39_nav_state { extern void link(); }
+namespace method_17_nav_engine { extern void link(); }
+namespace method_18_nav_engine { extern void link(); }
+namespace method_21_nav_engine { extern void link(); }
 
 }
 // clang-format on
@@ -300,7 +329,28 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_31_sphere_hash::link, jak2::method_32_sphere_hash::link,
        jak2::method_33_spatial_hash::link, jak2::method_39_spatial_hash::link,
        jak2::method_36_spatial_hash::link, jak2::method_37_spatial_hash::link,
-       jak2::method_35_spatial_hash::link, jak2::method_33_sphere_hash::link}}},
+       jak2::method_35_spatial_hash::link, jak2::method_33_sphere_hash::link}},
+     {"collide-cache",
+      {jak2::method_10_collide_shape_prim_mesh::link,
+       jak2::method_10_collide_shape_prim_sphere::link,
+       jak2::method_10_collide_shape_prim_group::link,
+       jak2::method_11_collide_shape_prim_mesh::link,
+       jak2::method_11_collide_shape_prim_sphere::link,
+       jak2::method_11_collide_shape_prim_group::link, jak2::method_9_collide_cache_prim::link,
+       jak2::method_10_collide_cache_prim::link, jak2::method_17_collide_cache::link,
+       jak2::method_9_collide_puss_work::link, jak2::method_10_collide_puss_work::link}},
+     {"bones", {jak2::bones_mtx_calc::link}},
+     {"foreground", {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link}},
+     {"lights",
+      {jak2::add_light_sphere_to_light_group::link, jak2::light_hash_add_items::link,
+       jak2::light_hash_count_items::link, jak2::light_hash_get_bucket_index::link}},
+     {"nav-control", {jak2::method_39_nav_state::link}},
+     {"nav-mesh",
+      {jak2::nav_state_patch_pointers::link, jak2::method_45_nav_mesh::link,
+       jak2::method_20_nav_engine::link, jak2::method_43_nav_mesh::link,
+       jak2::nav_dma_send_to_spr_no_flush::link, jak2::nav_dma_send_from_spr_no_flush::link,
+       jak2::method_17_nav_engine::link, jak2::method_18_nav_engine::link,
+       jak2::method_21_nav_engine::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

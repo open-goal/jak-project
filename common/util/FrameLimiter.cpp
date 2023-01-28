@@ -2,6 +2,8 @@
 
 #include <thread>
 
+#include "common/common_types.h"
+
 double FrameLimiter::round_to_nearest_60fps(double current) {
   double one_frame = 1.f / 60.f;
   int frames_missed = (current / one_frame);  // rounds down
@@ -11,7 +13,7 @@ double FrameLimiter::round_to_nearest_60fps(double current) {
   return (frames_missed + 1) * one_frame;
 }
 
-#ifdef __linux__
+#ifdef OS_POSIX
 
 FrameLimiter::FrameLimiter() {}
 

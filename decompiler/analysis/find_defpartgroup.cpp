@@ -181,9 +181,7 @@ L80:
       auto& fld = car(cur_field);
       item.sound_spec = cdr(cdr(cdr(cdr(&fld))))->as_pair()->car;
     }
-    if (item.field_id == 48) {
-      item.userdata = car(cur_field);
-    }
+    item.userdata = car(cur_field);
     if (item.is_sp_end(env.version)) {
       // sp-end
       break;

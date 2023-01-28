@@ -1108,7 +1108,7 @@ void EmptyElement::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 
 bool cmp(Register x, Register y) {
-  int comparison = x.to_string().compare(y.to_string());
+  int comparison = x.to_string() > y.to_string();
   if (comparison <= 0)
     return true;
   return false;
@@ -1118,7 +1118,7 @@ RLetElement::RLetElement(Form* _body, RegSet _regs) : body(_body) {
   for (auto& reg : _regs) {
     sorted_regs.push_back(reg);
   }
-  std::sort(sorted_regs.begin(), sorted_regs.end(), cmp);
+  std::stable_sort(sorted_regs.begin(), sorted_regs.end(), cmp);
 }
 
 void RLetElement::apply(const std::function<void(FormElement*)>& f) {
@@ -3260,7 +3260,12 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
 
     if (offset) {
-      result += fmt::format(" :offset {}", offset);
+      // jak2 has switched this field to a signed 16 bit number
+      if (env.version == GameVersion::Jak2) {
+        result += fmt::format(" :offset {}", (s16)offset);
+      } else {
+        result += fmt::format(" :offset {}", offset);
+      }
     }
 
     if (hour_mask) {

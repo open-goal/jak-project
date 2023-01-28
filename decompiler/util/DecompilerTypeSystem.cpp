@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/Disasm/Register.h"
 
@@ -60,7 +61,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         rest = &cdr(*rest);
         // check for docstring
         if (rest->is_pair() && car(*rest).is_string()) {
-          symbol_metadata.docstring = car(*rest).as_string()->data;
+          symbol_metadata.docstring = str_util::trim_newline_indents(car(*rest).as_string()->data);
           rest = &cdr(*rest);
         }
         auto sym_type = car(*rest);
@@ -79,6 +80,12 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         for (auto& state : dtr.type_info->get_states_declared_for_type()) {
           // TODO - get definition info for the state definitions specifically
           add_symbol(state.first, state.second, dtr.type_info->m_metadata);
+        }
+        // add state documentation to the DTS
+        virtual_state_metadata.emplace(dtr.type.base_type(),
+                                       dtr.type_info->m_virtual_state_definition_meta);
+        for (const auto& [state_name, meta] : dtr.type_info->m_state_definition_meta) {
+          state_metadata.emplace(state_name, meta);
         }
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);

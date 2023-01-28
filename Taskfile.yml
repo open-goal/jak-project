@@ -38,7 +38,7 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\":false,\\\"allowed_objects\\\":[]}"'
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"allowed_objects\": []}'"
   boot-game:
     desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
@@ -67,10 +67,7 @@ tasks:
       - sh: test -f {{.GOALC_BIN_RELEASE_DIR}}/goalc{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
-      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --game {{.GAME}}"
-  repl-lt:
-    cmds:
-      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --auto-lt --game {{.GAME}}"
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}}"
   format:
     desc: "Format code"
     cmds:
@@ -86,10 +83,10 @@ tasks:
   # DECOMPILING
   decomp:
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"levels_extract\": false}'"
   decomp-file:
     cmds:
-      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"levels_extract\": false, \"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
@@ -99,6 +96,9 @@ tasks:
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
+  update-gsrc-glob:
+    cmds:
+      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --file_pattern "{{.GLOB}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
   update-gsrc-file:
     cmds:
       - task: decomp-file
@@ -122,18 +122,18 @@ tasks:
   # TESTS
   offline-tests: # ran by jenkins
     cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
-  offline-tests-fast:
-    cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --fail-on-cmp'
   offline-test-file:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
+  offline-tests-fast:
+    cmds:
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
   # TODO - amalgamate offline-tests and this task, run twice if the previous step fails
   update-ref-tests:
     cmds:
       - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --num_threads 32 --dump_current_output --fail-on-cmp'
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-tests-fast
