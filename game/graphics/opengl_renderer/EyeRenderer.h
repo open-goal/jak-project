@@ -16,7 +16,7 @@ class EyeRenderer : public BucketRenderer {
   ~EyeRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
-  void init_textures(TexturePool& texture_pool) override;
+  void init_textures(TexturePool& texture_pool, GameVersion) override;
 
   void handle_eye_dma2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 

@@ -7,3 +7,82 @@
 
 ;; DECOMP BEGINS
 
+(define *security-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x2
+      :func #f
+      :init-func #f
+      :tex #f
+      :tex-name "security-env-dest"
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 4800.0
+      :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+      :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+      :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func #f
+      :tex #f
+      :tex-name "security-dot-dest"
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 600.0
+      :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+      :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+      )
+    )
+  )
+
+(defun set-security-color! ((arg0 vector))
+  (let ((v1-1 (-> *security-texture-anim-array* array-data 0)))
+    (set! (-> v1-1 data 0 start-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 0 end-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 1 start-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 1 end-color quad) (-> arg0 quad))
+    )
+  (let ((v1-5 (-> *security-texture-anim-array* array-data 1)))
+    (set! (-> v1-5 data 1 start-color quad) (-> arg0 quad))
+    (set! (-> v1-5 data 1 end-color quad) (-> arg0 quad))
+    (set! (-> v1-5 data 2 start-color quad) (-> arg0 quad))
+    (let ((v0-0 (-> v1-5 data 2 end-color)))
+      (set! (-> v0-0 quad) (-> arg0 quad))
+      v0-0
+      )
+    )
+  )
+
+(defun set-security-flash! ((arg0 vector))
+  (let ((v1-1 (-> *security-texture-anim-array* array-data 1)))
+    (set! (-> v1-1 data 0 start-color quad) (-> arg0 quad))
+    (let ((v0-0 (-> v1-1 data 0 end-color)))
+      (set! (-> v0-0 quad) (-> arg0 quad))
+      v0-0
+      )
+    )
+  )
+
+(defun set-security-texture-masks! ((arg0 vector))
+  (local-vars (a3-3 uint128) (a3-4 uint128))
+  (let ((v1-3 (-> *security-texture-anim-array* array-data 0 data 0 tex))
+        (a1-3 (-> *security-texture-anim-array* array-data 1 data 1 tex))
+        )
+    (when (and v1-3 a1-3)
+      (dotimes (a2-1 3)
+        (let ((a3-2 (-> (the-as (pointer uint128) (+ (the-as uint arg0) (* a2-1 16)))))
+              (t0-2 (-> v1-3 masks data a2-1 mask quad))
+              )
+          (.por a3-3 a3-2 t0-2)
+          )
+        (let ((t0-5 (-> a1-3 masks data a2-1 mask quad)))
+          (.por a3-4 a3-3 t0-5)
+          )
+        (set! (-> (the-as (pointer uint128) (+ (the-as uint arg0) (* a2-1 16)))) a3-4)
+        )
+      #f
+      )
+    )
+  )

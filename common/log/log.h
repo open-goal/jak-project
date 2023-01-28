@@ -23,7 +23,16 @@ struct LogTime {
 #endif
 
 // Logging API
-enum class level { trace = 0, debug = 1, info = 2, warn = 3, error = 4, die = 5, off = 6 };
+enum class level {
+  trace = 0,
+  debug = 1,
+  info = 2,
+  warn = 3,
+  error = 4,
+  die = 5,
+  off_unless_die = 6,
+  off = 7
+};
 
 namespace internal {
 // log implementation stuff, not to be called by the user

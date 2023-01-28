@@ -863,7 +863,7 @@
 (copy-strs "INSHUT" "INVORTEX" "INCSQUAR" "INPRISON")
 
 ;; jak ambient
-(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6")
+(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6" "JAA7")
 
 (copy-vag-files "ENG")
 
@@ -1158,6 +1158,8 @@
   "palmpilot-ag"
   "atollext-vis"
   )
+
+(copy-strs "AT1RES" "ATSINTRO" "ATSTANK" "ATSA" "ATSB" "ATSC" "ATSD" "ATSE" "ATSARA" "ATSARB")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; ATO
@@ -1534,8 +1536,6 @@
   "baron-consite+0-ag"
   "consite-break-scaffold-a-ag"
   "consite-break-scaffold-ag"
-  ;; "daxter-highres-ag"
-  ;; "jak-highres-ag"
   "baron-highres-ag"
   "crimson-guard-highres-ag"
   "consite-bomb-elevator-ag"
@@ -1550,25 +1550,22 @@
 ;; ;; COB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "COB.DGO" "cob.gd")
+(cgo "COB.DGO" "cob.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/consite/consiteb-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/consite/consiteb-part.gc"
+  )
 
-;; (copy-textures 3032 3033 3142 3180 3239)
+(copy-textures 3032 3033 3142 3180 3239)
 
-;; (copy-gos
-;;   "kor-transform-ag"
-;;   "kor-break-ag"
-;;   "metalkor-highres-ag"
-;;   "com-airlock-inner-ag"
-;;   "door-ctyinda-ag"
-;;   "kor-break-ray-ag"
-;;   "consiteb-vis"
-;;   )
+(copy-gos
+  "kor-transform-ag"
+  "kor-break-ag"
+  "kor-break-ray-ag"
+  "consiteb-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; CPA
@@ -1598,25 +1595,24 @@
 ;; ;; CPO
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "CPO.DGO" "cpo.gd")
+(cgo "CPO.DGO" "cpo.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/port/ctyport-part.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/port/ctyport-part.gc"
+  )
 
-;; (copy-textures 1557 1560 1558 1325 1645)
+(copy-textures 1557 1560 1558 1325 1645)
 
-;; (copy-gos
-;;   "barge-ag"
-;;   "mecha-daxter-ag"
-;;   "farthy-ag"
-;;   "air-train-ag"
-;;   "hip-door-a-ag"
-;;   "ctyport-vis"
-;;   )
-
+(copy-gos
+  "barge-ag"
+  "mecha-daxter-ag"
+  "farthy-ag"
+  ;; "air-train-ag"
+  ;; "hip-door-a-ag"
+  "ctyport-vis"
+  )
 ;;;;;;;;;;;;;;;;;;;;;
 ;; CTB
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1913,19 +1909,21 @@
 ;; ;; DRB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "DRB.DGO" "drb.gd")
+(cgo "DRB.DGO" "drb.gd")
 
-;; (copy-textures 2298 2299 2492)
+(copy-textures 2298 2299 2492)
 
-;; (copy-gos
-;;   "drill-elevator-ag"
-;;   "drill-flip-step-ag"
-;;   "drill-elevator-base-ag"
-;;   "drill-falling-door-ag"
-;;   "drill-drop-plat-ag"
-;;   "drill-switch-ag"
-;;   "drillb-vis"
-;;   )
+(copy-gos
+  ;; "drill-elevator-ag"
+  ;; "drill-flip-step-ag"
+  ;; "drill-elevator-base-ag"
+  ;; "drill-falling-door-ag"
+  "drill-drop-plat-ag"
+  ;; "drill-switch-ag"
+  "drillb-vis"
+  )
+
+(copy-strs "DRTEXPLO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DRI
@@ -1998,6 +1996,8 @@
   "drill-moving-staircase-ag"
   "drillmtn"
   )
+
+(copy-strs "DRW1")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FDA
@@ -2471,21 +2471,21 @@
 ;; ;; LBBUSH
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LBBUSH.DGO" "lbbush.gd")
+(cgo "LBBUSH.DGO" "lbbush.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/side_missions/ctywide-bbush.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/side_missions/ctywide-bbush.gc"
+  )
 
-;; (copy-textures 3336 3465)
+(copy-textures 3336 3465)
 
-;; (copy-gos
-;;   "hovering-mine-ag"
-;;   "homing-beacon-ag"
-;;   "lbbush"
-;;   )
+(copy-gos
+  "hovering-mine-ag"
+  "homing-beacon-ag"
+  "lbbush"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LBOMBBOT
@@ -3261,25 +3261,27 @@
   "lwhack"
   )
 
+(copy-strs "CIWAMINT" "CIWAMRES")
+
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LWIDEB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LWIDEB.DGO" "lwideb.gd")
+(cgo "LWIDEB.DGO" "lwideb.gd")
 
-;; (copy-textures 2972)
+(copy-textures 2972)
 
-;; (copy-gos
-;;   "grunt-ag"
-;;   "citizen-norm-ag"
-;;   "predator-ag"
-;;   "flitter-ag"
-;;   "cara-ag"
-;;   "citizen-norm-rider-ag"
-;;   "crimson-bike-ag"
-;;   "bikea-ag"
-;;   "lwideb"
-;;   )
+(copy-gos
+  ;; "grunt-ag"
+  ;; "citizen-norm-ag"
+  ;; "predator-ag"
+  ;; "flitter-ag"
+  ;; "cara-ag"
+  ;; "citizen-norm-rider-ag"
+  ;; "crimson-bike-ag"
+  ;; "bikea-ag"
+  "lwideb"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LWIDEC
@@ -3863,7 +3865,7 @@
   "ruins-vis"
   )
 
-(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2" "RUTVICTO")
+(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2" "RUPC3" "RUGTHRES" "RUSVICTO" "RUTVICTO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SAG
@@ -4179,6 +4181,8 @@
   "strip-vis"
   )
 
+(copy-strs "ECVICTOR")
+
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; SWB
 ;; ;;;;;;;;;;;;;;;;;;;;;
@@ -4339,6 +4343,8 @@
   "tombb-vis"
   )
 
+(copy-strs "TOBINTRO" "TOBRES")
+
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; TOC
 ;; ;;;;;;;;;;;;;;;;;;;;;
@@ -4480,32 +4486,34 @@
   "underb-vis"
   )
 
+(copy-strs "UNBD1" "UNBD2" "UNBD3" "UNBD4" "UNFSRES" "UNCONE" "UNCTWO" "UNCTHREE" "UNGSORES")
+
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; UND
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "UND.DGO" "und.gd")
+(cgo "UND.DGO" "und.gd")
 
-;; (copy-textures 3045 3048 3049 3047 3276)
+(copy-textures 3045 3048 3049 3047 3276)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "sig-highres-ag"
-;;   "centipede-fma-ag"
-;;   "under-break-bridge-b-ag"
-;;   "under-break-bridge-ag"
-;;   "com-airlock-inner-ag"
-;;   "under-break-door-ag"
-;;   "grunt-fma-ag"
-;;   "under-break-ceiling-ag"
-;;   "under-seaweed-c-ag"
-;;   "under-seaweed-b-ag"
-;;   "under-seaweed-d-ag"
-;;   "under-seaweed-a-ag"
-;;   "particleman-ag"
-;;   "under-vis"
-;;   )
+(copy-gos
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  ;; "sig-highres-ag"
+  "centipede-fma-ag"
+  "under-break-bridge-b-ag"
+  "under-break-bridge-ag"
+  ;; "com-airlock-inner-ag"
+  "under-break-door-ag"
+  ;; "grunt-fma-ag"
+  "under-break-ceiling-ag"
+  "under-seaweed-c-ag"
+  "under-seaweed-b-ag"
+  "under-seaweed-d-ag"
+  "under-seaweed-a-ag"
+  ;; "particleman-ag"
+  "under-vis"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; VIN
