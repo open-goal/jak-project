@@ -29502,7 +29502,7 @@
 
 (deftype mech-info (basic)
   ((entity                basic                      :offset-assert 4)
-   (hud                   uint64            1       :offset-assert 8) ;; handle?
+   (hud                   handle             1       :offset-assert 8) ;; handle?
    (mech-trans            vector             :inline :offset-assert 16)
    (mech-quat             vector             :inline :offset-assert 32)
    (mech-scale            vector             :inline :offset-assert 48)
@@ -37405,7 +37405,6 @@
 ;; drillmid-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-elevator-doors (com-airlock)
   ()
   :method-count-assert 28
@@ -37414,22 +37413,18 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-lift (elevator)
-  ((sound-id uint32  :offset-assert 364)
+  ((sound-id sound-id :offset-assert 368)
    )
   :method-count-assert 50
   :size-assert         #x174
   :flag-assert         #x3201000174
   (:methods
-    (drill-lift-method-49 () none 49)
+    (set-collide-spec! (_type_ symbol) none 49)
     )
   )
-|#
 
-#|
 (deftype drill-moving-staircase (conveyor)
   ()
   :method-count-assert 28
@@ -37438,8 +37433,6 @@
   (:methods
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-part                     ;;
@@ -37465,52 +37458,44 @@
 ;; drill-mech-master              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-mech-master (process)
-  ((cpanel-count         int8    :offset-assert 124)
-   (alarm-sound-id       uint32  :offset-assert 128)
-   (explosion-sound-id   uint32  :offset-assert 132)
-   (exited?              basic   :offset-assert 136)
-   (killed-jak?          basic   :offset-assert 140)
-   (part-doom            basic   :offset-assert 144)
-   (hud-cpanel           uint64  :offset-assert 148)
-   (hud-timer            uint64  :offset-assert 156)
-   (scene-player-handle  uint64  :offset-assert 164)
-   (state-time           time-frame  :offset-assert 172)
-   (next-warn-time       time-frame  :offset-assert 180)
-   (total-countdown-time time-frame  :offset-assert 188)
-   (started-timer-time   time-frame  :offset-assert 196)
+  ((cpanel-count         int8                     :offset-assert 128)
+   (alarm-sound-id       sound-id                 :offset-assert 132)
+   (explosion-sound-id   sound-id                 :offset-assert 136)
+   (exited?              symbol                   :offset-assert 140)
+   (killed-jak?          symbol                   :offset-assert 144)
+   (part-doom            sparticle-launch-control :offset-assert 148)
+   (hud-cpanel           handle                   :offset-assert 152)
+   (hud-timer            handle                   :offset-assert 160)
+   (scene-player-handle  handle                   :offset-assert 168)
+   (state-time           time-frame               :offset-assert 176)
+   (next-warn-time       time-frame               :offset-assert 184)
+   (total-countdown-time time-frame               :offset-assert 192)
+   (started-timer-time   time-frame               :offset-assert 200)
    )
   :method-count-assert 20
   :size-assert         #xd0
   :flag-assert         #x14005000d0
   (:methods
-    (drill-mech-master-method-9 () none 9)
-    (drill-mech-master-method-10 () none 10)
-    (drill-mech-master-method-11 () none 11)
-    (drill-mech-master-method-12 () none 12)
-    (drill-mech-master-method-13 () none 13)
     (idle () _type_ :state 14)
     (active () _type_ :state 15)
     (hostile () _type_ :state 16)
     (failed () _type_ :state 17)
     (victory () _type_ :state 18)
-    (drill-mech-master-method-19 () none 19)
+    (spawn-hud-panel "Spawn the hud panel for the drill-mech mission." (_type_ symbol) none 19)
     )
   )
-|#
 
-;; (define-extern *drill-mech-master* object)
-;; (define-extern drill-mech-master-event-handler function)
-;; (define-extern drill-mech-master-init-by-other function)
+(define-extern *drill-mech-master* (pointer drill-mech-master))
+(define-extern drill-mech-master-event-handler (function process int symbol event-message-block object :behavior drill-mech-master))
+(define-extern drill-mech-master-init-by-other (function none :behavior drill-mech-master))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-plat-falling (base-plat)
-  ((init-quat quaternion :inline :offset-assert 268)
+  ((init-quat quaternion :inline :offset-assert 272)
    )
   :method-count-assert 36
   :size-assert         #x120
@@ -37520,27 +37505,23 @@
     (falling () _type_ :state 35)
     )
   )
-|#
 
-#|
 (deftype drill-elevator-shaft (process-drawable)
-  ((extent UNKNOWN 2 :offset-assert 204)
-   (length float     :offset-assert 236)
+  ((extent vector 2 :inline :offset-assert 208)
+   (length float            :offset-assert 240)
    )
   :method-count-assert 22
   :size-assert         #xf4
   :flag-assert         #x16008000f4
   (:methods
     (idle () _type_ :state 20)
-    (drill-elevator-shaft-method-21 () none 21)
+    (set-extent! (_type_ vector) none 21)
     )
   )
-|#
 
-#|
 (deftype drill-elevator (elevator)
-  ((shaft    uint32  :offset-assert 364)
-   (sound-id uint32  :offset-assert 368)
+  ((shaft    (pointer drill-elevator-shaft) :offset-assert 368)
+   (sound-id sound-id                       :offset-assert 372)
    )
   :method-count-assert 49
   :size-assert         #x178
@@ -37548,11 +37529,9 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-mech-elevator (drill-elevator)
-  ((running-sound-id uint32  :offset-assert 372)
+  ((running-sound-id sound-id  :offset-assert 376)
    )
   :method-count-assert 49
   :size-assert         #x17c
@@ -37560,35 +37539,32 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype fire-floor (process-drawable)
-  ((part-off           basic               :offset-assert 196)
-   (size               UNKNOWN     2       :offset-assert 200)
-   (attack-id          uint32              :offset-assert 208)
-   (sound-id           uint32              :offset-assert 212)
-   (sound-playing      basic               :offset-assert 216)
-   (deadly-width       float               :offset-assert 220)
-   (deadly-length      float               :offset-assert 224)
-   (flames-end-tt      float               :offset-assert 228)
-   (generous           float               :offset-assert 232)
-   (no-collision-timer uint64              :offset-assert 236)
-   (local-to-world     matrix      :inline :offset-assert 252)
-   (world-to-local     matrix      :inline :offset-assert 316)
-   (sync               sync-linear :inline :offset-assert 380)
+  ((root-override      collide-shape-moving     :offset 128 :score 1)
+   (part-off           sparticle-launch-control :offset-assert 200)
+   (size               float       2            :offset-assert 204)
+   (attack-id          uint32                   :offset-assert 212)
+   (sound-id           sound-id                 :offset-assert 216)
+   (sound-playing      symbol                   :offset-assert 220)
+   (deadly-width       float                    :offset-assert 224)
+   (deadly-length      float                    :offset-assert 228)
+   (flames-end-tt      float                    :offset-assert 232)
+   (generous           float                    :offset-assert 236)
+   (no-collision-timer time-frame               :offset-assert 240)
+   (local-to-world     matrix           :inline :offset-assert 256)
+   (world-to-local     matrix           :inline :offset-assert 320)
+   (sync               sync-linear      :inline :offset-assert 384)
    )
   :method-count-assert 22
   :size-assert         #x190
   :flag-assert         #x1601100190
   (:methods
     (idle () _type_ :state 20)
-    (fire-floor-method-21 () none 21)
+    (set-part "Set the particle launch controls for the on/off states." (_type_) none 21)
     )
   )
-|#
 
-#|
 (deftype fire-floor-a (fire-floor)
   ()
   :method-count-assert 22
@@ -37597,73 +37573,65 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-switch (basebutton)
-  ((green-part basic  :offset-assert 284)
-   (down-frame float  :offset-assert 288)
+  ((green-part sparticle-launch-control :offset-assert 288)
+   (down-frame float                    :offset-assert 292)
    )
   :method-count-assert 41
   :size-assert         #x128
   :flag-assert         #x2900b00128
   (:methods
-    (drill-switch-method-39 () none 39)
-    (drill-switch-method-40 () none 40)
+    (drill-switch-method-39 (_type_) none 39)
+    (set-switch-color "Set the switch color based on its state." (_type_ symbol) none 40)
     )
   )
-|#
 
-#|
 (deftype drill-laser (process-drawable)
-  ((speed        float   :offset-assert 196)
-   (offset       float   :offset-assert 200)
-   (pause        float   :offset-assert 204)
-   (firing?      basic   :offset-assert 208)
-   (hit-sound-id uint32  :offset-assert 212)
+  ((speed        float    :offset-assert 200)
+   (offset       float    :offset-assert 204)
+   (pause        float    :offset-assert 208)
+   (firing?      symbol   :offset-assert 212)
+   (hit-sound-id sound-id :offset-assert 216)
    )
   :method-count-assert 21
-  :size-assert         #xe8
-  :flag-assert         #x15007000e8
+  :size-assert         #xdc
+  :flag-assert         #x15006000dc
   (:methods
     (drill-laser-idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern drill-plat-falling-trans function)
-;; (define-extern drill-elevator-shaft-init-by-other function)
-;; (define-extern drill-login function)
-;; (define-extern drill-deactivate function)
-;; (define-extern drill-activate function)
+(define-extern drill-plat-falling-trans (function none :behavior drill-plat-falling))
+(define-extern drill-elevator-shaft-init-by-other (function vector vector none :behavior drill-elevator-shaft))
+(define-extern drill-login (function none))
+(define-extern drill-deactivate (function level none))
+(define-extern drill-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-panel                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-control-panel (process-focusable)
-  ((id             int8    :offset-assert 200)
-   (idle-sound-id  uint32  :offset-assert 204)
-   (debris-part    basic   :offset-assert 208)
-   (state-time     time-frame  :offset-assert 188)
-   (next-warn-time time-frame  :offset-assert 220)
+  ((id             int8                     :offset-assert 204)
+   (idle-sound-id  sound-id                 :offset-assert 208)
+   (debris-part    sparticle-launch-control :offset-assert 212)
+   ;; (state-time     time-frame               :offset-assert 188)
+   (next-warn-time time-frame               :offset 224)
    )
   :method-count-assert 33
   :size-assert         #xe8
   :flag-assert         #x21007000e8
   (:methods
     (idle () _type_ :state 27)
-    (hit () _type_ :state 28)
-    (drill-control-panel-method-29 () none 29)
-    (drill-control-panel-method-30 () none 30)
-    (drill-control-panel-method-31 () none 31)
-    (drill-control-panel-method-32 () none 32)
+    (hit (symbol) _type_ :state 28)
+    (init-collision! "Define the collision for the panel." (_type_) none 29)
+    (init-panel "Init some parameters for the panel." (_type_) none 30)
+    (spawn-shock-part "Spawn shock particles." (_type_) none 31)
+    (spawn-explode-part "Spawn explosion particles." (_type_) none 32)
     )
   )
-|#
 
-#|
 (deftype drill-control-panel-a (drill-control-panel)
   ()
   :method-count-assert 33
@@ -37672,9 +37640,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drill-control-panel-b (drill-control-panel-a)
   ()
   :method-count-assert 33
@@ -37683,161 +37649,182 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern spawn-drill-panel-explode function)
-;; (define-extern spawn-drill-panel-ab-explode function)
+(define-extern spawn-drill-panel-explode (function drill-control-panel none))
+(define-extern spawn-drill-panel-ab-explode (function drill-control-panel none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-obs2                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype drill-flip-step (UNKNOWN)
+(deftype drill-flip-step (base-plat)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 40
+  :size-assert         #x110
+  :flag-assert         #x2800900110
+  (:methods
+    (down () _type_ :state 34)
+    (up () _type_ :state 35)
+    (swing-down () _type_ :state 36)
+    (swing-up () _type_ :state 37)
+    (get-skel (_type_) art-group 38)
+    (set-flipped-state
+    "Set the state of the platform based on the completion of the drill-mech task."
+    (_type_) none 39)
+    )
   )
-|#
 
-#|
-(deftype drill-falling-door (UNKNOWN)
+(deftype drill-falling-door (process-drawable)
+  ((root-override  collide-shape-moving :offset 128 :score 1)
+   (hit-state      int32 :offset-assert 200)
+   (next-hit-state int32 :offset-assert 204)
+   )
+  :method-count-assert 23
+  :size-assert         #xd0
+  :flag-assert         #x17005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (hit () _type_ :state 21)
+    (fall (symbol) _type_ :state 22)
+    )
+  )
+
+(deftype drill-sliding-door (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (open () _type_ :state 21)
+    )
   )
-|#
 
-#|
-(deftype drill-sliding-door (UNKNOWN)
+(deftype drill-accelerator-floor (conveyor)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
   )
-|#
 
-#|
-(deftype drill-accelerator-floor (UNKNOWN)
+(deftype drill-breakable-barrel (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype drill-breakable-barrel (UNKNOWN)
+(deftype drill-metalhead-eggs (process-drawable)
+  ((root-override collide-shape-moving :offset 128 :score 1)
+   (actor-group   actor-group  :offset-assert 200)
+   (notify-actor  entity-actor :offset-assert 204)
+  )
+  :method-count-assert 25
+  :size-assert         #xd0
+  :flag-assert         #x19005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (die-fast () _type_ :state 22)
+    (skel-init! "Initialize the skeleton and animations for this object." (_type_) none 23)
+    (init-collision! "Define the collision for this object." (_type_) none 24)
+    )
+  )
+
+(deftype drill-metalhead-eggs-a (drill-metalhead-eggs)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 25
+  :size-assert         #xd0
+  :flag-assert         #x19005000d0
   )
-|#
 
-#|
-(deftype drill-metalhead-eggs (UNKNOWN)
+(deftype drill-metalhead-eggs-b (drill-metalhead-eggs)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 25
+  :size-assert         #xd0
+  :flag-assert         #x19005000d0
   )
-|#
 
-#|
-(deftype drill-metalhead-eggs-a (UNKNOWN)
+(deftype drill-metalhead-eggs-c (drill-metalhead-eggs)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 25
+  :size-assert         #xd0
+  :flag-assert         #x19005000d0
   )
-|#
 
-#|
-(deftype drill-metalhead-eggs-b (UNKNOWN)
+(deftype drill-bridge-shot (process-drawable)
+  ((root-override collide-shape-moving :offset 128 :score 1)
+   (anim          art-joint-anim :offset-assert 200)
+   (art-name      string         :offset-assert 204)
+   )
+  :method-count-assert 22
+  :size-assert         #xd0
+  :flag-assert         #x16005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (die (symbol) _type_ :state 21)
+    )
+  )
+
+(deftype drill-drill (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
   )
-|#
 
-#|
-(deftype drill-metalhead-eggs-c (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype drill-drop-plat (drill-flip-step)
+  ((ridden?          symbol     :offset-assert 272)
+   (not-ridden-timer time-frame :offset-assert 280)
+   )
+  :method-count-assert 40
+  :size-assert         #x120
+  :flag-assert         #x2800a00120
+  (:methods
+   (:override-doc "Set the state of the platform." 39)
+   )
   )
-|#
 
-#|
-(deftype drill-bridge-shot (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype drill-drill (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype drill-drop-plat (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-;; (define-extern *drill-falling-door-anim-table* array)
-;; (define-extern drill-falling-door-handler function)
+(define-extern *drill-falling-door-anim-table* (array int32))
+(define-extern drill-falling-door-handler (function process int symbol event-message-block object :behavior drill-falling-door))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-spool                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype drill-wall (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype drill-wall (process-focusable)
+  ((anim      spool-anim  :offset-assert 204)
+   (art-name  string      :offset-assert 208)
+   (egg-group actor-group :offset-assert 212)
   )
-|#
+  :method-count-assert 29
+  :size-assert         #xd8
+  :flag-assert         #x1d006000d8
+  (:methods
+    (idle () _type_ :state 27)
+    (hit (symbol) _type_ :state 28)
+    )
+  )
 
-#|
-(deftype drill-crane (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype drill-crane (process-focusable)
+  ((anim      spool-anim  :offset-assert 204)
+   (art-name  string      :offset-assert 208)
+   (egg-group actor-group :offset-assert 212)
   )
-|#
+  :method-count-assert 29
+  :size-assert         #xd8
+  :flag-assert         #x1d006000d8
+  (:methods
+    (idle () _type_ :state 27)
+    (hit (symbol) _type_ :state 28)
+    )
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44657,7 +44644,7 @@
 ;; (define-extern *kernel-packages* object) ;; pair
 (define-extern mech-init (function entity-actor matrix3 handle float none :behavior mech))
 (define-extern mech-target-init (function vector quaternion entity-actor none :behavior mech))
-(define-extern mech-target-spawn (function vector target quaternion entity-actor (pointer mech-target)))
+(define-extern mech-target-spawn (function vector process quaternion entity-actor (pointer mech-target)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-mech                    ;;

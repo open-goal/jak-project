@@ -1908,19 +1908,21 @@
 ;; ;; DRB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "DRB.DGO" "drb.gd")
+(cgo "DRB.DGO" "drb.gd")
 
-;; (copy-textures 2298 2299 2492)
+(copy-textures 2298 2299 2492)
 
-;; (copy-gos
-;;   "drill-elevator-ag"
-;;   "drill-flip-step-ag"
-;;   "drill-elevator-base-ag"
-;;   "drill-falling-door-ag"
-;;   "drill-drop-plat-ag"
-;;   "drill-switch-ag"
-;;   "drillb-vis"
-;;   )
+(copy-gos
+  ;; "drill-elevator-ag"
+  ;; "drill-flip-step-ag"
+  ;; "drill-elevator-base-ag"
+  ;; "drill-falling-door-ag"
+  "drill-drop-plat-ag"
+  ;; "drill-switch-ag"
+  "drillb-vis"
+  )
+
+(copy-strs "DRTEXPLO")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DRI
@@ -1993,6 +1995,8 @@
   "drill-moving-staircase-ag"
   "drillmtn"
   )
+
+(copy-strs "DRW1")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; FDA
