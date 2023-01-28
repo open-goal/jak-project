@@ -1810,22 +1810,19 @@
 ;; ;; DEMO
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "DEMO.DGO" "demo.gd")
+(cgo "DEMO.DGO" "demo.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/demo/demo-obs.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/demo/demo-obs.gc"
+  )
 
-;; (copy-textures 1872 1876 1868)
+(copy-textures 1872 1876 1868)
 
-;; (copy-gos
-;;   "daxter-highres-ag"
-;;   "jak-logo-ag"
-;;   "jak-stand-ag"
-;;   "demo"
-;;   )
+(copy-gos
+  "demo"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; DG1

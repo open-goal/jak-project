@@ -6999,6 +6999,10 @@
   (text-x24d #x024d)
   (text-x24e #x024e)
   (text-x24f #x024f)
+  (oracle-tutorial-dark-bomb #x0273)
+  (oracle-tutorial-dark-blast #x0274)
+  (oracle-tutorial-dark-invincible #x0275)
+  (oracle-tutorial-dark-giant #x0276)
   (text-x277 #x0277)
   (scene-subtitles-enabled #x30d)
   (scene-subtitles-disabled #x30e)
@@ -8623,7 +8627,7 @@
    (bone      bone      :offset-assert 16)
    (param0    (function cspace transformq none)  :offset-assert 20) ;; guessed by decompiler
    (param1    basic     :offset-assert 24)
-   (param2    basic     :offset-assert 28)
+   (param2    basic     :offset-assert 28) ;; this isn't always a basic, but that has issues in relocate
    )
   :method-count-assert 10
   :size-assert         #x20
@@ -38147,9 +38151,8 @@
 ;; forresca-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fort-elec-button (cty-guard-turret-button)
-  ((start-up? basic  :offset-assert 284)
+  ((start-up? symbol  :offset-assert 288)
    )
   :method-count-assert 41
   :size-assert         #x124
@@ -38158,11 +38161,9 @@
     (waiting () _type_ :state 40)
     )
   )
-|#
 
-#|
 (deftype fort-led (process-drawable)
-  ((button-actor basic  :offset-assert 196)
+  ((button-actor entity-actor  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
@@ -38172,25 +38173,25 @@
     (green () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype elec-lock-gate (fort-elec-gate)
-  ()
+  (
+    (actor-group       (pointer actor-group) :offset-assert 516)
+    (actor-group-count int32   :offset-assert 520)
+    (all-gone?         symbol  :offset-assert 524)
+  )
   :method-count-assert 32
   :size-assert         #x210
   :flag-assert         #x2001900210
-  ;; Failed to read fields.
   (:methods
     (pre-shutdown () _type_ :state 30)
-    (elec-lock-gate-method-31 () none 31)
+    (elec-lock-gate-method-31 (_type_ symbol) symbol 31)
     )
   )
-|#
 
-;; (define-extern fortress-login function)
-;; (define-extern fortress-deactivate function)
-;; (define-extern fortress-activate function)
+(define-extern fortress-login (function none))
+(define-extern fortress-deactivate (function none))
+(define-extern fortress-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rhino                          ;;
@@ -38699,19 +38700,18 @@
 ;; intro-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype intro-flamer (process-drawable)
-  ((up-dir           vector :inline :offset-assert 204)
-   (average-dir      vector :inline :offset-assert 220)
-   (id               int32          :offset-assert 236)
-   (path-u           float          :offset-assert 240)
-   (path-du          float          :offset-assert 244)
-   (z-rot            float          :offset-assert 248)
-   (flit-prev-offset vector :inline :offset-assert 252)
-   (flit-next-offset vector :inline :offset-assert 268)
-   (flit-factor      float          :offset-assert 284)
-   (flit-timer       uint64         :offset-assert 292)
-   (flit-interval    uint64         :offset-assert 300)
+  ((up-dir           vector :inline :offset-assert 208)
+   (average-dir      vector :inline :offset-assert 224)
+   (id               int32          :offset-assert 240)
+   (path-u           float          :offset-assert 244)
+   (path-du          float          :offset-assert 248)
+   (z-rot            float          :offset-assert 252)
+   (flit-prev-offset vector :inline :offset-assert 256)
+   (flit-next-offset vector :inline :offset-assert 272)
+   (flit-factor      float          :offset-assert 288)
+   (flit-timer       uint64         :offset-assert 296)
+   (flit-interval    uint64         :offset-assert 304)
    )
   :method-count-assert 23
   :size-assert         #x138
@@ -38719,34 +38719,25 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (intro-flamer-method-22 () none 22)
+    (intro-flamer-method-22 (_type_) path-control 22)
     )
   )
-|#
 
-#|
 (deftype metalhead-spawner (process)
-  ((path-tbl    UNKNOWN 19      :offset-assert 124)
-   (init-pos    vector  :inline :offset-assert 204)
-   (average-dir vector  :inline :offset-assert 220)
+  ((path-tbl    path-control 19      :offset-assert 128)
+   (init-pos    vector  :inline :offset-assert 208)
+   (average-dir vector  :inline :offset-assert 224)
    )
   :method-count-assert 17
   :size-assert         #xf0
   :flag-assert         #x11007000f0
   (:methods
-    (metalhead-spawner-method-9 () none 9)
-    (metalhead-spawner-method-10 () none 10)
-    (metalhead-spawner-method-11 () none 11)
-    (metalhead-spawner-method-12 () none 12)
-    (metalhead-spawner-method-13 () none 13)
     (idle () _type_ :state 14)
     (active () _type_ :state 15)
     (die () _type_ :state 16)
     )
   )
-|#
 
-#|
 (deftype vil-windmill-sail (process-drawable)
   ()
   :method-count-assert 21
@@ -38756,9 +38747,8 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern intro-flamer-init-by-other function)
+(define-extern intro-flamer-init-by-other (function int path-control vector none :behavior intro-flamer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vortex-data                    ;;
@@ -39862,7 +39852,6 @@
 ;; ctyfarm-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shaker (structure)
   ((axis         vector :inline :offset-assert 0)
    (start-time   time-frame         :offset-assert 16)
@@ -39879,15 +39868,13 @@
   :size-assert         #x38
   :flag-assert         #xa00000038
   (:methods
-    (shaker-method-9 () none 9)
+    (shaker-method-9 (_type_) none 9)
     )
   )
-|#
 
-#|
 (deftype farm-marrow (process-focusable)
-  ((shakers            UNKNOWN 5 :offset-assert 204)
-   (incoming-attack-id uint32    :offset-assert 524)
+  ((shakers            shaker 5 :inline :offset-assert 208)
+   (incoming-attack-id uint32    :offset-assert 528)
    )
   :method-count-assert 31
   :size-assert         #x214
@@ -39895,16 +39882,14 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (farm-marrow-method-29 () none 29)
-    (farm-marrow-method-30 () none 30)
+    (farm-marrow-method-29 (_type_) none 29)
+    (farm-marrow-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype farm-beetree (process-focusable)
-  ((shakers            UNKNOWN 2 :offset-assert 204)
-   (incoming-attack-id uint32    :offset-assert 332)
+  ((shakers            shaker 2 :inline :offset-assert 208)
+   (incoming-attack-id uint32    :offset-assert 336)
    )
   :method-count-assert 31
   :size-assert         #x154
@@ -39912,16 +39897,14 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (farm-beetree-method-29 () none 29)
-    (farm-beetree-method-30 () none 30)
+    (farm-beetree-method-29 (_type_) none 29)
+    (farm-beetree-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype farm-cabbage (process-focusable)
-  ((shakers            UNKNOWN 2 :offset-assert 204)
-   (incoming-attack-id uint32    :offset-assert 332)
+  ((shakers            shaker 2 :inline :offset-assert 208)
+   (incoming-attack-id uint32    :offset-assert 336)
    )
   :method-count-assert 31
   :size-assert         #x154
@@ -39929,16 +39912,14 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (farm-cabbage-method-29 () none 29)
-    (farm-cabbage-method-30 () none 30)
+    (farm-cabbage-method-29 (_type_) none 29)
+    (farm-cabbage-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype farm-small-cabbage (process-focusable)
-  ((shakers            UNKNOWN 1 :offset-assert 204)
-   (incoming-attack-id uint32    :offset-assert 268)
+  ((shakers            shaker 1 :inline :offset-assert 208)
+   (incoming-attack-id uint32    :offset-assert 272)
    )
   :method-count-assert 31
   :size-assert         #x114
@@ -39946,16 +39927,14 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (farm-small-cabbage-method-29 () none 29)
-    (farm-small-cabbage-method-30 () none 30)
+    (farm-small-cabbage-method-29 (_type_) none 29)
+    (farm-small-cabbage-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype farm-chilirots (process-focusable)
-  ((shakers            UNKNOWN 4 :offset-assert 204)
-   (incoming-attack-id uint32    :offset-assert 460)
+  ((shakers            shaker 4 :inline :offset-assert 208)
+   (incoming-attack-id uint32    :offset-assert 464)
    )
   :method-count-assert 31
   :size-assert         #x1d4
@@ -39963,13 +39942,11 @@
   (:methods
     (idle () _type_ :state 27)
     (die () _type_ :state 28)
-    (farm-chilirots-method-29 () none 29)
-    (farm-chilirots-method-30 () none 30)
+    (farm-chilirots-method-29 (_type_) none 29)
+    (farm-chilirots-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype farm-sprinkler-barrels (process-focusable)
   ()
   :method-count-assert 30
@@ -39977,25 +39954,24 @@
   :flag-assert         #x1e005000cc
   (:methods
     (idle () _type_ :state 27)
-    (farm-sprinkler-barrels-method-28 () none 28)
-    (farm-sprinkler-barrels-method-29 () none 29)
+    (farm-sprinkler-barrels-method-28 (_type_) none 28)
+    (farm-sprinkler-barrels-method-29 (_type_) none 29)
     )
   )
-|#
 
-;; (define-extern check-farm-piece-ground function)
-;; (define-extern pu->knocked-type function)
-;; (define-extern *farm-marrow-exploder-params* joint-exploder-static-params)
-;; (define-extern farm-marrow-callback function)
-;; (define-extern *farm-beetree-exploder-params* joint-exploder-static-params)
-;; (define-extern farm-beetree-callback function)
-;; (define-extern *farm-cabbage-exploder-params* joint-exploder-static-params)
-;; (define-extern farm-cabbage-callback function)
-;; (define-extern *farm-small-cabbage-exploder-params* joint-exploder-static-params)
-;; (define-extern farm-small-cabbage-callback function)
-;; (define-extern *farm-chilirots-exploder-params* joint-exploder-static-params)
-;; (define-extern farm-chilirots-callback function)
-;; (define-extern farm-activate function)
+(define-extern check-farm-piece-ground (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern pu->knocked-type (function penetrate knocked-type))
+(define-extern *farm-marrow-exploder-params* joint-exploder-static-params)
+(define-extern farm-marrow-callback (function cspace transformq none))
+(define-extern *farm-beetree-exploder-params* joint-exploder-static-params)
+(define-extern farm-beetree-callback (function cspace transformq none))
+(define-extern *farm-cabbage-exploder-params* joint-exploder-static-params)
+(define-extern farm-cabbage-callback (function cspace transformq none))
+(define-extern *farm-small-cabbage-exploder-params* joint-exploder-static-params)
+(define-extern farm-small-cabbage-callback (function cspace transformq none))
+(define-extern *farm-chilirots-exploder-params* joint-exploder-static-params)
+(define-extern farm-chilirots-callback (function cspace transformq none))
+(define-extern farm-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyfarma-part                  ;;
@@ -43421,29 +43397,35 @@
 ;; demo-obs                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype demo-control (process)
-  ()
+  (
+    (selected    int32      :offset-assert 128)
+    (sprites     hud-sprite 2  :inline :offset-assert 144) ;; elt size: 64
+    (sprite-pos  vector :inline    :offset-assert 272)
+    (sprite-draw uint32     :offset-assert 288)
+    (buffer      external-art-buffer 2  :offset-assert 292) ;; elt size: 4
+    (want        int32 2  :offset-assert 300) ;; elt size: 4
+    (have        int32 2  :offset-assert 308) ;; elt size: 4
+    (draw        int32      :offset-assert 316)
+    (active      symbol     :offset-assert 320)
+    (spark-time  time-frame :offset-assert 328)
+    (gui-id      uint32     :offset-assert 336)
+  )
   :method-count-assert 15
   :size-assert         #x154
   :flag-assert         #xf00e00154
-  ;; Failed to read fields.
   (:methods
-    (demo-control-method-9 () none 9)
-    (demo-control-method-10 () none 10)
-    (demo-control-method-11 () none 11)
-    (demo-control-method-12 () none 12)
-    (demo-control-method-13 () none 13)
     (idle () _type_ :state 14)
     )
   )
-|#
 
-;; (define-extern demo-plug-lightning function)
-;; (define-extern demo-screen-change function)
-;; (define-extern demo-wait-for-press function)
-;; (define-extern demo-menu function)
-;; (define-extern demo-control-init function)
+;; TODO - defined in the kernel
+(define-extern *demo-control* (pointer demo-control))
+(define-extern demo-plug-lightning (function process-drawable vector cspace none))
+(define-extern demo-screen-change (function symbol int symbol int none :behavior demo-control))
+(define-extern demo-wait-for-press (function time-frame time-frame symbol symbol))
+(define-extern demo-menu (function object :behavior demo-control))
+(define-extern demo-control-init (function none :behavior demo-control))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; credits                        ;;
@@ -43487,7 +43469,6 @@
 ;; palroof-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pal-lowrez-throne (med-res-level)
   ()
   :method-count-assert 21
@@ -43496,11 +43477,11 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype pal-prong (process-drawable)
-  ()
+  (
+    (root-override collide-shape :offset 128 :score 100)
+  )
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
@@ -43510,10 +43491,9 @@
     (broken () _type_ :state 22)
     )
   )
-|#
 
-;; (define-extern *pal-prong-exploder-params* joint-exploder-static-params)
-;; (define-extern pal-prong-small-collision function)
+(define-extern *pal-prong-exploder-params* joint-exploder-static-params)
+(define-extern pal-prong-small-collision (function none :behavior pal-prong))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palboss-texture                ;;
@@ -46655,10 +46635,9 @@
 ;; delivery-task                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype krew-package (process-drawable)
-  ((attach-object uint64  :offset-assert 196)
-   (scale         float   :offset-assert 204)
+  ((attach-object handle  :offset-assert 200)
+   (scale         float   :offset-assert 208)
    )
   :method-count-assert 24
   :size-assert         #xd4
@@ -46666,16 +46645,15 @@
   (:methods
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
-    (krew-package-method-22 () none 22)
-    (krew-package-method-23 () none 23)
+    (krew-package-method-22 (_type_) none 22)
+    (krew-package-method-23 (_type_) none 23)
     )
   )
-|#
 
-;; (define-extern krew-package-init-by-other function)
-;; (define-extern krew-package-spawn function)
-;; (define-extern delivery-task-setup-ambush-1 function)
-;; (define-extern delivery-task-setup-ambush-2 function)
+(define-extern krew-package-init-by-other (function process-drawable none :behavior krew-package))
+(define-extern krew-package-spawn (function process process (pointer process)))
+(define-extern delivery-task-setup-ambush-1 (function none))
+(define-extern delivery-task-setup-ambush-2 (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; portrun                        ;;
@@ -52515,7 +52493,6 @@
 ;; hiphog-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hip-trophy-a (process-drawable)
   ()
   :method-count-assert 21
@@ -52525,9 +52502,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-d (process-drawable)
   ()
   :method-count-assert 21
@@ -52537,9 +52512,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-f (process-drawable)
   ()
   :method-count-assert 21
@@ -52549,9 +52522,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-g (process-drawable)
   ()
   :method-count-assert 21
@@ -52561,9 +52532,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-i (process-drawable)
   ()
   :method-count-assert 21
@@ -52573,9 +52542,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-j (process-drawable)
   ()
   :method-count-assert 21
@@ -52585,9 +52552,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-n (process-drawable)
   ()
   :method-count-assert 21
@@ -52597,9 +52562,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype hip-trophy-m (process-drawable)
   ()
   :method-count-assert 21
@@ -52609,7 +52572,6 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
