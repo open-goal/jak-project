@@ -1941,26 +1941,28 @@
       (cond
         ;; some water-height info
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
-          (format *debug-temp-string* " ~mm ~mm ~mm #x~X"
+          (+! y-adv (* 8 1))
+          (format *debug-temp-string* " ~mm ~mm ~mm~%(~S)"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
                 (-> (the (pointer float) data) 2)
-                (-> (the (pointer uint32) data) 3)
+                (begin (bit-enum->string water-flags (the int (-> (the (pointer float) data) 3)) (clear *temp-string*)) *temp-string*)
                 )
           )
         ;; some water-height info but with 5 elts
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
-          (format *debug-temp-string* " ~mm ~mm ~mm #x~X ~mm"
+          (+! y-adv (* 8 2))
+          (format *debug-temp-string* " ~mm ~mm ~mm~%(~S)~%~mm"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
                 (-> (the (pointer float) data) 2)
-                (-> (the (pointer uint32) data) 3)
+                (begin (bit-enum->string water-flags (the int (-> (the (pointer float) data) 3)) (clear *temp-string*)) *temp-string*)
                 (-> (the (pointer float) data) 4)
                 )
           )
         ;; music flava (music ambients)
         ((and (= (-> e tag i name) 'flava) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
-          (format *debug-temp-string* " (music-flava ~S)" (enum->string music-flava (-> (the (pointer int32) data) 0)))
+          (format *debug-temp-string* " (music-flava ~S)" (music-flava->string (-> (the (pointer music-flava) data) 0)))
           )
         ;; text id (can be hint ambient)
         ((and (= (-> e tag i name) 'text-id) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
