@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: ripple.gc
-;; name in dgo: ripple
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition of type ripple-request
 (deftype ripple-request (structure)
   ((waveform ripple-wave  :offset-assert   0)
    (effect   merc-effect  :offset-assert   4)
@@ -17,7 +12,20 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type ripple-request
+(defmethod inspect ripple-request ((obj ripple-request))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ripple-request)
+  (format #t "~1Twaveform: ~A~%" (-> obj waveform))
+  (format #t "~1Teffect: #<merc-effect @ #x~X>~%" (-> obj effect))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type ripple-globals
 (deftype ripple-globals (structure)
   ((count    int32                     :offset-assert   0)
    (requests ripple-request 16 :inline :offset-assert   4)
@@ -27,9 +35,24 @@
   :flag-assert         #x900000084
   )
 
+;; definition for method 3 of type ripple-globals
+(defmethod inspect ripple-globals ((obj ripple-globals))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ripple-globals)
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Trequests[16] @ #x~X~%" (-> obj requests))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *ripple-globals*, type ripple-globals
 (define *ripple-globals* "A collection of [[ripple-request]] (max of 16)" (new 'global 'ripple-globals))
 
+;; definition for function ripple-make-request
+;; WARN: Return type mismatch int vs none.
 (defun ripple-make-request ((waveform ripple-wave) (effect merc-effect))
   "Iterate through [[*ripple-globals*]] `requests` looking for the one that matches the provided `effect`
 If NOT found, append a new [[ripple-request]] with the providded `effect` and `waveform` to the end of the `requests`.
@@ -56,6 +79,8 @@ NOTE: There can only be 16 effects at a given time, NOOP if already at that limi
   (none)
   )
 
+;; definition for function ripple-update-waveform-offs
+;; WARN: Return type mismatch int vs none.
 (defun ripple-update-waveform-offs ((arg0 ripple-wave-set) (arg1 clock))
   (let ((f0-1 (the float (- (-> arg1 integral-frame-counter) (-> arg0 frame-save)))))
     (when (!= f0-1 0.0)
@@ -72,12 +97,20 @@ NOTE: There can only be 16 effects at a given time, NOOP if already at that limi
   (none)
   )
 
+;; definition for function ripple-execute-init
+;; INFO: function output is handled by mips2c
 (def-mips2c ripple-execute-init (function none))
 
+;; definition for function ripple-create-wave-table
+;; INFO: function output is handled by mips2c
 (def-mips2c ripple-create-wave-table (function ripple-wave-set int))
 
+;; definition for function ripple-apply-wave-table
+;; INFO: function output is handled by mips2c
 (def-mips2c ripple-apply-wave-table (function merc-effect symbol))
 
+;; definition for function ripple-execute
+;; WARN: Return type mismatch int vs none.
 (defun ripple-execute ()
   "Iterate through [[*ripple-globals*]] requests, from the end to index `0`
 For each request, if it has a `waveform` create the wave-table via `ripple-create-wave-table`
@@ -115,8 +148,12 @@ Once completed, all `requests` have been processed and the `count` is reset to `
   (none)
   )
 
+;; definition for function ripple-matrix-scale
+;; INFO: function output is handled by mips2c
 (def-mips2c ripple-matrix-scale function)
 
+;; definition (debug) for function ripple-add-debug-sphere
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defun-debug ripple-add-debug-sphere ((arg0 process-drawable) (arg1 vector) (arg2 float) (arg3 float))
   (let ((f30-0 (- (quaternion-y-angle (-> arg0 root quat))))
@@ -136,6 +173,7 @@ Once completed, all `requests` have been processed and the `count` is reset to `
   (none)
   )
 
+;; definition for function ripple-slow-add-sine-waves
 (defun ripple-slow-add-sine-waves ((arg0 ripple-wave-set) (arg1 float) (arg2 float))
   (let ((f30-0 0.0))
     (dotimes (s3-0 (-> arg0 count))
@@ -149,6 +187,7 @@ Once completed, all `requests` have been processed and the `count` is reset to `
     )
   )
 
+;; definition for function ripple-find-height
 (defun ripple-find-height ((arg0 process-drawable) (arg1 int) (arg2 vector))
   (local-vars (sv-16 draw-control) (sv-32 float) (sv-48 float))
   (let ((f30-0 (-> arg0 root trans y)))
@@ -206,3 +245,7 @@ Once completed, all `requests` have been processed and the `count` is reset to `
       )
     )
   )
+
+
+
+

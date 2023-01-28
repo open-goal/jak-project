@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: centipede.gc
-;; name in dgo: centipede
-;; dgos: UNB
-
-;; DECOMP BEGINS
-
+;; definition of type centipede-cam
 (deftype centipede-cam (structure)
   ((init?            symbol         :offset-assert   0)
    (trans            vector :inline :offset-assert  16)
@@ -18,7 +13,22 @@
   :flag-assert         #x900000034
   )
 
+;; definition for method 3 of type centipede-cam
+(defmethod inspect centipede-cam ((obj centipede-cam))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'centipede-cam)
+  (format #t "~1Tinit?: ~A~%" (-> obj init?))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
+  (format #t "~1Tdir: #<vector @ #x~X>~%" (-> obj dir))
+  (format #t "~1Ttrack-focus-tilt: ~f~%" (-> obj track-focus-tilt))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type centipede
 (deftype centipede (nav-enemy)
   ((id                     int8                     :offset-assert 604)
    (anim-ctr               int8                     :offset-assert 605)
@@ -58,7 +68,38 @@
     )
   )
 
+;; definition for method 3 of type centipede
+(defmethod inspect centipede ((obj centipede))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tid: ~D~%" (-> obj id))
+  (format #t "~2Tanim-ctr: ~D~%" (-> obj anim-ctr))
+  (format #t "~2Tfocus-pos-hist-count: ~D~%" (-> obj focus-pos-hist-count))
+  (format #t "~2Tlegs-sound: ~A~%" (-> obj legs-sound))
+  (format #t "~2Tgrabbed-focus?: ~A~%" (-> obj grabbed-focus?))
+  (format #t "~2Tusing-chan1-effects?: ~A~%" (-> obj using-chan1-effects?))
+  (format #t "~2Tset-camera-mode?: ~A~%" (-> obj set-camera-mode?))
+  (format #t "~2Ttalking-volume: ~f~%" (-> obj talking-volume))
+  (format #t "~2Tdesired-talking-volume: ~f~%" (-> obj desired-talking-volume))
+  (format #t "~2Tlegs-volume: ~f~%" (-> obj legs-volume))
+  (format #t "~2Tfocus-gnd-height: ~f~%" (-> obj focus-gnd-height))
+  (format #t "~2Ttrack-focus-tilt: ~f~%" (-> obj track-focus-tilt))
+  (format #t "~2Tbobbing-intensity: ~f~%" (-> obj bobbing-intensity))
+  (format #t "~2Tbobbing: ~A~%" (-> obj bobbing))
+  (format #t "~2Tsrc-quat: #<quaternion @ #x~X>~%" (-> obj src-quat))
+  (format #t "~2Tdest-quat: #<quaternion @ #x~X>~%" (-> obj dest-quat))
+  (format #t "~2Tcam: #<centipede-cam @ #x~X>~%" (-> obj cam))
+  (format #t "~2Tfocus-pos-hist[15] @ #x~X~%" (-> obj focus-pos-hist))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-centipede centipede centipede-lod0-jg centipede-idle-ja
               ((centipede-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 3 10)
@@ -66,6 +107,7 @@
               :origin-joint-index 3
               )
 
+;; definition for symbol *centipede-nav-enemy-info*, type nav-enemy-info
 (define *centipede-nav-enemy-info*
   (new 'static 'nav-enemy-info
     :use-die-falling #f
@@ -174,8 +216,10 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *centipede-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for method 74 of type centipede
 (defmethod general-event-handler centipede ((obj centipede) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
@@ -189,6 +233,7 @@
     )
   )
 
+;; definition for method 7 of type centipede
 ;; WARN: Return type mismatch nav-enemy vs centipede.
 (defmethod relocate centipede ((obj centipede) (arg0 int))
   (if (nonzero? (-> obj bobbing))
@@ -200,6 +245,7 @@
   (the-as centipede ((method-of-type nav-enemy relocate) obj arg0))
   )
 
+;; definition for method 10 of type centipede
 (defmethod deactivate centipede ((obj centipede))
   (when (-> obj set-camera-mode?)
     (set! (-> obj set-camera-mode?) #f)
@@ -212,6 +258,8 @@
   (none)
   )
 
+;; definition for method 187 of type centipede
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
 (defmethod centipede-method-187 centipede ((obj centipede))
   (with-pp
@@ -316,6 +364,8 @@
     )
   )
 
+;; definition for method 188 of type centipede
+;; WARN: Return type mismatch int vs none.
 (defmethod centipede-method-188 centipede ((obj centipede))
   (local-vars (s5-0 art-element))
   (let ((janim (if (> (-> obj skel active-channels) 0)
@@ -434,6 +484,8 @@
   (none)
   )
 
+;; definition for method 184 of type centipede
+;; WARN: Return type mismatch int vs none.
 (defmethod set-chan1-effects centipede ((obj centipede))
   (when (-> obj using-chan1-effects?)
     (set! (-> obj using-chan1-effects?) #f)
@@ -445,6 +497,8 @@
   (none)
   )
 
+;; definition for method 142 of type centipede
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod nav-enemy-method-142 centipede ((obj centipede) (arg0 nav-control))
   (with-pp
@@ -512,11 +566,13 @@
     )
   )
 
+;; definition for method 60 of type centipede
 (defmethod coin-flip? centipede ((obj centipede))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
+;; definition for method 98 of type centipede
 (defmethod in-aggro-range? centipede ((obj centipede) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
@@ -547,6 +603,7 @@
     )
   )
 
+;; definition for method 107 of type centipede
 ;; WARN: Return type mismatch process vs process-focusable.
 (defmethod get-enemy-target centipede ((obj centipede))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
@@ -558,6 +615,7 @@
     )
   )
 
+;; definition for method 185 of type centipede
 (defmethod target-close? centipede ((obj centipede))
   "Is the target close enough to attack?"
   (let ((targ (get-enemy-target obj)))
@@ -574,6 +632,9 @@
     )
   )
 
+;; definition for method 183 of type centipede
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod centipede-method-183 centipede ((obj centipede))
   (with-pp
     (when (not (and (-> obj next-state) (= (-> obj next-state name) 'thru-grating)))
@@ -621,6 +682,8 @@
     )
   )
 
+;; definition for method 55 of type centipede
+;; INFO: Used lq/sq
 (defmethod track-target! centipede ((obj centipede))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
@@ -712,6 +775,7 @@
     )
   )
 
+;; definition for method 116 of type centipede
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-idle centipede ((obj centipede))
   (case (-> obj id)
@@ -762,6 +826,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate hidden (centipede)
   :virtual #t
   :enter (behavior ()
@@ -788,6 +853,7 @@
   :code (the-as (function none :behavior centipede) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate grab-cam (centipede)
   :virtual #t
   :exit (behavior ()
@@ -822,6 +888,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (centipede)
   :virtual #t
   :enter (behavior ()
@@ -868,6 +935,7 @@
   :post (the-as (function none :behavior centipede) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate active (centipede)
   :virtual #t
   :enter (behavior ()
@@ -896,6 +964,7 @@
   :post (-> (method-of-type centipede idle) post)
   )
 
+;; failed to figure out what this is:
 (defstate stare (centipede)
   :virtual #t
   :enter (behavior ()
@@ -923,6 +992,7 @@
   :code (-> (method-of-type centipede idle) code)
   )
 
+;; failed to figure out what this is:
 (defstate hostile (centipede)
   :virtual #t
   :enter (behavior ()
@@ -984,6 +1054,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate stop-chase (centipede)
   :virtual #t
   :enter (behavior ()
@@ -1019,6 +1090,8 @@
     )
   )
 
+;; definition for method 186 of type centipede
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod centipede-method-186 centipede ((obj centipede))
   (with-pp
@@ -1083,6 +1156,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate attack (centipede)
   :virtual #t
   :enter (behavior ()
@@ -1169,6 +1243,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate attack-failed (centipede)
   :virtual #t
   :exit (behavior ()
@@ -1197,6 +1272,7 @@
   :post (-> (method-of-type centipede attack) post)
   )
 
+;; failed to figure out what this is:
 (defstate thru-grating (centipede)
   :virtual #t
   :enter (behavior ()
@@ -1243,6 +1319,7 @@
     )
   )
 
+;; definition for method 114 of type centipede
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! centipede ((obj centipede))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
@@ -1335,6 +1412,8 @@
   (none)
   )
 
+;; definition for method 115 of type centipede
+;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! centipede ((obj centipede))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (set! (-> obj id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
@@ -1398,3 +1477,7 @@
   0
   (none)
   )
+
+
+
+

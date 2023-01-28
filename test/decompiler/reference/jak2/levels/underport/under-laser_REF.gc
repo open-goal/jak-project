@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: under-laser.gc
-;; name in dgo: under-laser
-;; dgos: UNB
-
-;; DECOMP BEGINS
-
+;; definition of type under-laser-info
 (deftype under-laser-info (basic)
   ((options              uint8  :offset-assert   4)
    (laser-radius         float  :offset-assert   8)
@@ -20,7 +15,24 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type under-laser-info
+(defmethod inspect under-laser-info ((obj under-laser-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Toptions: ~D~%" (-> obj options))
+  (format #t "~1Tlaser-radius: ~f~%" (-> obj laser-radius))
+  (format #t "~1Tlaser-move-dist: ~f~%" (-> obj laser-move-dist))
+  (format #t "~1Tshadow-top-y: ~f~%" (-> obj shadow-top-y))
+  (format #t "~1Tshadow-height: ~f~%" (-> obj shadow-height))
+  (format #t "~1Tshadow-radius-adjust: ~f~%" (-> obj shadow-radius-adjust))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *under-laser-infos*, type (array under-laser-info)
 (define *under-laser-infos* (new 'static 'boxed-array :type under-laser-info
                               (new 'static 'under-laser-info
                                 :laser-radius 28508.16
@@ -69,6 +81,7 @@
                               )
         )
 
+;; definition of type under-laser-shadow
 (deftype under-laser-shadow (process-drawable)
   ((root-override   collide-shape-moving         :offset        128)
    (info            under-laser-info             :offset-assert 200)
@@ -83,7 +96,22 @@
     )
   )
 
+;; definition for method 3 of type under-laser-shadow
+(defmethod inspect under-laser-shadow ((obj under-laser-shadow))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinfo: ~A~%" (-> obj info))
+  (format #t "~2Ttrans-xz-offset: #<vector @ #x~X>~%" (-> obj trans-xz-offset))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type under-laser-slave
 (deftype under-laser-slave (process-drawable)
   ((root-override collide-shape-moving  :offset 128)
    )
@@ -96,7 +124,20 @@
     )
   )
 
+;; definition for method 3 of type under-laser-slave
+(defmethod inspect under-laser-slave ((obj under-laser-slave))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type under-laser
 (deftype under-laser (process-drawable)
   ((root-override      collide-shape-moving         :offset        128)
    (info               under-laser-info             :offset-assert 200)
@@ -120,12 +161,35 @@
     )
   )
 
+;; definition for method 3 of type under-laser
+(defmethod inspect under-laser ((obj under-laser))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinfo: ~A~%" (-> obj info))
+  (format #t "~2Tid: ~D~%" (-> obj id))
+  (format #t "~2Tlightning: ~A~%" (-> obj lightning))
+  (format #t "~2Tdraw-test-script: ~A~%" (-> obj draw-test-script))
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tlaser-dir: #<vector @ #x~X>~%" (-> obj laser-dir))
+  (format #t "~2Tslave-trans-offset: #<vector @ #x~X>~%" (-> obj slave-trans-offset))
+  (format #t "~2Tzero-pos: #<vector @ #x~X>~%" (-> obj zero-pos))
+  (format #t "~2Tone-pos: #<vector @ #x~X>~%" (-> obj one-pos))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-under-laser under-laser under-laser-lod0-jg under-laser-idle-ja
               ((under-laser-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-under-laser-shadow under-laser-shadow under-laser-shadow-lod0-jg under-laser-shadow-idle-ja
               ((under-laser-shadow-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 14)
@@ -134,6 +198,7 @@
               :shadow-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defstate idle (under-laser-shadow)
   :virtual #t
   :trans (behavior ()
@@ -169,6 +234,8 @@
   :post (the-as (function none :behavior under-laser-shadow) ja-post)
   )
 
+;; definition for function under-laser-shadow-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior under-laser-shadow-init-by-other under-laser-shadow ((arg0 under-laser-info) (arg1 vector) (arg2 vector))
   (set! (-> self info) arg0)
@@ -202,6 +269,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (under-laser-slave)
   :virtual #t
   :trans (behavior ()
@@ -217,6 +285,8 @@
   :post (the-as (function none :behavior under-laser-slave) ja-post)
   )
 
+;; definition for function under-laser-slave-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior under-laser-slave-init-by-other under-laser-slave ()
   (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
@@ -239,6 +309,8 @@
   (none)
   )
 
+;; definition for method 22 of type under-laser
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod under-laser-method-22 under-laser ((obj under-laser))
   (with-pp
@@ -299,6 +371,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate dormant (under-laser)
   :virtual #t
   :enter (behavior ()
@@ -322,6 +395,7 @@
   :code (the-as (function none :behavior under-laser) sleep-code)
   )
 
+;; failed to figure out what this is:
 (defstate idle (under-laser)
   :virtual #t
   :enter (behavior ()
@@ -387,6 +461,7 @@
     )
   )
 
+;; definition for method 7 of type under-laser
 ;; WARN: Return type mismatch process-drawable vs under-laser.
 (defmethod relocate under-laser ((obj under-laser) (arg0 int))
   (if (nonzero? (-> obj lightning))
@@ -395,6 +470,8 @@
   (the-as under-laser ((method-of-type process-drawable relocate) obj arg0))
   )
 
+;; definition for method 11 of type under-laser
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! under-laser ((obj under-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
@@ -532,3 +609,7 @@ This commonly includes things such as:
     (none)
     )
   )
+
+
+
+

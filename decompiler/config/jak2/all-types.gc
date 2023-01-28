@@ -11255,7 +11255,7 @@
    (eye-anim               merc-eye-anim-block            :offset 4)
    (master-art-group-name  string                         :offset-assert 32) ;; guessed by decompiler
    (master-art-group-index int32                          :offset-assert 36)
-   (blend-shape-anim       basic                          :offset-assert 40)
+   (blend-shape-anim       (pointer int8)                 :offset-assert 40)
    (frames                 joint-anim-compressed-control  :offset-assert 44)
    )
   :method-count-assert 13
@@ -18021,9 +18021,9 @@
     (turn-off (_type_ time-frame) none :behavior process 10)
     (update (_type_ process-drawable) none :behavior process 11)
     (gravity-update (_type_) none 12)
-    (apply-gravity (_type_ vector int) none :behavior process 13)
+    (apply-gravity (_type_ vector int process-drawable) none :behavior process 13)
     (chain-physics-method-14 (_type_ vector int) none 14)
-    (clamp-length (_type_ vector vector) vector 15)
+    (clamp-length (_type_ vector vector object process-drawable) vector 15)
     (chain-physics-method-16 (_type_ int) float 16)
     (chain-physics-method-17 (_type_ vector) none 17)
     )
@@ -18372,7 +18372,7 @@
     (target-mech-jump float float surface)
     target-mech-punch
     target-mech-stance
-    (target-mech-start handle)
+    (target-mech-start handle float symbol)
     target-mech-walk
     target-pilot-edge-grab
     (target-pilot-start handle)
@@ -24119,7 +24119,6 @@
 ;; merc-blend-shape               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype blerc-block-header (structure)
   ((tag       generic-merc-tag :inline :offset-assert 0)
    (vtx-count uint32                   :offset-assert 16)
@@ -24131,9 +24130,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype blerc-block (structure)
   ((output uint8              848     :offset-assert 0) ;; guessed by decompiler
    (header blerc-block-header :inline :offset-assert 848)
@@ -24142,19 +24139,15 @@
   :size-assert         #x370
   :flag-assert         #x900000370
   )
-|#
 
-#|
 (deftype blerc-dcache (structure)
-  ((repl-mult vector 40 :offset-assert 0) ;; guessed by decompiler
+  ((repl-mult vector 40 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x280
   :flag-assert         #x900000280
   )
-|#
 
-#|
 (deftype blerc-globals (structure)
   ((first            uint32  :offset-assert 0)
    (next             uint32  :offset-assert 4)
@@ -24168,9 +24161,7 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype blerc-context (structure)
   ((block-a blerc-block :inline :offset-assert 0)
    (dummy   uint8       7312    :offset-assert 880) ;; guessed by decompiler
@@ -24180,19 +24171,18 @@
   :size-assert         #x2370
   :flag-assert         #x900002370
   )
-|#
 
-;; (define-extern *stats-blerc* object) ;; symbol
-;; (define-extern *blerc-globals* object) ;; blerc-globals
-;; (define-extern blerc-stats-init function) ;; (function none)
-(define-extern blerc-init (function none)) ;;
+(define-extern *stats-blerc* symbol)
+(define-extern *blerc-globals* blerc-globals)
+(define-extern blerc-stats-init (function none))
+(define-extern blerc-init (function none))
 ;; (define-extern blerc-a-fragment function) ;; function
 ;; (define-extern dma-from-spr function) ;; function
 ;; (define-extern merc-dma-chain-to-spr function) ;; function
 (define-extern blerc-execute (function none))
 (define-extern merc-blend-shape (function process-drawable object))
-;; (define-extern setup-blerc-chains-for-one-fragment function) ;; (function object object object object object object object)
-;; (define-extern setup-blerc-chains function) ;; (function merc-ctrl (pointer int16) dma-buffer none)
+(define-extern setup-blerc-chains-for-one-fragment (function object object object object object object object))
+(define-extern setup-blerc-chains (function merc-ctrl (pointer int16) dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc                           ;;
@@ -24281,7 +24271,7 @@
 
    NOTE: There can only be 16 effects at a given time, NOOP if already at that limit!"
   (function ripple-wave merc-effect none))
-(define-extern ripple-update-waveform-offs (function ripple-wave-set none))
+(define-extern ripple-update-waveform-offs (function ripple-wave-set clock none))
 (define-extern ripple-execute-init "TODO - Handled by MIPS2C" (function none))
 (define-extern ripple-create-wave-table "TODO - Handled by MIPS2C" (function ripple-wave-set int))
 (define-extern ripple-apply-wave-table "TODO - Handled by MIPS2C" (function merc-effect symbol))
@@ -47369,21 +47359,18 @@
 ;; under-shoot-block              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype under-block-spawner (basic)
-  ((col            int8    :offset-assert 4)
-   (row            int8    :offset-assert 5)
-   (active-handle  uint64  :offset-assert 8)
-   (waiting-handle uint64  :offset-assert 16)
+  ((col            int8        :offset-assert 4)
+   (row            int8        :offset-assert 5)
+   (active-handle  handle      :offset-assert 8)
+   (waiting-handle handle      :offset-assert 16)
    (exploded-time  time-frame  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype under-block-slot (basic)
   ((col int8  :offset-assert 4)
    (row int8  :offset-assert 5)
@@ -47392,51 +47379,47 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype under-block-puzzle (basic)
-  ((auto-unlock?           basic          :offset-assert 4)
-   (cells-wide             int8           :offset-assert 8)
-   (cells-tall             int8           :offset-assert 9)
-   (last-block-id          int8           :offset-assert 10)
-   (slot-mask              uint8          :offset-assert 11)
-   (slot-mask-full         uint8          :offset-assert 12)
-   (prev-special-attack-id uint32         :offset-assert 16)
-   (orient-ry              float          :offset-assert 20)
-   (spawners               basic          :offset-assert 24)
-   (slots                  basic          :offset-assert 28)
-   (cells                  uint32         :offset-assert 32)
-   (pulse-ops              uint32         :offset-assert 36)
-   (origin                 vector :inline :offset-assert 48)
-   (local-to-world         matrix :inline :offset-assert 64)
+  ((auto-unlock?           symbol                      :offset-assert 4)
+   (cells-wide             int8                        :offset-assert 8)
+   (cells-tall             int8                        :offset-assert 9)
+   (last-block-id          int8                        :offset-assert 10)
+   (slot-mask              uint8                       :offset-assert 11)
+   (slot-mask-full         uint8                       :offset-assert 12)
+   (prev-special-attack-id uint32                      :offset-assert 16)
+   (orient-ry              float                       :offset-assert 20)
+   (spawners               (array under-block-spawner) :offset-assert 24)
+   (slots                  (array under-block-slot)    :offset-assert 28)
+   (cells                  (pointer int32)             :offset-assert 32)
+   (pulse-ops              (pointer int8)              :offset-assert 36)
+   (origin                 vector              :inline :offset-assert 48)
+   (local-to-world         matrix              :inline :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype under-block (process-focusable)
-  ((puzzle             basic          :offset-assert 200)
-   (my-parent          uint32         :offset-assert 204)
-   (prev-attack-id     uint32         :offset-assert 208)
-   (spawner-id         int8           :offset-assert 212)
-   (my-id              int8           :offset-assert 213)
-   (col                int8           :offset-assert 214)
-   (row                int8           :offset-assert 215)
-   (prev-col           int8           :offset-assert 216)
-   (prev-row           int8           :offset-assert 217)
-   (move-dir-x         int8           :offset-assert 218)
-   (move-dir-z         int8           :offset-assert 219)
-   (pulse-op           int8           :offset-assert 220)
-   (pulse-pc           int8           :offset-assert 221)
-   (pulse-ctr          int8           :offset-assert 222)
-   (flags              uint64         :offset-assert 228)
-   (activated-time     time-frame         :offset-assert 236)
-   (rot-axis           vector :inline :offset-assert 252)
-   (away-from-focal-pt vector :inline :offset-assert 268)
+  ((puzzle             under-block-puzzle :offset-assert 204)
+   (my-parent          (pointer process)  :offset-assert 208)
+   (prev-attack-id     uint32             :offset-assert 212)
+   (spawner-id         int8               :offset-assert 216)
+   (my-id              int8               :offset-assert 217)
+   (col                int8               :offset-assert 218)
+   (row                int8               :offset-assert 219)
+   (prev-col           int8               :offset-assert 220)
+   (prev-row           int8               :offset-assert 221)
+   (move-dir-x         int8               :offset-assert 222)
+   (move-dir-z         int8               :offset-assert 223)
+   (pulse-op           int8               :offset-assert 224)
+   (pulse-pc           int8               :offset-assert 225)
+   (pulse-ctr          int8               :offset-assert 226)
+   (flags              uint64             :offset-assert 232)
+   (activated-time     time-frame         :offset-assert 240)
+   (rot-axis           vector     :inline :offset-assert 256)
+   (away-from-focal-pt vector     :inline :offset-assert 272)
    )
   :method-count-assert 51
   :size-assert         #x120
@@ -47456,57 +47439,53 @@
     (fall () _type_ :state 38)
     (explode () _type_ :state 39)
     (die-fast () _type_ :state 40)
-    (under-block-method-41 () none 41)
-    (under-block-method-42 () none 42)
-    (under-block-method-43 () none 43)
-    (under-block-method-44 () none 44)
-    (under-block-method-45 () none 45)
-    (under-block-method-46 () none 46)
-    (under-block-method-47 () none 47)
-    (under-block-method-48 () none 48)
-    (under-block-method-49 () none 49)
-    (under-block-method-50 () none 50)
+    (under-block-method-41 (_type_ symbol) none 41)
+    (under-block-method-42 (_type_) none 42)
+    (under-block-method-43 (_type_ int int) symbol 43)
+    (under-block-method-44 (_type_) symbol 44)
+    (under-block-method-45 (_type_) none 45)
+    (under-block-method-46 (_type_ int int) none 46)
+    (under-block-method-47 (_type_ int int) int 47)
+    (under-block-method-48 (_type_ int int) symbol 48)
+    (under-block-method-49 (_type_ int int) symbol 49)
+    (under-block-method-50 (_type_) none 50)
     )
   )
-|#
 
-#|
 (deftype under-shoot-block (process-drawable)
-  ((puzzle        basic   :offset-assert 196)
-   (actor-group   uint32  :offset-assert 200)
-   (allow-unlock? basic   :offset-assert 204)
+  ((puzzle        under-block-puzzle    :offset-assert 200)
+   (actor-group   (pointer actor-group) :offset-assert 204)
+   (allow-unlock? symbol                :offset-assert 208)
    )
   :method-count-assert 29
-  :size-assert         #xe0
-  :flag-assert         #x1d006000e0
+  :size-assert         #xd4
+  :flag-assert         #x1d006000d4
   (:methods
     (idle () _type_ :state 20)
     (victory-locked () _type_ :state 21)
     (victory () _type_ :state 22)
     (beaten () _type_ :state 23)
-    (under-shoot-block-method-24 () none 24)
-    (under-shoot-block-method-25 () none 25)
-    (under-shoot-block-method-26 () none 26)
-    (under-shoot-block-method-27 () none 27)
-    (under-shoot-block-method-28 () none 28)
+    (under-shoot-block-method-24 (_type_ int int) none 24)
+    (under-shoot-block-method-25 (_type_ int int float int) none 25)
+    (under-shoot-block-method-26 (_type_) none 26)
+    (under-shoot-block-method-27 (_type_ symbol) none 27)
+    (under-shoot-block-method-28 (_type_) int 28)
     )
   )
-|#
 
-;; (define-extern *under-block-puzzles* array)
-;; (define-extern *under-shoot-block-exploder-params* joint-exploder-static-params)
-;; (define-extern under-block-event-handler function)
-;; (define-extern cshape-reaction-under-block function)
-;; (define-extern under-block-init-by-other function)
-;; (define-extern under-shoot-block-event-handler function)
+(define-extern *under-block-puzzles* (array under-block-puzzle))
+(define-extern *under-shoot-block-exploder-params* joint-exploder-static-params)
+(define-extern under-block-event-handler (function process int symbol event-message-block object :behavior under-block))
+(define-extern cshape-reaction-under-block (function control-info collide-query vector none :behavior under-block))
+(define-extern under-block-init-by-other (function int int symbol (pointer process) none :behavior under-block))
+(define-extern under-shoot-block-event-handler (function process int symbol event-message-block object :behavior under-shoot-block))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; underb-master                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype under-warp (process-drawable)
-  ((interp float  :offset-assert 196)
+  ((interp float  :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xcc
@@ -47514,61 +47493,52 @@
   (:methods
     (idle () _type_ :state 20)
     (die-fast () _type_ :state 21)
-    (die-fast () _type_ :state 22)
+    (under-warp-method-22 (_type_) none 22)
     )
   )
-|#
 
-#|
 (deftype underb-master (process)
-  ((warp-handle           uint64  :offset-assert 124)
-   (tank-handle           uint64  :offset-assert 132)
-   (underwater-time       time-frame  :offset-assert 140)
-   (last-air-beep-time    time-frame  :offset-assert 148)
-   (ambient-sound-id      uint32  :offset-assert 156)
-   (air-supply            float   :offset-assert 160)
-   (air-charge-up?        basic   :offset-assert 164)
-   (under-water-pitch-mod float   :offset-assert 168)
-   (big-room-entered      basic   :offset-assert 172)
-   (big-room-timer        uint64  :offset-assert 180)
-   (under-plat-player-on  basic   :offset-assert 188)
-   (under-plat-is-up      basic   :offset-assert 192)
+  ((warp-handle           handle     :offset-assert 128)
+   (tank-handle           handle     :offset-assert 136)
+   (underwater-time       time-frame :offset-assert 144)
+   (last-air-beep-time    time-frame :offset-assert 152)
+   (ambient-sound-id      sound-id   :offset-assert 160)
+   (air-supply            float      :offset-assert 164)
+   (air-charge-up?        symbol     :offset-assert 168)
+   (under-water-pitch-mod float      :offset-assert 172)
+   (big-room-entered      symbol     :offset-assert 176)
+   (big-room-timer        time-frame :offset-assert 184)
+   (under-plat-player-on  symbol     :offset-assert 192)
+   (under-plat-is-up      symbol     :offset-assert 196)
    )
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   (:methods
-    (underb-master-method-9 () none 9)
-    (underb-master-method-10 () none 10)
-    (underb-master-method-11 () none 11)
-    (underb-master-method-12 () none 12)
-    (underb-master-method-13 () none 13)
     (idle () _type_ :state 14)
     (big-room-player-under () _type_ :state 15)
     (big-room-player-plat () _type_ :state 16)
-    (underb-master-method-17 () none 17)
+    (underb-master-method-17 () none 17) ;; doesn't actually exist?
     (big-room-player-above () _type_ :state 18)
     (big-room-player-falling () _type_ :state 19)
     (big-room-player-exiting () _type_ :state 20)
     (big-room-player-done () _type_ :state 21)
-    (underb-master-method-22 () none 22)
-    (underb-master-method-23 () none 23)
+    (under-warp-check "Used to check whether the underwater warp effect should be drawn." (_type_) symbol 22)
+    (spawn-air-tank-hud "Spawns or hides the air tank HUD bar." (_type_ symbol) none 23)
     )
   )
-|#
 
-#|
 (deftype under-locking (process-drawable)
-  ((id                  int8    :offset-assert 196)
-   (up-y                float   :offset-assert 200)
-   (down-y              float   :offset-assert 204)
-   (mode                uint64  :offset-assert 212)
-   (which-reminder?     basic   :offset-assert 220)
-   (spooled-sound-id    uint32  :offset-assert 224)
-   (draining-part       basic   :offset-assert 228)
-   (actor-group         uint32  :offset-assert 232)
-   (spooled-sound-delay int32   :offset-assert 236)
-   (last-reminder-time  time-frame  :offset-assert 252)
+  ((id                  int8                     :offset-assert 200)
+   (up-y                float                    :offset-assert 204)
+   (down-y              float                    :offset-assert 208)
+   (mode                uint64                   :offset-assert 216)
+   (which-reminder?     symbol                   :offset-assert 224)
+   (spooled-sound-id    uint32                   :offset-assert 228)
+   (draining-part       sparticle-launch-control :offset-assert 232)
+   (actor-group         (pointer actor-group)    :offset-assert 236)
+   (spooled-sound-delay int32                    :offset-assert 240)
+   (last-reminder-time  time-frame               :offset 256)
    )
   :method-count-assert 24
   :size-assert         #x108
@@ -47580,9 +47550,7 @@
     (draining () _type_ :state 23)
     )
   )
-|#
 
-#|
 (deftype water-anim-under (water-anim)
   ()
   :method-count-assert 29
@@ -47591,27 +47559,25 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern under-warp-init-by-other function)
-;; (define-extern *underb-master* object)
-;; (define-extern underb-master-event-handler function)
-;; (define-extern underb-master-post function)
-;; (define-extern underb-master-init-by-other function)
-;; (define-extern underb-login function)
-;; (define-extern underb-deactivate function)
-;; (define-extern underb-activate function)
-;; (define-extern ripple-for-water-anim-under ripple-wave-set)
+(define-extern under-warp-init-by-other (function vector quaternion entity-actor none :behavior under-warp))
+(define-extern *underb-master* (pointer underb-master))
+(define-extern underb-master-event-handler (function process int symbol event-message-block object :behavior underb-master))
+(define-extern underb-master-post (function none :behavior underb-master))
+(define-extern underb-master-init-by-other (function level none :behavior underb-master))
+(define-extern underb-login (function level none))
+(define-extern underb-deactivate (function level none))
+(define-extern underb-activate (function level none))
+(define-extern ripple-for-water-anim-under ripple-wave-set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bubbler (process-drawable)
-  ((rod-of-god-scale   float   :offset-assert 196)
-   (ambient-id         uint32  :offset-assert 200)
-   (last-recharge-time time-frame  :offset-assert 204)
+  ((rod-of-god-scale   float      :offset-assert 200)
+   (ambient-id         uint32     :offset-assert 204)
+   (last-recharge-time time-frame :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd8
@@ -47621,19 +47587,17 @@
     (hidden () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype under-rise-plat (process-drawable)
-  ((up-y           float   :offset-assert 196)
-   (down-y         float   :offset-assert 200)
-   (delta-y        float   :offset-assert 204)
-   (up-threshold   float   :offset-assert 208)
-   (down-threshold float   :offset-assert 212)
-   (last-ridden    uint64  :offset-assert 220)
-   (ridden         basic   :offset-assert 228)
-   (rider-started  basic   :offset-assert 232)
-   (extra-id       int32   :offset-assert 236)
+  ((up-y           float   :offset-assert 200)
+   (down-y         float   :offset-assert 204)
+   (delta-y        float   :offset-assert 208)
+   (up-threshold   float   :offset-assert 212)
+   (down-threshold float   :offset-assert 216)
+   (last-ridden    time-frame :offset-assert 224)
+   (ridden         symbol  :offset-assert 232)
+   (rider-started  basic   :offset-assert 236)
+   (extra-id       int32   :offset-assert 240)
    )
   :method-count-assert 26
   :size-assert         #xf4
@@ -47647,12 +47611,10 @@
     (going-up () _type_ :state 25)
     )
   )
-|#
 
-#|
 (deftype under-buoy-base (process-drawable)
-  ((release         basic  :offset-assert 196)
-   (open-anim-frame float  :offset-assert 200)
+  ((release         symbol :offset-assert 200)
+   (open-anim-frame float  :offset-assert 204)
    )
   :method-count-assert 22
   :size-assert         #xd0
@@ -47662,9 +47624,7 @@
     (opened () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype under-buoy-chain (process-drawable)
   ()
   :method-count-assert 21
@@ -47674,14 +47634,12 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-buoy-plat (rigid-body-platform)
-  ((orig-trans     vector :inline :offset-assert 380)
-   (surface-height float          :offset-assert 396)
-   (anchor-point   vector :inline :offset-assert 412)
-   (base           uint32         :offset-assert 428)
+  ((orig-trans     vector :inline :offset-assert 384)
+   (surface-height float          :offset-assert 400)
+   (anchor-point   vector :inline :offset-assert 416)
+   (base           (pointer under-buoy-base) :offset-assert 432)
    )
   :method-count-assert 59
   :size-assert         #x1b4
@@ -47691,9 +47649,7 @@
     (running () _type_ :state 58)
     )
   )
-|#
 
-#|
 (deftype under-mine-chain-physics (chain-physics)
   ()
   :method-count-assert 18
@@ -47702,11 +47658,11 @@
   (:methods
     )
   )
-|#
 
 (deftype under-mine (process-drawable)
-  ((chain             chain-physics  :offset-assert 200)
-   (chain-initialized symbol  :offset-assert 204)
+  ((root-override     collide-shape-moving     :offset 128 :score 1)
+   (chain             under-mine-chain-physics :offset-assert 200)
+   (chain-initialized symbol     :offset-assert 204)
    (main-mod          joint-mod  :offset-assert 208)
    (head-mod          joint-mod  :offset-assert 212)
    )
@@ -47719,36 +47675,31 @@
     )
   )
 
-#|
 (deftype under-lift (elevator)
-  ((sound-id uint32  :offset-assert 364)
+  ((sound-id sound-id :offset-assert 368)
    )
   :method-count-assert 50
   :size-assert         #x174
   :flag-assert         #x3201000174
   (:methods
-    (under-lift-method-49 () none 49)
+    (under-lift-method-49 (_type_ symbol) none 49)
     )
   )
-|#
 
-#|
 (deftype under-break-door (process-focusable)
-  ((anim         basic  :offset-assert 200)
-   (art-name     basic  :offset-assert 204)
-   (collide-mesh int32  :offset-assert 208)
+  ((anim         art-joint-anim :offset-assert 204)
+   (art-name     string :offset-assert 208)
+   (collide-mesh int32  :offset-assert 212)
    )
   :method-count-assert 29
   :size-assert         #xd8
   :flag-assert         #x1d006000d8
   (:methods
-    (hit () _type_ :state 27)
+    (hit (symbol) _type_ :state 27)
     (idle () _type_ :state 28)
     )
   )
-|#
 
-#|
 (deftype under-seaweed-a (process-drawable)
   ()
   :method-count-assert 21
@@ -47758,9 +47709,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-seaweed-b (process-drawable)
   ()
   :method-count-assert 21
@@ -47770,9 +47719,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-seaweed-c (process-drawable)
   ()
   :method-count-assert 21
@@ -47782,9 +47729,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-seaweed-d (process-drawable)
   ()
   :method-count-assert 21
@@ -47794,34 +47739,32 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern under-rise-plat-event-handler function)
-;; (define-extern under-buoy-base-init-by-other function)
-;; (define-extern under-buoy-chain-init-by-other function)
-;; (define-extern *under-buoy-plat-platform-constants* object)
-;; (define-extern *under-mine-chain-setup* array)
-;; (define-extern *under-mine-exploder-params* joint-exploder-static-params)
+(define-extern under-rise-plat-event-handler (function process int symbol event-message-block object :behavior under-rise-plat))
+(define-extern under-buoy-base-init-by-other (function object entity-actor none :behavior under-buoy-base))
+(define-extern under-buoy-chain-init-by-other (function object entity-actor none :behavior under-buoy-chain))
+(define-extern *under-buoy-plat-platform-constants* rigid-body-platform-constants)
+(define-extern *under-mine-chain-setup* (array chain-physics-setup))
+(define-extern *under-mine-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-sig-obs                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype under-plat-shoot (plat)
-  ((draw-test-script    basic          :offset-assert 320)
-   (incoming-attack-id  uint32         :offset-assert 324)
-   (angle-flip          float          :offset-assert 328)
-   (angle-flip-vel      float          :offset-assert 332)
-   (state-flip          uint32         :offset-assert 336)
-   (time-flip           uint32         :offset-assert 340)
-   (disable-track-under basic          :offset-assert 344)
-   (dest-angle          float          :offset-assert 348)
-   (on-shake            basic          :offset-assert 352)
-   (hint-count          float          :offset-assert 356)
-   (hit-time            time-frame         :offset-assert 364)
-   (knocked-sound-time  time-frame         :offset-assert 364)
-   (axe-flip            vector :inline :offset-assert 380)
+  ((draw-test-script    script-context :offset-assert 324)
+   (incoming-attack-id  uint32         :offset-assert 328)
+   (angle-flip          float          :offset-assert 332)
+   (angle-flip-vel      float          :offset-assert 336)
+   (state-flip          uint32         :offset-assert 340)
+   (time-flip           uint32         :offset-assert 344)
+   (disable-track-under basic          :offset-assert 348)
+   (dest-angle          float          :offset-assert 352)
+   (on-shake            basic          :offset-assert 356)
+   (hint-count          float          :offset-assert 360)
+   (hit-time            time-frame     :offset-assert 368)
+   (knocked-sound-time  time-frame     :offset-assert 376)
+   (axe-flip            vector :inline :offset-assert 384)
    )
   :method-count-assert 39
   :size-assert         #x190
@@ -47832,11 +47775,10 @@
     (dormant () _type_ :state 38)
     )
   )
-|#
 
-#|
 (deftype under-break-floor (process-drawable)
-  ()
+  ((root-override collide-shape-moving :offset 128 :score 1)
+   )
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
@@ -47846,9 +47788,7 @@
     (die-fast () _type_ :state 22)
     )
   )
-|#
 
-#|
 (deftype under-break-wall (process-drawable)
   ()
   :method-count-assert 22
@@ -47859,11 +47799,10 @@
     (die () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype under-break-bridge (process-drawable)
-  ((bridge-id int8  :offset-assert 196)
+  ((root-override   collide-shape-moving :offset 128 :score 1)
+   (bridge-id int8  :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xc9
@@ -47874,9 +47813,7 @@
     (die () _type_ :state 22)
     )
   )
-|#
 
-#|
 (deftype under-int-door (process-drawable)
   ()
   :method-count-assert 23
@@ -47888,13 +47825,11 @@
     (idle-open () _type_ :state 22)
     )
   )
-|#
 
-#|
 (deftype under-plat-long (base-plat)
-  ((sync       sync-eased :inline :offset-assert 268)
-   (move-start vector     :inline :offset-assert 316)
-   (move-end   vector     :inline :offset-assert 332)
+  ((sync       sync-eased :inline :offset-assert 272)
+   (move-start vector     :inline :offset-assert 320)
+   (move-end   vector     :inline :offset-assert 336)
    )
   :method-count-assert 35
   :size-assert         #x160
@@ -47903,14 +47838,13 @@
     (idle () _type_ :state 34)
     )
   )
-|#
 
-#|
 (deftype under-plat-wall (process-drawable)
-  ((extended-amount float               :offset-assert 196)
-   (in-trans        vector      :inline :offset-assert 204)
-   (out-trans       vector      :inline :offset-assert 220)
-   (sync            sync-paused :inline :offset-assert 236)
+  ((root-override   collide-shape-moving :offset 128 :score 1)
+   (extended-amount float               :offset-assert 200)
+   (in-trans        vector      :inline :offset-assert 208)
+   (out-trans       vector      :inline :offset-assert 224)
+   (sync            sync-paused :inline :offset-assert 240)
    )
   :method-count-assert 21
   :size-assert         #x108
@@ -47919,37 +47853,33 @@
     (active () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-pipe-growls (process-drawable)
-  ((volume             float   :offset-assert 196)
-   (desired-volume     float   :offset-assert 200)
-   (volume-seek-speed  float   :offset-assert 204)
-   (approach-sound-id  uint32  :offset-assert 208)
-   (approach-play-time time-frame  :offset-assert 212)
+  ((volume             float      :offset-assert 200)
+   (desired-volume     float      :offset-assert 204)
+   (volume-seek-speed  float      :offset-assert 208)
+   (approach-sound-id  sound-id   :offset-assert 212)
+   (approach-play-time time-frame :offset-assert 216)
    )
   :method-count-assert 23
-  :size-assert         #xe8
-  :flag-assert         #x17007000e8
+  :size-assert         #xe0
+  :flag-assert         #x17006000e0
   (:methods
     (block-puzzle () _type_ :state 20)
     (block-puzzle-fade () _type_ :state 21)
     (intro-shooting () _type_ :state 22)
     )
   )
-|#
 
-;; (define-extern cshape-reaction-under-plat-shoot function)
-;; (define-extern *under-break-floor-exploder-params* joint-exploder-static-params)
-;; (define-extern under-pipe-growls-post function)
-;; (define-extern under-pipe-growls-init-by-other function)
+(define-extern cshape-reaction-under-plat-shoot (function control-info collide-query vector vector collide-status :behavior under-plat-shoot))
+(define-extern *under-break-floor-exploder-params* joint-exploder-static-params)
+(define-extern under-pipe-growls-post (function sound-id :behavior under-pipe-growls))
+(define-extern under-pipe-growls-init-by-other (function vector symbol none :behavior under-pipe-growls))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-laser                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype under-laser-info (basic)
   ((options              uint8  :offset-assert 4)
    (laser-radius         float  :offset-assert 8)
@@ -47962,12 +47892,11 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype under-laser-shadow (process-drawable)
-  ((info            basic          :offset-assert 196)
-   (trans-xz-offset vector :inline :offset-assert 204)
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   (info            under-laser-info :offset-assert 200)
+   (trans-xz-offset vector   :inline :offset-assert 208)
    )
   :method-count-assert 21
   :size-assert         #xe0
@@ -47976,11 +47905,10 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-laser-slave (process-drawable)
-  ()
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   )
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
@@ -47988,19 +47916,18 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype under-laser (process-drawable)
-  ((info               basic              :offset-assert 196)
-   (id                 int8               :offset-assert 200)
-   (lightning          basic              :offset-assert 204)
-   (draw-test-script   basic              :offset-assert 208)
-   (sync               sync-eased :inline :offset-assert 212)
-   (laser-dir          vector     :inline :offset-assert 268)
-   (slave-trans-offset vector     :inline :offset-assert 284)
-   (zero-pos           vector     :inline :offset-assert 300)
-   (one-pos            vector     :inline :offset-assert 316)
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   (info               under-laser-info   :offset-assert 200)
+   (id                 int8               :offset-assert 204)
+   (lightning          lightning-control  :offset-assert 208)
+   (draw-test-script   script-context     :offset-assert 212)
+   (sync               sync-eased :inline :offset-assert 216)
+   (laser-dir          vector     :inline :offset-assert 272)
+   (slave-trans-offset vector     :inline :offset-assert 288)
+   (zero-pos           vector     :inline :offset-assert 304)
+   (one-pos            vector     :inline :offset-assert 320)
    )
   :method-count-assert 23
   :size-assert         #x150
@@ -48009,32 +47936,29 @@
   (:methods
     (dormant () _type_ :state 20)
     (idle () _type_ :state 21)
-    (under-laser-method-22 () none 22)
+    (under-laser-method-22 (_type_) none 22)
     )
   )
-|#
 
-;; (define-extern *under-laser-infos* array)
-;; (define-extern under-laser-shadow-init-by-other function)
-;; (define-extern under-laser-slave-init-by-other function)
+(define-extern *under-laser-infos* (array under-laser-info))
+(define-extern under-laser-shadow-init-by-other (function under-laser-info vector vector none :behavior under-laser-shadow))
+(define-extern under-laser-slave-init-by-other (function none :behavior under-laser-slave))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pipe-grunt                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pipe-grunt (grunt)
-  ((pipe-front vector :inline :offset-assert 700)
-   (pipe-dir   vector :inline :offset-assert 716)
+  ((pipe-front vector :inline :offset-assert 704)
+   (pipe-dir   vector :inline :offset-assert 720)
    )
   :method-count-assert 187
   :size-assert         #x2e0
   :flag-assert         #xbb026002e0
   (:methods
-    (pipe-grunt-method-186 () none 186)
+    (pipe-grunt-method-186 (_type_) vector 186)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48144,9 +48068,8 @@
 ;; centipede                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype centipede-cam (structure)
-  ((init?            basic          :offset-assert 0)
+  ((init?            symbol         :offset-assert 0)
    (trans            vector :inline :offset-assert 16)
    (dir              vector :inline :offset-assert 32)
    (track-focus-tilt float          :offset-assert 48)
@@ -48155,28 +48078,26 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype centipede (nav-enemy)
-  ((id                     int8                  :offset-assert 600)
-   (anim-ctr               int8                  :offset-assert 601)
-   (focus-pos-hist-count   int8                  :offset-assert 602)
-   (legs-sound             basic                 :offset-assert 604)
-   (grabbed-focus?         basic                 :offset-assert 608)
-   (using-chan1-effects?   basic                 :offset-assert 612)
-   (set-camera-mode?       basic                 :offset-assert 616)
-   (talking-volume         float                 :offset-assert 620)
-   (desired-talking-volume float                 :offset-assert 624)
-   (legs-volume            float                 :offset-assert 628)
-   (focus-gnd-height       float                 :offset-assert 632)
-   (track-focus-tilt       float                 :offset-assert 636)
-   (bobbing-intensity      float                 :offset-assert 640)
-   (bobbing                basic                 :offset-assert 644)
-   (src-quat               quaternion    :inline :offset-assert 652)
-   (dest-quat              quaternion    :inline :offset-assert 668)
-   (cam                    centipede-cam :inline :offset-assert 684)
-   (focus-pos-hist         UNKNOWN       15      :offset-assert 748)
+  ((id                     int8                  :offset-assert 604)
+   (anim-ctr               int8                  :offset-assert 605)
+   (focus-pos-hist-count   int8                  :offset-assert 606)
+   (legs-sound             ambient-sound         :offset-assert 608)
+   (grabbed-focus?         symbol                :offset-assert 612)
+   (using-chan1-effects?   symbol                :offset-assert 616)
+   (set-camera-mode?       symbol                :offset-assert 620)
+   (talking-volume         float                 :offset-assert 624)
+   (desired-talking-volume float                 :offset-assert 628)
+   (legs-volume            float                 :offset-assert 632)
+   (focus-gnd-height       float                 :offset-assert 636)
+   (track-focus-tilt       float                 :offset-assert 640)
+   (bobbing-intensity      float                 :offset-assert 644)
+   (bobbing                trsqv                 :offset-assert 648)
+   (src-quat               quaternion    :inline :offset-assert 656)
+   (dest-quat              quaternion    :inline :offset-assert 672)
+   (cam                    centipede-cam :inline :offset-assert 688)
+   (focus-pos-hist         vector 15     :inline :offset-assert 752)
    )
   :method-count-assert 189
   :size-assert         #x3e0
@@ -48187,17 +48108,16 @@
     (hidden () _type_ :state 180)
     (grab-cam () _type_ :state 181)
     (thru-grating () _type_ :state 182)
-    (centipede-method-183 () none 183)
-    (centipede-method-184 () none 184)
-    (centipede-method-185 () none 185)
-    (centipede-method-186 () none 186)
-    (centipede-method-187 () none 187)
-    (centipede-method-188 () none 188)
+    (centipede-method-183 (_type_) none 183)
+    (set-chan1-effects (_type_) none 184)
+    (target-close? "Is the target close enough to attack?" (_type_) symbol 185)
+    (centipede-method-186 (_type_) none 186)
+    (centipede-method-187 (_type_) none 187)
+    (centipede-method-188 (_type_) none 188)
     )
   )
-|#
 
-;; (define-extern *centipede-nav-enemy-info* nav-enemy-info)
+(define-extern *centipede-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig5-cent1-path0               ;;
@@ -48215,41 +48135,38 @@
 ;; sig5-course                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sig5-course (bot-course)
-  ((chase-speeches basic  :offset-assert 48)
+  ((chase-speeches bot-speech-list-shuffle :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   ;; field default-check-too-far uses ~A with a signed load
   )
-|#
 
-#|
 (deftype sig-under (sig)
-  ((shot-at-growls-index int8            :offset-assert 1068)
-   (growls               UNKNOWN 2       :offset-assert 1076)
-   (next-chase-play-time time-frame          :offset-assert 1092)
-   (grating-broken-time  time-frame          :offset-assert 1092)
-   (test-plane           plane   :inline :offset-assert 1100)
+  ((sig5-course          sig5-course         :offset 652 :score 1)
+   (shot-at-growls-index int8                :offset-assert 1072)
+   (growls               handle 2            :offset-assert 1080)
+   (next-chase-play-time time-frame          :offset 1096)
+   (grating-broken-time  time-frame          :offset 1096)
+   (test-plane           plane       :inline :offset-assert 1104)
    )
   :method-count-assert 265
   :size-assert         #x460
   :flag-assert         #x10903e00460
   (:methods
     (intro-shooting () _type_ :state 259)
-    (sig-under-method-260 () none 260)
-    (sig-under-method-261 () none 261)
-    (sig-under-method-262 () none 262)
-    (sig-under-method-263 () none 263)
-    (sig-under-method-264 () none 264)
+    (sig-under-method-260 (_type_) symbol 260)
+    (sig-under-method-261 (_type_ vector vector symbol) symbol 261)
+    (sig-under-method-262 (_type_ symbol) symbol 262)
+    (sig-under-method-263 (_type_) none 263)
+    (sig-under-method-264 (_type_) symbol 264)
     )
   )
-|#
 
-;; (define-extern sig5-default-check-too-far function)
-;; (define-extern *sig5-course* sig5-course)
+(define-extern sig5-default-check-too-far (function sig-under symbol))
+(define-extern *sig5-course* sig5-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-scenes                   ;;
