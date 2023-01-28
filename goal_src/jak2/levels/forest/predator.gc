@@ -108,6 +108,7 @@
   )
 
 
+;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-impact-sound predator-shot ((obj predator-shot) (arg0 projectile-options))
   (case arg0
     (((projectile-options lose-altitude))
@@ -123,9 +124,10 @@
        )
      )
     )
+  (none)
   )
 
-(defmethod init-collision! predator-shot ((obj predator-shot))
+(defmethod init-proj-collision! predator-shot ((obj predator-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -343,12 +345,14 @@
 
 (set! (-> *predator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-74 predator ((obj predator) (arg0 process) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler predator ((obj predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('attack)
        (set! (-> obj shock-effect-end) (the-as uint (+ (-> pp clock frame-counter) (seconds 1))))
-       ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
        )
       (('death-end)
        (when (nonzero? (-> obj ambient-sound-id))
@@ -356,10 +360,10 @@
          (set! (-> obj ambient-sound-id) (new 'static 'sound-id))
          0
          )
-       ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
        )
       (else
-        ((method-of-type nav-enemy enemy-method-74) obj arg0 arg1 arg2 arg3)
+        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
       )
     )
@@ -1173,10 +1177,8 @@
       (if (not gp-0)
           (go-virtual active)
           )
-      (when (enemy-method-107 self)
-        (when (and gp-0
-                   (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
-                   )
+      (when (get-enemy-target self)
+        (when (and gp-0 (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time)))
           (let ((f0-0
                   (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
                   )
@@ -1318,8 +1320,12 @@
   #f
   )
 
-(defmethod enemy-method-55 predator ((obj predator))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-55)))
+(defmethod track-target! predator ((obj predator))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy track-target!)))
     (t9-0 obj)
     )
   (predator-method-183 obj)
@@ -1345,8 +1351,8 @@
   #f
   )
 
-(defmethod enemy-method-114 predator ((obj predator))
-  "@abstract"
+(defmethod init-enemy-collision! predator ((obj predator))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1448,7 +1454,7 @@
   )
 
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 predator ((obj predator) (arg0 process-focusable) (arg1 symbol))
+(defmethod enemy-method-63 predator ((obj predator) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 obj arg0 arg1)
                        (set-dst-proc! (-> obj los) (-> obj focus handle))
@@ -1469,9 +1475,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod enemy-method-113 predator ((obj predator) (arg0 nav-enemy-info))
+(defmethod init-enemy-behaviour-and-stats! predator ((obj predator) (arg0 nav-enemy-info))
+  "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
   (set! (-> arg0 nav-mesh) *default-nav-mesh*)
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-113)))
+  (let ((t9-0 (method-of-type nav-enemy init-enemy-behaviour-and-stats!)))
     (t9-0 obj arg0)
     )
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1480,14 +1487,14 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod enemy-method-115 predator ((obj predator))
-  "@abstract"
+(defmethod init-enemy! predator ((obj predator))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-predator" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *predator-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *predator-nav-enemy-info*)
   (let ((v1-5 (-> obj nav)))
     (set! (-> v1-5 speed-scale) 1.0)
     )

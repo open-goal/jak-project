@@ -306,7 +306,7 @@
       (set! (-> v1-37 prim-core collide-as) (-> self root-override2 backup-collide-as))
       (set! (-> v1-37 prim-core collide-with) (-> self root-override2 backup-collide-with))
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior monster-frog) nav-enemy-simple-post)
@@ -353,7 +353,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -514,7 +514,7 @@
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info-override use-victory))
         (go-virtual victory)
         )
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self reaction-time)))
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time))
       (if (nav-enemy-method-163 self)
           (go-stare2 self)
           )
@@ -526,10 +526,10 @@
                (go-virtual active)
                )
            )
-          ((or (>= 2 (the-as int gp-0)) (not (enemy-method-107 self)))
+          ((or (>= 2 (the-as int gp-0)) (not (get-enemy-target self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware enemy-aware-4))
+          ((= gp-0 (enemy-aware unaware))
            (go-flee self)
            )
           )
@@ -676,7 +676,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (behavior ()
@@ -825,7 +825,7 @@
           )
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   :post (the-as (function none :behavior monster-frog) nav-enemy-simple-post)
@@ -951,14 +951,18 @@
     )
   )
 
-(defmethod enemy-method-55 monster-frog ((obj monster-frog))
+(defmethod track-target! monster-frog ((obj monster-frog))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
   (water-control-method-10 (-> obj water))
-  ((method-of-type nav-enemy enemy-method-55) obj)
+  ((method-of-type nav-enemy track-target!) obj)
   (none)
   )
 
-(defmethod enemy-method-114 monster-frog ((obj monster-frog))
-  "@abstract"
+(defmethod init-enemy-collision! monster-frog ((obj monster-frog))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1020,14 +1024,14 @@
   (none)
   )
 
-(defmethod enemy-method-115 monster-frog ((obj monster-frog))
-  "@abstract"
+(defmethod init-enemy! monster-frog ((obj monster-frog))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-monster-frog" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *monster-frog-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *monster-frog-nav-enemy-info*)
   (set! (-> obj water) (new 'process 'water-control obj 5 0.0 8192.0 2048.0))
   (set! (-> obj water flags)
         (water-flags active use-water-anim touch-water part-splash part-drip part-rings part-water find-water)
