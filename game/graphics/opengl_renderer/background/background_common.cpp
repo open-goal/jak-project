@@ -34,6 +34,8 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
     glDisable(GL_DEPTH_TEST);
   }
 
+  DoubleDraw double_draw;
+
   if (mode.get_ab_enable() && mode.get_alpha_blend() != DrawMode::AlphaBlend::DISABLED) {
     glEnable(GL_BLEND);
     switch (mode.get_alpha_blend()) {
@@ -60,6 +62,11 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
       case DrawMode::AlphaBlend::ZERO_SRC_SRC_DST:
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
         glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+        break;
+      case DrawMode::AlphaBlend::SRC_0_DST_DST:
+        glBlendFunc(GL_DST_ALPHA, GL_ONE);
+        glBlendEquation(GL_FUNC_ADD);
+        double_draw.color_mult = 0.5f;
         break;
       default:
         ASSERT(false);
@@ -91,7 +98,6 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
   // for some reason, they set atest NEVER + FB_ONLY to disable depth writes
   bool alpha_hack_to_disable_z_write = false;
-  DoubleDraw double_draw;
 
   float alpha_min = 0.;
   if (mode.get_at_enable()) {

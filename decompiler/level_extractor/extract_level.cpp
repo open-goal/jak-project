@@ -119,7 +119,7 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   for (const auto& file : files) {
     if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
       const auto& ag_file = db.lookup_record(file);
-      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false);
+      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
     }
   }
 }

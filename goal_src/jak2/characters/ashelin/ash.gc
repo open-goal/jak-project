@@ -144,8 +144,10 @@
 
 (set! (-> *ashelin-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod enemy-method-59 ashelin ((obj ashelin))
-  (let* ((t9-0 (method-of-type bot enemy-method-59))
+(defmethod get-penetrate-info ashelin ((obj ashelin))
+  "@returns the allowed way(s) this enemy can take damage
+@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
+  (let* ((t9-0 (method-of-type bot get-penetrate-info))
          (v0-0 (t9-0 obj))
          )
     (if (logtest? (bot-flags bf22) (-> obj bot-flags))
@@ -161,7 +163,7 @@
       (set! (-> obj bot-flags) (logior (bot-flags bf22) (-> obj bot-flags)))
       (logclear! (-> obj bot-flags) (bot-flags bf22))
       )
-  (set! (-> obj root-override2 penetrated-by) (enemy-method-59 obj))
+  (set! (-> obj root-override2 penetrated-by) (get-penetrate-info obj))
   (none)
   )
 
@@ -314,8 +316,8 @@
     )
   )
 
-(defmethod enemy-method-114 ashelin ((obj ashelin))
-  "@abstract"
+(defmethod init-enemy-collision! ashelin ((obj ashelin))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -369,8 +371,8 @@
   (none)
   )
 
-(defmethod enemy-method-115 ashelin ((obj ashelin))
-  "@abstract"
+(defmethod init-enemy! ashelin ((obj ashelin))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init! obj)
   (set! (-> obj channel) (the-as uint 22))
   (set! (-> obj travel-anim-interp) 0.0)
@@ -382,7 +384,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ashelin" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (enemy-method-113 obj *ashelin-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *ashelin-nav-enemy-info*)
   (let ((v1-10 (-> obj neck)))
     (set! (-> v1-10 up) (the-as uint 1))
     (set! (-> v1-10 nose) (the-as uint 2))
@@ -390,7 +392,7 @@
     (set-vector! (-> v1-10 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-10 ignore-angle) 30947.555)
     )
-  (let ((t9-4 (method-of-type bot enemy-method-115)))
+  (let ((t9-4 (method-of-type bot init-enemy!)))
     (t9-4 obj)
     )
   (set! (-> obj my-simple-focus) (process-spawn simple-focus :to obj))
@@ -627,7 +629,7 @@
   (bot-method-223 obj #t)
   (cond
     ((not (bot-method-214 obj))
-     (enemy-method-72 obj)
+     (react-to-focus obj)
      )
     ((ashelin-method-238 obj #t #f)
      (go (method-of-object obj standing-idle))
@@ -642,7 +644,8 @@
   (none)
   )
 
-(defmethod enemy-method-72 ashelin ((obj ashelin))
+(defmethod react-to-focus ashelin ((obj ashelin))
+  "@TODO - flesh out docs"
   (if (bot-method-214 obj)
       (go-hostile obj)
       (ashelin-method-239 obj)
@@ -1288,9 +1291,7 @@
                   )
             )
         (when (>= s5-0 0)
-          (set! (-> obj victory-speech-time)
-                (the-as time-frame (+ (get-rand-int-range obj 1200 2100) (-> pp clock frame-counter)))
-                )
+          (set! (-> obj victory-speech-time) (+ (get-rand-int-range obj 1200 2100) (-> pp clock frame-counter)))
           (play-speech obj s5-0)
           )
         )
@@ -1301,7 +1302,7 @@
 
 (defmethod enemy-method-136 ashelin ((obj ashelin))
   (with-pp
-    (when (>= (- (-> pp clock frame-counter) (the-as int (-> obj hit-focus-time))) (seconds 2))
+    (when (>= (- (-> pp clock frame-counter) (-> obj hit-focus-time)) (seconds 2))
       (let ((v0-0 (logclear (-> obj enemy-flags) (enemy-flag look-at-focus))))
         (set! (-> obj enemy-flags) v0-0)
         v0-0

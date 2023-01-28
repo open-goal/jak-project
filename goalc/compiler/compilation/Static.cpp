@@ -856,7 +856,20 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
   ASSERT(deref_info.mem_deref);
   for (int arg_idx = 0; arg_idx < args_array_length; arg_idx++) {
     int elt_offset = offset + arg_idx * deref_info.stride;
-    auto sr = compile_static(args_array[arg_idx], env);
+    const auto& arg = args_array[arg_idx];
+    // Special case for symbols that refer to types
+    StaticResult sr;
+    if (content_type == TypeSpec("type") && arg.is_symbol()) {
+      const auto& type_name = arg.as_symbol()->name;
+      std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
+      if (!expected_method_count) {
+        throw_compiler_error(form, "Undeclared type used in inline-array - {}", type_name);
+      }
+      sr = StaticResult::make_type_ref(type_name, expected_method_count.value());
+    } else {
+      sr = compile_static(arg, env);
+    }
+
     if (is_integer(content_type)) {
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
@@ -883,8 +896,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
         throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
                              sr.constant().print(), arg_idx, content_type.print());
       }
-    }  // TODO - handle type case here as well
-    else if (sr.is_func()) {
+    } else if (sr.is_type()) {
+      ASSERT(deref_info.stride == 4);
+      structure->add_type_record(sr.symbol_name(), elt_offset);
+    } else if (sr.is_func()) {
       ASSERT(deref_info.stride == 4);
       structure->add_function_record(sr.function(), elt_offset);
     } else {
