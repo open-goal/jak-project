@@ -35,9 +35,10 @@ struct Logger {
 Logger gLogger;
 
 namespace internal {
-const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die"};
-const fmt::color log_colors[] = {fmt::color::gray,   fmt::color::turquoise, fmt::color::light_green,
-                                 fmt::color::yellow, fmt::color::red,       fmt::color::hot_pink};
+const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die", "die"};
+const fmt::color log_colors[] = {
+    fmt::color::gray, fmt::color::turquoise, fmt::color::light_green, fmt::color::yellow,
+    fmt::color::red,  fmt::color::hot_pink,  fmt::color::hot_pink};
 
 void log_message(level log_level, LogTime& now, const char* message) {
 #ifdef __linux__
@@ -64,7 +65,8 @@ void log_message(level log_level, LogTime& now, const char* message) {
       }
     }
 
-    if (log_level >= gLogger.stdout_log_level) {
+    if (log_level >= gLogger.stdout_log_level ||
+        (log_level == level::die && gLogger.stdout_log_level == level::off_unless_die)) {
       fmt::print("{} [", time_string);
       fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
       fmt::print("] {}\n", message);
@@ -97,7 +99,7 @@ void log_print(const char* message) {
       fflush(gLogger.fp);
     }
 
-    if (gLogger.stdout_log_level < lg::level::off) {
+    if (gLogger.stdout_log_level < lg::level::off_unless_die) {
       fmt::print(message);
       fflush(stdout);
       fflush(stderr);
