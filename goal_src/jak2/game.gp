@@ -3722,30 +3722,32 @@
 ;; ;; PALBOSS
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "PALBOSS.DGO" "palboss.gd")
+(cgo "PALBOSS.DGO" "palboss.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/palace/boss/squid-part.gc"
-;;   "levels/palace/boss/squid-setup.gc"
-;;   "levels/palace/boss/squid-extras.gc"
-;;   "levels/palace/boss/squid-states.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/palace/boss/squid-part.gc"
+  "levels/palace/boss/squid-setup.gc"
+  "levels/palace/boss/squid-extras.gc"
+  "levels/palace/boss/squid-states.gc"
+  )
 
-;; (copy-textures 2679 2680 2797 3419)
+(copy-textures 2679 2680 2797 3419)
 
-;; (copy-gos
-;;   "baron-squid+0-ag"
-;;   "daxter-highres-ag"
-;;   "jak-highres-ag"
-;;   "squid-ag"
-;;   "squid-break-ag"
-;;   "baron-highres-ag"
-;;   "baron-ag"
-;;   "squid-collision-ag"
-;;   "palboss"
-;;   )
+(copy-gos
+  "baron-squid+0-ag"
+  ;; "daxter-highres-ag"
+  ;; "jak-highres-ag"
+  "squid-ag"
+  "squid-break-ag"
+  ;; "baron-highres-ag"
+  ;; "baron-ag"
+  "squid-collision-ag"
+  "palboss"
+  )
+
+(copy-strs "PAOWRB" "PABRES")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; PALOUT

@@ -104,6 +104,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/ocean_vu0.cpp
         mips2c/jak2_functions/merc_blend_shape.cpp
         mips2c/jak2_functions/ripple.cpp
+        mips2c/jak2_functions/squid.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp

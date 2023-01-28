@@ -216,6 +216,7 @@ namespace ripple_execute_init { extern void link(); }
 namespace ripple_create_wave_table { extern void link(); }
 namespace ripple_apply_wave_table { extern void link(); }
 namespace ripple_matrix_scale { extern void link(); }
+namespace method_53_squid { extern void link(); }
 
 }
 // clang-format on
@@ -361,8 +362,8 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
       {jak2::setup_blerc_chains_for_one_fragment::link, jak2::blerc_execute::link}},
      {"ripple",
       {jak2::ripple_execute_init::link, jak2::ripple_create_wave_table::link,
-       jak2::ripple_apply_wave_table::link, jak2::ripple_matrix_scale::link}}},
-};
+       jak2::ripple_apply_wave_table::link, jak2::ripple_matrix_scale::link}},
+     {"squid-setup", {jak2::method_53_squid::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
