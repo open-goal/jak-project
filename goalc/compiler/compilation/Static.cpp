@@ -743,15 +743,20 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
                              args.at(1).print());
       }
 
-      if (unquote(args.at(1)).as_symbol()->name == "boxed-array") {
-        return fill_static_boxed_array(form, rest, env, segment);
-      } else if (unquote(args.at(1)).as_symbol()->name == "array") {
+      auto unquoted_type = unquote(args.at(1));
+      if (unquoted_type.as_symbol()->name == "boxed-array") {
+        return fill_static_boxed_array(form, rest, env, segment, "array");
+      } else if (unquoted_type.as_symbol()->name == "array") {
         return fill_static_array(form, rest, env, segment);
-      } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
+      } else if (unquoted_type.as_symbol()->name == "inline-array") {
         return fill_static_inline_array(form, rest, env, segment);
       } else {
-        auto ts = parse_typespec(unquote(args.at(1)), env);
-        if (ts == TypeSpec("string")) {
+        auto ts = parse_typespec(unquoted_type, env);
+        bool is_array_subtype =
+            m_ts.typecheck_and_throw(TypeSpec("array"), ts, "", false, false, false);
+        if (is_array_subtype) {
+          return fill_static_boxed_array(form, rest, env, segment, ts.base_type());
+        } else if (ts == TypeSpec("string")) {
           // (new 'static 'string)
           if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
               rest.as_pair()->car.is_string()) {
@@ -913,7 +918,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          Env* env,
                                          int seg) {
   auto fie = env->file_env();
-  // (new 'static 'boxed-array ...)
+  // (new 'static '[boxed-array|array-subtype] ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
@@ -947,7 +952,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
 StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
                                                const goos::Object& rest,
                                                Env* env,
-                                               int seg) {
+                                               int seg,
+                                               const std::string& array_type) {
   auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
@@ -1000,7 +1006,10 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
-  obj = std::make_unique<StaticBasic>(seg, "array");
+
+  // Determine if we are dealing with a subtype of an 'array' if so, use that type instead!
+  const std::string type = array_type == "boxed-array" ? "array" : array_type;
+  obj = std::make_unique<StaticBasic>(seg, type);
 
   int array_header_size = 16;
   obj->data.resize(array_header_size + array_data_size_bytes);
@@ -1020,7 +1029,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
 
   TypeSpec result_type;
 
-  result_type = m_ts.make_array_typespec(content_type);
+  result_type = m_ts.make_array_typespec(type, content_type);
 
   auto result = StaticResult::make_structure_reference(obj.get(), result_type);
   fie->add_static(std::move(obj));

@@ -204,7 +204,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
     if (type.has_single_arg()) {
       content_type_spec = type.get_single_arg();
     }
-    return decompile_boxed_array(label, labels, words, ts, file, content_type_spec, version);
+    return decompile_boxed_array(type, label, labels, words, ts, file, content_type_spec, version);
   }
 
   if (ts.tc(TypeSpec("structure"), type)) {
@@ -1489,7 +1489,8 @@ goos::Object decompile_value(const TypeSpec& type,
   }
 }
 
-goos::Object decompile_boxed_array(const DecompilerLabel& label,
+goos::Object decompile_boxed_array(const TypeSpec& type,
+                                   const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
                                    const TypeSystem& ts,
@@ -1518,8 +1519,15 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     throw std::runtime_error("Invalid alignment in decompile_boxed_array");
   }
 
+  std::string array_type = "boxed-array";
+
   if (content_type_override) {
     content_type = *content_type_override;
+  }
+
+  // Handle children of `array`
+  if (type.base_type() != "array") {
+    array_type = type.print();
   }
 
   // now get the size
@@ -1536,12 +1544,13 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
   int array_allocated_length = size_word_2.data;
 
   auto content_type_info = ts.lookup_type(content_type);
-  auto params_obj = array_length == array_allocated_length
-                        ? pretty_print::to_symbol(fmt::format("new 'static 'boxed-array :type {}",
-                                                              content_type.print()))
-                        : pretty_print::to_symbol(fmt::format(
-                              "new 'static 'boxed-array :type {} :length {} :allocated-length {}",
-                              content_type.print(), array_length, array_allocated_length));
+  auto params_obj =
+      array_length == array_allocated_length
+          ? pretty_print::to_symbol(
+                fmt::format("new 'static '{} :type {}", array_type, content_type.print()))
+          : pretty_print::to_symbol(
+                fmt::format("new 'static '{} :type {} :length {} :allocated-length {}", array_type,
+                            content_type.print(), array_length, array_allocated_length));
   if (content_type_info->is_reference() || content_type == TypeSpec("object")) {
     // easy, stride of 4.
     std::vector<goos::Object> result = {params_obj};

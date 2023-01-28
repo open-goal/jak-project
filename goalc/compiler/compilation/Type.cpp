@@ -1051,7 +1051,8 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     auto new_method = compile_get_method_of_type(form, main_type, "new", env);
     auto new_obj = compile_real_function_call(form, new_method, args, env);
     if (making_boxed_array) {
-      new_obj->set_type(m_ts.make_array_typespec(m_ts.make_typespec(content_type)));
+      // TODO - handle array subtypes here as well?
+      new_obj->set_type(m_ts.make_array_typespec("array", m_ts.make_typespec(content_type)));
     } else {
       new_obj->set_type(main_type);
     }
@@ -1064,16 +1065,21 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object& type,
                                   const goos::Object* rest,
                                   Env* env) {
-  auto unquoted = unquote(type);
-  if (unquoted.is_symbol() &&
-      (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array" ||
-       unquoted.as_symbol()->name == "inline-array")) {
+  auto unquoted_type = unquote(type);
+  const auto& sym_name = unquoted_type.as_symbol()->name;
+  // Check if the type is an array or a subtype of 'array'
+  bool is_array = sym_name == "boxed-array" || sym_name == "array" || sym_name == "inline-array";
+  if (!is_array) {
+    const auto type_of_object = parse_typespec(unquoted_type, env);
+    is_array = m_ts.typecheck_and_throw(TypeSpec("array"), type_of_object, "", false, false, false);
+  }
+  if (unquoted_type.is_symbol() && is_array) {
     auto fe = env->function_env();
     auto sr = compile_static(form, env);
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
     return result;
   } else {
-    auto type_of_object = parse_typespec(unquote(type), env);
+    const auto type_of_object = parse_typespec(unquoted_type, env);
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env,
                                                    env->function_env()->segment_for_static_data());
