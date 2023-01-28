@@ -237,12 +237,14 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 230
   init_bucket_renderer<TextureUploadHandler>("tex-l2-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L2_PRIS2);
-
+  init_bucket_renderer<Merc2>("merc-l2-pris2", BucketCategory::MERC, BucketId::MERC_L2_PRIS2);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L3_PRIS2);
+  init_bucket_renderer<Merc2>("merc-l3-pris2", BucketCategory::MERC, BucketId::MERC_L3_PRIS2);
   // 240
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS2);
+  init_bucket_renderer<Merc2>("merc-l4-pris2", BucketCategory::MERC, BucketId::MERC_L4_PRIS2);
   // 250
   init_bucket_renderer<TextureUploadHandler>("tex-l0-water", BucketCategory::TEX,
                                              BucketId::TEX_L0_WATER);
@@ -585,6 +587,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
+  m_last_pmode_alp = settings.pmode_alp_register;
+
   if (settings.draw_render_debug_window) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
@@ -595,17 +599,15 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
-  m_last_pmode_alp = settings.pmode_alp_register;
-
   m_profiler.finish();
-  if (settings.draw_profiler_window) {
-    m_profiler.draw();
-  }
-
   //  if (m_profiler.root_time() > 0.018) {
   //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);
   //    fmt::print("{}\n", m_profiler.to_string());
   //  }
+
+  if (settings.draw_profiler_window) {
+    m_profiler.draw();
+  }
 
   if (settings.draw_small_profiler_window) {
     SmallProfilerStats stats;
@@ -782,7 +784,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   window_fb.multisampled = false;
 
   // see if the render FBO is still applicable
-  if (!m_fbo_state.render_fbo || window_resized ||
+  if (settings.save_screenshot || window_resized || !m_fbo_state.render_fbo ||
       !m_fbo_state.render_fbo->matches(settings.game_res_w, settings.game_res_h,
                                        settings.msaa_samples)) {
     // doesn't match, set up a new one for these settings
@@ -794,7 +796,10 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.resources.resolve_buffer.clear();
 
     // first, see if we can just render straight to the display framebuffer.
-    if (window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
+    // note: we always force a separate fbo on a screenshot so that it won't capture overlays.
+    //       as an added bonus it also doesn't break the sprite distort buffer...
+    if (!settings.save_screenshot &&
+        window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
       // it matches - no need for extra framebuffers.
       lg::info("FBO Setup: rendering directly to window framebuffer");
       m_fbo_state.render_fbo = &m_fbo_state.resources.window;
