@@ -210,6 +210,12 @@ namespace method_39_nav_state { extern void link(); }
 namespace method_17_nav_engine { extern void link(); }
 namespace method_18_nav_engine { extern void link(); }
 namespace method_21_nav_engine { extern void link(); }
+namespace setup_blerc_chains_for_one_fragment { extern void link(); }
+namespace blerc_execute { extern void link(); }
+namespace ripple_execute_init { extern void link(); }
+namespace ripple_create_wave_table { extern void link(); }
+namespace ripple_apply_wave_table { extern void link(); }
+namespace ripple_matrix_scale { extern void link(); }
 
 }
 // clang-format on
@@ -350,7 +356,12 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_20_nav_engine::link, jak2::method_43_nav_mesh::link,
        jak2::nav_dma_send_to_spr_no_flush::link, jak2::nav_dma_send_from_spr_no_flush::link,
        jak2::method_17_nav_engine::link, jak2::method_18_nav_engine::link,
-       jak2::method_21_nav_engine::link}}},
+       jak2::method_21_nav_engine::link}},
+     {"merc-blend-shape",
+      {jak2::setup_blerc_chains_for_one_fragment::link, jak2::blerc_execute::link}},
+     {"ripple",
+      {jak2::ripple_execute_init::link, jak2::ripple_create_wave_table::link,
+       jak2::ripple_apply_wave_table::link, jak2::ripple_matrix_scale::link}}},
 };
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

@@ -805,7 +805,7 @@
             (cond
               ((and (= (-> version major) PC_KERNEL_VER_MAJOR)
                     (= (-> version minor) PC_KERNEL_VER_MINOR))
-                ;; minor difference
+                ;; minor or no difference
                 )
               (else
                 ;; major difference
@@ -877,7 +877,7 @@
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
                 (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
-                (("cutscene-skips?") (set! (-> obj cutscene-skips?) (file-stream-read-symbol file)))
+                (("cutscene-skips?") (file-stream-read-symbol file))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -932,6 +932,15 @@
                   )
                 )
               )
+            ;; upgrade settings if minor changes
+            ;; remember to delete this when major changes to the version number are made
+            (when (and (= PC_KERNEL_VER_MAJOR 1)
+                       (= PC_KERNEL_VER_MINOR 10)
+                       (or (!= PC_KERNEL_VER_BUILD (-> version build))
+                           (!= PC_KERNEL_VER_REVISION (-> version revision))))
+                ;; 1.10 upgrade: turn envmap on
+                (set! (-> obj force-envmap?) #t)
+                )
             )
           )
         )
@@ -1004,7 +1013,6 @@
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
     (format file "  (speedrunner-mode? ~A)~%" (-> obj speedrunner-mode?))
-    (format file "  (cutscene-skips? ~A)~%" (-> obj cutscene-skips?))
     (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
     (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
     (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))

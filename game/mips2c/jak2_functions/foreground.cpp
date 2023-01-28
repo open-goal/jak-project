@@ -558,6 +558,21 @@ u64 execute(void* ctxt) {
   c->sw(a3, 28, a2);                                // sw a3, 28(a2)
   c->daddiu(a2, a2, 144);                           // daddiu a2, a2, 144
 
+  // PC ADD BONUS DATA (bonus!)
+  {
+    // 10 qw test
+    u64 dmatag = 5 | (1 << 28);
+    memcpy(g_ee_main_mem + c->sgpr64(a2), &dmatag, 8);
+    u32 vif = (0b1001 << 24);
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 8, &vif, 4);
+
+    for (int i = 0; i < 16; i++) {
+      memcpy(g_ee_main_mem + c->sgpr64(a2) + 16 + i * 4, mbi->effects[i].color_fade, 4);
+    }
+
+    c->gprs[a2].du32[0] += 6 * 16;
+  }
+
   block_8:
   bc = c->sgpr64(s3) == 0;                          // beq s3, r0, L115
   c->addiu(s2, r0, 128);                            // addiu s2, r0, 128

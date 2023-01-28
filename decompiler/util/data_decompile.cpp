@@ -864,7 +864,20 @@ const std::unordered_map<
                                            4,
                                            ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
           {"bot-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}},
-          {"hal3-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}}}}};
+          {"hal3-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}},
+          {"sig5-course",
+           {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+            {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+            {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+            {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+          {"under-block-puzzle",
+           {{"cells", ArrayFieldDecompMeta(TypeSpec("int32"),
+                                           4,
+                                           ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+            {"pulse-ops",
+             ArrayFieldDecompMeta(TypeSpec("int8"),
+                                  1,
+                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

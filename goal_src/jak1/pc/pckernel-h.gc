@@ -38,10 +38,12 @@
 
 (defmacro static-pckernel-version (major minor rev build)
   `(new 'static 'pckernel-version :major ,major :minor ,minor :revision ,rev :build ,build))
-                                                  ;; version: 1.10.2.1
-(defglobalconstant PC_KERNEL_VERSION (static-pckernel-version 1 10 2 1))
+                                                  ;; version: 1.10.3.1
+(defglobalconstant PC_KERNEL_VERSION (static-pckernel-version 1 10 3 1))
 (defconstant PC_KERNEL_VER_MAJOR (-> PC_KERNEL_VERSION major))
 (defconstant PC_KERNEL_VER_MINOR (-> PC_KERNEL_VERSION minor))
+(defconstant PC_KERNEL_VER_REVISION (-> PC_KERNEL_VERSION revision))
+(defconstant PC_KERNEL_VER_BUILD (-> PC_KERNEL_VERSION build))
 
 
 (defconstant PS2_VOICE_AMOUNT 48)
@@ -318,7 +320,6 @@
 
    (discord-rpc? symbol) ;; enable discord rich presence integration
    (speedrunner-mode? symbol) ;; enable speedrunner mode
-   (cutscene-skips? symbol) ;; enable cutscene skips
 
    (cheats pc-cheats)
    (cheats-known pc-cheats)
@@ -422,7 +423,6 @@
   (set! (-> obj aspect-custom-y) 3)
   (set! (-> obj discord-rpc?) #t)
   (set! (-> obj speedrunner-mode?) #f)
-  (set! (-> obj cutscene-skips?) #t)
   (set! (-> obj window-lock?) #t)
 
   (reset-gfx obj)
@@ -483,7 +483,7 @@
   (set! (-> obj ps2-hints?) #t)
 
   (set! (-> obj ps2-lod-dist?) #f)
-  (set! (-> obj force-envmap?) #f)
+  (set! (-> obj force-envmap?) #t)
   (set! (-> obj shrub-dist-mod) 1.0)
   (set! (-> obj lod-dist-mod) 1.0)
   (set! (-> obj lod-force-tfrag) 0)
@@ -498,11 +498,15 @@
   (set! (-> obj force-actors?) #f)
   (set! (-> obj music-fade?) #f)
   (set! (-> obj skip-movies?) #t)
+  (set! (-> obj text-language) (case *jak1-territory*
+                                    ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
+                                    (else (pc-subtitle-lang english))))
   (set! (-> obj subtitles?) *debug-segment*)
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
-  (set! (-> obj subtitle-language) (pc-subtitle-lang english))
-  (set! (-> obj text-language) (pc-subtitle-lang english))
+  (set! (-> obj subtitle-language) (case *jak1-territory*
+                                        ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
+                                        (else (pc-subtitle-lang english))))
   (reset-original-camera obj)
   (set! (-> obj money-starburst?) #f)
   (set! (-> obj extra-hud?) #f)

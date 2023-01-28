@@ -265,6 +265,10 @@ void MercEffect::serialize(Serializer& ser) {
   for (auto& draw : draws) {
     draw.serialize(ser);
   }
+
+  ser.from_ptr(&envmap_mode);
+  ser.from_ptr(&envmap_texture);
+  ser.from_ptr(&has_envmap);
 }
 
 void MercModel::serialize(Serializer& ser) {

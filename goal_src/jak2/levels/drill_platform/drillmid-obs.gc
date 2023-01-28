@@ -7,3 +7,330 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-drill-elevator-doors drill-elevator-doors drill-elevator-doors-lod0-jg drill-elevator-doors-idle-ja
+              ((drill-elevator-doors-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 10.5)
+              )
+
+(deftype drill-elevator-doors (com-airlock)
+  ()
+  :heap-base #x100
+  :method-count-assert 28
+  :size-assert         #x174
+  :flag-assert         #x1c01000174
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-elevator-doors ((obj drill-elevator-doors) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 16384.0 0.0 24576.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 4)
+      (set-vector! (-> v1-8 local-sphere) 0.0 16384.0 0.0 20480.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 5)
+      (set-vector! (-> v1-10 local-sphere) 0.0 16384.0 0.0 20480.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-drill-elevator-doors" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (init-airlock! obj)
+  (set! (-> obj inner?) #t)
+  (set! (-> obj sound-behind?) #t)
+  (set! (-> obj sound-open-loop) (static-sound-spec "drl-elev-door-l"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "drl-elev-door-e"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "drl-elev-door-l"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "drl-elev-door-e"))
+  (go (method-of-object obj close) #t)
+  (none)
+  )
+
+(deftype drill-lift (elevator)
+  ((sound-id sound-id  :offset-assert 368)
+   )
+  :heap-base #x100
+  :method-count-assert 50
+  :size-assert         #x174
+  :flag-assert         #x3201000174
+  (:methods
+    (set-collide-spec! (_type_ symbol) none 49)
+    )
+  )
+
+
+(defskelgroup skel-drill-lift drill-lift drill-lift-lod0-jg drill-lift-idle-ja
+              ((drill-lift-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 6 10)
+              )
+
+(defmethod get-art-group drill-lift ((obj drill-lift))
+  "@returns The associated [[art-group]]"
+  (art-group-get-by-name *level* "skel-drill-lift" (the-as (pointer uint32) #f))
+  )
+
+(defmethod move-between-points drill-lift ((obj drill-lift) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
+  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> obj root-override trans))
+        )
+    (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
+      (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (and (< (fabs (-> s4-2 x)) 24576.0) (< 0.0 (-> s4-2 z)) (< (-> s4-2 z) 49152.0))
+        )
+      )
+    )
+  )
+
+(defmethod commited-to-ride? drill-lift ((obj drill-lift))
+  "@returns if the target is considered within the elevator area enough to begin descending/ascending"
+  (let* ((gp-0 *target*)
+         (a0-2 (if (type? gp-0 process-focusable)
+                   gp-0
+                   )
+               )
+         )
+    (when a0-2
+      (let* ((v1-1 (get-trans a0-2 0))
+             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> obj root-override trans)))
+             )
+        (vector-inv-orient-by-quat! gp-2 gp-2 (-> obj root-override quat))
+        (and (< (fabs (-> gp-2 x)) 20480.0) (< 0.0 (-> gp-2 z)) (< (-> gp-2 z) 40960.0))
+        )
+      )
+    )
+  )
+
+(defmethod set-collide-spec! drill-lift ((obj drill-lift) (arg0 symbol))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> obj root-override root-prim)) child 1)))
+    (cond
+      (arg0
+        (set! (-> v1-3 prim-core collide-as) (collide-spec obstacle pusher))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec jak player-list))
+        )
+      (else
+        (set! (-> v1-3 prim-core collide-as) (collide-spec))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec))
+        0
+        )
+      )
+    )
+  (none)
+  )
+
+(defstate running (drill-lift)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator running) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self sound-id) (sound-play "drl-elevator-lp"))
+    (when (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
+      (set-collide-spec! self #t)
+      (set-setting! 'jump #f 0 0)
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (sound-play "drl-elev-stop")
+    (let ((t9-4 (-> (the-as state (find-parent-method drill-lift 36)) exit)))
+      (if t9-4
+          (t9-4)
+          )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (sound-play "drl-elevator-lp" :id (-> self sound-id) :position (-> self root-override trans))
+    (let ((t9-2 (-> (the-as state (find-parent-method drill-lift 36)) post)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    (none)
+    )
+  )
+
+(defstate arrived (drill-lift)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator arrived) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
+      (set-collide-spec! self #f)
+      (remove-setting! 'jump)
+      )
+    (none)
+    )
+  )
+
+(defmethod init-plat-collision! drill-lift ((obj drill-lift))
+  "TODO - collision stuff for setting up the platform"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 22937.6 37683.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 22937.6 37683.2)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 3)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 22937.6 39321.6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-20 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  (set-collide-spec! obj #f)
+  (none)
+  )
+
+(deftype drill-moving-staircase (conveyor)
+  ()
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  )
+
+
+(defskelgroup skel-drill-moving-staircase drill-moving-staircase drill-moving-staircase-lod0-jg drill-moving-staircase-idle-ja
+              ((drill-moving-staircase-lod0-mg (meters 999999)))
+              :bounds (static-spherem 7 -2 -3.8 11)
+              )
+
+(defmethod get-art-group drill-moving-staircase ((obj drill-moving-staircase))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (art-group-get-by-name *level* "skel-drill-moving-staircase" (the-as (pointer uint32) #f))
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod init! drill-moving-staircase ((obj drill-moving-staircase))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (set! (-> obj speed) 38912.0)
+  (set! (-> obj belt-radius) 11878.4)
+  (set! (-> obj pull-y-threshold) 409.6)
+  (none)
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod reset-root! drill-moving-staircase ((obj drill-moving-staircase))
+  "Re-initializes the `root` [[trsqv]]"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 28672.0 -8192.0 -15564.8 45056.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  (none)
+  )
+
+(defstate idle (drill-moving-staircase)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 2)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type conveyor idle) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (ja-post)
+    (none)
+    )
+  )
