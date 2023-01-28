@@ -1,5 +1,7 @@
 #include "Merc2.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include "third-party/imgui/imgui.h"
@@ -33,12 +35,26 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
     draws.draws.resize(MAX_DRAWS_PER_LEVEL);
     draws.envmap_draws.resize(MAX_ENVMAP_DRAWS_PER_LEVEL);
   }
+
+  m_mod_vtx_temp.resize(MAX_MOD_VTX);
+  m_mod_vtx_pos_unpack_temp.resize(MAX_MOD_VTX * 2);
+  m_mod_vtx_nrm_unpack_temp.resize(MAX_MOD_VTX * 2);
+}
+
+Merc2::~Merc2() {
+  for (auto& x : m_mod_vtx_buffers) {
+    glDeleteBuffers(1, &x.vertex);
+    glDeleteVertexArrays(1, &x.vao);
+  }
 }
 
 /*!
  * Handle the merc renderer switching to a different model.
  */
-void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state) {
+void Merc2::init_pc_model(const DmaTransfer& setup,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& proff) {
+  auto p = scoped_prof("init-pc");
   //  ;; name   (128 char, 8 qw)
   //  ;; lights (7 qw x 1)
   //  ;; matrix slot string (128 char, 8 qw)
@@ -48,9 +64,15 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
 
   // Part 1: name
   const u8* input_data = setup.data;
+  ASSERT(strlen((const char*)input_data) < 127);
   char name[128];
   strcpy(name, (const char*)setup.data);
   m_current_model = render_state->loader->get_merc_model(name);
+  if (!m_current_model) {
+    m_current_model_updates_verts = false;
+    m_stats.num_missing_models++;
+    return;
+  }
   input_data += 128;
 
   // Part 2: lights
@@ -67,6 +89,7 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
     u32 addr;
     memcpy(&addr, &matrix_array[i * 4], 4);
     const u8* real_addr = setup.data - setup.data_offset + addr;
+    ASSERT(input_data[i] < MAX_SKEL_BONES);
     memcpy(&m_skel_matrix_buffer[input_data[i]], real_addr, sizeof(MercMat));
   }
   input_data += 128 + 16 * i;
@@ -74,8 +97,10 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
   // Part 4: flags
   auto* flags = (const u32*)input_data;
   int num_effects = flags[0];
+  ASSERT(num_effects < kMaxEffect);
   m_current_ignore_alpha_bits = flags[1];
   m_current_effect_enable_bits = flags[2];
+  m_current_model_updates_verts = flags[3];
   input_data += 16;
 
   // Part 5: fades
@@ -84,18 +109,134 @@ void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_st
       m_fade_buffer[ei * 4 + j] = input_data[ei * 4 + j];
     }
   }
+  input_data += (((num_effects * 4) + 15) / 16) * 16;
+
+  // Part 6: pointers
+  if (m_current_model_updates_verts) {
+    auto p = scoped_prof("update-verts");
+    for (int ei = 0; ei < num_effects; ei++) {
+      const auto& effect = m_current_model->model->effects[ei];
+      if (effect.mod.mod_draw.empty()) {
+        continue;
+      }
+
+      prof().begin_event("start1");
+      auto opengl_buffers = alloc_mod_vtx_buffer(m_current_model->level);
+      m_mod_opengl_buffers[ei] = opengl_buffers;
+      if (effect.mod.vertices.size() > MAX_MOD_VTX) {
+        fmt::print("More mod vertices than MAX_MOD_VTX. {} > {}\n", effect.mod.vertices.size(),
+                   MAX_MOD_VTX);
+        ASSERT_NOT_REACHED();
+      }
+      memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
+             sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
+
+      u32 goal_addr;
+      memcpy(&goal_addr, input_data + 4 * ei, 4);
+      const u8* ee0 = setup.data - setup.data_offset;
+      const u8* merc_effect = ee0 + goal_addr;
+      u16 frag_cnt;
+      memcpy(&frag_cnt, merc_effect + 18, 2);
+      u32 frag_goal;
+      memcpy(&frag_goal, merc_effect, 4);
+      u32 frag_ctrl_goal;
+      memcpy(&frag_ctrl_goal, merc_effect + 4, 4);
+      const u8* frag = ee0 + frag_goal;
+      const u8* frag_ctrl = ee0 + frag_ctrl_goal;
+
+      // loop over frags
+      u32 vidx = 0;
+      u32 st_vif_add = m_current_model->model->st_vif_add;
+      float xyz_scale = m_current_model->model->xyz_scale;
+      prof().end_event();
+      {
+        auto p = scoped_prof("vert-math");
+        for (int fi = 0; fi < frag_cnt; fi++) {
+          u8 unsigned_four_count = frag_ctrl[0];
+          u8 lump_four_count = frag_ctrl[1];
+          u8 fp_qwc = frag_ctrl[2];
+          u8 mat_xfer_count = frag_ctrl[3];
+          u32 mm_qwc_off = frag[10];
+          float float_offsets[3];
+          memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
+
+          u32 my_u4_count = ((unsigned_four_count + 3) / 4) * 16;
+          u32 my_l4_count = my_u4_count + ((lump_four_count + 3) / 4) * 16;
+          int kk = 0;
+          for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
+            // just want positions for now.
+            u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
+            u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
+            u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
+
+            // and maybe normals
+            u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
+            u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
+            u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
+
+            auto* pos_array = m_mod_vtx_pos_unpack_temp[vidx].data();
+            memcpy(&pos_array[0], &q0w, 4);
+            memcpy(&pos_array[1], &q1w, 4);
+            memcpy(&pos_array[2], &q2w, 4);
+            pos_array[0] += float_offsets[0];
+            pos_array[1] += float_offsets[1];
+            pos_array[2] += float_offsets[2];
+            pos_array[0] *= xyz_scale;
+            pos_array[1] *= xyz_scale;
+            pos_array[2] *= xyz_scale;
+
+            auto* nrm_array = m_mod_vtx_nrm_unpack_temp[vidx].data();
+            memcpy(&nrm_array[0], &q0z, 4);
+            memcpy(&nrm_array[1], &q1z, 4);
+            memcpy(&nrm_array[2], &q2z, 4);
+            nrm_array[0] += -65537;
+            nrm_array[1] += -65537;
+            nrm_array[2] += -65537;
+            vidx++;
+          }
+
+          // next control
+          frag_ctrl += 4 + 2 * mat_xfer_count;
+
+          // next frag
+          u32 mm_qwc_count = frag[11];
+          frag += mm_qwc_count * 16;
+        }
+      }
+
+      {
+        scoped_prof("copy");
+        for (u32 i = 0; i < effect.mod.vertices.size(); i++) {
+          int addr = effect.mod.vertex_lump4_addr.at(i);
+          if (addr < vidx) {
+            memcpy(m_mod_vtx_temp.at(i).pos, m_mod_vtx_pos_unpack_temp.at(addr).data(), 12);
+            memcpy(m_mod_vtx_temp.at(i).normal, m_mod_vtx_nrm_unpack_temp.at(addr).data(), 12);
+          }
+        }
+      }
+
+      m_stats.num_uploads++;
+      m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
+      {
+        auto pp = scoped_prof("update-verts-upload");
+        glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
+        glBufferData(GL_ARRAY_BUFFER, effect.mod.vertices.size() * sizeof(tfrag3::MercVertex),
+                     m_mod_vtx_temp.data(), GL_DYNAMIC_DRAW);
+      }
+    }
+  }
 
   if (m_current_model) {
     m_stats.num_models++;
     for (const auto& effect : m_current_model->model->effects) {
       bool envmap = effect.has_envmap;
       m_stats.num_effects++;
-      m_stats.num_predicted_draws += effect.draws.size();
+      m_stats.num_predicted_draws += effect.all_draws.size();
       if (envmap) {
         m_stats.num_envmap_effects++;
-        m_stats.num_predicted_draws += effect.draws.size();
+        m_stats.num_predicted_draws += effect.all_draws.size();
       }
-      for (const auto& draw : effect.draws) {
+      for (const auto& draw : effect.all_draws) {
         m_stats.num_predicted_tris += draw.num_triangles;
         if (envmap) {
           m_stats.num_predicted_tris += draw.num_triangles;
@@ -118,6 +259,24 @@ void Merc2::draw_debug_window() {
 
   ImGui::Text("EEffects : %d", m_stats.num_envmap_effects);
   ImGui::Text("ETris    : %d", m_stats.num_envmap_tris);
+
+  ImGui::Text("Uploads  : %d", m_stats.num_uploads);
+  ImGui::Text("Upload kB: %d", m_stats.num_upload_bytes / 1024);
+
+  ImGui::Checkbox("Debug", &m_debug_mode);
+  if (m_debug_mode) {
+    for (const auto& model : m_debug.model_list) {
+      if (ImGui::TreeNode(model.name.c_str())) {
+        for (const auto& e : model.effects) {
+          for (const auto& d : e.draws) {
+            ImGui::Text("%s", d.mode.to_string().c_str());
+          }
+          ImGui::Separator();
+        }
+        ImGui::TreePop();
+      }
+    }
+  }
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
@@ -175,6 +334,9 @@ void Merc2::switch_to_emerc(SharedRenderState* render_state) {
  */
 void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
   m_stats = {};
+  if (m_debug_mode) {
+    m_debug = {};
+  }
 
   // skip if disabled
   if (!m_enabled) {
@@ -186,13 +348,23 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   m_current_model = std::nullopt;
   switch_to_merc2(render_state);
 
-  // iterate through the dma chain, filling buckets
-  handle_all_dma(dma, render_state, prof);
+  {
+    auto pp = scoped_prof("handle-all-dma");
+    // iterate through the dma chain, filling buckets
+    handle_all_dma(dma, render_state, prof);
+  }
 
-  // flush model data to buckets
-  flush_pending_model(render_state, prof);
-  // flush buckets to draws
-  flush_draw_buckets(render_state, prof);
+  {
+    auto pp = scoped_prof("last-flush-model");
+    // flush model data to buckets
+    flush_pending_model(render_state, prof);
+  }
+
+  {
+    auto pp = scoped_prof("flush-buckets");
+    // flush buckets to draws
+    flush_draw_buckets(render_state, prof);
+  }
 }
 
 u32 Merc2::alloc_lights(const VuLights& lights) {
@@ -368,7 +540,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   while (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
     flush_pending_model(render_state, prof);
-    init_pc_model(init, render_state);
+    init_pc_model(init, render_state, prof);
     for (int i = 0; i < skip_count; i++) {
       auto link = dma.read_and_advance();
       ASSERT(link.vifcode0().kind == VifCode::Kind::NOP);
@@ -426,12 +598,43 @@ u32 Merc2::alloc_bones(int count) {
   ASSERT(first_bone_vector + count * 8 <= m_next_free_bone_vector);
   return first_bone_vector;
 }
+
+Merc2::ModBuffers Merc2::alloc_mod_vtx_buffer(const LevelData* lev) {
+  if (m_next_mod_vtx_buffer >= m_mod_vtx_buffers.size()) {
+    GLuint b;
+    glGenBuffers(1, &b);
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, b);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
+    setup_merc_vao();
+    m_mod_vtx_buffers.push_back({vao, b});
+  }
+  return m_mod_vtx_buffers[m_next_mod_vtx_buffer++];
+}
+
 /*!
  * Flush a model to draw buckets
  */
 void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (!m_current_model) {
     return;
+  }
+
+  if (m_debug_mode) {
+    auto& d = m_debug.model_list.emplace_back();
+    d.name = m_current_model->model->name;
+    for (auto& e : m_current_model->model->effects) {
+      auto& de = d.effects.emplace_back();
+      de.envmap = e.has_envmap;
+      de.envmap_mode = e.envmap_mode;
+      for (auto& draw : e.all_draws) {
+        auto& dd = de.draws.emplace_back();
+        dd.mode = draw.mode;
+        dd.num_tris = draw.num_triangles;
+      }
+    }
   }
 
   const LevelData* lev = m_current_model->level;
@@ -515,8 +718,9 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
         }
       }
       if (nonzero_fade) {
-        for (auto& mdraw : effect.draws) {
+        for (auto& mdraw : effect.all_draws) {
           Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
+          draw->flags = 0;
           draw->first_index = mdraw.first_index;
           draw->index_count = mdraw.index_count;
           draw->mode = effect.envmap_mode;
@@ -524,25 +728,26 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
           draw->first_bone = first_bone;
           draw->light_idx = lights;
           draw->num_triangles = mdraw.num_triangles;
-          draw->ignore_alpha = false;
           for (int i = 0; i < 4; i++) {
             draw->fade[i] = m_fade_buffer[4 * ei + i];
           }
         }
       }
     }
-    for (auto& mdraw : effect.draws) {
-      Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
-      draw->first_index = mdraw.first_index;
-      draw->index_count = mdraw.index_count;
-      draw->mode = mdraw.mode;
-      draw->texture = mdraw.tree_tex_id;
-      draw->first_bone = first_bone;
-      draw->light_idx = lights;
-      draw->num_triangles = mdraw.num_triangles;
-      draw->ignore_alpha = ignore_alpha;
-      for (int i = 0; i < 4; i++) {
-        draw->fade[i] = 0;
+
+    if (m_current_model_updates_verts) {
+      for (auto& mdraw : effect.mod.fix_draw) {
+        alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+      }
+
+      for (auto& mdraw : effect.mod.mod_draw) {
+        auto* draw = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        draw->flags |= MOD_VTX;
+        draw->mod_vtx_buffer = m_mod_opengl_buffers[ei];
+      }
+    } else {
+      for (auto& draw : effect.all_draws) {
+        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights);
       }
     }
   }
@@ -550,74 +755,98 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
   m_current_model = std::nullopt;
 }
 
+Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
+                                      bool ignore_alpha,
+                                      LevelDrawBucket* lev_bucket,
+                                      u32 first_bone,
+                                      u32 lights) {
+  Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
+  draw->flags = 0;
+  draw->first_index = mdraw.first_index;
+  draw->index_count = mdraw.index_count;
+  draw->mode = mdraw.mode;
+  draw->texture = mdraw.tree_tex_id;
+  draw->first_bone = first_bone;
+  draw->light_idx = lights;
+  draw->num_triangles = mdraw.num_triangles;
+  if (ignore_alpha) {
+    draw->flags |= IGNORE_ALPHA;
+  }
+  for (int i = 0; i < 4; i++) {
+    draw->fade[i] = 0;
+  }
+  return draw;
+}
+
+void Merc2::setup_merc_vao() {
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
+  glEnableVertexAttribArray(5);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_GEQUAL);
+
+  glVertexAttribPointer(0,                                        // location 0 in the shader
+                        3,                                        // 3 values per vert
+                        GL_FLOAT,                                 // floats
+                        GL_FALSE,                                 // normalized
+                        sizeof(tfrag3::MercVertex),               // stride
+                        (void*)offsetof(tfrag3::MercVertex, pos)  // offset (0)
+  );
+
+  glVertexAttribPointer(1,                                              // location 1 in the
+                        3,                                              // 3 values per vert
+                        GL_FLOAT,                                       // floats
+                        GL_FALSE,                                       // normalized
+                        sizeof(tfrag3::MercVertex),                     // stride
+                        (void*)offsetof(tfrag3::MercVertex, normal[0])  // offset (0)
+  );
+
+  glVertexAttribPointer(2,                                               // location 1 in the
+                        3,                                               // 3 values per vert
+                        GL_FLOAT,                                        // floats
+                        GL_FALSE,                                        // normalized
+                        sizeof(tfrag3::MercVertex),                      // stride
+                        (void*)offsetof(tfrag3::MercVertex, weights[0])  // offset (0)
+  );
+
+  glVertexAttribPointer(3,                                          // location 1 in the shader
+                        2,                                          // 3 values per vert
+                        GL_FLOAT,                                   // floats
+                        GL_FALSE,                                   // normalized
+                        sizeof(tfrag3::MercVertex),                 // stride
+                        (void*)offsetof(tfrag3::MercVertex, st[0])  // offset (0)
+  );
+
+  glVertexAttribPointer(4,                                            // location 1 in the shader
+                        4,                                            // 3 values per vert
+                        GL_UNSIGNED_BYTE,                             // floats
+                        GL_TRUE,                                      // normalized
+                        sizeof(tfrag3::MercVertex),                   // stride
+                        (void*)offsetof(tfrag3::MercVertex, rgba[0])  // offset (0)
+  );
+
+  glVertexAttribIPointer(5,                                            // location 0 in the
+                         4,                                            // 3 floats per vert
+                         GL_UNSIGNED_BYTE,                             // u8's
+                         sizeof(tfrag3::MercVertex),                   //
+                         (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array
+  );
+}
+
 void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   m_stats.num_draw_flush++;
-
   for (u32 li = 0; li < m_next_free_level_bucket; li++) {
     const auto& lev_bucket = m_level_draw_buckets[li];
     const auto* lev = lev_bucket.level;
     glBindVertexArray(m_vao);
     glBindBuffer(GL_ARRAY_BUFFER, lev->merc_vertices);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
-
-    glEnable(GL_PRIMITIVE_RESTART);
-    glPrimitiveRestartIndex(UINT32_MAX);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-    glEnableVertexAttribArray(3);
-    glEnableVertexAttribArray(4);
-    glEnableVertexAttribArray(5);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_GEQUAL);
-
-    glVertexAttribPointer(0,                                        // location 0 in the shader
-                          3,                                        // 3 values per vert
-                          GL_FLOAT,                                 // floats
-                          GL_FALSE,                                 // normalized
-                          sizeof(tfrag3::MercVertex),               // stride
-                          (void*)offsetof(tfrag3::MercVertex, pos)  // offset (0)
-    );
-
-    glVertexAttribPointer(1,                                              // location 1 in the
-                          3,                                              // 3 values per vert
-                          GL_FLOAT,                                       // floats
-                          GL_FALSE,                                       // normalized
-                          sizeof(tfrag3::MercVertex),                     // stride
-                          (void*)offsetof(tfrag3::MercVertex, normal[0])  // offset (0)
-    );
-
-    glVertexAttribPointer(2,                                               // location 1 in the
-                          3,                                               // 3 values per vert
-                          GL_FLOAT,                                        // floats
-                          GL_FALSE,                                        // normalized
-                          sizeof(tfrag3::MercVertex),                      // stride
-                          (void*)offsetof(tfrag3::MercVertex, weights[0])  // offset (0)
-    );
-
-    glVertexAttribPointer(3,                                          // location 1 in the shader
-                          2,                                          // 3 values per vert
-                          GL_FLOAT,                                   // floats
-                          GL_FALSE,                                   // normalized
-                          sizeof(tfrag3::MercVertex),                 // stride
-                          (void*)offsetof(tfrag3::MercVertex, st[0])  // offset (0)
-    );
-
-    glVertexAttribPointer(4,                                            // location 1 in the shader
-                          4,                                            // 3 values per vert
-                          GL_UNSIGNED_BYTE,                             // floats
-                          GL_TRUE,                                      // normalized
-                          sizeof(tfrag3::MercVertex),                   // stride
-                          (void*)offsetof(tfrag3::MercVertex, rgba[0])  // offset (0)
-    );
-
-    glVertexAttribIPointer(5,                                            // location 0 in the
-                           4,                                            // 3 floats per vert
-                           GL_UNSIGNED_BYTE,                             // u8's
-                           sizeof(tfrag3::MercVertex),                   //
-                           (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array
-    );
-
+    setup_merc_vao();
     m_stats.num_bones_uploaded += m_next_free_bone_vector;
 
     glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
@@ -638,6 +867,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNo
   m_next_free_light = 0;
   m_next_free_bone_vector = 0;
   m_next_free_level_bucket = 0;
+  m_next_mod_vtx_buffer = 0;
 }
 
 void Merc2::do_draws(const Draw* draw_array,
@@ -649,9 +879,19 @@ void Merc2::do_draws(const Draw* draw_array,
                      SharedRenderState* render_state) {
   int last_tex = -1;
   int last_light = -1;
+  bool normal_vtx_buffer_bound = true;
   for (u32 di = 0; di < num_draws; di++) {
     auto& draw = draw_array[di];
-    glUniform1i(uniforms.ignore_alpha, draw.ignore_alpha);
+    if (draw.flags & MOD_VTX) {
+      glBindVertexArray(draw.mod_vtx_buffer.vao);
+      normal_vtx_buffer_bound = false;
+    } else {
+      if (!normal_vtx_buffer_bound) {
+        glBindVertexArray(m_vao);
+        normal_vtx_buffer_bound = true;
+      }
+    }
+    glUniform1i(uniforms.ignore_alpha, draw.flags & DrawFlags::IGNORE_ALPHA);
     if ((int)draw.texture != last_tex) {
       if (draw.texture < lev->textures.size()) {
         glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
@@ -689,5 +929,9 @@ void Merc2::do_draws(const Draw* draw_array,
                       sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
     glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
                    (void*)(sizeof(u32) * draw.first_index));
+  }
+
+  if (!normal_vtx_buffer_bound) {
+    glBindVertexArray(m_vao);
   }
 }

@@ -162,6 +162,14 @@ struct MercFragment {
   std::string print() const;
 };
 
+
+struct MercBlendCtrl {
+  u8 blend_vtx_count;
+  u8 nonzero_index_count;
+  std::vector<u8> bt_index;
+  TypedRef from_ref(TypedRef tr, const DecompilerTypeSystem& dts, int blend_target_count);
+};
+
 struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
@@ -172,6 +180,7 @@ struct MercEffect {
   // (frag-ctrl        merc-fragment-control  :offset-assert 4)
   std::vector<MercFragmentControl> frag_ctrl;
   // (blend-data       merc-blend-data        :offset-assert 8) ??
+  std::vector<MercBlendCtrl> blend_ctrl;
   // (blend-ctrl       merc-blend-ctrl        :offset-assert 12) ??
   // (dummy0           uint8                  :offset-assert 16) ??
   u8 effect_bits;
@@ -195,6 +204,7 @@ struct MercCtrl {
   std::vector<MercEffect> effects;
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void debug_print_blerc();
   std::string print();
 };
 }  // namespace decompiler

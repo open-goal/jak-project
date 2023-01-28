@@ -94,6 +94,12 @@ struct MercUnpackedVtx {
 
   u16 dst0;
   u16 dst1;
+
+  bool can_be_modified = false;
+  int idx_in_combined_lump4 = -1;  // divided by 3
+
+  int flump4 = -1;
+  int frag = -1;
 };
 
 /*!
@@ -306,7 +312,10 @@ void handle_frag(const std::string& debug_name,
                  const MercFragmentControl& frag_ctrl,
                  const MercState& state,
                  std::vector<MercUnpackedVtx>& effect_vertices,
-                 MercMemory& memory) {
+                 MercMemory& memory,
+                 bool can_be_modified,
+                 int base_lump4,
+                 int frag_idx) {
   (void)frag_ctrl;
   (void)debug_name;
   // lg::print("handling frag: {}\n", debug_name);
@@ -330,6 +339,10 @@ void handle_frag(const std::string& debug_name,
   for (size_t i = 0; i < mat123_cnt; i++) {
     u32 current_vtx_idx = effect_vertices.size();  // idx in effect vertex list.
     auto& vtx = effect_vertices.emplace_back();
+    vtx.can_be_modified = can_be_modified;
+    vtx.idx_in_combined_lump4 = lump_ptr / 3 + base_lump4;
+    vtx.frag = frag_idx;
+    vtx.flump4 = lump_ptr / 3;
 
     if (i < mat1_cnt) {
       vtx.kind = 1;  // 1 matrix
@@ -771,6 +784,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   MercMemory merc_memories[2];   // double buffered output
   int memory_buffer_toggle = 0;  // which output we're in
 
+  int combined_lump4_addr = 0;
+
   for (size_t fi = 0; fi < input_effect.frag_ctrl.size(); fi++) {
     const auto& frag = input_effect.frag_geo[fi];
     const auto& frag_ctrl = input_effect.frag_ctrl[fi];
@@ -792,9 +807,14 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // run the frag.
     // this will add vertices to the per-effect vertex lists and also update the merc memory
     // to point to these.
+    bool can_be_modified = false;
+    if (fi < input_effect.blend_ctrl.size()) {
+      can_be_modified = input_effect.blend_ctrl.at(fi).blend_vtx_count > 0;
+    }
 
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
-                merc_memories[memory_buffer_toggle]);
+                merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
+    combined_lump4_addr += frag.lump4_unpacked.size() / 3;
 
     // we'll add draws after this draw, but wait to actually populate the index lists until
     // we've processed all the vertices.
@@ -956,6 +976,122 @@ tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx, float xyz_scale) {
   return out;
 }
 
+struct VertexSourceInfo {
+  int combined_lump4;
+  int frag;
+  int flump4;
+};
+
+void create_modifiable_vertex_data(const std::vector<bool>& vtx_mod_flag,
+                                   const std::vector<VertexSourceInfo>& vtx_srcs,
+                                   tfrag3::MercModelGroup& out,
+                                   size_t first_out_vertex,
+                                   size_t first_out_model) {
+  ASSERT(vtx_mod_flag.size() + first_out_vertex == out.vertices.size());
+
+  // we need to be able to modify some vertices at runtime.
+  // this can be detected vertex-by-vertex
+  // the plan is to find MercEffects that contain modifiable vertices, and provide an alternate way
+  // to draw them. In the case where no vertices should be modified, we can fall back to the normal
+  // merc drawing path.
+
+  // In this modifiable draw path, there will be a list of "fixed draws", which draw vertices that
+  // cannot be modified. This set is known at build-time.
+  // The "mod draws" will draw the modifiable vertices. These use the normal index buffer, but
+  // index into a per-effect modifiable vertex buffer.
+
+  //  std::vector<tfrag3::MercDraw> fixed_draws, mod_draws;
+
+  // some stats
+  int num_tris = 0;  // all triangles
+  int mod_tris = 0;  // triangles in mod draws
+
+  // loop over models added from this art-group
+  for (size_t mi = first_out_model; mi < out.models.size(); mi++) {
+    auto& model = out.models.at(mi);
+    // loop over "effects" within this model. the pc format merges all fragments in an effect
+    // together.
+    for (auto& effect : model.effects) {
+      for (const auto& draw : effect.all_draws) {
+        num_tris += draw.num_triangles;
+
+        // first check to see what's in this draw
+        bool found_mod = false;
+        bool found_fixed = false;
+        for (int i = 0; i < (int)draw.index_count; i++) {
+          u32 idx = out.indices.at(draw.first_index + i);
+          if (idx == UINT32_MAX) {
+            continue;
+          }
+          ASSERT(idx >= first_out_vertex);
+          if (vtx_mod_flag.at(idx - first_out_vertex)) {
+            found_mod = true;
+          } else {
+            found_fixed = true;
+          }
+        }
+
+        if (!found_fixed && !found_mod) {
+          // nothing found at all, bad
+          ASSERT_NOT_REACHED();
+        } else if (found_fixed && !found_mod) {
+          // only fixed. can just copy the fixed draw
+          effect.mod.fix_draw.push_back(draw);
+        } else if (found_mod && !found_fixed) {
+          // only mod
+          effect.mod.mod_draw.push_back(draw);
+          mod_tris += draw.num_triangles;
+        } else {
+          // it's a mix...
+          // TODO: actually split up the draw
+          effect.mod.mod_draw.push_back(draw);
+          mod_tris += draw.num_triangles;
+          mod_tris += draw.num_triangles;
+        }
+      }  // for draw
+
+      // if there are no modifiable draws, we can't possible modify anything, so not worth
+      // storing the fixed draws
+      if (effect.mod.mod_draw.empty()) {
+        effect.mod.fix_draw.clear();
+      } else {
+        // need to set up the vertex buffer for the modifiable draws
+        // map of original vertex indices to mod buffer index
+        std::unordered_map<u32, u32> vtx_to_mod_vtx;
+        for (auto& draw : effect.mod.mod_draw) {
+          u32 new_first_index = out.indices.size();
+          for (int i = 0; i < (int)draw.index_count; i++) {
+            u32 vidx = out.indices.at(draw.first_index + i);
+            if (vidx == UINT32_MAX) {
+              out.indices.push_back(UINT32_MAX);
+              continue;  // strip restart
+            }
+            const auto& existing = vtx_to_mod_vtx.find(vidx);
+            if (existing == vtx_to_mod_vtx.end()) {
+              // add vertex to mod buffer
+              auto idx = effect.mod.vertices.size();
+              vtx_to_mod_vtx[vidx] = idx;
+              effect.mod.vertices.push_back(out.vertices.at(vidx));
+              auto src = vtx_srcs.at(vidx - first_out_vertex);
+              ASSERT(src.combined_lump4 < UINT16_MAX);
+              effect.mod.vertex_lump4_addr.push_back(src.combined_lump4);
+              out.indices.push_back(idx);
+            } else {
+              out.indices.push_back(existing->second);
+            }
+          }
+          draw.first_index = new_first_index;
+        }
+      }
+    }
+  }
+
+  //  if (!mod_draws.empty()) {
+  //    fmt::print("BLERC stats, {}/{} (s {}) draws, {}/{} tris\n", mod_draws.size(), total_draws,
+  //               split_draws, mod_tris, num_tris, split_tris);
+  //  }
+}
+
 /*!
  * Top-level merc extraction
  */
@@ -990,9 +1126,12 @@ void extract_merc(const ObjectFileData& ag_data,
     }
   }
 
+  size_t first_out_vertex = out.merc_data.vertices.size();
   // convert to PC format
   // first pass, before merging indices
   u32 first_model = out.merc_data.models.size();
+  std::vector<bool> vertex_modify_flags;
+  std::vector<VertexSourceInfo> vertex_srcs;
   std::vector<std::vector<std::vector<std::vector<u32>>>> indices_temp;  // ctrl, effect, draw, vtx
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     indices_temp.emplace_back();
@@ -1002,6 +1141,8 @@ void extract_merc(const ObjectFileData& ag_data,
     pc_ctrl.name = ctrl.name;
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
+    pc_ctrl.st_vif_add = ctrl.header.st_vif_add;
+    pc_ctrl.xyz_scale = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       indices_temp[ci].emplace_back();
@@ -1013,6 +1154,8 @@ void extract_merc(const ObjectFileData& ag_data,
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
         auto cvtx = convert_vertex(vtx, ctrl.header.xyz_scale);
+        vertex_modify_flags.push_back(vtx.can_be_modified);
+        vertex_srcs.push_back({vtx.idx_in_combined_lump4, vtx.frag, vtx.flump4});
         out.merc_data.vertices.push_back(cvtx);
         for (int i = 0; i < 3; i++) {
           pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);
@@ -1030,15 +1173,15 @@ void extract_merc(const ObjectFileData& ag_data,
         tfrag3::MercDraw* pc_draw = nullptr;
         u64 pc_draw_idx = -1;
         if (existing == draw_mode_dedup.end()) {
-          pc_draw_idx = pc_effect.draws.size();
+          pc_draw_idx = pc_effect.all_draws.size();
           draw_mode_dedup[draw.state.merc_draw_mode.as_u64()] = pc_draw_idx;
-          pc_draw = &pc_effect.draws.emplace_back();
+          pc_draw = &pc_effect.all_draws.emplace_back();
           pc_draw->mode = draw.state.merc_draw_mode.mode;
           pc_draw->tree_tex_id = find_or_add_texture_to_level(
               out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id);
         } else {
           pc_draw_idx = existing->second;
-          pc_draw = &pc_effect.draws.at(pc_draw_idx);
+          pc_draw = &pc_effect.all_draws.at(pc_draw_idx);
         }
 
         for (auto idx : draw.indices) {
@@ -1057,8 +1200,8 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& pc_ctrl = out.merc_data.models.at(ci + first_model);
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       auto& pc_effect = pc_ctrl.effects.at(ei);
-      for (size_t di = 0; di < pc_effect.draws.size(); di++) {
-        auto& pc_draw = pc_effect.draws.at(di);
+      for (size_t di = 0; di < pc_effect.all_draws.size(); di++) {
+        auto& pc_draw = pc_effect.all_draws.at(di);
         auto& inds = indices_temp[ci][ei][di];
         pc_draw.num_triangles = clean_up_vertex_indices(inds);
         pc_draw.first_index = out.merc_data.indices.size();
@@ -1067,5 +1210,8 @@ void extract_merc(const ObjectFileData& ag_data,
       }
     }
   }
+
+  create_modifiable_vertex_data(vertex_modify_flags, vertex_srcs, out.merc_data, first_out_vertex,
+                                first_model);
 }
 }  // namespace decompiler

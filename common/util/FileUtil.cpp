@@ -173,6 +173,10 @@ fs::path get_jak_project_dir() {
   return gFilePathInfo.path_to_data;
 }
 
+fs::path get_model_dump_dir() {
+  return get_jak_project_dir() / "model_dump";
+}
+
 std::string get_file_path(const std::vector<std::string>& input) {
   // TODO - clean this behaviour up, it causes unexpected behaviour when working with files
   // the project path should be explicitly provided by whatever if needed

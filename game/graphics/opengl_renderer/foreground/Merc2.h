@@ -4,11 +4,29 @@
 class Merc2 : public BucketRenderer {
  public:
   Merc2(const std::string& name, int my_id);
+  ~Merc2();
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
  private:
+  bool m_debug_mode = false;
+  struct DrawDebug {
+    DrawMode mode;
+    int num_tris;
+  };
+  struct EffectDebug {
+    bool envmap = false;
+    DrawMode envmap_mode;
+    std::vector<DrawDebug> draws;
+  };
+  struct ModelDebug {
+    std::string name;
+    std::vector<EffectDebug> effects;
+  };
+  struct {
+    std::vector<ModelDebug> model_list;
+  } m_debug;
   enum MercDataMemory {
     LOW_MEMORY = 0,
     BUFFER_BASE = 442,
@@ -38,16 +56,23 @@ class Merc2 : public BucketRenderer {
     math::Vector4f ambient;
   };
 
-  void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
+  void init_pc_model(const DmaTransfer& setup,
+                     SharedRenderState* render_state,
+                     ScopedProfilerNode& prof);
   u32 alloc_lights(const VuLights& lights);
-
   u32 alloc_bones(int count);
+
+  struct ModBuffers {
+    GLuint vao, vertex;
+  };
 
   std::optional<MercRef> m_current_model = std::nullopt;
   u16 m_current_effect_enable_bits = 0;
   u16 m_current_ignore_alpha_bits = 0;
   static constexpr int kMaxEffect = 16;
   u8 m_fade_buffer[4 * kMaxEffect];
+  bool m_current_model_updates_verts = false;
+  ModBuffers m_mod_opengl_buffers[kMaxEffect];
 
   struct MercMat {
     math::Vector4f tmat[4];
@@ -97,7 +122,6 @@ class Merc2 : public BucketRenderer {
   Uniforms m_merc_uniforms, m_emerc_uniforms;
 
   void init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights);
-  void init_for_frame(SharedRenderState* render_state, ShaderId shader);
   void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state);
   void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -109,6 +133,19 @@ class Merc2 : public BucketRenderer {
   void switch_to_emerc(SharedRenderState* render_state);
 
   GLuint m_vao;
+
+  void setup_merc_vao();
+
+  std::vector<ModBuffers> m_mod_vtx_buffers;
+  u32 m_next_mod_vtx_buffer = 0;
+
+  static constexpr int MAX_MOD_VTX = UINT16_MAX;
+  std::vector<tfrag3::MercVertex> m_mod_vtx_temp;
+  std::vector<math::Vector3f> m_mod_vtx_pos_unpack_temp;
+  std::vector<math::Vector3f> m_mod_vtx_nrm_unpack_temp;
+
+
+  ModBuffers alloc_mod_vtx_buffer(const LevelData* lev);
 
   GLuint m_bones_buffer;
 
@@ -125,7 +162,15 @@ class Merc2 : public BucketRenderer {
 
     int num_envmap_effects = 0;
     int num_envmap_tris = 0;
+
+    int num_upload_bytes = 0;
+    int num_uploads = 0;
   } m_stats;
+
+  enum DrawFlags {
+    IGNORE_ALPHA = 1,
+    MOD_VTX = 2,
+  };
 
   struct Draw {
     u32 first_index;
@@ -135,7 +180,8 @@ class Merc2 : public BucketRenderer {
     u32 num_triangles;
     u16 first_bone;
     u16 light_idx;
-    u8 ignore_alpha;
+    u8 flags;
+    ModBuffers mod_vtx_buffer;
     u8 fade[4];
   };
 
@@ -152,6 +198,11 @@ class Merc2 : public BucketRenderer {
       next_free_envmap_draw = 0;
     }
   };
+  Draw* alloc_normal_draw(const tfrag3::MercDraw& mdraw,
+                          bool ignore_alpha,
+                          LevelDrawBucket* lev_bucket,
+                          u32 first_bone,
+                          u32 lights);
 
   void do_draws(const Draw* draw_array,
                 const LevelData* lev,
