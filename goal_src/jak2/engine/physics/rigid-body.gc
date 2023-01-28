@@ -857,17 +857,17 @@
   )
 
 (defmethod get-inv-mass rigid-body-object ((obj rigid-body-object))
-  (-> obj info inv-mass)
+  (-> obj info info inv-mass)
   )
 
 (defmethod rigid-body-object-method-35 rigid-body-object ((obj rigid-body-object))
   (let ((a0-1 (-> obj info name)))
     (when (nonzero? a0-1)
       (set! (-> obj info) (the-as rigid-body-object-constants (-> a0-1 value)))
-      (set! (-> obj rbody state info) (the-as rigid-body-info (&-> (-> obj info) mass)))
+      (set! (-> obj rbody state info) (-> obj info info))
       )
     )
-  ((method-of-type rigid-body-info rigid-body-info-method-9) (the-as rigid-body-info (&-> (-> obj info) mass)))
+  (rigid-body-info-method-9 (-> obj info info))
   (set! (-> obj rbody state force-callback) (method-of-object obj rigid-body-object-method-29))
   0
   (none)
@@ -933,7 +933,7 @@
   (update-transforms (-> obj root-override-2))
   (rigid-body-method-25
     (-> obj rbody state)
-    (the-as rigid-body-info (&-> (-> obj info) mass))
+    (-> obj info info)
     (-> obj root-override-2 trans)
     (-> obj root-override-2 quat)
     (method-of-object obj rigid-body-object-method-29)
@@ -978,16 +978,16 @@
   )
 
 (define *rigid-body-object-constants* (new 'static 'rigid-body-object-constants
-                                        :mass 2.0
-                                        :inv-mass 0.5
-                                        :cm-joint (new 'static 'vector :w 1.0)
-                                        :linear-damping 1.0
-                                        :angular-damping 1.0
-                                        :bounce-factor 0.5
-                                        :friction-factor 0.1
-                                        :inertial-tensor-x (meters 4)
-                                        :inertial-tensor-y (meters 4)
-                                        :inertial-tensor-z (meters 4)
+                                        :info (new 'static 'rigid-body-info
+                                          :mass 2.0
+                                          :inv-mass 0.5
+                                          :linear-damping 1.0
+                                          :angular-damping 1.0
+                                          :bounce-factor 0.5
+                                          :friction-factor 0.1
+                                          :cm-offset-joint (new 'static 'vector :w 1.0)
+                                          :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 4) (meters 4))
+                                          )
                                         :max-time-step 0.033333335
                                         :gravity (meters 80)
                                         :idle-distance (meters 50)
@@ -1060,7 +1060,7 @@ This commonly includes things such as:
   (when (not (logtest? (-> obj rbody state flags) (rigid-body-flag enable-physics)))
     (logior! (-> obj rbody state flags) (rigid-body-flag enable-physics))
     (rigid-body-method-26 (-> obj rbody state) (-> obj root-override-2 trans) (-> obj root-override-2 quat))
-    (vector-float*! (-> obj rbody state lin-momentum) (-> obj root-override-2 transv) (-> obj info mass))
+    (vector-float*! (-> obj rbody state lin-momentum) (-> obj root-override-2 transv) (-> obj info info mass))
     (vector-reset! (-> obj rbody state ang-momentum))
     )
   0
@@ -1242,7 +1242,7 @@ This commonly includes things such as:
       )
     (let ((f0-1 (vector-dot (-> s5-0 velocity) (-> s5-0 normal))))
       (when (< f0-1 0.0)
-        (set! (-> s5-0 impulse) (/ f0-1 (+ f30-0 (-> obj info inv-mass))))
+        (set! (-> s5-0 impulse) (/ f0-1 (+ f30-0 (-> obj info info inv-mass))))
         (vector+float*! s4-0 s4-0 (-> s5-0 normal) (* -3.1 f30-0 (-> s5-0 impulse)))
         (set! (-> s4-0 y) (fmax (* 49152.0 f30-0) (-> s4-0 y)))
         (rigid-body-object-method-42 obj)
