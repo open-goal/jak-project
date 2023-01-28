@@ -107,6 +107,9 @@ struct ConvertedMercEffect {
   // draws from all fragments.
   std::vector<MercDraw> draws;
   std::vector<MercUnpackedVtx> vertices;
+  bool has_envmap = false;
+  DrawMode envmap_mode;
+  u32 envmap_texture;
 };
 
 /*!
@@ -195,6 +198,10 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
              reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED) {
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
   }
 
   else {
@@ -209,7 +216,7 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
 /*!
  * Convert merc shader to PC draw mode
  */
-DrawMode process_draw_mode(const MercShader& info) {
+DrawMode process_draw_mode(const MercShader& info, bool enable_alpha_test) {
   DrawMode mode;
   /*
    *       (new 'static 'gs-test
@@ -220,7 +227,7 @@ DrawMode process_draw_mode(const MercShader& info) {
            :ztst (gs-ztest greater-equal)
            )
    */
-  mode.enable_at();
+  mode.set_at(enable_alpha_test);
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.set_aref(0x26);
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
@@ -234,6 +241,10 @@ DrawMode process_draw_mode(const MercShader& info) {
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   mode.set_tcc(info.tex0.tcc());
   mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
+  if (info.tex0.tfx() != GsTex0::TextureFunction::DECAL) {
+    ASSERT(info.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  }
+
   mode.set_filt_enable(info.tex1.mmag());
 
   // the alpha matters (maybe?)
@@ -652,16 +663,106 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
   return result;
 }
 
+int find_or_add_texture_to_level(tfrag3::Level& out,
+                                 const TextureDB& tex_db,
+                                 const std::string& debug_name,
+                                 u32 pc_combo_tex_id) {
+  u32 idx_in_level_texture = UINT32_MAX;
+  for (u32 i = 0; i < out.textures.size(); i++) {
+    if (out.textures[i].combo_id == pc_combo_tex_id) {
+      idx_in_level_texture = i;
+      break;
+    }
+  }
+
+  if (idx_in_level_texture == UINT32_MAX) {
+    // not added to level, add it
+    auto tex_it = tex_db.textures.find(pc_combo_tex_id);
+    if (tex_it == tex_db.textures.end()) {
+      lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
+      idx_in_level_texture = 0;
+    } else {
+      idx_in_level_texture = out.textures.size();
+      auto& new_tex = out.textures.emplace_back();
+      new_tex.combo_id = pc_combo_tex_id;
+      new_tex.w = tex_it->second.w;
+      new_tex.h = tex_it->second.h;
+      new_tex.debug_name = tex_it->second.name;
+      new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
+      new_tex.data = tex_it->second.rgba_bytes;
+    }
+  }
+
+  return idx_in_level_texture;
+}
+
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
                                         const std::vector<level_tools::TextureRemap>& map,
                                         const std::string& debug_name,
                                         size_t ctrl_idx,
                                         size_t effect_idx,
-                                        bool dump) {
+                                        bool dump,
+                                        const TextureDB& tex_db,
+                                        tfrag3::Level& out,
+                                        GameVersion version) {
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  if (input_effect.extra_info.shader) {
+    result.has_envmap = true;
+    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false);
+    result.envmap_mode.set_ab(true);
+    u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
+    ASSERT(result.envmap_mode.get_tcc_enable());
+    ASSERT(result.envmap_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
+
+    // texture the texture page/texture index, and convert to a PC port texture ID
+    u32 tpage = new_tex >> 20;
+    u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+    u32 tex_combo = (((u32)tpage) << 16) | tidx;
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo);
+  } else if (input_effect.envmap_or_effect_usage) {
+    u32 tex_combo = 0;
+    switch (version) {
+      case GameVersion::Jak1: {
+        u32 env = 0x10000000;  // jak 1, check for jak 2.
+        u32 tpage = env >> 20;
+        u32 tidx = (env >> 8) & 0b1111'1111'1111;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak2: {
+        u32 tpage = 0x1f;
+        u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
+
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo);
+
+    DrawMode mode;
+    mode.set_at(false);
+    mode.enable_zt();
+    mode.enable_depth_write();
+    mode.set_depth_test(GsTest::ZTest::GEQUAL);
+
+    // check these
+    mode.disable_ab();
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+    mode.set_tcc(true);
+    mode.set_decal(false);
+    mode.set_filt_enable(true);
+
+    mode.set_clamp_s_enable(true);
+    mode.set_clamp_t_enable(true);
+
+    result.has_envmap = true;
+    result.envmap_mode = mode;
+    result.envmap_mode.set_ab(true);
+  }
   // full reset of state per effect.
   // we have no idea what the previous effect draw will be - it might be given to
   // mercneric.
@@ -718,7 +819,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
-      merc_state.merc_draw_mode.mode = process_draw_mode(shader);
+      merc_state.merc_draw_mode.mode = process_draw_mode(shader, result.has_envmap);
+      if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
+        ASSERT(false);
+      }
       u32 new_tex = remap_texture(shader.original_tex, map);
 
       // texture the texture page/texture index, and convert to a PC port texture ID
@@ -860,7 +964,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
-                  bool dump_level) {
+                  bool dump_level,
+                  GameVersion version) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -880,7 +985,8 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, map,
-                                                    ctrls[ci].name, ci, ei, dump_level));
+                                                    ctrls[ci].name, ci, ei, dump_level, tex_db, out,
+                                                    version));
     }
   }
 
@@ -901,6 +1007,9 @@ void extract_merc(const ObjectFileData& ag_data,
       indices_temp[ci].emplace_back();
       auto& pc_effect = pc_ctrl.effects.emplace_back();
       auto& effect = all_effects[ci][ei];
+      pc_effect.has_envmap = effect.has_envmap;
+      pc_effect.envmap_texture = effect.envmap_texture;
+      pc_effect.envmap_mode = effect.envmap_mode;
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
         auto cvtx = convert_vertex(vtx, ctrl.header.xyz_scale);
@@ -925,36 +1034,8 @@ void extract_merc(const ObjectFileData& ag_data,
           draw_mode_dedup[draw.state.merc_draw_mode.as_u64()] = pc_draw_idx;
           pc_draw = &pc_effect.draws.emplace_back();
           pc_draw->mode = draw.state.merc_draw_mode.mode;
-
-          u32 idx_in_level_texture = UINT32_MAX;
-          for (u32 i = 0; i < out.textures.size(); i++) {
-            if (out.textures[i].combo_id == draw.state.merc_draw_mode.pc_combo_tex_id) {
-              idx_in_level_texture = i;
-              break;
-            }
-          }
-
-          if (idx_in_level_texture == UINT32_MAX) {
-            // not added to level, add it
-            auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
-            if (tex_it == tex_db.textures.end()) {
-              lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
-                        draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.name,
-                        draw.state.merc_draw_mode.pc_combo_tex_id >> 16);
-              idx_in_level_texture = 0;
-            } else {
-              idx_in_level_texture = out.textures.size();
-              auto& new_tex = out.textures.emplace_back();
-              new_tex.combo_id = draw.state.merc_draw_mode.pc_combo_tex_id;
-              new_tex.w = tex_it->second.w;
-              new_tex.h = tex_it->second.h;
-              new_tex.debug_name = tex_it->second.name;
-              new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
-              new_tex.data = tex_it->second.rgba_bytes;
-            }
-          }
-
-          pc_draw->tree_tex_id = idx_in_level_texture;
+          pc_draw->tree_tex_id = find_or_add_texture_to_level(
+              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id);
         } else {
           pc_draw_idx = existing->second;
           pc_draw = &pc_effect.draws.at(pc_draw_idx);
