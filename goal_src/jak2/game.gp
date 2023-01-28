@@ -2866,23 +2866,22 @@
 ;; ;; LPORTRUN
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LPORTRUN.DGO" "lportrun.gd")
+(cgo "LPORTRUN.DGO" "lportrun.gd")
 
-;; (goal-src-sequence
-;;   ""
-;;   :deps ("$OUT/obj/los-control.o")
-;;   "levels/city/port/mines/portrun.gc"
-;;   )
+(goal-src-sequence
+  ""
+  :deps ("$OUT/obj/los-control.o")
+  "levels/city/port/mines/portrun.gc"
+  )
 
-;; (copy-textures 2817 2373)
+(copy-textures 2817 2373)
 
-;; (copy-gos
-;;   "ctyport-cargo-ag"
-;;   "ctyport-spy-ag"
-;;   "mine-b-ag"
-;;   "ctyport-mine-ag"
-;;   "lportrun"
-;;   )
+(copy-gos
+  "ctyport-cargo-ag"
+  "ctyport-spy-ag"
+  "ctyport-mine-ag"
+  "lportrun"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LPOWER

@@ -9848,7 +9848,7 @@
    (data-float float 32)
    (data-vector vector 32 :inline :offset-assert 800 :score 100)
    (actor-group (pointer entity-actor) 4 :offset-assert 1312)
-   (minimap uint32 8 :offset-assert 1328)
+   (minimap connection-minimap 8 :offset-assert 1328)
    (hud handle 4 :offset-assert 1360)
    (hud-timer handle :offset 1360)
    (hud-counter handle :offset 1368)
@@ -33110,7 +33110,7 @@
   )
 
 (deftype rigid-body-object-constants (structure)
-  ((info               rigid-body-info              :inline :offset-assert 0 :score -1)
+  ((info               rigid-body-info              :inline :offset-assert 0)
    (mass               float                                :offset 0)
    (inv-mass           float                                :offset 4)
    (cm-joint           vector                       :inline :offset 32)
@@ -46682,9 +46682,8 @@
 ;; portrun                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype city-port-run-mine-info (structure)
-  ((handle   uint64  :offset-assert 0)
+  ((handle   handle  :offset-assert 0)
    (pos1-x   float   :offset-assert 8)
    (pos1-y   float   :offset-assert 12)
    (pos1-z   float   :offset-assert 16)
@@ -46694,30 +46693,29 @@
    (pos2-z   float   :offset-assert 32)
    (speed    float   :offset-assert 36)
    (offset   float   :offset-assert 40)
-   (center-x float   :offset-assert 8)
-   (center-y float   :offset-assert 12)
-   (center-z float   :offset-assert 16)
-   (radius   float   :offset-assert 24)
+   (center-x float   :offset 8)
+   (center-y float   :offset 12)
+   (center-z float   :offset 16)
+   (radius   float   :offset 24)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype ctyport-mine (process-drawable)
-  ((info        city-port-run-mine-info         :offset-assert 196)
-   (base-height float                           :offset-assert 200)
-   (center      vector                  :inline :offset-assert 204)
-   (time-skew   uint64                          :offset-assert 220)
-   (period      float                           :offset-assert 228)
-   (trans-y     float                           :offset-assert 232)
-   (speed-y     float                           :offset-assert 236)
-   (acc-y       float                           :offset-assert 240)
-   (beep        basic                           :offset-assert 244)
-   (beep-time   time-frame                          :offset-assert 252)
-   (beep-color  vector                  :inline :offset-assert 268)
+  ((root-override collide-shape-moving :offset 128 :score 100)
+   (info        city-port-run-mine-info         :offset-assert 200)
+   (base-height float                           :offset-assert 204)
+   (center      vector                  :inline :offset-assert 208)
+   (time-skew   uint64                          :offset-assert 224)
+   (period      float                           :offset-assert 232)
+   (trans-y     float                           :offset-assert 236)
+   (speed-y     float                           :offset-assert 240)
+   (acc-y       float                           :offset-assert 244)
+   (beep        basic                           :offset-assert 248)
+   (beep-time   time-frame                          :offset-assert 256)
+   (beep-color  vector                  :inline :offset-assert 272)
    )
   :method-count-assert 24
   :size-assert         #x120
@@ -46726,14 +46724,12 @@
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
     (fall () _type_ :state 22)
-    (ctyport-mine-method-23 () none 23)
+    (ctyport-mine-method-23 (_type_) none 23)
     )
   )
-|#
 
-#|
 (deftype ctyport-spy (process-drawable)
-  ((trans-y float  :offset-assert 196)
+  ((trans-y float  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
@@ -46742,13 +46738,11 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype ctyport-cargo (process-focusable)
-  ((minimap connection-minimap  :offset-assert 200)
-   (trans-y float               :offset-assert 204)
-   (speed-y float               :offset-assert 208)
+  ((minimap connection-minimap  :offset-assert 204)
+   (trans-y float               :offset-assert 208)
+   (speed-y float               :offset-assert 212)
    )
   :method-count-assert 31
   :size-assert         #xd8
@@ -46757,12 +46751,10 @@
     (idle () _type_ :state 27)
     (focus-camera () _type_ :state 28)
     (die () _type_ :state 29)
-    (ctyport-cargo-method-30 () none 30)
+    (ctyport-cargo-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype city-port-run-cargo-info (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -46770,19 +46762,18 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern check-cargo-piece-ground function)
-;; (define-extern *city-port-run-mine-info* array)
-;; (define-extern ctyport-mine-init-by-other function)
-;; (define-extern ctyport-mine-spawn function)
-;; (define-extern ctyport-spy-init-by-other function)
-;; (define-extern ctyport-spy-spawn function)
-;; (define-extern *city-port-position* object)
-;; (define-extern *ctyport-cargo-exploder-params* joint-exploder-static-params)
-;; (define-extern ctyport-cargo-init-by-other function)
-;; (define-extern ctyport-cargo-spawn function)
-;; (define-extern *city-port-run-cargo-info* array)
+(define-extern check-cargo-piece-ground (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *city-port-run-mine-info* (array city-port-run-mine-info))
+(define-extern ctyport-mine-init-by-other (function city-port-run-mine-info none :behavior ctyport-mine))
+(define-extern ctyport-mine-spawn (function task-manager city-port-run-mine-info process))
+(define-extern ctyport-spy-init-by-other (function vector none :behavior ctyport-spy))
+(define-extern ctyport-spy-spawn (function process vector vector float process))
+(define-extern *city-port-position* vector)
+(define-extern *ctyport-cargo-exploder-params* joint-exploder-static-params)
+(define-extern ctyport-cargo-init-by-other (function vector nav-mesh none :behavior ctyport-cargo))
+(define-extern ctyport-cargo-spawn (function task-manager vector nav-mesh process))
+(define-extern *city-port-run-cargo-info* (array city-port-run-cargo-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctygenb-part                   ;;
@@ -47244,12 +47235,11 @@
 ;; vinroom-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vin-turbine (process-drawable)
-  ((dont-draw-outside? basic          :offset-assert 196)
-   (lightning-timer    uint64         :offset-assert 204)
-   (outside-plane      plane  :inline :offset-assert 220)
-   (lightning-plane    plane  :inline :offset-assert 236)
+  ((dont-draw-outside? symbol          :offset-assert 200)
+   (lightning-timer    uint64         :offset-assert 208)
+   (outside-plane      plane  :inline :offset-assert 224)
+   (lightning-plane    plane  :inline :offset-assert 240)
    )
   :method-count-assert 22
   :size-assert         #x100
@@ -47259,9 +47249,7 @@
     (dormant () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype vin-door (com-airlock)
   ()
   :method-count-assert 28
@@ -47270,7 +47258,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47327,7 +47314,6 @@
 ;; ctypal-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype water-anim-ctypal (water-anim)
   ()
   :method-count-assert 29
@@ -47336,9 +47322,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype palace-door (com-airlock)
   ()
   :method-count-assert 28
@@ -47347,11 +47331,9 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype ctypal-broke-wall (process-drawable)
-  ((ent basic  :offset-assert 196)
+  ((ent basic  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
@@ -47361,9 +47343,7 @@
     (done () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype ctypal-baron-statue-broken (process-drawable)
   ()
   :method-count-assert 21
@@ -47373,10 +47353,9 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern ripple-for-water-anim-ctypal ripple-wave-set)
-;; (define-extern ripple-ctypal-smlground-pool ripple-wave-set)
+(define-extern ripple-for-water-anim-ctypal ripple-wave-set)
+(define-extern ripple-ctypal-smlground-pool ripple-wave-set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-shoot-block              ;;
@@ -49184,7 +49163,7 @@
    (section-count                     int8                         :offset-assert 421)
    (rider-stance                      uint8                        :offset-assert 422)
    (grab-rail-count                   int8                         :offset-assert 423)
-   (grab-rail-array                   uint32                       :offset-assert 424)
+   (grab-rail-array                   (array vehicle-grab-rail-info)                       :offset-assert 424)
    (seat-array                        vehicle-seat-info              4      :inline :offset-assert 432)
    (rider-hand-offset                 vector              2      :inline :offset-assert 496)
    (section-array                     vehicle-section-info              4 :inline       :offset-assert 528 :score -999)
@@ -49238,7 +49217,7 @@
    (part-vel                          vector                       :offset-assert 1496)
    (color-option-count                int8                         :offset-assert 1500)
    (color-option-select               int8                         :offset-assert 1501)
-   (color-option-array                (array rgba)                       :offset-assert 1504)
+   (color-option-array                (inline-array vector)                       :offset-assert 1504) ;; making this a vector is a bit of a guess, but it's a bunch of floats
    (sample-dir                        vector               :inline :offset-assert 1520)
    (sample-time                       time-frame                       :offset-assert 1536)
    (sample-index                      int32                        :offset-assert 1544)
@@ -49494,7 +49473,7 @@
     (vehicle-method-132 (_type_) none 132)
     (check-player-get-on (_type_) none 133)
     (vehicle-method-134 "Stubbed" (_type_ process) none 134)
-    (vehicle-method-135 () none 135)
+    (vehicle-method-135 (_type_ traffic-object-spawn-params) none 135)
     (vehicle-method-136 (_type_ traffic-object-spawn-params) none 136)
     (vehicle-method-137 (_type_ traffic-object-spawn-params) none 137)
     (vehicle-method-138 (_type_) none 138)
@@ -51845,7 +51824,7 @@
   :flag-assert         #x1000200094
   (:methods
     (idle () _type_ :state 14)
-    (boat-manager-method-15 () none 15)
+    (boat-manager-method-15 (_type_) none 15)
     )
   )
 
@@ -51859,11 +51838,11 @@
   :size-assert         #x380
   :flag-assert         #x9503000380
   (:methods
-    (boat-base-method-144 () none 144)
-    (boat-base-method-145 () none 145)
-    (boat-base-method-146 () none 146)
-    (boat-base-method-147 () none 147)
-    (boat-base-method-148 () none 148)
+    (boat-base-method-144 (_type_ nav-control) none 144)
+    (boat-base-method-145 (_type_ nav-control) none 145)
+    (boat-base-method-146 (_type_ nav-control) none 146)
+    (boat-base-method-147 (_type_ nav-control) none 147)
+    (boat-base-method-148 (_type_ nav-control) none 148)
     )
   )
 
@@ -52394,21 +52373,16 @@
 ;; ctyasha-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tanker-grunt (grunt)
-  ((expensive-gnd-collide? basic  :offset-assert 688)
+  ((expensive-gnd-collide? symbol  :offset 692)
    )
   :method-count-assert 186
   :size-assert         #x2b8
   :flag-assert         #xba024002b8
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype tanker-juicer (juicer)
-  ((expensive-gnd-collide? basic  :offset-assert 844)
+  ((expensive-gnd-collide? symbol  :offset-assert 848)
    )
   :method-count-assert 185
   :size-assert         #x354
@@ -52416,25 +52390,21 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype tanker-container (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 100))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:methods
     (dormant () _type_ :state 20)
     (idle () _type_ :state 21)
-    (tanker-container-method-22 () none 22)
+    (tanker-container-method-22 (_type_) none 22)
     )
   )
-|#
 
-#|
 (deftype tanker-crash (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 100))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
@@ -52443,14 +52413,13 @@
     (idle () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype tanker-deadly (process-drawable)
-  ((track-joint int32          :offset-assert 196)
-   (attack-id   uint32         :offset-assert 200)
-   (die-time    time-frame         :offset-assert 204)
-   (prev-pos    vector :inline :offset-assert 220)
+  ((root-override collide-shape :offset 128 :score 100)
+   (track-joint int32          :offset-assert 200)
+   (attack-id   uint32         :offset-assert 204)
+   (die-time    time-frame         :offset-assert 208)
+   (prev-pos    vector :inline :offset-assert 224)
    )
   :method-count-assert 22
   :size-assert         #xf0
@@ -52460,14 +52429,13 @@
     (die-fast () _type_ :state 21)
     )
   )
-|#
 
-;; (define-extern tanker-container-event-handler function)
-;; (define-extern tanker-deadly-init-by-other function)
-;; (define-extern tanker-spawn-deadly-barrels function)
-;; (define-extern tanker-spawn-deadly-cab function)
-;; (define-extern tanker-spawn-deadly-trailers function)
-;; (define-extern tanker-spawn-deadly-container function)
+(define-extern tanker-container-event-handler (function process int symbol event-message-block object :behavior tanker-container))
+(define-extern tanker-deadly-init-by-other (function vector int int none :behavior tanker-deadly))
+(define-extern tanker-spawn-deadly-barrels (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-cab (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-trailers (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-container (function process-tree (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash4-course                    ;;
