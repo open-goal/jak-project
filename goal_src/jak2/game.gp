@@ -2697,22 +2697,17 @@
 ;; ;; LHIPOUT
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LHIPOUT.DGO" "lhipout.gd")
+(cgo "LHIPOUT.DGO" "lhipout.gd")
 
-;; (copy-textures 3440 3199 3200 3486 3242 3544)
+(copy-textures 3440 3199 3200 3486 3242 3544)
 
-;; (copy-gos
-;;   "pecker-highres-ag"
-;;   "crocadog-highres-ag"
-;;   "sig-highres-ag"
-;;   "metalkor-chopped-ag"
-;;   "gold-key-ag"
-;;   "kid-medallion-ag"
-;;   "hip-bottle-c-ag"
-;;   "hip-mug-ag"
-;;   "particleman-ag"
-;;   "lhipout"
-;;   )
+(copy-gos
+  "kid-medallion-ag"
+  "hip-mug-ag"
+  "lhipout"
+  )
+
+(copy-strs "OUPORT")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LINTCSTB
@@ -2826,22 +2821,17 @@
 ;; ;; LOUTCSTB
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LOUTCSTB.DGO" "loutcstb.gd")
+(cgo "LOUTCSTB.DGO" "loutcstb.gd")
 
-;; (copy-textures 3186 3185 3187 3245)
+(copy-textures 3186 3185 3187 3245)
 
-;; (copy-gos
-;;   "youngsamos-highres-ag"
-;;   "brutter-highres-ag"
-;;   "kid-highres-ag"
-;;   "rift-ring-ag"
-;;   "brutter-balloon-norift-ag"
-;;   "metalkor-chopped-ag"
-;;   "rift-rider-ag"
-;;   "precursor-stone-ag"
-;;   "particleman-ag"
-;;   "loutcstb"
-;;   )
+(copy-gos
+  "brutter-balloon-norift-ag"
+  "metalkor-chopped-ag"
+  "loutcstb"
+  )
+
+(copy-strs "OUNEST")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; LPACKAGE
@@ -3151,19 +3141,16 @@
 ;; ;; LTESS
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "LTESS.DGO" "ltess.gd")
+(cgo "LTESS.DGO" "ltess.gd")
 
-;; (copy-textures 1862 1756 2881 3241)
+(copy-textures 1862 1756 2881 3241)
 
-;; (copy-gos
-;;   "tess-lhiphog+0-ag"
-;;   "krew-highres-ag"
-;;   "sig-highres-ag"
-;;   "tess-highres-ag"
-;;   "hip-bottle-c-ag"
-;;   "hip-bottle-b-ag"
-;;   "ltess"
-;;   )
+(copy-gos
+  "tess-lhiphog+0-ag"
+  "hip-bottle-c-ag"
+  "hip-bottle-b-ag"
+  "ltess"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; LTHRNOUT
@@ -3643,8 +3630,6 @@
   "7credits-tx"
   "keira-highres-ag"
   "samos-highres-ag"
-  ;; "tess-highres-ag"
-  ;; "onin-highres-ag"
   "rift-break-ring-ag"
   "precursor-ag"
   "outrocst"
@@ -3807,14 +3792,14 @@
 ;; ;; PORTWALL
 ;; ;;;;;;;;;;;;;;;;;;;;;
 
-;; (cgo "PORTWALL.DGO" "portwall.gd")
+(cgo "PORTWALL.DGO" "portwall.gd")
 
-;; (copy-textures 3181 3323)
+(copy-textures 3181 3323)
 
-;; (copy-gos
-;;   "mecha-daxter-ag"
-;;   "portwall"
-;;   )
+(copy-gos
+  "mecha-daxter-ag"
+  "portwall"
+  )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;
 ;; ;; RUI
