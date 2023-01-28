@@ -17,8 +17,10 @@ class OceanMidAndFar : public BucketRenderer {
  public:
   OceanMidAndFar(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void render_jak1(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void render_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window() override;
-  void init_textures(TexturePool& pool) override;
+  void init_textures(TexturePool& pool, GameVersion version) override;
 
  private:
   void handle_ocean_far(DmaFollower& dma,
@@ -27,6 +29,12 @@ class OceanMidAndFar : public BucketRenderer {
   void handle_ocean_mid(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
+  void handle_ocean_89_jak2(DmaFollower& dma,
+                            SharedRenderState* render_state,
+                            ScopedProfilerNode& prof);
+  void handle_ocean_79_jak2(DmaFollower& dma,
+                            SharedRenderState* render_state,
+                            ScopedProfilerNode& prof);
 
   DirectRenderer m_direct;
   OceanTexture m_texture_renderer;

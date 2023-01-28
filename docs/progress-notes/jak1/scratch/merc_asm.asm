@@ -9,7 +9,7 @@
 ;;  vf05 = [lt1_color]
 ;;  vf06 = [lt2_color]
 ;;  vf07 = [lt_ambient]
-;;  vf17 = [2048, 255, -65537, xyz-add.x] (the ?? is set per fragment)
+;;  vf17 = [2048, 255, -65537, xyz-add.x]
 ;;  vf18 = [st-out-X, st-out-X, -65537, xyz-add.y] (X = a if xtop = 0, X = b otherwise)
 ;;  vf19 = [st-magic, st-magic, -65537, xyz-add.z]
 ;;  vf22 = hvdf-offset (does get set to others, but is always restored)

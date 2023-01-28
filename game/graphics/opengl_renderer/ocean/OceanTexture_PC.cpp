@@ -394,6 +394,240 @@ void OceanTexture::xgkick_PC(Vf* src) {
   }
 }
 
+void OceanTexture::run_L1_PC_jak2() {
+  //  L1:
+  //  lq.xyzw vf14_startx, 988(vi00)    |  maxw.xyzw vf01_ones, vf00, vf00
+  vu.startx = Vf(m_texture_constants.start);
+  //  lq.xyzw vf02_offset, 989(vi00)
+  //  lq.xyzw vf03_tbuf, 986(vi00)
+  //  lq.xyzw vf04_dbuf, 987(vi00)
+  //  lq.xyzw vf05_giftag, 985(vi00)
+  //  lq.xyzw vf06_cam_nrm, 991(vi00)
+  //  lq.xyzw vf07_constants, 990(vi00)
+  //  iaddiu vi11_0x80, vi00, 0x80
+  //  mtir vi08_tptr, vf03_tbuf.x
+  vu.tptr = get_tbuf();
+  //  mtir vi09_tbase, vf03_tbuf.x
+  vu.tbase = get_tbuf();
+  //  mr32.xyzw vf03_tbuf, vf03_tbuf
+  swap_tbuf();
+  //  xtop vi05_in_ptr
+  vu.in_ptr = swap_vu_upload_buffers();
+
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi03_dbuf_read_a, vf04_dbuf.x
+  vu.dbuf_read_a = get_dbuf();
+  //  bal vi12_ra, L5
+  //  mtir vi04_dbuf_read_b, vf04_dbuf.y
+  vu.dbuf_read_b = get_dbuf_other();
+  run_L5_PC();
+
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi03_dbuf_read_a, vf04_dbuf.x
+  vu.dbuf_read_a = get_dbuf();
+  //  bal vi12_ra, L5
+  //  mtir vi04_dbuf_read_b, vf04_dbuf.y
+  vu.dbuf_read_b = get_dbuf_other();
+  run_L5_PC();
+
+  //  nop                     :e
+  //  nop
+}
+
+void OceanTexture::run_L2_PC_jak2() {
+  //  L2:
+  //  xtop vi05_in_ptr
+  vu.in_ptr = swap_vu_upload_buffers();
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi03_dbuf_read_a, vf04_dbuf.x
+  vu.dbuf_read_a = get_dbuf();
+  //  bal vi12_ra, L5
+  //  mtir vi04_dbuf_read_b, vf04_dbuf.y
+  vu.dbuf_read_b = get_dbuf_other();
+  run_L5_PC();
+
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi03_dbuf_read_a, vf04_dbuf.x
+  vu.dbuf_read_a = get_dbuf();
+  //  bal vi12_ra, L5
+  //  mtir vi04_dbuf_read_b, vf04_dbuf.y
+  vu.dbuf_read_b = get_dbuf_other();
+  run_L5_PC();
+
+  //  mtir vi06_dbuf_write, vf04_dbuf.x
+  vu.dbuf_write = get_dbuf();
+  //  bal vi12_ra, L3
+  //  mr32.xyzw vf04_dbuf, vf04_dbuf
+  swap_dbuf();
+  run_L3_PC_jak2();
+
+  //  mtir vi03_dbuf_read_a, vf04_dbuf.x
+  vu.dbuf_read_a = get_dbuf();
+  //  bal vi12_ra, L5
+  //  mtir vi04_dbuf_read_b, vf04_dbuf.y
+  vu.dbuf_read_b = get_dbuf_other();
+  run_L5_PC();
+
+  //  nop                     :e
+  //  nop
+}
+
+void OceanTexture::run_L3_PC_jak2() {
+  Vf base_pos;  // vf15
+  u16 loop_idx;
+
+  Vf vtx0;  // vf16
+  Vf vtx1;  // vf17
+  Vf vtx2;  // vf18
+  Vf vtx3;  // vf19
+
+  Vf res0;  // vf20
+  Vf res1;  // vf21
+  Vf res2;  // vf22
+  Vf res3;  // vf23
+
+  Vf nrm0;  // vf24
+  Vf nrm1;  // vf25
+  Vf nrm2;  // vf26
+
+  Vf reflect;  // vf27
+
+  Vf cout0;  // vf28
+  Vf cout1;  // vf29
+  Vf cout2;  // vf30
+  Vf cout3;  // vf31
+
+  Accumulator acc;
+  const Vf ones(1, 1, 1, 1);
+  const Vf vf00(0, 0, 0, 1);
+  const u16 vi11 = 0x80;
+  bool bc;
+
+  // clang-format off
+  // L3:
+  // ior vi07, vi06, vi00       |  nop                            56
+  vu.dbuf_write_base = vu.dbuf_write;
+  // move.xyzw vf15, vf14       |  nop                            57
+  base_pos.move(Mask::xyzw, vu.startx);
+  // iaddi vi01, vi00, 0x8      |  nop                            58
+  loop_idx = 8;
+  // lq.xyzw vf24, 1(vi05)      |  mulw.xyzw vf20, vf15, vf00     59 (?? what are they doing here)
+  res0.mul(Mask::xyzw, base_pos, 1.f);   lq_buffer(Mask::xyzw, nrm0, vu.in_ptr + 1);
+  // lq.xyzw vf26, 3(vi05)      |  mulw.xyzw vf21, vf15, vf00     60
+  res1.mul(Mask::xyzw, base_pos, 1.f);   lq_buffer(Mask::xyzw, nrm2, vu.in_ptr + 5);
+  // nop                        |  mulw.xyzw vf22, vf15, vf00     61
+  lq_buffer(Mask::xyzw, nrm2, vu.in_ptr + 5);
+  // nop                        |  mulw.xyzw vf23, vf15, vf00     62
+  res3.mul(Mask::xyzw, base_pos, 1.f);
+  // nop                        |  addx.x vf21, vf21, vf02        63
+  res1.add(Mask::x, res1, m_texture_constants.offsets.x());
+  // nop                        |  addy.x vf22, vf22, vf02        64
+  res2.add(Mask::x, res2, m_texture_constants.offsets.y());
+  L4:
+  // nop                        |  addz.x vf23, vf23, vf02        65
+  res3.add(Mask::x, res3, m_texture_constants.offsets.z());
+  // nop                        |  addw.x vf15, vf15, vf02        66
+  base_pos.add(Mask::x, base_pos, m_texture_constants.offsets.w());
+  // sq.xyzw vf20, 2(vi06)      |  mulx.x vf28, vf01, vf24        67
+  cout0.mul(Mask::x, ones, nrm0.x());   sq_buffer(Mask::xyzw, res0, vu.dbuf_write + 2);
+  // sq.xyzw vf21, 5(vi06)      |  muly.x vf29, vf01, vf24        68
+  cout1.mul(Mask::x, ones, nrm0.y());   sq_buffer(Mask::xyzw, res1, vu.dbuf_write + 5);
+  // sq.xyzw vf22, 8(vi06)      |  mulz.x vf30, vf01, vf24        69
+  cout2.mul(Mask::x, ones, nrm0.z());   sq_buffer(Mask::xyzw, res2, vu.dbuf_write + 8);
+  // sq.xyzw vf23, 11(vi06)     |  mulw.x vf31, vf01, vf24        70
+  cout3.mul(Mask::x, ones, nrm0.w());   sq_buffer(Mask::xyzw, res3, vu.dbuf_write + 11);
+  // lq.xyzw vf16, 0(vi05)      |  mulx.y vf28, vf01, vf26        71
+  cout0.mul(Mask::y, ones, nrm2.x());   lq_buffer(Mask::xyzw, vtx0, vu.in_ptr);
+  // lq.xyzw vf17, 2(vi05)      |  muly.y vf29, vf01, vf26        72
+  cout1.mul(Mask::y, ones, nrm2.y());   lq_buffer(Mask::xyzw, vtx1, vu.in_ptr + 2);
+  // lq.xyzw vf18, 4(vi05)      |  mulz.y vf30, vf01, vf26        73
+  cout2.mul(Mask::y, ones, nrm2.z());   lq_buffer(Mask::xyzw, vtx2, vu.in_ptr + 4);
+  // lq.xyzw vf19, 6(vi05)      |  mulw.y vf31, vf01, vf26        74
+  cout3.mul(Mask::y, ones, nrm2.w());   lq_buffer(Mask::xyzw, vtx3, vu.in_ptr + 6);
+  // iaddi vi05, vi05, 0x8      |  ftoi0.xyzw vf16, vf16          75
+  vtx0.ftoi0(Mask::xyzw, vtx0);   vu.in_ptr = vu.in_ptr + 8;
+  // nop                        |  ftoi0.xyzw vf17, vf17          76
+  vtx1.ftoi0(Mask::xyzw, vtx1);
+  // nop                        |  ftoi0.xyzw vf18, vf18          77
+  vtx2.ftoi0(Mask::xyzw, vtx2);
+  // iaddi vi01, vi01, -0x1     |  ftoi0.xyzw vf19, vf19          78
+  vtx3.ftoi0(Mask::xyzw, vtx3);   loop_idx = loop_idx + -1;
+  // sq.xyzw vf16, 1(vi06)      |  add.xyzw vf28, vf28, vf07      79
+  cout0.add(Mask::xyzw, cout0, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx0, vu.dbuf_write + 1);
+  // sq.xyzw vf17, 4(vi06)      |  add.xyzw vf29, vf29, vf07      80
+  cout1.add(Mask::xyzw, cout1, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx1, vu.dbuf_write + 4);
+  // sq.xyzw vf18, 7(vi06)      |  add.xyzw vf30, vf30, vf07      81
+  cout2.add(Mask::xyzw, cout2, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx2, vu.dbuf_write + 7);
+  // sq.xyzw vf19, 10(vi06)     |  add.xyzw vf31, vf31, vf07      82
+  cout3.add(Mask::xyzw, cout3, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx3, vu.dbuf_write + 10);
+  // lq.xyzw vf24, 1(vi05)      |  sub.zw vf28, vf01, vf00        83
+  cout0.sub(Mask::zw, ones, vf00); lq_buffer(Mask::xyzw, nrm0, vu.in_ptr + 1);
+  // lq.xyzw vf26, 5(vi05)      |  sub.zw vf29, vf01, vf00        84
+  cout1.sub(Mask::zw, ones, vf00); lq_buffer(Mask::xyzw, nrm2, vu.in_ptr + 5);
+  // nop                        |  sub.zw vf30, vf01, vf00        85
+  cout2.sub(Mask::zw, ones, vf00);
+  // nop                        |  sub.zw vf31, vf01, vf00        86
+  cout3.sub(Mask::zw, ones, vf00);
+  // sq.xyzw vf28, 0(vi06)      |  mulw.xyzw vf20, vf15, vf00     87
+  res0.mul(Mask::xyzw, base_pos, 1.f);   sq_buffer(Mask::xyzw, cout0, vu.dbuf_write);
+  // sq.xyzw vf29, 3(vi06)      |  mulw.xyzw vf21, vf15, vf00     88
+  res1.mul(Mask::xyzw, base_pos, 1.f);   sq_buffer(Mask::xyzw, cout1, vu.dbuf_write + 3);
+  // sq.xyzw vf30, 6(vi06)      |  mulw.xyzw vf22, vf15, vf00     89
+  res2.mul(Mask::xyzw, base_pos, 1.f);   sq_buffer(Mask::xyzw, cout2, vu.dbuf_write + 6);
+  // sq.xyzw vf31, 9(vi06)      |  mulw.xyzw vf23, vf15, vf00     90
+  res3.mul(Mask::xyzw, base_pos, 1.f);   sq_buffer(Mask::xyzw, cout3, vu.dbuf_write + 9);
+  // BRANCH!
+  // ibgtz vi01, L4             |  addx.x vf21, vf21, vf02        91
+  res1.add(Mask::x, res1, m_texture_constants.offsets.x());   bc = ((s16)loop_idx) > 0;
+  // iaddi vi06, vi06, 0xc      |  addy.x vf22, vf22, vf02        92
+  res2.add(Mask::x, res2, m_texture_constants.offsets.y());   vu.dbuf_write = vu.dbuf_write + 12;
+  if (bc) { goto L4; }
+
+  // lq.xyzw vf28, 0(vi07)      |  addx.y vf14, vf14, vf02        93
+  vu.startx.add(Mask::y, vu.startx, m_texture_constants.offsets.x());   lq_buffer(Mask::xyzw, cout0, vu.dbuf_write_base);
+  // lq.xyzw vf16, 1(vi07)      |  nop                            94
+  lq_buffer(Mask::xyzw, vtx0, vu.dbuf_write_base + 1);
+  // sq.xyzw vf20, 2(vi06)      |  nop                            95
+  sq_buffer(Mask::xyzw, res0, vu.dbuf_write + 2);
+  // sq.xyzw vf28, 0(vi06)      |  nop                            96
+  sq_buffer(Mask::xyzw, cout0, vu.dbuf_write);
+  // jr vi12                    |  nop                            97
+  // sq.xyzw vf16, 1(vi06)      |  nop                            98
+  sq_buffer(Mask::xyzw, vtx0, vu.dbuf_write + 1);
+  // clang-format on
+}
+
 void OceanTexture::setup_renderer() {
   m_pc.vtx_idx = 0;
 }

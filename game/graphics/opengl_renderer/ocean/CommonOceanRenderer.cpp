@@ -2,6 +2,9 @@
 
 #include "common/log/log.h"
 
+constexpr int OCEAN_TEX_TBP_JAK1 = 8160;  // todo
+constexpr int OCEAN_TEX_TBP_JAK2 = 672;
+
 CommonOceanRenderer::CommonOceanRenderer() {
   m_vertices.resize(4096 * 10);  // todo decrease
   for (auto& buf : m_indices) {
@@ -244,8 +247,14 @@ void CommonOceanRenderer::handle_near_adgif(const u8* data, u32 offset, u32 coun
         most_recent_tbp = reg.tbp0();
       } break;
       case GsRegisterAddress::ALPHA_1: {
-        // ignore, we've hardcoded alphas.
+        GsAlpha reg(value);
+        if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+            reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+            reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+          m_current_bucket = VertexBucket::ENV_MAP;
+        }
       } break;
+
       case GsRegisterAddress::FRAME_1: {
         u32 mask = value >> 32;
         if (mask) {
@@ -290,7 +299,9 @@ void CommonOceanRenderer::flush_near(SharedRenderState* render_state, ScopedProf
       case 0: {
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
         glBlendEquation(GL_FUNC_ADD);
-        auto tex = render_state->texture_pool->lookup(8160);
+        auto tbp =
+            render_state->version == GameVersion::Jak1 ? OCEAN_TEX_TBP_JAK1 : OCEAN_TEX_TBP_JAK2;
+        auto tex = render_state->texture_pool->lookup(tbp);
         if (!tex) {
           tex = render_state->texture_pool->get_placeholder_texture();
         }
@@ -419,7 +430,7 @@ void CommonOceanRenderer::handle_mid_adgif(const u8* data, u32 offset) {
     }
   }
 
-  if (most_recent_tbp != 8160) {
+  if (most_recent_tbp != OCEAN_TEX_TBP_JAK2) {
     m_envmap_tex = most_recent_tbp;
   }
 
@@ -482,7 +493,9 @@ void CommonOceanRenderer::flush_mid(SharedRenderState* render_state, ScopedProfi
   for (int bucket = 0; bucket < 2; bucket++) {
     switch (bucket) {
       case 0: {
-        auto tex = render_state->texture_pool->lookup(8160);
+        auto tbp =
+            render_state->version == GameVersion::Jak1 ? OCEAN_TEX_TBP_JAK1 : OCEAN_TEX_TBP_JAK2;
+        auto tex = render_state->texture_pool->lookup(tbp);
         if (!tex) {
           tex = render_state->texture_pool->get_placeholder_texture();
         }
