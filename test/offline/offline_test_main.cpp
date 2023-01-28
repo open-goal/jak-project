@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   CLI11_PARSE(app, argc, argv);
 
   if (pretty_print) {
-    lg::set_stdout_level(lg::level::off);
+    lg::set_stdout_level(lg::level::off_unless_die);
     term_util::clear();
   }
   lg::initialize();

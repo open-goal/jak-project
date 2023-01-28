@@ -277,7 +277,8 @@ class Compiler {
   StaticResult fill_static_boxed_array(const goos::Object& form,
                                        const goos::Object& rest,
                                        Env* env,
-                                       int seg);
+                                       int seg,
+                                       const std::string& array_type);
 
   StaticResult fill_static_inline_array(const goos::Object& form,
                                         const goos::Object& rest,
