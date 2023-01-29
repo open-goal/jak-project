@@ -7,3 +7,283 @@
 
 ;; DECOMP BEGINS
 
+(defmethod draw hud-turret ((obj hud-turret))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    205
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -19 22)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-turret ((obj hud-turret))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-turret ((obj hud-turret))
+  (set! (-> obj level) (level-get *level* 'ctywide))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x8 :page #x679)))
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (set! (-> obj sprites 0 scale-x) 1.2)
+  (set! (-> obj sprites 0 scale-y) 1.2)
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(define *city-power-switch-on-position* (new 'static 'boxed-array :type vector
+                                          (new 'static 'vector :x 2336358.5 :y 32768.0 :z -935526.4 :w 1.0)
+                                          (new 'static 'vector :x 4273357.0 :y 32645.12 :z 4159078.5 :w 1.0)
+                                          (new 'static 'vector :x 4059136.0 :y 32768.0 :z 2203648.0 :w 1.0)
+                                          (new 'static 'vector :x 3387392.0 :y 32768.0 :z 2748416.0 :w 1.0)
+                                          (new 'static 'vector :x 3854336.0 :y 32768.0 :z 745472.0 :w 1.0)
+                                          )
+        )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  0
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (when (not (task-node-closed? (game-task-node city-power-resolution)))
+        (set-setting! 'exclusive-task #f 0 (-> self node-info task))
+        (set! (-> self begin-pos quad) (-> (new 'static 'vector :x -282624.0 :y 45056.0 :z 5464064.0 :w 1.0) quad))
+        (set-setting! 'minimap 'clear 0 32)
+        (set! (-> self max-count) 5)
+        (set! (-> self count) 0)
+        (set! (-> *game-info* counter) 5.0)
+        (dotimes (v1-9 5)
+          (set! (-> self data-int32 v1-9) 0)
+          )
+        (set! (-> self slave 10) (the-as handle #f))
+        (dotimes (gp-0 (-> self max-count))
+          (set! (-> self data-vector gp-0 quad) (-> *city-power-switch-on-position* gp-0 quad))
+          (set! (-> self minimap gp-0)
+                (add-icon! *minimap* self (the-as uint 15) (the-as int #f) (-> *city-power-switch-on-position* gp-0) 0)
+                )
+          )
+        )
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  1
+  (the-as (function object) (lambda :behavior task-manager
+                              ()
+                              (send-event *traffic-manager* 'restore-default-settings)
+                              (dotimes (v1-3 (-> self max-count))
+                                (when (-> self minimap v1-3)
+                                  (logior! (-> self minimap v1-3 flags) (minimap-flag fade-out))
+                                  (set! (-> self minimap v1-3) #f)
+                                  )
+                                )
+                              (none)
+                              )
+          )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  2
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (when (not (task-node-closed? (game-task-node city-power-resolution)))
+        (check-time self)
+        (set! (-> self count) 0)
+        (dotimes (v1-3 (-> self max-count))
+          (if (>= 1 (-> self data-int32 v1-3))
+              (+! (-> self count) 1)
+              )
+          )
+        (if (= (-> self count) (-> self max-count))
+            (set! (-> self state-time) (-> self clock frame-counter))
+            )
+        (set! (-> *game-info* counter) (the float (-> self count)))
+        )
+      (when (or (zero? (-> self count)) (task-node-closed? (game-task-node city-power-resolution)))
+        (when (zero? (-> self count))
+          (talker-spawn-func (-> *talker-speech* 92) *entity-pool* (target-pos 0) (the-as region #f))
+          (task-node-close! (game-task-node city-power-resolution))
+          (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
+          (send-event (handle->process (-> self hud-counter)) 'hide-and-die)
+          (set! (-> self fail-on-death?) #f)
+          )
+        (cond
+          ((handle->process (-> self slave 10))
+           (let ((gp-1 (handle->process (-> self slave 10))))
+             (when (and gp-1
+                        (< 40960.0 (vector-vector-xz-distance (-> (the-as process-drawable gp-1) root trans) (target-pos 0)))
+                        )
+               (send-event gp-1 'close)
+               (go-virtual complete)
+               )
+             )
+           )
+          (else
+            (go-virtual complete)
+            )
+          )
+        )
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  3
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-turret :init hud-init-by-other :to self)))
+      (send-event *traffic-manager* 'set-target-level #x3f800000)
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+        (suspend)
+        )
+      (send-event *traffic-manager* 'set-alert-level 1)
+      (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  5
+  (the-as (function object) (lambda :behavior task-manager
+                              ()
+                              (dotimes (v1-0 (-> self max-count))
+                                (when (-> self minimap v1-0)
+                                  (logior! (-> self minimap v1-0 flags) (minimap-flag fade-out))
+                                  (set! (-> self minimap v1-0) #f)
+                                  )
+                                )
+                              (kill-all-children self)
+                              (none)
+                              )
+          )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  4
+  (the-as (function object) (lambda :behavior task-manager
+                              ()
+                              (set! (-> self state-time) (-> self clock frame-counter))
+                              (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+                                (suspend)
+                                )
+                              (task-node-close! (game-task-node city-power-post-win))
+                              (none)
+                              )
+          )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  87
+  6
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+      (let ((gp-0 (-> (level-get *level* 'lpower) entity data 0 entity)))
+        (cond
+          ((= arg2 'guard-turret-status)
+           (let ((v1-5 (-> arg3 param 0)))
+             (let ((a0-2 (the-as object (-> arg3 param 1))))
+               (set! (-> *city-power-switch-on-position* v1-5 quad) (-> (the-as vector a0-2) quad))
+               )
+             (-> self data-int32 v1-5)
+             )
+           )
+          ((= arg2 'guard-turret-killed)
+           (let ((s4-1 (-> arg3 param 0)))
+             (set! (-> self data-int32 s4-1) 1)
+             (let ((v1-12 (process-spawn
+                            cty-guard-turret-button
+                            :init basebutton-init-by-other
+                            gp-0
+                            (-> arg0 root trans)
+                            (-> arg0 root quat)
+                            (-> arg0 entity)
+                            #f
+                            0
+                            :to self
+                            )
+                          )
+                   )
+               (set! (-> self slave (-> self data-int32 s4-1)) (ppointer->handle v1-12))
+               (set! (-> (the-as basebutton (-> v1-12 0)) event-down) 'button-down)
+               )
+             )
+           #t
+           )
+          ((= arg2 'guard-turret-button-pushed)
+           (let ((v1-21 (-> arg3 param 0)))
+             (set! (-> self data-int32 v1-21) 2)
+             (set! (-> self slave 10) (process->handle arg0))
+             (logior! (-> self minimap v1-21 flags) (minimap-flag fade-out))
+             (set! (-> self minimap v1-21) #f)
+             )
+           #t
+           )
+          ((= arg2 'spawn-button)
+           (let ((s4-2 (-> arg3 param 0))
+                 (s3-2 (-> arg3 param 1))
+                 )
+             (when (not (handle->process (-> self slave (-> self data-int32 s4-2))))
+               (let ((v0-1 (the-as object (ppointer->handle (process-spawn
+                                                              cty-guard-turret-button
+                                                              :init basebutton-init-by-other
+                                                              gp-0
+                                                              (-> arg0 root trans)
+                                                              (-> arg0 root quat)
+                                                              (-> arg0 entity)
+                                                              s3-2
+                                                              0
+                                                              :to self
+                                                              )
+                                                            )
+                                   )
+                           )
+                     )
+                 (set! (-> self slave (-> self data-int32 s4-2)) (the-as handle v0-1))
+                 v0-1
+                 )
+               )
+             )
+           )
+          )
+        )
+      )
+    )
+  )

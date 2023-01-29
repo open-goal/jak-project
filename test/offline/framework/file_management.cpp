@@ -56,11 +56,10 @@ std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_nam
         }
       }
       if (!containing_dgo) {
-        lg::error(
+        lg::die(
             "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
             "it!",
             unique_name, fmt::join(dgoList, ", "));
-        exit(1);
       }
 
       OfflineTestSourceFile file(it->second, containing_dgo.value(), x[1], it->first);
@@ -70,13 +69,13 @@ std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_nam
   }
 
   if (matched_files.size() != ref_file_names.size()) {
-    lg::error("Some REF files were not matched to files in all_objs.json:");
+    std::string msg = "Some REF files were not matched to files in all_objs.json:";
     for (const auto& [path, flag] : ref_file_names) {
       if (matched_files.count(path) == 0) {
-        lg::error("- '{}'", path);
+        msg += fmt::format("\n- '{}'", path);
       }
     }
-    exit(1);
+    lg::die(msg);
   }
 
   return result;
