@@ -1258,7 +1258,6 @@ void extract_merc(const ObjectFileData& ag_data,
       std::map<u64, u64> draw_mode_dedup;
 
       for (auto& draw : effect.draws) {
-        pc_ctrl.max_draws++;
         indices_temp[ci][ei].emplace_back();
         // find draw to add to, or create a new one
         const auto& existing = draw_mode_dedup.find(draw.state.merc_draw_mode.as_u64());
@@ -1305,5 +1304,17 @@ void extract_merc(const ObjectFileData& ag_data,
 
   create_modifiable_vertex_data(vertex_modify_flags, vertex_srcs, out.merc_data, first_out_vertex,
                                 first_model, all_effects);
+
+  // compute max draws
+  for (u32 mi = first_model; mi < out.merc_data.models.size(); mi++) {
+    auto& model = out.merc_data.models[mi];
+    model.max_draws = 0;
+    for (auto& e : model.effects) {
+      model.max_draws += e.all_draws.size();
+      if (e.has_mod_draw) {
+        model.max_draws += e.mod.mod_draw.size() + e.mod.fix_draw.size();
+      }
+    }
+  }
 }
 }  // namespace decompiler

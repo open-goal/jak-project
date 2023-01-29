@@ -56,23 +56,23 @@ class Merc2 : public BucketRenderer {
     math::Vector4f ambient;
   };
 
-  void init_pc_model(const DmaTransfer& setup,
-                     SharedRenderState* render_state,
-                     ScopedProfilerNode& prof);
+  void handle_pc_model(const DmaTransfer& setup,
+                       SharedRenderState* render_state,
+                       ScopedProfilerNode& prof);
   u32 alloc_lights(const VuLights& lights);
-  u32 alloc_bones(int count);
+
 
   struct ModBuffers {
     GLuint vao, vertex;
   };
 
-  std::optional<MercRef> m_current_model = std::nullopt;
-  u32 m_current_effect_enable_bits = 0;
-  u32 m_current_ignore_alpha_bits = 0;
+  // std::optional<MercRef> m_current_model = std::nullopt;
+//  u32 m_current_effect_enable_bits = 0;
+//  u32 m_current_ignore_alpha_bits = 0;
   static constexpr int kMaxEffect = 32;
-  u8 m_fade_buffer[4 * kMaxEffect];
-  bool m_current_model_updates_verts = false;
-  ModBuffers m_mod_opengl_buffers[kMaxEffect];
+//  u8 m_fade_buffer[4 * kMaxEffect];
+  // bool m_current_model_updates_verts = false;
+  //ModBuffers m_mod_opengl_buffers[kMaxEffect];
   bool m_effect_debug_mask[kMaxEffect];
 
   struct MercMat {
@@ -86,7 +86,7 @@ class Merc2 : public BucketRenderer {
     math::Vector4f pad;
     std::string to_string() const;
   };
-
+  u32 alloc_bones(int count, ShaderMercMat* data);
   static constexpr int MAX_SKEL_BONES = 128;
   static constexpr int BONE_VECTORS_PER_BONE = 7;
   static constexpr int MAX_SHADER_BONE_VECTORS = 1024 * 32;  // ??
@@ -96,7 +96,6 @@ class Merc2 : public BucketRenderer {
   static constexpr int MAX_ENVMAP_DRAWS_PER_LEVEL = 1024;
 
   math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
-  ShaderMercMat m_skel_matrix_buffer[MAX_SKEL_BONES];
 
   struct Uniforms {
     GLuint light_direction[3];
@@ -125,7 +124,6 @@ class Merc2 : public BucketRenderer {
   void init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights);
   void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state);
   void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_merc_chain(DmaFollower& dma,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof);
@@ -226,7 +224,6 @@ class Merc2 : public BucketRenderer {
   static constexpr int MAX_LIGHTS = 1024;
   VuLights m_lights_buffer[MAX_LIGHTS];
   u32 m_next_free_light = 0;
-  VuLights m_current_lights;
 
   std::vector<LevelDrawBucket> m_level_draw_buckets;
   u32 m_next_free_level_bucket = 0;
