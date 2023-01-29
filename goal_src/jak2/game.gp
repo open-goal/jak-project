@@ -167,7 +167,7 @@
 (cgo-file "lwhack.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "coa.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "toe.gd" ("$OUT/obj/los-control.o"))
-;; (cgo-file "palboss.gd" ("$OUT/obj/los-control.o"))
+(cgo-file "palboss.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "frb.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "title.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "drillmtn.gd" ("$OUT/obj/los-control.o"))
@@ -181,7 +181,7 @@
 (cgo-file "pas.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "lbbush.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "lpackage.gd" ("$OUT/obj/los-control.o"))
-;; (cgo-file "lportrun.gd" ("$OUT/obj/los-control.o"))
+(cgo-file "lportrun.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "cgb.gd" ("$OUT/obj/los-control.o"))
 ;; (cgo-file "lhelldog.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "gga.gd" ("$OUT/obj/los-control.o"))
@@ -194,19 +194,34 @@
 (cgo-file "lsack.gd" ("$OUT/obj/los-control.o"))
 (cgo-file "hiphog.gd" ("$OUT/obj/los-control.o"))
 
-;; TODO - organize these
+;;;;;;;;;;;;;;;;;;;;;
+;; ANIMATIONS
+;;;;;;;;;;;;;;;;;;;;;
 
 ;; intro cutscenes
 (copy-strs "INSHUT" "INVORTEX" "INCSQUAR" "INPRISON")
 
 ;; jak ambient
-(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6")
-
-(copy-vag-files "ENG")
+(copy-strs "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6" "JAA7")
+(copy-strs "AT1RES" "ATSINTRO" "ATSTANK" "ATSA" "ATSB" "ATSC" "ATSD" "ATSE" "ATSARA" "ATSARB")
+(copy-strs "DRTEXPLO")
+(copy-strs "DRW1")
+(copy-strs "OUPORT")
+(copy-strs "OUNEST")
+(copy-strs "CIWAMINT" "CIWAMRES")
+(copy-strs "RHW1" "RHW2")
+(copy-strs "PAOWRB" "PABRES")
+(copy-strs "RUB1" "RUBW1" "RUBW2" "RUBW3" "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUPC1" "RUPC2" "RUPC3" "RUGTHRES" "RUSVICTO" "RUTVICTO")
+(copy-strs "ECVICTOR")
+(copy-strs "DESCREEN" "TIDINTRO")
+(copy-strs "TOBINTRO" "TOBRES")
+(copy-strs "UNBD1" "UNBD2" "UNBD3" "UNBD4" "UNFSRES" "UNCONE" "UNCTWO" "UNCTHREE" "UNGSORES")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; MUSIC
 ;;;;;;;;;;;;;;;;;;;;;
+
+(copy-vag-files "ENG")
 
 (copy-sbk-files
   "ASHTAN1" "ASHTAN2" "ATOLL1" "ATOLL2" "ATOLL3" "ATOLL4"
