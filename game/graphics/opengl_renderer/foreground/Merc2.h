@@ -67,12 +67,13 @@ class Merc2 : public BucketRenderer {
   };
 
   std::optional<MercRef> m_current_model = std::nullopt;
-  u16 m_current_effect_enable_bits = 0;
-  u16 m_current_ignore_alpha_bits = 0;
-  static constexpr int kMaxEffect = 16;
+  u32 m_current_effect_enable_bits = 0;
+  u32 m_current_ignore_alpha_bits = 0;
+  static constexpr int kMaxEffect = 32;
   u8 m_fade_buffer[4 * kMaxEffect];
   bool m_current_model_updates_verts = false;
   ModBuffers m_mod_opengl_buffers[kMaxEffect];
+  bool m_effect_debug_mask[kMaxEffect];
 
   struct MercMat {
     math::Vector4f tmat[4];
@@ -141,9 +142,12 @@ class Merc2 : public BucketRenderer {
 
   static constexpr int MAX_MOD_VTX = UINT16_MAX;
   std::vector<tfrag3::MercVertex> m_mod_vtx_temp;
-  std::vector<math::Vector3f> m_mod_vtx_pos_unpack_temp;
-  std::vector<math::Vector3f> m_mod_vtx_nrm_unpack_temp;
 
+  struct UnpackTempVtx {
+    float pos[4];
+    float nrm[4];
+  };
+  std::vector<UnpackTempVtx> m_mod_vtx_unpack_temp;
 
   ModBuffers alloc_mod_vtx_buffer(const LevelData* lev);
 
@@ -203,6 +207,13 @@ class Merc2 : public BucketRenderer {
                           LevelDrawBucket* lev_bucket,
                           u32 first_bone,
                           u32 lights);
+  Draw* try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
+                              const DrawMode& envmap_mode,
+                              u32 envmap_texture,
+                              LevelDrawBucket* lev_bucket,
+                              const u8* fade,
+                              u32 first_bone,
+                              u32 lights);
 
   void do_draws(const Draw* draw_array,
                 const LevelData* lev,

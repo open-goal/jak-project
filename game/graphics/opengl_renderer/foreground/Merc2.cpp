@@ -6,17 +6,63 @@
 
 #include "third-party/imgui/imgui.h"
 
+/* Merc 2 renderer:
+ The merc2 renderer is the main "foreground" renderer, which draws characters, collectables,
+ and even some water.
+
+ The PC format renderer does the usual tricks of buffering stuff head of time as much as possible.
+ The main trick here is to buffer up draws and upload "bones" (skinning matrix) for many draws all
+ at once.
+
+ The other tricky part is "mod vertices", which may be modified by the game.
+ We know ahead of time which vertices could be modified, and have a way to upload only those
+ vertices.
+
+ Each "merc model" corresponds to a merc-ctrl in game. There's one merc-ctrl per LOD of an
+ art-group. So generally, this will be something like "jak" or "orb" or "some enemy".
+
+ Each model is made up of "effect"s. There are a number of per-effect settings, like environment
+ mapping. Generally, the purpose of an "effect" is to divide up a model into parts that should be
+ rendered with a different configuration.
+
+ Within each model, there are fragments. These correspond to how much data can be uploaded to VU1
+ memory. For the most part, fragments are not considered by the PC renderer. The only exception is
+ updating vertices - we must read the data from the game, which is stored in fragments.
+
+ Per level, there is an FR3 file loaded by the loader. Each merc renderer can access multiple
+ levels.
+*/
+
+/*!
+ * Remaining ideas for optimization:
+ * - combine envmap draws per effect (might require some funky indexing stuff, or multidraw)
+ * - smaller vertex formats for mod-vertex
+ * - AVX version of vertex conversion math
+ * - eliminate the "copy" step of vertex modification
+ * - batch uploading the vertex modification data
+ */
+
+std::mutex g_merc_data_mutex;
+
 Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+  // Set up main vertex array. This will point to the data stored in the .FR3 level file, and will
+  // be uploaded to the GPU by the Loader.
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
 
+  // Bone buffer to store skinning matrices for multiple draws
   glGenBuffers(1, &m_bones_buffer);
   glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
+
+  // zero initialize the bone buffer.
   std::vector<u8> temp(MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f));
   glBufferData(GL_UNIFORM_BUFFER, MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f), temp.data(),
                GL_DYNAMIC_DRAW);
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+  // annoyingly, glBindBufferRange can have alignment restrictions that vary per platform.
+  // the GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT gives us the minimum alignment for views into the bone
+  // buffer. The bone buffer stores things per-16-byte "quadword".
   GLint val;
   glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &val);
   if (val <= 16) {
@@ -30,6 +76,7 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
     }
   }
 
+  // initialize draw buffers, these will store lists of draws to flush.
   for (int i = 0; i < MAX_LEVELS; i++) {
     auto& draws = m_level_draw_buckets.emplace_back();
     draws.draws.resize(MAX_DRAWS_PER_LEVEL);
@@ -37,8 +84,11 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   }
 
   m_mod_vtx_temp.resize(MAX_MOD_VTX);
-  m_mod_vtx_pos_unpack_temp.resize(MAX_MOD_VTX * 2);
-  m_mod_vtx_nrm_unpack_temp.resize(MAX_MOD_VTX * 2);
+  m_mod_vtx_unpack_temp.resize(MAX_MOD_VTX * 2);
+
+  for (auto& x : m_effect_debug_mask) {
+    x = true;
+  }
 }
 
 Merc2::~Merc2() {
@@ -46,7 +96,15 @@ Merc2::~Merc2() {
     glDeleteBuffers(1, &x.vertex);
     glDeleteVertexArrays(1, &x.vao);
   }
+
+  glDeleteBuffers(1, &m_bones_buffer);
+  glDeleteVertexArrays(1, &m_vao);
 }
+
+// We can run into a problem where adding a PC model would overflow the
+// preallocated draw/bone buffers.
+// So we break this part into two functions:
+// - init_pc_model, which doesn't allocate bones/draws
 
 /*!
  * Handle the merc renderer switching to a different model.
@@ -137,6 +195,7 @@ void Merc2::init_pc_model(const DmaTransfer& setup,
       const u8* merc_effect = ee0 + goal_addr;
       u16 frag_cnt;
       memcpy(&frag_cnt, merc_effect + 18, 2);
+      ASSERT(frag_cnt >= effect.mod.fragment_mask.size());
       u32 frag_goal;
       memcpy(&frag_goal, merc_effect, 4);
       u32 frag_ctrl_goal;
@@ -150,49 +209,54 @@ void Merc2::init_pc_model(const DmaTransfer& setup,
       float xyz_scale = m_current_model->model->xyz_scale;
       prof().end_event();
       {
+        std::unique_lock<std::mutex> lk(g_merc_data_mutex);
+        int frags_done = 0;
         auto p = scoped_prof("vert-math");
-        for (int fi = 0; fi < frag_cnt; fi++) {
-          u8 unsigned_four_count = frag_ctrl[0];
-          u8 lump_four_count = frag_ctrl[1];
-          u8 fp_qwc = frag_ctrl[2];
+        for (u32 fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
+          frags_done++;
           u8 mat_xfer_count = frag_ctrl[3];
-          u32 mm_qwc_off = frag[10];
-          float float_offsets[3];
-          memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
+          if (effect.mod.fragment_mask[fi]) {
+            u8 unsigned_four_count = frag_ctrl[0];
+            u8 lump_four_count = frag_ctrl[1];
+            u8 fp_qwc = frag_ctrl[2];
+            u32 mm_qwc_off = frag[10];
+            float float_offsets[3];
+            memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
 
-          u32 my_u4_count = ((unsigned_four_count + 3) / 4) * 16;
-          u32 my_l4_count = my_u4_count + ((lump_four_count + 3) / 4) * 16;
-          int kk = 0;
-          for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
-            // just want positions for now.
-            u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
-            u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
-            u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
+            u32 my_u4_count = ((unsigned_four_count + 3) / 4) * 16;
+            u32 my_l4_count = my_u4_count + ((lump_four_count + 3) / 4) * 16;
+            int kk = 0;
+            for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
+              // just want positions for now.
+              u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
+              u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
+              u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
 
-            // and maybe normals
-            u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
-            u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
-            u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
+              // and maybe normals
+              u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
+              u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
+              u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
 
-            auto* pos_array = m_mod_vtx_pos_unpack_temp[vidx].data();
-            memcpy(&pos_array[0], &q0w, 4);
-            memcpy(&pos_array[1], &q1w, 4);
-            memcpy(&pos_array[2], &q2w, 4);
-            pos_array[0] += float_offsets[0];
-            pos_array[1] += float_offsets[1];
-            pos_array[2] += float_offsets[2];
-            pos_array[0] *= xyz_scale;
-            pos_array[1] *= xyz_scale;
-            pos_array[2] *= xyz_scale;
+              auto* pos_array = m_mod_vtx_unpack_temp.at(vidx).pos;
+              memcpy(&pos_array[0], &q0w, 4);
+              memcpy(&pos_array[1], &q1w, 4);
+              memcpy(&pos_array[2], &q2w, 4);
+              pos_array[0] += float_offsets[0];
+              pos_array[1] += float_offsets[1];
+              pos_array[2] += float_offsets[2];
+              pos_array[0] *= xyz_scale;
+              pos_array[1] *= xyz_scale;
+              pos_array[2] *= xyz_scale;
 
-            auto* nrm_array = m_mod_vtx_nrm_unpack_temp[vidx].data();
-            memcpy(&nrm_array[0], &q0z, 4);
-            memcpy(&nrm_array[1], &q1z, 4);
-            memcpy(&nrm_array[2], &q2z, 4);
-            nrm_array[0] += -65537;
-            nrm_array[1] += -65537;
-            nrm_array[2] += -65537;
-            vidx++;
+              auto* nrm_array = m_mod_vtx_unpack_temp.at(vidx).nrm;
+              memcpy(&nrm_array[0], &q0z, 4);
+              memcpy(&nrm_array[1], &q1z, 4);
+              memcpy(&nrm_array[2], &q2z, 4);
+              nrm_array[0] += -65537;
+              nrm_array[1] += -65537;
+              nrm_array[2] += -65537;
+              vidx++;
+            }
           }
 
           // next control
@@ -202,15 +266,18 @@ void Merc2::init_pc_model(const DmaTransfer& setup,
           u32 mm_qwc_count = frag[11];
           frag += mm_qwc_count * 16;
         }
+        if (effect.mod.expect_vidx_end != vidx) {
+          fmt::print("---------- BAD {}/{}\n", effect.mod.expect_vidx_end, vidx);
+          ASSERT(false);
+        }
       }
 
       {
-        scoped_prof("copy");
+        auto pp = scoped_prof("copy");
         for (u32 i = 0; i < effect.mod.vertices.size(); i++) {
           int addr = effect.mod.vertex_lump4_addr.at(i);
           if (addr < vidx) {
-            memcpy(m_mod_vtx_temp.at(i).pos, m_mod_vtx_pos_unpack_temp.at(addr).data(), 12);
-            memcpy(m_mod_vtx_temp.at(i).normal, m_mod_vtx_nrm_unpack_temp.at(addr).data(), 12);
+            memcpy(&m_mod_vtx_temp.at(i), &m_mod_vtx_unpack_temp.at(addr), 32);
           }
         }
       }
@@ -265,6 +332,10 @@ void Merc2::draw_debug_window() {
 
   ImGui::Checkbox("Debug", &m_debug_mode);
   if (m_debug_mode) {
+    for (int i = 0; i < kMaxEffect; i++) {
+      ImGui::Checkbox(fmt::format("e{:02d}", i).c_str(), &m_effect_debug_mask[i]);
+    }
+
     for (const auto& model : m_debug.model_list) {
       if (ImGui::TreeNode(model.name.c_str())) {
         for (const auto& e : model.effects) {
@@ -707,52 +778,113 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
       continue;
     }
 
-    u8 ignore_alpha = (m_current_ignore_alpha_bits & (1 << ei));
-    auto& effect = model->effects[ei];
-    if (effect.has_envmap) {
-      bool nonzero_fade = false;
-      for (int i = 0; i < 4; i++) {
-        if (m_fade_buffer[4 * ei + i]) {
-          nonzero_fade = true;
-          break;
-        }
-      }
-      if (nonzero_fade) {
-        for (auto& mdraw : effect.all_draws) {
-          Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
-          draw->flags = 0;
-          draw->first_index = mdraw.first_index;
-          draw->index_count = mdraw.index_count;
-          draw->mode = effect.envmap_mode;
-          draw->texture = effect.envmap_texture;
-          draw->first_bone = first_bone;
-          draw->light_idx = lights;
-          draw->num_triangles = mdraw.num_triangles;
-          for (int i = 0; i < 4; i++) {
-            draw->fade[i] = m_fade_buffer[4 * ei + i];
-          }
-        }
-      }
+    if (!m_effect_debug_mask[ei]) {
+      continue;
     }
 
-    if (m_current_model_updates_verts) {
-      for (auto& mdraw : effect.mod.fix_draw) {
-        alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+    u8 ignore_alpha = (m_current_ignore_alpha_bits & (1 << ei));
+    auto& effect = model->effects[ei];
+
+    bool should_envmap = effect.has_envmap;
+    bool should_mod = m_current_model_updates_verts && effect.has_mod_draw;
+
+    if (should_mod) {
+      for (auto& fdraw : effect.mod.fix_draw) {
+        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        if (should_envmap) {
+          try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
+                                m_fade_buffer + 4 * ei, first_bone, lights);
+        }
       }
 
       for (auto& mdraw : effect.mod.mod_draw) {
-        auto* draw = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
-        draw->flags |= MOD_VTX;
-        draw->mod_vtx_buffer = m_mod_opengl_buffers[ei];
+        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        n->flags |= MOD_VTX;
+        n->mod_vtx_buffer = m_mod_opengl_buffers[ei];
+        if (should_envmap) {
+          auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture,
+                                         lev_bucket, m_fade_buffer + 4 * ei, first_bone, lights);
+          e->flags |= MOD_VTX;
+          e->mod_vtx_buffer = m_mod_opengl_buffers[ei];
+        }
       }
     } else {
       for (auto& draw : effect.all_draws) {
+        if (should_envmap) {
+          try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
+                                m_fade_buffer + 4 * ei, first_bone, lights);
+        }
         alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights);
       }
     }
+
+    //    if (effect.has_envmap) {
+    //      bool nonzero_fade = false;
+    //      for (int i = 0; i < 4; i++) {
+    //        if (m_fade_buffer[4 * ei + i]) {
+    //          nonzero_fade = true;
+    //          break;
+    //        }
+    //      }
+    //      if (nonzero_fade) {
+    //        for (auto& mdraw : effect.all_draws) {
+    //          alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
+    //                            m_fade_buffer + 4 * ei, first_bone, lights);
+    //        }
+    //      }
+    //    }
+    //
+    //    if (m_current_model_updates_verts && effect.has_mod_draw) {
+    //      for (auto& mdraw : effect.mod.fix_draw) {
+    //        alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+    //      }
+    //
+    //      for (auto& mdraw : effect.mod.mod_draw) {
+    //        auto* draw = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+    //        draw->flags |= MOD_VTX;
+    //        draw->mod_vtx_buffer = m_mod_opengl_buffers[ei];
+    //      }
+    //    } else {
+    //      for (auto& draw : effect.all_draws) {
+    //        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights);
+    //      }
+    //    }
   }
 
   m_current_model = std::nullopt;
+}
+
+Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
+                                          const DrawMode& envmap_mode,
+                                          u32 envmap_texture,
+                                          LevelDrawBucket* lev_bucket,
+                                          const u8* fade,
+                                          u32 first_bone,
+                                          u32 lights) {
+  bool nonzero_fade = false;
+  for (int i = 0; i < 4; i++) {
+    if (fade[i]) {
+      nonzero_fade = true;
+      break;
+    }
+  }
+  if (!nonzero_fade) {
+    return nullptr;
+  }
+
+  Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
+  draw->flags = 0;
+  draw->first_index = mdraw.first_index;
+  draw->index_count = mdraw.index_count;
+  draw->mode = envmap_mode;
+  draw->texture = envmap_texture;
+  draw->first_bone = first_bone;
+  draw->light_idx = lights;
+  draw->num_triangles = mdraw.num_triangles;
+  for (int i = 0; i < 4; i++) {
+    draw->fade[i] = fade[i];
+  }
+  return draw;
 }
 
 Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
@@ -877,6 +1009,7 @@ void Merc2::do_draws(const Draw* draw_array,
                      ScopedProfilerNode& prof,
                      bool set_fade,
                      SharedRenderState* render_state) {
+  glBindVertexArray(m_vao);
   int last_tex = -1;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;

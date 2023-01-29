@@ -276,6 +276,8 @@ void MercModifiableDrawGroup::serialize(Serializer& ser) {
   }
   ser.from_pod_vector(&vertices);
   ser.from_pod_vector(&vertex_lump4_addr);
+  ser.from_pod_vector(&fragment_mask);
+  ser.from_ptr(&expect_vidx_end);
 }
 
 void MercEffect::serialize(Serializer& ser) {
@@ -293,6 +295,7 @@ void MercEffect::serialize(Serializer& ser) {
   ser.from_ptr(&envmap_mode);
   ser.from_ptr(&envmap_texture);
   ser.from_ptr(&has_envmap);
+  ser.from_ptr(&has_mod_draw);
 }
 
 void MercModel::serialize(Serializer& ser) {

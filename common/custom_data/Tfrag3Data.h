@@ -399,6 +399,8 @@ struct MercModifiableDrawGroup {
   std::vector<MercVertex> vertices;
   std::vector<u16> vertex_lump4_addr;
   std::vector<MercDraw> fix_draw, mod_draw;
+  std::vector<u8> fragment_mask;
+  u32 expect_vidx_end = 0;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
 };
@@ -409,6 +411,7 @@ struct MercEffect {
   DrawMode envmap_mode;
   u32 envmap_texture;
   bool has_envmap = false;
+  bool has_mod_draw = false;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
 };

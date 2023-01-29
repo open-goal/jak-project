@@ -113,6 +113,7 @@ struct ConvertedMercEffect {
   // draws from all fragments.
   std::vector<MercDraw> draws;
   std::vector<MercUnpackedVtx> vertices;
+  std::vector<u32> verts_per_frag;
   bool has_envmap = false;
   DrawMode envmap_mode;
   u32 envmap_texture;
@@ -814,7 +815,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
-    combined_lump4_addr += frag.lump4_unpacked.size() / 3;
+    u32 vert_count = frag.lump4_unpacked.size() / 3;
+    combined_lump4_addr += vert_count;
+    result.verts_per_frag.push_back(vert_count);
 
     // we'll add draws after this draw, but wait to actually populate the index lists until
     // we've processed all the vertices.
@@ -982,11 +985,13 @@ struct VertexSourceInfo {
   int flump4;
 };
 
-void create_modifiable_vertex_data(const std::vector<bool>& vtx_mod_flag,
-                                   const std::vector<VertexSourceInfo>& vtx_srcs,
-                                   tfrag3::MercModelGroup& out,
-                                   size_t first_out_vertex,
-                                   size_t first_out_model) {
+void create_modifiable_vertex_data(
+    const std::vector<bool>& vtx_mod_flag,
+    const std::vector<VertexSourceInfo>& vtx_srcs,
+    tfrag3::MercModelGroup& out,
+    size_t first_out_vertex,
+    size_t first_out_model,
+    const std::vector<std::vector<ConvertedMercEffect>>& all_effects) {
   ASSERT(vtx_mod_flag.size() + first_out_vertex == out.vertices.size());
 
   // we need to be able to modify some vertices at runtime.
@@ -1011,7 +1016,13 @@ void create_modifiable_vertex_data(const std::vector<bool>& vtx_mod_flag,
     auto& model = out.models.at(mi);
     // loop over "effects" within this model. the pc format merges all fragments in an effect
     // together.
-    for (auto& effect : model.effects) {
+
+
+    for (size_t ei = 0; ei < model.effects.size(); ei++) {
+      auto& effect = model.effects[ei];
+
+      std::vector<std::vector<u32>> inds_per_mod_draw;
+
       for (const auto& draw : effect.all_draws) {
         num_tris += draw.num_triangles;
 
@@ -1040,28 +1051,83 @@ void create_modifiable_vertex_data(const std::vector<bool>& vtx_mod_flag,
         } else if (found_mod && !found_fixed) {
           // only mod
           effect.mod.mod_draw.push_back(draw);
+          auto& inds_out = inds_per_mod_draw.emplace_back();
+          for (u32 i = 0; i < draw.index_count; i++) {
+            inds_out.push_back(out.indices.at(draw.first_index + i));
+          }
           mod_tris += draw.num_triangles;
         } else {
           // it's a mix...
-          // TODO: actually split up the draw
-          effect.mod.mod_draw.push_back(draw);
-          mod_tris += draw.num_triangles;
-          mod_tris += draw.num_triangles;
+          std::vector<std::vector<u32>> strips;
+          strips.emplace_back();
+          for (u32 i = 0; i < draw.index_count; i++) {
+            u32 val = out.indices.at(draw.first_index + i);
+            if (val == UINT32_MAX) {
+              if (!strips.back().empty()) {
+                strips.emplace_back();
+              }
+            } else {
+              strips.back().push_back(val);
+            }
+          }
+
+          tfrag3::MercDraw mod = draw;
+          tfrag3::MercDraw fix = draw;
+          std::vector<u32> mod_ind, fix_ind;
+          for (auto& strip : strips) {
+            bool strip_has_mod = false;
+            for (auto ind : strip) {
+              if (vtx_mod_flag.at(ind - first_out_vertex)) {
+                strip_has_mod = true;
+                break;
+              }
+            }
+            if (strip_has_mod) {
+              mod_ind.insert(mod_ind.end(), strip.begin(), strip.end());
+              mod_ind.push_back(UINT32_MAX);
+            } else {
+              fix_ind.insert(fix_ind.end(), strip.begin(), strip.end());
+              fix_ind.push_back(UINT32_MAX);
+            }
+          }
+
+          // TODO, try to remove this
+//          mod.first_index = out.indices.size();
+          mod.index_count = mod_ind.size();
+//          out.indices.insert(out.indices.end(), mod_ind.begin(), mod_ind.end());
+          //
+
+          inds_per_mod_draw.push_back(mod_ind);
+
+
+          fix.first_index = out.indices.size();
+          fix.index_count = fix_ind.size();
+          out.indices.insert(out.indices.end(), fix_ind.begin(), fix_ind.end());
+
+          effect.mod.mod_draw.push_back(mod);
+          effect.mod.fix_draw.push_back(fix);
         }
       }  // for draw
+
+
 
       // if there are no modifiable draws, we can't possible modify anything, so not worth
       // storing the fixed draws
       if (effect.mod.mod_draw.empty()) {
         effect.mod.fix_draw.clear();
       } else {
+        effect.has_mod_draw = true;
         // need to set up the vertex buffer for the modifiable draws
         // map of original vertex indices to mod buffer index
         std::unordered_map<u32, u32> vtx_to_mod_vtx;
-        for (auto& draw : effect.mod.mod_draw) {
+        //for (auto& draw : effect.mod.mod_draw) {
+        for (size_t mdi = 0; mdi < effect.mod.mod_draw.size(); mdi++) {
+          auto& draw = effect.mod.mod_draw[mdi];
+          auto& orig_inds = inds_per_mod_draw.at(mdi);
           u32 new_first_index = out.indices.size();
-          for (int i = 0; i < (int)draw.index_count; i++) {
-            u32 vidx = out.indices.at(draw.first_index + i);
+          //for (int i = 0; i < (int)draw.index_count; i++) {
+          for (auto vidx : orig_inds) {
+            //u32 vidx = out.indices.at(draw.first_index + i);
             if (vidx == UINT32_MAX) {
               out.indices.push_back(UINT32_MAX);
               continue;  // strip restart
@@ -1075,12 +1141,38 @@ void create_modifiable_vertex_data(const std::vector<bool>& vtx_mod_flag,
               auto src = vtx_srcs.at(vidx - first_out_vertex);
               ASSERT(src.combined_lump4 < UINT16_MAX);
               effect.mod.vertex_lump4_addr.push_back(src.combined_lump4);
+              u32 frag_idx = src.frag;
+              if (frag_idx >= effect.mod.fragment_mask.size()) {
+                effect.mod.fragment_mask.resize(frag_idx + 1);
+              }
+              effect.mod.fragment_mask[frag_idx] = true;
               out.indices.push_back(idx);
             } else {
               out.indices.push_back(existing->second);
             }
           }
           draw.first_index = new_first_index;
+        }
+
+        // splice out masked fragments, the renderer won't index them
+        const auto& frag_counts = all_effects.at(mi - first_out_model).at(ei).verts_per_frag;
+        std::unordered_map<u32, u32> old_to_new;
+        u32 old_idx = 0;
+        u32 new_idx = 0;
+        for (size_t fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
+          if (effect.mod.fragment_mask[fi]) {
+            for (int vi = 0; vi < frag_counts.at(fi); vi++) {
+              old_to_new[old_idx] = new_idx;
+              old_idx++;
+              new_idx++;
+            }
+          } else {
+            old_idx += frag_counts.at(fi);
+          }
+        }
+        effect.mod.expect_vidx_end = new_idx;
+        for (auto& v : effect.mod.vertex_lump4_addr) {
+          v = old_to_new.at(v);
         }
       }
     }
@@ -1212,6 +1304,6 @@ void extract_merc(const ObjectFileData& ag_data,
   }
 
   create_modifiable_vertex_data(vertex_modify_flags, vertex_srcs, out.merc_data, first_out_vertex,
-                                first_model);
+                                first_model, all_effects);
 }
 }  // namespace decompiler
