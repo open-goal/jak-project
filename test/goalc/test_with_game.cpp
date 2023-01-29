@@ -776,6 +776,11 @@ TEST_F(WithGameTests, StaticTypeArray) {
                                           {"matched!\n0\n"});
 }
 
+TEST_F(WithGameTests, StaticArraySubtypeDraft) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-subtype.gc",
+                                          {"length - 2\ntest\n1\n0\n"});
+}
+
 TEST_F(WithGameTests, MethodReplace) {
   shared_compiler->runner.run_static_test(testCategory, "test-method-replace.gc",
                                           {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
