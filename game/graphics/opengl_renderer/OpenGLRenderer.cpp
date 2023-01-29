@@ -149,6 +149,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 90
   init_bucket_renderer<TextureUploadHandler>("tex-l2-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L2_SHRUB);
+  init_bucket_renderer<Merc2>("merc-l2-shrub", BucketCategory::MERC, BucketId::MERC_L2_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l2-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L2_SHRUB);
   // 100
   init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,

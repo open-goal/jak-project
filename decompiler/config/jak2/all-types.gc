@@ -7000,8 +7000,16 @@
   (text-x24e #x024e)
   (text-x24f #x024f)
   (text-x277 #x0277)
+  (text-x278 #x0278)
+  (text-x27a #x027a)
+  (text-x27b #x027b)
+  (text-x27c #x027c)
+  (text-x27d #x027d)
+  (text-x27e #x027e)
+  (text-x27f #x027f)
   (scene-subtitles-enabled #x30d)
   (scene-subtitles-disabled #x30e)
+  (text-x30f #x30f)
   (progress-unknown-continue #x310)
 )
 ;; ---text-id-h:game-text-id
@@ -7375,7 +7383,6 @@
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
-  ;; Failed to read fields.
   )
 
 
@@ -7393,7 +7400,6 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; Failed to read fields.
   )
 
 (deftype engine-minimap (engine-pers)
@@ -9848,7 +9854,7 @@
    (data-float float 32)
    (data-vector vector 32 :inline :offset-assert 800 :score 100)
    (actor-group (pointer entity-actor) 4 :offset-assert 1312)
-   (minimap uint32 8 :offset-assert 1328)
+   (minimap connection-minimap 8 :offset-assert 1328)
    (hud handle 4 :offset-assert 1360)
    (hud-timer handle :offset 1360)
    (hud-counter handle :offset 1368)
@@ -33100,7 +33106,7 @@
   )
 
 (deftype rigid-body-object-constants (structure)
-  ((info               rigid-body-info              :inline :offset-assert 0 :score -1)
+  ((info               rigid-body-info              :inline :offset-assert 0)
    (mass               float                                :offset 0)
    (inv-mass           float                                :offset 4)
    (cm-joint           vector                       :inline :offset 32)
@@ -41718,7 +41724,7 @@
 ;; ctypower                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *city-power-switch-on-position* array)
+(define-extern *city-power-switch-on-position* (array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyindb-part                   ;;
@@ -43439,7 +43445,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern death-precursor death-info)
-(define-extern start-precursor-effect (function object none))
+(define-extern start-precursor-effect (function manipy none))
 (define-extern birth-func-pecker-feather-color (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44991,9 +44997,8 @@
 ;; searchlight                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype searchlight (process-drawable)
-  ((sync sync-eased :inline :offset-assert 196)
+  ((sync sync-eased :inline :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xf4
@@ -45002,7 +45007,6 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46604,31 +46608,29 @@
 ;; com-elevator                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype com-elevator (elevator)
-  ((camera-startup      UNKNOWN 2 :offset-assert 364)
-   (use-camera-startup? UNKNOWN 2 :offset-assert 396)
-   (sound-id            uint32    :offset-assert 404)
+  ((camera-startup      vector 2 :inline :offset-assert 368)
+   (use-camera-startup? symbol 2 :offset-assert 400)
+   (sound-id            sound-id    :offset-assert 408)
    )
   :method-count-assert 50
   :size-assert         #x19c
   :flag-assert         #x320120019c
   (:methods
-    (com-elevator-method-49 () none 49)
+    (com-elevator-method-49 (_type_ symbol) none 49)
     )
   )
-|#
 
-#|
 (deftype tomb-trans-elevator (com-elevator)
-  ()
+  (
+    (unknown-gijh1bn2i3hb1 int32 :offset-assert 412)
+  )
   :method-count-assert 50
   :size-assert         #x1a0
   :flag-assert         #x32012001a0
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46776,9 +46778,8 @@
 ;; portrun                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype city-port-run-mine-info (structure)
-  ((handle   uint64  :offset-assert 0)
+  ((handle   handle  :offset-assert 0)
    (pos1-x   float   :offset-assert 8)
    (pos1-y   float   :offset-assert 12)
    (pos1-z   float   :offset-assert 16)
@@ -46788,30 +46789,29 @@
    (pos2-z   float   :offset-assert 32)
    (speed    float   :offset-assert 36)
    (offset   float   :offset-assert 40)
-   (center-x float   :offset-assert 8)
-   (center-y float   :offset-assert 12)
-   (center-z float   :offset-assert 16)
-   (radius   float   :offset-assert 24)
+   (center-x float   :offset 8)
+   (center-y float   :offset 12)
+   (center-z float   :offset 16)
+   (radius   float   :offset 24)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype ctyport-mine (process-drawable)
-  ((info        city-port-run-mine-info         :offset-assert 196)
-   (base-height float                           :offset-assert 200)
-   (center      vector                  :inline :offset-assert 204)
-   (time-skew   uint64                          :offset-assert 220)
-   (period      float                           :offset-assert 228)
-   (trans-y     float                           :offset-assert 232)
-   (speed-y     float                           :offset-assert 236)
-   (acc-y       float                           :offset-assert 240)
-   (beep        basic                           :offset-assert 244)
-   (beep-time   time-frame                          :offset-assert 252)
-   (beep-color  vector                  :inline :offset-assert 268)
+  ((root-override collide-shape-moving :offset 128 :score 100)
+   (info        city-port-run-mine-info         :offset-assert 200)
+   (base-height float                           :offset-assert 204)
+   (center      vector                  :inline :offset-assert 208)
+   (time-skew   uint64                          :offset-assert 224)
+   (period      float                           :offset-assert 232)
+   (trans-y     float                           :offset-assert 236)
+   (speed-y     float                           :offset-assert 240)
+   (acc-y       float                           :offset-assert 244)
+   (beep        basic                           :offset-assert 248)
+   (beep-time   time-frame                          :offset-assert 256)
+   (beep-color  vector                  :inline :offset-assert 272)
    )
   :method-count-assert 24
   :size-assert         #x120
@@ -46820,14 +46820,12 @@
     (idle () _type_ :state 20)
     (die () _type_ :state 21)
     (fall () _type_ :state 22)
-    (ctyport-mine-method-23 () none 23)
+    (ctyport-mine-method-23 (_type_) none 23)
     )
   )
-|#
 
-#|
 (deftype ctyport-spy (process-drawable)
-  ((trans-y float  :offset-assert 196)
+  ((trans-y float  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
@@ -46836,13 +46834,11 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype ctyport-cargo (process-focusable)
-  ((minimap connection-minimap  :offset-assert 200)
-   (trans-y float               :offset-assert 204)
-   (speed-y float               :offset-assert 208)
+  ((minimap connection-minimap  :offset-assert 204)
+   (trans-y float               :offset-assert 208)
+   (speed-y float               :offset-assert 212)
    )
   :method-count-assert 31
   :size-assert         #xd8
@@ -46851,12 +46847,10 @@
     (idle () _type_ :state 27)
     (focus-camera () _type_ :state 28)
     (die () _type_ :state 29)
-    (ctyport-cargo-method-30 () none 30)
+    (ctyport-cargo-method-30 (_type_) none 30)
     )
   )
-|#
 
-#|
 (deftype city-port-run-cargo-info (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -46864,19 +46858,18 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern check-cargo-piece-ground function)
-;; (define-extern *city-port-run-mine-info* array)
-;; (define-extern ctyport-mine-init-by-other function)
-;; (define-extern ctyport-mine-spawn function)
-;; (define-extern ctyport-spy-init-by-other function)
-;; (define-extern ctyport-spy-spawn function)
-;; (define-extern *city-port-position* object)
-;; (define-extern *ctyport-cargo-exploder-params* joint-exploder-static-params)
-;; (define-extern ctyport-cargo-init-by-other function)
-;; (define-extern ctyport-cargo-spawn function)
-;; (define-extern *city-port-run-cargo-info* array)
+(define-extern check-cargo-piece-ground (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern *city-port-run-mine-info* (array city-port-run-mine-info))
+(define-extern ctyport-mine-init-by-other (function city-port-run-mine-info none :behavior ctyport-mine))
+(define-extern ctyport-mine-spawn (function task-manager city-port-run-mine-info process))
+(define-extern ctyport-spy-init-by-other (function vector none :behavior ctyport-spy))
+(define-extern ctyport-spy-spawn (function process vector vector float process))
+(define-extern *city-port-position* vector)
+(define-extern *ctyport-cargo-exploder-params* joint-exploder-static-params)
+(define-extern ctyport-cargo-init-by-other (function vector nav-mesh none :behavior ctyport-cargo))
+(define-extern ctyport-cargo-spawn (function task-manager vector nav-mesh process))
+(define-extern *city-port-run-cargo-info* (array city-port-run-cargo-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctygenb-part                   ;;
@@ -47338,12 +47331,11 @@
 ;; vinroom-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vin-turbine (process-drawable)
-  ((dont-draw-outside? basic          :offset-assert 196)
-   (lightning-timer    uint64         :offset-assert 204)
-   (outside-plane      plane  :inline :offset-assert 220)
-   (lightning-plane    plane  :inline :offset-assert 236)
+  ((dont-draw-outside? symbol          :offset-assert 200)
+   (lightning-timer    uint64         :offset-assert 208)
+   (outside-plane      plane  :inline :offset-assert 224)
+   (lightning-plane    plane  :inline :offset-assert 240)
    )
   :method-count-assert 22
   :size-assert         #x100
@@ -47353,9 +47345,7 @@
     (dormant () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype vin-door (com-airlock)
   ()
   :method-count-assert 28
@@ -47364,7 +47354,6 @@
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47421,7 +47410,6 @@
 ;; ctypal-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype water-anim-ctypal (water-anim)
   ()
   :method-count-assert 29
@@ -47430,9 +47418,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype palace-door (com-airlock)
   ()
   :method-count-assert 28
@@ -47441,11 +47427,9 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype ctypal-broke-wall (process-drawable)
-  ((ent basic  :offset-assert 196)
+  ((ent basic  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
@@ -47455,9 +47439,7 @@
     (done () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype ctypal-baron-statue-broken (process-drawable)
   ()
   :method-count-assert 21
@@ -47467,10 +47449,9 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-;; (define-extern ripple-for-water-anim-ctypal ripple-wave-set)
-;; (define-extern ripple-ctypal-smlground-pool ripple-wave-set)
+(define-extern ripple-for-water-anim-ctypal ripple-wave-set)
+(define-extern ripple-ctypal-smlground-pool ripple-wave-set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-shoot-block              ;;
@@ -49207,7 +49188,7 @@
    (section-count                     int8                         :offset-assert 421)
    (rider-stance                      uint8                        :offset-assert 422)
    (grab-rail-count                   int8                         :offset-assert 423)
-   (grab-rail-array                   uint32                       :offset-assert 424)
+   (grab-rail-array                   (inline-array vehicle-grab-rail-info)                       :offset-assert 424)
    (seat-array                        vehicle-seat-info              4      :inline :offset-assert 432)
    (rider-hand-offset                 vector              2      :inline :offset-assert 496)
    (section-array                     vehicle-section-info              4 :inline       :offset-assert 528 :score -999)
@@ -49222,12 +49203,12 @@
    (engine-pitch-offset               float                        :offset-assert 664)
    (engine-pitch-mod-amp              float                        :offset-assert 668)
    (engine-sound-select               int8                         :offset-assert 672)
-   (engine-sound                      uint128                      :offset-assert 688)
-   (thrust-sound                      uint128                      :offset-assert 704)
-   (scrape-sound                      uint128                      :offset-assert 720)
-   (glance-sound                      uint128                      :offset-assert 736)
-   (impact-sound                      uint128                      :offset-assert 752)
-   (extra-sound                       uint128                      :offset-assert 768)
+   (engine-sound                      sound-name                      :offset-assert 688)
+   (thrust-sound                      sound-name                      :offset-assert 704)
+   (scrape-sound                      sound-name                      :offset-assert 720)
+   (glance-sound                      sound-name                      :offset-assert 736)
+   (impact-sound                      sound-name                      :offset-assert 752)
+   (extra-sound                       sound-name                      :offset-assert 768)
    (explosion-part                    int32                        :offset-assert 784)
    (headlight-count                   int8                         :offset-assert 788)
    (taillight-count                   int8                         :offset-assert 789)
@@ -49261,7 +49242,7 @@
    (part-vel                          vector                       :offset-assert 1496)
    (color-option-count                int8                         :offset-assert 1500)
    (color-option-select               int8                         :offset-assert 1501)
-   (color-option-array                (array rgba)                       :offset-assert 1504)
+   (color-option-array                (inline-array vector)                       :offset-assert 1504) ;; making this a vector is a bit of a guess, but it's a bunch of floats
    (sample-dir                        vector               :inline :offset-assert 1520)
    (sample-time                       time-frame                       :offset-assert 1536)
    (sample-index                      int32                        :offset-assert 1544)
@@ -49519,7 +49500,7 @@
     (vehicle-method-132 (_type_) none 132)
     (check-player-get-on (_type_) none 133)
     (vehicle-method-134 "Stubbed" (_type_ process) none 134)
-    (vehicle-method-135 () none 135)
+    (vehicle-method-135 (_type_ traffic-object-spawn-params) none 135)
     (vehicle-method-136 (_type_ traffic-object-spawn-params) none 136)
     (vehicle-method-137 (_type_ traffic-object-spawn-params) none 137)
     (vehicle-method-138 (_type_) none 138)
@@ -49672,7 +49653,7 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (city-race-ring-info-method-9 () none 9)
+    (city-race-ring-info-method-9 (_type_ symbol) none 9)
     )
   )
 
@@ -49687,13 +49668,13 @@
 
 (deftype city-ambush-info (structure)
   ((count int16   :offset-assert 0)
-   (array uint32  :offset-assert 4)
+   (array (inline-array city-ambush-spot)  :offset-assert 4)
    )
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
   (:methods
-    (city-ambush-info-method-9 () none 9)
+    (city-ambush-info-method-9 (_type_ traffic-object-spawn-params) none 9)
     )
   )
 
@@ -50654,7 +50635,7 @@
 ;; (define-extern race-manager-event-handler function)
 (define-extern *race-manager* race-manager)
 ;; (define-extern race-manager-init-by-other function)
-(define-extern race-start (function int symbol symbol object))
+(define-extern race-start (function int symbol symbol process))
 ;; (define-extern race-kill function)
 (define-extern type-from-race-vehicle-type (function int type))
 ;; (define-extern race-vehicle-entity-hack function)
@@ -51686,6 +51667,7 @@
 
 (deftype security-wall (process-drawable)
   (
+    (root-override collide-shape :offset 128 :score 100)
     (pass int32 :offset-assert 200)
     (incoming-attack-id uint32 :offset-assert 204)
     (next-message-time int64 :offset-assert 208)
@@ -51701,11 +51683,11 @@
   :size-assert         #x11c
   :flag-assert         #x1900a0011c
   (:methods
-    (security-wall-method-20 () none 20)
-    (security-wall-method-21 () none 21)
-    (security-wall-method-22 () none 22)
-    (security-wall-method-23 () none 23)
-    (security-wall-method-24 () none 24)
+    (idle-open () _type_ :state 20)
+    (idle-close () _type_ :state 21)
+    (security-wall-method-22 (_type_ path-control float) vector 22)
+    (security-wall-method-23 (_type_) none 23)
+    (security-wall-method-24 (_type_) none 24)
     )
   )
 
@@ -51723,137 +51705,192 @@
   :size-assert         #x130
   :flag-assert         #x1e00b00130
   (:methods
-    (fruit-stand-method-27 () none 27)
-    (fruit-stand-method-28 () none 28)
-    (fruit-stand-method-29 () none 29)
+    (idle () _type_ :state 27)
+    (fruit-stand-method-28 (_type_) none 28)
+    (fruit-stand-method-29 (_type_) none 29)
     )
   )
 
-#|
-(deftype cty-fruit-stand (UNKNOWN)
+(deftype cty-fruit-stand (fruit-stand)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 30
+  :size-assert         #x130 ;; 304
+  :flag-assert         #x1e00b00130
   )
-|#
 
-#|
-(deftype cty-guard-turret (UNKNOWN)
+(deftype cty-guard-turret (process-focusable)
+  (
+    (incoming-attack-id uint32        :offset-assert 204)
+    (jm-turret          joint-mod        :offset-assert 208)
+    (jm-gunsL           joint-mod        :offset-assert 212)
+    (jm-gunsR           joint-mod        :offset-assert 216)
+    (angle-turret       degrees       :offset-assert 220)
+    (angle-guns         degrees       :offset-assert 224)
+    (last-no-zero       int64         :offset-assert 232)
+    (next-time-shot     time-frame    :offset-assert 240)
+    (num-shots          uint32        :offset-assert 248)
+    (focus              focus :inline :offset-assert 256)
+    (id                 int32         :offset-assert 268)
+    (destroyed          symbol        :offset-assert 272)
+    (button-down?       symbol        :offset-assert 276)
+    (hit-points         int32         :offset-assert 280)
+  )
+  :method-count-assert 36
+  :size-assert         #x11c ;; 284
+  :flag-assert         #x2400a0011c
+  (:methods
+    (idle () _type_ :state 27)
+    (hostile () _type_ :state 28)
+    (explode () _type_ :state 29)
+    (wait-for-pushing () _type_ :state 30)
+    (pushed () _type_ :state 31)
+    (cty-guard-turret-method-32 (_type_) none 32)
+    (cty-guard-turret-method-33 (_type_) none 33)
+    (cty-guard-turret-method-34 (_type_) none 34)
+    (cty-guard-turret-method-35 (_type_) quaternion 35))
+  )
+
+(deftype parking-spot (process-drawable)
+  (
+    (vehicle     handle                     :offset-assert 200)
+    (spawned     symbol                     :offset-assert 208)
+    (minimap     connection-minimap         :offset-assert 212)
+    (test-sphere sphere                     :inline :offset-assert 224)
+  )
+  :method-count-assert 25
+  :size-assert         #xf0 ;; 240
+  :flag-assert         #x19007000f0
+  (:methods
+    (idle () _type_ :state 20)
+    (parking-spot-method-21 (_type_) none 21)
+    (parking-spot-method-22 (_type_) none 22)
+    (parking-spot-method-23 (_type_ uint) none 23)
+    (parking-spot-method-24 (_type_) none 24))
+  )
+
+(deftype propa (process-focusable)
+  (
+    (sound-id           uint32 :offset-assert 204)
+    (sound-index        uint32 :offset-assert 208)
+    (handle             handle  :offset-assert 216)
+    (y-rot              float  :offset-assert 224)
+    (hit-points         int32  :offset-assert 228)
+    (incoming-attack-id uint32 :offset-assert 232)
+  )
+  :method-count-assert 32
+  :size-assert         #xec ;; 236
+  :flag-assert         #x20007000ec
+  (:methods
+    (idle () _type_ :state 27)
+    (broken () _type_ :state 28)
+    (propa-method-29 (_type_) none 29)
+    (propa-method-30 (_type_) none 30)
+    (propa-method-31 (_type_ vector) none 31))
+  )
+
+(deftype baron-statue (process-drawable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 21
+  :size-assert         #xc8 ;; 200
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20))
   )
-|#
 
-#|
-(deftype parking-spot (UNKNOWN)
+(deftype burning-bush (process-focusable)
+  (
+    (task       game-task-control  :offset-assert 204)
+    (part-off   sparticle-launch-control  :offset-assert 208)
+    (part-alert sparticle-launch-control  :offset-assert 212)
+    (angle      degrees :offset-assert 216)
+    (time       float   :offset-assert 220)
+  )
+  :method-count-assert 33
+  :size-assert         #xe0 ;; 224
+  :flag-assert         #x21006000e0
+  (:methods
+    (idle () _type_ :state 27)
+    (talking () _type_ :state 28)
+    (menu () _type_ :state 29)
+    (burning-bush-method-30 (_type_) none 30)
+    (burning-bush-method-31 (_type_) none 31)
+    (burning-bush-method-32 (_type_) object 32))
+  )
+
+(deftype barons-ship-lores (process-drawable)
+  (
+    (paths            path-control 3          :offset-assert 200) ;; elt size: 5.333333333333333
+    (sync             sync-eased :inline :offset-assert 216)
+    (current-path     int32              :offset-assert 260)
+    (forward-backward symbol             :offset-assert 264)
+  )
+  :method-count-assert 21
+  :size-assert         #x10c ;; 268
+  :flag-assert         #x150090010c
+  (:methods
+    (idle () _type_ :state 20))
+  )
+
+(deftype lurker-pipe-lid (process-focusable)
+  (
+    (angle degrees :offset-assert 204)
+    (rot   float   :offset-assert 208)
+  )
+  :method-count-assert 31
+  :size-assert         #xd4 ;; 212
+  :flag-assert         #x1f006000d4
+  (:methods
+    (idle () _type_ :state 27)
+    (lurker-pipe-lid-method-28 (_type_) none 28)
+    (lurker-pipe-lid-method-29 (_type_) none 29)
+    (lurker-pipe-lid-method-30 (_type_) none 30))
+  )
+
+(deftype ctyn-lamp (process-focusable)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 31
+  :size-assert         #xcc ;; 204
+  :flag-assert         #x1f005000cc
+  (:methods
+    (idle () _type_ :state 27)
+    (die () _type_ :state 28)
+    (ctyn-lamp-method-29 (_type_) none 29)
+    (ctyn-lamp-method-30 (_type_) none 30))
   )
-|#
 
-#|
-(deftype propa (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype baron-statue (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype burning-bush (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype barons-ship-lores (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype lurker-pipe-lid (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-#|
-(deftype ctyn-lamp (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
-  )
-|#
-
-;; (define-extern *fruit-check-ground-counter* object)
-;; (define-extern fruit-check-ground-bounce function)
-;; (define-extern fruit-sparticle-next-on-mode-1 function)
-;; (define-extern fruit-stand-event-handler function)
-;; (define-extern *cty-guard-turret-exploder-params* joint-exploder-static-params)
-;; (define-extern cty-guard-turret-event-handler function)
-;; (define-extern *propa-sounds* array)
-;; (define-extern *propa-sounds-class-3* array)
-;; (define-extern *propa-sounds-class-2* array)
-;; (define-extern *propa-sounds-class-1* array)
-;; (define-extern *propa-sounds-metalheads* array)
-;; (define-extern *propa-sounds-baron-construction* array)
-;; (define-extern propa-pu->knocked-type function)
-;; (define-extern *ctyn-lamp-exploder-params* joint-exploder-static-params)
+(define-extern *fruit-check-ground-counter* int)
+(define-extern fruit-check-ground-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo matrix float))
+(define-extern fruit-sparticle-next-on-mode-1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern fruit-stand-event-handler (function process int symbol event-message-block object :behavior fruit-stand))
+(define-extern *cty-guard-turret-exploder-params* joint-exploder-static-params)
+(define-extern cty-guard-turret-event-handler (function process int symbol event-message-block object :behavior cty-guard-turret))
+(define-extern *propa-sounds* (array string))
+(define-extern *propa-sounds-class-3* (array string))
+(define-extern *propa-sounds-class-2* (array string))
+(define-extern *propa-sounds-class-1* (array string))
+(define-extern *propa-sounds-metalheads* (array string))
+(define-extern *propa-sounds-baron-construction* (array string))
+(define-extern propa-pu->knocked-type (function penetrate knocked-type))
+(define-extern *ctyn-lamp-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-tasks                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype city-bb-racepoint-info (structure)
   ((bike-pos   vector :inline :offset-assert 0)
    (end-pos    vector :inline :offset-assert 16)
    (bike-angle float          :offset-assert 32)
-   (map        basic          :offset-assert 36)
+   (map        symbol          :offset-assert 36)
    (time       float          :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-;; (define-extern wait-for-speech-end function)
-;; (define-extern *city-bb-racepoint-info* array)
+(define-extern wait-for-speech-end (function sound-id none))
+(define-extern *city-bb-racepoint-info* (array city-bb-racepoint-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-scenes                 ;;
@@ -51870,50 +51907,40 @@
 ;; ctyport-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype boat-manager (process)
-  ((mesh  basic     :offset-assert 124)
-   (paths UNKNOWN 4 :offset-assert 128)
+  ((mesh  basic     :offset-assert 128)
+   (paths path-control 4 :offset-assert 132)
    )
   :method-count-assert 16
   :size-assert         #x94
   :flag-assert         #x1000200094
   (:methods
-    (boat-manager-method-9 () none 9)
-    (boat-manager-method-10 () none 10)
-    (boat-manager-method-11 () none 11)
-    (boat-manager-method-12 () none 12)
-    (boat-manager-method-13 () none 13)
     (idle () _type_ :state 14)
-    (boat-manager-method-15 () none 15)
+    (boat-manager-method-15 (_type_) none 15)
     )
   )
-|#
 
-#|
 (deftype boat-base (vehicle)
-  ((angle      float   :offset-assert 876)
-   (y-rot      float   :offset-assert 880)
-   (path-num   uint32  :offset-assert 884)
-   (path-index float   :offset-assert 888)
+  ((angle      float   :offset-assert 880)
+   (y-rot      float   :offset-assert 884)
+   (path-num   uint32  :offset-assert 888)
+   (path-index float   :offset-assert 892)
    )
   :method-count-assert 149
   :size-assert         #x380
   :flag-assert         #x9503000380
   (:methods
-    (boat-base-method-144 () none 144)
-    (boat-base-method-145 () none 145)
-    (boat-base-method-146 () none 146)
-    (boat-base-method-147 () none 147)
-    (boat-base-method-148 () none 148)
+    (boat-base-method-144 (_type_ nav-control) none 144)
+    (boat-base-method-145 (_type_ nav-control) none 145)
+    (boat-base-method-146 (_type_ nav-control) none 146)
+    (boat-base-method-147 (_type_ nav-control) none 147)
+    (boat-base-method-148 (_type_ nav-control) none 148)
     )
   )
-|#
 
-#|
 (deftype barge (boat-base)
-  ((engine   uint32  :offset-assert 892)
-   (bow-wash uint32  :offset-assert 896)
+  ((engine   uint32  :offset-assert 896)
+   (bow-wash uint32  :offset-assert 900)
    )
   :method-count-assert 149
   :size-assert         #x388
@@ -51921,10 +51948,9 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *barge-constants* object)
-;; (define-extern *boat-nav-callback-info* object)
+(define-extern *barge-constants* rigid-body-vehicle-constants)
+(define-extern *boat-nav-callback-info* nav-callback-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-pilot                   ;;
@@ -52439,21 +52465,16 @@
 ;; ctyasha-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tanker-grunt (grunt)
-  ((expensive-gnd-collide? basic  :offset-assert 688)
+  ((expensive-gnd-collide? symbol  :offset 692)
    )
   :method-count-assert 186
   :size-assert         #x2b8
   :flag-assert         #xba024002b8
-  (:methods
-    )
   )
-|#
 
-#|
 (deftype tanker-juicer (juicer)
-  ((expensive-gnd-collide? basic  :offset-assert 844)
+  ((expensive-gnd-collide? symbol  :offset-assert 848)
    )
   :method-count-assert 185
   :size-assert         #x354
@@ -52461,25 +52482,21 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype tanker-container (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 100))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:methods
     (dormant () _type_ :state 20)
     (idle () _type_ :state 21)
-    (tanker-container-method-22 () none 22)
+    (tanker-container-method-22 (_type_) none 22)
     )
   )
-|#
 
-#|
 (deftype tanker-crash (process-drawable)
-  ()
+  ((root-override collide-shape :offset 128 :score 100))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
@@ -52488,14 +52505,13 @@
     (idle () _type_ :state 21)
     )
   )
-|#
 
-#|
 (deftype tanker-deadly (process-drawable)
-  ((track-joint int32          :offset-assert 196)
-   (attack-id   uint32         :offset-assert 200)
-   (die-time    time-frame         :offset-assert 204)
-   (prev-pos    vector :inline :offset-assert 220)
+  ((root-override collide-shape :offset 128 :score 100)
+   (track-joint int32          :offset-assert 200)
+   (attack-id   uint32         :offset-assert 204)
+   (die-time    time-frame         :offset-assert 208)
+   (prev-pos    vector :inline :offset-assert 224)
    )
   :method-count-assert 22
   :size-assert         #xf0
@@ -52505,14 +52521,13 @@
     (die-fast () _type_ :state 21)
     )
   )
-|#
 
-;; (define-extern tanker-container-event-handler function)
-;; (define-extern tanker-deadly-init-by-other function)
-;; (define-extern tanker-spawn-deadly-barrels function)
-;; (define-extern tanker-spawn-deadly-cab function)
-;; (define-extern tanker-spawn-deadly-trailers function)
-;; (define-extern tanker-spawn-deadly-container function)
+(define-extern tanker-container-event-handler (function process int symbol event-message-block object :behavior tanker-container))
+(define-extern tanker-deadly-init-by-other (function vector int int none :behavior tanker-deadly))
+(define-extern tanker-spawn-deadly-barrels (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-cab (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-trailers (function process-tree (pointer process)))
+(define-extern tanker-spawn-deadly-container (function process-tree (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ash4-course                    ;;
