@@ -9,8 +9,10 @@
 
 #include "ParseHelpers.h"
 
+#include "common/goos/Printer.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
 #include "third-party/fmt/core.h"
@@ -53,6 +55,7 @@ Interpreter::Interpreter(const std::string& username) {
                    {"begin", &Interpreter::eval_begin},
                    {"exit", &Interpreter::eval_exit},
                    {"read", &Interpreter::eval_read},
+                   {"read-data-file", &Interpreter::eval_read_data_file},
                    {"read-file", &Interpreter::eval_read_file},
                    {"print", &Interpreter::eval_print},
                    {"inspect", &Interpreter::eval_inspect},
@@ -82,6 +85,9 @@ Interpreter::Interpreter(const std::string& username) {
                    {"string-ref", &Interpreter::eval_string_ref},
                    {"string-length", &Interpreter::eval_string_length},
                    {"string-append", &Interpreter::eval_string_append},
+                   {"string-starts-with?", &Interpreter::eval_string_starts_with},
+                   {"string-ends-with?", &Interpreter::eval_string_ends_with},
+                   {"string-split", &Interpreter::eval_string_split},
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
                    {"string->symbol", &Interpreter::eval_string_to_symbol},
@@ -1003,6 +1009,23 @@ Object Interpreter::eval_read(const Object& form,
 }
 
 /*!
+ * Reads list data from a file, returns the pair. Not a lot of safety here!
+ */
+Object Interpreter::eval_read_data_file(const Object& form,
+                                        Arguments& args,
+                                        const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+
+  try {
+    return reader.read_from_file({args.unnamed.at(0).as_string()->data}).as_pair()->cdr;
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
+  }
+  return Object::make_empty_list();
+}
+
+/*!
  * Open and run the Reader on a text file.
  */
 Object Interpreter::eval_read_file(const Object& form,
@@ -1646,6 +1669,45 @@ Object Interpreter::eval_string_append(const Object& form,
   }
 
   return StringObject::make_new(result);
+}
+
+Object Interpreter::eval_string_starts_with(const Object& form,
+                                            Arguments& args,
+                                            const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& suffix = args.unnamed.at(1).as_string()->data;
+
+  if (str_util::starts_with(str, suffix)) {
+    return SymbolObject::make_new(reader.symbolTable, "#t");
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#f");
+}
+
+Object Interpreter::eval_string_ends_with(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& suffix = args.unnamed.at(1).as_string()->data;
+
+  if (str_util::ends_with(str, suffix)) {
+    return SymbolObject::make_new(reader.symbolTable, "#t");
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#f");
+}
+
+Object Interpreter::eval_string_split(const Object& form,
+                                      Arguments& args,
+                                      const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& delim = args.unnamed.at(1).as_string()->data;
+
+  return pretty_print::build_list(str_util::split(str, delim.at(0)));
 }
 
 Object Interpreter::eval_ash(const Object& form,
