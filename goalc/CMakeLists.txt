@@ -16,6 +16,7 @@ add_library(compiler
         build_level/LevelFile.cpp
         build_level/ResLump.cpp
         build_level/Tfrag.cpp
+        build_level/drawable_ambient.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
