@@ -35308,7 +35308,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype form-search-info (structure)
-  ((form           basic               :offset-assert 0)
+  ((form           uint32               :offset-assert 0)
    (count          int32               :offset-assert 4)
    (pos-table      uint32              :offset-assert 8)
    (actor-position vector   16 :inline :offset-assert 16)
@@ -35332,6 +35332,16 @@
   :flag-assert         #x900000020
   )
 
+;; +++hover-formation-h:formation-type
+(defenum formation-type
+  :type int64
+  (unknown-0 0)
+  (unknown-1 1)
+  (unknown-2 2)
+  (unknown-3 3)
+  )
+;; ---hover-formation-h:formation-type
+
 (deftype hover-formation-control (basic)
   ((search-info    form-search-info :inline :offset-assert 16)
    (entity         entity                   :offset-assert 740)
@@ -35339,7 +35349,7 @@
    (actor-table    handle           16      :offset-assert 752)
    ;; NOTE These appear to be 2 different sets of flags, some functions (eg method 12 and 19) load from 884 instead
    (flags          uint16                   :offset-assert 880)
-   (formation-type uint64                   :offset-assert 888)
+   (formation-type formation-type           :offset-assert 888)
    (center         vector           :inline :offset-assert 896)
    (zone-to-world  matrix           :inline :offset-assert 912)
    (world-to-zone  matrix           :inline :offset-assert 976)
@@ -35352,27 +35362,28 @@
   :size-assert         #x438
   :flag-assert         #x1500000438
   (:methods
-    (new (symbol type none entity float uint128 float handle) _type_ 0)
-    (hover-formation-control-method-9 (_type_ handle) int 9)
+    (new (symbol type none entity float vector float handle) _type_ 0)
+    (set-anchor-proc (_type_ handle) int 9)
     ;; TODO This calls vector-rotate-y as its main function, check what it's rotating to rename
     (hover-formation-control-method-10 (_type_ vector vector float) none 10)
     (hover-formation-control-method-11 (_type_) int 11)
-    (hover-formation-control-method-12 (_type_) symbol 12)
+    ;; TODO Check what the formation types are to see what this is really looking for
+    (is-formation-type-in-range (_type_) symbol 12)
     (hover-formation-control-method-13 (_type_ vector) vector 13)
     (hover-formation-control-method-14 (_type_) none 14)
     (hover-formation-control-method-15 (_type_ vector vector) vector 15)
     (hover-formation-control-method-16 (_type_) none 16)
     (hover-formation-control-method-17 (_type_ process) int 17)
     (hover-formation-control-method-18 (_type_ process) int 18)
-    (hover-formation-control-method-19 (_type_ uint) int 19)
+    (try-update-formation-type (_type_ formation-type) int 19)
     (hover-formation-control-method-20 () none 20)
     )
   )
 
 (deftype hover-formation (process)
-  ((formation       basic        :offset-assert 128) ;; The original offset here was 124, all bumped up by 4 to match process parent
-   (path            path-control :offset-assert 132)
-   (formation-timer uint64       :offset-assert 136)
+  ((formation       hover-formation-control :offset-assert 128) ;; NOTE The original offset here was 124, all bumped up by 4 to match process parent
+   (path            path-control            :offset-assert 132)
+   (formation-timer uint64                  :offset-assert 136)
    )
   :method-count-assert 16
   :size-assert         #x90
@@ -35381,9 +35392,9 @@
     ;; TODO This should likely be "(relocate (_type_ kheap (pointer uint8)) none :replace 7)", but that currently fails
     (relocate (_type_ int) none :replace 7)
     ;; TODO This currently suggests a different return type to the parent, overriding
-    (init-from-entity! (_type_ entity-actor) object :replace 11)
+    (init-from-entity! (_type_ none) object :replace 11)
     (idle () _type_ :state 14)
-    (hover-formation-method-15 () int 15)
+    (unused-15 () int 15)
     )
   )
 
@@ -35839,7 +35850,7 @@
 
 (define-extern odd? (function int symbol))
 (define-extern even? (function int symbol))
-(define-extern gen-perms (function int (function int int (function none) none) (function vector object) vector symbol))
+(define-extern gen-perms (function int (function int int (function vector none) none) (function vector object) vector symbol))
 (define-extern test-gen-perms (function int object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
