@@ -803,6 +803,7 @@ u64 execute(void* ctxt) {
   const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(a3));
   u16 use_pc_merc_bits = 0;
   u16 ignore_alpha_bits = 0;
+  u32 fade = 0;
   for (int i = 0; i < 16; i++) {
     if (!mbi->effects[i].use_mercneric) {
       use_pc_merc_bits |= (1 << i);
@@ -948,6 +949,22 @@ block_3:
   c->sq(s2, 128, a2);                               // sq s2, 128(a2)
   c->sw(a3, 28, a2);                                // sw a3, 28(a2)
   c->daddiu(a2, a2, 144);                           // daddiu a2, a2, 144
+
+  // PC ADD BONUS DATA (bonus!)
+  {
+  // 10 qw test
+  u64 dmatag = 5 | (1 << 28);
+  memcpy(g_ee_main_mem + c->sgpr64(a2), &dmatag, 8);
+  u32 vif = (0b1001 << 24);
+  memcpy(g_ee_main_mem + c->sgpr64(a2) + 8, &vif, 4);
+
+    for (int i = 0; i < 16; i++) {
+      memcpy(g_ee_main_mem + c->sgpr64(a2) + 16 + i * 4, mbi->effects[i].color_fade, 4);
+    }
+
+  c->gprs[a2].du32[0] += 6 * 16;
+  }
+
 
   // after first frag setup
   block_5:

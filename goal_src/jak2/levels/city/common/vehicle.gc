@@ -53,8 +53,8 @@
 
 (define *debug-vehicle-work* (new 'static 'debug-vehicle-work))
 
-(defskelgroup skel-vehicle-explosion vehicle-explosion 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-vehicle-explosion vehicle-explosion vehicle-explosion-lod0-jg vehicle-explosion-idle-ja
+              ((vehicle-explosion-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               )
 
@@ -99,21 +99,21 @@
          (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 1))
              )
-         (apply-damage obj 1.0 (the-as matrix arg0))
+         (apply-damage obj 1.0 arg0)
          (vehicle-method-76 obj 2 (the-as uint 300))
          )
         ((< (* 131072.0 f28-0) (-> arg0 impulse))
          (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
              )
-         (apply-damage obj 0.25 (the-as matrix arg0))
+         (apply-damage obj 0.25 arg0)
          (vehicle-method-76 obj 1 (the-as uint 75))
          )
         ((< (* 102400.0 f28-0) (-> arg0 impulse))
          (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.25))
              )
-         (apply-damage obj 0.125 (the-as matrix arg0))
+         (apply-damage obj 0.125 arg0)
          (vehicle-method-76 obj 1 (the-as uint 75))
          )
         (else
@@ -122,7 +122,7 @@
                  (f2-5 (* 16384000.0 f28-0))
                  (f0-10 (fmax f0-9 (* f1-7 (/ 1.0 f2-5))))
                  )
-            (apply-damage obj f0-10 (the-as matrix arg0))
+            (apply-damage obj f0-10 arg0)
             )
           (when (< (* 32768.0 f28-0) (-> arg0 impulse))
             (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
@@ -749,7 +749,7 @@
                   (let ((s3-0 (new 'stack-no-clear 'collide-query)))
                     (logclear! (-> s4-1 status) (collide-status on-ground))
                     (cond
-                      ((above-ground? s4-1 s3-0 (-> s4-1 trans) 1 0.0 102400.0 1024.0)
+                      ((above-ground? s4-1 s3-0 (-> s4-1 trans) (collide-spec backgnd) 0.0 102400.0 1024.0)
                        (set! (-> s4-1 gspot-pos quad) (-> s4-1 trans quad))
                        (set! (-> s4-1 gspot-pos y) (-> s3-0 best-other-tri intersect y))
                        (set! (-> s4-1 gspot-normal quad) (-> s3-0 best-other-tri normal quad))
@@ -1597,7 +1597,7 @@
                     )
               )
           (set! (-> s5-0 trans x) f0-2)
-          (apply-damage obj (* 0.667 f1-0) s5-0)
+          (apply-damage obj (* 0.667 f1-0) (the-as rigid-body-impact s5-0))
           )
         (rigid-body-object-method-42 obj)
         (let ((s3-1 (new 'stack-no-clear 'vector)))

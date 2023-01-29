@@ -2,6 +2,7 @@
 
 #include "common/dma/gs.h"
 
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 #include "third-party/fmt/core.h"
@@ -199,6 +200,44 @@ std::string MercShader::print() const {
   return result;
 }
 
+MercShader make_shader(Ref& ref, bool expected_eop) {
+  // adgif0
+  MercShader shader;
+  u8 adgif0_addr = deref_u8(ref, 8);
+  ASSERT(adgif0_addr == (u8)GsRegisterAddress::TEX0_1);
+  shader.output_offset = deref_u32(ref, 3);
+  shader.tex0 = GsTex0(deref_u64(ref, 0));
+  ref.byte_offset += 16;
+
+  // adgif1
+  u8 adgif1_addr = deref_u8(ref, 8);
+  ASSERT(adgif1_addr == (u8)GsRegisterAddress::TEX1_1);
+  shader.tex1 = GsTex1(deref_u64(ref, 0));
+  u16 stash = deref_u32(ref, 3);
+  shader.original_tex = deref_u32(ref, 2);
+  shader.next_strip_nloop = stash & 0x7fff;
+  ASSERT((!!(stash & 0x8000)) == expected_eop);  // set eop on last
+  ref.byte_offset += 16;
+
+  // adgif2
+  u8 adgif2_addr = deref_u8(ref, 8);
+  ASSERT(adgif2_addr == (u8)GsRegisterAddress::MIPTBP1_1);
+  ref.byte_offset += 16;
+
+  // adgif3
+  u8 adgif3_addr = deref_u8(ref, 8);
+  ASSERT(adgif3_addr == (u8)GsRegisterAddress::CLAMP_1);
+  shader.clamp = deref_u64(ref, 0);
+  ref.byte_offset += 16;
+
+  // adgif4
+  u8 adgif4_addr = deref_u8(ref, 8);
+  ASSERT(adgif4_addr == (u8)GsRegisterAddress::ALPHA_1);
+  shader.alpha = GsAlpha(deref_u64(ref, 0));
+  ref.byte_offset += 16;
+  return shader;
+}
+
 TypedRef MercFragment::from_ref(TypedRef tr,
                                 const DecompilerTypeSystem& dts,
                                 const MercFragmentControl& control,
@@ -265,40 +304,8 @@ TypedRef MercFragment::from_ref(TypedRef tr,
 
   // fp shaders
   for (int i = 0; i < fp_header.shader_cnt; i++) {
-    auto& shader = shaders.emplace_back();
-    // adgif0
-    u8 adgif0_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif0_addr == (u8)GsRegisterAddress::TEX0_1);
-    shader.output_offset = deref_u32(fp_ref, 3);
-    shader.tex0 = GsTex0(deref_u64(fp_ref, 0));
-    fp_ref.byte_offset += 16;
-
-    // adgif1
-    u8 adgif1_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif1_addr == (u8)GsRegisterAddress::TEX1_1);
-    shader.tex1 = GsTex1(deref_u64(fp_ref, 0));
-    u16 stash = deref_u32(fp_ref, 3);
-    shader.original_tex = deref_u32(fp_ref, 2);
-    shader.next_strip_nloop = stash & 0x7fff;
-    ASSERT((!!(stash & 0x8000)) == (i == fp_header.shader_cnt - 1));  // set eop on last
-    fp_ref.byte_offset += 16;
-
-    // adgif2
-    u8 adgif2_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif2_addr == (u8)GsRegisterAddress::MIPTBP1_1);
-    fp_ref.byte_offset += 16;
-
-    // adgif3
-    u8 adgif3_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif3_addr == (u8)GsRegisterAddress::CLAMP_1);
-    shader.clamp = deref_u64(fp_ref, 0);
-    fp_ref.byte_offset += 16;
-
-    // adgif4
-    u8 adgif4_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif4_addr == (u8)GsRegisterAddress::ALPHA_1);
-    shader.alpha = GsAlpha(deref_u64(fp_ref, 0));
-    fp_ref.byte_offset += 16;
+    bool expected_eop = (i == fp_header.shader_cnt - 1);
+    shaders.push_back(make_shader(fp_ref, expected_eop));
   }
 
   tr.ref.byte_offset += (header.mm_quadword_size) * 16;
@@ -360,6 +367,19 @@ void MercEffect::from_ref(TypedRef tr,
   TypedRef f(deref_label(get_field_ref(tr, "frag-geo", dts)), dts.ts.lookup_type("merc-fragment"));
   for (u32 i = 0; i < frag_count; i++) {
     f = frag_geo.emplace_back().from_ref(f, dts, frag_ctrl.at(i), main_control);
+  }
+
+  // do extra info
+  auto fr = get_field_ref(tr, "extra-info", dts);
+  const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+  if (word.kind() == LinkedWord::PTR) {
+    TypedRef mei(deref_label(fr), dts.ts.lookup_type("merc-extra-info"));
+    u8 shader_offset = read_plain_data_field<u8>(mei, "shader-offset", dts);
+    if (shader_offset) {
+      Ref r = mei.ref;
+      r.byte_offset += 16 * shader_offset;
+      extra_info.shader = make_shader(r, false);
+    }
   }
 }
 

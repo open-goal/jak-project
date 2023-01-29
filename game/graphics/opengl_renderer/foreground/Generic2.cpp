@@ -31,6 +31,7 @@ void Generic2::draw_debug_window() {
   ImGui::Checkbox("Alpha 4", &m_alpha_draw_enable[3]);
   ImGui::Checkbox("Alpha 5", &m_alpha_draw_enable[4]);
   ImGui::Checkbox("Alpha 6", &m_alpha_draw_enable[5]);
+  ImGui::Checkbox("Alpha 7", &m_alpha_draw_enable[6]);
 
   ImGui::Text("Max Seen:");
   ImGui::Text(" frag: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),

@@ -514,6 +514,21 @@ int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
   return partial_def->get_load_size();
 }
 
+MethodInfo TypeSystem::override_method(Type* type,
+                                       const std::string& type_name,
+                                       const int method_id,
+                                       const std::optional<std::string>& docstring) {
+  // Lookup the method from the parent type
+  MethodInfo existing_info;
+  bool exists = try_lookup_method(type->get_parent(), method_id, &existing_info);
+  if (!exists) {
+    throw_typesystem_error("Trying to use override a method that has no parent declaration");
+  }
+  // use the existing ID.
+  return type->add_method({existing_info.id, existing_info.name, existing_info.type,
+                           type->get_name(), existing_info.no_virtual, false, true, docstring});
+}
+
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
                                       const std::string& method_name,
                                       const std::optional<std::string>& docstring,
@@ -564,7 +579,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
 
     // use the existing ID.
     return type->add_method(
-        {existing_info.id, method_name, ts, type->get_name(), no_virtual, true, docstring});
+        {existing_info.id, method_name, ts, type->get_name(), no_virtual, true, false, docstring});
   } else {
     if (got_existing) {
       // make sure we aren't changing anything.
@@ -595,7 +610,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
     } else {
       // add a new method!
       return type->add_method({get_next_method_id(type), method_name, ts, type->get_name(),
-                               no_virtual, false, docstring});
+                               no_virtual, false, false, docstring});
     }
   }
 }
@@ -664,7 +679,7 @@ MethodInfo TypeSystem::add_new_method(Type* type,
 
     return existing;
   } else {
-    return type->add_new_method({0, "new", ts, type->get_name(), false, false, docstring});
+    return type->add_new_method({0, "new", ts, type->get_name(), false, false, false, docstring});
   }
 }
 
@@ -1876,6 +1891,8 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   }
 
   std::string methods_string;
+
+  // New Method
   auto new_info = type->get_new_method_defined_for_type();
   if (new_info) {
     methods_string.append("(new (");
@@ -1896,7 +1913,13 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     methods_string.append("0)\n    ");
   }
 
+  // Rest of methods
   for (auto& info : type->get_methods_defined_for_type()) {
+    // check if we only override the docstring
+    if (info.only_overrides_docstring) {
+      continue;
+    }
+
     methods_string.append(fmt::format("({} (", info.name));
     for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
       methods_string.append(info.type.get_arg(i).print());
@@ -1911,7 +1934,7 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       methods_string.append(":no-virtual ");
     }
 
-    if (info.overrides_method_type_of_parent) {
+    if (info.overrides_parent) {
       methods_string.append(":replace ");
     }
 

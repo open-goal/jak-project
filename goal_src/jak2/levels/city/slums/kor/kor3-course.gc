@@ -7,3 +7,229 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch focus-status vs none.
+(defun kor-update-during-battle ((arg0 kor))
+  (let ((v1-0 *target*))
+    (if (and v1-0 (-> v1-0 next-state) (let ((v1-3 (-> v1-0 next-state name)))
+                                         (or (= v1-3 'target-darkjak-get-on) (= v1-3 'target-darkjak-get-off))
+                                         )
+             )
+        (logior! (-> arg0 focus-status) (focus-status disable))
+        (logclear! (-> arg0 focus-status) (focus-status disable))
+        )
+    )
+  (none)
+  )
+
+(define *kor3-course*
+  (new 'static 'bot-course
+    :course-id #x8
+    :spot-count #x4
+    :default-check-too-far #f
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (process-entity-status! arg0 (entity-perm-status no-kill) #t)
+          (clear-speech-flags! arg0)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 0.0)
+          (let ((v1-5 (-> arg0 root-override2 root-prim)))
+            (set! (-> v1-5 prim-core collide-as) (collide-spec))
+            (set! (-> v1-5 prim-core collide-with) (collide-spec))
+            )
+          0
+          (move-to-point! (-> arg0 root-override2) (the-as vector (-> arg0 course spots 0)))
+          (logclear! (-> arg0 mask) (process-mask actor-pause))
+          (logclear! (-> arg0 enemy-flags) (enemy-flag notice))
+          (let ((v1-16 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-16 bytes 5) (the-as uint 1))
+            (set! (-> v1-16 bytes 6) (the-as uint 0))
+            (set! (-> v1-16 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-16) check-done)
+                  (the-as
+                    (function kort-wait-spot kor symbol)
+                    (lambda ((arg0 object) (arg1 kor)) (when (< 1 (-> arg1 waypoint-request))
+                                                         (let* ((v1-4 (-> arg1 actor-group 0 data 0 actor))
+                                                                (a0-2 (if v1-4
+                                                                          (-> v1-4 extra process)
+                                                                          )
+                                                                      )
+                                                                )
+                                                           (when a0-2
+                                                             (set! (-> arg1 master-handle) (process->handle a0-2))
+                                                             (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                             (go-to-waypoint! arg1 2 #f)
+                                                             (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                             #t
+                                                             )
+                                                           )
+                                                         )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (let ((v1-1 (-> arg0 root-override2 root-prim)))
+            (set! (-> v1-1 prim-core collide-as) (-> arg0 root-override2 backup-collide-as))
+            (set! (-> v1-1 prim-core collide-with) (-> arg0 root-override2 backup-collide-with))
+            )
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) (the-as uint 1))
+            (set! (-> v1-5 bytes 6) (the-as uint 0))
+            (set! (-> v1-5 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-5) check-done)
+                  (the-as
+                    (function kort-wait-spot kor symbol)
+                    (lambda ((arg0 object) (arg1 kor))
+                      (when (>= (-> arg1 waypoint-request) 6)
+                        (set! (-> arg1 root-override2 trans quad) (-> arg1 course spots 1 center quad))
+                        (set! (-> arg1 root-override2 trans w) 1.0)
+                        (quaternion-vector-angle!
+                          (-> arg1 root-override2 quat)
+                          *up-vector*
+                          (* 182.04445 (* 0.00024414062 (-> arg1 course spots 1 center w)))
+                          )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 5 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 5
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (set! (-> arg0 focus-status) (logior (focus-status arrestable) (-> arg0 focus-status)))
+          (set! (-> arg0 bot-flags) (logior (bot-flags bf19) (-> arg0 bot-flags)))
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (let ((v1-6 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-6 bytes 5) (the-as uint 1))
+            (set! (-> v1-6 bytes 6) (the-as uint 2))
+            (set! (-> v1-6 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-6) check-done)
+                  (the-as
+                    (function kort-wait-spot kor symbol)
+                    (lambda ((arg0 object) (arg1 kor))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 6 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kor)) (kor-update-during-battle arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 6
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) (the-as uint 1))
+            (set! (-> v1-1 bytes 6) (the-as uint 3))
+            (set! (-> v1-1 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-1) check-done)
+                  (the-as
+                    (function kort-wait-spot kor symbol)
+                    (lambda ((arg0 object) (arg1 kor)) (when (>= (-> arg1 waypoint-request) 8)
+                                                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                         (go-to-waypoint! arg1 8 #f)
+                                                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                         #t
+                                                         )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kor)) (kor-update-during-battle arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 8
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (logclear! (-> arg0 focus-status) (focus-status disable arrestable))
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) (the-as uint 1))
+            (set! (-> v1-3 bytes 6) (the-as uint 3))
+            (set! (-> v1-3 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-3) check-done)
+                  (the-as
+                    (function kort-wait-spot kor symbol)
+                    (lambda ((arg0 object) (arg1 kor)) (when (>= (-> arg1 waypoint-request) 10)
+                                                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                         (go-to-waypoint! arg1 10 #f)
+                                                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                         #t
+                                                         )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 10
+        :skip-to -1
+        :on-set (lambda ((arg0 kor))
+          (process-entity-status! arg0 (entity-perm-status bit-4) #f)
+          (send-event arg0 'die-fast)
+          (let ((v1-4 (get-task-by-type (-> arg0 ai-ctrl) kort-wait-spot arg0)))
+            (set! (-> v1-4 bytes 5) (the-as uint 1))
+            (set! (-> v1-4 bytes 6) (the-as uint 3))
+            (set! (-> v1-4 bytes 4) (the-as uint -1))
+            (set! (-> (the-as kort-wait-spot v1-4) check-done)
+                  (the-as (function kort-wait-spot kor symbol) (lambda () #f))
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      )
+    :spots (new 'static 'inline-array bot-spot 4
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2604400.8 :y 32604.16 :z -375070.72 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2618215.8 :y 32768.0 :z -391537.47 :w -504556.34))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2599608.2 :y 32727.04 :z -200253.44 :w 32768.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2546770.0 :y 32727.04 :z -177561.6 :w 8192.0))
+      )
+    )
+  )
+
+(set! (-> *bot-course-table* course 8) *kor3-course*)

@@ -737,7 +737,9 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
                          function.guessed_name.to_string() == "target-generic-event-handler" ||
                          function.guessed_name.to_string() == "target-standard-event-handler" ||
                          function.guessed_name.to_string() == "(method 74 pegasus)" ||
-                         function.guessed_name.to_string() == "(method 74 crimson-guard-level)";
+                         function.guessed_name.to_string() == "(method 74 crimson-guard-level)" ||
+                         function.guessed_name.to_string() == "widow-handler" ||
+                         function.guessed_name.to_string() == "(method 74 hal)";
   }
 
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
