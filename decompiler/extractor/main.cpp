@@ -132,10 +132,6 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
     }
   }
 
-  if (config.rip_levels) {
-    file_util::create_dir_if_needed(file_util::get_jak_project_dir() / "debug_out");
-  }
-
   // set up objects
   ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, config);
 
