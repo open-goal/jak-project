@@ -116,6 +116,9 @@ class Interpreter {
   Object eval_read(const Object& form,
                    Arguments& args,
                    const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_read_data_file(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env);
   Object eval_read_file(const Object& form,
                         Arguments& args,
                         const std::shared_ptr<EnvironmentObject>& env);
@@ -197,6 +200,15 @@ class Interpreter {
   Object eval_string_append(const Object& form,
                             Arguments& args,
                             const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_starts_with(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_ends_with(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_split(const Object& form,
+                           Arguments& args,
+                           const std::shared_ptr<EnvironmentObject>& env);
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);

@@ -4,6 +4,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "goalc/make/Tools.h"
 
@@ -53,6 +54,11 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
     return handle_stem(obj, args, env);
   });
 
+  m_goos.register_form("get-gsrc-path", [=](const goos::Object& obj, goos::Arguments& args,
+                                            const std::shared_ptr<goos::EnvironmentObject>& env) {
+    return handle_get_gsrc_path(obj, args, env);
+  });
+
   m_goos.register_form("map-path!", [=](const goos::Object& obj, goos::Arguments& args,
                                         const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_map_path(obj, args, env);
@@ -62,6 +68,12 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
                        [=](const goos::Object& obj, goos::Arguments& args,
                            const std::shared_ptr<goos::EnvironmentObject>& env) {
                          return handle_set_output_prefix(obj, args, env);
+                       });
+
+  m_goos.register_form("set-gsrc-folder!",
+                       [=](const goos::Object& obj, goos::Arguments& args,
+                           const std::shared_ptr<goos::EnvironmentObject>& env) {
+                         return handle_set_gsrc_folder(obj, args, env);
                        });
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
@@ -193,6 +205,39 @@ goos::Object MakeSystem::handle_stem(const goos::Object& form,
   return goos::StringObject::make_new(input.stem().u8string());
 }
 
+goos::Object MakeSystem::handle_get_gsrc_path(const goos::Object& form,
+                                              goos::Arguments& args,
+                                              const std::shared_ptr<goos::EnvironmentObject>& env) {
+  if (m_gsrc_folder.empty()) {
+    throw std::runtime_error("`set-gsrc-folder!` was not called before a `get-src-path`");
+  }
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& file_name = args.unnamed.at(0).as_string()->data;
+
+  // Keep things fast by scanning the gsrc directory _once_ on the first call
+  if (m_gsrc_files.empty()) {
+    auto folder = file_util::get_file_path(m_gsrc_folder);
+    auto src_files = file_util::find_files_recursively(folder, std::regex(".*\\.gc"));
+
+    for (const auto& path : src_files) {
+      auto name = file_util::base_name_no_ext(path.u8string());
+      auto gsrc_path =
+          file_util::convert_to_unix_path_separators(file_util::split_path_at(path, m_gsrc_folder));
+      // TODO - this is only "safe" because the current OpenGOAL system requires globally unique
+      // file names
+      m_gsrc_files.emplace(name, gsrc_path);
+    }
+  }
+
+  if (m_gsrc_files.count(file_name) != 0) {
+    return goos::StringObject::make_new(m_gsrc_files.at(file_name));
+  } else {
+    return goos::SymbolObject::make_new(m_goos.reader.symbolTable, "#f");
+  }
+}
+
 goos::Object MakeSystem::handle_map_path(const goos::Object& form,
                                          goos::Arguments& args,
                                          const std::shared_ptr<goos::EnvironmentObject>& env) {
@@ -217,10 +262,23 @@ goos::Object MakeSystem::handle_set_output_prefix(
   return goos::Object::make_empty_list();
 }
 
+goos::Object MakeSystem::handle_set_gsrc_folder(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& folder = args.unnamed.at(0).as_string()->data;
+  m_gsrc_folder = str_util::split(folder, '/');
+  return goos::Object::make_empty_list();
+}
+
 void MakeSystem::get_dependencies(const std::string& master_target,
                                   const std::string& output,
                                   std::vector<std::string>* result,
                                   std::unordered_set<std::string>* result_set) const {
+  // fmt::print(output + "\n");
   if (result_set->find(output) != result_set->end()) {
     return;
   }
