@@ -5,6 +5,7 @@
 
 #include "FileUtil.h"
 
+#include <algorithm>
 #include <cstdio> /* defines FILENAME_MAX */
 #include <cstdlib>
 #include <fstream>
@@ -336,6 +337,29 @@ std::string base_name_no_ext(const std::string& filename) {
   std::string file_name = filename.substr(pos);
   return file_name.substr(0, file_name.find_last_of('.'));
   ;
+}
+
+std::string split_path_at(const fs::path& path, const std::vector<std::string>& folders) {
+  std::string split_str = "";
+  for (const auto& folder : folders) {
+#ifdef _WIN32
+    split_str += folder + "\\";
+#else
+    split_str += folder + "/";
+#endif
+  }
+  const auto& path_str = path.u8string();
+  return path_str.substr(path_str.find(split_str) + split_str.length());
+}
+
+std::string convert_to_unix_path_separators(const std::string& path) {
+#ifdef _WIN32
+  std::string copy = path;
+  std::replace(copy.begin(), copy.end(), '\\', '/');
+  return copy;
+#else
+  return path;
+#endif
 }
 
 void ISONameFromAnimationName(char* dst, const char* src) {

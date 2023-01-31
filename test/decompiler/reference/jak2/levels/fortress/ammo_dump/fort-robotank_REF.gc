@@ -595,93 +595,109 @@
 
 ;; definition for function fort-robotank-handler
 ;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
 (defbehavior fort-robotank-handler fort-robotank ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('trigger)
-     (when (and *target* (< (-> self continue-index) (the-as int (-> arg3 param 0))))
-       (if (< (-> self continue-index) 0)
-           (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv107" -99.0 0)
-           )
-       (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
-         (let ((v1-14 (-> *event-queue* data (-> *event-queue* length))))
-           (+! (-> *event-queue* length) 1)
-           (set! (-> v1-14 form-handle) (process->handle self))
-           (set! (-> v1-14 to-handle) (process->handle (handle->process (-> self turret))))
-           (set! (-> v1-14 num-params) 0)
-           (set! (-> v1-14 message) 'trigger)
+  (the-as
+    object
+    (case arg2
+      (('trigger)
+       (the-as
+         object
+         (when (and *target* (< (-> self continue-index) (the-as int (-> arg3 param 0))))
+           (if (< (-> self continue-index) 0)
+               (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv107" -99.0 0)
+               )
+           (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+             (let ((v1-14 (-> *event-queue* data (-> *event-queue* length))))
+               (+! (-> *event-queue* length) 1)
+               (set! (-> v1-14 form-handle) (process->handle self))
+               (set! (-> v1-14 to-handle) (process->handle (handle->process (-> self turret))))
+               (set! (-> v1-14 num-params) 0)
+               (set! (-> v1-14 message) 'trigger)
+               )
+             )
+           (logior! (-> self flags) 32)
+           (let ((ret (the-as object (-> arg3 param 0))))
+             (set! (-> self continue-index) (the-as int ret))
+             ret
+             )
            )
          )
-       (logior! (-> self flags) 32)
-       (set! (-> self continue-index) (the-as int (-> arg3 param 0)))
        )
-     )
-    (('trans)
-     (-> self root-override trans)
-     )
-    (('die)
-     (go-virtual die)
-     )
-    (('fire-suppress-on)
-     (send-event (handle->process (-> self turret)) 'fire-suppress #t)
-     )
-    (('fire-suppress-off)
-     (send-event (handle->process (-> self turret)) 'fire-suppress #f)
-     )
-    (('touch 'attack)
-     (when ((method-of-type touching-shapes-entry prims-touching?)
-            (the-as touching-shapes-entry (-> arg3 param 0))
-            (-> self root-override)
-            (the-as uint 1)
-            )
-       (let ((s5-0 (if (type? arg0 process-focusable)
-                       (the-as process-focusable arg0)
+      (('trans)
+       (-> self root-override trans)
+       )
+      (('die)
+       (go-virtual die)
+       )
+      (('fire-suppress-on)
+       (send-event (handle->process (-> self turret)) 'fire-suppress #t)
+       )
+      (('fire-suppress-off)
+       (send-event (handle->process (-> self turret)) 'fire-suppress #f)
+       )
+      (('touch 'attack)
+       (the-as
+         object
+         (when ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> arg3 param 0))
+                (-> self root-override)
+                (the-as uint 1)
+                )
+           (let ((s5-0 (if (type? arg0 process-focusable)
+                           (the-as process-focusable arg0)
+                           )
                        )
+                 )
+             (the-as
+               object
+               (when s5-0
+                 (let ((a0-48 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat)))
+                       (a1-19 (new 'stack-no-clear 'event-message-block))
+                       )
+                   (set! (-> a1-19 from) (process->ppointer self))
+                   (set! (-> a1-19 num-params) 2)
+                   (set! (-> a1-19 message) 'attack-or-shove)
+                   (set! (-> a1-19 param 0) (-> arg3 param 0))
+                   (let ((v1-40 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
+                     (set! (-> v1-40 id) (-> self attack-id))
+                     (set! (-> v1-40 vector quad) (-> a0-48 quad))
+                     (set! (-> v1-40 shove-back) (if (and (-> self next-state) (= (-> self next-state name) 'idle))
+                                                     16384.0
+                                                     49152.0
+                                                     )
+                           )
+                     (set! (-> v1-40 shove-up) 24576.0)
+                     (set! (-> v1-40 control) (if (logtest? (focus-status board) (-> s5-0 focus-status))
+                                                  1.0
+                                                  0.0
+                                                  )
+                           )
+                     (set! (-> a1-19 param 1) (the-as uint v1-40))
+                     )
+                   (the-as object (when (send-event-function s5-0 a1-19)
+                                    (set! (-> self no-collision-timer) (-> self clock frame-counter))
+                                    (let ((v1-45 (-> self root-override root-prim)))
+                                      (set! (-> v1-45 prim-core collide-as) (collide-spec))
+                                      (set! (-> v1-45 prim-core collide-with) (collide-spec))
+                                      )
+                                    0
+                                    )
+                           )
                    )
-             )
-         (when s5-0
-           (let ((a0-48 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat)))
-                 (a1-19 (new 'stack-no-clear 'event-message-block))
                  )
-             (set! (-> a1-19 from) (process->ppointer self))
-             (set! (-> a1-19 num-params) 2)
-             (set! (-> a1-19 message) 'attack-or-shove)
-             (set! (-> a1-19 param 0) (-> arg3 param 0))
-             (let ((v1-40 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-               (set! (-> v1-40 id) (-> self attack-id))
-               (set! (-> v1-40 vector quad) (-> a0-48 quad))
-               (set! (-> v1-40 shove-back) (if (and (-> self next-state) (= (-> self next-state name) 'idle))
-                                               16384.0
-                                               49152.0
-                                               )
-                     )
-               (set! (-> v1-40 shove-up) 24576.0)
-               (set! (-> v1-40 control) (if (logtest? (focus-status board) (-> s5-0 focus-status))
-                                            1.0
-                                            0.0
-                                            )
-                     )
-               (set! (-> a1-19 param 1) (the-as uint v1-40))
-               )
-             (when (send-event-function s5-0 a1-19)
-               (set! (-> self no-collision-timer) (-> self clock frame-counter))
-               (let ((v1-45 (-> self root-override root-prim)))
-                 (set! (-> v1-45 prim-core collide-as) (collide-spec))
-                 (set! (-> v1-45 prim-core collide-with) (collide-spec))
-                 )
-               0
                )
              )
            )
          )
        )
-     )
-    (('stop-music)
-     (remove-setting! 'music)
-     (remove-setting! 'music-volume)
-     (remove-setting! 'sound-mode)
-     )
+      (('stop-music)
+       (remove-setting! 'music)
+       (remove-setting! 'music-volume)
+       (the-as object (remove-setting! 'sound-mode))
+       )
+      )
     )
-  (none)
   )
 
 ;; definition for method 26 of type fort-robotank
@@ -794,10 +810,7 @@
 ;; failed to figure out what this is:
 (defstate idle (fort-robotank)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior fort-robotank)
-    fort-robotank-handler
-    )
+  :event fort-robotank-handler
   :enter (behavior ()
     (fort-robotank-method-25 self)
     (set! (-> self roller-spin-rate) 2730.6667)
@@ -831,10 +844,7 @@
 ;; failed to figure out what this is:
 (defstate turning (fort-robotank)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior fort-robotank)
-    fort-robotank-handler
-    )
+  :event fort-robotank-handler
   :enter (behavior ()
     (set! (-> self path-info data (-> self path-index) start-y-angle)
           (quaternion-y-angle (-> self root-override quat))
@@ -870,10 +880,7 @@
 ;; failed to figure out what this is:
 (defstate moving (fort-robotank)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior fort-robotank)
-    fort-robotank-handler
-    )
+  :event fort-robotank-handler
   :enter (behavior ()
     (set! (-> self roller-spin-rate) 65536.0)
     (let ((v1-4 (-> self path-info data (-> self path-index))))
@@ -1056,10 +1063,7 @@
 ;; failed to figure out what this is:
 (defstate pause (fort-robotank)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior fort-robotank)
-    fort-robotank-handler
-    )
+  :event fort-robotank-handler
   :enter (behavior ()
     (set! (-> self roller-spin-rate) 16384.0)
     (none)

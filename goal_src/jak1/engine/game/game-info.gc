@@ -171,7 +171,7 @@
     The cause can be 'dead if you die, or 'game to reset everything.
     If save-to-load is not #f will load data from that.
     If continue-point-override is not #f, will use that."
-
+  
   (local-vars (v0-0 int) (sv-96 symbol))
   (case cause
     (('dead)
@@ -608,6 +608,10 @@
     (((pickup-type money))
      ;; get money.
      (when (< 0.0 amount)
+       (#when PC_PORT
+        ;; make sure any speedrun display is hidden
+        (hide-speedrun-display)
+        )
        ;; play sound.
        (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
            (sound-play "money-pickup")
@@ -619,10 +623,14 @@
     (((pickup-type fuel-cell))
      ;; the amount is actually the index of the task.
      (let ((s4-2 (the int amount)))
-       (if (not (or (task-complete? (-> (the-as target (-> obj process)) game) (the-as game-task s4-2))
+       (when (not (or (task-complete? (-> (the-as target (-> obj process)) game) (the-as game-task s4-2))
                     (>= (the-as uint 1) (the-as uint s4-2))
                     )
                 )
+           (#when PC_PORT
+            ;; make sure any speedrun display is hidden
+            (hide-speedrun-display)
+            )
            (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
            )
        )
@@ -631,7 +639,11 @@
     (((pickup-type buzzer))
      ;; buzzer
      (let ((buzz-count (adjust (-> (the-as target (-> obj process)) game) 'buzzer amount source-handle)))
-       (if (!= buzz-count (-> obj buzzer))
+       (when (!= buzz-count (-> obj buzzer))
+           (#when PC_PORT
+             ;; make sure any speedrun display is hidden
+             (hide-speedrun-display)
+            )
            (set! (-> obj buzzer-pickup-time) (-> *display* base-frame-counter))
            )
        (set! (-> obj buzzer) buzz-count)

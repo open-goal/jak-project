@@ -13,15 +13,12 @@ bool contains(const std::string& s, const std::string& substr) {
 }
 
 bool starts_with(const std::string& s, const std::string& prefix) {
-  return s.rfind(prefix) == 0;
+  return s.size() >= prefix.size() && 0 == s.compare(0, prefix.size(), prefix);
 }
 
 bool ends_with(const std::string& s, const std::string& suffix) {
-  if (s.length() >= suffix.length()) {
-    return !s.compare(s.length() - suffix.length(), suffix.length(), suffix);
-  } else {
-    return false;
-  }
+  return s.size() >= suffix.size() &&
+         0 == s.compare(s.size() - suffix.size(), suffix.size(), suffix);
 }
 
 std::string ltrim(const std::string& s) {

@@ -141,7 +141,11 @@
 
        ;; activate the progress menu.
        (when (not *progress-process*)
-         (activate-progress *dproc* (progress-screen fuel-cell))
+         ;; modified for PC port - show hidden speedrun progress menu if L1+R1+X are held
+         (if (and PC_PORT (-> *pc-settings* speedrunner-mode?) (cpad-hold? 0 l1) (cpad-hold? 0 r1) (cpad-hold? 0 x))
+           (activate-progress *dproc* (progress-screen speedrun-options))
+           (activate-progress *dproc* (progress-screen fuel-cell))
+         )
          (if (not *progress-process*)
              (set-master-mode 'game)
              )
@@ -826,7 +830,7 @@
                 (dotimes (i LEVEL_COUNT)
                   (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
                   )
-                (format *stdcon* "music ~A (f: ~D/~S)~%" (-> *setting-control* current music) (-> *setting-control* current sound-flava) (enum->string music-flava (-> *setting-control* default sound-flava)))
+                (format *stdcon* "music ~A (f: ~D/~S)~%" (-> *setting-control* current music) (-> *setting-control* current sound-flava) (music-flava->string (the-as music-flava (-> *setting-control* default sound-flava))))
                 (format *stdcon* "sound ~A ~A~%" *sound-bank-1* *sound-bank-2*)
                 (let ((pos (target-pos 0)))
                     (format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))

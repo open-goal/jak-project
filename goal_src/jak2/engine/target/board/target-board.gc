@@ -52,7 +52,139 @@
 (define-extern target-board-clone-anim (state handle target))
 (define-extern target-board-hit (state vector attack-info target))
 
-;; decomp begins
+(#when PC_PORT
+
+(define *board-trick-tracker* (new 'static 'board-trick-tracker))
+
+(defmethod reset-combo! board-trick-tracker ((obj board-trick-tracker))
+  (set! (-> obj num-tricks-in-combo) 0)
+  (set! (-> obj points-in-combo) 0.0)
+  (countdown (idx 16)
+    (set! (-> obj tricks-in-combo idx) (board-tricks none)))
+  (none))
+
+(defmethod add-trick-to-combo! board-trick-tracker ((obj board-trick-tracker) (trick board-tricks) (points float))
+  (when (not (-> obj combo-in-progress?))
+    (set! (-> obj combo-in-progress?) #t)
+    (reset-combo! obj))
+  (when (< (-> obj num-tricks-in-combo) 15)
+    (set! (-> obj tricks-in-combo (-> obj num-tricks-in-combo)) trick)
+    (set! (-> obj num-tricks-in-combo) (inc (-> obj num-tricks-in-combo)))
+    (set! (-> obj points-in-combo) (+ (-> obj points-in-combo) points)))
+  (none))
+
+
+(defun board-trick->string ((trick board-tricks))
+  "TODO - make a prefix removal function instead"
+  (cond
+    ((= trick (board-tricks board-rail-jump))
+    "rail-jump"
+    )
+    ((= trick (board-tricks board-nosegrab))
+    "nosegrab"
+    )
+    ((= trick (board-tricks board-board-spin))
+    "board-spin"
+    )
+    ((= trick (board-tricks board-kickflip))
+    "kickflip"
+    )
+    ((= trick (board-tricks board-method))
+    "method"
+    )
+    ((= trick (board-tricks board-spin))
+    "spin"
+    )
+    ((= trick (board-tricks board-boost))
+    "boost"
+    )
+    ((= trick (board-tricks board-duck-jump))
+    "duck-jump"
+    )
+    ((= trick (board-tricks board-board-flip))
+    "board-flip"
+    )
+    ((= trick (board-tricks board-rail))
+    "rail"
+    )
+    ((= trick (board-tricks none))
+    "none"
+    )
+    ((= trick (board-tricks board-quick-jump))
+    "quick-jump"
+    )
+    ((= trick (board-tricks board-noseflip))
+    "noseflip"
+    )
+    ((= trick (board-tricks board-jump))
+    "jump"
+    )
+    ((= trick (board-tricks board-flip))
+    "flip"
+    )
+    (else
+      "*unknown*"
+      )))
+
+(defmethod render-combo board-trick-tracker ((obj board-trick-tracker))
+  (when (not (-> *pc-settings* jetboard-trick-text?))
+    (return 0))
+  (clear *temp-string*)
+  ;; Also only print each trick type once
+  (let ((freq (new 'stack-no-clear 'array 'uint32 19))
+        (printed (new 'stack-no-clear 'array 'symbol 19))
+        (idx 0)
+        (text-entries 0))
+    ;; Initialize the arrays
+    (countdown (i 19)
+      (set! (-> freq i) 0)
+      (set! (-> printed i) #f))
+    ;; Build up a frequency list, god i wish i had a map
+    (while (< idx (-> obj num-tricks-in-combo))
+      (let ((trick (-> obj tricks-in-combo idx)))
+        (set! (-> freq trick) (inc (-> freq trick)))
+      (set! idx (inc idx))))
+    ;; Now we can construct the string
+    (set! idx 0)
+    (while (< idx (-> obj num-tricks-in-combo))
+      (let* ((trick (-> obj tricks-in-combo idx))
+             (times (-> freq trick))
+             (skip? (-> printed trick))
+             (color (case trick
+                      (((board-tricks board-boost) (board-tricks board-jump) (board-tricks board-duck-jump) (board-tricks board-quick-jump))
+                       "~[~9L")
+                      (((board-tricks board-rail) (board-tricks board-rail-jump))
+                       "~[~3L")
+                      (((board-tricks board-spin) (board-tricks board-flip) (board-tricks board-board-flip) (board-tricks board-nosegrab))
+                       "~[~26L")
+                      (((board-tricks board-board-spin) (board-tricks board-method) (board-tricks board-noseflip) (board-tricks board-kickflip))
+                       "~[~15L")))
+             (padding (if (= idx 0) "" " ")))
+        (when (not skip?)
+          (if (> times 0)
+            (format *temp-string* "~S~S~S~S x ~D" padding color (board-trick->string trick) "~[~0L" times)
+            (format *temp-string* "~S~S~S~S" padding color (board-trick->string trick) "~[~0L"))
+          (set! (-> printed trick) #t)
+          (set! text-entries (inc text-entries))
+          (when (= (mod text-entries 4) 0)
+            (format *temp-string* "~%"))
+          ))
+      (set! idx (inc idx))))
+  ;; Add points
+  (when (> (-> obj points-in-combo) 0.0)
+    (format *temp-string* "~%~S~D" "~[~38L" (the int (-> obj points-in-combo))))
+  ;; Print it finally
+  (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 325 0.0 (font-color default-#cddbcd) (font-flags shadow kerning middle))))
+    (print-game-text-scaled *temp-string* 1.0 font-ctx 320))
+  (none))
+
+(defmethod end-combo! board-trick-tracker ((obj board-trick-tracker))
+  (set! (-> obj combo-in-progress?) #f)
+  (none))
+
+)
+
+;; DECOMP BEGINS
 
 (define *board-walk-mods*
   (new 'static 'surface
@@ -2881,86 +3013,28 @@
         (let ((t9-4 format)
               (a0-29 #t)
               (a1-8 "trick: ~S (~D) ~,,0f")
-              (v1-30 arg0)
-              )
+              (trick-name (enum->string board-tricks arg0)))
           (t9-4
             a0-29
             a1-8
-            (cond
-              ((= v1-30 (board-tricks board-rail-jump))
-               "board-rail-jump"
-               )
-              ((= v1-30 (board-tricks board-nosegrab))
-               "board-nosegrab"
-               )
-              ((= v1-30 (board-tricks board-board-spin))
-               "board-board-spin"
-               )
-              ((= v1-30 (board-tricks board-kickflip))
-               "board-kickflip"
-               )
-              ((= v1-30 (board-tricks board-method))
-               "board-method"
-               )
-              ((= v1-30 (board-tricks board-spin))
-               "board-spin"
-               )
-              ((= v1-30 (board-tricks board-boost))
-               "board-boost"
-               )
-              ((= v1-30 (board-tricks darkjak))
-               "darkjak"
-               )
-              ((= v1-30 (board-tricks darkjak-giant))
-               "darkjak-giant"
-               )
-              ((= v1-30 (board-tricks board-duck-jump))
-               "board-duck-jump"
-               )
-              ((= v1-30 (board-tricks board-board-flip))
-               "board-board-flip"
-               )
-              ((= v1-30 (board-tricks board-rail))
-               "board-rail"
-               )
-              ((= v1-30 (board-tricks none))
-               "none"
-               )
-              ((= v1-30 (board-tricks darkjak-bomb0))
-               "darkjak-bomb0"
-               )
-              ((= v1-30 (board-tricks board-quick-jump))
-               "board-quick-jump"
-               )
-              ((= v1-30 (board-tricks board-noseflip))
-               "board-noseflip"
-               )
-              ((= v1-30 (board-tricks darkjak-bomb1))
-               "darkjak-bomb1"
-               )
-              ((= v1-30 (board-tricks board-jump))
-               "board-jump"
-               )
-              ((= v1-30 (board-tricks board-flip))
-               "board-flip"
-               )
-              (else
-                "*unknown*"
-                )
-              )
+            trick-name
             s4-0
             s3-1
             )
           )
-        (when (nonzero? (-> obj trick-count))
-          (format #t " + combo ~,,0f" (-> obj trick-points-array (+ (-> obj trick-count) -1)))
-          (+! (-> obj trick-points-array (+ (-> obj trick-count) -1))
-              (-> obj trick-points-array (+ (-> obj trick-count) -1))
-              )
-          )
-        (format #t "~%")
-        (set! (-> obj trick-array (-> obj trick-count)) arg0)
-        (set! (-> obj trick-points-array (-> obj trick-count)) s3-1)
+        (let ((total-points s3-1))
+          (when (nonzero? (-> obj trick-count))
+            (format #t " + combo ~,,0f" (-> obj trick-points-array (+ (-> obj trick-count) -1)))
+            (+! total-points (-> obj trick-points-array (+ (-> obj trick-count) -1)))
+            (+! (-> obj trick-points-array (+ (-> obj trick-count) -1))
+                (-> obj trick-points-array (+ (-> obj trick-count) -1))
+                )
+            )
+          (format #t "~%")
+          (set! (-> obj trick-array (-> obj trick-count)) arg0)
+          (set! (-> obj trick-points-array (-> obj trick-count)) s3-1)
+          (#when PC_PORT
+            (add-trick-to-combo! *board-trick-tracker* arg0 total-points)))
         )
       )
     (+! (-> obj trick-count) 1)
@@ -3003,7 +3077,8 @@
             )
           )
         (sound-play "trick-score")
-        )
+        (#when PC_PORT
+          (end-combo! *board-trick-tracker*)))
       )
     (set! (-> obj trick-count) 0)
     0
