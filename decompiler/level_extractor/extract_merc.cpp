@@ -223,7 +223,9 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
 /*!
  * Convert merc shader to PC draw mode
  */
-DrawMode process_draw_mode(const MercShader& info, bool enable_alpha_test) {
+DrawMode process_draw_mode(const MercShader& info,
+                           bool enable_alpha_test,
+                           bool enable_alpha_blend) {
   DrawMode mode;
   /*
    *       (new 'static 'gs-test
@@ -244,7 +246,7 @@ DrawMode process_draw_mode(const MercShader& info, bool enable_alpha_test) {
   mode.set_depth_test(GsTest::ZTest::GEQUAL);
 
   // check these
-  mode.disable_ab();
+  mode.set_ab(enable_alpha_blend);
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   mode.set_tcc(info.tex0.tcc());
   mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
@@ -726,7 +728,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   result.effect_idx = effect_idx;
   if (input_effect.extra_info.shader) {
     result.has_envmap = true;
-    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false);
+    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false, false);
     result.envmap_mode.set_ab(true);
     u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
     ASSERT(result.envmap_mode.get_tcc_enable());
@@ -777,6 +779,12 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     result.envmap_mode = mode;
     result.envmap_mode.set_ab(true);
   }
+
+  bool use_alpha_blend = false;
+  if (version == GameVersion::Jak2) {
+    use_alpha_blend = input_effect.texture_index == 4;  // water
+  }
+
   // full reset of state per effect.
   // we have no idea what the previous effect draw will be - it might be given to
   // mercneric.
@@ -813,6 +821,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       can_be_modified = input_effect.blend_ctrl.at(fi).blend_vtx_count > 0;
     }
 
+    if (input_effect.effect_bits & kRippleEffectBit) {
+      can_be_modified = true;
+    }
+
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
     u32 vert_count = frag.lump4_unpacked.size() / 3;
@@ -842,7 +854,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
-      merc_state.merc_draw_mode.mode = process_draw_mode(shader, result.has_envmap);
+      merc_state.merc_draw_mode.mode =
+          process_draw_mode(shader, result.has_envmap, use_alpha_blend);
       if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
         ASSERT(false);
       }

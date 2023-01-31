@@ -765,6 +765,7 @@
   (let ((use-flags (new 'stack-no-clear 'array 'uint8 7))
         (mctrl (-> dc mgeo))
         (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
+        (has-ripple #f)
         )
     ;; mark all as unused, until we see a use
     (dotimes (i 7) (set! (-> use-flags i) 0))
@@ -773,6 +774,9 @@
     (dotimes (i (-> mctrl header effect-count))
       ;;(format 0 "effect ~d, texture ~d~%" i (-> mctrl effect i texture-index))
       (set! (-> use-flags (-> mctrl effect i texture-index)) 1)
+      (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple))
+        (set! has-ripple #t)
+        )
       )
 
     ;; loop over texture groupe
@@ -783,6 +787,9 @@
         (let ((packet (the-as dma-packet dma-buf))
               (vertex-update #f)
               )
+          (when has-ripple
+            (set! vertex-update #t)
+            )
           (let* ((pd (the process-drawable (-> dc process)))
                  (jc (-> pd skel)))
             (when (nonzero? jc)
@@ -1017,7 +1024,7 @@
                                        )
                                    )
                                  )
-                               (if (and (logtest? (-> geo effect effect-idx effect-bits) (effect-bits ripple)) (-> dc ripple))
+                               (when (and (logtest? (-> geo effect effect-idx effect-bits) (effect-bits ripple)) (-> dc ripple))
                                    (set! dma-ptr (foreground-ripple dc geo dma-ptr effect-idx))
                                    )
                                (nonzero? (-> dc death-timer))

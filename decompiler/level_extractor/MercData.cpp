@@ -356,6 +356,10 @@ void MercEffect::from_ref(TypedRef tr,
     envmap_or_effect_usage = read_plain_data_field<u8>(tr, "effect-usage", dts);
   }
 
+  if (type->lookup_field("texture-index", &temp)) {
+    texture_index = read_plain_data_field<u8>(tr, "texture-index", dts);
+  }
+
   // do frag-ctrls
   TypedRef fc(deref_label(get_field_ref(tr, "frag-ctrl", dts)),
               dts.ts.lookup_type("merc-fragment-control"));
