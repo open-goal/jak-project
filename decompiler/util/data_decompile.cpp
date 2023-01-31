@@ -383,7 +383,18 @@ goos::Object decomp_ref_to_integer_array_guess_size(
   // the input is the location of the data field.
   // we expect that to be a label:
   ASSERT((field_location % 4) == 0);
-  auto pointer_to_data = words.at(field_location / 4);
+  auto& pointer_to_data = words.at(field_location / 4);
+
+  // pointer-arrays can also be initialized as #f
+  if (pointer_to_data.kind() == LinkedWord::SYM_PTR) {
+    ASSERT_MSG(
+        pointer_to_data.symbol_name() == "#f",
+        fmt::format(
+            "attempted to decompile a pointer array of '{}', but encounted a non `#f` symbol",
+            array_elt_type.base_type()));
+    return pretty_print::to_symbol("#f");
+  }
+
   ASSERT(pointer_to_data.kind() == LinkedWord::PTR);
 
   // the data shouldn't have any labels in the middle of it, so we can find the end of the array
@@ -467,7 +478,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   // the input is the location of the data field.
   // we expect that to be a label:
   ASSERT((field_location % 4) == 0);
-  auto pointer_to_data = words.at(field_location / 4);
+  auto& pointer_to_data = words.at(field_location / 4);
 
   // inline-arrays can also be initialized as #f
   if (pointer_to_data.kind() == LinkedWord::SYM_PTR) {
@@ -740,6 +751,7 @@ const std::unordered_map<
            {{"color-option-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
             {"grab-rail-array", ArrayFieldDecompMeta(TypeSpec("vehicle-grab-rail-info"), 48)}}},
           {"city-ambush-info", {{"array", ArrayFieldDecompMeta(TypeSpec("city-ambush-spot"), 32)}}},
+          {"bombbot-path", {{"node", ArrayFieldDecompMeta(TypeSpec("bombbot-node"), 32)}}},
           {"fort-robotank-segment",
            {{"event-tbl", ArrayFieldDecompMeta(TypeSpec("fort-robotank-segment-event"), 32)}}},
           {"race-info",

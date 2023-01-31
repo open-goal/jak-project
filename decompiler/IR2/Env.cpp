@@ -541,8 +541,8 @@ void Env::add_stack_structure_hint(const StackStructureHint& hint) {
       if (!type_info->is_reference()) {
         throw std::runtime_error(
             fmt::format("Stack variable type {} is not a reference and cannot be stored directly "
-                        "on the stack. Use an array instead.",
-                        base_typespec.print()));
+                        "on the stack at offset {}. Use an array instead.",
+                        base_typespec.print(), hint.stack_offset));
       }
       entry.ref_type = base_typespec;
       entry.size = type_info->get_size_in_memory();
