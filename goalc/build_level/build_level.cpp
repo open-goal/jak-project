@@ -72,6 +72,11 @@ bool run_build_level(const std::string& input_file,
   std::vector<EntityActor> actors;
   add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
   file.actors = std::move(actors);
+  // ambients
+  std::vector<EntityAmbient> ambients;
+  add_ambients_from_json(level_json.at("ambients"), ambients, level_json.value("base_id", 12345));
+  file.ambients = std::move(ambients);
+  auto& ambient_drawable_tree = file.drawable_trees.ambients.emplace_back();
   // cameras
   // nodes
   // boxes
