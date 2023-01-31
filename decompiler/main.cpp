@@ -119,10 +119,6 @@ int main(int argc, char** argv) {
     strs.push_back(in_folder / str_name);
   }
 
-  if (config.rip_levels) {
-    file_util::create_dir_if_needed(file_util::get_jak_project_dir() / "debug_out");
-  }
-
   lg::info("[Mem] After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
