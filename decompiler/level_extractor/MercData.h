@@ -173,7 +173,7 @@ struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
 
-constexpr int kRippleEffectBit = 4; // true in jak 1 and jak 2
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?
@@ -194,7 +194,7 @@ struct MercEffect {
   // (extra-info       merc-extra-info        :offset-assert 28) ??
   MercExtraInfo extra_info;
 
-  u8 texture_index = -1; // jak 2 only
+  u8 texture_index = -1;  // jak 2 only
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);
   std::string print();
