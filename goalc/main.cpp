@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
     username = REPL::find_repl_username();
   }
   // Load the user's startup file
-  auto startup_file = REPL::load_user_startup_file(username);
+  auto startup_file = REPL::load_user_startup_file(username, game_version);
   // TODO - deprecate these two flags
   if (startup_file.run_before_listen.empty() && (auto_debug || auto_listen)) {
     startup_file.run_before_listen.push_back("(lt)");

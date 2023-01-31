@@ -13,6 +13,7 @@
 #include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/collide_drawable.h"
 #include "goalc/build_level/collide_pack.h"
+#include "goalc/build_level/drawable_ambient.h"
 
 struct VisibilityString {
   std::vector<u8> bytes;
@@ -21,8 +22,6 @@ struct VisibilityString {
 struct DrawableTreeInstanceTie {};
 
 struct DrawableTreeActor {};
-
-struct DrawableTreeAmbient {};
 
 struct DrawableTreeInstanceShrub {};
 
@@ -33,7 +32,9 @@ struct DrawableTreeArray {
   std::vector<DrawableTreeCollideFragment> collides;
   std::vector<DrawableTreeAmbient> ambients;
   std::vector<DrawableTreeInstanceShrub> shrubs;
-  size_t add_to_object_file(DataObjectGenerator& gen) const;
+  size_t add_to_object_file(DataObjectGenerator& gen,
+                            size_t ambient_count,
+                            size_t ambient_arr_slot) const;
 };
 
 struct TextureRemap {};
@@ -48,9 +49,9 @@ struct BspNode {};
 
 struct Box8s {};
 
-struct DrawableAmbient {};
-
-struct DrawableInlineArrayAmbient {};
+struct DrawableInlineArrayAmbient {
+  std::vector<EntityAmbient> ambients;
+};
 
 struct AdgifShaderArray {};
 
@@ -115,7 +116,7 @@ struct LevelFile {
   // zero
 
   //  (ambients               drawable-inline-array-ambient    :offset-assert 156)
-  DrawableInlineArrayAmbient ambients;
+  std::vector<EntityAmbient> ambients;
 
   //  (unk-data-4             float                            :offset-assert 160)
   float close_subdiv = 0;

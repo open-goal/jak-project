@@ -912,10 +912,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   if (dump) {
-    file_util::write_text_file(
-        file_util::get_file_path(
-            {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
-        debug_dump_to_ply(result.draws, result.vertices));
+    auto file_path = file_util::get_file_path(
+        {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_dump_to_ply(result.draws, result.vertices));
   }
 
   return result;
