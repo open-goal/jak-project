@@ -260,9 +260,10 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_frags);
-    file_util::write_text_file(
-        file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)}),
-        debug_out);
+    auto file_path =
+        file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_out);
   }
 
   for (auto& item : all_frags) {

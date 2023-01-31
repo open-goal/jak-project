@@ -58,15 +58,15 @@
   )
 
 (define *ruins-sinking-platform-constants* (new 'static 'rigid-body-platform-constants
-                                             :mass 1.48
-                                             :inv-mass 0.6756757
-                                             :cm-joint (new 'static 'vector :w 1.0)
-                                             :linear-damping 0.8
-                                             :angular-damping 1.0
-                                             :friction-factor 0.1
-                                             :inertial-tensor-x (meters 2)
-                                             :inertial-tensor-y (meters 1)
-                                             :inertial-tensor-z (meters 2)
+                                             :info (new 'static 'rigid-body-info
+                                               :mass 1.48
+                                               :inv-mass 0.6756757
+                                               :linear-damping 0.8
+                                               :angular-damping 1.0
+                                               :friction-factor 0.1
+                                               :cm-offset-joint (new 'static 'vector :w 1.0)
+                                               :inertial-tensor-box (new 'static 'array meters 3 (meters 2) (meters 1) (meters 2))
+                                               )
                                              :max-time-step 0.02
                                              :gravity (meters 80)
                                              :idle-distance (meters 50)
@@ -135,7 +135,7 @@
     )
   :post (behavior ()
     (set! (-> self info-override) *ruins-sinking-platform-constants*)
-    (set! (-> self rbody state info) (the-as rigid-body-info (&-> (-> self info-override) mass)))
+    (set! (-> self rbody state info) (-> self info-override info))
     (rigid-body-object-method-37 self)
     (none)
     )
