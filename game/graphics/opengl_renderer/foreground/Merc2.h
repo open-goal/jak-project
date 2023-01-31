@@ -62,18 +62,11 @@ class Merc2 : public BucketRenderer {
                        ScopedProfilerNode& prof);
   u32 alloc_lights(const VuLights& lights);
 
-
   struct ModBuffers {
     GLuint vao, vertex;
   };
 
-  // std::optional<MercRef> m_current_model = std::nullopt;
-//  u32 m_current_effect_enable_bits = 0;
-//  u32 m_current_ignore_alpha_bits = 0;
   static constexpr int kMaxEffect = 32;
-//  u8 m_fade_buffer[4 * kMaxEffect];
-  // bool m_current_model_updates_verts = false;
-  //ModBuffers m_mod_opengl_buffers[kMaxEffect];
   bool m_effect_debug_mask[kMaxEffect];
 
   struct MercMat {

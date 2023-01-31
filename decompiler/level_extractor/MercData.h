@@ -162,7 +162,6 @@ struct MercFragment {
   std::string print() const;
 };
 
-
 struct MercBlendCtrl {
   u8 blend_vtx_count;
   u8 nonzero_index_count;

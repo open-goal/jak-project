@@ -423,7 +423,7 @@ void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
     effects.emplace_back().from_ref(eff_ref, dts, header);
     eff_ref.ref.byte_offset += 32;  //
   }
-  debug_print_blerc();
+  // debug_print_blerc();
 }
 
 void MercCtrl::debug_print_blerc() {

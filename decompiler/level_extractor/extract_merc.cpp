@@ -1017,7 +1017,6 @@ void create_modifiable_vertex_data(
     // loop over "effects" within this model. the pc format merges all fragments in an effect
     // together.
 
-
     for (size_t ei = 0; ei < model.effects.size(); ei++) {
       auto& effect = model.effects[ei];
 
@@ -1102,8 +1101,6 @@ void create_modifiable_vertex_data(
         }
       }  // for draw
 
-
-
       // if there are no modifiable draws, we can't possible modify anything, so not worth
       // storing the fixed draws
       if (effect.mod.mod_draw.empty()) {
@@ -1113,14 +1110,11 @@ void create_modifiable_vertex_data(
         // need to set up the vertex buffer for the modifiable draws
         // map of original vertex indices to mod buffer index
         std::unordered_map<u32, u32> vtx_to_mod_vtx;
-        //for (auto& draw : effect.mod.mod_draw) {
         for (size_t mdi = 0; mdi < effect.mod.mod_draw.size(); mdi++) {
           auto& draw = effect.mod.mod_draw[mdi];
           auto& orig_inds = inds_per_mod_draw.at(mdi);
           u32 new_first_index = out.indices.size();
-          //for (int i = 0; i < (int)draw.index_count; i++) {
           for (auto vidx : orig_inds) {
-            //u32 vidx = out.indices.at(draw.first_index + i);
             if (vidx == UINT32_MAX) {
               out.indices.push_back(UINT32_MAX);
               continue;  // strip restart
