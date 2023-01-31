@@ -496,8 +496,6 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
     {"A~Y~-21H~-5V<TIL>~Z", "Ã"},  // custom
     {"O~Y~-22H~-4V<TIL>~Z", "Õ"},  // custom
-    {"O~Y~-22H~-4V<TIL>~Z", "Ő"},  // custom - closest we have
-    {"U~Y~-22H~-3V<TIL>~Z", "Ű"},  // custom - closest we have
 
     // acute accents
     {"A~Y~-21H~-5V'~Z", "Á"},
@@ -505,6 +503,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"I~Y~-19H~-5V'~Z", "Í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"U~Y~-24H~-3V'~Z", "Ú"},
+
+    // double acute accents
+    {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom
+    {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},  // custom
 
     // circumflex
     {"A~Y~-20H~-4V^~Z", "Â"},  // custom
