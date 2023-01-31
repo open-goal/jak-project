@@ -420,7 +420,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)

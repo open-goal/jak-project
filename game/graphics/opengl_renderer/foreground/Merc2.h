@@ -22,6 +22,7 @@ class Merc2 : public BucketRenderer {
   };
   struct ModelDebug {
     std::string name;
+    std::string level;
     std::vector<EffectDebug> effects;
   };
   struct {

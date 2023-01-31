@@ -35,6 +35,7 @@
 
 /*!
  * Remaining ideas for optimization:
+ * - port blerc to C++, do it in the rendering thread and avoid the lock.
  * - combine envmap draws per effect (might require some funky indexing stuff, or multidraw)
  * - smaller vertex formats for mod-vertex
  * - AVX version of vertex conversion math
@@ -306,7 +307,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // loop over frags
       u32 vidx = 0;
-      u32 st_vif_add = model->st_vif_add;
+      // u32 st_vif_add = model->st_vif_add;
       float xyz_scale = model->xyz_scale;
       prof().end_event();
       {
@@ -314,6 +315,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
         // in the original game, they didn't have any lock, but I think that the
         // scratchpad access from the EE would effectively block the VIF1 DMA, so you'd
         // hopefully never get a partially updated model (which causes obvious holes).
+        // this lock is not ideal, and can block the rendering thread while blerc_execute runs,
+        // which can take up to 2ms on really blerc-heavy scenes
         std::unique_lock<std::mutex> lk(g_merc_data_mutex);
         int frags_done = 0;
         auto p = scoped_prof("vert-math");
@@ -329,7 +332,6 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
             // read fragment metadata
             u8 unsigned_four_count = frag_ctrl[0];
             u8 lump_four_count = frag_ctrl[1];
-            u8 fp_qwc = frag_ctrl[2];
             u32 mm_qwc_off = frag[10];
             float float_offsets[3];
             memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
@@ -348,7 +350,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
               u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
               u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
 
-              auto* pos_array = m_mod_vtx_unpack_temp.at(vidx).pos;
+              auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
               memcpy(&pos_array[0], &q0w, 4);
               memcpy(&pos_array[1], &q1w, 4);
               memcpy(&pos_array[2], &q2w, 4);
@@ -359,7 +361,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
               pos_array[1] *= xyz_scale;
               pos_array[2] *= xyz_scale;
 
-              auto* nrm_array = m_mod_vtx_unpack_temp.at(vidx).nrm;
+              auto* nrm_array = m_mod_vtx_unpack_temp[vidx].nrm;
               memcpy(&nrm_array[0], &q0z, 4);
               memcpy(&nrm_array[1], &q1z, 4);
               memcpy(&nrm_array[2], &q2z, 4);
@@ -388,10 +390,10 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       {
         auto pp = scoped_prof("copy");
         // now copy the data in merc original vertex order to the output.
-        for (u32 i = 0; i < effect.mod.vertices.size(); i++) {
-          int addr = effect.mod.vertex_lump4_addr.at(i);
+        for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
+          u32 addr = effect.mod.vertex_lump4_addr[vi];
           if (addr < vidx) {
-            memcpy(&m_mod_vtx_temp.at(i), &m_mod_vtx_unpack_temp.at(addr), 32);
+            memcpy(&m_mod_vtx_temp[vi], &m_mod_vtx_unpack_temp[addr], 32);
           }
         }
       }
@@ -422,6 +424,22 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       m_stats.num_predicted_tris += draw.num_triangles;
       if (envmap) {
         m_stats.num_predicted_tris += draw.num_triangles;
+      }
+    }
+  }
+
+  if (m_debug_mode) {
+    auto& d = m_debug.model_list.emplace_back();
+    d.name = model->name;
+    d.level = model_ref->level->level->level_name;
+    for (auto& e : model->effects) {
+      auto& de = d.effects.emplace_back();
+      de.envmap = e.has_envmap;
+      de.envmap_mode = e.envmap_mode;
+      for (auto& draw : e.all_draws) {
+        auto& dd = de.draws.emplace_back();
+        dd.mode = draw.mode;
+        dd.num_tris = draw.num_triangles;
       }
     }
   }
@@ -504,6 +522,7 @@ void Merc2::draw_debug_window() {
   ImGui::Text("Upload kB: %d", m_stats.num_upload_bytes / 1024);
 
   ImGui::Checkbox("Debug", &m_debug_mode);
+
   if (m_debug_mode) {
     for (int i = 0; i < kMaxEffect; i++) {
       ImGui::Checkbox(fmt::format("e{:02d}", i).c_str(), &m_effect_debug_mask[i]);
@@ -511,6 +530,7 @@ void Merc2::draw_debug_window() {
 
     for (const auto& model : m_debug.model_list) {
       if (ImGui::TreeNode(model.name.c_str())) {
+        ImGui::Text("Level: %s\n", model.level.c_str());
         for (const auto& e : model.effects) {
           for (const auto& d : e.draws) {
             ImGui::Text("%s", d.mode.to_string().c_str());
@@ -1005,7 +1025,7 @@ void Merc2::do_draws(const Draw* draw_array,
                      const Uniforms& uniforms,
                      ScopedProfilerNode& prof,
                      bool set_fade,
-                     SharedRenderState* render_state) {
+                     SharedRenderState*) {
   glBindVertexArray(m_vao);
   int last_tex = -1;
   int last_light = -1;
@@ -1014,10 +1034,14 @@ void Merc2::do_draws(const Draw* draw_array,
     auto& draw = draw_array[di];
     if (draw.flags & MOD_VTX) {
       glBindVertexArray(draw.mod_vtx_buffer.vao);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
+      glBindBuffer(GL_ARRAY_BUFFER, lev->merc_vertices);
       normal_vtx_buffer_bound = false;
     } else {
       if (!normal_vtx_buffer_bound) {
         glBindVertexArray(m_vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
+        glBindBuffer(GL_ARRAY_BUFFER, lev->merc_vertices);
         normal_vtx_buffer_bound = true;
       }
     }
@@ -1063,5 +1087,7 @@ void Merc2::do_draws(const Draw* draw_array,
 
   if (!normal_vtx_buffer_bound) {
     glBindVertexArray(m_vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
+    glBindBuffer(GL_ARRAY_BUFFER, lev->merc_vertices);
   }
 }

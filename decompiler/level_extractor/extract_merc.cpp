@@ -1091,15 +1091,8 @@ void create_modifiable_vertex_data(
             }
           }
 
-          // TODO, try to remove this
-//          mod.first_index = out.indices.size();
           mod.index_count = mod_ind.size();
-//          out.indices.insert(out.indices.end(), mod_ind.begin(), mod_ind.end());
-          //
-
           inds_per_mod_draw.push_back(mod_ind);
-
-
           fix.first_index = out.indices.size();
           fix.index_count = fix_ind.size();
           out.indices.insert(out.indices.end(), fix_ind.begin(), fix_ind.end());
@@ -1161,7 +1154,7 @@ void create_modifiable_vertex_data(
         u32 new_idx = 0;
         for (size_t fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
           if (effect.mod.fragment_mask[fi]) {
-            for (int vi = 0; vi < frag_counts.at(fi); vi++) {
+            for (u32 vi = 0; vi < frag_counts.at(fi); vi++) {
               old_to_new[old_idx] = new_idx;
               old_idx++;
               new_idx++;
@@ -1177,11 +1170,6 @@ void create_modifiable_vertex_data(
       }
     }
   }
-
-  //  if (!mod_draws.empty()) {
-  //    fmt::print("BLERC stats, {}/{} (s {}) draws, {}/{} tris\n", mod_draws.size(), total_draws,
-  //               split_draws, mod_tris, num_tris, split_tris);
-  //  }
 }
 
 /*!
