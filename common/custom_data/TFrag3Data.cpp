@@ -256,19 +256,46 @@ void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
-void MercEffect::serialize(Serializer& ser) {
+void MercModifiableDrawGroup::serialize(Serializer& ser) {
   if (ser.is_saving()) {
-    ser.save<size_t>(draws.size());
+    ser.save<size_t>(mod_draw.size());
   } else {
-    draws.resize(ser.load<size_t>());
+    mod_draw.resize(ser.load<size_t>());
   }
-  for (auto& draw : draws) {
+  for (auto& draw : mod_draw) {
     draw.serialize(ser);
   }
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(fix_draw.size());
+  } else {
+    fix_draw.resize(ser.load<size_t>());
+  }
+  for (auto& draw : fix_draw) {
+    draw.serialize(ser);
+  }
+  ser.from_pod_vector(&vertices);
+  ser.from_pod_vector(&vertex_lump4_addr);
+  ser.from_pod_vector(&fragment_mask);
+  ser.from_ptr(&expect_vidx_end);
+}
+
+void MercEffect::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(all_draws.size());
+  } else {
+    all_draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : all_draws) {
+    draw.serialize(ser);
+  }
+
+  mod.serialize(ser);
 
   ser.from_ptr(&envmap_mode);
   ser.from_ptr(&envmap_texture);
   ser.from_ptr(&has_envmap);
+  ser.from_ptr(&has_mod_draw);
 }
 
 void MercModel::serialize(Serializer& ser) {
@@ -283,6 +310,8 @@ void MercModel::serialize(Serializer& ser) {
   }
   ser.from_ptr(&max_draws);
   ser.from_ptr(&max_bones);
+  ser.from_ptr(&st_vif_add);
+  ser.from_ptr(&xyz_scale);
 }
 
 void MercModelGroup::serialize(Serializer& ser) {
@@ -360,109 +389,163 @@ void Level::serialize(Serializer& ser) {
   }
 }
 
-std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() const {
-  std::array<int, MemoryUsageCategory::NUM_CATEGORIES> result;
-  result.fill(0);
+void MercModifiableDrawGroup::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::MERC_MOD_VERT, sizeof(MercVertex) * vertices.size());
+  tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_1, sizeof(MercDraw) * fix_draw.size());
+  tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_2, sizeof(MercDraw) * mod_draw.size());
+  tracker->add(MemoryUsageCategory::MERC_MOD_TABLE, sizeof(u16) * vertex_lump4_addr.size());
+}
 
-  // textures
-  for (const auto& tex : textures) {
-    result[TEXTURE] += tex.data.size() * sizeof(u32);
+void MercEffect::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::MERC_DRAW, sizeof(MercDraw) * all_draws.size());
+  mod.memory_usage(tracker);
+}
+
+void MercModel::memory_usage(MemoryUsageTracker* tracker) const {
+  for (auto& effect : effects) {
+    effect.memory_usage(tracker);
   }
+}
 
-  // tfrag
-  for (const auto& tfrag_tree_geoms : tfrag_trees) {
-    for (const auto& tfrag_tree : tfrag_tree_geoms) {
-      for (const auto& draw : tfrag_tree.draws) {
-        result[TFRAG_INDEX] += draw.runs.size() * sizeof(StripDraw::VertexRun);
-        result[TFRAG_INDEX] += draw.plain_indices.size() * sizeof(u32);
-        result[TFRAG_VIS] += draw.vis_groups.size() * sizeof(StripDraw::VisGroup);
-      }
-      result[TFRAG_VERTS] +=
-          tfrag_tree.packed_vertices.vertices.size() * sizeof(PackedTfragVertices::Vertex);
-      result[TFRAG_CLUSTER] +=
-          tfrag_tree.packed_vertices.cluster_origins.size() * sizeof(math::Vector<u16, 3>);
-      result[TFRAG_TIME_OF_DAY] += tfrag_tree.colors.size() * sizeof(TimeOfDayColor);
-      result[TFRAG_BVH] += tfrag_tree.bvh.vis_nodes.size() * sizeof(VisNode);
+void MercModelGroup::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::MERC_VERT, sizeof(MercVertex) * vertices.size());
+  tracker->add(MemoryUsageCategory::MERC_INDEX, sizeof(u32) * indices.size());
+  for (auto& model : models) {
+    model.memory_usage(tracker);
+  }
+}
+
+void CollisionMesh::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::COLLISION, sizeof(Vertex) * vertices.size());
+}
+
+void PackedShrubVertices::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::SHRUB_VERT, 64 * matrices.size());
+  tracker->add(MemoryUsageCategory::SHRUB_VERT, sizeof(InstanceGroup) * instance_groups.size());
+  tracker->add(MemoryUsageCategory::SHRUB_VERT, sizeof(Vertex) * vertices.size());
+}
+
+void ShrubTree::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::SHRUB_TIME_OF_DAY,
+               sizeof(TimeOfDayColor) * time_of_day_colors.size());
+  packed_vertices.memory_usage(tracker);
+  tracker->add(MemoryUsageCategory::SHRUB_DRAW, sizeof(ShrubDraw) * static_draws.size());
+  tracker->add(MemoryUsageCategory::SHRUB_IND, sizeof(u32) * indices.size());
+}
+
+void InstancedStripDraw::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::TIE_INST_INDEX, sizeof(u32) * vertex_index_stream.size());
+  tracker->add(MemoryUsageCategory::TIE_INST_VIS, sizeof(InstanceGroup) * instance_groups.size());
+}
+
+void PackedTieVertices::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::TIE_CIDX, sizeof(u16) * color_indices.size());
+  tracker->add(MemoryUsageCategory::TIE_MATRICES, 64 * matrices.size());
+  tracker->add(MemoryUsageCategory::TIE_GRPS, sizeof(MatrixGroup) * matrix_groups.size());
+  tracker->add(MemoryUsageCategory::TIE_VERTS, sizeof(Vertex) * vertices.size());
+}
+
+void TieTree::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::TIE_BVH, sizeof(VisNode) * bvh.vis_nodes.size());
+  for (auto& draw : static_draws) {
+    tracker->add(MemoryUsageCategory::TIE_DEINST_INDEX,
+                 draw.runs.size() * sizeof(StripDraw::VertexRun));
+    tracker->add(MemoryUsageCategory::TIE_DEINST_INDEX, draw.plain_indices.size() * sizeof(u32));
+    tracker->add(MemoryUsageCategory::TIE_DEINST_VIS,
+                 draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
+  }
+  packed_vertices.memory_usage(tracker);
+  tracker->add(MemoryUsageCategory::TIE_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+
+  for (auto& draw : instanced_wind_draws) {
+    draw.memory_usage(tracker);
+  }
+  tracker->add(MemoryUsageCategory::TIE_WIND_INSTANCE_INFO,
+               sizeof(TieWindInstance) * wind_instance_info.size());
+}
+
+void PackedTfragVertices::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::TFRAG_VERTS,
+               sizeof(PackedTfragVertices::Vertex) * vertices.size());
+  tracker->add(MemoryUsageCategory::TFRAG_CLUSTER,
+               sizeof(math::Vector<u16, 3>) * cluster_origins.size());
+}
+
+void TfragTree::memory_usage(MemoryUsageTracker* tracker) const {
+  for (auto& draw : draws) {
+    tracker->add(MemoryUsageCategory::TFRAG_INDEX, draw.runs.size() * sizeof(StripDraw::VertexRun));
+    tracker->add(MemoryUsageCategory::TFRAG_INDEX, draw.plain_indices.size() * sizeof(u32));
+    tracker->add(MemoryUsageCategory::TFRAG_VIS,
+                 draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
+  }
+  packed_vertices.memory_usage(tracker);
+  tracker->add(MemoryUsageCategory::TFRAG_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+  tracker->add(MemoryUsageCategory::TFRAG_BVH, sizeof(VisNode) * bvh.vis_nodes.size());
+}
+
+void Texture::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::TEXTURE, data.size() * sizeof(u32));
+}
+
+void Level::memory_usage(MemoryUsageTracker* tracker) const {
+  for (const auto& texture : textures) {
+    texture.memory_usage(tracker);
+  }
+  for (const auto& tftk : tfrag_trees) {
+    for (const auto& tree : tftk) {
+      tree.memory_usage(tracker);
     }
   }
-
-  // tie
-  for (const auto& tie_tree_geoms : tie_trees) {
-    for (const auto& tie_tree : tie_tree_geoms) {
-      result[TIE_BVH] += tie_tree.bvh.vis_nodes.size();
-      for (const auto& draw : tie_tree.static_draws) {
-        result[TIE_DEINST_INDEX] += draw.runs.size() * sizeof(StripDraw::VertexRun);
-        result[TIE_DEINST_VIS] += draw.vis_groups.size() * sizeof(StripDraw::VisGroup);
-      }
-      result[TIE_VERTS] +=
-          tie_tree.packed_vertices.vertices.size() * sizeof(PackedTieVertices::Vertex);
-      result[TIE_CIDX] += tie_tree.packed_vertices.color_indices.size() * sizeof(u16);
-      result[TIE_MATRICES] += tie_tree.packed_vertices.matrices.size() * 4 * 4 * 4;
-      result[TIE_GRPS] +=
-          tie_tree.packed_vertices.matrix_groups.size() * sizeof(PackedTieVertices::MatrixGroup);
-      result[TIE_TIME_OF_DAY] += tie_tree.colors.size() * sizeof(TimeOfDayColor);
-
-      for (const auto& draw : tie_tree.instanced_wind_draws) {
-        result[TIE_INST_INDEX] += draw.vertex_index_stream.size() * sizeof(u32);
-        result[TIE_INST_VIS] +=
-            draw.instance_groups.size() * sizeof(InstancedStripDraw::InstanceGroup);
-      }
-      result[TIE_WIND_INSTANCE_INFO] +=
-          tie_tree.wind_instance_info.size() * sizeof(TieWindInstance);
+  for (const auto& ttk : tie_trees) {
+    for (const auto& tree : ttk) {
+      tree.memory_usage(tracker);
     }
   }
-
-  // shrub
-  for (const auto& shrub_tree : shrub_trees) {
-    result[SHRUB_TIME_OF_DAY] += shrub_tree.time_of_day_colors.size() * sizeof(TimeOfDayColor);
-    result[SHRUB_VERT] += shrub_tree.packed_vertices.matrices.size() * 4 * 4 * 4;
-    result[SHRUB_VERT] +=
-        shrub_tree.packed_vertices.vertices.size() * sizeof(PackedShrubVertices::Vertex);
-    result[SHRUB_VERT] += shrub_tree.packed_vertices.instance_groups.size() *
-                          sizeof(PackedShrubVertices::InstanceGroup);
-    result[SHRUB_IND] += sizeof(u32) * shrub_tree.indices.size();
+  for (const auto& tree : shrub_trees) {
+    tree.memory_usage(tracker);
   }
-
-  // merc
-  result[MERC_INDEX] += merc_data.indices.size() * sizeof(u32);
-  result[MERC_VERT] += merc_data.vertices.size() * sizeof(MercVertex);
-
-  // collision
-  result[COLLISION] += sizeof(CollisionMesh::Vertex) * collision.vertices.size();
-
-  return result;
+  collision.memory_usage(tracker);
+  merc_data.memory_usage(tracker);
 }
 
 void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
   int total_accounted = 0;
-  auto memory_use_by_category = lev.get_memory_usage();
+  MemoryUsageTracker mem_use;
+  lev.memory_usage(&mem_use);
 
   std::vector<std::pair<std::string, int>> known_categories = {
-      {"texture", memory_use_by_category[tfrag3::MemoryUsageCategory::TEXTURE]},
-      {"tie-deinst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_VIS]},
-      {"tie-deinst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_INDEX]},
-      {"tie-inst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_VIS]},
-      {"tie-inst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_INDEX]},
-      {"tie-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_BVH]},
-      {"tie-verts", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_VERTS]},
-      {"tie-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_TIME_OF_DAY]},
-      {"tie-wind-inst-info",
-       memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_WIND_INSTANCE_INFO]},
-      {"tie-cidx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_CIDX]},
-      {"tie-mats", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_MATRICES]},
-      {"tie-grps", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_GRPS]},
-      {"tfrag-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VIS]},
-      {"tfrag-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_INDEX]},
-      {"tfrag-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VERTS]},
-      {"tfrag-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_TIME_OF_DAY]},
-      {"tfrag-cluster", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_CLUSTER]},
-      {"tfrag-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_BVH]},
-      {"shrub-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
-      {"shrub-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
-      {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]},
-      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]},
-      {"merc-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_VERT]},
-      {"merc-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_INDEX]}};
+      {"texture", mem_use.data[tfrag3::MemoryUsageCategory::TEXTURE]},
+      {"tie-deinst-vis", mem_use.data[tfrag3::MemoryUsageCategory::TIE_DEINST_VIS]},
+      {"tie-deinst-idx", mem_use.data[tfrag3::MemoryUsageCategory::TIE_DEINST_INDEX]},
+      {"tie-inst-vis", mem_use.data[tfrag3::MemoryUsageCategory::TIE_INST_VIS]},
+      {"tie-inst-idx", mem_use.data[tfrag3::MemoryUsageCategory::TIE_INST_INDEX]},
+      {"tie-bvh", mem_use.data[tfrag3::MemoryUsageCategory::TIE_BVH]},
+      {"tie-verts", mem_use.data[tfrag3::MemoryUsageCategory::TIE_VERTS]},
+      {"tie-colors", mem_use.data[tfrag3::MemoryUsageCategory::TIE_TIME_OF_DAY]},
+      {"tie-wind-inst-info", mem_use.data[tfrag3::MemoryUsageCategory::TIE_WIND_INSTANCE_INFO]},
+      {"tie-cidx", mem_use.data[tfrag3::MemoryUsageCategory::TIE_CIDX]},
+      {"tie-mats", mem_use.data[tfrag3::MemoryUsageCategory::TIE_MATRICES]},
+      {"tie-grps", mem_use.data[tfrag3::MemoryUsageCategory::TIE_GRPS]},
+      {"tfrag-vis", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_VIS]},
+      {"tfrag-idx", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_INDEX]},
+      {"tfrag-vert", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_VERTS]},
+      {"tfrag-colors", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_TIME_OF_DAY]},
+      {"tfrag-cluster", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_CLUSTER]},
+      {"tfrag-bvh", mem_use.data[tfrag3::MemoryUsageCategory::TFRAG_BVH]},
+      {"shrub-colors", mem_use.data[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
+      {"shrub-vert", mem_use.data[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
+      {"shrub-ind", mem_use.data[tfrag3::MemoryUsageCategory::SHRUB_IND]},
+      {"shrub-draw", mem_use.data[tfrag3::MemoryUsageCategory::SHRUB_DRAW]},
+      {"collision", mem_use.data[tfrag3::MemoryUsageCategory::COLLISION]},
+      {"merc-vert", mem_use.data[tfrag3::MemoryUsageCategory::MERC_VERT]},
+      {"merc-idx", mem_use.data[tfrag3::MemoryUsageCategory::MERC_INDEX]},
+      {"merc-draw", mem_use.data[tfrag3::MemoryUsageCategory::MERC_DRAW]},
+      {"merc-mod-vert", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_VERT]},
+      {"merc-mod-ind", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_IND]},
+      {"merc-mod-table", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_TABLE]},
+      {"merc-mod-draw-1", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_1]},
+      {"merc-mod-draw-2", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_2]},
+  };
   for (auto& known : known_categories) {
     total_accounted += known.second;
   }
@@ -473,8 +556,10 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
             [](const auto& a, const auto& b) { return a.second > b.second; });
 
   for (const auto& x : known_categories) {
-    fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
-               100.f * (float)x.second / uncompressed_data_size);
+    if (x.second) {
+      fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
+                 100.f * (float)x.second / uncompressed_data_size);
+    }
   }
 }
 

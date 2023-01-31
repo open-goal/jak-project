@@ -630,7 +630,7 @@
     )
   )
 
-(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int))
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol))
   "Send a request to PC Merc2 to draw the given object.
    Only draws the effects which match this texture index.
    Just places a single big dma packet, you have to patch the end yourself."
@@ -724,6 +724,7 @@
             (set! (-> flags 0) (-> merc-ctrl header effect-count))
             (set! (-> flags 1) ignore-alpha-mask)
             (set! (-> flags 2) enable-mask)
+            (set! (-> flags 3) (if update-verts 1 0))
             )
           (&+! dma-buf (* 16 1))
           (+! qwc-total 1)
@@ -735,6 +736,17 @@
               )
             )
 
+          (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
+            (&+! dma-buf (* 16 num-fades))
+            (+! qwc-total num-fades)
+            )
+
+          ;; merc ptrs
+          (let ((merc-ptrs (the (pointer object) dma-buf)))
+            (dotimes (i (-> merc-ctrl header effect-count))
+              (set! (-> merc-ptrs i) (-> merc-ctrl effect i))
+              )
+            )
           (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
             (&+! dma-buf (* 16 num-fades))
             (+! qwc-total num-fades)
@@ -753,6 +765,7 @@
   (let ((use-flags (new 'stack-no-clear 'array 'uint8 7))
         (mctrl (-> dc mgeo))
         (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
+        (has-ripple #f)
         )
     ;; mark all as unused, until we see a use
     (dotimes (i 7) (set! (-> use-flags i) 0))
@@ -761,6 +774,9 @@
     (dotimes (i (-> mctrl header effect-count))
       ;;(format 0 "effect ~d, texture ~d~%" i (-> mctrl effect i texture-index))
       (set! (-> use-flags (-> mctrl effect i texture-index)) 1)
+      (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple))
+        (set! has-ripple #t)
+        )
       )
 
     ;; loop over texture groupe
@@ -768,8 +784,21 @@
       (when (nonzero? (-> use-flags i))
         ;; this one is used, update the model for pc.
         ;; create dma-packet to send the name:
-        (let ((packet (the-as dma-packet dma-buf)))
-          (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i))
+        (let ((packet (the-as dma-packet dma-buf))
+              (vertex-update #f)
+              )
+          (when has-ripple
+            (set! vertex-update #t)
+            )
+          (let* ((pd (the process-drawable (-> dc process)))
+                 (jc (-> pd skel)))
+            (when (nonzero? jc)
+              (when (logtest? (-> jc status) (joint-control-status blend-shape-valid))
+                (set! vertex-update #t)
+                )
+              )
+            )
+          (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i vertex-update))
 
           ;; create a patch packet
           (let ((patch-packet (the-as dma-packet dma-buf)))
@@ -995,7 +1024,7 @@
                                        )
                                    )
                                  )
-                               (if (and (logtest? (-> geo effect effect-idx effect-bits) (effect-bits ripple)) (-> dc ripple))
+                               (when (and (logtest? (-> geo effect effect-idx effect-bits) (effect-bits ripple)) (-> dc ripple))
                                    (set! dma-ptr (foreground-ripple dc geo dma-ptr effect-idx))
                                    )
                                (nonzero? (-> dc death-timer))

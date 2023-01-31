@@ -9,7 +9,7 @@
 struct ProfNode {
   u64 ts;
   u64 tid;
-  char name[32];
+  char name[128];
   enum Kind : u8 { BEGIN, END, INSTANT, UNUSED } kind = UNUSED;
 };
 

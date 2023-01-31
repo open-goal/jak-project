@@ -162,9 +162,18 @@ struct MercFragment {
   std::string print() const;
 };
 
+struct MercBlendCtrl {
+  u8 blend_vtx_count;
+  u8 nonzero_index_count;
+  std::vector<u8> bt_index;
+  TypedRef from_ref(TypedRef tr, const DecompilerTypeSystem& dts, int blend_target_count);
+};
+
 struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
+
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?
@@ -172,6 +181,7 @@ struct MercEffect {
   // (frag-ctrl        merc-fragment-control  :offset-assert 4)
   std::vector<MercFragmentControl> frag_ctrl;
   // (blend-data       merc-blend-data        :offset-assert 8) ??
+  std::vector<MercBlendCtrl> blend_ctrl;
   // (blend-ctrl       merc-blend-ctrl        :offset-assert 12) ??
   // (dummy0           uint8                  :offset-assert 16) ??
   u8 effect_bits;
@@ -184,6 +194,8 @@ struct MercEffect {
   // (extra-info       merc-extra-info        :offset-assert 28) ??
   MercExtraInfo extra_info;
 
+  u8 texture_index = -1;  // jak 2 only
+
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);
   std::string print();
 };
@@ -195,6 +207,7 @@ struct MercCtrl {
   std::vector<MercEffect> effects;
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void debug_print_blerc();
   std::string print();
 };
 }  // namespace decompiler
