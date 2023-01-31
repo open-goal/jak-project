@@ -189,13 +189,13 @@
   ("entity-table.o" "entity-table")
   ("loader.o" "loader")
   ("task-control-h.o" "task-control-h")
+  ("speedruns-h.o" "speedruns-h") ;; added
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
   ("pc-anim-util.o" "pc-anim-util") ;; added
   ("autosplit-h.o" "autosplit-h") ;; added
   ("autosplit.o" "autosplit") ;; added
-  ("speedruns-h.o" "speedruns-h") ;; added
   ("speedruns.o" "speedruns") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
