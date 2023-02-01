@@ -276,7 +276,7 @@ Config make_config_via_json(nlohmann::json& json) {
  * Parse the main config file and return decompiler config.
  */
 Config read_config_file(const fs::path& path_to_config_file,
-                        std::string& config_game_version,
+                        const std::string& config_game_version,
                         const std::string& override_json) {
   Config config;
   auto config_str = file_util::read_text_file(path_to_config_file);

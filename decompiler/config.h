@@ -169,7 +169,7 @@ struct Config {
 };
 
 Config read_config_file(const fs::path& path_to_config_file,
-                        std::string& config_game_version,
-                        const std::string& override_json = {});
+                        const std::string& config_game_version,
+                        const std::string& override_json = "{}");
 
 }  // namespace decompiler
