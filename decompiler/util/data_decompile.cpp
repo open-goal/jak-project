@@ -96,8 +96,8 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
         fake_label.target_segment = label.target_segment;
         fake_label.offset = label.offset + field_type_info->get_offset() + stride * elt;
         fake_label.name = fmt::format("fake-label-{}-elt-{}", type.get_single_arg().print(), elt);
-        array_def.push_back(decompile_at_label(type.get_single_arg(), fake_label, labels, words,
-                                               ts, file, version));
+        array_def.push_back(decompile_at_label(type.get_single_arg(), fake_label, labels, words, ts,
+                                               file, version));
       }
       return pretty_print::build_list(array_def);
     }
@@ -1581,8 +1581,9 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
         if (content_type == TypeSpec("object")) {
           // if there is a type hint for the label, no need to guess!
           if (file->label_db->label_exists_by_name(elt_label.name)) {
-            result.push_back(
-                decompile_at_label_with_hint(file->label_db->lookup(elt_label.name), elt_label, labels, words, ts, file, version));
+            result.push_back(decompile_at_label_with_hint(file->label_db->lookup(elt_label.name),
+                                                          elt_label, labels, words, ts, file,
+                                                          version));
           } else {
             result.push_back(
                 decompile_at_label_guess_type(elt_label, labels, words, ts, file, version));
