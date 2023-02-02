@@ -15,8 +15,8 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-spotlight spotlight 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-spotlight spotlight spotlight-lod0-jg -1
+              ((spotlight-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 5
               )
@@ -246,6 +246,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! swingpole ((obj swingpole) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   "Copy defaults from the entity."
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -283,7 +289,7 @@
       (if (not (logtest? (the-as int a0-19) 8))
           (set! v1-22 (logior v1-22 1))
           )
-      (set! (-> s4-1 sync-type) (the-as basic 'sync-eased))
+      (set! (-> s4-1 sync-type) 'sync-eased)
       (set! (-> s4-1 sync-flags) (the-as sync-flags v1-22))
       )
     (set! (-> s4-1 period) (the-as uint 0))
@@ -337,6 +343,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! process-hidden ((obj process-hidden) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   "Copy defaults from the entity."
   (process-entity-status! obj (entity-perm-status dead) #t)
   (go (method-of-object obj die))
@@ -490,33 +502,36 @@
                          (s4-1
                            (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> self draw shadow-joint-index)))
                            )
+                         (f30-0 1638400.0)
+                         (s3-0 (new 'stack-no-clear 'collide-query))
+                         (f28-0 122880.0)
                          )
-                     1638400.0
-                     (let ((s3-0 (new 'stack-no-clear 'collide-query))
-                           (f28-0 122880.0)
-                           )
-                       (set! (-> s3-0 start-pos quad) (-> s4-1 quad))
-                       (vector-normalize-copy! (-> s3-0 move-dist) s5-2 f28-0)
-                       (let ((v1-64 s3-0))
-                         (set! (-> v1-64 radius) 1638.4)
-                         (set! (-> v1-64 collide-with) (collide-spec obstacle hit-by-others-list))
-                         (set! (-> v1-64 ignore-process0) self)
-                         (set! (-> v1-64 ignore-process1) #f)
-                         (set! (-> v1-64 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-                         (set! (-> v1-64 action-mask) (collide-action solid))
-                         )
-                       (let* ((f0-13 (fill-and-probe-using-line-sphere *collide-cache* s3-0))
-                              (f28-1 (if (< 0.0 f0-13)
-                                         (* f0-13 f28-0)
-                                         122880.0
-                                         )
-                                     )
-                              (s2-0 (method-of-object (-> self draw shadow-ctrl) shadow-control-method-14))
-                              )
-                         (- f28-1 (command-get-float (-> event param 0) 0.0))
-                         (+ f28-1 (command-get-float (-> event param 1) 0.0))
-                         (the-as object (s2-0))
-                         )
+                     (set! (-> s3-0 start-pos quad) (-> s4-1 quad))
+                     (vector-normalize-copy! (-> s3-0 move-dist) s5-2 f28-0)
+                     (let ((v1-64 s3-0))
+                       (set! (-> v1-64 radius) 1638.4)
+                       (set! (-> v1-64 collide-with) (collide-spec obstacle hit-by-others-list))
+                       (set! (-> v1-64 ignore-process0) self)
+                       (set! (-> v1-64 ignore-process1) #f)
+                       (set! (-> v1-64 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+                       (set! (-> v1-64 action-mask) (collide-action solid))
+                       )
+                     (let* ((f0-13 (fill-and-probe-using-line-sphere *collide-cache* s3-0))
+                            (f28-1 (if (< 0.0 f0-13)
+                                       (* f0-13 f28-0)
+                                       122880.0
+                                       )
+                                   )
+                            )
+                       (the-as object (shadow-control-method-14
+                                        (-> self draw shadow-ctrl)
+                                        s4-1
+                                        s5-2
+                                        f30-0
+                                        (- f28-1 (command-get-float (-> event param 0) 0.0))
+                                        (+ f28-1 (command-get-float (-> event param 1) 0.0))
+                                        )
+                               )
                        )
                      )
                    )
@@ -743,7 +758,9 @@
            (cond
              ((-> event param 0)
               (set! s4-0 (-> self node-list data 2))
-              (set! (-> (the-as cspace s4-0) param0) (the-as (function cspace matrix none) cspace<-parented-matrix-mirror!))
+              (set! (-> (the-as cspace s4-0) param0)
+                    (the-as (function cspace transformq none) cspace<-parented-matrix-mirror!)
+                    )
               (set! (-> (the-as cspace s4-0) param1) (the-as basic (-> *math-camera* mirror-trans)))
               (set! (-> (the-as cspace s4-0) param2) (the-as basic (-> *math-camera* mirror-normal)))
               )
@@ -1531,6 +1548,13 @@
                                              )
           )
     )
+  ;; Note: there's some changes here to skip setting things if arg4 is #f.
+  ;; the address of #f is misaligned, but on ps2 the lq instruction will silently mask.
+  ;; Loading from #f doesn't really make sense, so this was likely just a mistake in the
+  ;; original game.
+  ;; the OpenGOAL compiler uses vmovaps, which will crash on a misaligned load because
+  ;; this has been useful for finding errors. So to prevent this crash, we skip the load
+  ;; if the argument is #f. (some callers of this directly pass #f, so it's not a bug higher up).
   (cond
     ((>= 256 (the-as int arg4))
      (set! (-> self target-joint0) (the-as int arg4))
@@ -1538,7 +1562,10 @@
      )
     (else
       (set! (-> self target-joint0) -1)
-      (set! (-> self offset0 quad) (-> arg4 quad))
+      ;; hack, fixed bug in original game
+      (when arg4
+        (set! (-> self offset0 quad) (-> arg4 quad))
+        )
       )
     )
   (cond
@@ -1548,7 +1575,10 @@
      )
     (else
       (set! (-> self target-joint1) -1)
-      (set! (-> self offset1 quad) (-> arg5 quad))
+      ;; hack, fixed bug in original game
+      (when arg5
+        (set! (-> self offset1 quad) (-> arg5 quad))
+        )
       )
     )
   (set! (-> self root) (new 'process 'trsqv))
@@ -1740,6 +1770,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! med-res-level ((obj med-res-level) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s4-0 (res-lump-struct arg0 'art-name structure))
         (s3-0 (res-lump-struct (-> obj entity) 'level structure))
@@ -1816,6 +1852,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! part-spawner ((obj part-spawner) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 string))
   (stack-size-set! (-> obj main-thread) 128)
   (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
@@ -2429,6 +2471,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! launcher ((obj launcher) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (stack-size-set! (-> obj main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((v1-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))

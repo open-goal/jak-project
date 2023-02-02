@@ -7,3 +7,1056 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-tomb-beetle tomb-beetle 0 -1
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0.6 0 2)
+              :shadow 2
+              )
+
+(deftype tomb-beetle-fly-info (structure)
+  ((dst       vector     :inline :offset-assert   0)
+   (dst-quat  quaternion :inline :offset-assert  16)
+   (dist      meters             :offset-assert  32)
+   (threshold meters             :offset-assert  36)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+
+(deftype tomb-beetle (nav-enemy)
+  ((src-quat          quaternion           :inline   :offset-assert 608)
+   (fly-info          tomb-beetle-fly-info 2 :inline :offset-assert 624)
+   (speed             meters                         :offset-assert 720)
+   (init-height       meters                         :offset-assert 724)
+   (flags             uint16                         :offset-assert 728)
+   (dest-index        int32                          :offset-assert 732)
+   (round             uint32                         :offset-assert 736)
+   (flying?           symbol                         :offset-assert 740)
+   (fly-away-radius   float                          :offset-assert 744)
+   (fly-away-ry       float                          :offset-assert 748)
+   (fly-away-ry-speed float                          :offset-assert 752)
+   (fly-away-acc      float                          :offset-assert 756)
+   (fly-away-dir      vector               :inline   :offset-assert 768)
+   )
+  :heap-base #x290
+  :method-count-assert 186
+  :size-assert         #x310
+  :flag-assert         #xba02900310
+  (:methods
+    (tomb-beetle-method-178 (_type_) none 178)
+    (explode () _type_ :state 179)
+    (fly-away () _type_ :state 180)
+    (go-to-door () _type_ :state 181)
+    (key () _type_ :state 182)
+    (land () _type_ :state 183)
+    (stand () _type_ :state 184)
+    (tomb-beetle-method-185 (_type_) none 185)
+    )
+  )
+
+
+(define *tomb-beetle-nav-enemy-info* (new 'static 'nav-enemy-info
+                                       :use-die-falling #t
+                                       :use-victory #f
+                                       :use-jump-blocked #f
+                                       :debug-draw-neck #f
+                                       :jump-debug-draw #f
+                                       :move-to-ground #t
+                                       :hover-if-no-ground #f
+                                       :idle-anim-script #f
+                                       :idle-anim 5
+                                       :notice-anim -1
+                                       :hostile-anim -1
+                                       :hit-anim -1
+                                       :knocked-anim -1
+                                       :knocked-land-anim -1
+                                       :die-anim 13
+                                       :die-falling-anim 3
+                                       :victory-anim -1
+                                       :jump-wind-up-anim -1
+                                       :jump-in-air-anim -1
+                                       :jump-land-anim -1
+                                       :neck-joint -1
+                                       :look-at-joint 3
+                                       :bullseye-joint 3
+                                       :sound-hit (static-sound-name "tomb-beetle-hit")
+                                       :sound-die (static-sound-name "tomb-beetle-die")
+                                       :notice-distance (meters 40)
+                                       :notice-distance-delta (meters 10)
+                                       :proximity-notice-distance (meters 40)
+                                       :default-hit-points 1
+                                       :gnd-collide-with (collide-spec backgnd)
+                                       :penetrate-knocked #x11fffdffa
+                                       :movement-gravity (meters -100)
+                                       :friction 0.8
+                                       :attack-shove-back (meters 3)
+                                       :attack-shove-up (meters 2)
+                                       :attack-mode 'generic
+                                       :attack-damage 2
+                                       :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+                                       :jump-height-min (meters 3)
+                                       :jump-height-factor 0.5
+                                       :knocked-seek-ry-clamp 4551.1113
+                                       :knocked-soft-vxz-lo 72089.6
+                                       :knocked-soft-vxz-hi 108134.4
+                                       :knocked-soft-vy-lo 81920.0
+                                       :knocked-soft-vy-hi 122880.0
+                                       :knocked-medium-vxz-lo 147456.0
+                                       :knocked-medium-vxz-hi 196608.0
+                                       :knocked-medium-vy-lo 135168.0
+                                       :knocked-medium-vy-hi 151552.0
+                                       :knocked-hard-vxz-lo 78643.2
+                                       :knocked-hard-vxz-hi 117964.8
+                                       :knocked-hard-vy-lo 183500.8
+                                       :knocked-hard-vy-hi 209715.2
+                                       :knocked-huge-vxz-lo 164659.2
+                                       :knocked-huge-vxz-hi 249036.8
+                                       :knocked-huge-vy-lo 183500.8
+                                       :knocked-huge-vy-hi 217907.2
+                                       :knocked-yellow-vxz-lo 40960.0
+                                       :knocked-yellow-vxz-hi 49152.0
+                                       :knocked-yellow-vy-lo 57344.0
+                                       :knocked-yellow-vy-hi 81920.0
+                                       :knocked-red-vxz-lo 24576.0
+                                       :knocked-red-vxz-hi 196608.0
+                                       :knocked-red-vy-lo 94208.0
+                                       :knocked-red-vy-hi 151552.0
+                                       :knocked-blue-vxz-lo 40960.0
+                                       :knocked-blue-vxz-hi 49152.0
+                                       :knocked-blue-vy-lo 24576.0
+                                       :knocked-blue-vy-hi 81920.0
+                                       :shadow-size (meters 2)
+                                       :shadow-max-y (meters 10)
+                                       :shadow-min-y (meters -15)
+                                       :shadow-locus-dist (meters 150)
+                                       :gem-joint -1
+                                       :gem-offset (new 'static 'sphere :r 163840.0)
+                                       :callback-info #f
+                                       :use-momentum #f
+                                       :use-frustration #t
+                                       :use-stop-chase #f
+                                       :use-circling #f
+                                       :use-pacing #f
+                                       :walk-anim -1
+                                       :turn-anim -1
+                                       :run-anim -1
+                                       :taunt-anim -1
+                                       :run-travel-speed (meters 10)
+                                       :run-acceleration (meters 1)
+                                       :run-turning-acceleration (meters 500)
+                                       :walk-travel-speed (meters 4)
+                                       :walk-acceleration (meters 1)
+                                       :walk-turning-acceleration (meters 3)
+                                       :maximum-rotation-rate (degrees 1080.0)
+                                       :notice-nav-radius (meters 1.5)
+                                       :frustration-distance (meters 8)
+                                       :frustration-time (seconds 4)
+                                       :blocked-time (seconds 0.3)
+                                       :circle-dist-lo 20480.0
+                                       :circle-dist-hi 61440.0
+                                       :nav-mesh #f
+                                       )
+        )
+
+(set! (-> *tomb-beetle-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod general-event-handler tomb-beetle ((obj tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (with-pp
+    (let ((v1-0 (new 'static 'array int64 2 -1 0)))
+      (case arg2
+        (('cue-chase)
+         (set! (-> obj round) (-> arg3 param 0))
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+         )
+        (('attack)
+         (when (and (-> obj next-state) (let ((a1-4 (-> obj next-state name)))
+                                          (or (= a1-4 'active) (= a1-4 'stand))
+                                          )
+                    )
+           (-> arg3 param 1)
+           (cond
+             ((logtest? (-> obj fact-info-override enemy-options) (ash 1 (+ (-> obj round) 8)))
+              (set! (-> v1-0 0) (the-as int (-> pp clock frame-counter)))
+              (go (method-of-object obj go-to-door))
+              )
+             ((>= (- (-> pp clock frame-counter) (the-as time-frame (-> v1-0 0))) (seconds 0.5))
+              (logior! (-> obj flags) 1)
+              (go (method-of-object obj die))
+              )
+             )
+           )
+         )
+        (('die)
+         (cond
+           ((and (-> obj next-state) (= (-> obj next-state name) 'key))
+            (go (method-of-object obj explode))
+            )
+           ((not (and (-> obj next-state) (= (-> obj next-state name) 'dormant)))
+            (go (method-of-object obj fly-away))
+            )
+           )
+         )
+        (else
+          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+          )
+        )
+      )
+    )
+  )
+
+(defmethod tomb-beetle-method-185 tomb-beetle ((obj tomb-beetle))
+  (cond
+    ((-> obj draw shadow)
+     (new 'stack-no-clear 'vector)
+     (let ((f30-0 81920.0)
+           (s5-0 (new 'stack-no-clear 'collide-query))
+           )
+       (set! (-> s5-0 start-pos quad) (-> obj root-override2 trans quad))
+       (set-vector! (-> s5-0 move-dist) 0.0 (- f30-0) 0.0 1.0)
+       (let ((v1-6 s5-0))
+         (set! (-> v1-6 radius) 8192.0)
+         (set! (-> v1-6 collide-with) (collide-spec backgnd))
+         (set! (-> v1-6 ignore-process0) obj)
+         (set! (-> v1-6 ignore-process1) #f)
+         (set! (-> v1-6 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+         (set! (-> v1-6 action-mask) (collide-action solid))
+         )
+       (let ((f0-5 (fill-and-probe-using-line-sphere *collide-cache* s5-0)))
+         (cond
+           ((>= f0-5 0.0)
+            (let ((v1-10 (-> obj draw shadow-ctrl)))
+              (logclear! (-> v1-10 settings flags) (shadow-flags disable-draw))
+              )
+            0
+            (-> s5-0 best-other-tri intersect)
+            (let ((a1-2 (-> obj root-override2 trans)))
+              (-> a1-2 y)
+              (let ((f0-6 (* f0-5 f30-0)))
+                (shadow-control-method-14
+                  (-> obj draw shadow-ctrl)
+                  a1-2
+                  (-> obj draw shadow-ctrl settings shadow-dir)
+                  (- -8192.0 f30-0)
+                  (+ -8192.0 f0-6)
+                  (+ 8192.0 f0-6)
+                  )
+                )
+              )
+            )
+           (else
+             (let ((v1-22 (-> obj draw shadow-ctrl)))
+               (logior! (-> v1-22 settings flags) (shadow-flags disable-draw))
+               )
+             0
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let ((v1-24 (-> obj draw shadow-ctrl)))
+        (logior! (-> v1-24 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      (set! (-> obj draw bounds y) 2457.6)
+      (set! (-> obj draw bounds w) 8192.0)
+      )
+    )
+  (none)
+  )
+
+(defstate dormant (tomb-beetle)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self root-override2 trans quad) (-> self entity extra trans quad))
+    (quaternion-copy! (-> self root-override2 quat) (-> self entity quat))
+    (let ((t9-2 (-> (the-as (state enemy) (find-parent-method tomb-beetle 27)) enter)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (none)
+    )
+  )
+
+(defstate ambush (tomb-beetle)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self root-override2 root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (vector-reset! (-> self root-override2 transv))
+    (set! (-> self move-dest quad) (-> self root-override2 trans quad))
+    (+! (-> self root-override2 trans y) (* 4096.0 (rand-vu-float-range 32.0 52.0)))
+    (set! (-> self init-height) (-> self root-override2 trans y))
+    (quaternion-rotate-y!
+      (-> self root-override2 quat)
+      (-> self root-override2 quat)
+      (* 182.04445 (rand-vu-float-range -180.0 180.0))
+      )
+    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) (process->ppointer self))
+      (set! (-> a1-3 num-params) 0)
+      (set! (-> a1-3 message) 'get-round)
+      (let ((t9-3 send-event-function)
+            (v1-18 (-> self actor-group 1 data 0 actor))
+            )
+        (set! (-> self round) (the-as uint (t9-3
+                                             (if v1-18
+                                                 (-> v1-18 extra process)
+                                                 )
+                                             a1-3
+                                             )
+                                      )
+              )
+        )
+      )
+    (setup-masks (-> self draw) 0 -1)
+    (setup-masks (-> self draw) 2 0)
+    (if (logtest? (-> self fact-info-override enemy-options) (ash 1 (+ (-> self round) 8)))
+        (setup-masks (-> self draw) 4 0)
+        (setup-masks (-> self draw) 8 0)
+        )
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-1 (-> self root-override2 root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (-> self root-override2 backup-collide-as))
+      (set! (-> v1-1 prim-core collide-with) (-> self root-override2 backup-collide-with))
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (if (< (fabs (- (-> self root-override2 trans y) (-> self move-dest y))) 4096.0)
+        (go-virtual land)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 3)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (tomb-beetle-method-185 self)
+    (nav-enemy-falling-post)
+    (none)
+    )
+  )
+
+(defstate land (tomb-beetle)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self draw shadow-ctrl)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags disable-draw))
+      )
+    0
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 4)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-0 (-> self clock frame-counter))
+          (s5-0 (the int (* 300.0 (rand-vu-float-range 1.1 2.3))))
+          (f30-1 (rand-vu-float-range 0.8 1.4))
+          )
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (loop! f30-1) :frame-num 0.0)
+      (until (>= (- (-> self clock frame-counter) gp-0) s5-0)
+        (suspend)
+        (ja :num! (loop! f30-1))
+        )
+      )
+    (ja-no-eval :group! (-> self draw art-group data 6)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual active)
+    (none)
+    )
+  :post (the-as (function none :behavior tomb-beetle) nav-enemy-falling-post)
+  )
+
+(defstate active (tomb-beetle)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior tomb-beetle) enemy-event-handler)
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info-override callback-info))
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-3 enemy-flags))))
+      )
+    0
+    (nav-enemy-method-166 self)
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 x) 0.0)
+      (set! (-> gp-0 y) 0.0)
+      (set! (-> gp-0 z) (* 4096.0 (rand-vu-float-range 3.0 9.0)))
+      (set! (-> gp-0 w) 0.0)
+      (let ((f30-1 (rand-vu-float-range 100.0 270.0)))
+        (vector-orient-by-quat! gp-0 gp-0 (-> self root-override2 quat))
+        (if (< 180.0 f30-1)
+            (set! f30-1 (+ -360.0 f30-1))
+            )
+        (vector-rotate-y! gp-0 gp-0 (* 182.04445 f30-1))
+        )
+      (vector+! (-> self move-dest) (-> self root-override2 trans) gp-0)
+      )
+    (cloest-point-on-mesh (-> self nav) (-> self move-dest) (-> self move-dest) (the-as nav-poly #f))
+    (let ((a0-23 (-> self nav state))
+          (v1-19 (-> self move-dest))
+          )
+      (logclear! (-> a0-23 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-23 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-23 target-post quad) (-> v1-19 quad))
+      )
+    0
+    (none)
+    )
+  :trans (behavior ()
+    (if (< (vector-vector-xz-distance (-> self root-override2 trans) (-> self move-dest)) 16384.0)
+        (go-virtual stand)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (let ((gp-0 (rand-vu-int-range 2 6))
+            (f30-0 (rand-vu-float-range 1.8 1.2))
+            )
+        (dotimes (s5-0 gp-0)
+          (ja-no-eval :group! (-> self draw art-group data 7)
+                      :num! (seek!
+                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1))
+                        f30-0
+                        )
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek! max f30-0))
+            )
+          )
+        (ja-no-eval :group! (-> self draw art-group data 8)
+                    :num! (seek!
+                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1))
+                      f30-0
+                      )
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (nav-enemy-travel-post)
+    (none)
+    )
+  )
+
+(defstate stand (tomb-beetle)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior tomb-beetle) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (set! (-> self state-timeout) (the-as time-frame (the int (* 300.0 (rand-vu-float-range 0.2 0.8)))))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self state-timeout)))
+        (go-virtual active)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 9)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior tomb-beetle) nav-enemy-simple-post)
+  )
+
+(defstate fly-away (tomb-beetle)
+  :virtual #t
+  :enter (behavior ()
+    (let ((s5-0 (-> self fly-info))
+          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (&-> self stack 544)))
+          )
+      (set! (-> s5-0 0 dst quad) (the-as uint128 (the-as vector (-> self root-override2 trans quad))))
+      (set! (-> gp-0 0 dst quad) (-> self entity extra trans quad))
+      (set! (-> gp-0 0 dst y) (+ 106496.0 (-> gp-0 0 dst y)))
+      (vector-! (-> self fly-away-dir) (the-as vector (-> gp-0 0)) (the-as vector (-> s5-0 0)))
+      (vector-normalize! (-> self fly-away-dir) 1.0)
+      (quaternion-copy! (-> s5-0 0 dst-quat) (-> self root-override2 quat))
+      (quaternion-look-at! (-> gp-0 0 dst-quat) (-> self fly-away-dir) *up-vector*)
+      (set! (-> self speed) 0.0)
+      (set! (-> self fly-away-radius) 0.0)
+      (set! (-> self fly-away-ry) (quaternion-y-angle (-> self root-override2 quat)))
+      (set! (-> gp-0 0 dist) (vector-vector-distance (-> self root-override2 trans) (the-as vector (-> gp-0 0))))
+      )
+    (vector-reset! (-> self root-override2 transv))
+    (set! (-> self fly-away-acc) (get-rand-float-range self 204800.0 512000.0))
+    (set! (-> self fly-away-ry-speed) (get-rand-float-range self 32768.0 109226.664))
+    (set! (-> self flying?) #f)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((f30-0 (- (-> self root-override2 trans y) (-> self fly-info 1 dst y))))
+      (when (>= f30-0 0.0)
+        (send-event self 'death-end)
+        (go empty-state)
+        )
+      (let ((f0-2 (lerp-scale 1.0 0.0 f30-0 -40960.0 0.0)))
+        (set-vector! (-> self root-override2 scale) f0-2 f0-2 f0-2 1.0)
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self state-timeout)
+          (the-as time-frame (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.8)))))
+          )
+    (let ((v1-6 (ja-group)))
+      (cond
+        ((and v1-6 (= v1-6 (-> self draw art-group data 9)))
+         (ja-no-eval :num! (seek!))
+         (while (not (ja-done? 0))
+           (if (>= (-> self clock frame-counter) (the-as time-frame (-> self state-timeout)))
+               (goto cfg-20)
+               )
+           (suspend)
+           (ja-eval)
+           )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.075))
+          )
+        )
+      )
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 9)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (if (>= (-> self clock frame-counter) (the-as time-frame (-> self state-timeout)))
+            (goto cfg-20)
+            )
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (label cfg-20)
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! 6.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 6.0))
+      )
+    (set! (-> self flying?) #t)
+    (ja-no-eval :num! (seek!))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 11)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (local-vars (at-0 int))
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (when (-> self flying?)
+        (let ((gp-0 (-> self root-override2)))
+          (+! (-> self speed) (* (-> self fly-away-acc) (-> self clock seconds-per-frame)))
+          (let ((s5-0 (new 'stack-no-clear 'vector)))
+            (vector-normalize-copy! s5-0 (-> self fly-away-dir) (-> self speed))
+            (vector-v++! (the-as vector (-> self fly-info)) s5-0)
+            )
+          (+! (-> self fly-away-ry) (* (-> self fly-away-ry-speed) (-> self clock seconds-per-frame)))
+          (+! (-> self fly-away-radius) (* 20480.0 (-> self clock seconds-per-frame)))
+          (let ((s5-1 (new 'stack-no-clear 'vector)))
+            (set-vector! s5-1 (sin (-> self fly-away-ry)) 0.0 (cos (-> self fly-away-ry)) 1.0)
+            (vector-normalize! s5-1 (-> self fly-away-radius))
+            (vector+! s5-1 s5-1 (the-as vector (-> self fly-info)))
+            (vector-! (-> gp-0 transv) s5-1 (-> gp-0 trans))
+            (let ((v1-10 (-> gp-0 transv)))
+              (.lvf vf1 (&-> (-> gp-0 transv) quad))
+              (let ((f0-14 (-> self clock frames-per-second)))
+                (.mov at-0 f0-14)
+                )
+              (.mov vf2 at-0)
+              (.mov.vf vf1 vf0 :mask #b1000)
+              (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+              (.svf (&-> v1-10 quad) vf1)
+              )
+            (set! (-> gp-0 trans quad) (-> s5-1 quad))
+            )
+          )
+        (quaternion-smooth-seek!
+          (-> self root-override2 quat)
+          (-> self root-override2 quat)
+          (the-as quaternion (&-> self stack 560))
+          (* 12.0 (-> self clock seconds-per-frame))
+          )
+        )
+      (tomb-beetle-method-185 self)
+      (transform-post)
+      (none)
+      )
+    )
+  )
+
+(defstate die (tomb-beetle)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (get-rand-float-range self 1.8 2.2)))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override die-anim))
+                  :num! (seek!
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override die-anim)))
+                                frames
+                                num-frames
+                                )
+                            -1
+                            )
+                         )
+                    f30-0
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (send-event self 'death-end)
+    (go-virtual explode)
+    (none)
+    )
+  :post (the-as (function none :behavior tomb-beetle) nav-enemy-simple-post)
+  )
+
+(defstate explode (tomb-beetle)
+  :virtual #t
+  :code (behavior ()
+    (when (logtest? (-> self flags) 1)
+      (let* ((s5-0 *target*)
+             (gp-0 (if (type? s5-0 process-focusable)
+                       s5-0
+                       )
+                   )
+             )
+        (when gp-0
+          (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (get-trans gp-0 0) (-> self root-override2 trans))))
+            (when (< (vector-length s5-2) 16384.0)
+              (vector-normalize! s5-2 1.0)
+              (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-3 from) (process->ppointer self))
+                (set! (-> a1-3 num-params) 2)
+                (set! (-> a1-3 message) 'attack-or-shove)
+                (set! (-> a1-3 param 0) (the-as uint #f))
+                (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id damage))))
+                  (let* ((a0-6 *game-info*)
+                         (a2-1 (+ (-> a0-6 attack-id) 1))
+                         )
+                    (set! (-> a0-6 attack-id) a2-1)
+                    (set! (-> v1-13 id) a2-1)
+                    )
+                  (set! (-> v1-13 damage) 1.0)
+                  (set! (-> v1-13 vector quad) (-> s5-2 quad))
+                  (set! (-> v1-13 shove-back) 20480.0)
+                  (set! (-> v1-13 shove-up) 12288.0)
+                  (set! (-> a1-3 param 1) (the-as uint v1-13))
+                  )
+                (send-event-function gp-0 a1-3)
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((v1-16 (-> self root-override2 root-prim)))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-1
+        (let ((t9-5 (method-of-type part-tracker activate)))
+          (t9-5 (the-as part-tracker gp-1) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+          )
+        (let ((t9-6 run-function-in-process)
+              (a0-15 gp-1)
+              (a1-6 part-tracker-init)
+              (a2-6 (-> *part-group-id-table* 708))
+              (a3-1 0)
+              (t0-0 #f)
+              (t1-0 #f)
+              (t2-0 #f)
+              (t3-0 *launch-matrix*)
+              )
+          (set! (-> t3-0 trans quad) (-> self root-override2 trans quad))
+          ((the-as (function object object object object object object object object none) t9-6)
+           a0-15
+           a1-6
+           a2-6
+           a3-1
+           t0-0
+           t1-0
+           t2-0
+           t3-0
+           )
+          )
+        (-> gp-1 ppointer)
+        )
+      )
+    (let ((gp-2 (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) gp-2) (seconds 2))
+        (suspend)
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior tomb-beetle) nav-enemy-simple-post)
+  )
+
+(defstate go-to-door (tomb-beetle)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self root-override2 root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logclear (-> v1-3 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-3 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-6 self))
+      (set! (-> v1-6 enemy-flags) (the-as enemy-flag (logclear (-> v1-6 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (set! (-> self flying?) #f)
+    (let ((s5-0 (-> self fly-info))
+          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (&-> self stack 544)))
+          )
+      (cond
+        ((nonzero? (-> self actor-group-count))
+         (let ((v1-12 (-> self actor-group 0 data (-> self round) actor)))
+           (set! (-> (the-as vector (-> gp-0 0)) quad) (-> v1-12 extra trans quad))
+           (let ((s4-0 (new 'stack-no-clear 'vector)))
+             (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-5 from) (process->ppointer self))
+               (set! (-> a1-5 num-params) 0)
+               (set! (-> a1-5 message) 'add-beetle)
+               (set! (-> s4-0 quad) (-> (the-as vector (send-event-function
+                                                         (if v1-12
+                                                             (-> v1-12 extra process)
+                                                             )
+                                                         a1-5
+                                                         )
+                                                )
+                                        quad
+                                        )
+                     )
+               )
+             (vector+! (the-as vector (-> gp-0 0)) (the-as vector (-> gp-0 0)) s4-0)
+             (set! (-> gp-0 0 dst w) (-> s4-0 w))
+             )
+           )
+         )
+        (else
+          (set! (-> (the-as vector (-> gp-0 0)) quad) (-> self root-override2 trans quad))
+          (set! (-> gp-0 0 dst y) (+ 16384.0 (-> gp-0 0 dst y)))
+          )
+        )
+      (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> gp-0 0)) (-> self root-override2 trans))))
+        (cond
+          ((< (vector-length s4-2) 122880.0)
+           (set! (-> s5-0 0 dst quad) (-> self root-override2 trans quad))
+           )
+          (else
+            (vector-float*! s4-2 s4-2 0.25)
+            (vector+! (the-as vector (-> s5-0 0)) (-> self root-override2 trans) s4-2)
+            (set! (-> s5-0 0 dst y) (+ 20480.0 (-> gp-0 0 dst y)))
+            )
+          )
+        (vector-normalize! s4-2 1.0)
+        (forward-up-nopitch->quaternion (-> s5-0 0 dst-quat) s4-2 *up-vector*)
+        )
+      (quaternion-copy! (-> self src-quat) (-> self root-override2 quat))
+      (quaternion-axis-angle! (-> gp-0 0 dst-quat) -1.0 0.0 0.0 16384.0)
+      (quaternion-rotate-local-z! (-> gp-0 0 dst-quat) (-> gp-0 0 dst-quat) (-> gp-0 0 dst w))
+      (set! (-> s5-0 0 threshold) 16384.0)
+      (set! (-> gp-0 0 threshold) 12288.0)
+      (set! (-> s5-0 0 dist) (vector-vector-distance (-> self root-override2 trans) (the-as vector (-> s5-0 0))))
+      (set! (-> gp-0 0 dist) (vector-vector-distance (-> self root-override2 trans) (the-as vector (-> gp-0 0))))
+      )
+    (set! (-> self dest-index) 0)
+    (set! (-> self speed) 122880.0)
+    (vector-reset! (-> self root-override2 transv))
+    (none)
+    )
+  :trans (behavior ()
+    (when (< (vector-length (vector-!
+                              (new 'stack-no-clear 'vector)
+                              (-> self root-override2 trans)
+                              (the-as vector (-> self fly-info (-> self dest-index)))
+                              )
+                            )
+             (-> self fly-info (-> self dest-index) threshold)
+             )
+      (when (= (-> self dest-index) 1)
+        (set! (-> self root-override2 trans quad) (-> (the-as vector (&-> self stack 544)) quad))
+        (quaternion-copy! (-> self root-override2 quat) (the-as quaternion (&-> self stack 560)))
+        (go-virtual key)
+        )
+      (set! (-> self speed) 81920.0)
+      (vector-normalize! (-> self root-override2 transv) (-> self speed))
+      (quaternion-copy! (-> self src-quat) (-> self root-override2 quat))
+      (+! (-> self dest-index) 1)
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! 6.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 6.0))
+      )
+    (set! (-> self flying?) #t)
+    (ja-no-eval :num! (seek!))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 11)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (local-vars (at-0 int))
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (when (-> self flying?)
+        (let* ((gp-0 (-> self fly-info (-> self dest-index)))
+               (f30-0 (vector-vector-distance (-> self root-override2 trans) (-> gp-0 dst)))
+               )
+          (seek! (-> self speed) (* 4.0 f30-0) (* 409600.0 (-> self clock seconds-per-frame)))
+          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> gp-0 dst) (-> self root-override2 trans))))
+            (vector-normalize! s5-1 (-> self speed))
+            (vector-seek! (-> self root-override2 transv) s5-1 (* (-> self speed) (-> self clock seconds-per-frame)))
+            )
+          (let ((v1-13 (new 'stack-no-clear 'vector)))
+            (.lvf vf1 (&-> (-> self root-override2 transv) quad))
+            (let ((f0-9 (-> self clock seconds-per-frame)))
+              (.mov at-0 f0-9)
+              )
+            (.mov vf2 at-0)
+            (.mov.vf vf1 vf0 :mask #b1000)
+            (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+            (.svf (&-> v1-13 quad) vf1)
+            (vector+! (-> self root-override2 trans) (-> self root-override2 trans) v1-13)
+            )
+          (let ((f0-11 (/ f30-0 (-> gp-0 dist))))
+            (quaternion-slerp! (-> self root-override2 quat) (-> self src-quat) (-> gp-0 dst-quat) (- 1.0 f0-11))
+            )
+          )
+        )
+      (tomb-beetle-method-185 self)
+      (transform-post)
+      (none)
+      )
+    )
+  )
+
+(defstate key (tomb-beetle)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior tomb-beetle) enemy-event-handler)
+  :enter (behavior ()
+    (let ((v1-1 (-> self draw shadow-ctrl)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags disable-draw))
+      )
+    0
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 0)
+      (set! (-> a1-1 message) 'key)
+      (let ((t9-0 send-event-function)
+            (v1-9 (-> self actor-group 0 data (-> self round) actor))
+            )
+        (t9-0
+          (if v1-9
+              (-> v1-9 extra process)
+              )
+          a1-1
+          )
+        )
+      )
+    (none)
+    )
+  :trans (the-as (function none :behavior tomb-beetle) ja-post)
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 12)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defmethod init-enemy-collision! tomb-beetle ((obj tomb-beetle))
+  "@abstract"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-7 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-7 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-7 local-sphere) 0.0 2048.0 0.0 2457.6)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) 4915.2)
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! tomb-beetle ((obj tomb-beetle))
+  "@abstract"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-beetle" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *tomb-beetle-nav-enemy-info*)
+  (let ((v1-5 (-> obj nav)))
+    (set! (-> v1-5 sphere-mask) (the-as uint #x800fa))
+    )
+  0
+  (logclear! (-> obj enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+  (set! (-> obj flags) (the-as uint 0))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  0
+  (none)
+  )

@@ -8,6 +8,7 @@
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 
+#include "game/discord.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -502,6 +503,79 @@ void pc_set_levels(u32 lev_list) {
   Gfx::set_levels(levels);
 }
 
+void update_discord_rpc(u32 discord_info) {
+  if (gDiscordRpcEnabled) {
+    DiscordRichPresence rpc;
+    char state[128];
+    char large_image_key[128];
+    char large_image_text[128];
+    char small_image_key[128];
+    char small_image_text[128];
+    auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
+    if (info) {
+      // Get the data from GOAL
+      int orbs = (int)*Ptr<float>(info->orb_count).c();
+      int gems = (int)*Ptr<float>(info->gem_count).c();
+      char* status = Ptr<String>(info->status).c()->data();
+      char* level = Ptr<String>(info->level).c()->data();
+      auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
+      float time = *Ptr<float>(info->time_of_day).c();
+      float percent_completed = info->percent_completed;
+
+      // Construct the DiscordRPC Object
+      // TODO - take nice screenshots with the various time of days once the graphics is in a final
+      // state
+      const char* full_level_name =
+          "unknown";  // jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      memset(&rpc, 0, sizeof(rpc));
+      if (!indoors(level)) {
+        char level_with_tod[128];
+        strcpy(level_with_tod, level);
+        strcat(level_with_tod, "-");
+        strcat(level_with_tod, time_of_day_str(time));
+        strcpy(large_image_key, level_with_tod);
+      } else {
+        strcpy(large_image_key, level);
+      }
+      strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
+      if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
+      } else {
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems))
+                          .c_str());
+        strcpy(large_image_text, fmt::format(" | {:.0f}% | Orbs: {} | Gems: {}", percent_completed,
+                                             std::to_string(orbs), std::to_string(gems))
+                                     .c_str());
+      }
+      rpc.largeImageText = large_image_text;
+      rpc.state = state;
+      if (!indoors(level)) {
+        strcpy(small_image_key, time_of_day_str(time));
+        strcpy(small_image_text, "Time of day: ");
+        strcat(small_image_text, get_time_of_day(time).c_str());
+      } else {
+        strcpy(small_image_key, "");
+        strcpy(small_image_text, "");
+      }
+      rpc.smallImageKey = small_image_key;
+      rpc.smallImageText = small_image_text;
+      rpc.startTimestamp = gStartTime;
+      rpc.details = status;
+      rpc.partySize = 0;
+      rpc.partyMax = 0;
+      Discord_UpdatePresence(&rpc);
+    }
+  } else {
+    Discord_ClearPresence();
+  }
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -550,8 +624,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
 
   // discord rich presence
-  // make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
-  // make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);

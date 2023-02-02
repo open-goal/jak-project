@@ -1160,9 +1160,12 @@
     (let ((f0-5 1.0)
           (f30-0 1.0)
           )
-      (when (= (-> *bigmap* bigmap-index) 13)
-        (set! f0-5 0.333)
-        (set! f30-0 0.75)
+      ;; added check
+      (when (nonzero? *bigmap*)
+        (when (= (-> *bigmap* bigmap-index) 13)
+          (set! f0-5 0.333)
+          (set! f30-0 0.75)
+          )
         )
       (set! (-> obj frame-speed) (* (+ 4.0 (-> *setting-control* user-current rain)) f0-5))
       (set! (-> obj frame-speed2) (* (+ 5.0 (-> *setting-control* user-current rain)) f0-5))
@@ -1200,19 +1203,18 @@
           (the-as vector4 (-> *time-of-day-context* current-sky-color))
           0.0078125
           )
-        (let ((t9-8 (method-of-type ocean generate-verts)))
-          (-> obj verts)
-          (-> obj heights)
-          (t9-8)
-          )
+        (generate-verts obj (-> obj verts) (-> obj heights))
         (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                (s5-2 (-> s4-0 base))
                )
-          (if (-> *time-of-day-context* sky)
-              (ocean-method-89 obj s4-0)
-              )
+          ;; TODO handle ocean::79 and ocean::89
+          ;; diasble tod ocean stuff
+          ;; (if (-> *time-of-day-context* sky)
+          ;;     (ocean-method-89 obj s4-0)
+          ;;     )
           (draw-ocean-texture obj s4-0 (the-as int (-> obj verts)))
-          (ocean-method-79 obj s4-0)
+          ;; disable whatever this is
+          ;; (ocean-method-79 obj s4-0)
           (init-buffer! obj s4-0)
           (if (-> obj far-on)
               (draw-ocean-far obj s4-0)
@@ -1231,7 +1233,7 @@
               )
             (dma-bucket-insert-tag
               (-> *display* frames (-> *display* on-screen) bucket-group)
-              (bucket-id bucket-6)
+              (bucket-id ocean-mid-far)
               s5-2
               (the-as (pointer dma-tag) a3-3)
               )
@@ -1257,7 +1259,7 @@
                 )
               (dma-bucket-insert-tag
                 (-> *display* frames (-> *display* on-screen) bucket-group)
-                (bucket-id bucket-310)
+                (bucket-id ocean-near)
                 s5-3
                 (the-as (pointer dma-tag) a3-5)
                 )
@@ -1279,6 +1281,16 @@
     (none)
     )
   )
+
+;; PC Port hack
+(define *ocean-generate-verts-vector* (new 'global 'vector))
+
+(set-vector! *ocean-generate-verts-vector*
+             (the-as float #x43000000) ;; in jak1, this component was different!
+             (the-as float #x43000000)
+             (the-as float #x43000000)
+             (the-as float #x43000000)
+             )
 
 (defmethod draw! ocean ((obj ocean))
   (do-tex-scroll! obj)

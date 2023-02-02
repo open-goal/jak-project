@@ -23,10 +23,13 @@ using namespace iop;
 
 static RPC_Str_Cmd_Jak1 sSTRBufJak1;
 static RPC_Str_Cmd_Jak2 sSTRBufJak2;
-static RPC_Play_Cmd sPLAYBuf[2];  // todo type
+static RPC_Play_Cmd_Jak1 sPLAYBufJak1[2];
+static RPC_Play_Cmd_Jak2 sPLAYBufJak2[2];
+
 void* RPC_STR_jak1(unsigned int fno, void* _cmd, int y);
 void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y);
-void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
+void* RPC_PLAY_jak1(unsigned int fno, void* _cmd, int y);
+void* RPC_PLAY_jak2(unsigned int fno, void* _cmd, int y);
 
 static constexpr int PLAY_MSG_SIZE = 0x40;
 
@@ -59,7 +62,8 @@ CacheEntryJ2 sCacheJ2[STR_INDEX_CACHE_SIZE];
 void stream_init_globals() {
   memset(&sSTRBufJak1, 0, sizeof(RPC_Str_Cmd_Jak1));
   memset(&sSTRBufJak2, 0, sizeof(RPC_Str_Cmd_Jak2));
-  memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd));
+  memset(&sPLAYBufJak1, 0, sizeof(RPC_Play_Cmd_Jak1) * 2);
+  memset(&sPLAYBufJak2, 0, sizeof(RPC_Play_Cmd_Jak2) * 2);
 }
 
 /*!
@@ -94,7 +98,17 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY, sPLAYBuf, nullptr, nullptr, &dq);
+  if (g_game_version == GameVersion::Jak1) {
+    sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY_jak1, sPLAYBufJak1, nullptr,
+                      nullptr, &dq);
+
+  } else if (g_game_version == GameVersion::Jak2) {
+    sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY_jak2, sPLAYBufJak2, nullptr,
+                      nullptr, &dq);
+
+  } else {
+    ASSERT_MSG(false, "unsupported game version in PLAYThread initialization!");
+  }
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -216,7 +230,8 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
 
     if (!file_record) {
       // didn't find the file
-      printf("[OVERLORD STR] Failed to find animation %s\n", cmd->basename);
+      printf("[OVERLORD STR] Failed to find animation %s (%s)\n", cmd->basename,
+             animation_iso_name);
       cmd->result = STR_RPC_RESULT_ERROR;
     } else {
       // found it! See if we've cached this animation's header.
@@ -263,11 +278,11 @@ void* RPC_STR_jak2(unsigned int fno, void* _cmd, int y) {
   return cmd;
 }
 
-void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
+void* RPC_PLAY_jak1([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   s32 n_messages = size / PLAY_MSG_SIZE;
   char namebuf[16];
 
-  auto* cmd = (RPC_Play_Cmd*)(_cmd);
+  auto* cmd = (RPC_Play_Cmd_Jak1*)(_cmd);
   while (n_messages > 0) {
     if (cmd->name[0] == '$') {
       char* name_part = &cmd->name[1];
@@ -311,6 +326,44 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
       StopVAGStream(vag, 1);
     } else {
       QueueVAGStream(file, vag, 0, 1);
+    }
+
+    n_messages--;
+    cmd++;
+  }
+
+  return _cmd;
+}
+
+/*!
+ * This is just copied from Jak 1, and is totally wrong for jak 2.
+ * It does nothing.
+ */
+void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
+  s32 n_messages = size / PLAY_MSG_SIZE;
+  char namebuf[16];
+
+  auto* cmd = (RPC_Play_Cmd_Jak2*)(_cmd);
+  while (n_messages > 0) {
+    if (cmd->names[0].chars[0] == '$') {
+      char* name_part = &cmd->names[0].chars[1];
+      size_t name_len = strlen(name_part);
+
+      if (name_len < 9) {
+        memset(namebuf, ' ', 8);
+        memcpy(namebuf, name_part, name_len);
+      } else {
+        memcpy(namebuf, name_part, 8);
+      }
+
+      // ASCII toupper
+      for (int i = 0; i < 8; i++) {
+        if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
+          namebuf[i] -= 0x20;
+        }
+      }
+    } else {
+      ISONameFromAnimationName(namebuf, cmd->names[0].chars);
     }
 
     n_messages--;

@@ -451,6 +451,7 @@ struct PrototypeTie : public DrawableInlineArray {
 // a prototype bucket is a collection of 4 different prototypes (called geometries), one for each
 // level of detail. All geometries share the same time of day palette.
 // the bucket also refers to the fact that it collect instances during actual rendering.
+// Note: collision extraction is only supported in jak 1.
 struct PrototypeBucketTie {
   std::string name;  // 4 - 8
   u32 flags;         // 8 - 12

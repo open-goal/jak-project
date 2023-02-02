@@ -157,7 +157,7 @@
 ;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod set-and-get-ambient-sound! conveyor ((obj conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
-       and return it as well.  Otherwise, set it to `0`"
+and return it as well.  Otherwise, set it to `0`"
   (let ((actor-options (res-lump-value (-> obj entity) 'options actor-option :time -1000000000.0)))
     (the-as
       ambient-sound
@@ -441,6 +441,12 @@
 ;; definition for method 11 of type conveyor
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! conveyor ((obj conveyor) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (reset-root! obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
@@ -480,7 +486,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-strip-conveyor strip-conveyor 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 36))
+(defskelgroup skel-strip-conveyor strip-conveyor strip-conveyor-lod0-jg strip-conveyor-idle-ja
+              ((strip-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 36)
+              )
 
 ;; definition for method 22 of type strip-conveyor
 (defmethod get-art-group strip-conveyor ((obj strip-conveyor))
@@ -511,8 +520,8 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-lgconveyor lgconveyor 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-lgconveyor lgconveyor lgconveyor-lod0-jg lgconveyor-idle-ja
+              ((lgconveyor-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 3 0 15)
               :longest-edge (meters 24.7389)
               :origin-joint-index 3

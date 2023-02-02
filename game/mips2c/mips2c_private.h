@@ -999,7 +999,7 @@ struct ExecutionContext {
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
 
-  void sqrts(int src, int dst) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
+  void sqrts(int dst, int src) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
 
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
@@ -1652,7 +1652,7 @@ inline void load_vfs_from_tf_regs(const void* tf_regs_sym, ExecutionContext* c) 
 
 inline void spad_to_dma_blerc_chain(void* spad_sym_addr, u32 sadr, u32 tadr) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   void* spad_addr_c = g_ee_main_mem + spad_addr_goal;
   ASSERT(sadr < 0x4000);
   emulate_dma(g_ee_main_mem, spad_addr_c, tadr, sadr);

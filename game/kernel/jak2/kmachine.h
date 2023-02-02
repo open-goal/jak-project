@@ -52,4 +52,16 @@ struct MouseInfo {
   //  (speedx float :offset 92)
   //  (speedy float :offset 108)
 };
+
+struct DiscordInfo {
+  u32 orb_count;            // (pointer float)
+  u32 gem_count;            // (pointer float)
+  u32 death_count;          // (pointer int32)
+  u32 status;               // string
+  u32 level;                // string
+  u32 cutscene;             // symbol - bool
+  u32 time_of_day;          // (pointer float
+  float percent_completed;  // float
+};
+
 }  // namespace jak2

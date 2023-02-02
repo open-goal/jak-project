@@ -229,7 +229,7 @@
 
 ;; definition of type mysql-nav-graph-level-info
 (deftype mysql-nav-graph-level-info (structure)
-  ((level         basic   :offset-assert   0)
+  ((level         string  :offset-assert   0)
    (level-id      uint32  :offset-assert   4)
    (node-count    int32   :offset-assert   8)
    (branch-count  int32   :offset-assert  12)
@@ -335,7 +335,7 @@
 ;; definition for method 13 of type mysql-nav-graph
 (defmethod alloc-new-node! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-node]]`, if `node-array`'s `length` exceeds `3000` return `-1`
-       otherwise, return the new size of the array"
+otherwise, return the new size of the array"
   (cond
     ((>= (-> obj node-array length) 3000)
      (format #t "mysql-nav-graph : nodes buffer too small, increase NAV_GRAPH_EDITOR_NODE_COUNT~%")
@@ -360,7 +360,7 @@
 ;; definition for method 14 of type mysql-nav-graph
 (defmethod alloc-new-edge! mysql-nav-graph ((obj mysql-nav-graph))
   "Allocates a new `[[mysql-nav-edge]]`, if `edge-array`'s `length` exceeds `5000` return `-1`
-       otherwise, return the new size of the array"
+otherwise, return the new size of the array"
   (cond
     ((>= (-> obj edge-array length) 5000)
      (format #t "mysql-nav-graph : edges buffer too small, increase NAV_GRAPH_EDITOR_EDGE_COUNT~%")
@@ -385,7 +385,7 @@
 ;; definition for method 15 of type mysql-nav-graph
 (defmethod indexof-visnode mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Returns the index in the `visnode-array` whom's [[mysql-nav-visnode]] has the provided `runtime-edge-id` and `runtime-node-id`
-       if none exist, return `-1`"
+if none exist, return `-1`"
   (dotimes (v1-0 (-> obj visnode-array length))
     (let ((a3-2 (-> obj visnode-array data v1-0)))
       (if (and (= (-> a3-2 runtime-edge-id) edge-id) (= (-> a3-2 runtime-node-id) node-id))
@@ -399,9 +399,9 @@
 ;; definition for method 16 of type mysql-nav-graph
 (defmethod alloc-new-visnode! mysql-nav-graph ((obj mysql-nav-graph) (edge-id int) (node-id int))
   "Potentially allocates a new `[[mysql-nav-visnode]]`:
-       - if `visnode-array`'s `length` exceeds `3000` return `-1`
-       - otherwise, if the node already exists, TODO
-         - if the node does not already exist, create it!"
+- if `visnode-array`'s `length` exceeds `3000` return `-1`
+- otherwise, if the node already exists, TODO
+- if the node does not already exist, create it!"
   (cond
     ((>= (-> obj visnode-array length) 3000)
      (format #t "mysql-nav-graph : visnodes buffer too small, increase NAV_GRAPH_EDITOR_VISNODE_COUNT~%")
@@ -802,7 +802,7 @@
 ;; definition for method 11 of type mysql-nav-graph
 (defmethod indexof-nav-node mysql-nav-graph ((obj mysql-nav-graph) (node-id int))
   "Iterate through the `node-array` and return the index for the first [[mysql-nav-node]] whom's `nav_node_id` matches the provided id
-       returns `-1` if none is found"
+returns `-1` if none is found"
   (dotimes (v1-0 (-> obj node-array length))
     (if (= node-id (-> (the-as mysql-nav-node (-> obj node-array data v1-0)) nav_node_id))
         (return v1-0)
@@ -814,7 +814,7 @@
 ;; definition for method 12 of type mysql-nav-graph
 (defmethod indexof-nav-edge mysql-nav-graph ((obj mysql-nav-graph) (edge-id int))
   "Iterate through the `edge-array` and return the index for the first [[mysql-nav-edge]] whom's `nav_edge_id` matches the provided id
-       returns `-1` if none is found"
+returns `-1` if none is found"
   (dotimes (v1-0 (-> obj edge-array length))
     (if (= edge-id (-> (the-as mysql-nav-edge (+ (+ (* 80 v1-0) 12) (the-as int (-> obj edge-array)))) nav_edge_id))
         (return v1-0)
@@ -1216,7 +1216,72 @@
   )
 
 ;; definition for method 18 of type mysql-nav-graph
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defmethod lookup-level-info2 mysql-nav-graph ((obj mysql-nav-graph) (arg0 mysql-nav-node) (arg1 symbol))
+  "TODO - this was originally called `lookup-level-info` but it clashes with the function defined in `level`"
+  (let ((s5-0 (the-as mysql-nav-graph-level-info #f)))
+    (b! (>= (-> obj level-info-last-lookup) (-> obj level-info-array-length)) cfg-3 :delay #f)
+    (let ((v1-5 (-> obj level-info-array (-> obj level-info-last-lookup))))
+      (let ((a0-2 (-> v1-5 level)))
+        (b! (!= (-> arg0 level_name) a0-2) cfg-3 :delay (empty-form))
+        )
+      (set! s5-0 v1-5)
+      )
+    (b! #t cfg-18 :delay (nop!))
+    (label cfg-3)
+    (let ((v1-6 0))
+      (b! #t cfg-9 :delay (nop!))
+      (label cfg-4)
+      (let ((a0-6 (-> obj level-info-array v1-6)))
+        (let ((a3-1 (-> a0-6 level)))
+          (b! (!= (-> arg0 level_name) a3-1) cfg-8 :delay (empty-form))
+          )
+        (if arg1
+            (set! (-> obj level-info-last-lookup) v1-6)
+            )
+        (set! s5-0 a0-6)
+        )
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-8)
+      (+! v1-6 1)
+      (label cfg-9)
+      (b! (< v1-6 (-> obj level-info-array-length)) cfg-4)
+      )
+    (let ((v1-9 (-> obj level-info-array-length)))
+      (cond
+        ((< v1-9 32)
+         (if arg1
+             (set! (-> obj level-info-last-lookup) v1-9)
+             )
+         (set! s5-0 (-> obj level-info-array v1-9))
+         (set! (-> s5-0 level) (the-as string (-> arg0 level_name)))
+         (set! (-> s5-0 node-count) 0)
+         (+! (-> obj level-info-array-length) 1)
+         )
+        (else
+          (format
+            0
+            "mysql-nav-graph::lookup-level-info:  Error, too many unique level names in nav-graph.  May need to increase the max (currently ~d)~%"
+            32
+            )
+          (let ((s4-0 0))
+            (b! #t cfg-16 :delay (nop!))
+            (label cfg-15)
+            (let ((v1-17 (-> obj level-info-array s4-0)))
+              (format 0 "~d ~s~%" s4-0 (-> v1-17 level))
+              )
+            (+! s4-0 1)
+            (label cfg-16)
+            (b! (< s4-0 (-> obj level-info-array-length)) cfg-15)
+            )
+          (break!)
+          0
+          )
+        )
+      )
+    (label cfg-18)
+    s5-0
+    )
+  )
 
 ;; definition for method 19 of type mysql-nav-graph
 ;; WARN: Return type mismatch int vs none.
@@ -1268,7 +1333,6 @@
   )
 
 ;; definition for method 10 of type mysql-nav-graph
-;; WARN: Failed load: (set! v1-36 (l.wu (+ v1-35 32))) at op 97
 (defmethod exec-sql! mysql-nav-graph ((obj mysql-nav-graph))
   (format #t "Saving nodes ...~%")
   (dotimes (s5-0 (-> obj node-array length))
@@ -1310,3 +1374,6 @@
   )
 
 )
+
+
+

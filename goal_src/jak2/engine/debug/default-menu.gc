@@ -32,6 +32,15 @@
 
 ;; og:ignore-form:all-texture-tweak-adjust
 
+(defmacro dm-lambda-boolean-flag (val)
+  "helper macro for making boolean buttons that don't just access symbols directly"
+  `,(lambda (arg (msg debug-menu-msg))
+                            (if (= msg (debug-menu-msg press))
+                                (not! ,val)
+                                )
+                            ,val)
+  )
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -2788,6 +2797,7 @@
   )
 
 (defun dm-play-task-with-continue ((arg0 game-task) (arg1 string))
+  (format 0 "hello world - ~D:~S~%" arg0 arg1)
   (let* ((t9-0 play-task)
          (a1-1 'debug)
          (a2-0 (cond
@@ -2812,6 +2822,7 @@
   )
 
 (defun dm-play-task ((arg0 game-task))
+  (format 0 "DEBUG - ~D~%" arg0)
   (dm-play-task-with-continue (the-as game-task (/ (the-as int arg0) 8)) (the-as string #f))
   (none)
   )
@@ -5890,6 +5901,18 @@
       )
     (debug-menu-append-item s5-0 (debug-menu-make-task-menu arg0))
     (debug-menu-append-item s5-0 (debug-menu-make-play-menu arg0))
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "PC Settings"
+           (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
+           (flag "Jetboard Trick String" #t ,(dm-lambda-boolean-flag (-> *pc-settings* jetboard-trick-text?)))
+           (function "Save" #f ,(lambda () (commit-to-file *pc-settings*)))
+           )
+        )
+      )
     )
   arg0
   )

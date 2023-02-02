@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(defglobalconstant SKIP_MINIMAP_DRAW #t)
+
 ;; WARN: Failed store: (s.w! (+ v1-35 8) 0) at op 135
 ;; WARN: Failed store: (s.w! (+ v1-35 12) 0) at op 136
 ;; WARN: Failed store: (s.w! (+ v1-61 8) 0) at op 213
@@ -25,14 +27,12 @@
   (set! (-> obj sprites 0 color w)
         (the int (+ 70.0 (* 70.0 (sin (* 182.04445 (the float (-> obj values 1 current)))))))
         )
-  (when (nonzero? *minimap*) ;; added check
-    (set! (-> *minimap* color y)
-          (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> obj values 1 current)))))))
-          )
-    (set! (-> *minimap* color z)
-          (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> obj values 1 current)))))))
-          )
-    )
+  (set! (-> *minimap* color y)
+        (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> obj values 1 current)))))))
+        )
+  (set! (-> *minimap* color z)
+        (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> obj values 1 current)))))))
+        )
   (set! (-> obj sprites 0 scale-x) 1.0)
   (set! (-> obj sprites 0 scale-y) 1.0)
   (when (>= (-> *setting-control* user-current race-minimap) 0)
@@ -44,29 +44,33 @@
   (let ((t9-5 (method-of-type hud draw)))
     (t9-5 obj)
     )
+  (#when SKIP_MINIMAP_DRAW
+      (return #f)
+      )
   (cond
     ((< (-> *setting-control* user-current race-minimap) 0)
      (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                   (bucket-id progress)
                                   )
        (set-as-offset-from! (-> obj sprites 2) (the-as vector4w (-> obj sprites 1)) 2 -3)
-       (minimap-method-15 *minimap* s4-0 (the-as vector4w (-> obj sprites 2)) #t)
+       (draw-1 *minimap* s4-0 (the-as vector4w (-> obj sprites 2)) #t)
        )
      )
     ((zero? (-> *setting-control* user-current race-minimap))
      (let ((s5-1 (level-get *level* 'stadiumb)))
        (when (and s5-1 (= (-> s5-1 status) 'active))
-         (minimap-method-25
+         (set-race-texture
            *minimap*
            (lookup-texture-by-id (new 'static 'texture-id :index #x10 :page #xc25))
            16837.018
+           s5-1
            )
-         (minimap-method-27 *minimap* -1609044.0 -2978676.8)
+         (set-race-corner *minimap* -1609044.0 -2978676.8)
          (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
                                       (bucket-id progress)
                                       )
            (set-as-offset-from! (-> obj sprites 2) (the-as vector4w (-> obj sprites 1)) 10 -15)
-           (minimap-method-24 *minimap* s4-2 (the-as vector4w (-> obj sprites 2)) #t)
+           (draw-sprite2 *minimap* s4-2 (the-as vector4w (-> obj sprites 2)) #t)
            )
          )
        )
@@ -74,17 +78,18 @@
     ((= (-> *setting-control* user-current race-minimap) 1)
      (let ((s5-3 (level-get *level* 'stadiumc)))
        (when (and s5-3 (= (-> s5-3 status) 'active))
-         (minimap-method-27 *minimap* -951910.4 -3694182.5)
-         (minimap-method-25
+         (set-race-corner *minimap* -951910.4 -3694182.5)
+         (set-race-texture
            *minimap*
            (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #xd17))
            13907.148
+           s5-3
            )
          (with-dma-buffer-add-bucket ((s4-4 (-> *display* frames (-> *display* on-screen) global-buf))
                                       (bucket-id progress)
                                       )
            (set-as-offset-from! (-> obj sprites 2) (the-as vector4w (-> obj sprites 1)) 20 -8)
-           (minimap-method-24 *minimap* s4-4 (the-as vector4w (-> obj sprites 2)) #t)
+           (draw-sprite2 *minimap* s4-4 (the-as vector4w (-> obj sprites 2)) #t)
            )
          )
        )
@@ -92,17 +97,18 @@
     ((= (-> *setting-control* user-current race-minimap) 2)
      (let ((s5-5 (level-get *level* 'stadiumd)))
        (when (and s5-5 (= (-> s5-5 status) 'active))
-         (minimap-method-27 *minimap* -1862860.8 -3283353.5)
-         (minimap-method-25
+         (set-race-corner *minimap* -1862860.8 -3283353.5)
+         (set-race-texture
            *minimap*
            (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #xd18))
            18255.871
+           s5-5
            )
          (with-dma-buffer-add-bucket ((s4-6 (-> *display* frames (-> *display* on-screen) global-buf))
                                       (bucket-id progress)
                                       )
            (set-as-offset-from! (-> obj sprites 2) (the-as vector4w (-> obj sprites 1)) 10 -8)
-           (minimap-method-24 *minimap* s4-6 (the-as vector4w (-> obj sprites 2)) #t)
+           (draw-sprite2 *minimap* s4-6 (the-as vector4w (-> obj sprites 2)) #t)
            )
          )
        )
@@ -117,7 +123,7 @@
 
 (defmethod update-values hud-map ((obj hud-map))
   (cond
-    ((minimap-method-20 *minimap*)
+    ((update! *minimap*)
      (logior! (-> obj flags) (hud-flags show))
      (let ((t9-1 (method-of-type hud update-values)))
        (t9-1 obj)
@@ -156,7 +162,7 @@
   (set! (-> obj sprites 1 flags) (the-as uint 4))
   (set! (-> obj sprites 1 pos z) #xffff00)
   (set! (-> obj values 0 current) 0)
-  (minimap-method-20 *minimap*)
+  (update! *minimap*)
   0
   (none)
   )

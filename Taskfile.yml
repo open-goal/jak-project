@@ -68,9 +68,6 @@ tasks:
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}}"
-  repl-lt:
-    cmds:
-      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --auto-lt --user-auto --game {{.GAME}}"
   format:
     desc: "Format code"
     cmds:
@@ -126,6 +123,9 @@ tasks:
   offline-tests: # ran by jenkins
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --fail-on-cmp'
+  offline-test-file:
+    cmds:
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
   offline-tests-fast:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
@@ -144,6 +144,9 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
+  type-test-jak1:
+    cmds:
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak1TypeConsistency*" --gtest_break_on_failure'
   type-test:
     cmds:
       - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*" --gtest_break_on_failure'

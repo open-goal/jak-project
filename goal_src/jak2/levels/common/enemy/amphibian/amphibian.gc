@@ -7,3 +7,1845 @@
 
 ;; DECOMP BEGINS
 
+(deftype amphibian-tongue-attack-info (structure)
+  ((targ-dist   float          :offset-assert   0)
+   (max-length  float          :offset-assert   4)
+   (start-pos   vector :inline :offset-assert  16)
+   (base-dir    vector :inline :offset-assert  32)
+   (base-rot    vector :inline :offset-assert  48)
+   (targ-pos    vector :inline :offset-assert  64)
+   (targ-dir    vector :inline :offset-assert  80)
+   (targ-rot    vector :inline :offset-assert  96)
+   (clamped-pos vector :inline :offset-assert 112)
+   (clamped-dir vector :inline :offset-assert 128)
+   (clamped-rot vector :inline :offset-assert 144)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+
+(deftype amphibian-joint-mod (basic)
+  ((joint-index int32                    :offset-assert   4)
+   (proc        process-drawable         :offset-assert   8)
+   (max-length  float                    :offset-assert  12)
+   (target      vector           :inline :offset-assert  16)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  (:methods
+    (new (symbol type process-drawable int) _type_ 0)
+    (amphibian-joint-mod-method-9 (_type_) none 9)
+    )
+  )
+
+
+(defskelgroup skel-amphibian amphibian amphibian-lod0-jg -1
+              ((amphibian-lod0-mg (meters 20)) (amphibian-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.5)
+              :shadow amphibian-shadow-mg
+              )
+
+(deftype amphibian-anim-info (structure)
+  ((anim-index int32  :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype amphibian-global-info (basic)
+  ((prev-blue-hit     int8    :offset-assert   4)
+   (prev-knocked      int8    :offset-assert   5)
+   (notice-anim       int32 2 :offset-assert   8)
+   (run-anim          int32 2 :offset-assert  16)
+   (knocked-anim      int32 3 :offset-assert  24)
+   (knocked-land-anim int32 3 :offset-assert  36)
+   (blue-hit-anim     int32 3 :offset-assert  48)
+   (jump-wind-up-anim int32 2 :offset-assert  60)
+   (jump-in-air-anim  int32 2 :offset-assert  68)
+   (jump-land-anim    int32 2 :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+
+(deftype amphibian (nav-enemy)
+  ((tongue-scale       float                :offset-assert 604)
+   (flags              uint8                :offset-assert 608)
+   (knocked-anim-index int8                 :offset-assert 609)
+   (jump-anim-index    int8                 :offset-assert 610)
+   (tongue-mode        uint64               :offset-assert 616)
+   (tongue-mod         amphibian-joint-mod  :offset-assert 624)
+   (attacker-handle    handle               :offset-assert 632)
+   (prev-ry            float                :offset-assert 640)
+   (prev-ry1           float                :offset-assert 644)
+   )
+  :heap-base #x210
+  :method-count-assert 188
+  :size-assert         #x288
+  :flag-assert         #xbc02100288
+  (:methods
+    (attack-forward () _type_ :state 178)
+    (attack-forward-lunge () _type_ :state 179)
+    (attack-forward-end () _type_ :state 180)
+    (attack-spin () _type_ :state 181)
+    (stare-idle () _type_ :state 182)
+    (tongue-attack () _type_ :state 183)
+    (amphibian-method-184 (_type_ vector vector) vector 184)
+    (amphibian-method-185 (_type_ amphibian-tongue-attack-info) none 185)
+    (amphibian-method-186 (_type_ vector vector) symbol 186)
+    (amphibian-method-187 (_type_) none 187)
+    )
+  )
+
+
+(define *amphibian-global-info* (new 'static 'amphibian-global-info
+                                  :notice-anim (new 'static 'array int32 2 28 29)
+                                  :run-anim (new 'static 'array int32 2 26 27)
+                                  :knocked-anim (new 'static 'array int32 3 6 8 10)
+                                  :knocked-land-anim (new 'static 'array int32 3 7 9 11)
+                                  :blue-hit-anim (new 'static 'array int32 3 22 23 24)
+                                  :jump-wind-up-anim (new 'static 'array int32 2 30 33)
+                                  :jump-in-air-anim (new 'static 'array int32 2 31 34)
+                                  :jump-land-anim (new 'static 'array int32 2 32 35)
+                                  )
+        )
+
+(define *amphibian-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 28
+    :hostile-anim 26
+    :hit-anim 6
+    :knocked-anim 6
+    :knocked-land-anim 7
+    :die-anim 12
+    :die-falling-anim 21
+    :victory-anim -1
+    :jump-wind-up-anim 30
+    :jump-in-air-anim 31
+    :jump-land-anim 32
+    :neck-joint 11
+    :look-at-joint 12
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "amphibian-hit")
+    :sound-die (static-sound-name "amphibian-die")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 4
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked #x11fffdffa
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3.5)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 1
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 106496.0
+    :knocked-soft-vxz-hi 94208.0
+    :knocked-soft-vy-lo 122880.0
+    :knocked-soft-vy-hi 139264.0
+    :knocked-medium-vxz-lo 106496.0
+    :knocked-medium-vxz-hi 94208.0
+    :knocked-medium-vy-lo 122880.0
+    :knocked-medium-vy-hi 139264.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #t
+    :use-frustration #t
+    :use-stop-chase #t
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 16
+    :turn-anim -1
+    :run-anim 26
+    :taunt-anim -1
+    :run-travel-speed (meters 6)
+    :run-acceleration (meters 8)
+    :run-turning-acceleration (meters 10)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 4)
+    :walk-turning-acceleration (meters 3)
+    :maximum-rotation-rate (degrees 180.0)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *amphibian-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod relocate amphibian-joint-mod ((obj amphibian-joint-mod) (arg0 int))
+  (&+! (-> obj proc) arg0)
+  obj
+  )
+
+(defmethod general-event-handler amphibian ((obj amphibian) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (case arg2
+    (('hit-knocked)
+     (logclear! (-> obj mask) (process-mask actor-pause))
+     (logclear! (-> obj focus-status) (focus-status dangerous))
+     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> obj focus-status) (focus-status hit))
+     (if (zero? (-> obj hit-points))
+         (logior! (-> obj focus-status) (focus-status dead))
+         )
+     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 obj)
+     (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (when (= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
+       (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
+       0
+       )
+     (when (zero? (-> obj hit-points))
+       (case (-> obj incoming knocked-type)
+         (((knocked-type knocked-type-4) (knocked-type knocked-type-6))
+          (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
+          0
+          )
+         )
+       )
+     (go (method-of-object obj knocked))
+     (if (and (logtest? (-> obj incoming penetrate-using) 16)
+              (nonzero? (-> obj hit-points))
+              (zero? (-> obj fated-time))
+              )
+         'push
+         #t
+         )
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defun amphibian-joint-mod-callback ((arg0 cspace) (arg1 transformq))
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'matrix 3))
+        (s2-0 (-> arg0 param1))
+        (s5-0 (-> arg0 bone transform))
+        (s4-0 (-> arg0 parent bone transform))
+        )
+    (vector-! (the-as vector (-> s3-0 0)) (-> (the-as amphibian-joint-mod s2-0) target) (-> s4-0 trans))
+    (let ((f30-0 (fmin (vector-length (the-as vector (-> s3-0 0))) (-> (the-as amphibian-joint-mod s2-0) max-length))))
+      (vector-normalize! (the-as vector (-> s3-0 0)) 1.0)
+      (quaternion-from-two-vectors!
+        (the-as quaternion (-> s3-0 0 vector 1))
+        (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 2) 1.0)
+        (the-as vector (-> s3-0 0))
+        )
+      (quaternion->matrix (the-as matrix (-> s3-0 0 vector 2)) (the-as quaternion (-> s3-0 0 vector 1)))
+      (matrix*! s5-0 s5-0 (the-as matrix (-> s3-0 0 vector 2)))
+      (vector-normalize-copy!
+        (-> s5-0 trans)
+        (-> s5-0 vector 2)
+        (* f30-0 (-> (the-as amphibian (-> (the-as amphibian-joint-mod s2-0) proc)) tongue-scale))
+        )
+      )
+    (vector+! (-> s5-0 trans) (-> s5-0 trans) (-> s4-0 trans))
+    )
+  (set! (-> arg0 param0) #f)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch amphibian-joint-mod vs none.
+(defmethod amphibian-joint-mod-method-9 amphibian-joint-mod ((obj amphibian-joint-mod))
+  (let ((v1-3 (-> obj proc node-list data (-> obj joint-index))))
+    (set! (-> v1-3 param0) amphibian-joint-mod-callback)
+    (set! (-> v1-3 param1) obj)
+    )
+  (none)
+  )
+
+(defmethod new amphibian-joint-mod ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 proc) arg0)
+    (set! (-> v0-0 joint-index) arg1)
+    v0-0
+    )
+  )
+
+(defmethod enemy-method-106 amphibian ((obj amphibian) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
+  (let ((t9-0 (method-of-type nav-enemy enemy-method-106)))
+    (t9-0 obj arg0 arg1 arg2 arg3)
+    )
+  (let ((a0-3 (enemy-method-134 obj arg0 arg3)))
+    (if a0-3
+        (set! (-> obj attacker-handle) (process->handle a0-3))
+        (set! (-> obj attacker-handle) (the-as handle #f))
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod damage-amount-from-attack amphibian ((obj amphibian) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+  (let* ((t9-0 (method-of-type nav-enemy damage-amount-from-attack))
+         (v0-0 (t9-0 obj arg0 arg1))
+         )
+    (let ((v1-1 (-> obj hit-points)))
+      (if (> (- v1-1 v0-0) 0)
+          (set! v0-0 (+ v1-1 -1))
+          )
+      )
+    v0-0
+    )
+  )
+
+(defmethod enemy-method-51 amphibian ((obj amphibian))
+  (local-vars (f0-1 float))
+  0.0
+  (set! f0-1
+        (cond
+          ((or (zero? (-> obj hit-points)) (nonzero? (-> obj fated-time)))
+           ((method-of-type nav-enemy enemy-method-51) obj)
+           )
+          (else
+            (set! f0-1 (quaternion-y-angle (-> obj root-override2 quat)))
+            (let ((a0-5 (handle->process (-> obj focus handle))))
+              (when a0-5
+                (let ((v1-12 (get-trans (the-as process-focusable a0-5) 0)))
+                  (set! f0-1
+                        (atan (- (-> v1-12 x) (-> obj root-override2 trans x)) (- (-> v1-12 z) (-> obj root-override2 trans z)))
+                        )
+                  )
+                )
+              )
+            f0-1
+            )
+          )
+        )
+  f0-1
+  )
+
+(defmethod enemy-method-52 amphibian ((obj amphibian) (arg0 vector))
+  (cond
+    ((and (nonzero? (-> obj hit-points)) (zero? (-> obj fated-time)) (!= (-> obj incoming knocked-type) 6))
+     (enemy-method-50 obj arg0)
+     (let ((f30-0 (get-rand-float-range obj 0.0 1.0)))
+       (vector-float*! arg0 arg0 (lerp 43417.6 58982.4 f30-0))
+       (set! (-> arg0 y) (lerp 114688.0 116736.0 f30-0))
+       )
+     )
+    (else
+      ((method-of-type nav-enemy enemy-method-52) obj arg0)
+      )
+    )
+  (none)
+  )
+
+(defmethod enemy-method-77 amphibian ((obj amphibian) (arg0 (pointer float)))
+  (case (-> obj incoming knocked-type)
+    (((knocked-type knocked-type-6))
+     (let* ((v1-3 (enemy-method-120 obj 3 (ash 1 (-> *amphibian-global-info* prev-blue-hit))))
+            (s5-1 (-> obj draw art-group data (-> *amphibian-global-info* blue-hit-anim v1-3)))
+            )
+       (set! (-> *amphibian-global-info* prev-blue-hit) v1-3)
+       (ja-channel-push! 1 (seconds 0.02))
+       (let ((a0-10 (-> obj skel root-channel 0)))
+         (set! (-> a0-10 frame-group) (the-as art-joint-anim s5-1))
+         (set! (-> a0-10 param 0) (the float (+ (-> (the-as art-joint-anim s5-1) frames num-frames) -1)))
+         (set! (-> a0-10 param 1) 1.0)
+         (set! (-> a0-10 frame-num) 0.0)
+         (joint-control-channel-group! a0-10 (the-as art-joint-anim s5-1) num-func-seek!)
+         )
+       )
+     )
+    (else
+      (let ((v1-11 0))
+        (when (or (zero? (-> obj hit-points)) (nonzero? (-> obj fated-time)))
+          (let ((a2-5 (logior (ash 1 (-> *amphibian-global-info* prev-knocked)) 1)))
+            (set! v1-11 (enemy-method-120 obj 3 a2-5))
+            )
+          )
+        (set! (-> *amphibian-global-info* prev-knocked) v1-11)
+        (set! (-> obj knocked-anim-index) v1-11)
+        (let ((s4-0 (-> obj draw art-group data (-> *amphibian-global-info* knocked-anim v1-11))))
+          (ja-channel-push! 1 0)
+          (let ((a0-25 (-> obj skel root-channel 0)))
+            (set! (-> a0-25 frame-group) (the-as art-joint-anim s4-0))
+            (set! (-> a0-25 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+            (set! (-> a0-25 param 1) (-> arg0 0))
+            (set! (-> a0-25 frame-num) 0.0)
+            (joint-control-channel-group! a0-25 (the-as art-joint-anim s4-0) num-func-seek!)
+            )
+          )
+        )
+      )
+    )
+  #t
+  )
+
+(defmethod enemy-method-78 amphibian ((obj amphibian) (arg0 (pointer float)))
+  (cond
+    ((= (-> obj incoming knocked-type) (knocked-type knocked-type-6))
+     (when (>= (-> obj incoming blue-juggle-count) (the-as uint 2))
+       (ja-channel-push! 1 (seconds 0.015))
+       (let ((a0-3 (-> obj skel root-channel 0)))
+         (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 25)))
+         (set! (-> a0-3 param 0)
+               (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 25)) frames num-frames) -1))
+               )
+         (set! (-> a0-3 param 1) (-> arg0 0))
+         (set! (-> a0-3 frame-num) 0.0)
+         (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> obj draw art-group data 25)) num-func-seek!)
+         )
+       #t
+       )
+     )
+    (else
+      (let ((s4-0 (-> obj draw art-group data (-> *amphibian-global-info* knocked-land-anim (-> obj knocked-anim-index))))
+            )
+        (if (zero? (-> obj knocked-anim-index))
+            (ja-channel-push! 1 (seconds 0.07))
+            (ja-channel-push! 1 (seconds 0.15))
+            )
+        (let ((a0-10 (-> obj skel root-channel 0)))
+          (set! (-> a0-10 frame-group) (the-as art-joint-anim s4-0))
+          (set! (-> a0-10 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+          (set! (-> a0-10 param 1) (-> arg0 0))
+          (set! (-> a0-10 frame-num) 0.0)
+          (joint-control-channel-group! a0-10 (the-as art-joint-anim s4-0) num-func-seek!)
+          )
+        )
+      #t
+      )
+    )
+  )
+
+(defmethod enemy-method-89 amphibian ((obj amphibian) (arg0 enemy-jump-info))
+  (let ((a0-1 (-> obj skel root-channel 0)))
+    (set! (-> a0-1 param 0) 1.0)
+    (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+    )
+  (let* ((v1-5 (get-rand-int obj 2))
+         (s4-0 (-> obj draw art-group data (-> *amphibian-global-info* jump-wind-up-anim v1-5)))
+         )
+    (set! (-> obj jump-anim-index) v1-5)
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((a0-9 (-> obj skel root-channel 0)))
+      (set! (-> a0-9 frame-group) (the-as art-joint-anim s4-0))
+      (set! (-> a0-9 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+      (set! (-> a0-9 param 1) (-> arg0 anim-speed))
+      (set! (-> a0-9 frame-num) 0.0)
+      (joint-control-channel-group! a0-9 (the-as art-joint-anim s4-0) num-func-seek!)
+      )
+    )
+  #t
+  )
+
+(defmethod enemy-method-87 amphibian ((obj amphibian) (arg0 enemy-jump-info))
+  (let ((s4-0 (-> obj draw art-group data (-> *amphibian-global-info* jump-in-air-anim (-> obj jump-anim-index)))))
+    (ja-channel-push! 1 (seconds 0.07))
+    (let ((a0-6 (-> obj skel root-channel 0)))
+      (set! (-> a0-6 frame-group) (the-as art-joint-anim s4-0))
+      (set! (-> a0-6 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+      (set! (-> a0-6 param 1) (-> arg0 anim-speed))
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group! a0-6 (the-as art-joint-anim s4-0) num-func-seek!)
+      )
+    )
+  #t
+  )
+
+(defmethod enemy-method-88 amphibian ((obj amphibian) (arg0 enemy-jump-info))
+  (let ((s4-0 (-> obj draw art-group data (-> *amphibian-global-info* jump-land-anim (-> obj jump-anim-index)))))
+    (if (zero? (-> obj jump-anim-index))
+        (ja-channel-push! 1 (seconds 0.07))
+        (ja-channel-push! 1 (seconds 0.04))
+        )
+    (let ((a0-7 (-> obj skel root-channel 0)))
+      (set! (-> a0-7 frame-group) (the-as art-joint-anim s4-0))
+      (set! (-> a0-7 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+      (set! (-> a0-7 param 1) (-> arg0 anim-speed))
+      (set! (-> a0-7 frame-num) 0.0)
+      (joint-control-channel-group! a0-7 (the-as art-joint-anim s4-0) num-func-seek!)
+      )
+    )
+  #t
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defmethod enemy-method-90 amphibian ((obj amphibian) (arg0 int) (arg1 enemy-jump-info))
+  (when (or (= (-> obj jump-why) 3) (= (-> obj jump-why) 2))
+    (cond
+      ((zero? arg0)
+       (logior! (-> obj focus-status) (focus-status touch-water under-water))
+       )
+      (else
+        (when (logtest? (-> obj focus-status) (focus-status touch-water))
+          (let ((s3-0 (new 'stack-no-clear 'water-info)))
+            (water-info-init! (-> obj root-override2) s3-0 (collide-action solid semi-solid))
+            (let ((v1-12 #f))
+              (cond
+                ((not (logtest? (water-flags touch-water) (-> s3-0 flags)))
+                 (if (logtest? (-> obj focus-status) (focus-status under-water))
+                     (set! v1-12 #t)
+                     )
+                 (logclear! (-> obj focus-status) (focus-status touch-water under-water))
+                 )
+                ((logtest? (-> obj focus-status) (focus-status under-water))
+                 (let* ((a0-18 (-> obj root-override2 root-prim prim-core))
+                        (f0-1 (+ (-> a0-18 world-sphere y) (-> a0-18 world-sphere w)))
+                        )
+                   (if (< (-> s3-0 trans y) f0-1)
+                       (set! v1-12 #t)
+                       )
+                   )
+                 )
+                )
+              (when v1-12
+                (logclear! (-> obj focus-status) (focus-status under-water))
+                (let ((s2-0 (new 'stack-no-clear 'vector)))
+                  (set! (-> s2-0 quad) (-> obj root-override2 trans quad))
+                  (when (logtest? (water-flags touch-water) (-> s3-0 flags))
+                    (set! (-> s2-0 y) (-> s3-0 trans y))
+                    (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
+                      (when s3-1
+                        (let ((t9-2 (method-of-type part-tracker activate)))
+                          (t9-2
+                            (the-as part-tracker s3-1)
+                            *entity-pool*
+                            (symbol->string (-> part-tracker symbol))
+                            (the-as pointer #x70004000)
+                            )
+                          )
+                        (let ((t9-3 run-function-in-process)
+                              (a0-28 s3-1)
+                              (a1-6 part-tracker-init)
+                              (a2-6 (-> *part-group-id-table* 121))
+                              (a3-1 0)
+                              (t0-0 #f)
+                              (t1-0 #f)
+                              (t2-0 #f)
+                              (t3-0 *launch-matrix*)
+                              )
+                          (set! (-> t3-0 trans quad) (-> s2-0 quad))
+                          ((the-as (function object object object object object object object object none) t9-3)
+                           a0-28
+                           a1-6
+                           a2-6
+                           a3-1
+                           t0-0
+                           t1-0
+                           t2-0
+                           t3-0
+                           )
+                          )
+                        (-> s3-1 ppointer)
+                        )
+                      )
+                    (sound-play "splash-out")
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as
+    symbol
+    (cond
+      ((and (= arg0 3) (= (-> obj jump-anim-index) 1))
+       (let* ((v1-35 (if (> (-> obj skel active-channels) 0)
+                         (-> obj skel root-channel 0 frame-group)
+                         )
+                     )
+              (s4-1 (and v1-35 (= v1-35 (-> obj draw art-group data 36))))
+              )
+         (cond
+           ((and (not s4-1) (< (-> obj root-override2 transv y) 0.0))
+            (ja-channel-push! 1 (seconds 0.1))
+            (let ((a0-37 (-> obj skel root-channel 0)))
+              (set! (-> a0-37 frame-group) (the-as art-joint-anim (-> obj draw art-group data 36)))
+              (set! (-> a0-37 param 0)
+                    (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 36)) frames num-frames) -1))
+                    )
+              (set! (-> a0-37 param 1) (-> arg1 anim-speed))
+              (set! (-> a0-37 frame-num) 0.0)
+              (joint-control-channel-group! a0-37 (the-as art-joint-anim (-> obj draw art-group data 36)) num-func-seek!)
+              )
+            #f
+            )
+           (else
+             (set! s4-1 (and (ja-done? 0) s4-1))
+             (let ((a0-39 (-> obj skel root-channel 0)))
+               (set! (-> a0-39 param 0) (the float (+ (-> a0-39 frame-group frames num-frames) -1)))
+               (set! (-> a0-39 param 1) (-> arg1 anim-speed))
+               (joint-control-channel-group-eval! a0-39 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             (ja-blend-eval)
+             s4-1
+             )
+           )
+         )
+       )
+      (else
+        ((method-of-type nav-enemy enemy-method-90) obj arg0 arg1)
+        )
+      )
+    )
+  )
+
+(defmethod amphibian-method-184 amphibian ((obj amphibian) (arg0 vector) (arg1 vector))
+  (vector<-cspace! arg0 (-> obj node-list data 13))
+  (vector-! arg1 (-> obj tongue-mod target) arg0)
+  (vector-normalize! arg1 (fmin (* (vector-length arg1) (-> obj tongue-scale)) (-> obj tongue-mod max-length)))
+  (vector+! arg1 arg1 arg0)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod amphibian-method-185 amphibian ((obj amphibian) (arg0 amphibian-tongue-attack-info))
+  (let ((a0-1 (-> obj node-list data 11 bone transform)))
+    (set! (-> arg0 base-dir quad) (-> a0-1 vector 2 quad))
+    )
+  (vector-normalize! (-> arg0 base-dir) 1.0)
+  (vector<-cspace! (-> arg0 start-pos) (-> obj node-list data 13))
+  (let ((a0-7 (handle->process (-> obj focus handle))))
+    (cond
+      (a0-7
+        (set! (-> arg0 targ-pos quad) (-> (get-trans (the-as process-focusable a0-7) 3) quad))
+        )
+      (else
+        (vector-normalize-copy! (-> arg0 targ-pos) (-> arg0 base-dir) 36864.0)
+        (vector+! (-> arg0 targ-pos) (-> arg0 targ-pos) (-> arg0 start-pos))
+        )
+      )
+    )
+  (vector-! (-> arg0 targ-dir) (-> arg0 targ-pos) (-> arg0 start-pos))
+  (set! (-> arg0 targ-dist) (vector-length (-> arg0 targ-dir)))
+  (vector-normalize! (-> arg0 targ-dir) 1.0)
+  (rot-zxy-from-vector! (-> arg0 targ-rot) (-> arg0 targ-dir))
+  (rot-zxy-from-vector! (-> arg0 base-rot) (-> arg0 base-dir))
+  (set! (-> arg0 clamped-dir quad) (-> arg0 targ-dir quad))
+  (set! (-> arg0 clamped-rot quad) (-> arg0 targ-rot quad))
+  (let ((f30-0 (deg- (-> arg0 clamped-rot x) (-> arg0 base-rot x)))
+        (f0-5 (deg- (-> arg0 clamped-rot y) (-> arg0 base-rot y)))
+        )
+    (when (or (< 4004.9778 (fabs f30-0)) (< 4004.9778 (fabs f0-5)))
+      (let ((f1-3 (fmax -4004.9778 (fmin 4004.9778 f30-0)))
+            (f0-7 (fmax -4004.9778 (fmin 4004.9778 f0-5)))
+            )
+        (set! (-> arg0 clamped-rot x) (+ (-> arg0 base-rot x) f1-3))
+        (set! (-> arg0 clamped-rot y) (+ (-> arg0 base-rot y) f0-7))
+        )
+      (set-vector! (-> arg0 clamped-dir) 0.0 0.0 1.0 1.0)
+      (vector-rotate-around-x! (-> arg0 clamped-dir) (-> arg0 clamped-dir) (-> arg0 clamped-rot x))
+      (vector-rotate-around-y! (-> arg0 clamped-dir) (-> arg0 clamped-dir) (-> arg0 clamped-rot y))
+      )
+    )
+  (vector-normalize-copy! (-> arg0 clamped-pos) (-> arg0 clamped-dir) (fmax 6144.0 (-> arg0 targ-dist)))
+  (vector+! (-> arg0 clamped-pos) (-> arg0 clamped-pos) (-> arg0 start-pos))
+  (let ((s4-3 (new 'stack-no-clear 'collide-query)))
+    (set! (-> s4-3 start-pos quad) (-> arg0 start-pos quad))
+    (vector-normalize-copy! (-> s4-3 move-dist) (-> arg0 clamped-dir) 73728.0)
+    (let ((v1-32 s4-3))
+      (set! (-> v1-32 radius) 409.6)
+      (set! (-> v1-32 collide-with) (collide-spec backgnd crate obstacle hit-by-others-list pusher))
+      (set! (-> v1-32 ignore-process0) obj)
+      (set! (-> v1-32 ignore-process1) #f)
+      (set! (-> v1-32 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-32 action-mask) (collide-action solid))
+      )
+    (let ((f0-18 (fill-and-probe-using-line-sphere *collide-cache* s4-3)))
+      (if (>= f0-18 0.0)
+          (set! (-> arg0 max-length) (* 73728.0 f0-18))
+          (set! (-> arg0 max-length) 73728.0)
+          )
+      )
+    )
+  (none)
+  )
+
+(defmethod amphibian-method-186 amphibian ((obj amphibian) (arg0 vector) (arg1 vector))
+  (with-pp
+    (let ((s4-0 (new 'stack-no-clear 'collide-query))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s4-0 start-pos quad) (-> arg0 quad))
+      (vector-! (-> s4-0 move-dist) arg1 arg0)
+      (set! (-> s5-0 quad) (-> s4-0 move-dist quad))
+      (let ((v1-4 s4-0))
+        (set! (-> v1-4 radius) 409.6)
+        (set! (-> v1-4 collide-with) (collide-spec jak bot enemy obstacle hit-by-others-list player-list pusher))
+        (set! (-> v1-4 ignore-process0) obj)
+        (set! (-> v1-4 ignore-process1) #f)
+        (set! (-> v1-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> v1-4 action-mask) (collide-action solid))
+        )
+      (when (>= (fill-and-probe-using-line-sphere *collide-cache* s4-0) 0.0)
+        (let* ((s3-0 (-> s4-0 best-other-tri collide-ptr))
+               (s4-1 (if (type? s3-0 collide-shape-prim-sphere)
+                         (the-as collide-shape-prim-sphere s3-0)
+                         )
+                     )
+               )
+          (when s4-1
+            (set! (-> s5-0 y) 0.0)
+            (vector-normalize! s5-0 1.0)
+            (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-4 from) (process->ppointer pp))
+              (set! (-> a1-4 num-params) 2)
+              (set! (-> a1-4 message) 'attack)
+              (set! (-> a1-4 param 0) (the-as uint #f))
+              (let ((v1-11 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id damage))))
+                (let* ((a0-14 *game-info*)
+                       (a2-2 (+ (-> a0-14 attack-id) 1))
+                       )
+                  (set! (-> a0-14 attack-id) a2-2)
+                  (set! (-> v1-11 id) a2-2)
+                  )
+                (set! (-> v1-11 vector quad) (-> s5-0 quad))
+                (set! (-> v1-11 shove-back) 16384.0)
+                (set! (-> v1-11 shove-up) 12288.0)
+                (set! (-> v1-11 damage) (the float (-> obj enemy-info-override attack-damage)))
+                (set! (-> a1-4 param 1) (the-as uint v1-11))
+                )
+              (send-event-function (-> s4-1 cshape process) a1-4)
+              )
+            )
+          )
+        #t
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs symbol.
+(defmethod enemy-method-76 amphibian ((obj amphibian) (arg0 process) (arg1 event-message-block))
+  (let ((t9-0 (method-of-type nav-enemy enemy-method-76)))
+    (t9-0 obj (the-as process-focusable arg0) arg1)
+    )
+  (the-as
+    symbol
+    (when (and (logtest? (-> (the-as process-focusable arg0) root-override root-prim prim-core collide-as)
+                         (collide-spec jak bot)
+                         )
+               (-> obj next-state)
+               (let ((v1-8 (-> obj next-state name)))
+                 (or (= v1-8 'stare) (= v1-8 'hostile))
+                 )
+               )
+      (go (method-of-object obj attack-spin))
+      0
+      )
+    )
+  )
+
+(defmethod go-stare amphibian ((obj amphibian))
+  (let ((s5-0 (-> obj focus aware)))
+    (cond
+      ((or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag enemy-flag39) (-> obj enemy-flags)))
+           (nav-enemy-method-163 obj)
+           )
+       (go-stare2 obj)
+       )
+      ((and (= s5-0 (enemy-aware enemy-aware-3)) (-> obj enemy-info-override use-circling))
+       (go (method-of-object obj circling))
+       )
+      ((and (= s5-0 (enemy-aware enemy-aware-2)) (-> obj enemy-info-override use-pacing))
+       (go (method-of-object obj pacing))
+       )
+      ((= s5-0 (enemy-aware unaware))
+       (go (method-of-object obj flee))
+       )
+      (else
+        (go-stare2 obj)
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-hostile amphibian ((obj amphibian))
+  (let* ((s4-0 (handle->process (-> obj attacker-handle)))
+         (s5-0 (if (type? s4-0 process-focusable)
+                   s4-0
+                   )
+               )
+         )
+    (when s5-0
+      (set! (-> obj attacker-handle) (the-as handle #f))
+      (when (collide-check? (-> obj focus) (the-as process-focusable s5-0))
+        (try-update-focus (-> obj focus) (the-as process-focusable s5-0) obj)
+        (go (method-of-object obj tongue-attack))
+        )
+      )
+    )
+  (go (method-of-object obj hostile))
+  (none)
+  )
+
+(defmethod track-target! amphibian ((obj amphibian))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (set! (-> obj prev-ry) (-> obj prev-ry1))
+  (set! (-> obj prev-ry1) (quaternion-y-angle (-> obj root-override2 quat)))
+  ((method-of-type nav-enemy track-target!) obj)
+  (none)
+  )
+
+(defmethod amphibian-method-187 amphibian ((obj amphibian))
+  (with-pp
+    (let* ((f30-0 (-> obj nav state speed))
+           (f26-0 0.0)
+           (f0-1 (quaternion-y-angle (-> obj root-override2 quat)))
+           (f28-0 (deg- f0-1 (-> obj prev-ry)))
+           )
+      (let ((s5-0 #f))
+        (let ((s4-0 #f))
+          (let ((v1-6 (if (> (-> obj skel active-channels) 0)
+                          (-> obj skel root-channel 0 frame-group)
+                          )
+                      )
+                )
+            (set! f28-0 (cond
+                          ((and v1-6 (or (= v1-6 (-> obj draw art-group data 26))
+                                         (= v1-6 (-> obj draw art-group data 27))
+                                         (= v1-6 (-> obj draw art-group data 16))
+                                         )
+                                )
+                           (set! f26-0 (ja-aframe-num 0))
+                           (when (= (-> obj skel root-channel 0) (-> obj skel channel))
+                             (cond
+                               ((>= f26-0 13.0)
+                                (set! s4-0 #t)
+                                )
+                               ((and (>= 1.0 f26-0) (logtest? (-> obj flags) 1))
+                                (set! s5-0 #t)
+                                )
+                               )
+                             )
+                           f28-0
+                           )
+                          (else
+                            0.0
+                            )
+                          )
+                  )
+            )
+          (if s4-0
+              (logior! (-> obj flags) 1)
+              (set! (-> obj flags) (logand -2 (-> obj flags)))
+              )
+          )
+        (cond
+          ((>= f30-0 18432.0)
+           (let ((v1-29 (if (> (-> obj skel active-channels) 0)
+                            (-> obj skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (cond
+               ((and v1-29 (= v1-29 (-> obj draw art-group data 26)))
+                (when (and s5-0 (zero? (get-rand-int obj 5)))
+                  (ja-channel-push! 1 (seconds 0.15))
+                  (let ((s5-3 (-> obj skel root-channel 0)))
+                    (set! (-> s5-3 dist) 12288.0)
+                    (joint-control-channel-group-eval!
+                      s5-3
+                      (the-as art-joint-anim (-> obj draw art-group data 27))
+                      num-func-identity
+                      )
+                    (set! (-> s5-3 frame-num) (ja-aframe f26-0 0))
+                    )
+                  (set! (-> obj flags) (logand -2 (-> obj flags)))
+                  )
+                )
+               (else
+                 (let ((v1-45 (if (> (-> obj skel active-channels) 0)
+                                  (-> obj skel root-channel 0 frame-group)
+                                  )
+                              )
+                       )
+                   (cond
+                     ((and v1-45 (= v1-45 (-> obj draw art-group data 27)))
+                      (when s5-0
+                        (ja-channel-push! 1 (seconds 0.15))
+                        (let ((s5-4 (-> obj skel root-channel 0)))
+                          (set! (-> s5-4 dist) 12288.0)
+                          (joint-control-channel-group-eval!
+                            s5-4
+                            (the-as art-joint-anim (-> obj draw art-group data 26))
+                            num-func-identity
+                            )
+                          (set! (-> s5-4 frame-num) (ja-aframe f26-0 0))
+                          )
+                        (set! (-> obj flags) (logand -2 (-> obj flags)))
+                        )
+                      )
+                     (else
+                       (ja-channel-push! 1 (seconds 0.15))
+                       (let ((s5-5 (-> obj skel root-channel 0)))
+                         (set! (-> s5-5 dist) 12288.0)
+                         (joint-control-channel-group-eval!
+                           s5-5
+                           (the-as art-joint-anim (-> obj draw art-group data 26))
+                           num-func-identity
+                           )
+                         (set! (-> s5-5 frame-num) (ja-aframe f26-0 0))
+                         )
+                       (set! (-> obj flags) (logand -2 (-> obj flags)))
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+          (else
+            (let ((v1-67 (if (> (-> obj skel active-channels) 0)
+                             (-> obj skel root-channel 0 frame-group)
+                             )
+                         )
+                  )
+              (when (not (and v1-67 (= v1-67 (-> obj draw art-group data 16))))
+                (ja-channel-push! 1 (seconds 0.1))
+                (let ((s5-6 (-> obj skel root-channel 0)))
+                  (set! (-> s5-6 dist) 12288.0)
+                  (joint-control-channel-group-eval!
+                    s5-6
+                    (the-as art-joint-anim (-> obj draw art-group data 16))
+                    num-func-identity
+                    )
+                  (set! (-> s5-6 frame-num) (ja-aframe f26-0 0))
+                  )
+                (set! (-> obj flags) (logand -2 (-> obj flags)))
+                )
+              )
+            )
+          )
+        )
+      (let* ((f0-15 (fmin 24576.0 (* 0.47123888 (-> pp clock frames-per-second) (fabs f28-0))))
+             (f0-17 (* 0.00008680556 (fmax f30-0 f0-15)))
+             (a0-49 (-> obj skel root-channel 0))
+             )
+        (set! (-> a0-49 param 0) f0-17)
+        (joint-control-channel-group-eval! a0-49 (the-as art-joint-anim #f) num-func-loop!)
+        )
+      )
+    (ja-blend-eval)
+    (none)
+    )
+  )
+
+(defstate active (amphibian)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1.067))
+        (amphibian-method-187 self)
+        (suspend)
+        )
+      (when (enemy-method-123 self 0.2)
+        (ja-no-eval :num! (loop!))
+        (ja-channel-push! 1 (seconds 0.6))
+        (let ((v1-15 self))
+          (set! (-> v1-15 enemy-flags) (the-as enemy-flag (logclear (-> v1-15 enemy-flags) (enemy-flag enemy-flag36))))
+          (set! (-> v1-15 nav callback-info) *nav-enemy-null-callback-info*)
+          )
+        0
+        (nav-enemy-method-167 self)
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+                    :num! (seek!
+                      (the float
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
+                                  frames
+                                  num-frames
+                                  )
+                              -1
+                              )
+                           )
+                      )
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (ja-blend-eval)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (until (not (enemy-method-123 self 0.2))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+                      :num! (seek!
+                        (the float
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
+                                    frames
+                                    num-frames
+                                    )
+                                -1
+                                )
+                             )
+                        )
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        (let ((v1-83 self))
+          (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-83 enemy-flags)))
+              (set! (-> v1-83 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-83 enemy-flags))))
+              )
+          (set! (-> v1-83 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-83 enemy-flags))))
+          (set! (-> v1-83 nav callback-info) (-> v1-83 enemy-info-override callback-info))
+          )
+        0
+        (nav-enemy-method-165 self)
+        (ja-no-eval :num! (loop!))
+        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1.067))
+          (amphibian-method-187 self)
+          (suspend)
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate notice (amphibian)
+  :virtual #t
+  :enter (behavior ()
+    (local-vars (gp-0 vector))
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((a0-1 (handle->process (-> self focus handle))))
+      (set! gp-0 (cond
+                   (a0-1
+                     (set! gp-0 (-> self focus-pos))
+                     (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-1) 3) quad))
+                     gp-0
+                     )
+                   (else
+                     (vector-z-quaternion! (-> self focus-pos) (-> self root-override2 quat))
+                     (vector-normalize! (-> self focus-pos) 24576.0)
+                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root-override2 trans))
+                     )
+                   )
+            )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+          (a1-3 (-> self draw art-group data (-> *amphibian-global-info* notice-anim (get-rand-int self 2))))
+          (gp-1 (new 'stack-no-clear 'vector))
+          )
+      (vector-! gp-1 (-> self focus-pos) (-> self root-override2 trans))
+      (ja-no-eval :group! a1-3
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)) f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root-override2) gp-1 65536.0 (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (let ((v1-27 (-> self nav state)))
+      (set! (-> v1-27 speed) 8192.0)
+      )
+    0
+    (let ((gp-2 (new 'stack-no-clear 'vector)))
+      (vector-z-quaternion! gp-2 (-> self root-override2 quat))
+      (set! (-> self nav state heading quad) (-> gp-2 quad))
+      )
+    0
+    (react-to-focus self)
+    (none)
+    )
+  )
+
+(defstate circling (amphibian)
+  :virtual #t
+  :code (behavior ()
+    (nav-enemy-method-165 self)
+    (until #f
+      (amphibian-method-187 self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate pacing (amphibian)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (amphibian-method-187 self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate stop-chase (amphibian)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (amphibian-method-187 self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate stare (amphibian)
+  :virtual #t
+  :enter (behavior ()
+    (local-vars (gp-0 vector))
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (let ((v1-8 (-> self nav)))
+      (set! (-> v1-8 turning-acceleration) 204800.0)
+      )
+    0
+    (let ((a0-5 (handle->process (-> self focus handle))))
+      (set! gp-0 (cond
+                   (a0-5
+                     (set! gp-0 (-> self focus-pos))
+                     (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-5) 0) quad))
+                     gp-0
+                     )
+                   (else
+                     (vector-z-quaternion! (-> self focus-pos) (-> self root-override2 quat))
+                     (let ((f30-0 (get-rand-float-range self 8192.0 16384.0)))
+                       (if (zero? (get-rand-int self 2))
+                           (set! f30-0 (- f30-0))
+                           )
+                       (vector-rotate-around-y! (-> self focus-pos) (-> self focus-pos) f30-0)
+                       )
+                     (vector-normalize! (-> self focus-pos) 12288.0)
+                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root-override2 trans))
+                     )
+                   )
+            )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (none)
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (sound-play "amphib-hit")
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.07))
+    (let ((s5-0 (new 'stack-no-clear 'vector))
+          (gp-0 (new 'stack-no-clear 'vector))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-z-quaternion! s4-0 (-> self root-override2 quat))
+      (set-vector! s5-0 (- (-> s4-0 z)) 0.0 (-> s4-0 x) 1.0)
+      (vector-! gp-0 (-> self focus-pos) (-> self root-override2 trans))
+      (vector-normalize! s4-0 1.0)
+      (vector-normalize! gp-0 1.0)
+      (cond
+        ((>= (vector-dot s4-0 gp-0) 0.707)
+         (ja-no-eval :group! amphibian-attack-forward-ja
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-forward-ja) frames num-frames) -1)))
+                     :frame-num (ja-aframe 0.0 0)
+                     )
+         )
+        (else
+          (let ((v1-22 (>= (vector-dot s5-0 gp-0) 0.0)))
+            (if (logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+                (set! v1-22 (not v1-22))
+                )
+            (if v1-22
+                (ja-no-eval :group! amphibian-attack-right-ja
+                            :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-right-ja) frames num-frames) -1)))
+                            :frame-num (ja-aframe 0.0 0)
+                            )
+                (ja-no-eval :group! amphibian-attack-left-ja
+                            :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-left-ja) frames num-frames) -1)))
+                            :frame-num (ja-aframe 0.0 0)
+                            )
+                )
+            )
+          )
+        )
+      )
+    (until (>= (ja-aframe-num 0) (ja-aframe 2.0 0))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until (>= (ja-aframe-num 0) (ja-aframe 6.0 0))
+      (seek-to-point-toward-point! (-> self root-override2) (-> self focus-pos) 546133.3 (seconds 0.1))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :num! (seek!))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (go-virtual stare-idle)
+    (none)
+    )
+  )
+
+(defstate stare-idle (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy stare) enter))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (none)
+    )
+  :exit (-> (method-of-type nav-enemy stare) exit)
+  :trans (-> (method-of-type nav-enemy stare) trans)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((gp-0 (get-rand-int-range self 1 3)))
+      (dotimes (s5-0 gp-0)
+        (ja-no-eval :group! amphibian-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-idle-ja) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (go-virtual stare)
+    (none)
+    )
+  :post (the-as (function none :behavior amphibian) nav-enemy-stare-post)
+  )
+
+(defstate hostile (amphibian)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (go-virtual attack-spin)
+      )
+    (let ((a0-2 (get-enemy-target self)))
+      (when a0-2
+        (let* ((s5-0 (get-trans a0-2 0))
+               (f30-0 (vector-vector-xz-distance s5-0 (-> self root-override2 trans)))
+               )
+          (when (>= 20480.0 f30-0)
+            (let ((gp-0 (new 'stack-no-clear 'vector)))
+              (vector-! gp-0 s5-0 (-> self root-override2 trans))
+              (let ((f28-0 (quaternion-y-angle (-> self root-override2 quat)))
+                    (f0-3 (atan (-> gp-0 x) (-> gp-0 z)))
+                    )
+                (if (>= 8192.0 (fabs (deg- f28-0 f0-3)))
+                    (go-virtual attack-forward)
+                    )
+                )
+              )
+            (if (>= 14336.0 f30-0)
+                (go-virtual attack-spin)
+                )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (amphibian-method-187 self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate attack-forward (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (nav-enemy-method-167 self)
+    (let ((v1-7 (-> self nav)))
+      (set! (-> v1-7 turning-acceleration) 204800.0)
+      )
+    0
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-11 *game-info*)
+           (a0-7 (+ (-> v1-11 attack-id) 1))
+           )
+      (set! (-> v1-11 attack-id) a0-7)
+      (set! (-> self attack-id) a0-7)
+      )
+    (let ((gp-0 (handle->process (-> self focus handle))))
+      (if (not gp-0)
+          (react-to-focus self)
+          )
+      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (sound-play "amphib-hit")
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.07))
+    (ja-no-eval :group! amphibian-attack-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-ja) frames num-frames) -1)))
+                :frame-num (ja-aframe 0.0 0)
+                )
+    (until (>= (ja-aframe-num 0) (ja-aframe 2.0 0))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual attack-forward-lunge)
+    (none)
+    )
+  :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
+  )
+
+(defstate attack-forward-lunge (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    (let ((v1-1 (-> self nav state)))
+      (set! (-> v1-1 speed) 51200.0)
+      )
+    0
+    (let ((v1-3 (-> self nav)))
+      (set! (-> v1-3 turning-acceleration) 204800.0)
+      )
+    0
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (let ((v1-7 self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-7 enemy-flags)))
+          (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-7 enemy-flags))))
+          )
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-7 enemy-flags))))
+      (set! (-> v1-7 nav callback-info) (-> v1-7 enemy-info-override callback-info))
+      )
+    0
+    (let ((v1-10 self))
+      (set! (-> v1-10 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-10 enemy-flags))))
+      )
+    0
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (sound-play "amphib-hit")
+      )
+    (none)
+    )
+  :code (behavior ()
+    (until (>= (ja-aframe-num 0) (ja-aframe 8.0 0))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual attack-forward-end)
+    (none)
+    )
+  :post (behavior ()
+    (let ((a0-1 (handle->process (-> self focus handle))))
+      (if a0-1
+          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          )
+      )
+    (let ((a0-4 (-> self nav state))
+          (v1-8 (-> self focus-pos))
+          )
+      (logclear! (-> a0-4 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-4 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-4 target-post quad) (-> v1-8 quad))
+      )
+    0
+    (nav-enemy-travel-post)
+    (none)
+    )
+  )
+
+(defstate attack-forward-end (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (nav-enemy-method-167 self)
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (sound-play "amphib-hit")
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :num! (seek!))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (react-to-focus self)
+    (none)
+    )
+  :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
+  )
+
+(defstate attack-spin (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (nav-enemy-method-167 self)
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (let ((v1-9 (-> self nav)))
+      (set! (-> v1-9 turning-acceleration) 204800.0)
+      )
+    0
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-13 *game-info*)
+           (a0-9 (+ (-> v1-13 attack-id) 1))
+           )
+      (set! (-> v1-13 attack-id) a0-9)
+      (set! (-> self attack-id) a0-9)
+      )
+    (let ((gp-0 (handle->process (-> self focus handle))))
+      (if (not gp-0)
+          (react-to-focus self)
+          )
+      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
+      (sound-play "amphib-hit")
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.07))
+    (let ((s5-0 (new 'stack-no-clear 'vector))
+          (gp-0 (new 'stack-no-clear 'vector))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-z-quaternion! s4-0 (-> self root-override2 quat))
+      (set-vector! s5-0 (- (-> s4-0 z)) 0.0 (-> s4-0 x) 1.0)
+      (vector-! gp-0 (-> self focus-pos) (-> self root-override2 trans))
+      (vector-normalize! s4-0 1.0)
+      (vector-normalize! gp-0 1.0)
+      (cond
+        ((>= (vector-dot s4-0 gp-0) 0.707)
+         (ja-no-eval :group! amphibian-attack-forward-ja
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-forward-ja) frames num-frames) -1)))
+                     :frame-num (ja-aframe 0.0 0)
+                     )
+         )
+        (else
+          (let ((v1-22 (>= (vector-dot s5-0 gp-0) 0.0)))
+            (if (logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+                (set! v1-22 (not v1-22))
+                )
+            (if v1-22
+                (ja-no-eval :group! amphibian-attack-right-ja
+                            :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-right-ja) frames num-frames) -1)))
+                            :frame-num (ja-aframe 0.0 0)
+                            )
+                (ja-no-eval :group! amphibian-attack-left-ja
+                            :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-attack-left-ja) frames num-frames) -1)))
+                            :frame-num (ja-aframe 0.0 0)
+                            )
+                )
+            )
+          )
+        )
+      )
+    (until (>= (ja-aframe-num 0) (ja-aframe 2.0 0))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a0-22 (handle->process (-> self focus handle))))
+      (if a0-22
+          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-22) 0) quad))
+          )
+      )
+    (until (>= (ja-aframe-num 0) (ja-aframe 6.0 0))
+      (seek-to-point-toward-point! (-> self root-override2) (-> self focus-pos) 546133.3 (seconds 0.1))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :num! (seek!))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (react-to-focus self)
+    (none)
+    )
+  :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
+  )
+
+(defstate tongue-attack (amphibian)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy hostile) enter))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (nav-enemy-method-167 self)
+    (set! (-> self tongue-scale) 0.0)
+    (set! (-> self tongue-mode) (the-as uint 0))
+    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (sound-play "tongue-warn")
+    (let ((gp-1 (new 'stack-no-clear 'amphibian-tongue-attack-info)))
+      (amphibian-method-185 self gp-1)
+      (set! (-> self tongue-mod max-length) (-> gp-1 max-length))
+      (set! (-> self tongue-mod target quad) (-> gp-1 clamped-pos quad))
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (set! (-> self draw bounds w) 22528.0)
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (none)
+    )
+  :trans (behavior ()
+    (let ((v1-0 (-> self tongue-mode)))
+      (cond
+        ((zero? v1-0)
+         (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.8))
+           (set! (-> self tongue-mode) (the-as uint 1))
+           (sound-play "tongue-attack")
+           )
+         )
+        ((= v1-0 1)
+         (cond
+           ((= (-> self tongue-scale) 1.0)
+            (set! (-> self tongue-mode) (the-as uint 2))
+            (seek! (-> self tongue-scale) 0.0 (* 7.0 (-> self clock seconds-per-frame)))
+            )
+           (else
+             (seek! (-> self tongue-scale) 1.0 (* 7.0 (-> self clock seconds-per-frame)))
+             )
+           )
+         )
+        ((= v1-0 2)
+         (if (= (-> self tongue-scale) 0.0)
+             (set! (-> self tongue-mode) (the-as uint 3))
+             (seek! (-> self tongue-scale) 0.0 (* 7.0 (-> self clock seconds-per-frame)))
+             )
+         )
+        )
+      )
+    (cond
+      ((and (or (= (-> self tongue-mode) 1) (= (-> self tongue-mode) 2)) (!= (-> self tongue-scale) 0.0))
+       (amphibian-joint-mod-method-9 (-> self tongue-mod))
+       (let ((gp-1 (new 'stack-no-clear 'vector))
+             (s5-1 (new 'stack-no-clear 'vector))
+             )
+         (amphibian-method-184 self gp-1 s5-1)
+         (let ((a1-5 (new 'stack-no-clear 'vector)))
+           (vector+! a1-5 (-> self draw origin) (-> self draw bounds))
+           (set! (-> self draw bounds w) (fmax 22528.0 (+ 12288.0 (vector-vector-distance s5-1 a1-5))))
+           )
+         (if (amphibian-method-186 self gp-1 s5-1)
+             (set! (-> self tongue-mode) (the-as uint 2))
+             )
+         )
+       )
+      (else
+        (set! (-> self draw bounds w) 22528.0)
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.7))
+    (ja-no-eval :group! amphibian-tongue-attack-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim amphibian-tongue-attack-ja) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (react-to-focus self)
+    (none)
+    )
+  :post (the-as (function none :behavior amphibian) nav-enemy-simple-post)
+  )
+
+;; WARN: Return type mismatch nav-enemy vs amphibian.
+(defmethod relocate amphibian ((obj amphibian) (arg0 int))
+  (if (nonzero? (-> obj tongue-mod))
+      (&+! (-> obj tongue-mod) arg0)
+      )
+  (the-as amphibian ((method-of-type nav-enemy relocate) obj arg0))
+  )
+
+(defmethod init-enemy-collision! amphibian ((obj amphibian))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 5) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 6))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 19660.8)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot crate hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action deadly))
+      (set! (-> v1-15 transform-index) 12)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 transform-index) 20)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 transform-index) 22)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 4505.6)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec backgnd obstacle hit-by-others-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-21 local-sphere) 0.0 11468.8 0.0 11468.8)
+      )
+    (set! (-> s5-0 nav-radius) 10240.0)
+    (let ((v1-23 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-23 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! amphibian ((obj amphibian))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (set! (-> obj attacker-handle) (the-as handle #f))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-amphibian" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *amphibian-nav-enemy-info*)
+  (set! (-> obj tongue-mod) (new 'process 'amphibian-joint-mod obj 14))
+  (let ((v1-6 (-> obj neck)))
+    (set! (-> v1-6 up) (the-as uint 1))
+    (set! (-> v1-6 nose) (the-as uint 2))
+    (set! (-> v1-6 ear) (the-as uint 0))
+    (set-vector! (-> v1-6 twist-max) 10012.444 10012.444 0.0 1.0)
+    (set! (-> v1-6 ignore-angle) 20024.889)
+    )
+  (let ((v1-8 (-> obj nav)))
+    (set! (-> v1-8 speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set! (-> obj prev-ry) (quaternion-y-angle (-> obj root-override2 quat)))
+  (set! (-> obj prev-ry1) (-> obj prev-ry))
+  0
+  (none)
+  )

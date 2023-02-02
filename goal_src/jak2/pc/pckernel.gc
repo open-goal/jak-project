@@ -1,0 +1,320 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file contains new code that we need for the PC port of the game specifically.
+  It should be included as part of the game engine package (engine.cgo).
+
+  This file contains various types and functions to store PC-specific information
+  and also to communicate between the game (GOAL) and the operating system.
+  This way we can poll, change and display information about the system the game
+  is running on, such as:
+  - display devices and their settings, such as fullscreen, DPI, refresh rate, etc.
+  - audio devices and their settings, such as audio latency, channel number, etc.
+  - graphics devices and their settings, such as resolution, FPS, anisotropy, shaders, etc.
+  - input devices and their settings, such as controllers, keyboards, mice, etc.
+  - information about the game window (position, size)
+  - PC-specific goodies, enhancements, fixes and settings.
+  - whatever else.
+
+  If you do not want to include these PC things, you should exclude it from the build system.
+
+ |#
+
+
+(defmethod update-to-os pc-settings ((obj pc-settings))
+  "Update settings from GOAL to the C kernel."
+  (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
+  (none))
+
+(defmethod update pc-settings ((obj pc-settings))
+  "Update settings to/from PC kernel. Call this at the start of every frame.
+   This will update things like the aspect-ratio, which will be used for graphics code later."
+
+  (update-to-os obj)
+
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (&-> *game-info* skill-total))
+    (set! (-> info gem-count) (&-> *game-info* gem-total))
+    (set! (-> info death-count) (&-> *game-info* total-deaths))
+    (set! (-> info status) "Playing Jak 2™")
+    ;; grab the name of the level we're in
+    (if (and *level* (level-get-target-inside *level*))
+      (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
+      (set! (-> info level) "unknown"))
+    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
+    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+
+    ;; TODO - wrapping in `with-profiler` causes an error, fix it
+    (pc-discord-rpc-update info)
+    )
+
+  (none))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file IO
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmacro file-stream-seek-until (fs func-name)
+  `(let ((done? #f)
+        (tell -1))
+
+    (until done?
+
+      (let ((read (file-stream-read ,fs (-> *pc-temp-string* data) PC_TEMP_STRING_LEN)))
+        (cond
+          ((zero? read)
+           (set! (-> *pc-temp-string* data read) 0)
+           (true! done?)
+           )
+          (else
+           (dotimes (i read)
+             (when (,func-name (-> *pc-temp-string* data i))
+               (true! done?)
+               (set! tell (+ i (- (file-stream-tell ,fs) read)))
+               (set! i read)
+               )
+             )
+           )
+          )
+
+
+        )
+
+      )
+    (if (!= tell -1)
+        (file-stream-seek ,fs tell SCE_SEEK_SET)
+        tell
+        )
+    )
+  )
+
+(defmacro file-stream-read-until (fs func-name)
+  `(let ((read (file-stream-read ,fs (-> *pc-temp-string* data) PC_TEMP_STRING_LEN)))
+    (dotimes (i read)
+      (when (,func-name (-> *pc-temp-string* data i))
+        (set! (-> *pc-temp-string* data i) 0)
+        (file-stream-seek ,fs (+ i (- (file-stream-tell ,fs) read)) SCE_SEEK_SET)
+        (set! i read)
+        )
+      )
+    *pc-temp-string*
+    )
+  )
+
+(defmacro is-whitespace-or-bracket? (c)
+  `(or (is-whitespace-char? ,c) (= #x28 ,c) (= #x29 ,c))
+  )
+
+(defun file-stream-seek-past-whitespace ((file file-stream))
+  (file-stream-seek-until file not-whitespace-char?)
+  )
+
+(defun file-stream-read-word ((file file-stream))
+  (file-stream-read-until file is-whitespace-or-bracket?)
+  ;(format 0 "word ~A~%" *pc-temp-string*)
+  )
+
+(defmacro file-stream-getc (fs)
+  `(let ((buf 255))
+    (file-stream-read ,fs (& buf) 1)
+    ;(format 0 "getc got #x~X~%" buf)
+    buf
+    )
+  )
+
+(defun file-stream-read-int ((file file-stream))
+  (file-stream-seek-past-whitespace file)
+  (file-stream-read-word file)
+  (string->int *pc-temp-string*)
+  )
+
+(defun file-stream-read-float ((file file-stream))
+  (file-stream-seek-past-whitespace file)
+  (file-stream-read-word file)
+  (string->float *pc-temp-string*)
+  )
+
+(defun file-stream-read-symbol ((file file-stream))
+  (file-stream-seek-past-whitespace file)
+  (file-stream-read-word file)
+  (string->symbol *pc-temp-string*)
+  )
+
+(defmacro pc-settings-read-throw-error (fs msg)
+  "not an actual throw..."
+  `(begin
+    (format 0 "pc settings read error: ~S~%" ,msg)
+    (file-stream-close ,fs)
+    (return #f)
+    )
+  )
+
+(defmacro with-settings-scope (bindings &rest body)
+  (let ((fs (first bindings)))
+    `(begin
+      (file-stream-seek-past-whitespace ,fs)
+      (when (!= #x28 (file-stream-getc ,fs))
+        (pc-settings-read-throw-error ,fs "invalid char, ( not found")
+        )
+
+      ,@body
+
+      (file-stream-seek-past-whitespace ,fs)
+      (when (!= #x29 (file-stream-getc ,fs))
+        (pc-settings-read-throw-error ,fs "invalid char, ) not found")
+        )
+      )
+    )
+  )
+
+(defmacro file-stream-get-next-char-ret (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (let ((c (file-stream-getc ,fs)))
+      (file-stream-seek ,fs -1 SCE_SEEK_CUR)
+      c))
+  )
+
+(defmacro file-stream-get-next-char (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (file-stream-getc ,fs)
+    )
+  )
+
+(defmacro dosettings (bindings &rest body)
+  "iterate over a list of key-value pairs like so: (<key> <value>) (<key> <value>) ...
+   the name of key is stored in *pc-temp-string*"
+  (let ((fs (first bindings)))
+    `(let ((c -1))
+        (while (begin (file-stream-seek-past-whitespace ,fs) (set! c (file-stream-getc ,fs)) (= #x28 c))
+            (file-stream-read-word ,fs)
+
+            ,@body
+
+            (set! c (file-stream-get-next-char ,fs))
+            (when (!= #x29 c)
+              (pc-settings-read-throw-error ,fs (string-format "invalid char, ) not found, got #x~X ~A" c *pc-temp-string*))
+              )
+            )
+        (file-stream-seek ,fs -1 SCE_SEEK_CUR)
+        )
+    )
+  )
+
+(defmethod read-from-file pc-settings ((obj pc-settings) (filename string))
+  "read settings from a file"
+
+  (if (not filename)
+    (return #f))
+
+  (let ((file (new 'stack 'file-stream filename 'read)))
+    (when (not (file-stream-valid? file))
+      (return #f))
+
+    (let ((version PC_KERNEL_VERSION))
+      (with-settings-scope (file)
+        (case-str (file-stream-read-word file)
+          (("settings")
+            (set! version (the pckernel-version (file-stream-read-int file)))
+            (cond
+              ((and (= (-> version major) PC_KERNEL_VER_MAJOR)
+                    (= (-> version minor) PC_KERNEL_VER_MINOR))
+                ;; minor difference
+                )
+              (else
+                ;; major difference
+                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR (-> version major) (-> version minor))
+                (file-stream-close file)
+                (return #f)
+                )
+              )
+            (dosettings (file)
+              (case-str *pc-temp-string*
+                (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+                (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
+                )
+              )
+            )
+          )
+        )
+
+      )
+
+    (file-stream-close file)
+    )
+
+  (format 0 "pc settings file read: ~A~%" filename)
+
+  #t
+  )
+
+(defmethod write-to-file pc-settings ((obj pc-settings) (filename string))
+  "write settings to a file"
+
+  (if (not filename)
+    (return #f))
+
+  (let ((file (new 'stack 'file-stream filename 'write)))
+    (if (not (file-stream-valid? file))
+      (return #f))
+
+    (format file "(settings #x~X~%" (-> obj version))
+    (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
+    (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
+    (format file "  )~%")
+    (file-stream-close file)
+    )
+
+  (format 0 "pc settings file write: ~A~%" filename)
+
+  #t
+  )
+
+(defmethod commit-to-file pc-settings ((obj pc-settings))
+  "commits the current settings to the file"
+  ;; auto load settings if available
+
+  (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
+  (pc-mkdir-file-path *pc-temp-string-1*)
+  ;; symbol -> string in C++ nyi for jak2 symbols
+  ;; (write-to-file obj *pc-temp-string-1*)
+  (none))
+
+(defmethod load-settings pc-settings ((obj pc-settings))
+  "load"
+
+  (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
+  (if (pc-filepath-exists? *pc-temp-string-1*)
+    (begin
+      (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
+      (unless (read-from-file obj *pc-temp-string-1*)
+        (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
+        (reset obj)))
+    (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
+  0)
+
+(defmethod new pc-settings ((allocation symbol) (type-to-make type))
+  "make a new pc-settings"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (reset obj)
+    ;; auto load settings if available
+    ;; if saved settings are corrupted or not found, use defaults
+
+    (load-settings obj)
+
+    obj))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *pc-settings* (new 'global 'pc-settings))

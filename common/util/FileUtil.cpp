@@ -5,6 +5,7 @@
 
 #include "FileUtil.h"
 
+#include <algorithm>
 #include <cstdio> /* defines FILENAME_MAX */
 #include <cstdlib>
 #include <fstream>
@@ -338,6 +339,29 @@ std::string base_name_no_ext(const std::string& filename) {
   ;
 }
 
+std::string split_path_at(const fs::path& path, const std::vector<std::string>& folders) {
+  std::string split_str = "";
+  for (const auto& folder : folders) {
+#ifdef _WIN32
+    split_str += folder + "\\";
+#else
+    split_str += folder + "/";
+#endif
+  }
+  const auto& path_str = path.u8string();
+  return path_str.substr(path_str.find(split_str) + split_str.length());
+}
+
+std::string convert_to_unix_path_separators(const std::string& path) {
+#ifdef _WIN32
+  std::string copy = path;
+  std::replace(copy.begin(), copy.end(), '\\', '/');
+  return copy;
+#else
+  return path;
+#endif
+}
+
 void ISONameFromAnimationName(char* dst, const char* src) {
   // The Animation Name is a bunch of words separated by dashes
 
@@ -548,6 +572,16 @@ std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std
     }
   }
   return files;
+}
+
+std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
+  std::vector<fs::path> dirs = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_directory()) {
+      dirs.push_back(p.path());
+    }
+  }
+  return dirs;
 }
 
 }  // namespace file_util

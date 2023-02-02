@@ -7,3 +7,901 @@
 
 ;; DECOMP BEGINS
 
+(deftype dig-sinking-plat (rigid-body-platform)
+  ((anchor-point      vector      :inline :offset-assert 384)
+   (sync              sync-linear :inline :offset-assert 400)
+   (last-ridden-time  time-frame          :offset-assert 416)
+   (prev-pos          float               :offset-assert 424)
+   (path-pos          float               :offset-assert 428)
+   (surface-height    float               :offset-assert 432)
+   (once              basic               :offset-assert 436)
+   (bubbling-sound-id uint32              :offset-assert 440)
+   )
+  :heap-base #x140
+  :method-count-assert 57
+  :size-assert         #x1bc
+  :flag-assert         #x39014001bc
+  )
+
+
+(defskelgroup skel-dig-sinking-plat dig-sinking-plat dig-sinking-plat-lod0-jg dig-sinking-plat-idle-ja
+              ((dig-sinking-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 0 5.25)
+              )
+
+(defmethod rigid-body-object-method-29 dig-sinking-plat ((obj dig-sinking-plat) (arg0 float))
+  ((the-as (function rigid-body-platform float none) (find-parent-method dig-sinking-plat 29)) obj arg0)
+  (rigid-body-platform-method-56 obj (-> obj anchor-point))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-32 dig-sinking-plat ((obj dig-sinking-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -8192.0 0.0 21504.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> obj root-override-2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(define *dig-sinking-platform-constants* (new 'static 'rigid-body-object-constants
+                                           :info (new 'static 'rigid-body-info
+                                             :mass 4.0
+                                             :inv-mass 0.25
+                                             :linear-damping 0.9
+                                             :angular-damping 0.48
+                                             :friction-factor 0.1
+                                             :cm-offset-joint (new 'static 'vector :y -8192.0 :w 1.0)
+                                             :inertial-tensor-box (new 'static 'array meters 3 (meters 6) (meters 4) (meters 6))
+                                             )
+                                           :max-time-step 0.02
+                                           :gravity (meters 80)
+                                           :idle-distance (meters 200)
+                                           :attack-force-scale 2.0
+                                           :name '*dig-sinking-platform-constants*
+                                           )
+        )
+
+(defmethod rigid-body-platform-method-53 dig-sinking-plat ((obj dig-sinking-plat) (arg0 vector))
+  (-> obj surface-height)
+  )
+
+(defmethod rigid-body-object-method-37 dig-sinking-plat ((obj dig-sinking-plat))
+  (with-pp
+    (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
+      (set! (-> obj prev-pos) (-> obj path-pos))
+      (set! (-> obj path-pos) (get-norm! (-> obj sync) 0))
+      (when (< (-> obj path-pos) (-> obj prev-pos))
+        (let ((a0-2 (-> obj skel root-channel 0)))
+          (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+          (set! (-> a0-2 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+                )
+          (set! (-> a0-2 param 1) 1.0)
+          (set! (-> a0-2 frame-num) 0.0)
+          (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-seek!)
+          )
+        (let ((a0-3 (-> obj skel root-channel 0)))
+          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group frames num-frames) -1)))
+          (set! (-> a0-3 param 1) 1.0)
+          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
+      (let ((f30-0 (/ 300.0 (the float (-> obj sync period)))))
+        (let* ((f0-12 (/ 1.0 (- 1.0 (* 2.0 f30-0))))
+               (f0-13 (* (fmax 0.0 (- (-> obj path-pos) f30-0)) f0-12))
+               )
+          (get-point-at-percent-along-path! (-> obj path) (-> obj anchor-point) f0-13 'interp)
+          )
+        (cond
+          ((< (-> obj path-pos) f30-0)
+           (set! (-> obj float-height-offset) (* -8192.0 (/ (- f30-0 (-> obj path-pos)) f30-0)))
+           )
+          ((< (- 1.0 (* 2.0 f30-0)) (-> obj path-pos))
+           (cond
+             ((< (- 1.0 f30-0) (-> obj path-pos))
+              (set! (-> obj float-height-offset) (* -8192.0 (/ (- (-> obj path-pos) (- 1.0 f30-0)) f30-0)))
+              (let ((a0-5 (-> obj skel root-channel 0)))
+                (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group frames num-frames) -1)))
+                (set! (-> a0-5 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+             (else
+               (when (-> obj once)
+                 (let ((a0-6 (-> obj skel root-channel 0)))
+                   (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+                   (set! (-> a0-6 param 0)
+                         (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+                         )
+                   (set! (-> a0-6 param 1) 1.0)
+                   (set! (-> a0-6 frame-num) 0.0)
+                   (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-seek!)
+                   )
+                 (set! (-> obj once) #f)
+                 )
+               (let ((a0-7 (-> obj skel root-channel 0)))
+                 (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group frames num-frames) -1)))
+                 (set! (-> a0-7 param 1) 1.0)
+                 (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+                 )
+               )
+             )
+           )
+          (else
+            (set! (-> obj float-height-offset) 0.0)
+            )
+          )
+        )
+      )
+    (cond
+      ((>= (- (-> pp clock frame-counter) (-> obj last-ridden-time)) (seconds 0.5))
+       (when (nonzero? (-> obj bubbling-sound-id))
+         (let ((v1-84 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+           (set! (-> v1-84 command) (sound-command set-param))
+           (set! (-> v1-84 id) (the-as sound-id (-> obj bubbling-sound-id)))
+           (set! (-> v1-84 params volume) -4)
+           (set! (-> v1-84 auto-time) 120)
+           (set! (-> v1-84 auto-from) 2)
+           (set! (-> v1-84 params mask) (the-as uint 17))
+           (-> v1-84 id)
+           )
+         (set! (-> obj bubbling-sound-id) (the-as uint 0))
+         0
+         )
+       )
+      (else
+        (if (zero? (-> obj bubbling-sound-id))
+            (set! (-> obj bubbling-sound-id) (the-as uint (sound-play "lava-plat-sink")))
+            )
+        )
+      )
+    ((method-of-type rigid-body-platform rigid-body-object-method-37) obj)
+    (none)
+    )
+  )
+
+(defmethod rigid-body-platform-method-56 dig-sinking-plat ((obj dig-sinking-plat) (arg0 vector))
+  (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
+    (let ((v1-4 (new 'stack-no-clear 'vector)))
+      (cond
+        ((< (-> obj prev-pos) (-> obj path-pos))
+         (vector-! v1-4 arg0 (-> obj rbody state position))
+         (set! (-> v1-4 y) 0.0)
+         (let* ((f0-2 (vector-length v1-4))
+                (f1-2 (* 1000.0 (fmax 0.0 (fmin 4096.0 (+ -4096.0 f0-2)))))
+                )
+           (when (< 0.0 f1-2)
+             (vector-float*! v1-4 v1-4 (/ f1-2 f0-2))
+             (rigid-body-method-20 (-> obj rbody state) v1-4)
+             )
+           )
+         )
+        (else
+          (let ((v1-5 (new 'stack-no-clear 'vector)))
+            (set! (-> v1-5 quad) (-> arg0 quad))
+            (set! (-> v1-5 y) (+ -8192.0 (-> v1-5 y)))
+            (let ((a0-16 (-> obj rbody))
+                  (a2-2 (-> obj root-override-2 quat))
+                  )
+              (rigid-body-method-26 (-> a0-16 state) v1-5 a2-2)
+              )
+            )
+          (set! (-> obj once) (the-as basic #t))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate idle (dig-sinking-plat)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('ridden)
+       (set! (-> self last-ridden-time) (-> self clock frame-counter))
+       )
+      )
+    (the-as object (rigid-body-object-event-handler proc arg1 event-type event))
+    )
+  )
+
+(defstate active (dig-sinking-plat)
+  :virtual #t
+  :event (-> (method-of-type dig-sinking-plat idle) event)
+  )
+
+(defmethod rigid-body-object-method-33 dig-sinking-plat ((obj dig-sinking-plat))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-sinking-plat" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (rigid-body-object-method-31 obj *dig-sinking-platform-constants*)
+  (set! (-> obj anchor-point quad) (-> obj root-override-2 trans quad))
+  (set! (-> obj surface-height) (+ -4096.0 (-> obj root-override-2 trans y)))
+  (let ((s5-1 (-> obj info-override control-point-count)))
+    (dotimes (s4-1 s5-1)
+      (let ((s3-0 (-> obj control-point-array data s4-1)))
+        (let ((f30-0 (* 65536.0 (/ (the float s4-1) (the float s5-1)))))
+          (set! (-> s3-0 local-pos x) (* 16384.0 (sin f30-0)))
+          (set! (-> s3-0 local-pos y) -8192.0)
+          (set! (-> s3-0 local-pos z) (* 16384.0 (cos f30-0)))
+          )
+        (set! (-> s3-0 local-pos w) 1.0)
+        )
+      )
+    )
+  (let ((s5-2 (-> obj entity)))
+    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 s5-2 #f))
+    (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+    (set! (-> obj fact)
+          (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+          )
+    (let ((a1-5 (new 'stack-no-clear 'sync-info-params)))
+      (let ((v1-25 0))
+        (if #f
+            (set! v1-25 (logior v1-25 1))
+            )
+        (set! (-> a1-5 sync-type) 'sync-linear)
+        (set! (-> a1-5 sync-flags) (the-as sync-flags v1-25))
+        )
+      (set! (-> a1-5 entity) s5-2)
+      (set! (-> a1-5 period) (the-as uint 3000))
+      (set! (-> a1-5 percent) 0.0)
+      (initialize! (-> obj sync) a1-5)
+      )
+    )
+  (set! (-> obj bubbling-sound-id) (the-as uint 0))
+  (set! (-> obj once) (the-as basic #t))
+  0
+  (none)
+  )
+
+(defpartgroup group-dig-log
+  :id 1145
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 4956)
+    (sp-item 4957)
+    (sp-item 4958 :binding 4955)
+    (sp-item 4955 :flags (bit1 start-dead))
+    (sp-item 4955 :flags (bit1 start-dead))
+    (sp-item 4955 :flags (bit1 start-dead))
+    (sp-item 4955 :flags (bit1 start-dead))
+    (sp-item 4959)
+    )
+  )
+
+(defpart 4956
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-rnd-flt spt-num 3.0 2.0 1.0)
+    (sp-flt spt-x (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 8.0 8.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.016666668) (meters 0.016666668) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.006666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.053333335)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(defpart 4957
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #xade))
+    (sp-rnd-flt spt-num 1.0 1.0 1.0)
+    (sp-flt spt-x (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 180.0 32.0 1.0)
+    (sp-rnd-flt spt-g 150.0 32.0 1.0)
+    (sp-rnd-flt spt-b 130.0 32.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.02) (meters 0.02) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.026666667) (meters 0.026666667) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -0.35555556)
+    (sp-flt spt-accel-y -5.4613333)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(defpart 4958
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #xade))
+    (sp-rnd-flt spt-num 0.05 0.05 1.0)
+    (sp-rnd-flt spt-x (meters -10) (meters 12) 1.0)
+    (sp-flt spt-y (meters 38))
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 180.0 32.0 1.0)
+    (sp-rnd-flt spt-g 150.0 32.0 1.0)
+    (sp-rnd-flt spt-b 130.0 32.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.00066666666) (meters 0.0013333333) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -17.749332)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-flt spt-rotate-y (degrees 90.0))
+    )
+  )
+
+(defpart 4959
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-rnd-flt spt-num 0.2 0.2 1.0)
+    (sp-rnd-flt spt-x (meters -8) (meters 8) 1.0)
+    (sp-flt spt-y (meters 38))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 180.0 32.0 1.0)
+    (sp-rnd-flt spt-g 150.0 32.0 1.0)
+    (sp-rnd-flt spt-b 130.0 32.0 1.0)
+    (sp-rnd-flt spt-a 8.0 8.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.033333335))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.04)
+    (sp-flt spt-accel-y -5.4613333)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 1200)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-flt spt-rotate-y (degrees 90.0))
+    )
+  )
+
+(defpart 4955
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 2.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 180.0 32.0 1.0)
+    (sp-rnd-flt spt-g 150.0 32.0 1.0)
+    (sp-rnd-flt spt-b 130.0 32.0 1.0)
+    (sp-rnd-flt spt-a 8.0 4.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.01))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.04)
+    (sp-int spt-timer 1200)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    )
+  )
+
+(deftype dig-log-button-info (basic)
+  ((cam-ret-mode symbol         :offset-assert   4)
+   (cam-ret-dir  vector :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(define *dig-log-button-infos* (new 'static 'boxed-array :type dig-log-button-info
+                                 (new 'static 'dig-log-button-info
+                                   :cam-ret-mode 'instant
+                                   :cam-ret-dir (new 'static 'vector :x 0.1464 :z -0.9892 :w 1.0)
+                                   )
+                                 (new 'static 'dig-log-button-info
+                                   :cam-ret-mode 'normal
+                                   :cam-ret-dir (new 'static 'vector :x 0.9805 :z 0.1963 :w 1.0)
+                                   )
+                                 (new 'static 'dig-log-button-info
+                                   :cam-ret-mode 'normal
+                                   :cam-ret-dir (new 'static 'vector :x 0.8602 :z 0.5099 :w 1.0)
+                                   )
+                                 (new 'static 'dig-log-button-info
+                                   :cam-ret-mode 'instant
+                                   :cam-ret-dir (new 'static 'vector :x -0.9946 :z 0.1035 :w 1.0)
+                                   )
+                                 (new 'static 'dig-log-button-info
+                                   :cam-ret-mode 'normal
+                                   :cam-ret-dir (new 'static 'vector :x 0.9966 :z -0.0813 :w 1.0)
+                                   )
+                                 )
+        )
+
+(define *dig-log-heights* (new 'static 'inline-array vector 2
+                            (new 'static 'vector :x 56320.0 :y 32768.0 :z 23552.0 :w 14336.0)
+                            (new 'static 'vector :x 5120.0 :y -4096.0)
+                            )
+        )
+
+(deftype dig-log (process-drawable)
+  ((pressed-count    int8     :offset-assert 200)
+   (total-buttons    int8     :offset-assert 201)
+   (last-button-id   int8     :offset-assert 202)
+   (base-y           float    :offset-assert 204)
+   (hud-handle       handle   :offset-assert 208)
+   (pad-ihj1bn234i1b int32  2 :offset-assert 216)
+   )
+  :heap-base #x60
+  :method-count-assert 23
+  :size-assert         #xe0
+  :flag-assert         #x17006000e0
+  (:methods
+    (idle () _type_ :state 20)
+    (moving () _type_ :state 21)
+    (dig-log-method-22 (_type_ symbol) symbol 22)
+    )
+  )
+
+
+(defskelgroup skel-dig-log dig-log dig-log-lod0-jg dig-log-idle-ja
+              ((dig-log-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 7.25 0 11)
+              :origin-joint-index 3
+              )
+
+(defbehavior dig-log-event-handler dig-log ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit)
+     (set! (-> self last-button-id) (the-as int (/ (the-as int (-> arg3 param 0)) 8)))
+     (set! (-> self pressed-count) (min (+ (-> self pressed-count) 1) (-> self total-buttons)))
+     (set! (-> *game-info* counter) (the float (- (-> self total-buttons) (-> self pressed-count))))
+     (cond
+       ((= (-> self pressed-count) (-> self total-buttons))
+        (dig-log-method-22 self #f)
+        (task-node-close! (game-task-node dig-find-totem-raise-log))
+        )
+       (else
+         (dig-log-method-22 self #t)
+         )
+       )
+     (go-virtual moving)
+     )
+    (('hud-dig-button)
+     (dig-log-method-22 self (the-as symbol (-> arg3 param 0)))
+     )
+    )
+  )
+
+(defmethod run-logic? dig-log ((obj dig-log))
+  #t
+  )
+
+;; WARN: Return type mismatch int vs symbol.
+;; WARN: disable def twice: 16. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod dig-log-method-22 dig-log ((obj dig-log) (arg0 symbol))
+  (the-as
+    symbol
+    (cond
+      (arg0
+        (when (!= (-> obj pressed-count) (-> obj total-buttons))
+          (when (not (handle->process (-> obj hud-handle)))
+            (let ((v0-0 (ppointer->handle (process-spawn hud-dig-button :init hud-init-by-other :to obj))))
+              (set! (-> obj hud-handle) (the-as handle v0-0))
+              v0-0
+              )
+            )
+          )
+        )
+      (else
+        (send-event (handle->process (-> obj hud-handle)) 'hide-and-die)
+        (set! (-> obj hud-handle) (the-as handle #f))
+        (the-as int #f)
+        )
+      )
+    )
+  )
+
+(defstate idle (dig-log)
+  :virtual #t
+  :event dig-log-event-handler
+  :code (the-as (function none :behavior dig-log) sleep-code)
+  )
+
+(defstate moving (dig-log)
+  :virtual #t
+  :enter (behavior ()
+    (set-setting! 'ignore-target #t 0 0)
+    (none)
+    )
+  :exit (behavior ()
+    (remove-setting! 'ignore-target)
+    (none)
+    )
+  :code (behavior ()
+    (local-vars (v1-12 object))
+    (let ((gp-0 (-> *dig-log-button-infos* (-> self last-button-id))))
+      (let* ((t0-0 (if (= (-> self pressed-count) (-> self total-buttons))
+                       "diglog5"
+                       "diglog1"
+                       )
+                   )
+             (s5-0 (add-process *gui-control* self (gui-channel jak) (gui-action queue) t0-0 -99.0 0))
+             )
+        (set! (-> self state-time) (-> self clock frame-counter))
+        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.15))
+          (suspend)
+          )
+        (until v1-12
+          (suspend)
+          (set! v1-12
+                (and *target* (not (logtest? (-> *target* focus-status) (focus-status in-air))) (process-grab? *target* #f))
+                )
+          )
+        (while (!= (get-status *gui-control* s5-0) (gui-status ready))
+          (suspend)
+          )
+        (set! (-> self state-time) (-> self clock frame-counter))
+        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.2))
+          (suspend)
+          )
+        (set-setting! 'entity-name "camera-249" 0 0)
+        (set-action!
+          *gui-control*
+          (gui-action play)
+          s5-0
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+        (suspend)
+        )
+      (let ((f30-0
+              (+ (-> (&-> *dig-log-heights* 0 data (- (-> self total-buttons) (-> self pressed-count))) 0) (-> self base-y))
+              )
+            (s5-1 (-> self clock frame-counter))
+            )
+        (until (>= (-> self root trans y) f30-0)
+          (set! (-> self root trans y)
+                (seek-with-smooth (-> self root trans y) f30-0 (* 4096.0 (-> self clock seconds-per-frame)) 0.25 40.96)
+                )
+          (when (>= (-> self clock frame-counter) s5-1)
+            (activate!
+              *camera-smush-control*
+              (rand-vu-float-range 614.4 1433.6)
+              45
+              75
+              1.0
+              0.95
+              (-> *display* camera-clock)
+              )
+            (set! s5-1 (+ (-> self clock frame-counter) (rand-vu-int-range (seconds 0.05) (seconds 0.15))))
+            )
+          (let ((a1-10 (new 'stack-no-clear 'vector)))
+            (set! (-> a1-10 quad) (-> self root trans quad))
+            (set! (-> a1-10 y) (+ 59592.703 (-> self base-y)))
+            (spawn (-> self part) a1-10)
+            )
+          (suspend)
+          )
+        )
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+        (suspend)
+        )
+      (if (= (-> gp-0 cam-ret-mode) 'instant)
+          (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
+          )
+      (set-setting! 'string-startup-vector 'abs (-> gp-0 cam-ret-dir) 0)
+      (remove-setting! 'entity-name)
+      (when (!= (-> gp-0 cam-ret-mode) 'instant)
+        (set! (-> self state-time) (-> self clock frame-counter))
+        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+          (suspend)
+          )
+        )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+      (suspend)
+      )
+    (remove-setting! 'string-startup-vector)
+    (until (process-release? *target*)
+      (suspend)
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 4))
+      (suspend)
+      )
+    (go-virtual idle)
+    (none)
+    )
+  :post (the-as (function none :behavior dig-log) transform-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! dig-log ((obj dig-log) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj hud-handle) (the-as handle #f))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 29696.0 0.0 45056.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj base-y) (-> obj root trans y))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-log" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj pressed-count) 0)
+  (set! (-> obj total-buttons) 0)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-19 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+    (when (and v1-19 (nonzero? (-> sv-16 elt-count)))
+      (let ((s5-2 (-> v1-19 0)))
+        (countdown (s4-2 (-> s5-2 length))
+          (let ((s3-1 (-> s5-2 data s4-2 actor)))
+            (when s3-1
+              (add-icon! *minimap* obj (the-as uint 16) (the-as int #f) (the-as vector s3-1) 0)
+              (+! (-> obj total-buttons) 1)
+              (if (logtest? (-> s3-1 extra perm status) (entity-perm-status subtask-complete))
+                  (+! (-> obj pressed-count) 1)
+                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  (if (task-node-closed? (game-task-node dig-find-totem-raise-log))
+      (set! (-> obj pressed-count) (-> obj total-buttons))
+      )
+  (set! (-> obj root trans y)
+        (+ (-> (&-> *dig-log-heights* 0 data (- (-> obj total-buttons) (-> obj pressed-count))) 0) (-> obj base-y))
+        )
+  (transform-post)
+  (when (!= (-> obj pressed-count) (-> obj total-buttons))
+    (set! (-> *game-info* counter) (the float (- (-> obj total-buttons) (-> obj pressed-count))))
+    (if (string= (-> *game-info* last-continue name) "dig3b-back-room")
+        (dig-log-method-22 obj #t)
+        )
+    )
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1145) obj))
+  (set! (-> obj event-hook) dig-log-event-handler)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype dig-button (process-drawable)
+  ((down-y float  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xcc
+  :flag-assert         #x17005000cc
+  (:methods
+    (idle-up () _type_ :state 20)
+    (going-down () _type_ :state 21)
+    (idle-down () _type_ :state 22)
+    )
+  )
+
+
+(defskelgroup skel-dig-button dig-button dig-button-lod0-jg dig-button-idle-ja
+              ((dig-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+(defmethod run-logic? dig-button ((obj dig-button))
+  #t
+  )
+
+(defstate idle-up (dig-button)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
+           (go-virtual going-down)
+           #f
+           )
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (transform-post)
+    (suspend)
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defstate going-down (dig-button)
+  :virtual #t
+  :code (behavior ()
+    (sound-play "dig-button")
+    (until (= (-> self root trans y) (-> self down-y))
+      (seek! (-> self root trans y) (-> self down-y) (* 16384.0 (-> self clock seconds-per-frame)))
+      (logior! (-> self skel status) (joint-control-status sync-math))
+      (transform-post)
+      (logclear! (-> self skel status) (joint-control-status sync-math))
+      (suspend)
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (let ((gp-1 (res-lump-struct (-> self entity) 'on-activate structure)))
+      (if gp-1
+          (eval!
+            (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
+            (the-as pair gp-1)
+            )
+          )
+      )
+    (go-virtual idle-down)
+    (none)
+    )
+  )
+
+(defstate idle-down (dig-button)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self root trans y) (-> self down-y))
+    (transform-post)
+    (suspend)
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! dig-button ((obj dig-button) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-button" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj down-y) (+ -2048.0 (-> obj root trans y)))
+  (if (task-node-closed? (game-task-node dig-find-totem-raise-log))
+      (process-entity-status! obj (entity-perm-status subtask-complete) #t)
+      )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object obj idle-down))
+      (go (method-of-object obj idle-up))
+      )
+  (none)
+  )
+
+(defmethod draw hud-dig-button ((obj hud-dig-button))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 487.0 (* 130.0 (-> obj offset))))
+    210
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 20)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-dig-button ((obj hud-dig-button))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-dig-button ((obj hud-dig-button))
+  (set! (-> obj level) (level-get *level* 'dig3a))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd21)))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (set! (-> obj sprites 0 scale-x) 1.0)
+  (set! (-> obj sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(defun dig3-login ()
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  0
+  (none)
+  )
+
+(defun dig3-activate ()
+  (setup-user-array (-> *part-id-table* 1309) "grenadier-grenade-part")
+  (setup-user-array (-> *part-id-table* 638) "grenadier-grenade-part")
+  (setup-user-array (-> *part-id-table* 639) "grenadier-grenade-part")
+  0
+  (none)
+  )
+
+(defun dig3-deactivate ()
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )

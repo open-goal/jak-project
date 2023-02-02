@@ -140,6 +140,7 @@ const std::unordered_map<
 
         // COMPILER CONTROL
         {"repl-help", &Compiler::compile_repl_help},
+        {"repl-keybinds", &Compiler::compile_repl_keybinds},
         {":clear", &Compiler::compile_repl_clear_screen},
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},

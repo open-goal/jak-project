@@ -6,9 +6,17 @@
 #include <sstream>
 #include <string>
 
+#include "common/log/log.h"
+
+#include "game/runtime.h"
+
 int gDiscordRpcEnabled;
 int64_t gStartTime;
-static const char* APPLICATION_ID = "938876425585434654";
+
+static const std::map<GameVersion, std::string> rpc_client_ids = {
+    {GameVersion::Jak1, "938876425585434654"},
+    {GameVersion::Jak2, "1060390251694149703"}};
+
 static const std::map<std::string, std::string> jak1_level_names = {
     {"intro", "Intro"},
     {"title", "Title screen"},
@@ -29,12 +37,34 @@ static const std::map<std::string, std::string> jak1_level_names = {
     {"lavatube", "Lava Tube"},
     {"citadel", "Gol and Maia's Citadel"},
     {"finalboss", "Final Boss"}};
+
 static const std::map<std::string, std::string> jak1_level_name_remap = {{"jungleb", "jungle"},
                                                                          {"sunkenb", "sunken"},
                                                                          {"robocave", "maincave"},
                                                                          {"darkcave", "maincave"}};
 
+void handleDiscordReady(const DiscordUser* user) {
+  lg::info("Discord: connected to user {}#{} - {}", user->username, user->discriminator,
+           user->userId);
+}
+
+void handleDiscordDisconnected(int errcode, const char* message) {
+  lg::info("Discord: disconnected ({}: {})", errcode, message);
+}
+
+void handleDiscordError(int errcode, const char* message) {
+  lg::info("Discord: error ({}: {})", errcode, message);
+}
+
+void handleDiscordJoin(const char* /*secret*/) {}
+void handleDiscordJoinRequest(const DiscordUser* /*request*/) {}
+void handleDiscordSpectate(const char* /*secret*/) {}
+
 void init_discord_rpc() {
+  if (g_game_version != GameVersion::Jak1 && g_game_version != GameVersion::Jak2) {
+    lg::error("Game version unsupported for Discord RPC - {}", fmt::underlying(g_game_version));
+    return;
+  }
   gDiscordRpcEnabled = 1;
   DiscordEventHandlers handlers;
   memset(&handlers, 0, sizeof(handlers));
@@ -44,7 +74,7 @@ void init_discord_rpc() {
   handlers.joinGame = handleDiscordJoin;
   handlers.joinRequest = handleDiscordJoinRequest;
   handlers.spectateGame = handleDiscordSpectate;
-  Discord_Initialize(APPLICATION_ID, &handlers, 1, NULL);
+  Discord_Initialize(rpc_client_ids.at(g_game_version).c_str(), &handlers, 1, NULL);
 }
 
 void set_discord_rpc(int state) {
@@ -68,14 +98,15 @@ const char* jak1_get_full_level_name(const char* level_name) {
 const char* time_of_day_str(float time) {
   int hour = static_cast<int>(time);
 
-  if (hour >= 0 && hour <= 9)
+  if (hour >= 0 && hour <= 9) {
     return "green-sun";
-  else if (hour < 22)
+  } else if (hour < 22) {
     return "day";
-  else if (hour < 25)
+  } else if (hour < 25) {
     return "evening";
-  else
+  } else {
     return "";
+  }
 }
 
 // convert time of day float to a 24-hour hh:mm format string
@@ -95,20 +126,3 @@ int indoors(const char* level_name) {
          !strcmp(level_name, "robocave") || !strcmp(level_name, "darkcave") ||
          !strcmp(level_name, "lavatube") || !strcmp(level_name, "citadel");
 }
-
-void handleDiscordReady(const DiscordUser* user) {
-  printf("\nDiscord: connected to user %s#%s - %s\n", user->username, user->discriminator,
-         user->userId);
-}
-
-void handleDiscordDisconnected(int errcode, const char* message) {
-  printf("\nDiscord: disconnected (%d: %s)\n", errcode, message);
-}
-
-void handleDiscordError(int errcode, const char* message) {
-  printf("\nDiscord: error (%d: %s)\n", errcode, message);
-}
-
-void handleDiscordJoin(const char* /*secret*/) {}
-void handleDiscordJoinRequest(const DiscordUser* /*request*/) {}
-void handleDiscordSpectate(const char* /*secret*/) {}

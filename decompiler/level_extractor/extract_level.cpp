@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
@@ -21,7 +22,8 @@ namespace decompiler {
 /*!
  * Look through files in a DGO and find the bsp-header file (the level)
  */
-std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records) {
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records,
+                                             const std::string& dgo_name) {
   std::optional<ObjectFileRecord> result;
   bool found = false;
   for (auto& file : records) {
@@ -29,6 +31,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
       ASSERT(!found);
       found = true;
       result = file;
+    }
+  }
+
+  if (!result) {
+    if (str_util::ends_with(dgo_name, ".DGO") || str_util::ends_with(dgo_name, ".CGO")) {
+      auto expected_name = dgo_name.substr(0, dgo_name.length() - 4);
+      for (auto& c : expected_name) {
+        c = tolower(c);
+      }
+      if (!records.empty() && expected_name == records.back().name) {
+        return records.back();
+      }
     }
   }
   return result;
@@ -105,7 +119,7 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   for (const auto& file : files) {
     if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
       const auto& ag_file = db.lookup_record(file);
-      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false);
+      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
     }
   }
 }
@@ -116,7 +130,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
                                                               const DecompileHacks& hacks,
                                                               bool extract_collision,
                                                               tfrag3::Level& level_data) {
-  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
+  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
   if (!bsp_rec) {
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
@@ -166,7 +180,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, level_data,
-                    false);
+                    false, level_name);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);
@@ -235,8 +249,9 @@ void extract_common(const ObjectFileDB& db,
       compressed.data(), compressed.size());
 
   if (dump_levels) {
-    save_level_foreground_as_gltf(tfrag_level,
-                                  file_util::get_jak_project_dir() / "debug_out" / "common.glb");
+    auto file_path = file_util::get_jak_project_dir() / "glb_out" / "common.glb";
+    file_util::create_dir_if_needed_for_file(file_path);
+    save_level_foreground_as_gltf(tfrag_level, file_path);
   }
 }
 
@@ -272,12 +287,14 @@ void extract_from_level(const ObjectFileDB& db,
       compressed.data(), compressed.size());
 
   if (dump_level) {
-    save_level_background_as_gltf(level_data,
-                                  file_util::get_jak_project_dir() / "debug_out" /
-                                      fmt::format("{}_background.glb", level_data.level_name));
-    save_level_foreground_as_gltf(level_data,
-                                  file_util::get_jak_project_dir() / "debug_out" /
-                                      fmt::format("{}_foreground.glb", level_data.level_name));
+    auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
+                          fmt::format("{}_background.glb", level_data.level_name);
+    file_util::create_dir_if_needed_for_file(back_file_path);
+    save_level_background_as_gltf(level_data, back_file_path);
+    auto fore_file_path = file_util::get_jak_project_dir() / "glb_out" /
+                          fmt::format("{}_foreground.glb", level_data.level_name);
+    file_util::create_dir_if_needed_for_file(fore_file_path);
+    save_level_foreground_as_gltf(level_data, fore_file_path);
   }
 }
 
