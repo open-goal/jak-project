@@ -516,7 +516,7 @@ int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
 }
 
 MethodInfo TypeSystem::override_method(Type* type,
-                                       const std::string& type_name,
+                                       const std::string& /*type_name*/,
                                        const int method_id,
                                        const std::optional<std::string>& docstring) {
   // Lookup the method from the parent type
