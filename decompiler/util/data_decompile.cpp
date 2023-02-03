@@ -191,28 +191,34 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const LinkedObjectFile* file,
                                 GameVersion version,
                                 bool in_static_pair) {
-  if (type == TypeSpec("string")) {
-    return decompile_string_at_label(label, words);
-  }
-
-  if (ts.tc(TypeSpec("function"), type)) {
-    return decompile_function_at_label(label, file, in_static_pair);
-  }
-
-  if (ts.tc(TypeSpec("array"), type)) {
-    std::optional<TypeSpec> content_type_spec;
-    if (type.has_single_arg()) {
-      content_type_spec = type.get_single_arg();
+  try {
+    if (type == TypeSpec("string")) {
+      return decompile_string_at_label(label, words);
     }
-    return decompile_boxed_array(type, label, labels, words, ts, file, content_type_spec, version);
-  }
 
-  if (ts.tc(TypeSpec("structure"), type)) {
-    return decompile_structure(type, label, labels, words, ts, file, true, version);
-  }
+    if (ts.tc(TypeSpec("function"), type)) {
+      return decompile_function_at_label(label, file, in_static_pair);
+    }
 
-  if (type == TypeSpec("pair")) {
-    return decompile_pair(label, labels, words, ts, true, file, version);
+    if (ts.tc(TypeSpec("array"), type)) {
+      std::optional<TypeSpec> content_type_spec;
+      if (type.has_single_arg()) {
+        content_type_spec = type.get_single_arg();
+      }
+      return decompile_boxed_array(type, label, labels, words, ts, file, content_type_spec,
+                                   version);
+    }
+
+    if (ts.tc(TypeSpec("structure"), type)) {
+      return decompile_structure(type, label, labels, words, ts, file, true, version);
+    }
+
+    if (type == TypeSpec("pair")) {
+      return decompile_pair(label, labels, words, ts, true, file, version);
+    }
+  } catch (std::exception& ex) {
+    throw std::runtime_error(
+        fmt::format("Unable to 'decompile_at_label' {}, Reason: {}", label.name, ex.what()));
   }
 
   throw std::runtime_error(fmt::format(
