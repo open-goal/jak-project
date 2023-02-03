@@ -15,6 +15,8 @@
 #include "common/util/unicode_util.h"
 #include "common/versions.h"
 
+#include "third-party/CLI11.hpp"
+
 #ifdef _WIN32
 extern "C" {
 __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
@@ -46,45 +48,46 @@ void setup_logging(bool verbose) {
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
-  // TODO - replace with CLI11 and just propagate args through
-  // - https://github.com/CLIUtils/CLI11/issues/744
+  // CLI flags
+  bool verbose_logging = false;
+  bool disable_avx2 = false;
+  fs::path project_path_override;
+  std::vector<std::string> game_args;
+  CLI::App app{"OpenGOAL Game Runtime"};
+  app.add_flag("-v,--verbose", verbose_logging, "Enable verbose logging on stdout");
+  app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
+  app.add_option("--proj-path", project_path_override,
+                 "Specify the location of the 'data/' folder");
+  // TODO - document the rest and add descriptions
+  app.footer(
+      "Game Args (passed through after '--'):\n  -boot\n  -debug\n  -nodisplay\n  -vm\n  -novm\n  "
+      "-jak2");
+  app.add_option("Game Args", game_args,
+                 "Remaining arguments (after '--') that are passed-through to the game itself");
+  app.allow_extras();
+  CLI11_PARSE(app, argc, argv);
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
-    printf("Your CPU does not support AVX, which is required for OpenGOAL.\n");
+    lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
-  }
-
-  // parse arguments
-  bool verbose = false;
-  bool disable_avx2 = false;
-  std::optional<fs::path> project_path_override = std::nullopt;
-  for (int i = 1; i < argc; i++) {
-    if (std::string("-v") == argv[i]) {
-      verbose = true;
-      break;
-    }
-
-    if (std::string("-no-avx2") == argv[i]) {
-      disable_avx2 = true;
-    }
-
-    if (std::string("-proj-path") == argv[i] && i + 1 < argc) {
-      project_path_override = std::make_optional(fs::path(argv[i + 1]));
-    }
   }
 
   // set up file paths for resources. This is the full repository when developing, and the data
   // directory (a subset of the full repo) in release versions
-  if (!file_util::setup_project_path(project_path_override)) {
-    return 1;
+  if (project_path_override.empty()) {
+    if (!file_util::setup_project_path({})) {
+      return 1;
+    } else if (!file_util::setup_project_path(project_path_override)) {
+      return 1;
+    }
   }
 
   if (disable_avx2) {
     // for debugging the non-avx2 code paths, there's a flag to manually disable.
-    printf("Note: AVX2 code has been manually disabled.\n");
+    lg::info("Note: AVX2 code has been manually disabled.");
     get_cpu_info().has_avx2 = false;
   }
 
@@ -96,33 +99,34 @@ int main(int argc, char** argv) {
 #endif
 
   if (get_cpu_info().has_avx2) {
-    printf("AVX2 mode enabled\n");
+    lg::info("AVX2 mode enabled");
   } else {
-    printf("AVX2 mode disabled\n");
+    lg::info("AVX2 mode disabled");
   }
 
-  setup_logging(verbose);
+  setup_logging(verbose_logging);
 
   bool force_debug_next_time = false;
+  std::vector<char*> arg_ptrs;
+  for (auto& str : game_args) {
+    arg_ptrs.push_back(str.data());
+  }
   while (true) {
-    std::vector<std::string> args;
-    for (int i = 0; i < argc; i++) {
-      args.push_back(argv[i]);
-    }
     if (force_debug_next_time) {
-      args.push_back("-boot");
-      args.push_back("-debug");
+      // NOTE - I presume the game doesn't care if there are duplicates?
+      game_args.push_back("-boot");
+      game_args.push_back("-debug");
       force_debug_next_time = false;
-    }
-    std::vector<char*> ptrs;
-    for (auto& str : args) {
-      ptrs.push_back(str.data());
+      arg_ptrs.clear();
+      for (auto& str : game_args) {
+        arg_ptrs.push_back(str.data());
+      }
     }
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
     try {
-      auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
+      auto exit_status = exec_runtime(arg_ptrs.size(), arg_ptrs.data());
       switch (exit_status) {
         case RuntimeExitStatus::EXIT:
           return 0;
