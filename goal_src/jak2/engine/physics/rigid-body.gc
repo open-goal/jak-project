@@ -898,7 +898,7 @@
 (defmethod rigid-body-object-method-29 rigid-body-object ((obj rigid-body-object) (arg0 float))
   (let ((a1-1 (new 'stack-no-clear 'vector)))
     (vector-reset! a1-1)
-    (set! (-> a1-1 y) (* -1.0 (-> obj info gravity) (-> obj rbody state info mass)))
+    (set! (-> a1-1 y) (* -1.0 (-> obj info extra gravity) (-> obj rbody state info mass)))
     (rigid-body-method-20 (-> obj rbody state) a1-1)
     )
   0
@@ -944,7 +944,7 @@
     (method-of-object obj rigid-body-object-method-29)
     )
   (rigid-body-object-method-35 obj)
-  (set! (-> obj max-time-step) (-> arg0 max-time-step))
+  (set! (-> obj max-time-step) (-> arg0 extra max-time-step))
   (set! (-> obj root-override-2 max-iteration-count) (the-as uint 4))
   (let ((v1-15 (-> obj skel root-channel 0)))
     (set! (-> v1-15 num-func) num-func-identity)
@@ -993,10 +993,12 @@
                                           :cm-offset-joint (new 'static 'vector :w 1.0)
                                           :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 4) (meters 4))
                                           )
-                                        :max-time-step 0.033333335
-                                        :gravity (meters 80)
-                                        :idle-distance (meters 50)
-                                        :attack-force-scale 1.0
+                                        :extra (new 'static 'rigid-body-object-extra-info
+                                          :max-time-step 0.033333335
+                                          :gravity (meters 80)
+                                          :idle-distance (meters 50)
+                                          :attack-force-scale 1.0
+                                          )
                                         :name '*rigid-body-object-constants*
                                         )
         )
@@ -1182,7 +1184,7 @@ This commonly includes things such as:
                     )
                   )
             )
-        (set! (-> s5-0 impulse) (* f0-2 (-> obj info attack-force-scale)))
+        (set! (-> s5-0 impulse) (* f0-2 (-> obj info extra attack-force-scale)))
         (apply-damage obj (* 0.667 f1-0) s5-0)
         )
       (rigid-body-object-method-42 obj)
@@ -1417,7 +1419,7 @@ This commonly includes things such as:
 (defstate idle (rigid-body-object)
   :virtual #t
   :trans (behavior ()
-    (if (and *target* (and (>= (-> self info idle-distance)
+    (if (and *target* (and (>= (-> self info extra idle-distance)
                                (vector-vector-distance (-> self root-override-2 trans) (-> *target* control trans))
                                )
                            (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
@@ -1439,7 +1441,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (if (or (not *target*)
-            (or (< (+ 4096.0 (-> self info idle-distance))
+            (or (< (+ 4096.0 (-> self info extra idle-distance))
                    (vector-vector-distance (-> self root-override-2 trans) (-> *target* control trans))
                    )
                 (logtest? (focus-status teleporting) (-> *target* focus-status))
