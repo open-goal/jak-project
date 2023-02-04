@@ -43,7 +43,8 @@ constexpr int CONTINUE_VAG_STREAM = 0x404;       // Command to continue a vag st
 constexpr int SET_VAG_VOLUME = 0x405;            // Command to set the volume of vag playback
 constexpr int SET_DIALOG_VOLUME = 0x406;         // Command to set the volume of vag playback
 
-constexpr int MAX_ISO_FILES = 350;  // maximum files on FS
+// TODO - hack workaround for now, was originally 350
+constexpr int MAX_ISO_FILES = 999;  // maximum files on FS
 constexpr int MAX_OPEN_FILES = 16;  // maximum number of open files at a time.
 
 /*!

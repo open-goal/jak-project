@@ -373,24 +373,25 @@
               :bounds (static-spherem 0 0 0 1.5)
               )
 
-(define *dig-bomb-crate-cylinder-constants* (new 'static 'rigid-body-object-constants
-                                              :mass 1.0
-                                              :inv-mass 1.0
-                                              :cm-joint (new 'static 'vector :w 1.0)
-                                              :linear-damping 0.99
-                                              :angular-damping 0.9
-                                              :bounce-factor 0.5
-                                              :friction-factor 0.1
-                                              :inertial-tensor-x (meters 1)
-                                              :inertial-tensor-y (meters 3)
-                                              :inertial-tensor-z (meters 1)
-                                              :max-time-step 0.02
-                                              :gravity (meters 80)
-                                              :idle-distance (meters 200)
-                                              :attack-force-scale 2.0
-                                              :name '*dig-bomb-crate-cylinder-constants*
-                                              )
-        )
+(define *dig-bomb-crate-cylinder-constants*
+  (new 'static 'rigid-body-object-constants
+    :info (new 'static 'rigid-body-info
+      :mass 1.0
+      :inv-mass 1.0
+      :linear-damping 0.99
+      :angular-damping 0.9
+      :bounce-factor 0.5
+      :friction-factor 0.1
+      :cm-offset-joint (new 'static 'vector :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 1) (meters 3) (meters 1))
+      )
+    :max-time-step 0.02
+    :gravity (meters 80)
+    :idle-distance (meters 200)
+    :attack-force-scale 2.0
+    :name '*dig-bomb-crate-cylinder-constants*
+    )
+  )
 
 (defstate idle (dig-bomb-crate-cylinder)
   :virtual #t
@@ -656,9 +657,9 @@
 (defmethod rigid-body-object-method-45 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder) (arg0 rigid-body-impact))
   (let* ((f0-0 (-> arg0 impulse))
          (f1-0 28672.0)
-         (f30-0 (* f0-0 (/ 1.0 f1-0) (-> obj info inv-mass)))
+         (f30-0 (* f0-0 (/ 1.0 f1-0) (-> obj info info inv-mass)))
          )
-    (if (< (* 28672.0 (-> obj info mass)) (-> arg0 impulse))
+    (if (< (* 28672.0 (-> obj info info mass)) (-> arg0 impulse))
         (sound-play-by-name
           (static-sound-name "barrel-bomb-hit")
           (new-sound-id)
@@ -781,8 +782,8 @@
   (quaternion-copy! (-> self root-override-2 quat) (-> arg0 quat))
   (rigid-body-object-method-33 self)
   (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
-  (vector-float*! (-> self rbody state lin-momentum) (-> arg0 vel) (-> self info mass))
-  (vector-float*! (-> self rbody state ang-momentum) (-> arg0 avel) (-> self info mass))
+  (vector-float*! (-> self rbody state lin-momentum) (-> arg0 vel) (-> self info info mass))
+  (vector-float*! (-> self rbody state ang-momentum) (-> arg0 avel) (-> self info info mass))
   (go-virtual idle)
   (none)
   )

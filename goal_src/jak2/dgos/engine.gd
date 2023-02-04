@@ -232,7 +232,6 @@
   ("game-task.o" "game-task")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
-  ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood-tables2.o" "mood-tables2")
   ("mood.o" "mood")
@@ -326,6 +325,7 @@
   ("prototype.o" "prototype")
   ("main-collide.o" "main-collide")
   ("video.o" "video")
+  ("pckernel.o" "pckernel") ;; added
   ("main.o" "main")
   ("collide-cache.o" "collide-cache")
   ("collide-debug.o" "collide-debug")

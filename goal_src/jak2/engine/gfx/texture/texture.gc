@@ -1190,13 +1190,85 @@
   0
   )
 
+
+(defun upload-vram-pages-pris-pc ((pool texture-pool)
+                                  (dest-seg texture-pool-segment)
+                                  (tpage texture-page)
+                                  (bucket bucket-id)
+                                  (mask (pointer int32))
+                                  )
+  "Build DMA for uploading the given texture-page in pc format.
+  We don't use the mask system of the original game properly."
+  (if (not tpage)
+      (return 0)
+      )
+  (let* ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+         (s4-0 (-> dma-buf base))
+         (any-uploads #f)
+         (vram-ptr (shr (-> tpage segment 0 dest) 12))
+         (tpage-num-chunks (the-as int (-> tpage size)))
+         (tpage-id (-> tpage id))
+         )
+    ;; align and truncate
+    (set! tpage-num-chunks (shr (min (the-as int (-> dest-seg size)) (the-as int (+ tpage-num-chunks 4095))) 12))
+
+    ;; loop over chunks, seeing if any need to be uploaded.
+    (dotimes (chunk-idx tpage-num-chunks)
+      (let ((mask-work (-> mask (/ chunk-idx 32))))
+        (when (logtest? mask-work (ash 1 (logand chunk-idx 31)))
+          (set! any-uploads #t)
+          )
+        )
+      )
+
+    ;; not used at all. we don't set merc masks on PC, so this should happen most of the time.
+    (when (not any-uploads)
+      (return 0)
+      )
+
+    ;; but non-merc users of this function (like map/hud) will get here
+
+    ;; upload everything in the tpage.
+    ;; uploads are "free" on PC, so no harm, but we have to tell the game we're doing this
+    ;; otherwise it might think that an old texture was left behind and skip a later upload
+    (dotimes (chunk-idx tpage-num-chunks)
+      (let ((chunk-dest (+ vram-ptr chunk-idx)))
+        (set! (-> pool ids chunk-dest) tpage-id)
+        )
+      )
+
+    ;; tell pc port we upload everything.
+    (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+    (dma-buffer-add-uint64 dma-buf tpage)
+    (dma-buffer-add-uint64 dma-buf -1)
+
+    (let ((a3-5 (-> dma-buf base)))
+      (let ((v1-43 (the-as dma-packet (-> dma-buf base))))
+        (set! (-> v1-43 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> v1-43 vif0) (new 'static 'vif-tag))
+        (set! (-> v1-43 vif1) (new 'static 'vif-tag))
+        (set! (-> dma-buf base) (the-as pointer (&+ v1-43 16)))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        bucket
+        s4-0
+        (the-as (pointer dma-tag) a3-5)
+        )
+      )
+    )
+  0
+  )
+
+
 (defun upload-vram-pages-pris ((pool texture-pool)
                                (dest-seg texture-pool-segment)
                                (tpage texture-page)
                                (bucket bucket-id)
                                (mask (pointer int32))
                                )
-  "Build DMA for uploading the given texture-page, only uploading as needed.
+  "Does nothing on PC.
+  Build DMA for uploading the given texture-page, only uploading as needed.
    Unlike the normal upload-vram-pages, this just takes an array of mask bits,
    and only uploads seg 0 (there is no upload mode).
    See upload-vram-pages for some more details."
@@ -1291,6 +1363,7 @@
         (set! (-> (the-as (pointer gs-reg64) a0-31) 1) (gs-reg64 texflush))
         (set! (-> v1-42 base) (&+ a0-31 16))
         )
+
       (let ((a3-5 (-> dma-buf base)))
         (let ((v1-43 (the-as dma-packet (-> dma-buf base))))
           (set! (-> v1-43 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
@@ -1652,7 +1725,7 @@
              (else
                (let ((t0-20 (-> lev texture-mask cat)))
                  (set! (-> lev upload-size 8)
-                       (upload-vram-pages-pris pool (-> pool segment-common) tpage bucket (the-as (pointer int32) t0-20))
+                       (upload-vram-pages-pris-pc pool (-> pool segment-common) tpage bucket (the-as (pointer int32) t0-20))
                        )
                  )
                )
