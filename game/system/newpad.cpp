@@ -13,7 +13,7 @@
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
-#include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+#include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
 
@@ -188,7 +188,7 @@ void SetAnalogAxisValue(MappingInfo& mapping_info, int axis, double value) {
           g_key_analogs[pad][analog] = newValue;
         }
 
-        // Invert logic used here. Left Y axis movement is based on towrds the camera.
+        // Invert logic used here. Left Y axis movement is based on towards the camera.
         // In game forward is treated as going away from the camera and backwards is headed towards
         // the camera.
         if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
