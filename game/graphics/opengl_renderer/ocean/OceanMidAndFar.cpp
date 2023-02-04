@@ -195,10 +195,6 @@ void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
   }
 }
 
-void handle_ocean_89_jak2(DmaFollower& dma,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof) {}
+void handle_ocean_89_jak2(DmaFollower&, SharedRenderState*, ScopedProfilerNode&) {}
 
-void handle_ocean_79_jak2(DmaFollower& dma,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof) {}
+void handle_ocean_79_jak2(DmaFollower&, SharedRenderState*, ScopedProfilerNode&) {}

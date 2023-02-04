@@ -944,7 +944,7 @@
 ;; flags    (num-effects, effect-alpha-ignore, effect-disable)
 ;; fades    (u32 x N), padding to qw aligned
 
-(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer))
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
     ;; merc draw asm will check this.
@@ -1028,6 +1028,7 @@
             (set! (-> flags 0) (-> merc-ctrl header effect-count))
             (set! (-> flags 1) ignore-alpha-mask)
             (set! (-> flags 2) enable-mask)
+            (set! (-> flags 3) (if update-verts 1 0))
             )
           (&+! dma-buf (* 16 1))
           (+! qwc-total 1)
@@ -1038,11 +1039,22 @@
               (set! (-> fades i) (the-as uint (-> *merc-bucket-info* effect i color-fade)))
               )
             )
-
           (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
             (&+! dma-buf (* 16 num-fades))
             (+! qwc-total num-fades)
             )
+
+          ;; merc ptrs
+          (let ((merc-ptrs (the (pointer object) dma-buf)))
+            (dotimes (i (-> merc-ctrl header effect-count))
+              (set! (-> merc-ptrs i) (-> merc-ctrl effect i))
+              )
+            )
+          (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
+            (&+! dma-buf (* 16 num-fades))
+            (+! qwc-total num-fades)
+            )
+
           )
         )
       )
@@ -1064,6 +1076,9 @@
 ;; when set, render some environment mapped stuff with jak 2's emerc.
 ;; this is much faster, and does significantly speed up the game thread on finalboss.
 (define *emerc-hack* #t)
+
+;; when set, use merc for blerc instead of generic.
+(define *blerc-hack* #t)
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
@@ -1277,6 +1292,8 @@
             (let ((geom (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
                   ;; merc2 can't handle all cases of the original merc, so we add this fallback on PC.
                   (pc-force-mercneric #f)
+                  ;; if pc rendering code needs to update merc vertices
+                  (pc-merc-vtx-update #f)
                   )
               (when (logtest? (-> arg0 global-effect) (draw-effect title))
                 (set! pc-force-mercneric #t)
@@ -1352,7 +1369,10 @@
                          (jc (-> pd skel)))
                     (when (nonzero? jc)
                       (when (logtest? (-> jc status) (janim-status blerc))
-                        (set! pc-force-mercneric #t)
+                        (if *blerc-hack*
+                            (set! pc-merc-vtx-update #t)
+                            (set! pc-force-mercneric #t)
+                            )
                         )
                       )
                     )
@@ -1518,7 +1538,7 @@
                         )
                       )
                     )
-                  (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data)))
+                  (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data) pc-merc-vtx-update))
                   ; (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))

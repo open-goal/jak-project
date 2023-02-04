@@ -518,20 +518,20 @@ void OceanTexture::run_L3_PC_jak2() {
   Vf res3;  // vf23
 
   Vf nrm0;  // vf24
-  Vf nrm1;  // vf25
+  // Vf nrm1;  // vf25
   Vf nrm2;  // vf26
 
-  Vf reflect;  // vf27
+  // Vf reflect;  // vf27
 
   Vf cout0;  // vf28
   Vf cout1;  // vf29
   Vf cout2;  // vf30
   Vf cout3;  // vf31
 
-  Accumulator acc;
+  // Accumulator acc;
   const Vf ones(1, 1, 1, 1);
   const Vf vf00(0, 0, 0, 1);
-  const u16 vi11 = 0x80;
+  // const u16 vi11 = 0x80;
   bool bc;
 
   // clang-format off
