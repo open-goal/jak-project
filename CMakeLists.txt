@@ -198,6 +198,10 @@ add_subdirectory(lsp)
 # build libco
 add_subdirectory(third-party/libco)
 
+# build SDL
+add_subdirectory(third-party/SDL EXCLUDE_FROM_ALL)
+include_directories(third-party/SDL/include)
+
 # build glfw library
 add_subdirectory(third-party/glfw EXCLUDE_FROM_ALL)
 add_subdirectory(third-party/zstd EXCLUDE_FROM_ALL)
