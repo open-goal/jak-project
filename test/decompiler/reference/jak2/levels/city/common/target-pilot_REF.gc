@@ -1,21 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-pilot.gc
-;; name in dgo: target-pilot
-;; dgos: CWI
-
-(deftype collide-query-with-5vec (structure)
-  "A custom type"
-  ((cquery collide-query :inline)
-   (vec    vector 5 :inline)
-   )
-  )
-
-;; DECOMP BEGINS
-
+;; definition for symbol *pilot-mods*, type surface
 (define *pilot-mods* (new 'static 'surface :name 'empty :seek0 1.0 :seek90 1.0 :seek180 1.0 :fric 1.0))
 
+;; definition for function target-pilot-handler
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 59]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 64]
@@ -119,6 +108,7 @@
     )
   )
 
+;; definition for function target-pilot-pidax-enter
 (defbehavior target-pilot-pidax-enter target ()
   (set! (-> self pilot art-group-backup) (-> self draw art-group))
   (set! (-> self draw art-group) (-> self sidekick 0 draw art-group))
@@ -126,6 +116,7 @@
   (send-event (ppointer->process (-> self sidekick)) 'matrix 'indax)
   )
 
+;; definition for function target-pilot-pidax-exit
 (defbehavior target-pilot-pidax-exit target ()
   (ja-channel-set! 0)
   (set! (-> self draw art-group) (the-as art-group (-> self pilot art-group-backup)))
@@ -133,6 +124,8 @@
   (send-event (ppointer->process (-> self sidekick)) 'matrix #f)
   )
 
+;; definition for function target-pilot-exit
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 (defbehavior target-pilot-exit target ()
   (the-as
@@ -195,6 +188,8 @@
     )
   )
 
+;; definition for function target-pilot-init
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior target-pilot-init target ((arg0 handle) (arg1 symbol))
   (target-exit)
@@ -240,7 +235,7 @@
               )
             )
           )
-        (let ((v1-43 (get-best-seat-for-vehicle (the-as vehicle s4-1) (-> self control trans) 1 1)))
+        (let ((v1-43 (get-best-seat-for-vehicle s4-1 (-> self control trans) 1 1)))
           (set! (-> s5-0 seat-index) (max 0 v1-43))
           )
         (cond
@@ -293,10 +288,14 @@
   (the-as object 0)
   )
 
+;; definition for function pilot-on-ground?
 (defbehavior pilot-on-ground? target ()
   (logtest? (-> self control status) (collide-status on-surface))
   )
 
+;; definition for function target-pilot-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior target-pilot-post target ()
   (local-vars (v1-55 symbol) (a0-44 object) (a0-56 int) (a0-58 int))
   (let* ((v1-1 (-> *perf-stats* data 17))
@@ -482,3 +481,7 @@
   0
   (none)
   )
+
+
+
+

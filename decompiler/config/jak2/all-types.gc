@@ -13332,6 +13332,9 @@
   (speech-type-1 1)
   (speech-type-2 2)
   (speech-type-3 3)
+  (speech-type-4 4)
+  (speech-type-5 5)
+
   )
 ;; ---speech-h:speech-type
 
@@ -18413,8 +18416,8 @@
     target-mech-stance
     (target-mech-start handle float symbol)
     target-mech-walk
-    target-pilot-edge-grab
-    (target-pilot-start handle)
+    (target-pilot-edge-grab pilot-edge-grab-info)
+    (target-pilot-start handle symbol symbol)
     (target-play-anim string handle)
     (target-pole-cycle handle)
     (target-pole-flip-forward float float float)
@@ -18451,6 +18454,14 @@
     (target-warp-in vector vector target) ;; (define-extern target-warp-in state) ;; (state vector vector target)
     (target-warp-out vector vector target) ;; (define-extern target-warp-out state) ;; (state vector vector target)
     target-yellow-jump-blast ;; called in (code target-flop), but not defined, causes crash on PCSX2
+    target-pilot-stance
+    target-pilot-impact
+    target-pilot-get-on
+    target-pilot-get-off
+    target-pilot-grab
+    (target-pilot-clone-anim handle)
+    (target-pilot-hit symbol attack-info)
+    (target-pilot-death symbol)
     )
   )
 
@@ -18957,6 +18968,13 @@
   ((cquery collide-query :inline)
    (vec    vector :inline)
    (vec2   vector :inline)
+   )
+  )
+
+(deftype collide-query-with-5vec (structure)
+  "A custom type"
+  ((cquery collide-query :inline)
+   (vec    vector 5 :inline)
    )
   )
 
@@ -28275,7 +28293,7 @@
    (seat-index              int8                     :offset-assert 41)
    (backup-nav-radius       float                    :offset-assert 44)
    (cam-side-shift          float                    :offset-assert 48)
-   (enable-cam-side-shift   basic                    :offset-assert 52)
+   (enable-cam-side-shift   symbol                   :offset-assert 52)
    (gun?                    symbol                   :offset-assert 56)
    (controls                vehicle-controls :inline :offset-assert 60)
    (accel-array             vector 8         :inline :offset-assert 80)
@@ -33340,12 +33358,12 @@
     (active () _type_ :state 28)
     (rigid-body-object-method-29 (_type_ float) none 29)
     (rigid-body-object-method-30 (_type_) none 30)
-    (rigid-body-object-method-31 (_type_ rigid-body-object-constants) none 31)
-    (rigid-body-object-method-32 (_type_) none 32)
-    (rigid-body-object-method-33 (_type_) none 33)
+    (alloc-and-init-rigid-body-control (_type_ rigid-body-object-constants) none 31)
+    (allocate-and-init-cshape (_type_) none 32)
+    (init-skel-and-rigid-body (_type_) none 33)
     (rigid-body-object-method-34 (_type_) none 34)
     (rigid-body-object-method-35 (_type_) none 35)
-    (rigid-body-object-method-36 (_type_) none 36)
+    (do-engine-sounds (_type_) none 36)
     (rigid-body-object-method-37 (_type_) none 37)
     (rigid-body-object-method-38 (_type_) none 38)
     (rigid-body-object-method-39 (_type_) none 39)
@@ -34063,7 +34081,7 @@
 (deftype joint-exploder-static-params (basic)
   ((joints       (array joint-exploder-static-joint-params)  :offset-assert 4) ;; guessed by decompiler
    (collide-spec uint32                                      :offset-assert 8)
-   (art-level    basic                                       :offset-assert 12)
+   (art-level    symbol                                       :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -49525,7 +49543,7 @@
   :size-assert         #x370
   :flag-assert         #x9002f00370
   (:methods
-    (rigid-body-object-method-31 (_type_ rigid-body-vehicle-constants) none :replace 31)
+    (alloc-and-init-rigid-body-control (_type_ rigid-body-vehicle-constants) none :replace 31)
     (inactive () _type_ :state 53)
     (waiting () _type_ :state 54)
     (vehicle-method-55 () _type_ :state 55)
@@ -49538,16 +49556,16 @@
     (vehicle-method-62 (_type_ float) none 62)
     (vehicle-method-63 (_type_ float) none 63)
     (vehicle-method-64 () none 64)
-    (vehicle-method-65 (_type_) none 65)
+    (start-jump (_type_) none 65)
     (vehicle-method-66 () none 66)
-    (vehicle-method-67 (_type_) none 67)
-    (vehicle-method-68 (_type_ vector int) none 68)
-    (vehicle-method-69 (_type_ int) process 69)
+    (get-seat-count (_type_) int 67)
+    (compute-seat-position (_type_ vector int) none 68)
+    (get-rider-in-seat (_type_ int) process 69)
     (vehicle-method-70 (_type_) process 70)
-    (vehicle-method-71 (_type_ int process-focusable) none 71)
+    (put-rider-in-seat (_type_ int process-focusable) none 71)
     (vehicle-method-72 (_type_) uint 72)
-    (vehicle-method-73 (_type_ vector int int) int 73)
-    (vehicle-method-74 (_type_ process) none 74)
+    (get-best-seat-for-vehicle (_type_ vector int int) int 73)
+    (remove-rider (_type_ process) none 74)
     (vehicle-method-75 (_type_) float 75)
     (vehicle-method-76 (_type_ int uint) none 76)
     (vehicle-method-77 (_type_) none 77)
@@ -49557,9 +49575,9 @@
     (vehicle-method-81 (_type_) none 81)
     (vehicle-method-82 (_type_) none 82)
     (vehicle-method-83 (_type_) none 83)
-    (vehicle-method-84 (_type_ vector vector float float) none 84)
-    (vehicle-method-85 (_type_) none 85)
-    (vehicle-method-86 () none 86)
+    (draw-thruster (_type_ vector vector float float) none 84)
+    (draw-thrusters (_type_) none 85)
+    (update-joint-mods (_type_) none 86)
     (vehicle-method-87 (_type_) none 87)
     (vehicle-method-88 (_type_) none 88)
     (vehicle-method-89 (_type_) none 89)
@@ -50110,10 +50128,10 @@
     (turret-control-method-9 (_type_ vehicle vector vector) none 9)
     (turret-control-method-10 (_type_ vehicle) none 10)
     (turret-control-method-11 (_type_ object object vector) none 11)
-    (turret-control-method-12 (_type_ joint-mod-rotate-local) none 12)
+    (update-joint-mod (_type_ joint-mod-rotate-local) none 12)
     (turret-control-method-13 (_type_) none 13)
     (turret-control-method-14 (_type_) none 14)
-    (turret-control-method-15 (_type_ turret-control-info) none 15)
+    (set-info (_type_ turret-control-info) none 15)
     (turret-control-method-16 (_type_ float float) none 16)
     (turret-control-method-17 (_type_ vehicle) none 17)
     )
@@ -50915,13 +50933,13 @@
   )
 
 (deftype bikea (bike-base)
-  ((fin-fl  basic  :offset-assert 880)
-   (fin-fr  basic  :offset-assert 884)
-   (fin-rl  basic  :offset-assert 888)
-   (fin-rr  basic  :offset-assert 892)
-   (rudder  basic  :offset-assert 896)
-   (brake-l basic  :offset-assert 900)
-   (brake-r basic  :offset-assert 904)
+  ((fin-fl  joint-mod-rotate-local  :offset-assert 880)
+   (fin-fr  joint-mod-rotate-local  :offset-assert 884)
+   (fin-rl  joint-mod-rotate-local  :offset-assert 888)
+   (fin-rr  joint-mod-rotate-local  :offset-assert 892)
+   (rudder  joint-mod-rotate-local  :offset-assert 896)
+   (brake-l joint-mod-rotate-local  :offset-assert 900)
+   (brake-r joint-mod-rotate-local  :offset-assert 904)
    )
   :method-count-assert 144
   :size-assert         #x38c
@@ -50931,14 +50949,14 @@
   )
 
 (deftype bikeb (bike-base)
-  ((fin-rl   basic  :offset-assert 880)
-   (fin-rr   basic  :offset-assert 884)
-   (rudder   basic  :offset-assert 888)
-   (rudder-f basic  :offset-assert 892)
-   (brake-l  basic  :offset-assert 896)
-   (brake-r  basic  :offset-assert 900)
-   (flap-l   basic  :offset-assert 904)
-   (flap-r   basic  :offset-assert 908)
+  ((fin-rl   joint-mod-rotate-local  :offset-assert 880)
+   (fin-rr   joint-mod-rotate-local  :offset-assert 884)
+   (rudder   joint-mod-rotate-local  :offset-assert 888)
+   (rudder-f joint-mod-rotate-local  :offset-assert 892)
+   (brake-l  joint-mod-rotate-local  :offset-assert 896)
+   (brake-r  joint-mod-rotate-local  :offset-assert 900)
+   (flap-l   joint-mod-rotate-local  :offset-assert 904)
+   (flap-r   joint-mod-rotate-local  :offset-assert 908)
    )
   :method-count-assert 144
   :size-assert         #x390
@@ -50948,17 +50966,17 @@
   )
 
 (deftype bikec (bike-base)
-  ((fin-fl    basic  :offset-assert 880)
-   (fin-fr    basic  :offset-assert 884)
-   (fin-rl    basic  :offset-assert 888)
-   (fin-rr    basic  :offset-assert 892)
-   (fin2-fl   basic  :offset-assert 896)
-   (fin2-fr   basic  :offset-assert 900)
-   (rudder    basic  :offset-assert 904)
-   (brake-l   basic  :offset-assert 908)
-   (brake-r   basic  :offset-assert 912)
-   (spoiler-l basic  :offset-assert 916)
-   (spoiler-r basic  :offset-assert 920)
+  ((fin-fl    joint-mod-rotate-local  :offset-assert 880)
+   (fin-fr    joint-mod-rotate-local  :offset-assert 884)
+   (fin-rl    joint-mod-rotate-local  :offset-assert 888)
+   (fin-rr    joint-mod-rotate-local  :offset-assert 892)
+   (fin2-fl   joint-mod-rotate-local  :offset-assert 896)
+   (fin2-fr   joint-mod-rotate-local  :offset-assert 900)
+   (rudder    joint-mod-rotate-local  :offset-assert 904)
+   (brake-l   joint-mod-rotate-local  :offset-assert 908)
+   (brake-r   joint-mod-rotate-local  :offset-assert 912)
+   (spoiler-l joint-mod-rotate-local  :offset-assert 916)
+   (spoiler-r joint-mod-rotate-local  :offset-assert 920)
    )
   :method-count-assert 144
   :size-assert         #x39c
@@ -50968,7 +50986,7 @@
   )
 
 (deftype guard-bike (vehicle-guard)
-  ((turret-jm basic  :offset-assert 1076)
+  ((turret-jm joint-mod-rotate-local  :offset-assert 1076)
    )
   :method-count-assert 159
   :size-assert         #x438
@@ -50977,12 +50995,12 @@
     )
   )
 
-;; (define-extern *bike-explosion-info* vehicle-explosion-info)
-;; (define-extern *bikea-constants* object)
-;; (define-extern *bikeb-constants* object)
-;; (define-extern *bikec-constants* object)
-;; (define-extern *guard-bike-constants* object)
-;; (define-extern *guard-bike-turret-control-info* object)
+(define-extern *bike-explosion-info* vehicle-explosion-info)
+(define-extern *bikea-constants* rigid-body-vehicle-constants)
+(define-extern *bikeb-constants* rigid-body-vehicle-constants)
+(define-extern *bikec-constants* rigid-body-vehicle-constants)
+(define-extern *guard-bike-constants* rigid-body-vehicle-constants)
+(define-extern *guard-bike-turret-control-info* turret-control-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; car                            ;;
@@ -50999,15 +51017,15 @@
   )
 
 (deftype cara (car-base)
-  ((steering-wheel-l basic  :offset-assert 884)
-   (steering-wheel-r basic  :offset-assert 888)
-   (fin-fl           basic  :offset-assert 892)
-   (fin-fr           basic  :offset-assert 896)
-   (fin-rl           basic  :offset-assert 900)
-   (fin-rr           basic  :offset-assert 904)
-   (rudder-l         basic  :offset-assert 908)
-   (rudder-r         basic  :offset-assert 912)
-   (rudder           basic  :offset-assert 916)
+  ((steering-wheel-l joint-mod-rotate-local  :offset-assert 884)
+   (steering-wheel-r joint-mod-rotate-local  :offset-assert 888)
+   (fin-fl           joint-mod-rotate-local  :offset-assert 892)
+   (fin-fr           joint-mod-rotate-local  :offset-assert 896)
+   (fin-rl           joint-mod-rotate-local  :offset-assert 900)
+   (fin-rr           joint-mod-rotate-local  :offset-assert 904)
+   (rudder-l         joint-mod-rotate-local  :offset-assert 908)
+   (rudder-r         joint-mod-rotate-local  :offset-assert 912)
+   (rudder           joint-mod-rotate-local  :offset-assert 916)
    )
   :method-count-assert 144
   :size-assert         #x398
@@ -51017,12 +51035,12 @@
   )
 
 (deftype carb (car-base)
-  ((steering-wheel-l basic  :offset-assert 884)
-   (steering-wheel-r basic  :offset-assert 888)
-   (fin-fl           basic  :offset-assert 892)
-   (fin-fr           basic  :offset-assert 896)
-   (fin-rl           basic  :offset-assert 900)
-   (fin-rr           basic  :offset-assert 904)
+  ((steering-wheel-l joint-mod-rotate-local  :offset-assert 884)
+   (steering-wheel-r joint-mod-rotate-local  :offset-assert 888)
+   (fin-fl           joint-mod-rotate-local  :offset-assert 892)
+   (fin-fr           joint-mod-rotate-local  :offset-assert 896)
+   (fin-rl           joint-mod-rotate-local  :offset-assert 900)
+   (fin-rr           joint-mod-rotate-local  :offset-assert 904)
    )
   :method-count-assert 144
   :size-assert         #x38c
@@ -51032,13 +51050,13 @@
   )
 
 (deftype carc (car-base)
-  ((steering-wheel basic  :offset-assert 884)
-   (fin-fl         basic  :offset-assert 888)
-   (fin-fr         basic  :offset-assert 892)
-   (fin-rl         basic  :offset-assert 896)
-   (fin-rr         basic  :offset-assert 900)
-   (fin2-rl        basic  :offset-assert 904)
-   (fin2-rr        basic  :offset-assert 908)
+  ((steering-wheel joint-mod-rotate-local  :offset-assert 884)
+   (fin-fl         joint-mod-rotate-local  :offset-assert 888)
+   (fin-fr         joint-mod-rotate-local  :offset-assert 892)
+   (fin-rl         joint-mod-rotate-local  :offset-assert 896)
+   (fin-rr         joint-mod-rotate-local  :offset-assert 900)
+   (fin2-rl        joint-mod-rotate-local  :offset-assert 904)
+   (fin2-rr        joint-mod-rotate-local  :offset-assert 908)
    )
   :method-count-assert 144
   :size-assert         #x390
@@ -51048,7 +51066,7 @@
   )
 
 (deftype hellcat (vehicle-guard)
-  ((turret-jm basic  :offset-assert 1076)
+  ((turret-jm joint-mod-rotate-local  :offset-assert 1076)
    )
   :method-count-assert 159
   :size-assert         #x438
@@ -51057,12 +51075,12 @@
     )
   )
 
-;; (define-extern *car-explosion-info* vehicle-explosion-info)
-;; (define-extern *cara-constants* object)
-;; (define-extern *carb-constants* object)
-;; (define-extern *carc-constants* object)
-;; (define-extern *hellcat-constants* object)
-;; (define-extern *hellcat-front-turret-control-info* object)
+(define-extern *car-explosion-info* vehicle-explosion-info)
+(define-extern *cara-constants* rigid-body-vehicle-constants)
+(define-extern *carb-constants* rigid-body-vehicle-constants)
+(define-extern *carc-constants* rigid-body-vehicle-constants)
+(define-extern *hellcat-constants* rigid-body-vehicle-constants)
+(define-extern *hellcat-front-turret-control-info* turret-control-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test-bike                      ;;
@@ -51086,8 +51104,8 @@
     )
   )
 
-;; (define-extern *test-bike-constants* object)
-;; (define-extern *evan-test-bike-constants* object)
+(define-extern *test-bike-constants* rigid-body-vehicle-constants)
+(define-extern *evan-test-bike-constants* rigid-body-vehicle-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test-car                       ;;
@@ -51102,7 +51120,7 @@
     )
   )
 
-;; (define-extern *test-car-constants* object)
+(define-extern *test-car-constants* rigid-body-vehicle-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen                        ;;
@@ -52092,11 +52110,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *pilot-mods* surface)
-;; (define-extern target-pilot-handler function)
-;; (define-extern target-pilot-pidax-enter function)
-;; (define-extern target-pilot-pidax-exit function)
-;; (define-extern target-pilot-exit function)
-;; (define-extern target-pilot-init function)
+(define-extern target-pilot-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-pilot-pidax-enter (function object :behavior target))
+(define-extern target-pilot-pidax-exit (function object :behavior target))
+(define-extern target-pilot-exit (function object :behavior target))
+(define-extern target-pilot-init (function handle symbol object :behavior target))
 (define-extern pilot-on-ground? (function symbol :behavior target))
 (define-extern target-pilot-post (function none :behavior target))
 
@@ -52104,21 +52122,13 @@
 ;; pilot-states                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern target-pilot-bike-anim-loop function)
-;; (define-extern target-pilot-car-anim-loop function)
-;; (define-extern target-daxter-pilot-car-anim-loop function)
-;; (define-extern target-pilot-trans function)
-;; (define-extern target-pilot-signal-ready function)
-;; (define-extern target-pilot-stance state)
-;; (define-extern target-pilot-impact state)
-;; (define-extern *pilot-get-on-mods* object)
-;; (define-extern target-pilot-get-on state)
-;; (define-extern *pilot-get-off-mods* object)
-;; (define-extern target-pilot-get-off state)
-;; (define-extern target-pilot-grab state)
-;; (define-extern target-pilot-clone-anim state)
-;; (define-extern target-pilot-hit state)
-;; (define-extern target-pilot-death state)
+(define-extern target-pilot-bike-anim-loop (function none :behavior target))
+(define-extern target-pilot-car-anim-loop (function none :behavior target))
+(define-extern target-daxter-pilot-car-anim-loop (function none :behavior target))
+(define-extern target-pilot-trans (function none :behavior target))
+(define-extern target-pilot-signal-ready (function object :behavior target))
+(define-extern *pilot-get-on-mods* surface)
+(define-extern *pilot-get-off-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; kid-h                          ;;
