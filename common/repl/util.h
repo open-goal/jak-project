@@ -52,6 +52,6 @@ class Wrapper {
 };
 
 std::string find_repl_username();
-StartupFile load_user_startup_file(const std::string& username);
+StartupFile load_user_startup_file(const std::string& username, const GameVersion game_version);
 REPL::Config load_repl_config(const std::string& username, const GameVersion game_version);
 }  // namespace REPL

@@ -171,7 +171,7 @@ void Wrapper::init_settings() {
 // TODO - command to print out keybinds
 
 void Wrapper::reload_startup_file() {
-  startup_file = load_user_startup_file(username);
+  startup_file = load_user_startup_file(username, repl_config.game_version);
 }
 
 std::string find_repl_username() {
@@ -197,10 +197,19 @@ std::string find_repl_username() {
   return "#f";
 }
 
-StartupFile load_user_startup_file(const std::string& username) {
+fs::path get_startup_file_path(const std::string& username, const GameVersion game_version) {
+  // - first check to see if there is a game version specific startup file to prefer
+  auto game_specific_path = file_util::get_jak_project_dir() / "goal_src" / "user" / username /
+                            fmt::format("startup-{}.gc", version_to_game_name(game_version));
+  if (file_util::file_exists(game_specific_path.string())) {
+    return game_specific_path;
+  }
+  return file_util::get_jak_project_dir() / "goal_src" / "user" / username / "startup.gc";
+}
+
+StartupFile load_user_startup_file(const std::string& username, const GameVersion game_version) {
   // Check for a `startup.gc` file, each line will be executed on the REPL on startup
-  auto startup_file_path =
-      file_util::get_jak_project_dir() / "goal_src" / "user" / username / "startup.gc";
+  auto startup_file_path = get_startup_file_path(username, game_version);
   StartupFile startup_file;
   if (file_util::file_exists(startup_file_path.string())) {
     auto data = file_util::read_text_file(startup_file_path);
