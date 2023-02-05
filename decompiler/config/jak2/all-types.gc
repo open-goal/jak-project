@@ -9003,17 +9003,26 @@
   :size-assert         #x29
   :flag-assert         #xd00000029
   (:methods
-    (traffic-suppression-params-method-9 (_type_) symbol 9)
-    (traffic-suppression-params-method-10 (_type_) symbol 10)
+    (try-creating-new-suppression-box "Try getting new suppression box, return if it succeeded. ID is stored in the params." (_type_) symbol 9)
+    (create-or-update-suppression-box "If the params are already associated with a box, update. Otherwise, attempt to create a new one." (_type_) symbol 10)
     (has-valid-id? (_type_) none 11)
-    (traffic-suppression-params-method-12 (_type_) none 12)
+    (kill-suppression-box "Kill a suppression box, and inform the traffic manager by setting duration to 0." (_type_) none 12)
     )
+  )
+
+(defenum traffic-type
+  :type uint8
+  (guard0 6)
+  (guard1 7)
+  (guard2 18)
+  (guard3 19)
+
   )
 
 (declare-type nav-mesh basic)
 (declare-type nav-branch structure)
 (deftype traffic-object-spawn-params (structure)
-  ((object-type uint8              :offset-assert 0)
+  ((object-type traffic-type              :offset-assert 0)
    (behavior    uint64             :offset-assert 8)
    (id          uint32             :offset-assert 16)
    (nav-mesh    nav-mesh              :offset-assert 20)
@@ -18619,6 +18628,7 @@
 (declare-type entity-race-mesh entity)
 (declare-type entity-nav-mesh entity)
 (declare-type actor-group basic)
+(declare-type city-level-info structure)
 
 (defenum texture-page-flag
   :type uint16
@@ -18673,8 +18683,7 @@
    ;; 200 is some array
    ;; 204 is maybe that array's length
    (wind-array-length int32 :offset 204)
-   ;; 208 is a structure of some sort - (method 97 vehicle)
-   (bsp-header-jkh1b23       clock :offset 208)
+   (city-level-info          city-level-info                    :offset 208)
    (vis-spheres              vector-array                       :offset 216)
    (region-tree              drawable-tree-region-prim          :offset 252)
 
@@ -31783,7 +31792,7 @@
    (width             float           :offset-assert 60)
    (minimap_edge_flag nav-minimap-edge-flag           :offset-assert 64)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 10
   :size-assert         #x44
   :flag-assert         #xa00000044
@@ -31826,7 +31835,7 @@
   )
 
 (deftype mysql-nav-graph-level-info (structure)
-  ((level         string   :offset-assert 0)
+  ((level         symbol   :offset-assert 0) ;; ??
    (level-id      uint32  :offset-assert 4)
    (node-count    int32   :offset-assert 8)
    (branch-count  int32   :offset-assert 12)
@@ -48472,16 +48481,37 @@
 ;; nav-graph-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum nav-branch-clock-type
+  :type uint8
+  (no-clock 0)
+  (clock2 1)
+  (clock3 2)
+  (clock4 3)
+  )
+
+(defenum nav-branch-clock-mask
+  :type uint8
+  :bitfield #t
+  (phase-1 0)
+  (phase-1a 1)
+  (phase-2 2)
+  (phase-2a 3)
+  (phase-3 4)
+  (phase-3a 5)
+  (phase-4 6)
+  (phase-4a 7)
+  )
+
 (declare-type nav-node structure)
 (deftype nav-branch (structure)
-  ((node              int32    2 :offset-assert   0)
+  ((node              nav-node    2 :offset-assert   0)
    (src-node          nav-node      :offset          0)
    (dest-node         nav-node      :offset          4)
    (temp-dest-node-id int32      :offset          4)
    (speed-limit       uint8      :offset-assert   8)
    (density           uint8      :offset-assert   9)
-   (clock-type        uint8      :offset-assert  10)
-   (clock-mask        uint8      :offset-assert  11)
+   (clock-type        nav-branch-clock-type      :offset-assert  10)
+   (clock-mask        nav-branch-clock-mask      :offset-assert  11)
    (max-user-count    uint8      :offset-assert  12)
    (user-count        uint8      :offset-assert  13)
    (width             uint8      :offset-assert  14)
@@ -48491,8 +48521,8 @@
   :size-assert         #x10
   :flag-assert         #x1500000010
   (:methods
-    (nav-branch-method-9 (_type_) none 9)
-    (nav-branch-method-10 (_type_ object int) none 10)
+    (set-default-density-speed-and-width (_type_) none 9)
+    (debug-print (_type_ object int) none 10)
     (get-density
       "TODO
       @returns `density * 0.0078125` - is this some kind of trick?"
@@ -48510,11 +48540,11 @@
       "@returns if `dest-node`'s `id` is equal to `#FFFF`
        @see [[nav-node]]"
       (_type_) symbol 15)
-    (nav-branch-method-16 (_type_ float) none 16)
-    (nav-branch-method-17 (_type_ float) none 17)
-    (nav-branch-method-18 (_type_ float) none 18)
-    (nav-branch-method-19 (_type_ nav-node) none 19)
-    (nav-branch-method-20 (_type_ nav-node) none 20)
+    (set-density (_type_ float) none 16)
+    (set-speed-limit (_type_ float) none 17)
+    (set-width (_type_ float) none 18)
+    (set-src-node (_type_ nav-node) none 19)
+    (set-dst-node (_type_ nav-node) none 20)
     )
   )
 
@@ -48550,15 +48580,15 @@
   :size-assert         #x20
   :flag-assert         #x1600000020
   (:methods
-    (nav-node-method-9 (_type_) none 9)
-    (nav-node-method-10 (_type_ symbol string) none 10)
-    (nav-node-method-11 (_type_ int) none 11)
-    (nav-node-method-12 (_type_ vector nav-node) none 12)
-    (nav-node-method-13 (_type_ vector) none 13)
-    (nav-node-method-14 (_type_ vector) none 14)
-    (nav-node-method-15 (_type_ uint) none 15)
-    (nav-node-method-16 (_type_ float) none 16)
-    (nav-node-method-17 (_type_ float) none 17)
+    (debug-draw (_type_) none 9)
+    (debug-print (_type_ symbol string) none 10)
+    (remove-branch-by-idx (_type_ int) none 11)
+    (init-from-pt-and-heading (_type_ vector vector) none 12)
+    (set-pos-xyz (_type_ vector) none 13)
+    (set-angle-from-heading (_type_ vector) none 14)
+    (set-id-and-link-branches-back (_type_ uint) none 15)
+    (set-radius (_type_ float) none 16)
+    (set-angle (_type_ float) none 17)
     (get-position
       "@param! ret The [[vector]] that is modified to hold the result
        @returns the `position` [[vector]] with a `w` component of `1.0`"
@@ -48608,35 +48638,35 @@
   :flag-assert         #x2d0000003c
   (:methods
     (new (symbol type int int int uint) _type_ 0)
-    (nav-graph-method-9 (_type_) none 9)
+    (debug-draw-nodes (_type_) none 9)
     (nav-graph-method-10 (_type_ vector int) none 10)
     (nav-graph-method-11 (_type_) none 11)
     (nav-graph-method-12 (_type_) none 12)
     (nav-graph-method-13 (_type_ int int) none 13)
     (nav-graph-method-14 (_type_ int int) none 14)
-    (nav-graph-method-15 (_type_) none 15)
-    (nav-graph-method-16 (_type_ int) nav-node 16)
-    (nav-graph-method-17 (_type_ nav-node) none 17)
-    (nav-graph-method-18 (_type_ nav-node int) none 18)
+    (debug-reset (_type_) none 15)
+    (debug-add-node (_type_ int) nav-node 16)
+    (debug-link-node-to-graph (_type_ nav-node) none 17)
+    (debug-reset-branch-array "kinda dangerous" (_type_ nav-node int) none 18)
     (nav-graph-method-19 (_type_ int int int int int int) none 19)
     (nav-graph-method-20 (_type_ int int) none 20)
-    (nav-graph-method-21 (_type_) none 21)
-    (nav-graph-method-22 (_type_ int int) none 22)
-    (nav-graph-method-23 (_type_ int int) none 23)
-    (nav-graph-method-24 (_type_ int int) none 24)
-    (nav-graph-method-25 (_type_ symbol symbol) none 25)
-    (nav-graph-method-26 (_type_ symbol symbol) none 26)
-    (nav-graph-method-27 (_type_ nav-node-flag-byte nav-node-flag-byte symbol) none 27)
-    (nav-graph-method-28 (_type_) none 28)
-    (nav-graph-method-29 (_type_ symbol) none 29)
-    (nav-graph-method-30 (_type_ uint) none 30)
-    (nav-graph-method-31 (_type_ float) none 31)
-    (nav-graph-method-32 (_type_ float) none 32)
-    (nav-graph-method-33 (_type_ float) none 33)
-    (nav-graph-method-34 (_type_ float) none 34)
-    (nav-graph-method-35 (_type_ int) none 35)
-    (nav-graph-method-36 (_type_ int) none 36)
-    (nav-graph-method-37 (_type_ vector) none 37)
+    (move-selected-to-height-map-height (_type_) none 21)
+    (select-nodes-in-range (_type_ int int) none 22)
+    (deselect-nodes-in-range (_type_ int int) none 23)
+    (toggle-select-nodes-in-range (_type_ int int) none 24)
+    (select-nodes-in-level (_type_ symbol symbol) none 25)
+    (select-nodes-by-nav-mesh-id (_type_ int symbol) none 26)
+    (select-nodes-by-flags (_type_ nav-node-flag-byte nav-node-flag-byte symbol) none 27)
+    (print-selected-nodes (_type_) none 28)
+    (assign-selected-nodes-to-level (_type_ symbol) none 29)
+    (assign-selected-nodes-to-nav-mesh (_type_ uint) none 30)
+    (set-radius-of-selected-nodes (_type_ float) none 31)
+    (set-speed-limit-of-selected (_type_ float) none 32)
+    (set-density-of-selected (_type_ float) none 33)
+    (set-width-of-selected (_type_ float) none 34)
+    (or-flags-of-selected-nodes (_type_ nav-node-flag-byte) none 35)
+    (and-flags-of-selected-nodes (_type_ nav-node-flag-byte) none 36)
+    (offset-pos-of-selected (_type_ vector) none 37)
     (nav-graph-method-38 (_type_) none 38)
     (nav-graph-method-39 (_type_) none 39)
     (nav-graph-method-40 (_type_ int) int 40)
@@ -48645,9 +48675,10 @@
        @param idx The position in the `node-array` to return
        @returns the [[nav-node]] if it can be found, otherwise return [[#f]]"
       (_type_ int) nav-node 41)
-    (nav-graph-method-42 (_type_) none 42)
-    (nav-graph-method-43 (_type_ nav-graph-link string) none 43)
-    (from-editor (_type_ nav-node symbol) none 44)
+    (patch-nodes "Patch nodes. Node pointers are stored as indices into arrays to be allocated on the level heap
+                 and patched at runtime after loading." (_type_) none 42)
+    (copy-to-mysql-graph (_type_ mysql-nav-graph string) none 43)
+    (from-editor (_type_ mysql-nav-graph symbol) none 44)
     )
   )
 
@@ -48700,7 +48731,7 @@
   :size-assert         #x20
   :flag-assert         #xb00000020
   (:methods
-    (vis-cell-method-9 (_type_) none 9)
+    (reset-segment-counts (_type_) none 9)
     (vis-cell-method-10 (_type_) none 10)
     )
   )
@@ -48751,11 +48782,11 @@
   :size-assert         #x40
   :flag-assert         #xe00000040
   (:methods
-    (grid-info-method-9 (_type_ (pointer bounding-box) int int) none 9)
-    (grid-info-method-10 (_type_ vis-grid-pos vector) none 10)
-    (grid-info-method-11 (_type_ vis-grid-box vector) none 11)
-    (grid-info-method-12 (_type_ rgba) none 12)
-    (grid-info-method-13 (_type_ vis-grid-pos rgba) none 13) ;; vis-grid-pos is a total guess
+    (setup-grid-from-bounding-box "Set up a grid which fills the given bounding box" (_type_ (pointer bounding-box) int int) none 9)
+    (lookup-cell-for-point "Get the grid cell containing the point (or closest, if outside the grid)" (_type_ vis-grid-pos vector) none 10)
+    (lookup-box-for-sphere "Get the box of cells containing the given sphere" (_type_ vis-grid-box vector) none 11)
+    (debug-draw-grid (_type_ rgba) none 12)
+    (debug-draw-cell (_type_ vis-grid-pos rgba) none 13) ;; vis-grid-pos is a total guess
     )
   )
 
@@ -48766,7 +48797,7 @@
    (cell-array     (inline-array vis-cell)            :offset-assert 64)
    (segment-count  int16             :offset-assert 68)
    (cell-count     uint16            :offset-assert 70)
-   (segment-array  uint32            :offset-assert 72)
+   (segment-array  (inline-array nav-segment)            :offset-assert 72) ;; elt size is 0x30
    (nav-graph      nav-graph             :offset-assert 76)
    (camera-ceiling meters            :offset-assert 80)
    (pad-array      int8   56      :offset-assert 84)
@@ -48800,7 +48831,7 @@
   :size-assert         #x820
   :flag-assert         #xf00000820
   (:methods
-    (traffic-level-data-method-9 (_type_) none 9)
+    (reset (_type_) none 9)
     (traffic-level-data-method-10 (_type_ vis-cell) none 10)
     (traffic-level-data-method-11 (_type_ int) none 11)
     (traffic-level-data-method-12 (_type_ vis-cell) none 12)
@@ -48809,11 +48840,25 @@
     )
   )
 
+;; maybe the same as traffic-suppression-flags
+(defenum traffic-suppression-box-flags
+  :type uint8
+  :bitfield #t
+  (in-use 0)
+  (tfsb1 1)
+  (tfsb2 2)
+  (tfsb3 3)
+  (tfsb4 4)
+  (tfsb5 5)
+  (tfsb6 6)
+  (tfsb7 7)
+  )
+
 (deftype traffic-suppression-box (structure)
   ((data     uint8      32      :offset-assert 0 :score -999)
    (bbox     bounding-box :inline :offset 0)
-   (flags    uint8                :offset 12)
-   (duration uint32               :offset 28)
+   (flags    traffic-suppression-box-flags  :offset 12)
+   (duration uint32               :offset 28 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -48821,7 +48866,7 @@
   )
 
 (deftype traffic-guard-type-info (structure)
-  ((object-type      uint8  :offset-assert 0)
+  ((object-type      traffic-type  :offset-assert 0)
    (max-target-count int8   :offset-assert 1)
    (min-target-count int8   :offset-assert 2)
    (target-count     int8   :offset-assert 3)
@@ -48912,7 +48957,7 @@
     (duration uint32 :offset-assert 16)
     (start-time time-frame :offset-assert 24)
     (notify-time time-frame :offset-assert 32)
-    (alarm-sound-id uint32 :offset-assert 40)
+    (alarm-sound-id sound-id :offset-assert 40)
     (target-status-array traffic-target-status 3 :inline :offset-assert 48)
     (settings traffic-alert-state-settings :inline :offset-assert 288)
     (guard-type-info-array traffic-guard-type-info 6 :inline :offset-assert 384)
@@ -48922,7 +48967,7 @@
   :size-assert         #x3d8
   :flag-assert         #xa000003d8
   (:methods
-    (traffic-alert-state-method-9 (_type_) none 9)
+    (reset (_type_) none 9)
     )
   )
 
@@ -48945,8 +48990,21 @@
   :flag-assert         #x900000014
   )
 
+(defenum traffic-suppression-flags
+  :type uint8
+  :bitfield #t
+  (tfs0 0)
+  (tfs1 1)
+  (tfs2 2)
+  (tfs3 3)
+  (tfs4 4)
+  (tfs5 5)
+  (tfs6 6)
+  (tfs7 7)
+  )
+
 (deftype traffic-suppressor (structure)
-  ((flags uint8                :offset-assert 0)
+  ((flags traffic-suppression-flags :offset-assert 0)
    (bbox  bounding-box :inline :offset-assert 16)
    (array traffic-suppression-box      16  :inline    :offset-assert 48)
    )
@@ -48954,11 +49012,12 @@
   :size-assert         #x230
   :flag-assert         #xe00000230
   (:methods
-    (traffic-suppressor-method-9 (_type_) none 9)
-    (traffic-suppressor-method-10 (_type_ traffic-suppression-params) none 10)
-    (traffic-suppressor-method-11 (_type_ int) none 11)
-    (traffic-suppressor-method-12 (_type_ traffic-suppression-params) none 12)
-    (traffic-suppressor-method-13 (_type_) none 13)
+    (reset-boxes "Clears some flags, mark all boxes as disabled." (_type_) none 9) ;; clear flags 0, 1 on self and boxes.
+    (add-new-supression-box "Create a suppression box for these params.
+     The param object is updated with the ID of the box and can be later used with update-box-from-params." (_type_ traffic-suppression-params) none 10)
+    (remove-box-by-id "Remove a box that was previously added, by its ID." (_type_ int) none 11)
+    (update-box-from-params "Update a box that was previously added" (_type_ traffic-suppression-params) none 12)
+    (debug-draw (_type_) none 13)
     )
   )
 
@@ -48971,7 +49030,7 @@
    (active-object-count     uint8       :offset-assert 13)
    (inactive-object-count   int8        :offset-assert 14)
    (active-object-list      handle 126 :offset-assert 16)
-   (active-object-type-list uint8 126 :offset-assert 1024)
+   (active-object-type-list traffic-type 126 :offset-assert 1024)
    )
   :method-count-assert 27
   :size-assert         #x47e
@@ -48980,28 +49039,29 @@
     (traffic-tracker-method-9 (_type_) none 9)
     (traffic-tracker-method-10 (_type_) none 10)
     (traffic-tracker-method-11 (_type_) none 11)
-    (traffic-tracker-method-12 (_type_ uint handle) none 12)
-    (traffic-tracker-method-13 (_type_ int) handle 13)
-    (traffic-tracker-method-14 (_type_ int handle) none 14)
-    (traffic-tracker-method-15 (_type_ int) handle 15)
-    (traffic-tracker-method-16 (_type_ int handle) handle 16)
-    (traffic-tracker-method-17 (_type_ int handle) none 17)
-    (traffic-tracker-method-18 (_type_ process) none 18)
-    (traffic-tracker-method-19 (_type_ handle) none 19)
-    (traffic-tracker-method-20 (_type_ int symbol) none 20)
-    (traffic-tracker-method-21 (_type_ traffic-object-spawn-params) none 21)
-    (traffic-tracker-method-22 (_type_ int nav-segment float) none 22)
-    (traffic-tracker-method-23 (_type_ traffic-object-spawn-params) none 23)
-    (traffic-tracker-method-24 (_type_ uint traffic-engine) none 24)
-    (traffic-tracker-method-25 (_type_ (function process-focusable traffic-object-type-info none)) none 25)
-    (traffic-tracker-method-26 (_type_ int (function process-tree none)) none 26)
+    (add-active-process "Add a process as active." (_type_ traffic-type handle) none 12)
+    (remove-active-process "Remove a process from the tracking list." (_type_ int) handle 13)
+    (add-reserved-process "Add a process to the reserve list for a type. This process is allocated, but not yet activated." (_type_ traffic-type handle) none 14)
+    (get-from-inactive-by-type "Get any handle from the inactive list of this type, and remove it from the list." (_type_ traffic-type) handle 15)
+    (get-from-inactive-by-handle "Remove the given handle from the inactive list of the given type." (_type_ traffic-type handle) handle 16)
+    (deactivate-object "Send a traffic-off event (or traffic-off-force) to deactivate an object, specified by index in active object array.
+                        Process is recycled and moved to reserved, if it deactivates." (_type_ int symbol) none 17)
+    (set-process-to-killed "Move from active to killed. Separate from reserve." (_type_ process) none 18)
+    (deactivate-all "Deactivate all processes that are tracked" (_type_ handle) none 19)
+    (deactivate-all-of-type "Deactivate all processes of given type" (_type_ traffic-type symbol) none 20)
+    (activate-from-params "Get a reserved process, and activate with the given params." (_type_ traffic-object-spawn-params) none 21)
+    (activate-by-type "If possible, activate a process of the given type." (_type_ traffic-type nav-segment float) none 22)
+    (activate-by-handle "Activate, using the handle in the params." (_type_ traffic-object-spawn-params) none 23)
+    (reset (_type_ uint traffic-engine) none 24)
+    (for-all-active-processes "Call the given function on all active processes." (_type_ (function process-focusable traffic-object-type-info none)) none 25)
+    (for-all-active-processes-of-type "Call the given function on all active processes matching the given type." (_type_ traffic-type (function process-focusable traffic-object-type-info none)) none 26)
     )
   )
 
 (declare-type traffic-find-segment-struct structure)
 (deftype traffic-engine (basic)
   ((object-hash            spatial-hash                       :offset-assert 4) ;; either spatial-hash is wrong, or this is wrong
-   (manager                uint64                      :offset-assert 8)
+   (manager                handle                      :offset-assert 8)
    (inv-density-factor     float                       :offset-assert 16)
    (sync-clock             uint8                       :offset-assert 20)
    (sync-mask-8            uint8                       :offset-assert 21)
@@ -49026,8 +49086,8 @@
     ;; NOTE - most of these names were taken from the symbols for the event-handler that calls them
     ;; they may be wrong or misleading as a result, but they are a decent placeholder _for now_
     (traffic-engine-method-9 (_type_) none 9)
-    (traffic-engine-method-10 (_type_ process) none 10)
-    (traffic-engine-method-11 (_type_) none 11)
+    (reset-and-init-from-manager "Reset the traffic engine" (_type_ process) none 10)
+    (stop-alarm-sound (_type_) none 11)
     (traffic-engine-method-12 (_type_) none 12)
     (add-object (_type_ int process) none 13)
     (traffic-engine-method-14 (_type_ object object) symbol 14)
@@ -49077,11 +49137,11 @@
     (set-object-auto-activate (_type_ object object) none 58)
     (traffic-engine-method-59 (_type_ object int) none 59)
     (kill-traffic-sphere (_type_ sphere) none 60)
-    (level-loaded (_type_ level) none 61)
+    (level-loaded "Call after loading a level to patch the data in the bsp" (_type_ level) none 61)
     (level-killed (_type_ level) none 62)
     (traffic-engine-method-63 (_type_) none 63)
     (traffic-engine-method-64 (_type_) none 64)
-    (traffic-engine-method-65 (_type_ vis-cell) none 65)
+    (handle-new-vis-cell (_type_ vis-cell) none 65)
     (traffic-engine-method-66 (_type_) none 66)
     (traffic-engine-method-67 (_type_) none 67)
     (traffic-engine-method-68 (_type_) none 68)
@@ -49654,12 +49714,12 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (xz-height-map-method-9 (_type_ vector) float 9)
-    (xz-height-map-method-10 (_type_ vector) none 10)
-    (xz-height-map-method-11 (_type_) none 11)
-    (xz-height-map-method-12 (_type_ vector) none 12)
-    (xz-height-map-method-13 (_type_ vector) none 13)
-    (xz-height-map-method-14 (_type_ vector int) none 14)
+    (get-height-at-point (_type_ vector) float 9)
+    (debug-draw-mesh (_type_ vector) none 10)
+    (debug-print (_type_) none 11)
+    (debug-draw-at-point (_type_ vector) none 12)
+    (debug-draw (_type_ vector) none 13)
+    (debug-add-offset "Add an offset to the given point, likely for debugging purposes." (_type_ vector int) none 14)
     )
   )
 
@@ -49725,7 +49785,7 @@
 ;; nav-graph                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern make-nav-graph (function nav-graph object none))
+(define-extern make-nav-graph (function mysql-nav-graph symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-rider                  ;;
@@ -51471,7 +51531,7 @@
 (define-extern *traffic-suppress-activation* symbol)
 (define-extern *mysql-nav-graph* mysql-nav-graph)
 (define-extern *traffic-rigid-body-queue* rigid-body-queue)
-(define-extern get-level-nav-graph-by-id (function object symbol))
+(define-extern get-level-nav-graph-by-id "Get the nav-graph with the given ID from any of the currently loaded levels" (function int nav-graph))
 (define-extern add-debug-line-arrow "Does nothing!" (function none))
 (define-extern traffic-los-clear? (function vector vector symbol))
 (define-extern *guard-target-spots* (array vector))
