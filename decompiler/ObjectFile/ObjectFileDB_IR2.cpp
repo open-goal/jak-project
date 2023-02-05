@@ -282,15 +282,13 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
           func.type = TypeSpec("function");
         }
 
-        if (config.hacks.asm_functions_by_name.find(name) !=
-            config.hacks.asm_functions_by_name.end()) {
-          func.warnings.info("Flagged as asm by config");
-          func.suspected_asm = true;
-        }
-
         if (config.hacks.mips2c_functions_by_name.find(name) !=
             config.hacks.mips2c_functions_by_name.end()) {
           func.warnings.info("Flagged as mips2c by config");
+          func.suspected_asm = true;
+        } else if (config.hacks.asm_functions_by_name.find(name) !=
+                   config.hacks.asm_functions_by_name.end()) {
+          func.warnings.error("Flagged as asm by config");
           func.suspected_asm = true;
         }
       }

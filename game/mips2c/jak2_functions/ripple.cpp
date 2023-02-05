@@ -25,7 +25,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.cos_poly_vec);          // lw v1, *cos-poly-vec*(s7)
   c->lqc2(vf7, 0, v1);                              // lqc2 vf7, 0(v1)
   c->lui(v1, 15561);                                // lui v1, 15561
@@ -450,7 +449,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   get_fake_spad_addr2(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->daddiu(v1, v1, 1024);                          // daddiu v1, v1, 1024
   c->lwu(a1, 4, a0);                                // lwu a1, 4(a0)
@@ -552,7 +550,6 @@ namespace ripple_matrix_scale {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lhu(v1, 2, a0);                                // lhu v1, 2(a0)
   c->lw(a1, 4, a0);                                 // lw a1, 4(a0)
   c->lw(a2, 28, a0);                                // lw a2, 28(a0)

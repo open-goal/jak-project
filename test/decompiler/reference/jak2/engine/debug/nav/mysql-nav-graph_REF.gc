@@ -229,7 +229,7 @@
 
 ;; definition of type mysql-nav-graph-level-info
 (deftype mysql-nav-graph-level-info (structure)
-  ((level         basic   :offset-assert   0)
+  ((level         string  :offset-assert   0)
    (level-id      uint32  :offset-assert   4)
    (node-count    int32   :offset-assert   8)
    (branch-count  int32   :offset-assert  12)
@@ -271,7 +271,7 @@
   :size-assert         #x41c
   :flag-assert         #x150000041c
   (:methods
-    (new (symbol type int string) _type_ 0)
+    (new (symbol type int symbol) _type_ 0)
     (init-from-sql! (_type_ string string) symbol 9)
     (exec-sql! (_type_) symbol 10)
     (indexof-nav-node (_type_ int) int 11)
@@ -307,7 +307,7 @@
 
 ;; definition for method 0 of type mysql-nav-graph
 ;; WARN: Return type mismatch object vs mysql-nav-graph.
-(defmethod new mysql-nav-graph ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
+(defmethod new mysql-nav-graph ((allocation symbol) (type-to-make type) (arg0 int) (arg1 symbol))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (if (zero? gp-0)
         (return (the-as mysql-nav-graph 0))
@@ -1216,7 +1216,72 @@ returns `-1` if none is found"
   )
 
 ;; definition for method 18 of type mysql-nav-graph
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defmethod lookup-level-info2 mysql-nav-graph ((obj mysql-nav-graph) (arg0 mysql-nav-node) (arg1 symbol))
+  "TODO - this was originally called `lookup-level-info` but it clashes with the function defined in `level`"
+  (let ((s5-0 (the-as mysql-nav-graph-level-info #f)))
+    (b! (>= (-> obj level-info-last-lookup) (-> obj level-info-array-length)) cfg-3 :delay #f)
+    (let ((v1-5 (-> obj level-info-array (-> obj level-info-last-lookup))))
+      (let ((a0-2 (-> v1-5 level)))
+        (b! (!= (-> arg0 level_name) a0-2) cfg-3 :delay (empty-form))
+        )
+      (set! s5-0 v1-5)
+      )
+    (b! #t cfg-18 :delay (nop!))
+    (label cfg-3)
+    (let ((v1-6 0))
+      (b! #t cfg-9 :delay (nop!))
+      (label cfg-4)
+      (let ((a0-6 (-> obj level-info-array v1-6)))
+        (let ((a3-1 (-> a0-6 level)))
+          (b! (!= (-> arg0 level_name) a3-1) cfg-8 :delay (empty-form))
+          )
+        (if arg1
+            (set! (-> obj level-info-last-lookup) v1-6)
+            )
+        (set! s5-0 a0-6)
+        )
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-8)
+      (+! v1-6 1)
+      (label cfg-9)
+      (b! (< v1-6 (-> obj level-info-array-length)) cfg-4)
+      )
+    (let ((v1-9 (-> obj level-info-array-length)))
+      (cond
+        ((< v1-9 32)
+         (if arg1
+             (set! (-> obj level-info-last-lookup) v1-9)
+             )
+         (set! s5-0 (-> obj level-info-array v1-9))
+         (set! (-> s5-0 level) (the-as string (-> arg0 level_name)))
+         (set! (-> s5-0 node-count) 0)
+         (+! (-> obj level-info-array-length) 1)
+         )
+        (else
+          (format
+            0
+            "mysql-nav-graph::lookup-level-info:  Error, too many unique level names in nav-graph.  May need to increase the max (currently ~d)~%"
+            32
+            )
+          (let ((s4-0 0))
+            (b! #t cfg-16 :delay (nop!))
+            (label cfg-15)
+            (let ((v1-17 (-> obj level-info-array s4-0)))
+              (format 0 "~d ~s~%" s4-0 (-> v1-17 level))
+              )
+            (+! s4-0 1)
+            (label cfg-16)
+            (b! (< s4-0 (-> obj level-info-array-length)) cfg-15)
+            )
+          (break!)
+          0
+          )
+        )
+      )
+    (label cfg-18)
+    s5-0
+    )
+  )
 
 ;; definition for method 19 of type mysql-nav-graph
 ;; WARN: Return type mismatch int vs none.
