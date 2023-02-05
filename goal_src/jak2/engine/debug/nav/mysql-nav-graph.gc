@@ -140,7 +140,7 @@
    (width             float                  :offset-assert  60)
    (minimap_edge_flag nav-minimap-edge-flag  :offset-assert  64)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 10
   :size-assert         #x44
   :flag-assert         #xa00000044
@@ -191,7 +191,7 @@
 (set! (-> mysql-nav-visnode-array heap-base) (the-as uint 32))
 
 (deftype mysql-nav-graph-level-info (structure)
-  ((level         string  :offset-assert   0)
+  ((level         symbol  :offset-assert   0)
    (level-id      uint32  :offset-assert   4)
    (node-count    int32   :offset-assert   8)
    (branch-count  int32   :offset-assert  12)
@@ -293,7 +293,7 @@ otherwise, return the new size of the array"
      -1
      )
     (else
-      (let ((v1-5 (the-as mysql-nav-edge (+ (+ (* 80 (-> obj edge-array length)) 12) (the-as int (-> obj edge-array)))))
+      (let ((v1-5 (-> obj edge-array data (-> obj edge-array length)))
             (v0-1 (-> obj edge-array length))
             )
         (+! (-> obj edge-array length) 1)
@@ -735,7 +735,7 @@ returns `-1` if none is found"
   "Iterate through the `edge-array` and return the index for the first [[mysql-nav-edge]] whom's `nav_edge_id` matches the provided id
 returns `-1` if none is found"
   (dotimes (v1-0 (-> obj edge-array length))
-    (if (= edge-id (-> (the-as mysql-nav-edge (+ (+ (* 80 v1-0) 12) (the-as int (-> obj edge-array)))) nav_edge_id))
+    (if (= edge-id (-> (the-as mysql-nav-edge (-> obj edge-array data v1-0)) nav_edge_id))
         (return v1-0)
         )
     )
@@ -875,10 +875,7 @@ returns `-1` if none is found"
                   (set! sv-32 (string->int (-> s3-3 data (+ s2-2 2))))
                   (set! sv-48 (indexof-nav-node obj s0-2))
                   (set! sv-64 (indexof-nav-node obj sv-32))
-                  (let ((nav-edge
-                          (the-as mysql-nav-edge (+ (+ (* 80 (-> obj edge-array length)) 12) (the-as int (-> obj edge-array))))
-                          )
-                        )
+                  (let ((nav-edge (-> obj edge-array data (-> obj edge-array length))))
                     (when (and (!= sv-48 -1) (!= sv-64 -1))
                       (set! (-> nav-edge nav_graph_id) (-> obj nav_graph_id))
                       (set! (-> nav-edge nav_edge_id) (the-as uint (string->int (-> s3-3 data s2-2))))
@@ -1104,10 +1101,10 @@ returns `-1` if none is found"
           )
     )
   (dotimes (v1-3 (-> obj edge-array length))
-    (set! (-> (the-as mysql-nav-edge (+ (+ (* 80 v1-3) 12) (the-as int (-> obj edge-array)))) temp-next-edge) #f)
+    (set! (-> (the-as mysql-nav-edge (-> obj edge-array data v1-3)) temp-next-edge) #f)
     )
   (countdown (v1-7 (-> obj edge-array length))
-    (let ((a1-17 (the-as mysql-nav-edge (+ (+ (* 80 v1-7) 12) (the-as int (-> obj edge-array))))))
+    (let ((a1-17 (-> obj edge-array data v1-7)))
       (when (not (logtest? (-> a1-17 mysql-save-flag) (mysql-save-flag delete)))
         (let ((a2-8 (-> obj node-array data (-> a1-17 runtime-node-id-1))))
           (when (not (logtest? (-> a2-8 mysql-save-flag) (mysql-save-flag delete)))
@@ -1166,7 +1163,7 @@ returns `-1` if none is found"
              (set! (-> obj level-info-last-lookup) v1-9)
              )
          (set! s5-0 (-> obj level-info-array v1-9))
-         (set! (-> s5-0 level) (the-as string (-> arg0 level_name)))
+         (set! (-> s5-0 level) (-> arg0 level_name))
          (set! (-> s5-0 node-count) 0)
          (+! (-> obj level-info-array-length) 1)
          )

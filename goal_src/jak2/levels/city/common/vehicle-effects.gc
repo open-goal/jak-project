@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod rigid-body-object-method-36 vehicle ((obj vehicle))
+(defmethod do-engine-sounds vehicle ((obj vehicle))
   (local-vars (v1-36 float))
   (with-pp
     (rlet ((acc :class vf)
@@ -221,7 +221,7 @@
                                            )
         )
 
-(defmethod vehicle-method-84 vehicle ((obj vehicle) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod draw-thruster vehicle ((obj vehicle) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -269,7 +269,10 @@
         (set! (-> s3-1 1 normal w) f0-14)
         (set! (-> s3-1 1 normal x) (* 0.025 f0-14))
         )
-      (add! *simple-sprite-system* (the-as dma-buffer (-> s3-1 1)))
+      (when (nonzero? *simple-sprite-system*)
+        ;; added nonzero check
+        (add! *simple-sprite-system* (the-as dma-buffer (-> s3-1 1)))
+        )
       (forward-up->quaternion (the-as quaternion (-> s3-1 0)) arg1 (the-as vector (-> obj rbody state matrix)))
       (quaternion-rotate-local-x! (the-as quaternion (-> s3-1 0)) (the-as quaternion (-> s3-1 0)) 32768.0)
       (let ((v1-16 (-> s3-1 0 normal)))
@@ -310,7 +313,7 @@
     )
   )
 
-(defmethod vehicle-method-85 vehicle ((obj vehicle))
+(defmethod draw-thrusters vehicle ((obj vehicle))
   (local-vars (sv-272 sparticle-launcher) (sv-276 sparticle-launcher))
   (with-pp
     (when (= (-> obj controller traffic sync-mask-32) (ash 1 (logand (-> obj traffic-priority-id) 31)))
@@ -433,7 +436,7 @@
                )
           (dotimes (s4-2 2)
             (vector-matrix*! (the-as vector (-> s5-0 0)) (-> obj info-override thruster-local-pos s4-2) (-> s5-0 1))
-            (vehicle-method-84 obj (the-as vector (-> s5-0 0)) (-> s5-0 0 vector 1) f28-3 f30-2)
+            (draw-thruster obj (the-as vector (-> s5-0 0)) (-> s5-0 0 vector 1) f28-3 f30-2)
             )
           )
         (when (logtest? (rigid-body-object-flag ignition) (-> obj flags))
