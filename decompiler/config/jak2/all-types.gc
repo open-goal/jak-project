@@ -6072,7 +6072,7 @@
     (debug-draw-actors (_type_ symbol) none 15)
     (assign-draw-indices (_type_) none 16)
     (actors-update (_type_) none 17)
-    (update-nav-meshes (_type_) none 18)
+    (update-nav-meshes-method "Clashes with a function name" (_type_) none 18)
     (level-update (_type_) none 19)
     (level-get-target-inside (_type_) level 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
@@ -8958,12 +8958,15 @@
 ;; traffic-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++traffic-h:traffic-danger-flags
 (defenum traffic-danger-flags
   :type uint8
   :bitfield #t
   (tdf0 0)
   )
+;; ---traffic-h:traffic-danger-flags
 
+;; +++traffic-h:traffic-danger-type
 (defenum traffic-danger-type
   :type uint8
   (tdt0 0)
@@ -8972,7 +8975,9 @@
   (tdt3 3)
   (tdt4 4)
   (tdt5 5)
+  (tdt6 6)
   )
+;; ---traffic-h:traffic-danger-type
 
 (deftype traffic-danger-info (structure)
   ((sphere        sphere :inline :offset-assert 0)
@@ -20596,7 +20601,7 @@
    (offset     uint32                :offset-assert 20)
    (accum      float                 :offset-assert 24)
    (spawn-time uint32                :offset-assert 28)
-   (control    basic                 :offset-assert 32)
+   (control    sparticle-launch-control                 :offset-assert 32)
    (swarm      basic                 :offset 20)
    (seed       uint32                :offset 24)
    (time       uint32                :offset 28)
@@ -22794,7 +22799,7 @@
     (link-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 32)
     (unlink-by-id "arg1 is a [[nav-mesh-link]] `id`" (_type_ uint) symbol 33)
     (nav-mesh-method-34 (_type_ vector vector float) float 34)
-    (nav-mesh-method-35 (_type_ vector vector float) none 35)
+    (nav-mesh-method-35 (_type_ vector vector float) float 35)
     (debug-draw-poly (_type_ nav-poly rgba) none 36)
     (point-in-poly? (_type_ nav-poly vector) symbol 37)
     (nav-mesh-method-38 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector 38)
@@ -31846,7 +31851,7 @@
   :size-assert         #x41c
   :flag-assert         #x150000041c
   (:methods
-    (new (symbol type int string) _type_ 0)
+    (new (symbol type int symbol) _type_ 0)
     (init-from-sql!
       "Query the database and initialize the [[mysql-nav-graph]] and all it's related components"
       (_type_ string string) symbol 9)
@@ -31893,7 +31898,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype nav-graph-command (structure)
-  ((com-type uint32         :offset-assert 0)
+  ((com-type uint32         :offset-assert 0) ;; TODO - enum
    (id       int32          :offset-assert 4)
    (index    int32          :offset-assert 8)
    (move-vec vector :inline :offset-assert 16)
@@ -31904,15 +31909,16 @@
   )
 
 (deftype nav-graph-command-array (inline-array-class)
-  ((data             nav-graph-command :dynamic :offset-assert 16))
+  ((data             nav-graph-command :inline :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
 (deftype nav-graph-editor (process)
-  ((nav-graph           basic                  :offset-assert 128)
-   (mode                uint32                 :offset-assert 132)
+  ((self-override       nav-graph-editor :offset 32 :score 100)
+   (nav-graph           mysql-nav-graph                  :offset-assert 128)
+   (mode                symbol                 :offset-assert 132)
    (command-id          int32                  :offset-assert 136)
    (max-command         int32                  :offset-assert 140)
    (selected-index      int32                  :offset-assert 144)
@@ -31930,14 +31936,14 @@
    (edge-src            int32                  :offset-assert 256)
    (edge-dst            int32                  :offset-assert 260)
    (edge-visibility     int32                  :offset-assert 264)
-   (vehicle-edit-mode   basic                  :offset-assert 268)
-   (hover-edit-mode     basic                  :offset-assert 272)
+   (vehicle-edit-mode   symbol                  :offset-assert 268)
+   (hover-edit-mode     symbol                  :offset-assert 272)
    (clipping-dist       float                  :offset-assert 276)
    (plane-height        float                  :offset-assert 280)
    (plane-height-hold   float                  :offset-assert 284)
    (default-node        mysql-nav-node :inline :offset-assert 288)
    (default-edge        mysql-nav-edge :inline :offset-assert 356)
-   (command-array       basic                  :offset-assert 424)
+   (command-array       nav-graph-command-array                  :offset-assert 424)
    )
   :method-count-assert 64
   :size-assert         #x1ac
@@ -31957,57 +31963,57 @@
     (adjust-edge-width () _type_ :state 25)
     (adjust-edge-density () _type_ :state 26)
     (draw-closest-minimap () _type_ :state 27)
-    (nav-graph-editor-method-28 () none 28)
-    (nav-graph-editor-method-29 () none 29)
-    (nav-graph-editor-method-30 () none 30)
-    (nav-graph-editor-method-31 () none 31)
-    (nav-graph-editor-method-32 () none 32)
-    (nav-graph-editor-method-33 () none 33)
-    (nav-graph-editor-method-34 () none 34)
-    (nav-graph-editor-method-35 () none 35)
-    (nav-graph-editor-method-36 () none 36)
-    (nav-graph-editor-method-37 () none 37)
-    (nav-graph-editor-method-38 () none 38)
-    (nav-graph-editor-method-39 () none 39)
-    (nav-graph-editor-method-40 () none 40)
-    (nav-graph-editor-method-41 () none 41)
-    (nav-graph-editor-method-42 () none 42)
-    (nav-graph-editor-method-43 () none 43)
-    (nav-graph-editor-method-44 () none 44)
-    (nav-graph-editor-method-45 () none 45)
-    (nav-graph-editor-method-46 () none 46)
-    (nav-graph-editor-method-47 () none 47)
-    (nav-graph-editor-method-48 () none 48)
-    (nav-graph-editor-method-49 () none 49)
-    (nav-graph-editor-method-50 () none 50)
-    (nav-graph-editor-method-51 () none 51)
-    (nav-graph-editor-method-52 () none 52)
-    (nav-graph-editor-method-53 () none 53)
-    (nav-graph-editor-method-54 () none 54)
-    (nav-graph-editor-method-55 () none 55)
-    (nav-graph-editor-method-56 () none 56)
-    (nav-graph-editor-method-57 () none 57)
-    (nav-graph-editor-method-58 () none 58)
-    (nav-graph-editor-method-59 () none 59)
-    (nav-graph-editor-method-60 () none 60)
-    (nav-graph-editor-method-61 () none 61)
+    (nav-graph-editor-method-28 (_type_) none 28)
+    (nav-graph-editor-method-29 (_type_ string string string) none 29)
+    (nav-graph-editor-method-30 (_type_ int) symbol 30)
+    (nav-graph-editor-method-31 (_type_ int) symbol 31)
+    (nav-graph-editor-method-32 (_type_ symbol int) none 32)
+    (nav-graph-editor-method-33 (_type_ int) none 33)
+    (nav-graph-editor-method-34 (_type_) object 34)
+    (nav-graph-editor-method-35 (_type_) none 35)
+    (nav-graph-editor-method-36 (_type_) none 36)
+    (nav-graph-editor-method-37 (_type_) none 37)
+    (nav-graph-editor-method-38 (_type_) none 38)
+    (nav-graph-editor-method-39 (_type_) none 39)
+    (nav-graph-editor-method-40 (_type_) none 40)
+    (nav-graph-editor-method-41 (_type_) none 41)
+    (nav-graph-editor-method-42 (_type_) symbol 42)
+    (nav-graph-editor-method-43 (_type_) none 43)
+    (nav-graph-editor-method-44 (_type_) symbol 44)
+    (nav-graph-editor-method-45 (_type_) none 45)
+    (nav-graph-editor-method-46 (_type_) pad-buttons 46)
+    (nav-graph-editor-method-47 (_type_) none 47)
+    (nav-graph-editor-method-48 "TODO - enum / com-type" (_type_ uint32) nav-graph-command 48)
+    (nav-graph-editor-method-49 (_type_) nav-graph-command 49)
+    (nav-graph-editor-method-50 (_type_) none 50)
+    (nav-graph-editor-method-51 (_type_) none 51)
+    (nav-graph-editor-method-52 (_type_) none 52)
+    (nav-graph-editor-method-53 (_type_ int int) none 53)
+    (nav-graph-editor-method-54 (_type_ int) none 54)
+    (nav-graph-editor-method-55 (_type_ int) none 55)
+    (nav-graph-editor-method-56 (_type_ int) none 56)
+    (nav-graph-editor-method-57 (_type_ int int) int 57)
+    (nav-graph-editor-method-58 (_type_) symbol 58)
+    (nav-graph-editor-method-59 (_type_) pad-buttons 59)
+    (nav-graph-editor-method-60 (_type_) none 60)
+    (nav-graph-editor-method-61 (_type_) none 61)
     (nav-graph-editor-method-62 (_type_ symbol symbol) none 62)
-    (nav-graph-editor-method-63 () none 63)
+    (nav-graph-editor-method-63 (_type_) none 63)
     )
   )
 
-(define-extern *nav-graph-editor* nav-graph-editor)
-;; (define-extern nav-graph-editor-init-by-other function)
-(define-extern run-nav-graph-editor (function symbol none))
+(define-extern *nav-graph-editor* (pointer nav-graph-editor))
+(define-extern nav-graph-editor-init-by-other (function int none :behavior nav-graph-editor))
+(define-extern run-nav-graph-editor (function symbol (pointer process)))
 (define-extern get-nav-graph-editor (function nav-graph-editor))
 (define-extern exit-nav-graph-editor (function none))
-;; (define-extern set-minimap-edge-flag function)
-;; (define-extern set-vehicle-edit-mode function)
-;; (define-extern translate-nav-graph function)
-;; (define-extern update-nav-meshes function)
-;; (define-extern smooth-nav-graph function)
-;; (define-extern update-height function)
-;; (define-extern update-width function)
+(define-extern set-minimap-edge-flag (function nav-minimap-edge-flag uint))
+(define-extern set-vehicle-edit-mode (function symbol none))
+(define-extern translate-nav-graph (function float float float symbol))
+(define-extern update-nav-meshes (function symbol))
+(define-extern smooth-nav-graph (function string symbol))
+(define-extern update-height (function string symbol))
+(define-extern update-width (function string symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sampler                        ;;
@@ -33084,6 +33090,7 @@
    (bounce-factor       float           :offset-assert 16)
    (friction-factor     float           :offset-assert 20)
    (bounce-mult-factor  float           :offset-assert 24)
+   (unknown-k1hbn23     float           :offset-assert 28)
    (cm-offset-joint     vector  :inline :offset-assert 32)
    (inv-inertial-tensor matrix  :inline :offset-assert 48)
    (inertial-tensor     matrix  :inline :offset-assert 112)
@@ -33111,8 +33118,6 @@
 
 (deftype rigid-body-object-constants (structure)
   ((info               rigid-body-info              :inline :offset-assert 0)
-   (mass               float                                :offset 0)
-   (inv-mass           float                                :offset 4)
    (cm-joint           vector                       :inline :offset 32)
    (cm-joint-x         meters                               :offset 32)
    (cm-joint-y         meters                               :offset 36)
@@ -33125,11 +33130,7 @@
    (inertial-tensor-x  meters                               :offset 176)
    (inertial-tensor-y  meters                               :offset 180)
    (inertial-tensor-z  meters                               :offset 184)
-   (extra              rigid-body-object-extra-info :inline :offset-assert 188 :score -1)
-   (max-time-step      float                                :offset 188)
-   (gravity            meters                               :offset 192)
-   (idle-distance      meters                               :offset 196)
-   (attack-force-scale float                                :offset 200)
+   (extra              rigid-body-object-extra-info :inline :offset-assert 188)
    (name               symbol                               :offset-assert 204)
    )
   :method-count-assert 9
@@ -45109,7 +45110,6 @@
 ;; onin-game                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype onin-game-event (structure)
   ((min-count  uint16  :offset-assert 0)
    (max-count  uint16  :offset-assert 2)
@@ -45120,20 +45120,19 @@
    (max-wave   uint16  :offset-assert 12)
    (gravity    meters  :offset-assert 16)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype onin-game-bubble (process-drawable)
-  ((bubble-type       int32   :offset-assert 196)
-   (bubble-start-time time-frame  :offset-assert 204)
-   (gravity           meters  :offset-assert 212)
-   (dead?             basic   :offset-assert 216)
-   (angle             float   :offset-assert 220)
-   (height            float   :offset-assert 224)
+  ((bubble-type       int32   :offset-assert 200)
+   (bubble-start-time time-frame  :offset-assert 208)
+   (gravity           meters  :offset-assert 216)
+   (dead?             symbol   :offset-assert 220)
+   (angle             float   :offset-assert 224)
+   (height            float   :offset-assert 228)
    )
   :method-count-assert 22
   :size-assert         #xe8
@@ -45143,7 +45142,6 @@
     (fall () _type_ :state 21)
     )
   )
-|#
 
 (deftype onin-game (process-drawable)
   ((wave            int32   :offset-assert 200)
@@ -45153,12 +45151,12 @@
    (wave-length     uint64  :offset-assert 224)
    (event-time      time-frame  :offset-assert 232)
    (event-length    uint64  :offset-assert 240)
-   (hud-score       uint64  :offset-assert 248)
-   (hud-goal        uint64  :offset-assert 256)
-   (hud-miss        uint64  :offset-assert 264)
+   (hud-score       handle  :offset-assert 248)
+   (hud-goal        handle  :offset-assert 256)
+   (hud-miss        handle  :offset-assert 264)
    (score           float   :offset-assert 272)
    (score-time      time-frame  :offset-assert 280)
-   (game            uint32  :offset-assert 288)
+   (game            (inline-array onin-game-event)  :offset-assert 288)
    (miss-max        int32   :offset-assert 292)
    (miss-count      int32   :offset-assert 296)
    (point-win       float   :offset-assert 300)
@@ -45174,20 +45172,20 @@
   (:methods
     (hide () _type_ :state 20)
     (wait-for-start () _type_ :state 21)
-    (active () _type_ :state 22)
+    (active (symbol) _type_ :state 22)
     (lose () _type_ :state 23)
     (win () _type_ :state 24)
-    (onin-game-method-25 () none 25)
-    (onin-game-method-26 () none 26)
-    (onin-game-method-27 () none 27)
+    (onin-game-method-25 (_type_) none 25)
+    (onin-game-method-26 (_type_) none 26)
+    (onin-game-method-27 "TODO - bubble type" (_type_ int) none 27)
     )
   )
 
-;; (define-extern *onin-game-data* array)
-;; (define-extern birth-func-onin-bubble-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern birth-func-onin-bubble-birth-pop (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern onin-game-bubble-init function)
-(define-extern onin-game-init (function entity none))
+(define-extern *onin-game-data* (array object))
+(define-extern birth-func-onin-bubble-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-onin-bubble-birth-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern onin-game-bubble-init "TODO - bubble type enum" (function vector int meters float float none :behavior onin-game-bubble))
+(define-extern onin-game-init (function entity none :behavior onin-game))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiumb-texture               ;;
@@ -47415,19 +47413,28 @@
 ;; neon-praxis-part               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype city-neon-praxis (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype city-neon-praxis (process-drawable)
+  (
+    (rot            vector :inline    :offset-assert 208)
+    (master-enable  uint32     :offset-assert 224)
+    (unknown-k1jn23j1n23 uint32 3 :offset-assert 228)
+    (praxis-mode    uint32     :offset-assert 240)
+    (back-mode      uint32     :offset-assert 244)
+    (praxis-counter int32      :offset-assert 248)
+    (back-counter   int32      :offset-assert 252)
+    (parts          sparticle-launch-control    2 :offset-assert 256)
   )
-|#
+  :method-count-assert 22
+  :size-assert         #x108 ;; 264
+  :flag-assert         #x1600900108
+  (:methods
+    (idle () _type_ :state 20)
+    (city-neon-praxis-method-21 (_type_) none 21))
+  )
 
-;; (define-extern *praxis* array)
-;; (define-extern *praxis-backing* array)
-;; (define-extern *city-neon-praxis-group-ids* array)
+(define-extern *praxis* (array object))
+(define-extern *praxis-backing* (array object))
+(define-extern *city-neon-praxis-group-ids* (array int32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctypal-part                    ;;
@@ -48401,14 +48408,14 @@
     (pad-ih12nb312 uint32 3 :offset-assert 228)
     (mode uint32 :offset-assert 240)
     (counter int32 :offset-assert 244)
-    (parts basic 1 :offset-assert 248)
+    (parts sparticle-launch-control 1 :offset-assert 248)
   )
   :method-count-assert 22
   :size-assert         #xfc
   :flag-assert         #x16008000fc
   (:methods
     (idle () _type_ :state 20)
-    (hiphog-exterior-marquee-method-21 () none 21))
+    (hiphog-exterior-marquee-method-21 (_type_) none 21))
   )
 
 (deftype farthy (process-drawable)
@@ -48420,7 +48427,7 @@
     (idle () _type_ :state 20))
   )
 
-;; (define-extern check-drop-level-ctyport-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-ctyport-drop-userdata (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern *hiphog-exterior-marquee* (array object))
 (define-extern *hiphog-exterior-marquee-group-ids* (array int32))
 (define-extern *hiphog-exterior-marquee-daxter-group-ids* (array int32))
@@ -49956,6 +49963,7 @@
   :flag-assert         #x9000000c0
   )
 
+;; +++vehicle-guard:turret-flag
 (defenum turret-flag
     :bitfield #t
     :type uint8
@@ -49966,6 +49974,33 @@
     (display-marks 4)
     (no-rot-y-clamp 5)
     )
+;; ---vehicle-guard:turret-flag
+
+(deftype turret-unknown-stack-structure (structure)
+  "TODO - sigh...another one that i cant seem to find a fit"
+  ((vec-1 vector :inline :offset-assert 0)
+   (vec-2 vector :inline :offset-assert 16)
+   (vec-3 vector :inline :offset-assert 32)
+   (vec-4 vector :inline :offset-assert 48)
+   (vec-5 vector :inline :offset-assert 64)
+   (vec-6 vector :inline :offset-assert 80)
+   (vec-7 vector :inline :offset-assert 96)
+   (mat-1 matrix :inline :offset-assert 112)
+   (vec-8 vector :inline :offset-assert 176)
+   (vec-9 vector :inline :offset-assert 192)
+   (vec-10 vector :inline :offset-assert 208)
+   (vec-11 vector :inline :offset-assert 224)
+   (vec-12 vector :inline :offset-assert 240))
+  )
+
+(deftype turret-unknown-stack-structure2 (structure)
+  "TODO - another one! this one has an entity, but also a matrix!?"
+  ((proj-params projectile-init-by-other-params :inline :offset-assert 0)
+   (mat-1 matrix :inline :offset-assert 96)
+   (vec-1 vector :inline :offset-assert 160)
+   (vec-2 vector :inline :offset-assert 176)
+   )
+)
 
 (deftype turret-control (structure)
   (
@@ -50042,7 +50077,6 @@
   :method-count-assert 159
   :size-assert         #x434
   :flag-assert         #x9f03c00434
-  ;; Failed to read fields.
   (:methods
     (hostile () _type_ :state 144)
     (stop-and-shoot () _type_ :state 145)

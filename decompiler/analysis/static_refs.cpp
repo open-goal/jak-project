@@ -58,7 +58,6 @@ bool try_convert_lambda(const Function& parent_function,
 }
 }  // namespace
 
-// TODO - important entry point!
 int insert_static_refs(Form* top_level_form,
                        FormPool& pool,
                        const Function& function,

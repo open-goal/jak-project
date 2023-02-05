@@ -25,7 +25,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
-                                          DecompilerTypeSystem& dts,
+                                          const TypeSystem& ts,
                                           const LinkedObjectFile* file,
                                           GameVersion version) {
   const auto& type = hint.result_type;
@@ -35,7 +35,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       throw std::runtime_error(fmt::format(
           "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
     }
-    return decompile_at_label(type, label, labels, words, dts.ts, file, version);
+    return decompile_at_label(type, label, labels, words, ts, file, version);
   }
 
   if (type.base_type() == "pointer") {
@@ -43,7 +43,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       throw std::runtime_error(fmt::format(
           "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
     }
-    auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
+    auto field_type_info = ts.lookup_type(type.get_single_arg());
     if (field_type_info->is_reference()) {
       throw std::runtime_error(
           fmt::format("Type {} label {} is not yet supported by the data decompiler.", type.print(),
@@ -58,7 +58,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                        words.at(label.target_segment).begin() + (label.offset / 4) + word_count);
 
       return decompile_value_array(type.get_single_arg(), field_type_info, *hint.array_size, stride,
-                                   0, obj_words, dts.ts);
+                                   0, obj_words, ts);
     }
   }
 
@@ -67,7 +67,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       throw std::runtime_error(fmt::format(
           "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
     }
-    auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
+    auto field_type_info = ts.lookup_type(type.get_single_arg());
     if (!field_type_info->is_reference()) {
       throw std::runtime_error(
           fmt::format("Type {} for label {} is invalid, the element type is not inlineable.",
@@ -96,8 +96,8 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
         fake_label.target_segment = label.target_segment;
         fake_label.offset = label.offset + field_type_info->get_offset() + stride * elt;
         fake_label.name = fmt::format("fake-label-{}-elt-{}", type.get_single_arg().print(), elt);
-        array_def.push_back(decompile_at_label(type.get_single_arg(), fake_label, labels, words,
-                                               dts.ts, file, version));
+        array_def.push_back(decompile_at_label(type.get_single_arg(), fake_label, labels, words, ts,
+                                               file, version));
       }
       return pretty_print::build_list(array_def);
     }
@@ -191,28 +191,34 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const LinkedObjectFile* file,
                                 GameVersion version,
                                 bool in_static_pair) {
-  if (type == TypeSpec("string")) {
-    return decompile_string_at_label(label, words);
-  }
-
-  if (ts.tc(TypeSpec("function"), type)) {
-    return decompile_function_at_label(label, file, in_static_pair);
-  }
-
-  if (ts.tc(TypeSpec("array"), type)) {
-    std::optional<TypeSpec> content_type_spec;
-    if (type.has_single_arg()) {
-      content_type_spec = type.get_single_arg();
+  try {
+    if (type == TypeSpec("string")) {
+      return decompile_string_at_label(label, words);
     }
-    return decompile_boxed_array(type, label, labels, words, ts, file, content_type_spec, version);
-  }
 
-  if (ts.tc(TypeSpec("structure"), type)) {
-    return decompile_structure(type, label, labels, words, ts, file, true, version);
-  }
+    if (ts.tc(TypeSpec("function"), type)) {
+      return decompile_function_at_label(label, file, in_static_pair);
+    }
 
-  if (type == TypeSpec("pair")) {
-    return decompile_pair(label, labels, words, ts, true, file, version);
+    if (ts.tc(TypeSpec("array"), type)) {
+      std::optional<TypeSpec> content_type_spec;
+      if (type.has_single_arg()) {
+        content_type_spec = type.get_single_arg();
+      }
+      return decompile_boxed_array(type, label, labels, words, ts, file, content_type_spec,
+                                   version);
+    }
+
+    if (ts.tc(TypeSpec("structure"), type)) {
+      return decompile_structure(type, label, labels, words, ts, file, true, version);
+    }
+
+    if (type == TypeSpec("pair")) {
+      return decompile_pair(label, labels, words, ts, true, file, version);
+    }
+  } catch (std::exception& ex) {
+    throw std::runtime_error(
+        fmt::format("Unable to 'decompile_at_label' {}, Reason: {}", label.name, ex.what()));
   }
 
   throw std::runtime_error(fmt::format(
@@ -1520,6 +1526,7 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
     if (type_ptr.kind() != LinkedWord::TYPE_PTR) {
       throw std::runtime_error("Invalid basic in decompile_boxed_array");
     }
+    // TODO - ideally this wouldn't be hard-coded
     if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array") {
       auto content_type_ptr_word_idx = type_ptr_word_idx + 3;
       auto& content_type_ptr = words.at(label.target_segment).at(content_type_ptr_word_idx);
@@ -1576,12 +1583,20 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
       if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
         result.push_back(pretty_print::to_symbol("0"));
       } else if (word.kind() == LinkedWord::PTR) {
+        const auto& elt_label = labels.at(word.label_id());
         if (content_type == TypeSpec("object")) {
-          result.push_back(decompile_at_label_guess_type(labels.at(word.label_id()), labels, words,
-                                                         ts, file, version));
+          // if there is a type hint for the label, no need to guess!
+          if (file->label_db->label_exists_by_name(elt_label.name)) {
+            result.push_back(decompile_at_label_with_hint(file->label_db->lookup(elt_label.name),
+                                                          elt_label, labels, words, ts, file,
+                                                          version));
+          } else {
+            result.push_back(
+                decompile_at_label_guess_type(elt_label, labels, words, ts, file, version));
+          }
         } else {
-          result.push_back(decompile_at_label(content_type, labels.at(word.label_id()), labels,
-                                              words, ts, file, version));
+          result.push_back(
+              decompile_at_label(content_type, elt_label, labels, words, ts, file, version));
         }
       } else if (word.kind() == LinkedWord::SYM_PTR) {
         result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
