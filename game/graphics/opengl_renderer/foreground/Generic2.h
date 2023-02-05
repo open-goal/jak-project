@@ -28,6 +28,7 @@ class Generic2 : public BucketRenderer {
   static_assert(sizeof(Vertex) == 32);
 
  private:
+  friend class LightningRenderer;
   void determine_draw_modes();
   void build_index_buffer();
   void link_adgifs_back_to_frags();
