@@ -246,9 +246,9 @@ This commonly includes things such as:
                     (s4-1 #f)
                     (s3-0 #f)
                     )
-                (let ((a2-2 (vehicle-method-73 obj (-> s5-0 matrices 0 vector 1) 1 0)))
+                (let ((a2-2 (get-best-seat-for-vehicle obj (-> s5-0 matrices 0 vector 1) 1 0)))
                   (when (!= a2-2 -1)
-                    (vehicle-method-68 obj (-> s5-0 matrices 0 vector 2) a2-2)
+                    (compute-seat-position obj (-> s5-0 matrices 0 vector 2) a2-2)
                     (vector+float*!
                       (-> s5-0 matrices 0 vector 2)
                       (-> s5-0 matrices 0 vector 2)
@@ -442,7 +442,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-65 vehicle ((obj vehicle))
+(defmethod start-jump vehicle ((obj vehicle))
   (when (logtest? (-> obj info-override flags) 16)
     (when (not (logtest? (rigid-body-object-flag jump-sound) (-> obj flags)))
       (set! (-> obj flags) (logior (rigid-body-object-flag jump-sound) (-> obj flags)))
@@ -459,12 +459,11 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-67 vehicle ((obj vehicle))
+(defmethod get-seat-count vehicle ((obj vehicle))
   (-> obj info-override seat-count)
-  (none)
   )
 
-(defmethod vehicle-method-68 vehicle ((obj vehicle) (arg0 vector) (arg1 int))
+(defmethod compute-seat-position vehicle ((obj vehicle) (arg0 vector) (arg1 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (set! (-> v1-0 quad) (-> obj info-override seat-array arg1 position quad))
     (set! (-> v1-0 w) 1.0)
@@ -474,7 +473,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-69 vehicle ((obj vehicle) (arg0 int))
+(defmethod get-rider-in-seat vehicle ((obj vehicle) (arg0 int))
   (let ((v0-0 (the-as process #f)))
     (if (< arg0 (-> obj info-override seat-count))
         (set! v0-0 (handle->process (-> obj rider-array arg0)))
@@ -487,7 +486,7 @@ This commonly includes things such as:
   (let ((gp-0 (the-as process #f)))
     (countdown (s4-0 (-> obj info-override seat-count))
       (when (logtest? (-> obj info-override seat-array s4-0 flags) 1)
-        (let ((v1-7 (vehicle-method-69 obj s4-0)))
+        (let ((v1-7 (get-rider-in-seat obj s4-0)))
           (if v1-7
               (set! gp-0 v1-7)
               )
@@ -498,7 +497,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod vehicle-method-73 vehicle ((obj vehicle) (arg0 vector) (arg1 int) (arg2 int))
+(defmethod get-best-seat-for-vehicle vehicle ((obj vehicle) (arg0 vector) (arg1 int) (arg2 int))
   (let ((gp-0 -1))
     (let ((f30-0 (the-as float #x7f800000))
           (s1-0 (new 'stack-no-clear 'vector))
@@ -511,16 +510,16 @@ This commonly includes things such as:
                      #t
                      )
                     ((= v1-7 1)
-                     (not (vehicle-method-69 obj s0-0))
+                     (not (get-rider-in-seat obj s0-0))
                      )
                     ((= v1-7 2)
-                     (vehicle-method-69 obj s0-0)
+                     (get-rider-in-seat obj s0-0)
                      )
                     (else
                       #f
                       )
                     )
-              (vehicle-method-68 obj s1-0 s0-0)
+              (compute-seat-position obj s1-0 s0-0)
               (let ((f0-0 (vector-vector-distance-squared arg0 s1-0)))
                 (when (< f0-0 f30-0)
                   (set! f30-0 f0-0)
@@ -536,7 +535,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod vehicle-method-74 vehicle ((obj vehicle) (arg0 process))
+(defmethod remove-rider vehicle ((obj vehicle) (arg0 process))
   (let ((v1-1 (-> obj info-override seat-count)))
     (dotimes (a2-0 v1-1)
       (if (= arg0 (handle->process (-> obj rider-array a2-0)))
@@ -548,7 +547,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-71 vehicle ((obj vehicle) (arg0 int) (arg1 process-focusable))
+(defmethod put-rider-in-seat vehicle ((obj vehicle) (arg0 int) (arg1 process-focusable))
   (if (< arg0 (-> obj info-override seat-count))
       (set! (-> obj rider-array arg0) (process->handle arg1))
       )
@@ -695,7 +694,7 @@ This commonly includes things such as:
   (set! (-> obj power-level) 1.0)
   (set! (-> obj flight-level-index) 0)
   (let ((a1-0 (-> obj root-override-2 trans)))
-    (set! (-> obj flight-level) (xz-height-map-method-9 *traffic-height-map* a1-0))
+    (set! (-> obj flight-level) (get-height-at-point *traffic-height-map* a1-0))
     )
   (set! (-> obj lights-factor) 0.0)
   (let ((a0-8 (-> obj info-override color-option-select)))
@@ -1076,7 +1075,7 @@ This commonly includes things such as:
   (let ((a0-1 (-> obj controller traffic)))
     (when (and (nonzero? a0-1) arg1)
       (if #t
-          (increase-alert-level a0-1 arg0 arg1)
+          (increase-alert-level a0-1 (the-as int arg0) arg1)
           )
       )
     )
@@ -1085,7 +1084,7 @@ This commonly includes things such as:
   )
 
 (defmethod vehicle-method-112 vehicle ((obj vehicle) (arg0 object))
-  (decrease-alert-level (-> obj controller traffic) arg0)
+  (decrease-alert-level (-> obj controller traffic) (the-as int arg0))
   0
   (none)
   )
@@ -1245,7 +1244,7 @@ This commonly includes things such as:
       )
     )
   (dotimes (s5-1 (-> obj info-override seat-count))
-    (vehicle-method-71 obj s5-1 (the-as process-focusable #f))
+    (put-rider-in-seat obj s5-1 (the-as process-focusable #f))
     )
   (vehicle-method-142 obj)
   (vehicle-controller-method-11 (-> obj controller))
@@ -1371,7 +1370,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod vehicle-method-86 vehicle ()
+(defmethod update-joint-mods vehicle ((obj vehicle))
   0
   (none)
   )
@@ -1385,7 +1384,7 @@ This commonly includes things such as:
     (set! (-> s5-0 local-pos w) 40960.0)
     (let ((s4-0 0))
       (label cfg-1)
-      (let ((v1-7 (traffic-engine-method-20 (-> obj controller traffic) (-> s5-0 local-pos) (-> s5-0 normal) 0)))
+      (let ((v1-7 (find-best-segment (-> obj controller traffic) (-> s5-0 local-pos) (-> s5-0 normal) 0)))
         (when (and (not v1-7) (< s4-0 3))
           (set! (-> s5-0 local-pos w) (+ 40960.0 (-> s5-0 local-pos w)))
           (+! s4-0 1)
@@ -1406,7 +1405,7 @@ This commonly includes things such as:
   (dotimes (s5-0 (-> obj info-override seat-count))
     (let ((s4-0 (handle->process (-> obj rider-array s5-0))))
       (when (and s4-0 (logtest? (-> (the-as vehicle-rider s4-0) focus-status) (focus-status pilot-riding)))
-        (vehicle-method-68 obj (-> (the-as vehicle-rider s4-0) root-override trans) s5-0)
+        (compute-seat-position obj (-> (the-as vehicle-rider s4-0) root-override trans) s5-0)
         (set! (-> (the-as vehicle-rider s4-0) root-override transv quad) (-> obj root-override-2 transv quad))
         (let ((f0-1 (the float (-> obj info-override seat-array s5-0 angle))))
           (quaternion-rotate-local-y!

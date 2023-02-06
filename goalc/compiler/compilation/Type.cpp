@@ -1141,13 +1141,18 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
     }
-    auto type_info = m_ts.lookup_type(ts.get_single_arg());
-    if (!m_ts.lookup_type(elt_type)->is_reference()) {
+    auto type_info = m_ts.lookup_type_allow_partial_def(ts.get_single_arg());
+    if (!m_ts.lookup_type_allow_partial_def(elt_type)->is_reference()) {
       // not a reference type
+      m_ts.lookup_type(elt_type);  // should be fully defined
       int size_in_bytes = info.stride * constant_count;
       auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes,
                                                       type_info->get_in_memory_alignment());
       return addr;
+    }
+
+    if (is_inline) {
+      m_ts.lookup_type(elt_type);  // should be fully defined
     }
 
     int stride = is_inline ? align(type_info->get_size_in_memory(),

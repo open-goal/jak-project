@@ -803,7 +803,6 @@ u64 execute(void* ctxt) {
   const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(a3));
   u16 use_pc_merc_bits = 0;
   u16 ignore_alpha_bits = 0;
-  u32 fade = 0;
   for (int i = 0; i < 16; i++) {
     if (!mbi->effects[i].use_mercneric) {
       use_pc_merc_bits |= (1 << i);

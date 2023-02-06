@@ -44,16 +44,36 @@ enum MemoryUsageCategory {
   SHRUB_TIME_OF_DAY,
   SHRUB_VERT,
   SHRUB_IND,
+  SHRUB_DRAW,
 
   MERC_VERT,
   MERC_INDEX,
+  MERC_DRAW,
+
+  MERC_MOD_DRAW_1,
+  MERC_MOD_DRAW_2,
+  MERC_MOD_VERT,
+  MERC_MOD_IND,
+  MERC_MOD_TABLE,
 
   COLLISION,
 
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 22;
+struct MemoryUsageTracker {
+  u32 data[MemoryUsageCategory::NUM_CATEGORIES];
+
+  MemoryUsageTracker() {
+    for (auto& x : data) {
+      x = 0;
+    }
+  }
+
+  void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
+};
+
+constexpr int TFRAG3_VERSION = 24;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -93,6 +113,7 @@ struct PackedTieVertices {
   std::vector<MatrixGroup> matrix_groups;  // todo pack
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct PackedTfragVertices {
@@ -102,7 +123,7 @@ struct PackedTfragVertices {
     s16 s, t;
     u16 color_index;
   };
-
+  void memory_usage(MemoryUsageTracker* tracker) const;
   std::vector<Vertex> vertices;
   std::vector<math::Vector<u16, 3>> cluster_origins;
 };
@@ -135,7 +156,7 @@ struct PackedShrubVertices {
   std::vector<InstanceGroup> instance_groups;  // todo pack
   std::vector<Vertex> vertices;
   u32 total_vertex_count;
-
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void serialize(Serializer& ser);
 };
 
@@ -207,6 +228,7 @@ struct InstancedStripDraw {
   // for debug counting.
   u32 num_triangles = 0;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // node in the BVH.
@@ -256,6 +278,7 @@ struct Texture {
   std::string debug_tpage_name;
   bool load_to_pool = false;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // Tfrag trees have several kinds:
@@ -279,6 +302,7 @@ struct TfragTree {
   } unpacked;
   void unpack();
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct TieWindInstance {
@@ -305,6 +329,7 @@ struct TieTree {
   } unpacked;
 
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void unpack();
 };
 
@@ -321,6 +346,7 @@ struct ShrubTree {
   } unpacked;
 
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void unpack();
 };
 
@@ -336,6 +362,7 @@ struct CollisionMesh {
   static_assert(sizeof(Vertex) == 32);
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // MERC
@@ -368,12 +395,25 @@ struct MercDraw {
   void serialize(Serializer& ser);
 };
 
+struct MercModifiableDrawGroup {
+  std::vector<MercVertex> vertices;
+  std::vector<u16> vertex_lump4_addr;
+  std::vector<MercDraw> fix_draw, mod_draw;
+  std::vector<u8> fragment_mask;
+  u32 expect_vidx_end = 0;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
 struct MercEffect {
-  std::vector<MercDraw> draws;
+  std::vector<MercDraw> all_draws;
+  MercModifiableDrawGroup mod;
   DrawMode envmap_mode;
   u32 envmap_texture;
   bool has_envmap = false;
+  bool has_mod_draw = false;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct MercModel {
@@ -381,7 +421,10 @@ struct MercModel {
   std::vector<MercEffect> effects;
   u32 max_draws;
   u32 max_bones;
+  u32 st_vif_add;
+  float xyz_scale;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct MercModelGroup {
@@ -389,6 +432,7 @@ struct MercModelGroup {
   std::vector<u32> indices;
   std::vector<MercModel> models;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 //
@@ -407,8 +451,7 @@ struct Level {
   MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
-
-  std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size);

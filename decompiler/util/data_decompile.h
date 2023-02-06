@@ -32,7 +32,7 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
-                                          DecompilerTypeSystem& dts,
+                                          const TypeSystem& dts,
                                           const LinkedObjectFile* file,
                                           GameVersion version);
 goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,

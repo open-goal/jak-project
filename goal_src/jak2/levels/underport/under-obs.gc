@@ -894,7 +894,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-32 under-buoy-plat ((obj under-buoy-plat))
+(defmethod allocate-and-init-cshape under-buoy-plat ((obj under-buoy-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -923,36 +923,39 @@ This commonly includes things such as:
   (none)
   )
 
-(define *under-buoy-plat-platform-constants* (new 'static 'rigid-body-platform-constants
-                                               :mass 1.48
-                                               :inv-mass 0.6756757
-                                               :cm-joint (new 'static 'vector :w 1.0)
-                                               :linear-damping 0.8
-                                               :angular-damping 0.5
-                                               :friction-factor 0.1
-                                               :inertial-tensor-x (meters 5)
-                                               :inertial-tensor-y (meters 1)
-                                               :inertial-tensor-z (meters 5)
-                                               :max-time-step 0.02
-                                               :gravity (meters 80)
-                                               :idle-distance (meters 50)
-                                               :attack-force-scale 1.0
-                                               :name '*under-buoy-plat-platform-constants*
-                                               :drag-factor 2.0
-                                               :buoyancy-factor 2.3
-                                               :max-buoyancy-depth (meters 1.5)
-                                               :player-weight (meters 150)
-                                               :player-bonk-factor 0.5
-                                               :player-dive-factor 1.0
-                                               :player-force-distance (meters 2)
-                                               :player-force-clamp (meters 1000000)
-                                               :player-force-timeout #x1e
-                                               :explosion-force (meters 1000)
-                                               :control-point-count 5
-                                               :platform #t
-                                               :sound-name "ruins-plat"
-                                               )
-        )
+(define *under-buoy-plat-platform-constants*
+  (new 'static 'rigid-body-platform-constants
+    :info (new 'static 'rigid-body-info
+      :mass 1.48
+      :inv-mass 0.6756757
+      :linear-damping 0.8
+      :angular-damping 0.5
+      :friction-factor 0.1
+      :cm-offset-joint (new 'static 'vector :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 5) (meters 1) (meters 5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.02
+      :gravity (meters 80)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*under-buoy-plat-platform-constants*
+    :drag-factor 2.0
+    :buoyancy-factor 2.3
+    :max-buoyancy-depth (meters 1.5)
+    :player-weight (meters 150)
+    :player-bonk-factor 0.5
+    :player-dive-factor 1.0
+    :player-force-distance (meters 2)
+    :player-force-clamp (meters 1000000)
+    :player-force-timeout #x1e
+    :explosion-force (meters 1000)
+    :control-point-count 5
+    :platform #t
+    :sound-name "ruins-plat"
+    )
+  )
 
 (defmethod rigid-body-platform-method-53 under-buoy-plat ((obj under-buoy-plat) (arg0 vector))
   -220341.05
@@ -975,17 +978,17 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-33 under-buoy-plat ((obj under-buoy-plat))
+(defmethod init-skel-and-rigid-body under-buoy-plat ((obj under-buoy-plat))
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-under-buoy-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (rigid-body-object-method-31 obj *under-buoy-plat-platform-constants*)
+  (alloc-and-init-rigid-body-control obj *under-buoy-plat-platform-constants*)
   (set! (-> obj orig-trans quad) (-> obj root-override-2 trans quad))
   (set! (-> obj anchor-point quad) (-> obj root-override-2 trans quad))
   (set! (-> obj surface-height) (-> obj root-override-2 trans y))
-  (set! (-> obj info-override cm-joint y) 6144.0)
+  (set! (-> obj info-override info cm-offset-joint y) 6144.0)
   (let ((s5-1 (-> obj info-override control-point-count)))
     (dotimes (s4-1 s5-1)
       (let ((s3-0 (-> obj control-point-array data s4-1)))
