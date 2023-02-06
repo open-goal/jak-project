@@ -11,7 +11,7 @@ constexpr PerGameVersion<int> PLAY_RPC_ID(0xdeb6, 0xfab5);
 constexpr int PLAY_RPC_CHANNEL = 5;
 
 enum class RPCPlayCommand {
-    PlayAsync = 0,
-    Stop = 1,
-    Queue = 2,
+  PlayAsync = 0,
+  Stop = 1,
+  Queue = 2,
 };
