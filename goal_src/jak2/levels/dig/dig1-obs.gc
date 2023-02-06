@@ -710,7 +710,7 @@
     )
   )
 
-(defmethod rigid-body-object-method-32 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder))
+(defmethod allocate-and-init-cshape dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -759,7 +759,7 @@
   (none)
   )
 
-(defmethod rigid-body-object-method-33 dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder))
+(defmethod init-skel-and-rigid-body dig-bomb-crate-cylinder ((obj dig-bomb-crate-cylinder))
   (initialize-skeleton
     obj
     (the-as
@@ -768,7 +768,7 @@
       )
     (the-as pair 0)
     )
-  (rigid-body-object-method-31 obj *dig-bomb-crate-cylinder-constants*)
+  (alloc-and-init-rigid-body-control obj *dig-bomb-crate-cylinder-constants*)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (logior! (-> obj rbody state flags) (rigid-body-flag enable-collision))
   (set! (-> obj draw light-index) (the-as uint 10))
@@ -779,10 +779,10 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior dig-bomb-crate-cylinder-init-by-other dig-bomb-crate-cylinder ((arg0 dig-bomb-crate-cylinder-spawn-params) (arg1 entity-actor))
   (process-entity-set! self arg1)
-  (rigid-body-object-method-32 self)
+  (allocate-and-init-cshape self)
   (set! (-> self root-override-2 trans quad) (-> arg0 pos quad))
   (quaternion-copy! (-> self root-override-2 quat) (-> arg0 quat))
-  (rigid-body-object-method-33 self)
+  (init-skel-and-rigid-body self)
   (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
   (vector-float*! (-> self rbody state lin-momentum) (-> arg0 vel) (-> self info info mass))
   (vector-float*! (-> self rbody state ang-momentum) (-> arg0 avel) (-> self info info mass))
