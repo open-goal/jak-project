@@ -896,10 +896,11 @@ const std::unordered_map<
            {{"cells", ArrayFieldDecompMeta(TypeSpec("int32"),
                                            4,
                                            ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
-            {"pulse-ops",
-             ArrayFieldDecompMeta(TypeSpec("int8"),
-                                  1,
-                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
+            {"pulse-ops", ArrayFieldDecompMeta(TypeSpec("int8"),
+                                               1,
+                                               ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"turret-path",
+           {{"event-tbl", ArrayFieldDecompMeta(TypeSpec("turret-path-event"), 16)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
