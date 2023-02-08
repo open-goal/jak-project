@@ -8976,13 +8976,14 @@
   (tdt4 4)
   (tdt5 5)
   (tdt6 6)
+  (tdt7 7)
   )
 ;; ---traffic-h:traffic-danger-type
 
 (deftype traffic-danger-info (structure)
   ((sphere        sphere :inline :offset-assert 0)
    (velocity      vector :inline :offset-assert 16)
-   (handle        uint64         :offset-assert 32)
+   (handle        handle         :offset-assert 32)
    (notify-radius float          :offset-assert 40)
    (danger-level  float          :offset-assert 44)
    (decay-rate    float          :offset-assert 48)
@@ -9045,7 +9046,7 @@
    (position    vector     :inline :offset-assert 32)
    (rotation    quaternion :inline :offset-assert 48)
    (velocity    vector     :inline :offset-assert 64)
-   (handle      uint64             :offset-assert 80)
+   (handle      handle             :offset-assert 80)
    (guard-type  uint8              :offset-assert 88)
    (user-data   uint32             :offset-assert 92)
    (flags       uint32             :offset-assert 96)
@@ -13334,7 +13335,6 @@
   (speech-type-3 3)
   (speech-type-4 4)
   (speech-type-5 5)
-
   )
 ;; ---speech-h:speech-type
 
@@ -49161,7 +49161,7 @@
     (new-suppression-box (_type_ traffic-suppression-params) none 46)
     (remove-suppression-box (_type_ traffic-suppression-params) none 47)
     (update-suppression-box (_type_ traffic-suppression-params) none 48)
-    (traffic-engine-method-49 (_type_ object int traffic-target-status) traffic-target-status 49)
+    (traffic-engine-method-49 (_type_ vector int traffic-target-status) traffic-target-status 49)
     (find-closest-to-with-collide-lists "Iterate through collide lists, find the closest thing to the given process." (_type_ process-drawable collide-spec) process-focusable 50)
     (for-all-active-processes (_type_ (function process-focusable traffic-object-type-info none)) none 51)
     (send-alert-events (_type_) none 52)
@@ -49670,7 +49670,7 @@
     (speed-scale         float                      :offset-assert 612)
     (controller          vehicle-controller :inline :offset-assert 624)
     (danger-pos          sphere :inline             :offset-assert 768)
-    (vehicle             int64                      :offset-assert 784)
+    (vehicle             handle                     :offset-assert 784)
     (anim-shuffle        int32                      :offset-assert 792)
     (dist-walk-anim      float                      :offset-assert 796)
     (speed-walk          float                      :offset-assert 800)
@@ -49683,7 +49683,7 @@
     (last-danger-time    time-frame                 :offset-assert 832)
     (next-time-look-at   time-frame                 :offset-assert 840)
     (stop-time-look-at   time-frame                 :offset-assert 848)
-    (wait-return-state   symbol                     :offset-assert 856)
+    (wait-return-state   (state citizen)            :offset-assert 856)
     (wait-time           time-frame                 :offset-assert 864)
     (cp-valid?           symbol                     :offset-assert 872)
     (cp-sphere           sphere :inline             :offset-assert 880)
@@ -49697,31 +49697,30 @@
   :method-count-assert 201
   :size-assert         #x3c4
   :flag-assert         #xc9035003c4
-  ;; Failed to read fields.
   (:methods
-    (citizen-method-178 () none 178)
-    (citizen-method-179 () none 179)
-    (citizen-method-180 () none 180)
-    (citizen-method-181 () none 181)
-    (citizen-method-182 () none 182)
-    (citizen-method-183 () none 183)
-    (citizen-method-184 () none 184)
-    (citizen-method-185 () none 185)
-    (citizen-method-186 () none 186)
-    (citizen-method-187 () none 187)
-    (citizen-method-188 () none 188)
-    (citizen-method-189 () none 189)
-    (citizen-method-190 () none 190)
-    (citizen-method-191 () none 191)
-    (citizen-method-192 () none 192)
-    (citizen-method-193 () none 193)
-    (citizen-method-194 () none 194)
-    (citizen-method-195 () none 195)
-    (citizen-method-196 () none 196)
-    (citizen-method-197 () none 197)
-    (citizen-method-198 () none 198)
-    (citizen-method-199 () none 199)
-    (citizen-method-200 () none 200)
+    (wait () _type_ :state 178)
+    (inactive () _type_ :state 179)
+    (in-ditch () _type_ :state 180)
+    (citizen-init! "Initialize [[citizen]] defaults." (_type_) none 181)
+    (citizen-nav-init! "Initialize nav related fields." (_type_) none 182)
+    (go-inactive (_type_) none 183)
+    (find-segment (_type_ vector vector) nav-segment 184)
+    (nav-segment-callback (_type_ vector traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none 185)
+    (citizen-method-186 (_type_ nav-segment) none 186)
+    (citizen-method-187 (_type_) symbol 187)
+    (citizen-method-188 (_type_ vector) none 188)
+    (calc-danger-vec (_type_ vector vector) none 189)
+    (citizen-method-190 (_type_ vector) none 190)
+    (gen-clear-path (_type_) nav-segment 191)
+    (citizen-method-192 (_type_) none 192)
+    (throw-off-vehicle (_type_) none 193)
+    (gen-new-dir (_type_ vector float) nav-segment 194)
+    (citizen-method-195 (_type_ vector) symbol 195)
+    (get-run-anim (_type_) int 196)
+    (trigger-alert (_type_ int target) none 197)
+    (decrease-alert (_type_ object) none 198)
+    (set-behavior! (_type_ traffic-object-spawn-params) none 199)
+    (citizen-method-200 (_type_) none 200)
     )
   )
 
@@ -51126,9 +51125,8 @@
 ;; citizen                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype iter-seg (structure)
-  ((self        basic               :offset-assert 0)
+  ((self        citizen             :offset-assert 0)
    (score       float               :offset-assert 4)
    (seg         nav-segment         :offset-assert 8)
    (cp-plane    plane       :inline :offset-assert 16)
@@ -51138,42 +51136,39 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern *citizen-debug* object)
+(define-extern *citizen-debug* symbol)
 (define-extern citizen-init-by-other (function traffic-object-spawn-params none :behavior citizen))
-;; (define-extern citizen-travel-anim function)
-;; (define-extern iter-seg-clear-path function)
-;; (define-extern iter-seg-new-dir function)
+(define-extern citizen-travel-anim (function int int symbol :behavior citizen))
+(define-extern iter-seg-clear-path (function iter-seg nav-segment symbol))
+(define-extern iter-seg-new-dir (function iter-seg nav-segment none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; civilian                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype civilian-anim-info (structure)
-  ((anim-index       UNKNOWN 2 :offset-assert 0)
-   (anim-index-front int32     :offset-assert 0)
-   (anim-index-back  int32     :offset-assert 4)
+  ((anim-index       int32 2 :offset-assert 0)
+   (anim-index-front int32   :offset 0)
+   (anim-index-back  int32   :offset 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype civilian-global-info (basic)
   ((prev-yellow-hit                int8      :offset-assert 4)
    (prev-blue-hit                  int8      :offset-assert 5)
-   (knocked                        UNKNOWN 2 :offset-assert 8)
-   (anim-knocked-front             int32     :offset-assert 8)
-   (anim-knocked-back              int32     :offset-assert 12)
-   (knocked-land                   UNKNOWN 2 :offset-assert 16)
-   (anim-knocked-front-land        int32     :offset-assert 16)
-   (anim-knocked-back-land         int32     :offset-assert 20)
-   (yellow-hit-anim                UNKNOWN 1 :offset-assert 24)
-   (blue-hit-anim                  UNKNOWN 3 :offset-assert 32)
+   (knocked                        int32 2   :offset-assert 8)
+   (anim-knocked-front             int32     :offset 8)
+   (anim-knocked-back              int32     :offset 12)
+   (knocked-land                   int32 2   :offset-assert 16)
+   (anim-knocked-front-land        int32     :offset 16)
+   (anim-knocked-back-land         int32     :offset 20)
+   (yellow-hit-anim                civilian-anim-info 1 :inline :offset-assert 24)
+   (blue-hit-anim                  civilian-anim-info 3 :inline :offset-assert 32)
    (anim-cover-head-start          int32     :offset-assert 56)
    (anim-cover-head-loop           int32     :offset-assert 60)
    (anim-cover-head-end            int32     :offset-assert 64)
@@ -51195,10 +51190,9 @@
   :size-assert         #x5d
   :flag-assert         #x90000005d
   )
-|#
 
 (deftype civilian (citizen)
-  ((info              basic          :offset-assert 964)
+  ((info              civilian-global-info :offset-assert 964)
    (anim-panic-run    int32          :offset-assert 968)
    (anim-on-ground    int32          :offset-assert 972)
    (anim-dive         int32          :offset-assert 976)
@@ -51206,11 +51200,11 @@
    (anim-get-up-back  int32          :offset-assert 984)
    (last-second-pos   vector :inline :offset-assert 992)
    (last-distance     float          :offset-assert 1008)
-   (next-time         time-frame         :offset-assert 1016)
+   (next-time         time-frame     :offset-assert 1016)
    (dive-target-point vector :inline :offset-assert 1024)
    (dive-reaction     float          :offset-assert 1040)
-   (allow-dive        basic          :offset-assert 1044)
-   (dive-finished?    basic          :offset-assert 1048)
+   (allow-dive        symbol         :offset-assert 1044)
+   (dive-finished?    symbol         :offset-assert 1048)
    (hit-face          uint32         :offset-assert 1052)
    (seat              int32          :offset-assert 1056)
    )
@@ -51229,22 +51223,22 @@
     (move-to-vehicle () _type_ :state 209)
     (board-vehicle () _type_ :state 210)
     (ride () _type_ :state 211)
-    (exit-vehicle () _type_ :state 212)
+    (exit-vehicle (object object int symbol event-message-block) _type_ :state 212)
     (wait-at-dest () _type_ :state 213)
-    (civilian-method-214 () none 214)
-    (civilian-method-215 () none 215)
-    (civilian-method-216 () none 216)
-    (civilian-method-217 () none 217)
+    (civilian-method-214 (_type_ nav-branch int vector float) float 214)
+    (civilian-method-215 (_type_ vector) none 215)
+    (go-dive (_type_) none 216)
+    (civilian-method-217 (_type_ vector) symbol 217)
     )
   )
 
-;; (define-extern civilian-flee-post function)
-;; (define-extern civilian-avoid-danger-post function)
-;; (define-extern civilian-avoid-danger-post2 function)
-;; (define-extern civilian-clear-path-post function)
-;; (define-extern civilian-clear-path-post2 function)
-;; (define-extern civilian-falling-post function)
-;; (define-extern do-spline2 function)
+(define-extern civilian-flee-post (function none :behavior civilian))
+(define-extern civilian-avoid-danger-post (function none :behavior civilian))
+(define-extern civilian-avoid-danger-post2 (function none :behavior civilian))
+(define-extern civilian-clear-path-post (function none :behavior civilian))
+(define-extern civilian-clear-path-post2 (function none :behavior civilian))
+(define-extern civilian-falling-post (function none :behavior civilian))
+(define-extern do-spline2 (function vector vector vector vector vector float vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; guard                          ;;
@@ -51255,30 +51249,29 @@
    (anim-index-front int32     :offset 0)
    (anim-index-back  int32     :offset 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8 ;; 8
   :flag-assert         #x900000008
   )
 
-#|
-(deftype guard-global-info (UNKNOWN)
+(deftype guard-global-info (basic)
   ((prev-yellow-hit         int8      :offset-assert 4)
    (prev-blue-hit           int8      :offset-assert 5)
-   (knocked                 UNKNOWN 2 :offset-assert 8)
-   (knocked-land            UNKNOWN 2 :offset-assert 16)
-   (anim-knocked-front      int32     :offset-assert 8)
-   (anim-knocked-back       int32     :offset-assert 12)
-   (anim-knocked-front-land int32     :offset-assert 16)
-   (anim-knocked-back-land  int32     :offset-assert 20)
-   (yellow-hit-anim         UNKNOWN 2 :offset-assert 24)
-   (yellow-land-anim        UNKNOWN 2 :offset-assert 40)
-   (blue-hit-anim           UNKNOWN 1 :offset-assert 56)
+   (knocked                 int32   2 :offset-assert 8)
+   (knocked-land            int32   2 :offset-assert 16)
+   (anim-knocked-front      int32     :offset 8)
+   (anim-knocked-back       int32     :offset 12)
+   (anim-knocked-front-land int32     :offset 16)
+   (anim-knocked-back-land  int32     :offset 20)
+   (yellow-hit-anim         guard-anim-info 2 :inline :offset-assert 24)
+   (yellow-land-anim        guard-anim-info 2 :inline :offset-assert 40)
+   (blue-hit-anim           int32 :offset-assert 56)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
 (deftype guard-shoot-info (structure)
   ((anim-index int32  :offset-assert 0)
@@ -51293,7 +51286,7 @@
 
 (deftype crimson-guard (citizen)
   (
-    (info                    symbol                              :offset-assert 964)
+    (info                    guard-global-info                   :offset-assert 964)
     (hit-face                uint32                              :offset-assert 968)
     (anim-get-up-front       int32                               :offset-assert 972)
     (anim-get-up-back        int32                               :offset-assert 976)
@@ -51303,14 +51296,14 @@
     (settings                traffic-guard-type-settings         :offset-assert 992)
     (next-time               time-frame                          :offset-assert 1000)
     (last-time-see-target    time-frame                          :offset-assert 1008)
-    (joint                   symbol                              :offset-assert 1016)
+    (joint                   joint-mod                           :offset-assert 1016)
     (joint-enable            symbol                              :offset-assert 1020)
     (already-shot            symbol                              :offset-assert 1024)
     (miss-amount             float                               :offset-assert 1028)
-    (l-control               symbol                              :offset-assert 1032)
+    (l-control               lightning-control                   :offset-assert 1032)
     (next-shot               int64                               :offset-assert 1040)
     (anim-shoot              guard-shoot-info 3          :inline :offset-assert 1048) ;; elt size: 13.333333333333334
-    (transport               int64                               :offset-assert 1088)
+    (transport               handle                              :offset-assert 1088)
     (transport-side          uint32                              :offset-assert 1096)
     (target-flags            uint8                               :offset-assert 1100)
     (target-pos              vector :inline                      :offset-assert 1104)
@@ -51335,39 +51328,40 @@
   :size-assert         #x568 ;; 1384
   :flag-assert         #xe304f00568
   (:methods
-    (crimson-guard-method-201 () none 201)
-    (crimson-guard-method-202 () none 202)
-    (crimson-guard-method-203 () none 203)
-    (crimson-guard-method-204 () none 204)
-    (crimson-guard-method-205 () none 205)
-    (crimson-guard-method-206 () none 206)
-    (crimson-guard-method-207 () none 207)
-    (crimson-guard-method-208 () none 208)
-    (crimson-guard-method-209 () none 209)
-    (crimson-guard-method-210 () none 210)
-    (crimson-guard-method-211 () none 211)
-    (crimson-guard-method-212 () none 212)
-    (crimson-guard-method-213 () none 213)
-    (crimson-guard-method-214 () none 214)
-    (crimson-guard-method-215 () none 215)
-    (crimson-guard-method-216 () none 216)
-    (crimson-guard-method-217 () none 217)
-    (crimson-guard-method-218 () none 218)
-    (crimson-guard-method-219 () none 219)
-    (crimson-guard-method-220 () none 220)
-    (crimson-guard-method-221 () none 221)
-    (crimson-guard-method-222 () none 222)
-    (crimson-guard-method-223 () none 223)
-    (crimson-guard-method-224 () none 224)
-    (crimson-guard-method-225 () none 225)
-    (crimson-guard-method-226 () none 226))
+    (get-up-front () _type_ :state 201)
+    (get-up-back () _type_ :state 202)
+    (search () _type_ :state 203)
+    (attack () _type_ :state 204)
+    (arrest () _type_ :state 205)
+    (gun-shoot () _type_ :state 206)
+    (exit-transport () _type_ :state 207)
+    (waiting-ambush () _type_ :state 208)
+    (close-attack () _type_ :state 209)
+    (knocked-off-vehicle () _type_ :state 210)
+    (roll-right () _type_ :state 211)
+    (roll-left () _type_ :state 212)
+    (close-attack-active () _type_ :state 213)
+    (crimson-guard-method-214 (_type_) none 214)
+    (crimson-guard-method-215 (_type_) symbol 215)
+    (crimson-guard-method-216 (_type_) symbol 216)
+    (crimson-guard-method-217 (_type_ vector vector vector) int 217)
+    (crimson-guard-method-218 (_type_ vector) none 218)
+    (crimson-guard-method-219 (_type_) none 219)
+    (crimson-guard-method-220 (_type_) none 220)
+    (crimson-guard-method-221 (_type_) none 221)
+    (crimson-guard-method-222 (_type_) none 222)
+    (crimson-guard-method-223 (_type_ float) none 223)
+    (crimson-guard-method-224 (_type_ vector) float 224)
+    (crimson-guard-method-225 (_type_ uint symbol) none 225)
+    (crimson-guard-method-226 (_type_) none 226)
+    )
   )
 
-;; (define-extern *crimson-guard-global-info* guard-global-info)
+(define-extern *crimson-guard-global-info* guard-global-info)
 (define-extern *crimson-guard-nav-enemy-info* nav-enemy-info)
-;; (define-extern *guard-min-id-hack* object)
-;; (define-extern do-spline function)
-;; (define-extern spread-lightning-lazer function)
+(define-extern *guard-min-id-hack* int)
+(define-extern do-spline (function vector vector vector vector vector float vector))
+(define-extern spread-lightning-lazer (function lightning-control vector vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen-norm                   ;;
@@ -51383,8 +51377,8 @@
     )
   )
 
-;; (define-extern *citizen-norm-global-info* civilian-global-info)
-;; (define-extern *citizen-norm-nav-enemy-info* nav-enemy-info)
+(define-extern *citizen-norm-global-info* civilian-global-info)
+(define-extern *citizen-norm-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen-fat                    ;;
@@ -51399,8 +51393,8 @@
     )
   )
 
-;; (define-extern *citizen-fat-global-info* civilian-global-info)
-;; (define-extern *citizen-fat-nav-enemy-info* nav-enemy-info)
+(define-extern *citizen-fat-global-info* civilian-global-info)
+(define-extern *citizen-fat-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen-chick                  ;;
@@ -51415,23 +51409,23 @@
     )
   )
 
-;; (define-extern *citizen-chick-global-info* civilian-global-info)
-;; (define-extern *citizen-chick-nav-enemy-info* nav-enemy-info)
+(define-extern *citizen-chick-global-info* civilian-global-info)
+(define-extern *citizen-chick-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen-enemy                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype citizen-enemy (citizen)
-  ((next-update-target uint64              :offset-assert 968)
+  ((next-update-target time-frame          :offset-assert 968)
    (minimap            connection-minimap  :offset-assert 976)
    )
   :method-count-assert 203
   :size-assert         #x3d4
   :flag-assert         #xcb036003d4
   (:methods
-    (citizen-enemy-method-201 () none 201)
-    (citizen-enemy-method-202 () none 202)
+    (traffic-danger-init! (_type_) none 201)
+    (citizen-enemy-method-202 (_type_) none 202)
     )
   )
 
@@ -51457,7 +51451,7 @@
     (next-change       int64               :offset-assert 1200)
     (shoot-angle       degrees             :offset-assert 1208)
     (miss-amount       float               :offset-assert 1212)
-    (ambient-sound-id  uint32              :offset-assert 1216)
+    (ambient-sound-id  sound-id            :offset-assert 1216)
     (shock-effect-time time-frame          :offset-assert 1224)
     (shock-effect-end  int64               :offset-assert 1232)
     (fade              float               :offset-assert 1240)
@@ -51469,10 +51463,11 @@
   (:methods
     (fire () _type_ :state 203)
     (close-attack () _type_ :state 204)
-    (metalhead-predator-method-205 () none 205)
-    (metalhead-predator-method-206 () none 206)
-    (metalhead-predator-method-207 () none 207)
-    (metalhead-predator-method-208 () none 208))
+    (metalhead-predator-method-205 (_type_ symbol) none 205)
+    (metalhead-predator-method-206 (_type_ int float) none 206)
+    (metalhead-predator-method-207 (_type_ vector vector vector) symbol 207)
+    (metalhead-predator-method-208 (_type_) none 208)
+    )
   )
 
 (define-extern *metalhead-predator-nav-enemy-info* nav-enemy-info)
@@ -51488,7 +51483,7 @@
    (knocked-anim           grunt-anim-info         :offset-assert 992)
    (yellow-hit-anim        grunt-anim-info         :offset-assert 996)
    (blue-hit-anim          grunt-anim-info         :offset-assert 1000)
-   (intro-path             basic                   :offset-assert 1004)
+   (intro-path             path-control            :offset-assert 1004)
    (pad-jh1b23jhb13        uint32                  :offset-assert 1008)
    (use-charge-anim-index  int8                    :offset-assert 1012)
    (knocked-anim-index     int8                    :offset-assert 1013)
@@ -51509,9 +51504,9 @@
     (jumping-ambush-cont () _type_ :state 206)
     (wait-for-focus () _type_ :state 207)
     (spin-attack () _type_ :state 208)
-    (metalhead-grunt-method-209 () none 209)
-    (metalhead-grunt-method-210 () none 210)
-    (metalhead-grunt-method-211 () none 211)
+    (metalhead-grunt-method-209 (_type_ float) process-focusable 209)
+    (get-nav-info (_type_) nav-enemy-info 210)
+    (metalhead-grunt-method-211 (_type_) none 211)
     )
   )
 
@@ -51523,7 +51518,7 @@
 
 (deftype metalhead-flitter (citizen-enemy)
   ((move-angle       float          :offset-assert 980)
-   (heading          basic          :offset-assert 984)
+   (heading          symbol         :offset-assert 984)
    (change-dir-time  time-frame         :offset-assert 992)
    (last-change-dir  uint64         :offset-assert 1000)
    (off-screen-timer uint64         :offset-assert 1008)
@@ -51539,16 +51534,16 @@
   (:methods
     (attack () _type_ :state 203)
     (ambush-jumping () _type_ :state 204)
-    (metalhead-flitter-method-205 () none 205)
-    (metalhead-flitter-method-206 () none 206)
-    (metalhead-flitter-method-207 () none 207)
-    (metalhead-flitter-method-208 () none 208)
-    (metalhead-flitter-method-209 () none 209)
+    (metalhead-flitter-method-205 (_type_) none 205)
+    (metalhead-flitter-method-206 (_type_) none 206)
+    (metalhead-flitter-method-207 (_type_ process-focusable) symbol 207)
+    (metalhead-flitter-method-208 (_type_ symbol) none 208)
+    (metalhead-flitter-method-209 (_type_) float 209)
     )
   )
 
-;; (define-extern *metalhead-flitter-nav-enemy-info* nav-enemy-info)
-;; (define-extern metalhead-flitter-fall-and-play-death-anim function)
+(define-extern *metalhead-flitter-nav-enemy-info* nav-enemy-info)
+(define-extern metalhead-flitter-fall-and-play-death-anim (function int float time-frame none :behavior metalhead-flitter))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; traffic-engine                 ;;
