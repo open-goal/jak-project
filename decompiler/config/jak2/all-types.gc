@@ -35826,7 +35826,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype hover-enemy-battle-command (structure)
-  ((command     pair   :offset-assert 0)
+  ((command     symbol  :offset-assert 0)
    (wave        uint16  :offset-assert 4)
    (time        time-frame  :offset-assert 8)
    (alive-count int32   :offset-assert 16)
@@ -37315,6 +37315,7 @@
   )
 
 (deftype turret-path-event (structure)
+  "TODO make this type decompile in static data"
   ((pos        float  :offset-assert 0)
    (event-type symbol :offset-assert 4)
    (param      object :offset-assert 8)
@@ -37884,19 +37885,19 @@
 ;; drill-baron                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-barons-ship (process-drawable)
-  ((init-quat          quaternion :inline :offset-assert 204)
-   (next-to-shoot-idx  int32              :offset-assert 220)
-   (current-y-position float              :offset-assert 224)
-   (from-y             float              :offset-assert 228)
-   (inc-y              float              :offset-assert 232)
-   (ease-y             float              :offset-assert 236)
-   (x-offset-angle     float              :offset-assert 240)
-   (pass               int32              :offset-assert 244)
-   (end-of-pass        basic              :offset-assert 248)
-   (rock-angle         float              :offset-assert 252)
-   (soundid            uint32             :offset-assert 256)
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   (init-quat          quaternion :inline :offset-assert 208)
+   (next-to-shoot-idx  int32              :offset-assert 224)
+   (current-y-position float              :offset-assert 228)
+   (from-y             float              :offset-assert 232)
+   (inc-y              float              :offset-assert 236)
+   (ease-y             float              :offset-assert 240)
+   (x-offset-angle     float              :offset-assert 244)
+   (pass               int32              :offset-assert 248)
+   (end-of-pass        symbol             :offset-assert 252)
+   (rock-angle         float              :offset-assert 256)
+   (soundid            uint32             :offset-assert 260)
    )
   :method-count-assert 23
   :size-assert         #x108
@@ -37904,12 +37905,10 @@
   (:methods
     (idle () _type_ :state 20)
     (hidden () _type_ :state 21)
-    (drill-barons-ship-method-22 () none 22)
+    (drill-barons-ship-method-22 (_type_) none 22)
     )
   )
-|#
 
-#|
 (deftype drill-barons-ship-explode (process-drawable)
   ()
   :method-count-assert 21
@@ -37919,37 +37918,34 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype barons-ship-turret-info (structure)
   ((init-y-angle  float  :offset-assert 0)
    (twist-y-max   float  :offset-assert 4)
    (joint-idx     int32  :offset-assert 8)
    (mesh          int32  :offset-assert 12)
    (ship-y-offset float  :offset-assert 16)
-   (alive         basic  :offset-assert 20)
+   (alive         symbol :offset-assert 20)
    (next-to-shoot basic  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype drill-barons-ship-turret (process-drawable)
-  ((info               barons-ship-turret-info  :offset-assert 196)
-   (shot-timer         uint64                   :offset-assert 204)
-   (shot-counter       int32                    :offset-assert 212)
-   (jmod               basic                    :offset-assert 216)
-   (jmod-left          basic                    :offset-assert 220)
-   (jmod-right         basic                    :offset-assert 224)
-   (anim-frame         float                    :offset-assert 228)
-   (error-y-angle      float                    :offset-assert 232)
-   (error-y-angle-dest float                    :offset-assert 236)
-   (hit-count          int32                    :offset-assert 240)
-   (soundid            uint32                   :offset-assert 244)
+  ((root-override      collide-shape-moving     :offset 128 :score 1)
+   (info               barons-ship-turret-info  :offset-assert 200)
+   (shot-timer         time-frame               :offset-assert 208)
+   (shot-counter       int32                    :offset-assert 216)
+   (jmod               joint-mod                :offset-assert 220)
+   (jmod-left          joint-mod                :offset-assert 224)
+   (jmod-right         joint-mod                :offset-assert 228)
+   (anim-frame         float                    :offset-assert 232)
+   (error-y-angle      float                    :offset-assert 236)
+   (error-y-angle-dest float                    :offset-assert 240)
+   (hit-count          int32                    :offset-assert 244)
+   (soundid            sound-id                 :offset-assert 248)
    )
   :method-count-assert 25
   :size-assert         #xfc
@@ -37959,12 +37955,10 @@
     (attack () _type_ :state 21)
     (dead () _type_ :state 22)
     (going-down () _type_ :state 23)
-    (drill-barons-ship-turret-method-24 () none 24)
+    (drill-barons-ship-turret-method-24 (_type_) none 24)
     )
   )
-|#
 
-#|
 (deftype drill-ship-shot (guard-shot)
   ()
   :method-count-assert 40
@@ -37973,16 +37967,15 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *ship-turrets-first-pass* array)
-;; (define-extern *ship-turrets-second-pass* array)
-;; (define-extern *barons-ship-turrets* array)
-;; (define-extern drill-barons-ship-turret-init-by-other function)
-;; (define-extern drill-barons-ship-explode-init-by-other function)
-;; (define-extern drill-ship-shot-move function)
-;; (define-extern *drill-ship-turret-speed-event* object)
-;; (define-extern calculate-ship-projectile-velocity function)
+(define-extern *ship-turrets-first-pass* (array int32))
+(define-extern *ship-turrets-second-pass* (array int32))
+(define-extern *barons-ship-turrets* (array barons-ship-turret-info))
+(define-extern drill-barons-ship-turret-init-by-other (function entity-actor none :behavior drill-barons-ship-turret))
+(define-extern drill-barons-ship-explode-init-by-other (function entity-actor none :behavior drill-barons-ship-explode))
+(define-extern drill-ship-shot-move (function drill-ship-shot none))
+(define-extern *drill-ship-turret-speed-event* turret-path-event)
+(define-extern calculate-ship-projectile-velocity (function projectile-init-by-other-params float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-scenes                   ;;
