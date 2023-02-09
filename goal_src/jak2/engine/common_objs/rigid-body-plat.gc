@@ -126,7 +126,7 @@
         *y-vector*
         (* (-> obj rbody state info mass)
            (fmin 1.0 f30-0)
-           (/ (-> obj info-override gravity) (the float (-> obj info-override control-point-count)))
+           (/ (-> obj info-override extra gravity) (the float (-> obj info-override control-point-count)))
            (-> obj info-override buoyancy-factor)
            )
         )
@@ -168,7 +168,7 @@
 
 (defmethod rigid-body-platform-method-55 rigid-body-platform ((obj rigid-body-platform))
   (let ((a1-0 (new 'stack-no-clear 'vector)))
-    (vector-float*! a1-0 *y-vector* (* -1.0 (-> obj info-override gravity) (-> obj rbody state info mass)))
+    (vector-float*! a1-0 *y-vector* (* -1.0 (-> obj info-override extra gravity) (-> obj rbody state info mass)))
     (rigid-body-method-20 (-> obj rbody state) a1-0)
     )
   0
@@ -346,7 +346,7 @@
   (none)
   )
 
-(defmethod rigid-body-object-method-31 rigid-body-platform ((obj rigid-body-platform) (arg0 rigid-body-object-constants))
+(defmethod alloc-and-init-rigid-body-control rigid-body-platform ((obj rigid-body-platform) (arg0 rigid-body-object-constants))
   (with-pp
     (set! (-> obj info-override) (the-as rigid-body-platform-constants arg0))
     (set! (-> obj rbody) (new 'process 'rigid-body-control obj))
@@ -367,14 +367,14 @@
     (set! (-> obj player-velocity quad) (-> *null-vector* quad))
     (set! (-> obj player-velocity-prev quad) (-> *null-vector* quad))
     (set! (-> obj root-override-2 max-iteration-count) (the-as uint 4))
-    (set! (-> obj max-time-step) (-> arg0 max-time-step))
+    (set! (-> obj max-time-step) (-> arg0 extra max-time-step))
     (set! (-> obj water-anim) (the-as water-anim (entity-actor-lookup (-> obj entity) 'water-actor 0)))
     0
     (none)
     )
   )
 
-(defmethod rigid-body-object-method-32 rigid-body-platform ((obj rigid-body-platform))
+(defmethod allocate-and-init-cshape rigid-body-platform ((obj rigid-body-platform))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -413,10 +413,12 @@
                                             :cm-offset-joint (new 'static 'vector :w 1.0)
                                             :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 4) (meters 4))
                                             )
-                                          :max-time-step 0.033333335
-                                          :gravity (meters 80)
-                                          :idle-distance (meters 50)
-                                          :attack-force-scale 1.0
+                                          :extra (new 'static 'rigid-body-object-extra-info
+                                            :max-time-step 0.033333335
+                                            :gravity (meters 80)
+                                            :idle-distance (meters 50)
+                                            :attack-force-scale 1.0
+                                            )
                                           :name '*rigid-body-platform-constants*
                                           :drag-factor 0.8
                                           :buoyancy-factor 1.5
@@ -434,9 +436,9 @@
                                           )
         )
 
-(defmethod rigid-body-object-method-33 rigid-body-platform ((obj rigid-body-platform))
+(defmethod init-skel-and-rigid-body rigid-body-platform ((obj rigid-body-platform))
   (set! (-> obj float-height-offset) 0.0)
-  (rigid-body-object-method-31 obj *rigid-body-platform-constants*)
+  (alloc-and-init-rigid-body-control obj *rigid-body-platform-constants*)
   (let ((s5-0 (-> obj info-override control-point-count)))
     (dotimes (s4-0 s5-0)
       (let ((s3-0 (-> obj control-point-array data s4-0)))
@@ -461,9 +463,9 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (rigid-body-object-method-32 obj)
+  (allocate-and-init-cshape obj)
   (process-drawable-from-entity! obj arg0)
-  (rigid-body-object-method-33 obj)
+  (init-skel-and-rigid-body obj)
   (rigid-body-object-method-34 obj)
   0
   (none)

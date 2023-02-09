@@ -477,7 +477,7 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
     auto fwd_dec = m_forward_declared_types.find(current_name);
     if (fwd_dec == m_forward_declared_types.end()) {
       if (current_name == name) {
-        throw_typesystem_error("The type {} is unknown (2).\n", name);
+        throw_typesystem_error("The type '{}' is unknown (2).\n", name);
       } else {
         throw_typesystem_error("When looking up forward defined type {}, could not find a type {}.",
                                name, current_name);
