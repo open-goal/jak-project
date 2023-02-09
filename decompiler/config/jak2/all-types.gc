@@ -18049,7 +18049,7 @@
    (stretch-vel-parallel  float           :offset-assert 1348)
    (compress-vel          float           :offset-assert 1352)
    (compress-vel-parallel float           :offset-assert 1356)
-   (negate-y              basic           :offset-assert 1360)
+   (negate-y              symbol          :offset-assert 1360)
    (axial-slop            float           :offset-assert 1364)
    (maximum-stretch       float           :offset-assert 1368)
    (turn-off-start        time-frame      :offset-assert 1376)
@@ -18062,12 +18062,12 @@
     (initialize-chain-joints (_type_) symbol 9)
     (turn-off (_type_ time-frame) none :behavior process 10)
     (update (_type_ process-drawable) none :behavior process 11)
-    (gravity-update (_type_) none 12)
+    (gravity-update (_type_ process-drawable) none 12)
     (apply-gravity (_type_ vector int process-drawable) none :behavior process 13)
     (chain-physics-method-14 (_type_ vector int) none 14)
     (clamp-length (_type_ vector vector object process-drawable) vector 15)
     (chain-physics-method-16 (_type_ int) float 16)
-    (chain-physics-method-17 (_type_ vector) none 17)
+    (chain-physics-method-17 (_type_ vector int) none 17)
     )
   )
 
@@ -18185,7 +18185,7 @@
    (ignore-handle handle         :offset-assert 40)
    (pos           vector :inline :offset-assert 48)
    (vel           vector :inline :offset-assert 64)
-   (timeout       handle         :offset-assert 80)
+   (timeout       time-frame     :offset-assert 80)
    )
   :method-count-assert 9
   :size-assert         #x58
@@ -18218,9 +18218,6 @@
 ;; target-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; missing ref test - there's a useless array defintion with a list of not-yet-defined types
-;; and this doesn't work in goalc.
-
 (declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
@@ -18232,6 +18229,7 @@
 (declare-type darkjak-info basic)
 (declare-type mech-info basic)
 (declare-type indax-info basic)
+(declare-type turret-info basic)
 (deftype target (process-focusable)
   ((self-override           target                                   :offset 32 :score 100)
    (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
@@ -18297,7 +18295,7 @@
    (pilot                   pilot-info                               :offset-assert 2208)
    (gun                     gun-info                                 :offset-assert 2212)
    (mech                    mech-info                                :offset-assert 2216)
-   (turret                  basic                                    :offset-assert 2220)
+   (turret                  turret-info                              :offset-assert 2220)
    (darkjak                 darkjak-info                             :offset-assert 2224)
    (indax                   indax-info                               :offset-assert 2228)
    )
@@ -18448,6 +18446,8 @@
     (target-tube-start handle)
     target-turn-around
     (target-turret-get-on handle)
+    target-turret-get-off
+    (target-turret-stance handle)
     target-wade-stance
     target-wade-walk
     target-walk
@@ -21139,7 +21139,8 @@
     cam-free-floating
     cam-remote
     cam-launcher-longfall
-    cam-launcher-shortfall))
+    cam-launcher-shortfall
+    cam-turret))
 
 (deftype camera-master (process)
   ((master-options      cam-master-options-u32           :offset-assert 128)
@@ -35359,7 +35360,7 @@
   )
 
 (deftype hover-actor (structure)
-  ((handle uint64         :offset-assert 0)
+  ((handle handle         :offset-assert 0)
    (offset vector :inline :offset-assert 16)
    )
   :method-count-assert 9
@@ -35425,7 +35426,7 @@
   :flag-assert         #x1000100090
   (:methods
     (idle () _type_ :state 14)
-    (hover-formation-method-15 (_type_) int 15)
+    (hover-formation-method-15 (_type_ vector vector) int 15)
     )
   )
 
@@ -35502,8 +35503,8 @@
 
 (deftype hover-nav-sphere (list-node)
   ((sphere sphere :inline :offset-assert 16)
-   (handle uint64         :offset-assert 32)
-   (timer  uint64         :offset-assert 40)
+   (handle handle         :offset-assert 32)
+   (timer  time-frame     :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -35512,7 +35513,7 @@
 
 (deftype hover-nav-path-segment (list-node)
   ((curve-matrix matrix  :inline :offset-assert 16)
-   (pos-index    int32   2       :offset-assert 80)
+   (pos-index    float   2       :offset-assert 80)
    (dist         float           :offset-assert 88)
    (du           float           :offset-assert 92) ;; TODO stands for...?
    )
@@ -35534,7 +35535,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (hover-nav-path-info-method-9 () none 9)
+    (hover-nav-path-info-method-9 (_type_) none 9)
     )
   )
 
@@ -35547,7 +35548,7 @@
   )
 
 (deftype nav-network (basic)
-  ((network           basic                          :offset-assert 4)
+  ((network           (array nav-network-info)       :offset-assert 4)
    (dummy             nav-network-info       :inline :offset-assert 16)
    (control-handle    handle                         :offset-assert 88)
    (list-table        list-node              5       :offset-assert 96)
@@ -35556,37 +35557,38 @@
    (sphere-list       hover-nav-sphere               :offset 108)
    (free-segment-list hover-nav-path-segment         :offset 104)
    (free-sphere-list  hover-nav-sphere               :offset 112)
-   (segment-pool      uint32                         :offset-assert 116)
-   (sphere-pool       uint32                         :offset-assert 120)
+   (segment-pool      (pointer hover-nav-path-segment) :offset-assert 116)
+   (sphere-pool       (pointer hover-nav-sphere)     :offset-assert 120)
    )
   :method-count-assert 33
   :size-assert         #x7c
   :flag-assert         #x210000007c
   (:methods
+    (new (symbol type) _type_ 0)
     (nav-network-method-9 (_type_) none 9)
     (nav-network-method-10 (_type_ level (array nav-network-info)) none 10)
     (nav-network-method-11 (_type_) none 11)
     (nav-network-method-12 (_type_) none 12)
-    (nav-network-method-13 (_type_) none 13)
-    (nav-network-method-14 (_type_ int) none 14)
-    (nav-network-method-15 (_type_) none 15)
-    (nav-network-method-16 (_type_) none 16)
+    (nav-network-method-13 (_type_ int nav-network-path-node) none 13)
+    (nav-network-method-14 (_type_ int nav-network-path-node) object 14)
+    (nav-network-method-15 (_type_ nav-network-path-node) object 15)
+    (nav-network-method-16 (_type_ nav-network-path-node) none 16)
     (nav-network-method-17 (_type_) nav-network-path-node 17)
-    (nav-network-method-18 (_type_) none 18)
-    (nav-network-method-19 (_type_) none 19)
-    (nav-network-method-20 (_type_) none 20)
-    (nav-network-method-21 (_type_) none 21)
-    (nav-network-method-22 (_type_) none 22)
-    (nav-network-method-23 (_type_) none 23)
-    (nav-network-method-24 (_type_) none 24)
-    (nav-network-method-25 (_type_) none 25)
-    (nav-network-method-26 (_type_) none 26)
+    (nav-network-method-18 (_type_ nav-network-path-node) none 18)
+    (nav-network-method-19 (_type_ nav-network-path-node) none 19)
+    (nav-network-method-20 (_type_ nav-network-path-node vector) none 20)
+    (nav-network-method-21 (_type_ object int int) none 21)
+    (nav-network-method-22 (_type_ hover-nav-path-info vector vector int int) hover-nav-path-segment 22)
+    (nav-network-method-23 (_type_ hover-nav-path-info) none 23)
+    (nav-network-method-24 (_type_ hover-nav-path-info int int int) symbol 24)
+    (nav-network-method-25 (_type_ process collide-prim-core) none 25)
+    (nav-network-method-26 (_type_ vector process vector vector float) vector 26)
     (nav-network-method-27 (_type_) none 27)
     (nav-network-method-28 (_type_) none 28)
     (nav-network-method-29 (_type_) symbol 29)
-    (get-network (_type_) basic 30)
-    (nav-network-method-31 () none 31)
-    (nav-network-method-32 () none 32)
+    (get-network (_type_) (array nav-network-info) 30)
+    (nav-network-method-31 (_type_ bounding-box) none 31)
+    (nav-network-method-32 (_type_ string) none 32)
     )
   )
 
@@ -35602,11 +35604,11 @@
   )
 
 (deftype hover-nav-control (basic)
-  ((root                        basic                       :offset-assert 4)
-   (nav                         basic                       :offset-assert 8)
+  ((root                        collide-shape-moving        :offset-assert 4)
+   (nav                         nav-network                 :offset-assert 8)
    (flags                       uint16                      :offset-assert 12)
    (params                      hover-nav-params            :offset-assert 16)
-   (path-timer                  uint64                      :offset-assert 24)
+   (path-timer                  time-frame                  :offset-assert 24)
    (transvv                     vector              :inline :offset-assert 32)
    (dest-pos                    vector              :inline :offset-assert 48)
    (dest-vel                    vector              :inline :offset-assert 64)
@@ -35625,7 +35627,7 @@
    (path-info                   hover-nav-path-info :inline :offset-assert 176)
    (curr-dest-pt                int32                       :offset-assert 192)
    (los-obstruction-distance    float                       :offset-assert 196)
-   (los-last-clear-time         time-frame                      :offset-assert 200)
+   (los-last-clear-time         time-frame                  :offset-assert 200)
    (max-speed-multiplier        float                       :offset-assert 208)
    (max-acceleration-multiplier float                       :offset-assert 212)
    )
@@ -35633,27 +35635,28 @@
   :size-assert         #xd8
   :flag-assert         #x20000000d8
   (:methods
+    (new (symbol type process collide-shape-moving hover-nav-params) _type_ 0)
     (hover-nav-control-method-9 (_type_) none 9)
-    (hover-nav-control-method-10 (_type_) none 10)
-    (hover-nav-control-method-11 (_type_) none 11)
+    (hover-nav-control-method-10 (_type_ vector vector vector) none 10)
+    (hover-nav-control-method-11 (_type_ vector) none 11)
     (hover-nav-control-method-12 (_type_) none 12)
     (hover-nav-control-method-13 (_type_) none 13)
     (hover-nav-control-method-14 (_type_ float float) none 14)
-    (hover-nav-control-method-15 (_type_) none 15)
-    (hover-nav-control-method-16 (_type_) none 16)
-    (hover-nav-control-method-17 (_type_) none 17)
-    (hover-nav-control-method-18 (_type_) none 18)
-    (hover-nav-control-method-19 (_type_) none 19)
+    (hover-nav-control-method-15 (_type_ vector) none 15)
+    (hover-nav-control-method-16 (_type_ vector) vector 16)
+    (hover-nav-control-method-17 (_type_) collide-prim-core 17)
+    (hover-nav-control-method-18 (_type_ path-control int int) none 18)
+    (hover-nav-control-method-19 (_type_ (inline-array vector) int) none 19)
     (hover-nav-control-method-20 (_type_) none 20)
     (hover-nav-control-method-21 (_type_) none 21)
     (hover-nav-control-method-22 (_type_) hover-nav-path-segment 22)
     (hover-nav-control-method-23 (_type_) object 23)
     (hover-nav-control-method-24 (_type_) none 24)
     (hover-nav-control-method-25 (_type_) none 25)
-    (hover-nav-control-method-26 (_type_) none 26)
-    (hover-nav-control-method-27 (_type_) none 27)
-    (hover-nav-control-method-28 (_type_) none 28)
-    (hover-nav-control-method-29 (_type_) none 29)
+    (hover-nav-control-method-26 (_type_ vector vector float) symbol 26)
+    (hover-nav-control-method-27 (_type_ vector vector) int 27)
+    (hover-nav-control-method-28 (_type_ vector vector) none 28)
+    (hover-nav-control-method-29 (_type_ vector) none 29)
     (hover-nav-control-method-30 (_type_) float 30)
     (hover-nav-control-method-31 (_type_) float 31)
     )
@@ -35684,15 +35687,15 @@
   )
 
 (deftype hover-enemy (enemy)
-  ((hover                      basic                    :offset-assert 532)
+  ((hover                      hover-nav-control        :offset-assert 532)
    (hover-info                 hover-enemy-info         :offset-assert 536)
-   (formation-entity           basic                    :offset-assert 540)
+   (formation-entity           entity                   :offset-assert 540)
    (fly-anim-speed             float                    :offset-assert 544)
-   (restart-fly-anims          basic                    :offset-assert 548)
+   (restart-fly-anims          symbol                   :offset-assert 548)
    (main-joint-acc             vector           :inline :offset-assert 560)
    (main-joint-vel             vector           :inline :offset-assert 576)
    (main-joint-pos             vector           :inline :offset-assert 592)
-   (thrust                     int64            2       :offset-assert 608)
+   (thrust                     float            2       :offset-assert 608)
    (rotation-vec               vector           :inline :offset-assert 624)
    (dest-pos                   vector           :inline :offset-assert 640)
    (offset                     vector           :inline :offset-assert 656)
@@ -35700,7 +35703,7 @@
    (local-dir                  vector           :inline :offset-assert 688)
    (scale                      float                    :offset-assert 704)
    (scale-timer                uint64                   :offset-assert 712)
-   (hit-surface?               basic                    :offset-assert 720)
+   (hit-surface?               symbol                   :offset-assert 720)
    (knocked-start-level        float                    :offset-assert 724)
    (knocked-fall-dist          float                    :offset-assert 728)
    (flying-death-anim          int32                    :offset-assert 732)
@@ -35715,25 +35718,25 @@
   :size-assert         #x310
   :flag-assert         #x9c02900310
   (:methods
-    (hover-enemy-method-137 () none 137)
-    (hover-enemy-method-138 () none 138)
-    (hover-enemy-method-139 () none 139)
-    (hover-enemy-method-140 () none 140)
-    (hover-enemy-method-141 () none 141)
-    (hover-enemy-method-142 () none 142)
-    (hover-enemy-method-143 () none 143)
-    (hover-enemy-method-144 () none 144)
-    (hover-enemy-method-145 () none 145)
-    (hover-enemy-method-146 () none 146)
-    (hover-enemy-method-147 () none 147)
-    (hover-enemy-method-148 () none 148)
-    (hover-enemy-method-149 () none 149)
-    (hover-enemy-method-150 () none 150)
-    (hover-enemy-method-151 () none 151)
-    (hover-enemy-method-152 () none 152)
-    (hover-enemy-method-153 () none 153)
-    (hover-enemy-method-154 () none 154)
-    (hover-enemy-method-155 () none 155)
+    (knocked-recover () _type_ :state 137)
+    (flying-death () _type_ :state 138)
+    (flying-death-explode () _type_ :state 139)
+    (hover-enemy-method-140 (_type_ symbol) none 140)
+    (hover-enemy-method-141 (_type_ float) none 141)
+    (hover-enemy-method-142 (_type_) none 142)
+    (hover-enemy-method-143 (_type_ int float) none 143)
+    (hover-enemy-method-144 (_type_) none 144)
+    (hover-enemy-method-145 (_type_ int float int int) none 145)
+    (hover-enemy-method-146 (_type_) none 146)
+    (hover-enemy-method-147 (_type_) none 147)
+    (hover-enemy-method-148 (_type_) none 148)
+    (hover-enemy-method-149 (_type_) none 149)
+    (hover-enemy-method-150 (_type_) enemy-info 150)
+    (hover-enemy-method-151 (_type_) hover-enemy-info 151)
+    (hover-enemy-method-152 (_type_) hover-nav-params 152)
+    (hover-enemy-method-153 (_type_) none 153)
+    (hover-enemy-method-154 (_type_) none 154)
+    (hover-enemy-method-155 (_type_) none 155)
     )
   )
 
@@ -35768,66 +35771,63 @@
 ;; (define-extern detect-loop function)
 ;; (define-extern list-contains function)
 (define-extern *nav-network* nav-network)
-;; (define-extern hover-bounce-reaction function)
+(define-extern hover-bounce-reaction (function control-info collide-query vector vector collide-status))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-enemy                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wasp (hover-enemy)
-  ((gun-jmod              basic          :offset-assert 780)
-   (entity-group          basic          :offset-assert 784)
-   (smoke-part            basic          :offset-assert 788)
-   (engine-part           basic          :offset-assert 792)
-   (old-gravity           float          :offset-assert 800)
-   (knocked-anim          int32          :offset-assert 804)
-   (knocked-recover-anim  int32          :offset-assert 808)
-   (last-fire-time        time-frame         :offset-assert 812)
-   (bridge-index          int32          :offset-assert 820)
-   (gun-x-angle           float          :offset-assert 824)
-   (gun-x-angle-final     float          :offset-assert 828)
-   (path-u                float          :offset-assert 832)
-   (path-du               float          :offset-assert 836)
-   (path-du-final         float          :offset-assert 840)
-   (path-dest             float          :offset-assert 844)
-   (plat-pos              vector :inline :offset-assert 860)
-   (sound-id              uint32         :offset-assert 876)
-   (attack-wait-min       float          :offset-assert 880)
-   (attack-wait-max       float          :offset-assert 884)
-   (attack-miss-dist-min  float          :offset-assert 888)
-   (attack-miss-dist-max  float          :offset-assert 892)
-   (attack-miss-dist-curr float          :offset-assert 896)
+  ((gun-jmod              joint-mod      :offset-assert 784)
+   (entity-group          actor-group    :offset-assert 788)
+   (smoke-part            sparticle-launch-control :offset-assert 792)
+   (engine-part           sparticle-launch-control :offset-assert 796)
+   (old-gravity           float          :offset 804)
+   (knocked-anim          int32          :offset-assert 808)
+   (knocked-recover-anim  int32          :offset-assert 812)
+   (last-fire-time        time-frame     :offset-assert 816)
+   (bridge-index          int32          :offset-assert 824)
+   (gun-x-angle           float          :offset-assert 828)
+   (gun-x-angle-final     float          :offset-assert 832)
+   (path-u                float          :offset-assert 836)
+   (path-du               float          :offset-assert 840)
+   (path-du-final         float          :offset-assert 844)
+   (path-dest             float          :offset-assert 848)
+   (plat-pos              vector :inline :offset-assert 864)
+   (sound-id              sound-id       :offset-assert 880)
+   (attack-wait-min       float          :offset-assert 884)
+   (attack-wait-max       float          :offset-assert 888)
+   (attack-miss-dist-min  float          :offset-assert 892)
+   (attack-miss-dist-max  float          :offset-assert 896)
+   (attack-miss-dist-curr float          :offset-assert 900)
    )
   :method-count-assert 166
   :size-assert         #x388
   :flag-assert         #xa603100388
   (:methods
-    (wasp-method-156 () none 156)
-    (wasp-method-157 () none 157)
-    (wasp-method-158 () none 158)
-    (wasp-method-159 () none 159)
-    (wasp-method-160 () none 160)
-    (wasp-method-161 () none 161)
-    (wasp-method-162 () none 162)
-    (wasp-method-163 () none 163)
-    (wasp-method-164 () none 164)
-    (wasp-method-165 () none 165)
+    (shoot-bridge-wait () _type_ :state 156)
+    (shoot-bridge-intro () _type_ :state 157)
+    (shoot-bridge-hold () _type_ :state 158)
+    (shoot-bridge-hostile () _type_ :state 159)
+    (shoot-bridge-attack () _type_ :state 160)
+    (shoot-bridge-outro () _type_ :state 161)
+    (attack () _type_ :state 162)
+    (die-now () _type_ :state 163)
+    (die-explode () _type_ :state 164)
+    (spawn-wasp-shot (_type_ projectile-init-by-other-params int float float) none 165)
     )
   )
-|#
 
-;; (define-extern hover-enemy-dest-post function)
-;; (define-extern hover-enemy-hostile-post function)
-;; (define-extern hover-enemy-fly-code function)
+(define-extern hover-enemy-dest-post (function none :behavior hover-enemy))
+(define-extern hover-enemy-hostile-post (function none :behavior hover-enemy))
+(define-extern hover-enemy-fly-code (function none :behavior hover-enemy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-enemy-battle             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-enemy-battle-command (structure)
-  ((command     basic   :offset-assert 0)
+  ((command     symbol  :offset-assert 0)
    (wave        uint16  :offset-assert 4)
    (time        time-frame  :offset-assert 8)
    (alive-count int32   :offset-assert 16)
@@ -35836,34 +35836,37 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype hover-enemy-manager (process)
-  ()
+  ((command-table     (array hover-enemy-battle-command) :offset-assert 128)
+   (path              path-control :offset-assert 132)
+   (formation         hover-formation-control :offset-assert 136)
+   (actor-group       (pointer actor-group) :offset-assert 140)
+   (actor-group-count int32      :offset-assert 144)
+   (total-to-spawn    int32      :offset-assert 148)
+   (num-spawned       int32      :offset-assert 152)
+   (alive-count       int32      :offset-assert 156)
+   (formation-timer   time-frame :offset-assert 160)
+   )
   :method-count-assert 19
   :size-assert         #xa8
   :flag-assert         #x13003000a8
-  ;; Failed to read fields.
   (:methods
-    (hover-enemy-manager-method-9 () none 9)
-    (hover-enemy-manager-method-10 () none 10)
-    (hover-enemy-manager-method-11 () none 11)
-    (hover-enemy-manager-method-12 () none 12)
-    (hover-enemy-manager-method-13 () none 13)
     (idle () _type_ :state 14)
-    (spawning () _type_ :state 15)
+    (spawning (object object process pointer) _type_ :state 15)
     (die () _type_ :state 16)
-    (hover-enemy-manager-method-17 () none 17)
-    (hover-enemy-manager-method-18 () none 18)
+    (hover-enemy-manager-init! "Initialize this [[hover-enemy-manager]]." (_type_ (array hover-enemy-battle-command)) none 17)
+    (spawn-enemy (_type_ uint) none 18)
     )
   )
-|#
 
-;; (define-extern hover-enemy-manager-handler function)
-;; (define-extern hover-enemy-manager-post function)
-;; (define-extern hover-enemy-manager-init-by-other function)
-;; (define-extern hover-manager-spawn function)
+(declare-type base-turret process-focusable)
+(declare-type turret base-turret)
+
+(define-extern hover-enemy-manager-handler (function process int symbol event-message-block object :behavior hover-enemy-manager))
+(define-extern hover-enemy-manager-post (function none :behavior hover-enemy-manager))
+(define-extern hover-enemy-manager-init-by-other (function entity-actor (array hover-enemy-battle-command) none :behavior hover-enemy-manager))
+(define-extern hover-manager-spawn (function turret entity-actor (array hover-enemy-battle-command) process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-formation                ;;
@@ -35944,7 +35947,6 @@
 ;; wasp                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wasp-shot (metalhead-shot)
   ()
   :method-count-assert 40
@@ -35953,17 +35955,15 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *wasp-exploder-params* joint-exploder-static-params)
-;; (define-extern *wasp-enemy-info* enemy-info)
-;; (define-extern shoot-bridge-post function)
+(define-extern *wasp-exploder-params* joint-exploder-static-params)
+(define-extern *wasp-enemy-info* enemy-info)
+(define-extern shoot-bridge-post (function none :behavior wasp))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; crimson-guard-hover            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype crimson-guard-hover-shot (guard-shot)
   ()
   :method-count-assert 40
@@ -35972,31 +35972,29 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype crimson-guard-hover (hover-enemy)
-  ((gun-jmod              basic               :offset-assert 780)
-   (hips-jmod             basic               :offset-assert 784)
-   (entity-group          basic               :offset-assert 788)
-   (los                   los-control :inline :offset-assert 796)
-   (smoke-part            basic               :offset-assert 944)
-   (engine-part           basic               :offset-assert 948)
-   (last-fire-time        time-frame              :offset-assert 956)
-   (gun-x-angle           float               :offset-assert 964)
-   (gun-x-angle-final     float               :offset-assert 968)
-   (path-u                float               :offset-assert 972)
-   (path-du               float               :offset-assert 976)
-   (path-du-final         float               :offset-assert 980)
-   (path-dest             float               :offset-assert 984)
-   (sound-id              uint32              :offset-assert 988)
-   (knocked-recover-anim  int32               :offset-assert 992)
-   (attack-wait-min       float               :offset-assert 996)
-   (attack-wait-max       float               :offset-assert 1000)
-   (attack-miss-dist-min  float               :offset-assert 1004)
-   (attack-miss-dist-max  float               :offset-assert 1008)
-   (attack-miss-dist-curr float               :offset-assert 1012)
-   (shots-fired           int32               :offset-assert 1016)
+  ((gun-jmod              joint-mod           :offset-assert 784)
+   (hips-jmod             joint-mod           :offset-assert 788)
+   (entity-group          actor-group         :offset-assert 792)
+   (los                   los-control :inline :offset-assert 800)
+   (smoke-part            sparticle-launch-control :offset-assert 948)
+   (engine-part           sparticle-launch-control :offset-assert 952)
+   (last-fire-time        time-frame              :offset-assert 960)
+   (gun-x-angle           float               :offset-assert 968)
+   (gun-x-angle-final     float               :offset-assert 972)
+   (path-u                float               :offset-assert 976)
+   (path-du               float               :offset-assert 980)
+   (path-du-final         float               :offset-assert 984)
+   (path-dest             float               :offset-assert 988)
+   (sound-id              sound-id            :offset-assert 992)
+   (knocked-recover-anim  int32               :offset-assert 996)
+   (attack-wait-min       float               :offset-assert 1000)
+   (attack-wait-max       float               :offset-assert 1004)
+   (attack-miss-dist-min  float               :offset-assert 1008)
+   (attack-miss-dist-max  float               :offset-assert 1012)
+   (attack-miss-dist-curr float               :offset-assert 1016)
+   (shots-fired           int32               :offset-assert 1020)
    )
   :method-count-assert 163
   :size-assert         #x400
@@ -36007,20 +36005,18 @@
     (kick-attack () _type_ :state 158)
     (attack () _type_ :state 159)
     (die-now () _type_ :state 160)
-    (crimson-guard-hover-method-161 () none 161)
-    (crimson-guard-hover-method-162 () none 162)
+    (shoot (_type_ vector projectile-init-by-other-params int float float) none 161)
+    (crimson-guard-hover-method-162 (_type_ process-focusable) symbol 162)
     )
   )
-|#
 
-;; (define-extern *crimson-guard-hover-enemy-info* enemy-info)
-;; (define-extern *crimson-guard-hover-exploder-params* joint-exploder-static-params)
+(define-extern *crimson-guard-hover-enemy-info* enemy-info)
+(define-extern *crimson-guard-hover-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flamer                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flying-formation (hover-formation)
   ()
   :method-count-assert 16
@@ -36029,35 +36025,33 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype flamer (nav-enemy)
-  ((shot-trajectory   trajectory :inline :offset-assert 604)
-   (last-fire-time    time-frame             :offset-assert 644)
-   (sync-off          uint32             :offset-assert 652)
-   (base-pos          vector     :inline :offset-assert 668)
-   (idle-pos          vector     :inline :offset-assert 684)
-   (offset            vector     :inline :offset-assert 700)
-   (dest-pos          vector     :inline :offset-assert 716)
-   (zone-to-world     matrix     :inline :offset-assert 732)
-   (world-to-zone     matrix     :inline :offset-assert 796)
-   (formation-entity  basic              :offset-assert 860)
-   (flit-joint        basic              :offset-assert 864)
-   (flit-angle        float              :offset-assert 868)
-   (flit-timer        uint64             :offset-assert 876)
-   (path-pos          float              :offset-assert 884)
-   (sound-volume      float              :offset-assert 888)
-   (scale             float              :offset-assert 892)
-   (hit-surface?      basic              :offset-assert 896)
-   (ground-mode       int8               :offset-assert 900)
-   (init-quat         quaternion :inline :offset-assert 908)
-   (surface-normal    vector     :inline :offset-assert 924)
-   (main-joint-pos    vector     :inline :offset-assert 940)
-   (main-joint-vel    vector     :inline :offset-assert 956)
-   (main-joint-acc    vector     :inline :offset-assert 972)
-   (main-acceleration float              :offset-assert 988)
-   (fly-dir           vector     :inline :offset-assert 1004)
+  ((shot-trajectory   trajectory :inline :offset-assert 608)
+   (last-fire-time    time-frame         :offset-assert 648)
+   (sync-off          uint32             :offset-assert 656)
+   (base-pos          vector     :inline :offset-assert 672)
+   (idle-pos          vector     :inline :offset-assert 688)
+   (offset            vector     :inline :offset-assert 704)
+   (dest-pos          vector     :inline :offset-assert 720)
+   (zone-to-world     matrix     :inline :offset-assert 736)
+   (world-to-zone     matrix     :inline :offset-assert 800)
+   (formation-entity  entity-actor       :offset-assert 864)
+   (flit-joint        joint-mod          :offset-assert 868)
+   (flit-angle        float              :offset-assert 872)
+   (flit-timer        time-frame         :offset-assert 880)
+   (path-pos          float              :offset-assert 888)
+   (sound-volume      float              :offset-assert 892)
+   (scale             float              :offset-assert 896)
+   (hit-surface?      symbol             :offset-assert 900)
+   (ground-mode       int8               :offset-assert 904)
+   (init-quat         quaternion :inline :offset-assert 912)
+   (surface-normal    vector     :inline :offset-assert 928)
+   (main-joint-pos    vector     :inline :offset-assert 944)
+   (main-joint-vel    vector     :inline :offset-assert 960)
+   (main-joint-acc    vector     :inline :offset-assert 976)
+   (main-acceleration float              :offset-assert 992)
+   (fly-dir           vector     :inline :offset-assert 1008)
    )
   :method-count-assert 192
   :size-assert         #x400
@@ -36067,27 +36061,26 @@
     (wait-for-formation () _type_ :state 179)
     (exit-ambush () _type_ :state 180)
     (exit-ambush-path () _type_ :state 181)
-    (flamer-method-182 () none 182)
-    (flamer-method-183 () none 183)
-    (flamer-method-184 () none 184)
-    (flamer-method-185 () none 185)
-    (flamer-method-186 () none 186)
-    (flamer-method-187 () none 187)
-    (flamer-method-188 () none 188)
-    (flamer-method-189 () none 189)
-    (flamer-method-190 () none 190)
-    (flamer-method-191 () none 191)
+    (flamer-method-182 (_type_ vector process-focusable) none 182)
+    (flamer-method-183 (_type_) symbol 183)
+    (flamer-method-184 (_type_) none 184)
+    (flamer-method-185 (_type_) none 185)
+    (flamer-method-186 (_type_ float) vector 186)
+    (flamer-method-187 (_type_) none 187)
+    (flamer-method-188 (_type_ int float int int) none 188)
+    (flamer-method-189 (_type_) none 189)
+    (flamer-method-190 (_type_) none 190)
+    (flamer-method-191 (_type_) none 191)
     )
   )
-|#
 
-;; (define-extern *flamer-exploder-params* joint-exploder-static-params)
-;; (define-extern *flamer-fact-defaults* fact-info-enemy-defaults)
-;; (define-extern *flamer-nav-enemy-info* nav-enemy-info)
-;; (define-extern flamer-attack-post function)
-;; (define-extern flamer-flit-post function)
-;; (define-extern flamer-fly-code function)
-;; (define-extern vector-square! function)
+(define-extern *flamer-exploder-params* joint-exploder-static-params)
+(define-extern *flamer-fact-defaults* fact-info-enemy-defaults)
+(define-extern *flamer-nav-enemy-info* nav-enemy-info)
+(define-extern flamer-attack-post (function none :behavior flamer))
+(define-extern flamer-flit-post (function none :behavior flamer))
+(define-extern flamer-fly-code (function symbol :behavior flamer))
+(define-extern vector-square! (function vector vector vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-part                    ;;
@@ -37278,9 +37271,8 @@
 ;; target-turret                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-turret-health (hud)
-  ((fade-interp float  :offset-assert 2976)
+  ((fade-interp float  :offset-assert 2980)
    )
   :method-count-assert 27
   :size-assert         #xba8
@@ -37288,9 +37280,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hud-drill-turret-health (hud-turret-health)
   ()
   :method-count-assert 27
@@ -37299,9 +37289,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype hud-port-turret-health (hud-turret-health)
   ()
   :method-count-assert 27
@@ -37310,13 +37298,15 @@
   (:methods
     )
   )
-|#
+
+(declare-type base-turret process-focusable)
+(declare-type turret base-turret)
 
 (deftype turret-info (basic)
-  ((process  uint32             :offset-assert 4)
-   (handle   uint64             :offset-assert 8)
-   (turret   uint32             :offset-assert 16)
-   (grabbed? basic              :offset-assert 20)
+  ((process  (pointer process)  :offset-assert 4)
+   (handle   handle             :offset-assert 8)
+   (turret   (pointer base-turret)   :offset-assert 16)
+   (grabbed? symbol             :offset-assert 20)
    (quat     quaternion :inline :offset-assert 32)
    (trans    vector     :inline :offset-assert 48)
    )
@@ -37325,37 +37315,80 @@
   :flag-assert         #x900000040
   )
 
-#|
 (deftype turret-path-event (structure)
   ((pos        float  :offset-assert 0)
-   (event-type basic  :offset-assert 4)
-   (param      basic  :offset-assert 8)
+   (event-type symbol :offset-assert 4)
+   (param      object :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   ;; field param uses ~A with a signed load
   )
-|#
 
-#|
 (deftype turret-path (structure)
-  ((event-count int32   :offset-assert 0)
-   (event-tbl   uint32  :offset-assert 4)
+  ((event-count int32                            :offset-assert 0)
+   (event-tbl   (inline-array turret-path-event) :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype base-turret (process-focusable)
-  ()
+  ((hud                   handle                :offset-assert 208)
+   (condition             int32                 :offset-assert 216)
+   (shadow-backup         symbol                :offset-assert 220)
+   (rider                 handle                :offset-assert 224)
+   (actor-group           (pointer actor-group) :offset-assert 232)
+   (actor-group-count     int32                 :offset-assert 236)
+   (alt-actor             symbol                :offset-assert 240)
+   (smush-control         smush-control :inline :offset-assert 248)
+   (sound-id              sound-id 3            :offset-assert 280) ;; elt size: 4
+   (sound-playing         symbol 3              :offset-assert 292) ;; elt size: 4
+   (cam-string-vector     vector :inline        :offset-assert 304)
+   (path-event            turret-path           :offset-assert 320)
+   (path-u                float                 :offset-assert 324)
+   (path-u-prev           float                 :offset-assert 328)
+   (path-mode             uint16                :offset-assert 332)
+   (path-speed            float                 :offset-assert 336)
+   (path-speed-mult       float                 :offset-assert 340)
+   (path-speed-mult-final float                 :offset-assert 344)
+   (path-old-pos          vector        :inline :offset-assert 352)
+   (path-direction        symbol                :offset-assert 368)
+   (pause-proc            (function base-turret symbol) :offset-assert 372)
+   (gun-recoil-jmod       joint-mod-add-local 4           :offset-assert 376) ;; elt size: 4
+   (gun-index             int32                 :offset-assert 392)
+   (shot-timeout          time-frame            :offset-assert 400)
+   (fire-time             time-frame            :offset-assert 408)
+   (fire-time-interval    time-frame            :offset-assert 416)
+   (enable-controls       symbol                :offset-assert 424)
+   (available-for-pickup  symbol                :offset-assert 428)
+   (roty                  degrees               :offset-assert 432)
+   (rotyv                 degrees               :offset-assert 436)
+   (rotyvv                degrees               :offset-assert 440)
+   (roty-min              degrees               :offset-assert 444)
+   (roty-max              degrees               :offset-assert 448)
+   (rotx                  degrees               :offset-assert 452)
+   (rotxv                 degrees               :offset-assert 456)
+   (rotxvv                degrees               :offset-assert 460)
+   (rotx-min              degrees               :offset-assert 464)
+   (rotx-max              degrees               :offset-assert 468)
+   (target-quat           quaternion :inline    :offset-assert 480)
+   (init-quat             quaternion :inline    :offset-assert 496)
+   (health                float                 :offset-assert 512)
+   (track-handle          handle                :offset-assert 520)
+   (heat                  float                 :offset-assert 528)
+   (heat-target           float                 :offset-assert 532)
+   (arrow-angle           degrees               :offset-assert 536)
+   (arrow-alpha           float                 :offset-assert 540)
+   (arrow-red             float                 :offset-assert 544)
+   (red-filter-timer      time-frame            :offset-assert 552)
+   (ride-height           float                 :offset-assert 560)
+   )
   :method-count-assert 49
   :size-assert         #x234
   :flag-assert         #x3101c00234
-  ;; Failed to read fields.
   (:methods
     (idle () _type_ :state 27)
     (setup () _type_ :state 28)
@@ -37363,51 +37396,49 @@
     (shutdown () _type_ :state 30)
     (dormant () _type_ :state 31)
     (die () _type_ :state 32)
-    (base-turret-method-33 () none 33)
-    (base-turret-method-34 () none 34)
-    (base-turret-method-35 () none 35)
-    (base-turret-method-36 () none 36)
-    (base-turret-method-37 () none 37)
-    (base-turret-method-38 () none 38)
-    (base-turret-method-39 () none 39)
-    (base-turret-method-40 () none 40)
-    (base-turret-method-41 () none 41)
-    (base-turret-method-42 () none 42)
-    (base-turret-method-43 () none 43)
-    (base-turret-method-44 () none 44)
-    (base-turret-method-45 () none 45)
-    (base-turret-method-46 () none 46)
-    (base-turret-method-47 () none 47)
-    (base-turret-method-48 () none 48)
+    (turret-init! (_type_ entity-actor matrix) none 33)
+    (base-turret-method-34 (_type_ process) none 34)
+    (base-turret-method-35 (_type_) none 35)
+    (base-turret-method-36 (_type_) none 36)
+    (base-turret-method-37 (_type_) none 37)
+    (base-turret-method-38 (_type_) none 38)
+    (base-turret-method-39 (_type_ turret-path-event) none 39)
+    (base-turret-method-40 (_type_) none 40)
+    (base-turret-method-41 (_type_ vector) symbol 41)
+    (base-turret-method-42 (_type_ vector vector float) float 42)
+    (base-turret-method-43 (_type_) none 43)
+    (base-turret-method-44 (_type_ vector vector) none 44)
+    (base-turret-method-45 (_type_ object symbol) none 45)
+    (base-turret-method-46 (_type_ process) process 46)
+    (base-turret-method-47 (_type_) none 47)
+    (turret-event-handler (_type_ process int symbol event-message-block) object 48)
     )
   )
-|#
 
-;; (define-extern init-turret-hud function)
-;; (define-extern *turret-exploder-params* joint-exploder-static-params)
-;; (define-extern turret-handler function)
-;; (define-extern set-recoil function)
-;; (define-extern cam-turret state)
-;; (define-extern target-turret-post function)
-;; (define-extern target-turret-stance state)
-;; (define-extern *turret-get-on-mods* object)
-;; (define-extern target-turret-get-off state)
+(define-extern init-turret-hud (function hud-turret-health string none))
+(define-extern *turret-exploder-params* joint-exploder-static-params)
+(define-extern turret-handler (function process int symbol event-message-block object :behavior base-turret))
+(define-extern set-recoil (function joint-mod float symbol none))
+(define-extern cam-turret (state camera-slave))
+(define-extern target-turret-post (function none :behavior target))
+(define-extern target-turret-stance (state handle target))
+(define-extern *turret-get-on-mods* surface)
+(define-extern target-turret-get-off (state target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-turret                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype turret (base-turret)
-  ((hover-battle    uint64  :offset-assert 564)
-   (hover-formation basic   :offset-assert 572)
-   (use-egg-hud     basic   :offset-assert 576)
-   (hud-egg         uint64  :offset-assert 580)
-   (use-cgh-hud     basic   :offset-assert 588)
-   (hud-cgh         uint64  :offset-assert 596)
-   (hud-cgh-event   basic   :offset-assert 604)
-   (egg-timer       uint64  :offset-assert 612)
-   (cgh-timer       uint64  :offset-assert 620)
+  ((hover-battle    handle          :offset-assert 568)
+   (hover-formation hover-formation :offset-assert 576)
+   (use-egg-hud     symbol          :offset-assert 580)
+   (hud-egg         handle          :offset-assert 584)
+   (use-cgh-hud     symbol          :offset-assert 592)
+   (hud-cgh         handle          :offset-assert 600)
+   (hud-cgh-event   symbol          :offset-assert 608)
+   (egg-timer       time-frame      :offset-assert 616)
+   (cgh-timer       time-frame      :offset-assert 624)
    )
   :method-count-assert 49
   :size-assert         #x278
@@ -37415,15 +37446,14 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *drill-turret-10-battle* array)
-;; (define-extern *drill-turret-11-battle* array)
-;; (define-extern *drill-turret-12-battle* array)
-;; (define-extern *turret-13-path* object)
-;; (define-extern *drill-turret-13-battle* array)
-;; (define-extern *turret-14-path* object)
-;; (define-extern *turret-15-path* object)
+(define-extern *drill-turret-10-battle* (array hover-enemy-battle-command))
+(define-extern *drill-turret-11-battle* (array hover-enemy-battle-command))
+(define-extern *drill-turret-12-battle* (array hover-enemy-battle-command))
+(define-extern *turret-13-path* turret-path)
+(define-extern *drill-turret-13-battle* (array hover-enemy-battle-command))
+(define-extern *turret-14-path* turret-path)
+(define-extern *turret-15-path* turret-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drillmid-obs                   ;;
@@ -37855,19 +37885,19 @@
 ;; drill-baron                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drill-barons-ship (process-drawable)
-  ((init-quat          quaternion :inline :offset-assert 204)
-   (next-to-shoot-idx  int32              :offset-assert 220)
-   (current-y-position float              :offset-assert 224)
-   (from-y             float              :offset-assert 228)
-   (inc-y              float              :offset-assert 232)
-   (ease-y             float              :offset-assert 236)
-   (x-offset-angle     float              :offset-assert 240)
-   (pass               int32              :offset-assert 244)
-   (end-of-pass        basic              :offset-assert 248)
-   (rock-angle         float              :offset-assert 252)
-   (soundid            uint32             :offset-assert 256)
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   (init-quat          quaternion :inline :offset-assert 208)
+   (next-to-shoot-idx  int32              :offset-assert 224)
+   (current-y-position float              :offset-assert 228)
+   (from-y             float              :offset-assert 232)
+   (inc-y              float              :offset-assert 236)
+   (ease-y             float              :offset-assert 240)
+   (x-offset-angle     float              :offset-assert 244)
+   (pass               int32              :offset-assert 248)
+   (end-of-pass        symbol             :offset-assert 252)
+   (rock-angle         float              :offset-assert 256)
+   (soundid            uint32             :offset-assert 260)
    )
   :method-count-assert 23
   :size-assert         #x108
@@ -37875,12 +37905,10 @@
   (:methods
     (idle () _type_ :state 20)
     (hidden () _type_ :state 21)
-    (drill-barons-ship-method-22 () none 22)
+    (drill-barons-ship-method-22 (_type_) none 22)
     )
   )
-|#
 
-#|
 (deftype drill-barons-ship-explode (process-drawable)
   ()
   :method-count-assert 21
@@ -37890,37 +37918,34 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype barons-ship-turret-info (structure)
   ((init-y-angle  float  :offset-assert 0)
    (twist-y-max   float  :offset-assert 4)
    (joint-idx     int32  :offset-assert 8)
    (mesh          int32  :offset-assert 12)
    (ship-y-offset float  :offset-assert 16)
-   (alive         basic  :offset-assert 20)
+   (alive         symbol :offset-assert 20)
    (next-to-shoot basic  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype drill-barons-ship-turret (process-drawable)
-  ((info               barons-ship-turret-info  :offset-assert 196)
-   (shot-timer         uint64                   :offset-assert 204)
-   (shot-counter       int32                    :offset-assert 212)
-   (jmod               basic                    :offset-assert 216)
-   (jmod-left          basic                    :offset-assert 220)
-   (jmod-right         basic                    :offset-assert 224)
-   (anim-frame         float                    :offset-assert 228)
-   (error-y-angle      float                    :offset-assert 232)
-   (error-y-angle-dest float                    :offset-assert 236)
-   (hit-count          int32                    :offset-assert 240)
-   (soundid            uint32                   :offset-assert 244)
+  ((root-override      collide-shape-moving     :offset 128 :score 1)
+   (info               barons-ship-turret-info  :offset-assert 200)
+   (shot-timer         time-frame               :offset-assert 208)
+   (shot-counter       int32                    :offset-assert 216)
+   (jmod               joint-mod                :offset-assert 220)
+   (jmod-left          joint-mod                :offset-assert 224)
+   (jmod-right         joint-mod                :offset-assert 228)
+   (anim-frame         float                    :offset-assert 232)
+   (error-y-angle      float                    :offset-assert 236)
+   (error-y-angle-dest float                    :offset-assert 240)
+   (hit-count          int32                    :offset-assert 244)
+   (soundid            sound-id                 :offset-assert 248)
    )
   :method-count-assert 25
   :size-assert         #xfc
@@ -37930,12 +37955,10 @@
     (attack () _type_ :state 21)
     (dead () _type_ :state 22)
     (going-down () _type_ :state 23)
-    (drill-barons-ship-turret-method-24 () none 24)
+    (drill-barons-ship-turret-method-24 (_type_) none 24)
     )
   )
-|#
 
-#|
 (deftype drill-ship-shot (guard-shot)
   ()
   :method-count-assert 40
@@ -37944,16 +37967,15 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern *ship-turrets-first-pass* array)
-;; (define-extern *ship-turrets-second-pass* array)
-;; (define-extern *barons-ship-turrets* array)
-;; (define-extern drill-barons-ship-turret-init-by-other function)
-;; (define-extern drill-barons-ship-explode-init-by-other function)
-;; (define-extern drill-ship-shot-move function)
-;; (define-extern *drill-ship-turret-speed-event* object)
-;; (define-extern calculate-ship-projectile-velocity function)
+(define-extern *ship-turrets-first-pass* (array int32))
+(define-extern *ship-turrets-second-pass* (array int32))
+(define-extern *barons-ship-turrets* (array barons-ship-turret-info))
+(define-extern drill-barons-ship-turret-init-by-other (function entity-actor none :behavior drill-barons-ship-turret))
+(define-extern drill-barons-ship-explode-init-by-other (function entity-actor none :behavior drill-barons-ship-explode))
+(define-extern drill-ship-shot-move (function drill-ship-shot none))
+(define-extern *drill-ship-turret-speed-event* turret-path-event)
+(define-extern calculate-ship-projectile-velocity (function projectile-init-by-other-params float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drill-scenes                   ;;
@@ -48148,7 +48170,6 @@
 ;; jellyfish                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jellyfish-formation (hover-formation)
   ()
   :method-count-assert 16
@@ -48157,9 +48178,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype jellyfish-chain-physics (chain-physics)
   ()
   :method-count-assert 18
@@ -48168,32 +48187,30 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype jellyfish (hover-enemy)
-  ((los                   los-control :inline :offset-assert 780)
-   (sync                  sync-eased  :inline :offset-assert 932)
-   (sound-id              uint32              :offset-assert 976)
-   (path-player-u         float               :offset-assert 980)
-   (path-my-u             float               :offset-assert 984)
-   (path-y-offset         float               :offset-assert 988)
-   (path-stare-u          float               :offset-assert 992)
-   (tentacle-clock        float               :offset-assert 996)
-   (tentacle-blend        float               :offset-assert 1000)
-   (last-attack-time      time-frame              :offset-assert 1004)
-   (last-fire-time        time-frame              :offset-assert 1012)
-   (charge-path-timer     uint64              :offset-assert 1020)
-   (tentacles             UNKNOWN     5       :offset-assert 1028)
-   (tentacles-initialized basic               :offset-assert 1048)
-   (stare-pos             vector      :inline :offset-assert 1052)
-   (charge-pos            vector      :inline :offset-assert 1068)
-   (grab-front            basic               :offset-assert 1084)
-   (grab-offset           vector      :inline :offset-assert 1100)
-   (grab-start-pos        vector      :inline :offset-assert 1116)
-   (grab-start-quat       quaternion  :inline :offset-assert 1132)
-   (focus-rot             quaternion  :inline :offset-assert 1148)
-   (attach-lerp           float               :offset-assert 1164)
+  ((los                   los-control :inline :offset-assert 784)
+   (sync                  sync-eased  :inline :offset-assert 936)
+   (sound-id              uint32              :offset-assert 980)
+   (path-player-u         float               :offset-assert 984)
+   (path-my-u             float               :offset-assert 988)
+   (path-y-offset         float               :offset-assert 992)
+   (path-stare-u          float               :offset-assert 996)
+   (tentacle-clock        float               :offset-assert 1000)
+   (tentacle-blend        float               :offset-assert 1004)
+   (last-attack-time      time-frame          :offset-assert 1008)
+   (last-fire-time        time-frame          :offset-assert 1016)
+   (charge-path-timer     time-frame          :offset-assert 1024)
+   (tentacles             jellyfish-chain-physics 5 :offset-assert 1032)
+   (tentacles-initialized symbol              :offset-assert 1052)
+   (stare-pos             vector      :inline :offset-assert 1056)
+   (charge-pos            vector      :inline :offset-assert 1072)
+   (grab-front            symbol              :offset-assert 1088)
+   (grab-offset           vector      :inline :offset-assert 1104)
+   (grab-start-pos        vector      :inline :offset-assert 1120)
+   (grab-start-quat       quaternion  :inline :offset-assert 1136)
+   (focus-rot             quaternion  :inline :offset-assert 1152)
+   (attach-lerp           float               :offset-assert 1168)
    )
   :method-count-assert 165
   :size-assert         #x494
@@ -48204,15 +48221,13 @@
     (charge-attack () _type_ :state 158)
     (grab-mech () _type_ :state 159)
     (die-now () _type_ :state 160)
-    (jellyfish-method-161 () none 161)
-    (jellyfish-method-162 () none 162)
-    (jellyfish-method-163 () none 163)
-    (jellyfish-method-164 () none 164)
+    (jellyfish-method-161 (_type_ vector float) vector 161)
+    (jellyfish-method-162 (_type_) symbol 162)
+    (jellyfish-method-163 (_type_ process-focusable) symbol 163)
+    (jellyfish-method-164 (_type_ process-focusable) symbol 164)
     )
   )
-|#
 
-#|
 (deftype jellyfish-joint-mod-tentacle-info (structure)
   ((axis   vector :inline :offset-assert 0)
    (angle  float          :offset-assert 16)
@@ -48223,16 +48238,15 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-;; (define-extern *jellyfish-mech-reserved* object)
-;; (define-extern *jellyfish-mainvein-chain-setup* array)
-;; (define-extern *jellyfish-lfront-chain-setup* array)
-;; (define-extern *jellyfish-rfront-chain-setup* array)
-;; (define-extern *jellyfish-lrear-chain-setup* array)
-;; (define-extern *jellyfish-rrear-chain-setup* array)
-;; (define-extern *jellyfish-enemy-info* enemy-info)
-;; (define-extern jellyfish-joint-mod-tentacle function)
+(define-extern *jellyfish-mech-reserved* symbol)
+(define-extern *jellyfish-mainvein-chain-setup* (array chain-physics-setup))
+(define-extern *jellyfish-lfront-chain-setup* (array chain-physics-setup))
+(define-extern *jellyfish-rfront-chain-setup* (array chain-physics-setup))
+(define-extern *jellyfish-lrear-chain-setup* (array chain-physics-setup))
+(define-extern *jellyfish-rrear-chain-setup* (array chain-physics-setup))
+(define-extern *jellyfish-enemy-info* enemy-info)
+(define-extern jellyfish-joint-mod-tentacle (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; under-part                     ;;
