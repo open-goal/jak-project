@@ -130,7 +130,7 @@ static int gl_init(GfxSettings& settings) {
   // TODO - is there a way to register and log SDL2 errors?
 
   // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
     lg::error("Could not initialize SDL, exiting - {}", SDL_GetError());
     return NULL;
   }
