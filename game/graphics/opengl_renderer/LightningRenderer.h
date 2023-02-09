@@ -14,4 +14,3 @@ class LightningRenderer : public BucketRenderer {
  private:
   Generic2 m_generic;
 };
-
