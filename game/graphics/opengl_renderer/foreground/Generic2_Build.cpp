@@ -4,14 +4,14 @@
  * Main function to set up Generic2 draw lists.
  * This function figures out which vertices belong to which draw settings.
  */
-void Generic2::setup_draws() {
+void Generic2::setup_draws(bool enable_at) {
   if (m_next_free_frag == 0) {
     return;
   }
   m_gs = GsState();
   link_adgifs_back_to_frags();
   process_matrices();
-  determine_draw_modes();
+  determine_draw_modes(enable_at);
   draws_to_buckets();
   final_vertex_update();
   build_index_buffer();
@@ -26,10 +26,10 @@ void Generic2::setup_draws() {
  * settings, the tbp (texture vram address), and the "vertex flags" that need to be set for each
  * vertex.  This information is used in later steps.
  */
-void Generic2::determine_draw_modes() {
+void Generic2::determine_draw_modes(bool enable_at) {
   // initialize draw mode
   DrawMode current_mode;
-  current_mode.set_at(true);
+  current_mode.set_at(enable_at);
   current_mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   current_mode.set_aref(0x26);
   current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);

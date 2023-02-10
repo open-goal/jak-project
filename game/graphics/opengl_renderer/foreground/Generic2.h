@@ -39,7 +39,7 @@ class Generic2 : public BucketRenderer {
   static_assert(sizeof(Vertex) == 32);
 
  private:
-  void determine_draw_modes();
+  void determine_draw_modes(bool enable_at);
   void build_index_buffer();
   void link_adgifs_back_to_frags();
   void draws_to_buckets();
@@ -47,7 +47,7 @@ class Generic2 : public BucketRenderer {
   void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
-  void setup_draws();
+  void setup_draws(bool enable_at);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
                           ScopedProfilerNode& prof,
