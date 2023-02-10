@@ -25,6 +25,90 @@ bool is_any_sdl_event_type(Uint32 event_type, std::vector<Uint32> allowed_types)
       return true;
     }
   }
+  return false;
+}
+
+InputDevice::InputDevice(int sdl_device_index, Type type, int analog_dead_zone, bool buffer_inputs)
+    : m_type(type), m_analog_dead_zone(analog_dead_zone), m_buffer_inputs(buffer_inputs) {
+  m_is_active = false;
+  // upgrade the controller type if possible
+  if (type == Type::JOYSTICK && SDL_IsGameController(sdl_device_index)) {
+    m_type = Type::CONTROLLER;
+  }
+  if (m_type == Type::CONTROLLER) {
+    m_controller_handle = SDL_GameControllerOpen(sdl_device_index);
+  } else if (m_type == Type::JOYSTICK) {
+    m_joystick_handle = SDL_JoystickOpen(sdl_device_index);
+  } else if (m_type == Type::KEYBOARD || type == Type::MOUSE) {
+    // No device needed to hold onto
+    m_is_active = true;
+    return;
+  }
+
+  if (!m_controller_handle || m_joystick_handle) {
+    lg::error("Could not read data from device index `{}`: {}", sdl_device_index, SDL_GetError());
+    return;
+  }
+
+  if (m_type == Type::CONTROLLER) {
+    auto joystick = SDL_GameControllerGetJoystick(m_controller_handle);
+    if (!joystick) {
+      lg::error("Could not get underlying joystick for gamecontroller: id {}", sdl_device_index);
+      return;
+    }
+    m_device_id = SDL_JoystickInstanceID(joystick);
+    if (m_device_id < 0) {
+      lg::error("Could not get instance id for gamecontroller: id {}", sdl_device_index);
+      return;
+    }
+    auto name = SDL_GameControllerName(m_controller_handle);
+    if (!name) {
+      lg::error("Could not get device name: {}", SDL_GetError());
+      m_name = fmt::format("Unknown Device {}", sdl_device_index);
+    } else {
+      m_name = name;
+    }
+  } else if (m_type == Type::JOYSTICK) {
+    m_device_id = SDL_JoystickInstanceID(m_joystick_handle);
+    if (m_device_id < 0) {
+      lg::error("Could not get instance id for joystick: id {}", sdl_device_index);
+      return;
+    }
+    auto name = SDL_JoystickName(m_joystick_handle);
+    if (!name) {
+      lg::error("Could not get device name: {}", SDL_GetError());
+      m_name = fmt::format("Unknown Device {}", sdl_device_index);
+    } else {
+      m_name = name;
+    }
+  }
+  m_is_active = true;
+}
+
+// TODO - wire these up to the bindings
+void process_controller_event(const SDL_Event& event, PadData& data) {
+  if (event.type == SDL_CONTROLLERAXISMOTION) {
+    // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
+    // TODO - just a test
+    data.analog_left = {127, 255};
+    data.analog_right = {127, 127};
+  }
+}
+
+void InputDevice::process_event(const SDL_Event& event, PadData& data) {
+  if (m_type == Type::CONTROLLER && event.type == SDL_CONTROLLERAXISMOTION) {
+    process_controller_event(event, data);
+  }
+  // TODO - other types
+}
+
+void InputDevice::close_device() {
+  if (m_controller_handle) {
+    SDL_GameControllerClose(m_controller_handle);
+  }
+  if (m_joystick_handle) {
+    SDL_JoystickClose(m_joystick_handle);
+  }
 }
 
 InputMonitor::InputMonitor() {
@@ -36,13 +120,25 @@ InputMonitor::InputMonitor() {
   } else {
     lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
   }
-  // Enumerate devices
+  refresh_device_list();
 }
 
 InputMonitor::~InputMonitor() {
   for (auto& device : m_available_devices) {
     device.close_device();
   }
+}
+
+void InputMonitor::refresh_device_list() {
+  m_available_devices.clear();
+  // Enumerate devices
+  if (SDL_NumJoysticks() > 0) {
+    for (int i = 0; i < SDL_NumJoysticks(); i++) {
+      m_available_devices.push_back(InputDevice(i, InputDevice::Type::JOYSTICK));
+    }
+    m_active_device = m_available_devices.at(0);
+  }
+  // TODO - make a keyboard and mouse one as well (if available?)
 }
 
 void InputMonitor::process_sdl_event(const SDL_Event& event) {
@@ -56,63 +152,6 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   // Send event to active device
   if (m_active_device) {
     m_active_device->process_event(event, m_data);
-  }
-}
-
-void InputMonitor::refresh_device_list() {}
-
-InputDevice::InputDevice(int sdl_device_index,
-                         Type type,
-                         int analog_dead_zone,
-                         bool buffer_inputs) {
-  // TODO - init list
-  m_device_index = sdl_device_index;
-  m_type = type;
-  m_analog_dead_zone = analog_dead_zone;
-  m_buffer_inputs = buffer_inputs;
-  m_device_handle = SDL_JoystickOpen(sdl_device_index);
-  if (!m_device_handle) {
-    lg::error("Could not read data from device index `{}`: {}", sdl_device_index, SDL_GetError());
-    m_is_active = false;
-  } else {
-    m_is_active = true;
-    auto name = SDL_JoystickName(m_device_handle);
-    if (!name) {
-      lg::error("Could not get device name: {}", SDL_GetError());
-      m_name = fmt::format("Unknown Device {}", sdl_device_index);
-    } else {
-      m_name = name;
-    }
-  }
-}
-
-void InputDevice::process_event(const SDL_Event& event, PadData& data) {
-  // TODO - this pattern sucks, make it better
-  if (m_type == Type::JOYSTICK &&
-      (event.type != SDL_JOYAXISMOTION || event.type != SDL_CONTROLLERAXISMOTION)) {
-    return;
-  } else if (m_type == Type::KEYBOARD && (event.type != SDL_KEYDOWN || event.type != SDL_KEYUP)) {
-    return;
-  }
-
-  if (m_type == Type::JOYSTICK) {
-    if (event.type == SDL_CONTROLLERAXISMOTION) {
-      if (event.caxis.which != m_device_index) {
-        return;
-      }
-      if (event.caxis.axis == 0) {
-        // TODO - test
-        data.analog_x = {127, 127};
-      } else {
-        data.analog_y = {127, 127};
-      }
-    }
-  }
-}
-
-void InputDevice::close_device() {
-  if (m_device_handle) {
-    SDL_JoystickClose(m_device_handle);
   }
 }
 

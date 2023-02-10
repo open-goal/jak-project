@@ -8,6 +8,7 @@
 
 #include <unordered_map>
 #include <optional>
+#include <string>
 #include "common/common_types.h"
 
 #include "third-party/SDL/include/SDL.h"
@@ -16,8 +17,8 @@ namespace Pad {
 
 struct PadData {
   // Analog Values
-  std::pair<u8, u8> analog_x;
-  std::pair<u8, u8> analog_y;
+  std::pair<u8, u8> analog_left;
+  std::pair<u8, u8> analog_right;
 
   // Normal Buttons
   bool select;
@@ -54,20 +55,22 @@ struct InputBinding {
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {
-  enum class Type { JOYSTICK, KEYBOARD, MOUSE };
 
  public:
+  enum class Type { CONTROLLER, JOYSTICK, KEYBOARD, MOUSE };
   // TODO - do devices have a decent identifier (guid?)
   InputDevice(int sdl_device_index,
-              Type type = Type::JOYSTICK,
+              Type type,
               int analog_dead_zone = 8000,
               bool buffer_inputs = false);
+
   void process_event(const SDL_Event& event, PadData& data);
   void close_device();
 
  private:
-  int m_device_index;
-  SDL_Joystick* m_device_handle;
+  int m_device_id;
+  SDL_GameController* m_controller_handle;
+  SDL_Joystick* m_joystick_handle;
   bool m_is_active;
   std::string m_name;
   Type m_type;

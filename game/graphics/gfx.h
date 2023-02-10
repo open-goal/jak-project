@@ -55,12 +55,9 @@ struct GfxSettings {
   // than older versions
   // increment this whenever you change this struct.
   // there's probably a smarter way to do this (automatically deduce size etc.)
-  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0004'0001;
+  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0005'0000;
 
   u64 version;  // the version of this settings struct. MUST ALWAYS BE THE FIRST THING!
-
-  Pad::MappingInfo pad_mapping_info;         // button mapping
-  Pad::MappingInfo pad_mapping_info_backup;  // button mapping backup (see newpad.h)
 
   int vsync;   // (temp) number of screen update per frame
   bool debug;  // graphics debugging
@@ -143,8 +140,6 @@ u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 
-Pad::MappingInfo& get_button_mapping();
-
 u32 vsync();
 void register_vsync_callback(std::function<void()> f);
 void clear_vsync_callback();
@@ -174,9 +169,6 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
-
-int PadIsPressed(Pad::Button button, int port);
-int PadGetAnalogValue(Pad::Analog analog, int port);
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };

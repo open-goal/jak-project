@@ -56,10 +56,16 @@ class GLDisplay : public GfxDisplay {
   void on_mouse_key(int button, int action, int mode);
   void on_cursor_position(double xposition, double yposition);
   void update_cursor_visibility(bool is_visible);
-
+  
+  // TEMP HACK
+  bool should_quit = false;
  private:
+  void process_sdl_events();
+
+
   SDL_Window* m_window;
   SDL_GLContext m_gl_context;
+  Pad::InputMonitor m_input_monitor;
   bool m_minimized = false;
   //GLFWvidmode m_last_video_mode = {0, 0, 0, 0, 0, 0};
 

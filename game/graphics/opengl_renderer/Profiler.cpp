@@ -115,7 +115,7 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
     color_orange = ImGui::IsItemHovered();
   } else {
     if (expand) {
-      ImGui::SetNextTreeNodeOpen(true);
+      ImGui::SetNextItemOpen(true);
     }
     if (ImGui::TreeNode(node.m_name.c_str(), "%s", str.c_str())) {
       color_orange = ImGui::IsItemHovered();

@@ -40,11 +40,11 @@ void InitSettings(GfxSettings& settings) {
   settings.debug = true;
 
   // use buffered input mode
-  settings.pad_mapping_info.buffer_mode = true;
-  // debug input settings
-  settings.pad_mapping_info.debug = true;
+  //settings.pad_mapping_info.buffer_mode = true;
+  //// debug input settings
+  //settings.pad_mapping_info.debug = true;
 
-  Pad::DefaultMapping(Gfx::g_settings.pad_mapping_info);
+  //Pad::DefaultMapping(Gfx::g_settings.pad_mapping_info);
 }
 
 }  // namespace
@@ -89,39 +89,39 @@ void DebugSettings::save_settings() {
   file_util::write_text_file(debug_settings_filename, json.dump(2));
 }
 
-Pad::MappingInfo& get_button_mapping() {
-  return g_settings.pad_mapping_info;
-}
+//Pad::MappingInfo& get_button_mapping() {
+//  return g_settings.pad_mapping_info;
+//}
 
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
 // Not crazy about this declaration
-const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
-                                                           {"L3", Pad::Button::L3},
-                                                           {"R3", Pad::Button::R3},
-                                                           {"Start", Pad::Button::Start},
-                                                           {"Up", Pad::Button::Up},
-                                                           {"Right", Pad::Button::Right},
-                                                           {"Down", Pad::Button::Down},
-                                                           {"Left", Pad::Button::Left},
-                                                           {"L1", Pad::Button::L1},
-                                                           {"R1", Pad::Button::R1},
-                                                           {"Triangle", Pad::Button::Triangle},
-                                                           {"Circle", Pad::Button::Circle},
-                                                           {"X", Pad::Button::X},
-                                                           {"Square", Pad::Button::Square}};
-
-const std::pair<std::string, Pad::Analog> analog_map[] = {
-    {"Left X Axis", Pad::Analog::Left_X},
-    {"Left Y Axis", Pad::Analog::Left_Y},
-    {"Right X Axis", Pad::Analog::Right_X},
-    {"Right Y Axis", Pad::Analog::Right_Y},
-};
+//const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
+//                                                           {"L3", Pad::Button::L3},
+//                                                           {"R3", Pad::Button::R3},
+//                                                           {"Start", Pad::Button::Start},
+//                                                           {"Up", Pad::Button::Up},
+//                                                           {"Right", Pad::Button::Right},
+//                                                           {"Down", Pad::Button::Down},
+//                                                           {"Left", Pad::Button::Left},
+//                                                           {"L1", Pad::Button::L1},
+//                                                           {"R1", Pad::Button::R1},
+//                                                           {"Triangle", Pad::Button::Triangle},
+//                                                           {"Circle", Pad::Button::Circle},
+//                                                           {"X", Pad::Button::X},
+//                                                           {"Square", Pad::Button::Square}};
+//
+//const std::pair<std::string, Pad::Analog> analog_map[] = {
+//    {"Left X Axis", Pad::Analog::Left_X},
+//    {"Left Y Axis", Pad::Analog::Left_Y},
+//    {"Right X Axis", Pad::Analog::Right_X},
+//    {"Right Y Axis", Pad::Analog::Right_Y},
+//};
 
 void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
   auto& peripherals_json = json["Peripherals"];
-  json["Use Mouse"] = g_settings.pad_mapping_info.use_mouse;
+  /*json["Use Mouse"] = g_settings.pad_mapping_info.use_mouse;
 
   for (uint32_t i = 0; i < Pad::CONTROLLER_COUNT; ++i) {
     nlohmann::json peripheral_json;
@@ -159,7 +159,7 @@ void DumpToJson(ghc::filesystem::path& filename) {
     peripheral_json["Y-Axis Mouse Sensitivity"] =
         g_settings.pad_mapping_info.mouse_y_axis_sensitivities[i];
     peripherals_json.emplace_back(peripheral_json);
-  }
+  }*/
 
   file_util::write_text_file(filename, json.dump(4));
 }
@@ -173,7 +173,7 @@ void SavePeripheralSettings() {
 }
 
 void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
-  Pad::DefaultMapping(g_settings.pad_mapping_info);
+  /*Pad::DefaultMapping(g_settings.pad_mapping_info);
 
   lg::info("reading {}", filepath.string());
   auto file_txt = file_util::read_text_file(filepath);
@@ -243,7 +243,7 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
     g_settings.pad_mapping_info.mouse_y_axis_sensitivities[controller_index] =
         peripheral["Y-Axis Mouse Sensitivity"].get<double>();
     controller_index++;
-  }
+  }*/
 }
 
 void LoadSettings() {
@@ -299,7 +299,7 @@ u32 Init(GameVersion version) {
   // initialize settings
   InitSettings(g_settings);
   // guarantee we have no keys detected by pad
-  Pad::ForceClearKeys();
+  //Pad::ForceClearKeys();
 
   LoadSettings();
   SetRenderer(g_settings.renderer);
@@ -499,43 +499,43 @@ void set_msaa(int samples) {
 }
 
 void input_mode_set(u32 enable) {
-  if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
-    Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
-    Pad::EnterInputMode();
-  } else {
-    Pad::ExitInputMode(enable != s7.offset);  // use #f for graceful exit, or 'canceled for abrupt
-  }
+  //if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
+  //  Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
+  //  Pad::EnterInputMode();
+  //} else {
+  //  Pad::ExitInputMode(enable != s7.offset);  // use #f for graceful exit, or 'canceled for abrupt
+  //}
 }
 
 void input_mode_save() {
-  if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Enabled) {
-    lg::error("Can't save controller mapping while mapping controller.");
-  } else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
-    g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info;  // copy to backup
-    g_settings.pad_mapping_info = Pad::g_input_mode_mapping;           // set current mapping
+  //if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Enabled) {
+  //  lg::error("Can't save controller mapping while mapping controller.");
+  //} else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
+  //  g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info;  // copy to backup
+  //  g_settings.pad_mapping_info = Pad::g_input_mode_mapping;           // set current mapping
 
-    SavePeripheralSettings();
-  }
+  //  SavePeripheralSettings();
+  //}
 }
 
 s64 get_mapped_button(s64 pad, s64 button) {
-  if (pad < 0 || pad > Pad::CONTROLLER_COUNT || button < 0 || button > 16) {
+  /*if (pad < 0 || pad > Pad::CONTROLLER_COUNT || button < 0 || button > 16) {
     lg::error("Invalid parameters to get_mapped_button({}, {})", pad, button);
     return -1;
   }
 
   return (Pad::GetGamepadState(pad) > -1)
              ? (s64)g_settings.pad_mapping_info.controller_button_mapping[pad][button]
-             : (s64)g_settings.pad_mapping_info.keyboard_button_mapping[pad][button];
+             : (s64)g_settings.pad_mapping_info.keyboard_button_mapping[pad][button];*/
 }
 
-int PadIsPressed(Pad::Button button, int port) {
-  return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
-}
-
-int PadGetAnalogValue(Pad::Analog analog, int port) {
-  return Pad::GetAnalogValue(g_settings.pad_mapping_info, analog, port);
-}
+//int PadIsPressed(Pad::Button button, int port) {
+//  return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
+//}
+//
+//int PadGetAnalogValue(Pad::Analog analog, int port) {
+//  return Pad::GetAnalogValue(g_settings.pad_mapping_info, analog, port);
+//}
 
 void SetLod(RendererTreeType tree, int lod) {
   switch (tree) {

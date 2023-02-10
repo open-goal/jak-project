@@ -253,8 +253,11 @@ else()
   set(HIDAPI_ONLY_LIBUSB FALSE)
 endif()
 
+message(WARNING "WTF ${CMAKE_C_COMPILER_ID}")
+
 # Compiler info
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  message(STATUS "AHHHHH CLANG!")
   set(USE_CLANG TRUE)
   set(OPT_DEF_ASM TRUE)
   # Visual Studio 2019 v16.2 added support for Clang/LLVM.
@@ -536,6 +539,7 @@ if(SDL_WERROR)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
     endif()
   elseif(USE_GCC OR USE_CLANG)
+    message(STATUS "using clang!")
     cmake_push_check_state(RESET)
     check_c_compiler_flag(-Werror HAVE_WERROR)
     if(HAVE_WERROR)
@@ -617,6 +621,7 @@ if(USE_GCC OR USE_CLANG)
   # Check for -Wall first, so later things can override pieces of it.
   # Note: clang-cl treats -Wall as -Weverything (which is very loud),
   #       /W3 as -Wall, and /W4 as -Wall -Wextra.  So: /W3 is enough.
+  message(STATUS "usinig clang 2")
   check_c_compiler_flag(-Wall HAVE_GCC_WALL)
   if(MSVC_CLANG)
     list(APPEND EXTRA_CFLAGS "/W3")
@@ -3161,8 +3166,11 @@ add_custom_target(sdl_headers_copy
     DEPENDS ${SDL_GENERATED_HEADERS})
 
 ##### Info output #####
+
+set(EXTRA_CFLAGS "${EXTRA_CFLAGS} -stdlib=libc++")
+
 message(STATUS "")
-message(STATUS "SDL2 was configured with the following options:")
+message(STATUS "SDL2 was configured with the following options: ${CMAKE_C_COMPILER_ID}")
 message(STATUS "")
 message(STATUS "Platform: ${CMAKE_SYSTEM}")
 message(STATUS "64-bit:   ${ARCH_64}")

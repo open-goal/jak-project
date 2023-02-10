@@ -56,10 +56,10 @@ int scePadInfoMode(int /*port*/, int /*slot*/, int term, int offs) {
 }
 
 // order of pressure sensitive buttons in memory (not the same as their bit order...).
-static const Pad::Button libpad_PadPressureButtons[] = {
-    Pad::Button::Right,    Pad::Button::Left,   Pad::Button::Up, Pad::Button::Down,
-    Pad::Button::Triangle, Pad::Button::Circle, Pad::Button::X,  Pad::Button::Square,
-    Pad::Button::L1,       Pad::Button::R1,     Pad::Button::L2, Pad::Button::R2};
+//static const Pad::Button libpad_PadPressureButtons[] = {
+//    Pad::Button::Right,    Pad::Button::Left,   Pad::Button::Up, Pad::Button::Down,
+//    Pad::Button::Triangle, Pad::Button::Circle, Pad::Button::X,  Pad::Button::Square,
+//    Pad::Button::L1,       Pad::Button::R1,     Pad::Button::L2, Pad::Button::R2};
 // reads controller data and writes it to a buffer in rdata (must be at least 32 bytes large).
 // returns buffer size (32) or 0 on error.
 int scePadRead(int port, int /*slot*/, u8* rdata) {
@@ -70,23 +70,23 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  cpad->rightx = Gfx::PadGetAnalogValue(Pad::Analog::Right_X, port);
+  /*cpad->rightx = Gfx::PadGetAnalogValue(Pad::Analog::Right_X, port);
   cpad->righty = Gfx::PadGetAnalogValue(Pad::Analog::Right_Y, port);
   cpad->leftx = Gfx::PadGetAnalogValue(Pad::Analog::Left_X, port);
-  cpad->lefty = Gfx::PadGetAnalogValue(Pad::Analog::Left_Y, port);
+  cpad->lefty = Gfx::PadGetAnalogValue(Pad::Analog::Left_Y, port);*/
 
   // pressure sensitivity. ignore for now.
   for (int i = 0; i < 12; ++i) {
-    cpad->abutton[i] = Gfx::PadIsPressed(libpad_PadPressureButtons[i], port) * 255;
+    //cpad->abutton[i] = Gfx::PadIsPressed(libpad_PadPressureButtons[i], port) * 255;
   }
 
   cpad->button0 = 0;
   for (int i = 0; i < 16; ++i) {
-    cpad->button0 |= Gfx::PadIsPressed((Pad::Button)i, port) << i;
+    //cpad->button0 |= Gfx::PadIsPressed((Pad::Button)i, port) << i;
   }
 
   // keys polled and read, prepare for new ones.
-  Pad::ClearKeys();
+  //Pad::ClearKeys();
 
   return 32;
 }
@@ -95,7 +95,8 @@ int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
   // offsets are set by scePadSetActAlign, but we already know the game uses 0 for big motor and 1
   // for small motor
   // also, the "slow" motor corresponds to the "large" motor on the PS2
-  return Pad::rumble(port, ((float)data[1]) / 255, ((float)data[0]));
+  //return Pad::rumble(port, ((float)data[1]) / 255, ((float)data[0]));
+  return 0;
 }
 
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {

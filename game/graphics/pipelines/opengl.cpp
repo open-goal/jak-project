@@ -27,6 +27,7 @@
 #include "game/sce/libscf.h"
 #include "game/system/newpad.h"
 
+#include "third-party/SDL/include/SDL.h"
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
@@ -92,45 +93,43 @@ struct {
   int monitor_count;
 } g_glfw_state;
 
-//void SetGlobalGLFWCallbacks() {
-//  if (g_glfw_state.callbacks_registered) {
-//    lg::warn("Global GLFW callbacks were already registered!");
-//  }
+// void SetGlobalGLFWCallbacks() {
+//   if (g_glfw_state.callbacks_registered) {
+//     lg::warn("Global GLFW callbacks were already registered!");
+//   }
 //
-//  // Get initial state
-//  g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
+//   // Get initial state
+//   g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
 //
-//  // Listen for events
-//  glfwSetMonitorCallback([](GLFWmonitor* /*monitor*/, int /*event*/) {
-//    // Reload monitor list
-//    g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
-//  });
+//   // Listen for events
+//   glfwSetMonitorCallback([](GLFWmonitor* /*monitor*/, int /*event*/) {
+//     // Reload monitor list
+//     g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
+//   });
 //
-//  g_glfw_state.callbacks_registered = true;
-//}
+//   g_glfw_state.callbacks_registered = true;
+// }
 
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));
 }
 
-//bool HasError() {
-//  const char* ptr;
-//  if (glfwGetError(&ptr) != GLFW_NO_ERROR) {
-//    lg::error("glfw error: {}", ptr);
-//    return true;
-//  } else {
-//    return false;
-//  }
-//}
+// bool HasError() {
+//   const char* ptr;
+//   if (glfwGetError(&ptr) != GLFW_NO_ERROR) {
+//     lg::error("glfw error: {}", ptr);
+//     return true;
+//   } else {
+//     return false;
+//   }
+// }
 
 }  // namespace
 
 static bool gl_inited = false;
 static int gl_init(GfxSettings& settings) {
-  // TODO - is there a way to register and log SDL2 errors?
-
   // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
+  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     lg::error("Could not initialize SDL, exiting - {}", SDL_GetError());
     return NULL;
   }
@@ -145,10 +144,12 @@ static int gl_init(GfxSettings& settings) {
            linked.patch);
 
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);   // TODO - remove?
-  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);  // TODO - remove?
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+  if (settings.debug) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+  } else {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+  }
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
@@ -178,6 +179,7 @@ static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string
   setImGuiStyle();
 
   // set up to get inputs for this window
+  auto test = SDL_GetCurrentVideoDriver();
   ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 
   // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
@@ -196,7 +198,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    GameVersion game_version,
                                                    bool is_main) {
   // Setup the window
-  // TODO - dont center unless they got nothing
+  // TODO - dont center unless edge-case
   SDL_Window* window =
       SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -206,15 +208,12 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   }
 
   // Make an OpenGL Context
-  if (settings.debug) {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-  }
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   if (!gl_context) {
     lg::error("gl_make_display failed - Could not create OpenGL Context - {}", SDL_GetError());
     return NULL;
   }
-  if (!SDL_GL_MakeCurrent(window, gl_context)) {
+  if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
     lg::error("gl_make_display failed - Could not associated context with window - {}",
               SDL_GetError());
     return NULL;
@@ -228,51 +227,101 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     }
     g_gfx_data = std::make_unique<GraphicsData>(game_version);
     gl_inited = true;
+    const char* gl_version = (const char*)glGetString(GL_VERSION);
     lg::info("OpenGL initialized - v{}.{} | Renderer: {}", GLVersion.major, GLVersion.minor,
-             glGetString(GL_RENDERER));
+             gl_version);
   }
 
   // Setup Window Icon
   // TODO - hiDPI icon
   // https://sourcegraph.com/github.com/dfranx/SHADERed/-/blob/main.cpp?L422:24&subtree=true
-  int width = 128;
-  int height = 128;
+  int icon_width;
+  int icon_height;
   std::string image_path =
       (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
-  auto icon_data = stbi_load(image_path.c_str(), &width, &height, 0, 4);
+  auto icon_data = stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
   if (icon_data) {
-    SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom((void*)icon_data, width, height, 24,
-                                                                3 * width, SDL_PIXELFORMAT_RGB24);
+    SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
+        (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
     SDL_SetWindowIcon(window, icon_surf);
+    SDL_FreeSurface(icon_surf);
     stbi_image_free(icon_data);
   } else {
     lg::error("Could not load icon for OpenGL window");
   }
 
   // TODO - should this actually be here, or should it be in GLDisplay?
-  //SetGlobalGLFWCallbacks();
-  Pad::initialize();
+  // SetGlobalGLFWCallbacks();
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
   display->set_imgui_visible(Gfx::g_debug_settings.show_imgui);
 
   // setup imgui
-  init_imgui(window, gl_context, "#version 430");
+  // init_imgui(window, gl_context, "#version 430");
+  // check that version of the library is okay
+  IMGUI_CHECKVERSION();
+
+  // this does initialization for stuff like the font data
+  ImGui::CreateContext();
+
+  // Init ImGui settings
+  g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
+  g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = g_gfx_data->imgui_filename.c_str();
+  io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
+
+  // setImGuiStyle();
+
+  // set up to get inputs for this window
+  const char* sdl_backend = SDL_GetCurrentVideoDriver();
+  ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+
+  // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
+  // reporting so these errors are invisible. But it does not work, and some weird X11 default
+  // cursor error is set here that we clear.
+  SDL_ClearError();
+
+  // set up the renderer
+  ImGui_ImplOpenGL3_Init("#version 430");
+
+  auto check_exit = [](void* data, SDL_Event* evt) {
+    auto display = (GLDisplay*)data;
+    if (evt->type == SDL_QUIT) {
+      display->should_quit = true;
+    }
+
+    if (evt->type == SDL_KEYUP) {
+      if (evt->key.keysym.sym == SDLK_LALT) {
+        display->set_imgui_visible(!display->is_imgui_visible());
+      }
+    }
+
+    if (!display->should_quit) {
+      ImGui_ImplSDL2_ProcessEvent(evt);
+    }
+
+    return 1;
+  };
+
+  // HACK
+  SDL_AddEventWatch(check_exit, display.get());
 
   return std::static_pointer_cast<GfxDisplay>(display);
 }
 
 GLDisplay::GLDisplay(SDL_Window* window, bool is_main) : m_window(window) {
   m_main = is_main;
+  m_input_monitor = Pad::InputMonitor();
 
   // Get initial state
   // TODO - a mess
-  get_position(&m_last_windowed_xpos, &m_last_windowed_ypos);
-  get_size(&m_last_windowed_width, &m_last_windowed_height);
+  // get_position(&m_last_windowed_xpos, &m_last_windowed_ypos);
+  // get_size(&m_last_windowed_width, &m_last_windowed_height);
 
   // Register SDL Callbacks
 
-  update_cursor_visibility(is_imgui_visible());
+  // update_cursor_visibility(is_imgui_visible());
 
   //// Listen for window-specific GLFW events
   // glfwSetWindowUserPointer(window, reinterpret_cast<void*>(this));
@@ -335,27 +384,27 @@ void GLDisplay::update_cursor_visibility(bool is_visible) {
 }
 
 void GLDisplay::on_key(int key, int /*scancode*/, int action, int /*mods*/) {
-  //if (action == GlfwKeyAction::Press) {
-  //  // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
-  //  Pad::OnKeyPress(key);
-  //} else if (action == GlfwKeyAction::Release) {
-  //  // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
-  //  Pad::OnKeyRelease(key);
-  //  // Debug keys input mapping TODO add remapping
-  //  /*switch (key) {
-  //    case GLFW_KEY_LEFT_ALT:
-  //    case GLFW_KEY_RIGHT_ALT:
-  //      if (glfwGetWindowAttrib(window, GLFW_FOCUSED) &&
-  //          !Gfx::g_debug_settings.ignore_imgui_hide_keybind) {
-  //        set_imgui_visible(!is_imgui_visible());
-  //        update_cursor_visibility(window, is_imgui_visible());
-  //      }
-  //      break;
-  //    case GLFW_KEY_F2:
-  //      want_hotkey_screenshot = true;
-  //      break;
-  //  }*/
-  //}
+  // if (action == GlfwKeyAction::Press) {
+  //   // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+  //   Pad::OnKeyPress(key);
+  // } else if (action == GlfwKeyAction::Release) {
+  //   // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+  //   Pad::OnKeyRelease(key);
+  //   // Debug keys input mapping TODO add remapping
+  //   /*switch (key) {
+  //     case GLFW_KEY_LEFT_ALT:
+  //     case GLFW_KEY_RIGHT_ALT:
+  //       if (glfwGetWindowAttrib(window, GLFW_FOCUSED) &&
+  //           !Gfx::g_debug_settings.ignore_imgui_hide_keybind) {
+  //         set_imgui_visible(!is_imgui_visible());
+  //         update_cursor_visibility(window, is_imgui_visible());
+  //       }
+  //       break;
+  //     case GLFW_KEY_F2:
+  //       want_hotkey_screenshot = true;
+  //       break;
+  //   }*/
+  // }
 }
 
 void GLDisplay::on_mouse_key(int button, int action, int /*mode*/) {
@@ -377,25 +426,26 @@ void GLDisplay::on_mouse_key(int button, int action, int /*mode*/) {
 }
 
 void GLDisplay::on_cursor_position(double xposition, double yposition) {
-  double xoffset = xposition - last_cursor_x_position;
-  double yoffset = yposition - last_cursor_y_position;
+  return;
+  // double xoffset = xposition - last_cursor_x_position;
+  // double yoffset = yposition - last_cursor_y_position;
 
-  last_cursor_x_position = xposition;
-  last_cursor_y_position = yposition;
-  Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (is_imgui_visible() || !mapping_info.use_mouse) {
-    if (is_cursor_position_valid == true) {
-      /*Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
-      Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);*/
-      is_cursor_position_valid = false;
-    }
-    return;
-  }
+  // last_cursor_x_position = xposition;
+  // last_cursor_y_position = yposition;
+  // Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
+  // if (is_imgui_visible() || !mapping_info.use_mouse) {
+  //   if (is_cursor_position_valid == true) {
+  //     /*Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
+  //     Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);*/
+  //     is_cursor_position_valid = false;
+  //   }
+  //   return;
+  // }
 
-  if (is_cursor_position_valid == false) {
-    is_cursor_position_valid = true;
-    return;
-  }
+  // if (is_cursor_position_valid == false) {
+  //   is_cursor_position_valid = true;
+  //   return;
+  // }
 
   /*Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
   Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);*/
@@ -851,11 +901,21 @@ void update_global_profiler() {
 //   m_display_state = m_display_state_copy;
 // }
 
+void GLDisplay::process_sdl_events() {
+  SDL_Event e;
+  while (SDL_PollEvent(&e) != 0) {
+    // TODO - handle quit?
+    m_input_monitor.process_sdl_event(e);
+  }
+}
+
 /*!
  * Main function called to render graphics frames. This is called in a loop.
  */
 void GLDisplay::render() {
-  // update_glfw();
+  // Process SDL Events
+  process_sdl_events();
+  // TODO - update SDL window
 
   // imgui start of frame
   {
@@ -962,12 +1022,11 @@ void GLDisplay::render() {
   {
     auto p = scoped_prof("check-close-window");
     // exit if display window was closed
-    // TODO - this should probably be an event
-    /*if (glfwWindowShouldClose(m_window)) {
+    if (should_quit) {
       std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
       MasterExit = RuntimeExitStatus::EXIT;
       g_gfx_data->sync_cv.notify_all();
-    }*/
+    }
   }
 }
 
@@ -1061,7 +1120,7 @@ void gl_texture_relocate(u32 destination, u32 source, u32 format) {
 
 void gl_poll_events() {
   // TODO
-  //glfwPollEvents();
+  // glfwPollEvents();
 }
 
 void gl_set_levels(const std::vector<std::string>& levels) {
