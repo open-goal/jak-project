@@ -1,6 +1,9 @@
 set(SDL_STATIC OFF CACHE BOOL "" FORCE)
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
 
+# why this is disabled, i have no idea but this MUST be on for a windows+clang(llvm) shared compile to work
+set(SDL_LIBC ON CACHE BOOL "" FORCE)
+
 set(SDL_TEST OFF CACHE BOOL "" FORCE)
 set(SDL_ATOMIC ON CACHE BOOL "")
 set(SDL_AUDIO OFF CACHE BOOL "")

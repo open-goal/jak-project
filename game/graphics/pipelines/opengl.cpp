@@ -804,6 +804,7 @@ void GLDisplay::set_lock(bool lock) {
 }
 
 bool GLDisplay::fullscreen_pending() {
+  return false;
   /*GLFWmonitor* monitor;
   {
     auto _ = scoped_prof("get_monitor");
