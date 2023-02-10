@@ -512,6 +512,9 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   } else {
     const auto& end_label = labels.at(end_label_idx);
     end_offset = end_label.offset;
+    // if misaligned, round down - labels may point 2 bytes into the first word if the data is a
+    // pair, and we should not treat those 2 bytes as padding for this check
+    end_offset &= ~3;
   }
 
   // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
@@ -896,10 +899,11 @@ const std::unordered_map<
            {{"cells", ArrayFieldDecompMeta(TypeSpec("int32"),
                                            4,
                                            ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
-            {"pulse-ops",
-             ArrayFieldDecompMeta(TypeSpec("int8"),
-                                  1,
-                                  ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}}}}};
+            {"pulse-ops", ArrayFieldDecompMeta(TypeSpec("int8"),
+                                               1,
+                                               ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+          {"turret-path",
+           {{"event-tbl", ArrayFieldDecompMeta(TypeSpec("turret-path-event"), 16)}}}}}};
 
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,

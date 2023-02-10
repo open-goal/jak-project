@@ -994,7 +994,6 @@ void Sprite3::render_jak2(DmaFollower& dma,
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag_offset() == render_state->next_bucket) {
-    fmt::print("early exit!");
     return;
   }
 
