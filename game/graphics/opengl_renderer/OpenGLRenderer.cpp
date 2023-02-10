@@ -609,6 +609,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
+  if (settings.draw_loader_window) {
+    m_render_state.loader->draw_debug_window();
+  }
+
   m_profiler.finish();
   //  if (m_profiler.root_time() > 0.018) {
   //    fmt::print("Slow frame: {:.2f} ms\n", m_profiler.root_time() * 1000);

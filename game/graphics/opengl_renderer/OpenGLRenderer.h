@@ -16,6 +16,7 @@
 struct RenderOptions {
   bool draw_render_debug_window = false;
   bool draw_profiler_window = false;
+  bool draw_loader_window = false;
   bool draw_small_profiler_window = false;
   bool draw_subtitle_editor_window = false;
   bool draw_filters_window = false;
