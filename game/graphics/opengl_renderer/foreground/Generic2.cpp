@@ -94,7 +94,16 @@ void Generic2::render_in_mode(DmaFollower& dma,
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
     auto p = prof.make_scoped_child("setup");
-    setup_draws();
+    switch (mode) {
+      case Mode::NORMAL:
+        setup_draws(true);
+        break;
+      case Mode::LIGHTNING:
+        setup_draws(false);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {
