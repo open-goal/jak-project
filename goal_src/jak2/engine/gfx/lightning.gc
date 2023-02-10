@@ -18,7 +18,19 @@
 
 (define *lightning-gcf*
   (new 'static 'gcf-control
-    :giftag (new 'static 'generic-gif-tag :data (new 'static 'array uint32 4 #x302ec000 #x302e4000 #x412 #x0))
+    :giftag (new 'static 'generic-gif-tag
+      :fan-prim (new 'static 'gif-tag-prim
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #x3
+        )
+      :str-prim (new 'static 'gif-tag-prim
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #x3
+        )
+      :regs (new 'static 'gif-tag-regs-32 :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+      )
     :adnops (new 'static 'inline-array gs-adcmd 2
       (new 'static 'gs-adcmd :word (new 'static 'array uint32 4 #x0 #x0 #x7f #x0))
       (new 'static 'gs-adcmd :word (new 'static 'array uint32 4 #x0 #x0 #x7f #x0))
@@ -687,7 +699,7 @@
               (set! (-> v1-86 trans quad) a3-32)
               )
             (quad-copy! (the-as pointer (-> sv-176 giftag)) (the-as pointer (-> s1-0 giftag)) 3)
-            (set! (-> sv-176 giftag qword vector4w w) 1)
+            (set! (-> sv-176 giftag num-strips) (the-as uint 1))
             (set! (-> sv-176 num-dps) (the-as uint (* sv-144 2)))
             (set! (-> sv-176 kick-offset) (the-as uint 0))
             (adgif-shader<-texture-simple! (the-as adgif-shader (-> sv-176 shader)) sv-32)
@@ -802,8 +814,7 @@
 
 (define *lightning* #t)
 
-;; WARN: Failed store: (s.w! (+ v1-31 8) 0) at op 89
-;; WARN: Failed store: (s.w! (+ v1-31 12) 0) at op 90
+;; ERROR: Failed store: (s.w! (+ v1-31 8) 0) at op 89
 (defun lightning-draw-all ()
   (when (and *lightning* (not (-> *blit-displays-work* menu-mode)))
     (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask generic))

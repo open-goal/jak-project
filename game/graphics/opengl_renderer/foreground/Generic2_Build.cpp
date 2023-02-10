@@ -109,7 +109,7 @@ void Generic2::determine_draw_modes() {
     u64 bonus_adgif_data[4];
     memcpy(bonus_adgif_data, frag.header + (5 * 16), 4 * sizeof(u64));
 
-    u64 final_test;
+    std::optional<u64> final_test;
     if ((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::ALPHA_1)) {
       ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::ALPHA_1));
       final_alpha = bonus_adgif_data[0];
@@ -117,15 +117,17 @@ void Generic2::determine_draw_modes() {
       final_test = bonus_adgif_data[2];
     } else {
       // ADGIF 5
-      ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1));
-      final_test = bonus_adgif_data[0];
+      if ((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1)) {
+        final_test = bonus_adgif_data[0];
+      }
 
       // ADGIF 6
       if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::ALPHA_1)) {
         final_alpha = bonus_adgif_data[2];
       } else {
-        ASSERT((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::TEST_1));
-        final_test = bonus_adgif_data[2];
+        if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::TEST_1)) {
+          final_test = bonus_adgif_data[2];
+        }
       }
     }
 
@@ -165,8 +167,8 @@ void Generic2::determine_draw_modes() {
       }
     }
 
-    {
-      GsTest reg(final_test);
+    if (final_test) {
+      GsTest reg(*final_test);
       current_mode.set_at(reg.alpha_test_enable());
       if (reg.alpha_test_enable()) {
         switch (reg.alpha_test()) {
