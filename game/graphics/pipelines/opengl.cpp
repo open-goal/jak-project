@@ -173,6 +173,13 @@ static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string
   g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
   g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
+  // if the font doesn't exist, use the default
+  std::string font_path =
+      (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf").string();
+  if (file_util::file_exists(font_path)) {
+    io.Fonts->AddFontFromFileTTF(font_path.c_str(), 12); // TODO - make the font size configurable
+  }
+
   io.IniFilename = g_gfx_data->imgui_filename.c_str();
   io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
 
@@ -239,7 +246,8 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   int icon_height;
   std::string image_path =
       (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
-  auto icon_data = stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
+  auto icon_data =
+      stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
   if (icon_data) {
     SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
         (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
@@ -257,34 +265,9 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   display->set_imgui_visible(Gfx::g_debug_settings.show_imgui);
 
   // setup imgui
-  // init_imgui(window, gl_context, "#version 430");
-  // check that version of the library is okay
-  IMGUI_CHECKVERSION();
+  init_imgui(window, gl_context, "#version 430");
 
-  // this does initialization for stuff like the font data
-  ImGui::CreateContext();
-
-  // Init ImGui settings
-  g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
-  g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
-  ImGuiIO& io = ImGui::GetIO();
-  io.IniFilename = g_gfx_data->imgui_filename.c_str();
-  io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
-
-  // setImGuiStyle();
-
-  // set up to get inputs for this window
-  const char* sdl_backend = SDL_GetCurrentVideoDriver();
-  ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-
-  // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
-  // reporting so these errors are invisible. But it does not work, and some weird X11 default
-  // cursor error is set here that we clear.
-  SDL_ClearError();
-
-  // set up the renderer
-  ImGui_ImplOpenGL3_Init("#version 430");
-
+  // TODO - move this to a proper SDL processing loop
   auto check_exit = [](void* data, SDL_Event* evt) {
     auto display = (GLDisplay*)data;
     if (evt->type == SDL_QUIT) {
