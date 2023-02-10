@@ -1482,3 +1482,5 @@ s32 GetVAGStreamPos() {
 static void VAG_MarkLoopEnd(void* data, u32 size) {
   ((u8*)data)[size - 15] = 3;
 }
+
+void IsoPlayVagStream(VagCommand2* vag, int id) {}

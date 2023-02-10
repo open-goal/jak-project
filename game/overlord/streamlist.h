@@ -16,7 +16,7 @@ VagStream* FindVagStreamInList(VagStream* stream, List* list);
 VagStream* InsertVagStreamInList(VagStream* stream, List* list);
 void RemoveVagSreamFromList(VagStream* stream, List* list);
 void EmptyVagStreamList(List* list);
-void MergeVagStreamLists(List* l1, List* l2);
+void MergeVagStreamLists(List* src, List* dest);
 void CheckPlayList(List* list);
 
 #endif  // STREAMLIST_H_
