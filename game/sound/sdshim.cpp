@@ -9,7 +9,7 @@
 #include "third-party/fmt/core.h"
 
 std::shared_ptr<snd::voice> voice;
-u8 spu_memory[0xc060];
+u8 spu_memory[0x15160];
 
 static sceSdTransIntrHandler trans_handler[2] = {nullptr, nullptr};
 static void* userdata[2] = {nullptr, nullptr};

@@ -33,7 +33,6 @@ u32 DGOThread();
 u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 CopyDataToEE(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 CopyDataToIOP(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
-u32 NullCallback(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 
 static void InitVAGCmd(VagCommand* cmd, u32 x);
 static u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
@@ -47,19 +46,6 @@ static void VAG_MarkLoopEnd(void* data, u32 size);
 
 constexpr int LOADING_SCREEN_SIZE = 0x800000;
 constexpr u32 LOADING_SCREEN_DEST_ADDR = 0x1000000;
-
-static constexpr s32 LOOP_END = 1;
-static constexpr s32 LOOP_REPEAT = 2;
-static constexpr s32 LOOP_START = 4;
-
-// Empty ADPCM block with loop flags
-// clang-format off
-static u8 VAG_SilentLoop[0x60] = {
-    0x0, LOOP_START | LOOP_REPEAT, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, LOOP_REPEAT,              0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, LOOP_END | LOOP_REPEAT,   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-};
-// clang-format on
 
 IsoFs* isofs;
 u32 iso_init_flag;
@@ -1483,4 +1469,18 @@ static void VAG_MarkLoopEnd(void* data, u32 size) {
   ((u8*)data)[size - 15] = 3;
 }
 
-void IsoPlayVagStream(VagCommand2* vag, int id) {}
+void IsoPlayVagStream(VagCommand2* vag, int id) {
+  u32 oldstat;
+
+  if (id == 1) {
+    CpuSuspendIntr(&oldstat);
+  }
+
+  auto cmd = FindThisVagStream(vag->name, id);
+  if (cmd) {
+  }
+
+  if (id == 1) {
+    CpuResumeIntr(oldstat);
+  }
+}

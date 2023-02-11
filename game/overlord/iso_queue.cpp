@@ -8,6 +8,8 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#include "game/overlord/dma.h"
+#include "game/overlord/vag.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
@@ -82,6 +84,25 @@ void InitBuffers() {
   sStrBuffer[N_STR_BUFFERS - 1].header.next = nullptr;
   sFreeStrBuffer = &sStrBuffer[0];
 
+  StreamSRAM[0] = 0x5040;
+  TrapSRAM[0] = 0x9040;
+  // snd_SRAMMarkUsed(0x5040, 0x4040);
+  StreamSRAM[1] = 0x9080;
+  TrapSRAM[1] = 0xD080;
+  // snd_SRAMMarkUsed(0x9080, 0x4040);
+  StreamSRAM[2] = 0xD0C0;
+  TrapSRAM[2] = 0x110C0;
+  // snd_SRAMMarkUsed(0xD0C0, 0x4040);
+  StreamSRAM[3] = 0x11100;
+  TrapSRAM[3] = 0x15100;
+  // snd_SRAMMarkUsed(0x11100, 0x4040);
+
+  for (int i = 0; i < 4; i++) {
+    while (!DMA_SendToSPUAndSync(VAG_SilentLoop, 48, TrapSRAM[i])) {
+      DelayThread(1000);
+    }
+  }
+
   SemaParam params;
   params.attr = SA_THPRI;
   params.max_count = 1;
@@ -90,9 +111,11 @@ void InitBuffers() {
   sSema = CreateSema(&params);
 
   if (sSema < 0) {
-    for (;;) {
-      printf("[OVERLORD] VAG Semaphore creation failed!\n");
-    }
+    printf("IOP: ======================================================================\n");
+    printf("IOP: iso_queue InitBuffers: Can't create semaphore\n");
+    printf("IOP: ======================================================================\n");
+    while (true)
+      ;
   }
 }
 

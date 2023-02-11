@@ -48,6 +48,14 @@ void CpuDisableIntr() {}
  */
 void CpuEnableIntr() {}
 
+s32 CpuSuspendIntr(u32* oldstat) {
+  return 0;
+}
+
+s32 CpuResumeIntr(u32 oldstat) {
+  return 0;
+}
+
 namespace {
 ::IOP* iop;
 }

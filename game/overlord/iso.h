@@ -37,3 +37,4 @@ VagDirEntry* FindVAGFile(const char* name);
 s32 GetVAGStreamPos();
 void SetVAGVol();
 void IsoPlayVagStream(VagCommand2* vag, int id);
+u32 NullCallback(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
