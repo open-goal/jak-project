@@ -209,6 +209,9 @@ void TieTree::serialize(Serializer& ser) {
   packed_vertices.serialize(ser);
   ser.from_pod_vector(&colors);
   bvh.serialize(ser);
+
+  ser.from_ptr(&has_per_proto_visibility_toggle);
+  ser.from_string_vector(&proto_names);
 }
 
 void ShrubTree::serialize(Serializer& ser) {

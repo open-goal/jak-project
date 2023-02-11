@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 24;
+constexpr int TFRAG3_VERSION = 25;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -188,7 +188,8 @@ struct StripDraw {
   struct VisGroup {
     u32 num_inds = 0;           // number of vertex indices in this group
     u32 num_tris = 0;           // number of triangles
-    u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
+    u16 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
+    u16 tie_proto_idx = 0;      // index of tie proto (tie only)
   };
   std::vector<VisGroup> vis_groups;
 
@@ -322,6 +323,10 @@ struct TieTree {
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
   std::vector<TieWindInstance> wind_instance_info;
+
+  // jak 2 and later can toggle on and off visibility per proto by name
+  bool has_per_proto_visibility_toggle = false;
+  std::vector<std::string> proto_names;
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices

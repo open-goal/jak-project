@@ -415,61 +415,63 @@ void Loader::update(TexturePool& texture_pool) {
     Timer unload_timer;
     if ((int)m_loaded_tfrag3_levels.size() >= m_max_levels) {
       auto to_unload = get_most_unloadable_level();
-      auto& lev = m_loaded_tfrag3_levels.at(*to_unload);
-      std::unique_lock<std::mutex> lk(texture_pool.mutex());
-      fmt::print("------------------------- PC unloading {}\n", *to_unload);
-      for (size_t i = 0; i < lev->level->textures.size(); i++) {
-        auto& tex = lev->level->textures[i];
-        if (tex.load_to_pool) {
-          texture_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id),
-                                      lev->textures.at(i));
+      if (to_unload) {
+        auto& lev = m_loaded_tfrag3_levels.at(*to_unload);
+        std::unique_lock<std::mutex> lk(texture_pool.mutex());
+        fmt::print("------------------------- PC unloading {}\n", *to_unload);
+        for (size_t i = 0; i < lev->level->textures.size(); i++) {
+          auto& tex = lev->level->textures[i];
+          if (tex.load_to_pool) {
+            texture_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id),
+                                        lev->textures.at(i));
+          }
         }
-      }
-      lk.unlock();
-      for (auto tex : lev->textures) {
-        if (EXTRA_TEX_DEBUG) {
-          for (auto& slot : texture_pool.all_textures()) {
-            if (slot.source) {
-              ASSERT(slot.gpu_texture != tex);
-            } else {
-              ASSERT(slot.gpu_texture != tex);
+        lk.unlock();
+        for (auto tex : lev->textures) {
+          if (EXTRA_TEX_DEBUG) {
+            for (auto& slot : texture_pool.all_textures()) {
+              if (slot.source) {
+                ASSERT(slot.gpu_texture != tex);
+              } else {
+                ASSERT(slot.gpu_texture != tex);
+              }
             }
           }
+
+          glBindTexture(GL_TEXTURE_2D, tex);
+          glDeleteTextures(1, &tex);
         }
 
-        glBindTexture(GL_TEXTURE_2D, tex);
-        glDeleteTextures(1, &tex);
-      }
-
-      for (auto& tie_geo : lev->tie_data) {
-        for (auto& tie_tree : tie_geo) {
-          glDeleteBuffers(1, &tie_tree.vertex_buffer);
-          if (tie_tree.has_wind) {
-            glDeleteBuffers(1, &tie_tree.wind_indices);
+        for (auto& tie_geo : lev->tie_data) {
+          for (auto& tie_tree : tie_geo) {
+            glDeleteBuffers(1, &tie_tree.vertex_buffer);
+            if (tie_tree.has_wind) {
+              glDeleteBuffers(1, &tie_tree.wind_indices);
+            }
+            glDeleteBuffers(1, &tie_tree.index_buffer);
           }
-          glDeleteBuffers(1, &tie_tree.index_buffer);
         }
-      }
 
-      for (auto& tfrag_geo : lev->tfrag_vertex_data) {
-        for (auto& tfrag_buff : tfrag_geo) {
-          glDeleteBuffers(1, &tfrag_buff);
+        for (auto& tfrag_geo : lev->tfrag_vertex_data) {
+          for (auto& tfrag_buff : tfrag_geo) {
+            glDeleteBuffers(1, &tfrag_buff);
+          }
         }
+
+        glDeleteBuffers(1, &lev->collide_vertices);
+        glDeleteBuffers(1, &lev->merc_vertices);
+        glDeleteBuffers(1, &lev->merc_indices);
+
+        for (auto& model : lev->level->merc_data.models) {
+          auto& mercs = m_all_merc_models.at(model.name);
+          MercRef ref{&model, lev->load_id};
+          auto it = std::find(mercs.begin(), mercs.end(), ref);
+          ASSERT_MSG(it != mercs.end(), fmt::format("missing merc: {}\n", model.name));
+          mercs.erase(it);
+        }
+
+        m_loaded_tfrag3_levels.erase(*to_unload);
       }
-
-      glDeleteBuffers(1, &lev->collide_vertices);
-      glDeleteBuffers(1, &lev->merc_vertices);
-      glDeleteBuffers(1, &lev->merc_indices);
-
-      for (auto& model : lev->level->merc_data.models) {
-        auto& mercs = m_all_merc_models.at(model.name);
-        MercRef ref{&model, lev->load_id};
-        auto it = std::find(mercs.begin(), mercs.end(), ref);
-        ASSERT_MSG(it != mercs.end(), fmt::format("missing merc: {}\n", model.name));
-        mercs.erase(it);
-      }
-
-      m_loaded_tfrag3_levels.erase(*to_unload);
     }
 
     if (unload_timer.getMs() > 5.f) {
