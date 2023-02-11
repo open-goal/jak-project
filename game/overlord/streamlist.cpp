@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "streamlfo.h"
+
 #include "game/overlord/iso.h"
 
 using namespace iop;
@@ -156,16 +157,19 @@ void EmptyVagStreamList(List* list) {
 }
 
 void MergeVagStreamLists(List* src, List* dest) {
+  u32 index = 0;
   for (int i = 0; i < 4; ++i) {
     while (true) {
       VagStream* walk = nullptr;
 
-      if (i < src->elements) {
+      if (index < src->elements) {
         walk = (VagStream*)src->head;
-        for (int j = i; j; --j) {
+        for (int j = index; j; --j) {
           walk = (VagStream*)walk->l.next;
         }
       }
+
+      index++;
 
       if (!walk)
         break;

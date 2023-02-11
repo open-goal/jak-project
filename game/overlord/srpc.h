@@ -11,6 +11,7 @@ void srpc_init_globals();
 
 extern const char* gLanguage;
 extern s32 gVAG_Id;
+extern s32 MasterVolume[16];
 
 constexpr int MUSIC_TWEAK_COUNT = 32;
 

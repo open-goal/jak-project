@@ -41,6 +41,8 @@ u32 gFreeMem = 0;
 u32 gFrameNum = 0;
 u8 gFPS = 60;
 
+s32 MasterVolume[16];
+
 // added
 u32 gMusicFadeHack = 0;
 
@@ -593,10 +595,13 @@ void* RPC_Player2(unsigned int /*fno*/, void* data, int size) {
           if (((group >> i) & 1) != 0) {
             if (i == 1) {
               gMusicVol = cmd->master_volume.volume;
+              MasterVolume[1] = cmd->master_volume.volume;
             } else if (i == 2) {
               SetDialogVolume(cmd->master_volume.volume);
+              MasterVolume[2] = cmd->master_volume.volume;
             } else {
               snd_SetMasterVolume(i, cmd->master_volume.volume);
+              MasterVolume[i] = cmd->master_volume.volume;
             }
           }
         }

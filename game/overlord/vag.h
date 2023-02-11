@@ -77,14 +77,14 @@ struct VagCommand2 : public IsoMessage {
   u32 unk0x104;
   u32 unk0x108;
   u32 unk0x10c;
-  s32 unk0x110;
+  /* 0x110 */ s32 volume;
   s32 unk0x114;
   s32 unk0x118;
   s32 unk0x11c;
   int unk0x120;
   int unk0x124;
-  int unk0x128;
-  Vec3w unk0x12c;
+  /* 0x128 */ int positioned;
+  /* 0x12c */ Vec3w trans;
   /* 0x138 */ s32 fo_min;
   /* 0x13c */ s32 fo_max;
   /* 0x140 */ s32 fo_curve;
