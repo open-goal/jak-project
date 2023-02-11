@@ -129,7 +129,7 @@ void ErrorCallback(int err, const char* msg) {
 static bool gl_inited = false;
 static int gl_init(GfxSettings& settings) {
   // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
     lg::error("Could not initialize SDL, exiting - {}", SDL_GetError());
     return NULL;
   }
@@ -267,34 +267,12 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // setup imgui
   init_imgui(window, gl_context, "#version 430");
 
-  // TODO - move this to a proper SDL processing loop
-  auto check_exit = [](void* data, SDL_Event* evt) {
-    auto display = (GLDisplay*)data;
-    if (evt->type == SDL_QUIT) {
-      display->m_should_quit = true;
-    }
-
-    if (evt->type == SDL_KEYUP) {
-      if (evt->key.keysym.sym == SDLK_LALT) {
-        display->set_imgui_visible(!display->is_imgui_visible());
-      }
-    }
-
-    if (!display->m_should_quit) {
-      ImGui_ImplSDL2_ProcessEvent(evt);
-    }
-
-    return 1;
-  };
-
-  // HACK
-  // SDL_AddEventWatch(check_exit, display.get());
-
   return std::static_pointer_cast<GfxDisplay>(display);
 }
 
 GLDisplay::GLDisplay(SDL_Window* window, bool is_main) : m_window(window) {
   m_main = is_main;
+  m_input_monitor = std::make_unique<Pad::InputMonitor>();
 
   // Get initial state
   // TODO - a mess
@@ -889,6 +867,10 @@ void GLDisplay::process_sdl_events() {
   while (SDL_PollEvent(&evt) != 0) {
     if (evt.type == SDL_QUIT) {
       m_should_quit = true;
+    }
+
+    if (evt.type == SDL_CONTROLLERAXISMOTION) {
+      lg::info("AHHH");
     }
 
     if (evt.type == SDL_KEYUP) {

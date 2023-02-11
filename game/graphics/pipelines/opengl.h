@@ -62,6 +62,7 @@ class GLDisplay : public GfxDisplay {
  private:
   void process_sdl_events();
 
+  std::unique_ptr<Pad::InputMonitor> m_input_monitor;
 
   SDL_Window* m_window;
   SDL_GLContext m_gl_context;
