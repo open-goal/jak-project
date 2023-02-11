@@ -6,9 +6,11 @@
  * Actual input detection is done through window events and is gfx pipeline-dependent.
  */
 
-#include <unordered_map>
+#include <array>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <memory>
 #include "common/common_types.h"
 
 #include "third-party/SDL/include/SDL.h"
@@ -17,8 +19,10 @@ namespace Pad {
 
 struct PadData {
   // Analog Values
-  std::pair<u8, u8> analog_left;
-  std::pair<u8, u8> analog_right;
+  std::array<u8, 4> analog_data;
+
+  std::pair<u8, u8> analog_left() const { return {analog_data.at(0), analog_data.at(1)}; }
+  std::pair<u8, u8> analog_right() const { return {analog_data.at(2), analog_data.at(3)}; }
 
   // Normal Buttons
   bool select;
@@ -55,32 +59,42 @@ struct InputBinding {
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {
+ protected:
+  bool m_loaded = false;
+  std::string m_device_name;
 
- public:
-  enum class Type { CONTROLLER, JOYSTICK, KEYBOARD, MOUSE };
-  // TODO - do devices have a decent identifier (guid?)
-  InputDevice(int sdl_device_index,
-              Type type,
-              int analog_dead_zone = 8000,
-              bool buffer_inputs = false);
-
-  void process_event(const SDL_Event& event, PadData& data);
-  void close_device();
-
- private:
-  int m_device_id;
-  SDL_GameController* m_controller_handle;
-  SDL_Joystick* m_joystick_handle;
-  bool m_is_active;
-  std::string m_name;
-  Type m_type;
+  // TODO - !
   std::vector<InputBinding> m_binds;
-  int m_analog_dead_zone;
   // TODO - mouse? (sensitivities)
   // TODO - positive/negative keys
   // TODO - digital vs analog
-  bool m_buffer_inputs;  // TODO - not entirely sure what this means, test with old code
+  // bool m_buffer_inputs;  // TODO - not entirely sure what this means, test with old code
+
+ public:
+  virtual ~InputDevice() {};
+
+  virtual void process_event(const SDL_Event& event, PadData& data) = 0;
+  virtual void close_device() = 0;
+
+  bool is_loaded() const { return m_loaded; };
 };
+
+// https://wiki.libsdl.org/SDL2/CategoryGameController
+class GameController : public InputDevice {
+ public:
+  GameController(int sdl_device_id, int dead_zone = 0);
+  ~GameController() { close_device(); }
+
+  void process_event(const SDL_Event& event, PadData& data) override;
+  void close_device() override;
+
+ private:
+  int m_sdl_instance_id = -1;
+  SDL_GameController* m_device_handle;
+  int m_analog_dead_zone = 0;
+};
+
+// TODO - Keyboard and Mouse (mouse doesn't process events though!)
 
 // Central class that:
 // - keeps track of available input devices
@@ -96,14 +110,15 @@ class InputMonitor {
   void refresh_device_list();
   std::vector<InputDevice> get_available_device_info() const;
   // Polls the current active input device for it's data and update `m_data`
-  
+
   PadData get_current_data() const;
   void change_active_device(int device_id);
   // TODO - remapping support
 
  private:
-  std::vector<InputDevice> m_available_devices;
-  std::optional<InputDevice> m_active_device;
+  std::vector<std::shared_ptr<InputDevice>> m_available_devices;
+  std::shared_ptr<InputDevice> m_active_device;
+  // TODO - shared ptr?
   PadData m_data;
 };
 

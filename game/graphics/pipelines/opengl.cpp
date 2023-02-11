@@ -271,7 +271,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   auto check_exit = [](void* data, SDL_Event* evt) {
     auto display = (GLDisplay*)data;
     if (evt->type == SDL_QUIT) {
-      display->should_quit = true;
+      display->m_should_quit = true;
     }
 
     if (evt->type == SDL_KEYUP) {
@@ -280,7 +280,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       }
     }
 
-    if (!display->should_quit) {
+    if (!display->m_should_quit) {
       ImGui_ImplSDL2_ProcessEvent(evt);
     }
 
@@ -288,14 +288,13 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   };
 
   // HACK
-  SDL_AddEventWatch(check_exit, display.get());
+  // SDL_AddEventWatch(check_exit, display.get());
 
   return std::static_pointer_cast<GfxDisplay>(display);
 }
 
 GLDisplay::GLDisplay(SDL_Window* window, bool is_main) : m_window(window) {
   m_main = is_main;
-  m_input_monitor = Pad::InputMonitor();
 
   // Get initial state
   // TODO - a mess
@@ -886,10 +885,21 @@ void update_global_profiler() {
 // }
 
 void GLDisplay::process_sdl_events() {
-  SDL_Event e;
-  while (SDL_PollEvent(&e) != 0) {
-    // TODO - handle quit?
-    m_input_monitor.process_sdl_event(e);
+  SDL_Event evt;
+  while (SDL_PollEvent(&evt) != 0) {
+    if (evt.type == SDL_QUIT) {
+      m_should_quit = true;
+    }
+
+    if (evt.type == SDL_KEYUP) {
+      if (evt.key.keysym.sym == SDLK_LALT) {
+        set_imgui_visible(!is_imgui_visible());
+      }
+    }
+
+    if (!m_should_quit) {
+      ImGui_ImplSDL2_ProcessEvent(&evt);
+    }
   }
 }
 
@@ -1006,7 +1016,7 @@ void GLDisplay::render() {
   {
     auto p = scoped_prof("check-close-window");
     // exit if display window was closed
-    if (should_quit) {
+    if (m_should_quit) {
       std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
       MasterExit = RuntimeExitStatus::EXIT;
       g_gfx_data->sync_cv.notify_all();

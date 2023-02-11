@@ -28,86 +28,71 @@ bool is_any_sdl_event_type(Uint32 event_type, std::vector<Uint32> allowed_types)
   return false;
 }
 
-InputDevice::InputDevice(int sdl_device_index, Type type, int analog_dead_zone, bool buffer_inputs)
-    : m_type(type), m_analog_dead_zone(analog_dead_zone), m_buffer_inputs(buffer_inputs) {
-  m_is_active = false;
-  // upgrade the controller type if possible
-  if (type == Type::JOYSTICK && SDL_IsGameController(sdl_device_index)) {
-    m_type = Type::CONTROLLER;
-  }
-  if (m_type == Type::CONTROLLER) {
-    m_controller_handle = SDL_GameControllerOpen(sdl_device_index);
-  } else if (m_type == Type::JOYSTICK) {
-    m_joystick_handle = SDL_JoystickOpen(sdl_device_index);
-  } else if (m_type == Type::KEYBOARD || type == Type::MOUSE) {
-    // No device needed to hold onto
-    m_is_active = true;
+// TODO - wire these up to the bindings
+// void process_controller_event(const SDL_Event& event, PadData& data) {
+//  if (event.type == SDL_CONTROLLERAXISMOTION) {
+//    // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
+//    // TODO - just a test
+//    data.analog_left = {127, 255};
+//    data.analog_right = {127, 127};
+//  }
+//}
+//
+// void InputDevice::process_event(const SDL_Event& event, PadData& data) {
+//  if (m_type == Type::CONTROLLER && event.type == SDL_CONTROLLERAXISMOTION) {
+//    process_controller_event(event, data);
+//  }
+//  // TODO - other types
+//}
+
+GameController::GameController(int sdl_device_id, int dead_zone)
+    : m_sdl_instance_id(sdl_device_id), m_analog_dead_zone(dead_zone) {
+  m_loaded = false;
+  m_device_handle = SDL_GameControllerOpen(sdl_device_id);
+  if (!m_device_handle) {
+    lg::error("Could not read data from device index `{}`: {}", sdl_device_id, SDL_GetError());
     return;
   }
 
-  if (!m_controller_handle || m_joystick_handle) {
-    lg::error("Could not read data from device index `{}`: {}", sdl_device_index, SDL_GetError());
+  auto joystick = SDL_GameControllerGetJoystick(m_device_handle);
+  if (!joystick) {
+    lg::error("Could not get underlying joystick for gamecontroller: id {}", sdl_device_id);
     return;
   }
-
-  if (m_type == Type::CONTROLLER) {
-    auto joystick = SDL_GameControllerGetJoystick(m_controller_handle);
-    if (!joystick) {
-      lg::error("Could not get underlying joystick for gamecontroller: id {}", sdl_device_index);
-      return;
-    }
-    m_device_id = SDL_JoystickInstanceID(joystick);
-    if (m_device_id < 0) {
-      lg::error("Could not get instance id for gamecontroller: id {}", sdl_device_index);
-      return;
-    }
-    auto name = SDL_GameControllerName(m_controller_handle);
-    if (!name) {
-      lg::error("Could not get device name: {}", SDL_GetError());
-      m_name = fmt::format("Unknown Device {}", sdl_device_index);
-    } else {
-      m_name = name;
-    }
-  } else if (m_type == Type::JOYSTICK) {
-    m_device_id = SDL_JoystickInstanceID(m_joystick_handle);
-    if (m_device_id < 0) {
-      lg::error("Could not get instance id for joystick: id {}", sdl_device_index);
-      return;
-    }
-    auto name = SDL_JoystickName(m_joystick_handle);
-    if (!name) {
-      lg::error("Could not get device name: {}", SDL_GetError());
-      m_name = fmt::format("Unknown Device {}", sdl_device_index);
-    } else {
-      m_name = name;
-    }
+  m_sdl_instance_id = SDL_JoystickInstanceID(joystick);
+  if (m_sdl_instance_id < 0) {
+    lg::error("Could not get instance id for gamecontroller: id {}", sdl_device_id);
+    return;
   }
-  m_is_active = true;
+  auto name = SDL_GameControllerName(m_device_handle);
+  if (!name) {
+    lg::error("Could not get device name: {}", SDL_GetError());
+    m_device_name = fmt::format("Unknown Device {}", sdl_device_id);
+  } else {
+    m_device_name = name;
+  }
+  m_loaded = true;
 }
 
-// TODO - wire these up to the bindings
-void process_controller_event(const SDL_Event& event, PadData& data) {
+void GameController::process_event(const SDL_Event& event, PadData& data) {
   if (event.type == SDL_CONTROLLERAXISMOTION) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
-    // TODO - just a test
-    data.analog_left = {127, 255};
-    data.analog_right = {127, 127};
+    // TODO - triggers? or are those also mapped to the buttons, dunno yet!
+    if (event.caxis.which != m_sdl_instance_id || event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
+        event.caxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+      return;
+    }
+    // Adjust the value range to 0-255 (127 being neutral)
+    // Values come out of SDL as -32,768 + 32,767
+    int axis_val = event.caxis.value;
+    int adjusted_val = ((axis_val + 32768) * 256) / 65536;
+    data.analog_data.at(event.caxis.axis) = adjusted_val;
   }
 }
 
-void InputDevice::process_event(const SDL_Event& event, PadData& data) {
-  if (m_type == Type::CONTROLLER && event.type == SDL_CONTROLLERAXISMOTION) {
-    process_controller_event(event, data);
-  }
-  // TODO - other types
-}
-
-void InputDevice::close_device() {
-  if (m_controller_handle) {
-    SDL_GameControllerClose(m_controller_handle);
-  }
-  if (m_joystick_handle) {
-    SDL_JoystickClose(m_joystick_handle);
+void GameController::close_device() {
+  if (m_device_handle) {
+    SDL_GameControllerClose(m_device_handle);
   }
 }
 
@@ -125,7 +110,7 @@ InputMonitor::InputMonitor() {
 
 InputMonitor::~InputMonitor() {
   for (auto& device : m_available_devices) {
-    device.close_device();
+    device->close_device();
   }
 }
 
@@ -134,18 +119,28 @@ void InputMonitor::refresh_device_list() {
   // Enumerate devices
   if (SDL_NumJoysticks() > 0) {
     for (int i = 0; i < SDL_NumJoysticks(); i++) {
-      m_available_devices.push_back(InputDevice(i, InputDevice::Type::JOYSTICK));
+      if (!SDL_IsGameController(i)) {
+        lg::error("Controller with device id {} is not avaiable via the GameController API", i);
+        continue;
+      }
+      m_available_devices.push_back(std::make_shared<GameController>(i, 0));
+      // By default, make the first controller we load the active one
+      if (!m_active_device && m_available_devices.at(i)->is_loaded()) {
+        m_active_device = m_available_devices.at(i);
+      }
     }
-    m_active_device = m_available_devices.at(0);
   }
   // TODO - make a keyboard and mouse one as well (if available?)
+  if (!m_active_device) {
+    lg::warn(
+        "No active input device could be found or loaded successfully - inputs will not work!");
+  }
 }
 
 void InputMonitor::process_sdl_event(const SDL_Event& event) {
   // Detect controller connections and disconnects
   // TODO - do we care about remap events?
-  if (is_any_sdl_event_type(event.type, {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED,
-                                         SDL_JOYDEVICEADDED, SDL_JOYDEVICEREMOVED})) {
+  if (is_any_sdl_event_type(event.type, {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
     refresh_device_list();
   }
 
@@ -153,6 +148,10 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   if (m_active_device) {
     m_active_device->process_event(event, m_data);
   }
+}
+
+PadData InputMonitor::get_current_data() const {
+  return m_data;
 }
 
 ///*
