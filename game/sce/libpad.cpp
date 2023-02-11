@@ -70,10 +70,9 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  /*cpad->rightx = Gfx::PadGetAnalogValue(Pad::Analog::Right_X, port);
-  cpad->righty = Gfx::PadGetAnalogValue(Pad::Analog::Right_Y, port);
-  cpad->leftx = Gfx::PadGetAnalogValue(Pad::Analog::Left_X, port);
-  cpad->lefty = Gfx::PadGetAnalogValue(Pad::Analog::Left_Y, port);*/
+  const auto& pad_data = Gfx::get_current_frames_pad_data();
+  std::tie(cpad->rightx, cpad->righty) = pad_data->analog_right();
+  std::tie(cpad->leftx, cpad->lefty) = pad_data->analog_left();
 
   // pressure sensitivity. ignore for now.
   for (int i = 0; i < 12; ++i) {

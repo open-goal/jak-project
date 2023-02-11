@@ -31,6 +31,7 @@ class GLDisplay : public GfxDisplay {
   virtual ~GLDisplay();
 
   // Overrides
+  std::shared_ptr<Pad::InputMonitor> get_input_monitor() const override;
   void* get_window() const override { return m_window; }
   void get_position(int* x, int* y) override;
   void get_size(int* w, int* h) override;
@@ -62,7 +63,7 @@ class GLDisplay : public GfxDisplay {
  private:
   void process_sdl_events();
 
-  std::unique_ptr<Pad::InputMonitor> m_input_monitor;
+  std::shared_ptr<Pad::InputMonitor> m_input_monitor;
 
   SDL_Window* m_window;
   SDL_GLContext m_gl_context;

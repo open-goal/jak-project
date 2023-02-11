@@ -41,6 +41,10 @@ class GfxDisplay {
  public:
   virtual ~GfxDisplay() {}
 
+  
+
+  virtual std::shared_ptr<Pad::InputMonitor> get_input_monitor() const = 0;
+
   virtual void* get_window() const = 0;
   virtual void set_size(int w, int h) = 0;
   virtual void update_fullscreen(GfxDisplayMode mode, int screen) = 0;

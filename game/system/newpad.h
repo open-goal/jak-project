@@ -7,19 +7,22 @@
  */
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <memory>
+
 #include "common/common_types.h"
 
 #include "third-party/SDL/include/SDL.h"
 
 namespace Pad {
 
+static const u8 ANALOG_NEUTRAL = 127;
+
 struct PadData {
   // Analog Values
-  std::array<u8, 4> analog_data;
+  std::array<u8, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
 
   std::pair<u8, u8> analog_left() const { return {analog_data.at(0), analog_data.at(1)}; }
   std::pair<u8, u8> analog_right() const { return {analog_data.at(2), analog_data.at(3)}; }
@@ -71,9 +74,9 @@ class InputDevice {
   // bool m_buffer_inputs;  // TODO - not entirely sure what this means, test with old code
 
  public:
-  virtual ~InputDevice() {};
+  virtual ~InputDevice(){};
 
-  virtual void process_event(const SDL_Event& event, PadData& data) = 0;
+  virtual void process_event(const SDL_Event& event, std::shared_ptr<Pad::PadData> data) = 0;
   virtual void close_device() = 0;
 
   bool is_loaded() const { return m_loaded; };
@@ -85,7 +88,7 @@ class GameController : public InputDevice {
   GameController(int sdl_device_id, int dead_zone = 0);
   ~GameController() { close_device(); }
 
-  void process_event(const SDL_Event& event, PadData& data) override;
+  void process_event(const SDL_Event& event, std::shared_ptr<Pad::PadData> data) override;
   void close_device() override;
 
  private:
@@ -111,15 +114,14 @@ class InputMonitor {
   std::vector<InputDevice> get_available_device_info() const;
   // Polls the current active input device for it's data and update `m_data`
 
-  PadData get_current_data() const;
+  std::shared_ptr<Pad::PadData> get_current_data() const;
   void change_active_device(int device_id);
   // TODO - remapping support
 
  private:
   std::vector<std::shared_ptr<InputDevice>> m_available_devices;
   std::shared_ptr<InputDevice> m_active_device;
-  // TODO - shared ptr?
-  PadData m_data;
+  std::shared_ptr<Pad::PadData> m_data;
 };
 
 // void OnKeyPress(int key);

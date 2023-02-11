@@ -89,6 +89,10 @@ void DebugSettings::save_settings() {
   file_util::write_text_file(debug_settings_filename, json.dump(2));
 }
 
+std::shared_ptr<Pad::PadData> get_current_frames_pad_data() {
+  return Display::GetMainDisplay()->get_input_monitor()->get_current_data();
+}
+
 //Pad::MappingInfo& get_button_mapping() {
 //  return g_settings.pad_mapping_info;
 //}

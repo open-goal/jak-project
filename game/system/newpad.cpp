@@ -28,23 +28,6 @@ bool is_any_sdl_event_type(Uint32 event_type, std::vector<Uint32> allowed_types)
   return false;
 }
 
-// TODO - wire these up to the bindings
-// void process_controller_event(const SDL_Event& event, PadData& data) {
-//  if (event.type == SDL_CONTROLLERAXISMOTION) {
-//    // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
-//    // TODO - just a test
-//    data.analog_left = {127, 255};
-//    data.analog_right = {127, 127};
-//  }
-//}
-//
-// void InputDevice::process_event(const SDL_Event& event, PadData& data) {
-//  if (m_type == Type::CONTROLLER && event.type == SDL_CONTROLLERAXISMOTION) {
-//    process_controller_event(event, data);
-//  }
-//  // TODO - other types
-//}
-
 GameController::GameController(int sdl_device_id, int dead_zone)
     : m_sdl_instance_id(sdl_device_id), m_analog_dead_zone(dead_zone) {
   m_loaded = false;
@@ -74,7 +57,7 @@ GameController::GameController(int sdl_device_id, int dead_zone)
   m_loaded = true;
 }
 
-void GameController::process_event(const SDL_Event& event, PadData& data) {
+void GameController::process_event(const SDL_Event& event, std::shared_ptr<Pad::PadData> data) {
   if (event.type == SDL_CONTROLLERAXISMOTION) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     // TODO - triggers? or are those also mapped to the buttons, dunno yet!
@@ -86,7 +69,7 @@ void GameController::process_event(const SDL_Event& event, PadData& data) {
     // Values come out of SDL as -32,768 + 32,767
     int axis_val = event.caxis.value;
     int adjusted_val = ((axis_val + 32768) * 256) / 65536;
-    data.analog_data.at(event.caxis.axis) = adjusted_val;
+    data->analog_data.at(event.caxis.axis) = adjusted_val;
   }
 }
 
@@ -105,6 +88,7 @@ InputMonitor::InputMonitor() {
   } else {
     lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
   }
+  m_data = std::make_shared<Pad::PadData>();
   refresh_device_list();
 }
 
@@ -150,7 +134,7 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   }
 }
 
-PadData InputMonitor::get_current_data() const {
+std::shared_ptr<Pad::PadData> InputMonitor::get_current_data() const {
   return m_data;
 }
 

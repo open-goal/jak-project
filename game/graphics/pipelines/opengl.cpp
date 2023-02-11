@@ -272,7 +272,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
 GLDisplay::GLDisplay(SDL_Window* window, bool is_main) : m_window(window) {
   m_main = is_main;
-  m_input_monitor = std::make_unique<Pad::InputMonitor>();
+  m_input_monitor = std::make_shared<Pad::InputMonitor>();
 
   // Get initial state
   // TODO - a mess
@@ -561,6 +561,11 @@ void render_game_frame(int game_width,
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
+}
+
+std::shared_ptr<Pad::InputMonitor> GLDisplay::get_input_monitor() const
+{
+  return m_input_monitor;
 }
 
 void GLDisplay::get_position(int* x, int* y) {
@@ -872,6 +877,8 @@ void GLDisplay::process_sdl_events() {
     if (evt.type == SDL_CONTROLLERAXISMOTION) {
       lg::info("AHHH");
     }
+    m_input_monitor->process_sdl_event(evt);
+    
 
     if (evt.type == SDL_KEYUP) {
       if (evt.key.keysym.sym == SDLK_LALT) {

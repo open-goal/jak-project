@@ -16,6 +16,7 @@
 #include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"
 #include "game/tools/filter_menu/filter_menu.h"
+#include <game/system/newpad.h>
 
 // forward declarations
 struct GfxSettings;
@@ -177,5 +178,7 @@ bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int
 void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
 void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
 void CollisionRendererSetMode(GfxGlobalSettings::CollisionRendererMode mode);
+
+std::shared_ptr<Pad::PadData> get_current_frames_pad_data();
 
 }  // namespace Gfx
