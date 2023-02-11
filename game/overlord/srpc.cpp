@@ -877,7 +877,7 @@ s32 VBlank_HandlerJ1(void*) {
   gFrameNum++;
 
   if (gFakeVAGClockRunning && !gFakeVAGClockPaused) {
-    gFakeVAGClock += (s32)(1024 / Gfx::g_global_settings.target_fps);
+    gFakeVAGClock += (s32)((1 << 10) / Gfx::g_global_settings.target_fps);
   }
 
   // We don't need this, our DMA's are instant

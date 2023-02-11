@@ -1282,7 +1282,7 @@ static void UpdatePlayPos() {
     gRealVAGClockS += pos + 0xC000 - gPlayPos;
   }
 
-  gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate);
+  gRealVAGClock = (((gRealVAGClockS << 10) / 16) * 28 / gSampleRate);
   gPlayPos = pos;
 }
 
