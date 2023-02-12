@@ -53,10 +53,15 @@ bool va_check(
 
   for (size_t i = 0; i < unnamed.size(); i++) {
     if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
-      *err_string = fmt::format("Argument {} has type {} but {} was expected\nArgument is: {}", i,
-                                object_type_to_string(args.unnamed[i].type),
-                                object_type_to_string(unnamed[i].value()), args.unnamed[i].print());
-      return false;
+      // special case -- an empty list is a valid pair
+      if (!(unnamed[i] == goos::ObjectType::PAIR &&
+            args.unnamed[i].type == goos::ObjectType::EMPTY_LIST)) {
+        *err_string =
+            fmt::format("Argument {} has type {} but {} was expected\nArgument is: {}", i,
+                        object_type_to_string(args.unnamed[i].type),
+                        object_type_to_string(unnamed[i].value()), args.unnamed[i].print());
+        return false;
+      }
     }
   }
 
@@ -72,11 +77,15 @@ bool va_check(
     } else {
       // argument given.
       if (kv.second.second.has_value() && kv.second.second != kv2->second.type) {
-        // but is wrong type
-        *err_string = "Argument \"" + kv.first + "\" has type " +
-                      object_type_to_string(kv2->second.type) + " but " +
-                      object_type_to_string(kv.second.second.value()) + " was expected";
-        return false;
+        // special case -- an empty list is a valid pair
+        if (!(kv.second.second == goos::ObjectType::PAIR &&
+              kv2->second.type == goos::ObjectType::EMPTY_LIST)) {
+          // but is wrong type
+          *err_string = "Argument \"" + kv.first + "\" has type " +
+                        object_type_to_string(kv2->second.type) + " but " +
+                        object_type_to_string(kv.second.second.value()) + " was expected";
+          return false;
+        }
       }
     }
   }
