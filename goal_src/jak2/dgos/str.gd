@@ -1,52 +1,52 @@
 ("STR.DGO"
-  ("hover-formation-h.o" "hover-formation-h")
-  ("hover-nav-control-h.o" "hover-nav-control-h")
-  ("hover-enemy-h.o" "hover-enemy-h")
-  ("hover-nav-network.o" "hover-nav-network")
-  ("hover-nav-control.o" "hover-nav-control")
-  ("hover-enemy.o" "hover-enemy")
-  ("hover-enemy-battle.o" "hover-enemy-battle")
-  ("hover-formation.o" "hover-formation")
-  ("hover-nav-edit.o" "hover-nav-edit")
-  ("wasp-part.o" "wasp-part")
-  ("wasp.o" "wasp")
-  ("crimson-guard-hover.o" "crimson-guard-hover")
-  ("flamer.o" "flamer")
-  ("strip-scenes.o" "strip-scenes")
-  ("strip-part.o" "strip-part")
-  ("strip-ocean.o" "strip-ocean")
-  ("strip-rescue.o" "strip-rescue")
-  ("strip-drop.o" "strip-drop")
-  ("strip-obs.o" "strip-obs")
-  ("chaincrate.o" "chaincrate")
-  ("tpage-787.go" "tpage-787")
-  ("tpage-789.go" "tpage-789")
-  ("tpage-788.go" "tpage-788")
-  ("tpage-786.go" "tpage-786")
-  ("tpage-1272.go" "tpage-1272")
-  ("tpage-2854.go" "tpage-2854")
-  ("grunt-ag.go" "grunt")
-  ("flitter-ag.go" "flitter")
-  ("flamer-ag.go" "flamer")
-  ("water-anim-strip-dark-eco-ag.go" "water-anim-strip-dark-eco")
-  ("cranecrate-ag.go" "cranecrate")
-  ("strip-game-crate-ag.go" "strip-game-crate")
-  ("drill-plat-ag.go" "drill-plat")
-  ("curtainsaw-ag.go" "curtainsaw")
-  ("fencespikes-ag.go" "fencespikes")
-  ("lgconveyor-ag.go" "lgconveyor")
-  ("pitspikes-ag.go" "pitspikes")
-  ("grunt-egg-b-ag.go" "grunt-egg-b")
-  ("warp-gate-ag.go" "warp-gate")
-  ("grunt-egg-a-ag.go" "grunt-egg-a")
-  ("grunt-egg-d-ag.go" "grunt-egg-d")
-  ("crane-ag.go" "crane")
-  ("strip-chain-crate-ag.go" "strip-chain-crate")
-  ("grunt-egg-c-ag.go" "grunt-egg-c")
-  ("cable-ag.go" "cable")
-  ("cntrlrm-door-ag.go" "cntrlrm-door")
-  ("plasmitebomb-ag.go" "plasmitebomb")
-  ("strip-conveyor-ag.go" "strip-conveyor")
-  ("cntrlrm-button-ag.go" "cntrlrm-button")
-  ("strip-vis.go" "strip-vis")
-  )
+ ("hover-formation-h.o"
+  "hover-nav-control-h.o"
+  "hover-enemy-h.o"
+  "hover-nav-network.o"
+  "hover-nav-control.o"
+  "hover-enemy.o"
+  "hover-enemy-battle.o"
+  "hover-formation.o"
+  "hover-nav-edit.o"
+  "wasp-part.o"
+  "wasp.o"
+  "crimson-guard-hover.o"
+  "flamer.o"
+  "strip-scenes.o"
+  "strip-part.o"
+  "strip-ocean.o"
+  "strip-rescue.o"
+  "strip-drop.o"
+  "strip-obs.o"
+  "chaincrate.o"
+  "tpage-787.go"
+  "tpage-789.go"
+  "tpage-788.go"
+  "tpage-786.go"
+  "tpage-1272.go"
+  "tpage-2854.go"
+  "grunt-ag.go"
+  "flitter-ag.go"
+  "flamer-ag.go"
+  "water-anim-strip-dark-eco-ag.go"
+  "cranecrate-ag.go"
+  "strip-game-crate-ag.go"
+  "drill-plat-ag.go"
+  "curtainsaw-ag.go"
+  "fencespikes-ag.go"
+  "lgconveyor-ag.go"
+  "pitspikes-ag.go"
+  "grunt-egg-b-ag.go"
+  "warp-gate-ag.go"
+  "grunt-egg-a-ag.go"
+  "grunt-egg-d-ag.go"
+  "crane-ag.go"
+  "strip-chain-crate-ag.go"
+  "grunt-egg-c-ag.go"
+  "cable-ag.go"
+  "cntrlrm-door-ag.go"
+  "plasmitebomb-ag.go"
+  "strip-conveyor-ag.go"
+  "cntrlrm-button-ag.go"
+  "strip-vis.go"
+ ))

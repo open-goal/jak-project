@@ -1,16 +1,16 @@
 ("CAP.DGO"
-  ("caspad-obs.o" "caspad-obs")
-  ("caspad-part.o" "caspad-part")
-  ("castle-tasks.o" "castle-tasks")
-  ("tpage-2537.go" "tpage-2537")
-  ("tpage-2539.go" "tpage-2539")
-  ("tpage-2538.go" "tpage-2538")
-  ("tpage-3498.go" "tpage-3498")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("com-airlock-outer-ag.go" "com-airlock-outer")
-  ("air-train-ag.go" "air-train")
-  ("cpad-elevator-ag.go" "cpad-elevator")
-  ("particleman-ag.go" "particleman")
-  ("caspad-vis.go" "caspad-vis")
-  )
+ ("caspad-obs.o"
+  "caspad-part.o"
+  "castle-tasks.o"
+  "tpage-2537.go"
+  "tpage-2539.go"
+  "tpage-2538.go"
+  "tpage-3498.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "com-airlock-outer-ag.go"
+  "air-train-ag.go"
+  "cpad-elevator-ag.go"
+  "particleman-ag.go"
+  "caspad-vis.go"
+ ))

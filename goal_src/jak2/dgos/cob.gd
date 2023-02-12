@@ -1,15 +1,15 @@
 ("COB.DGO"
-  ("consiteb-part.o" "consiteb-part")
-  ("tpage-3032.go" "tpage-3032")
-  ("tpage-3033.go" "tpage-3033")
-  ("tpage-3142.go" "tpage-3142")
-  ("tpage-3180.go" "tpage-3180")
-  ("tpage-3239.go" "tpage-3239")
-  ("kor-transform-ag.go" "kor-transform")
-  ("kor-break-ag.go" "kor-break")
-  ("metalkor-highres-ag.go" "metalkor-highres")
-  ("com-airlock-inner-ag.go" "com-airlock-inner")
-  ("door-ctyinda-ag.go" "vin-door-ctyinda")
-  ("kor-break-ray-ag.go" "kor-break-ray")
-  ("consiteb-vis.go" "consiteb-vis")
-  )
+ ("consiteb-part.o"
+  "tpage-3032.go"
+  "tpage-3033.go"
+  "tpage-3142.go"
+  "tpage-3180.go"
+  "tpage-3239.go"
+  "kor-transform-ag.go"
+  "kor-break-ag.go"
+  "metalkor-highres-ag.go"
+  "com-airlock-inner-ag.go"
+  "door-ctyinda-ag.go"
+  "kor-break-ray-ag.go"
+  "consiteb-vis.go"
+ ))
