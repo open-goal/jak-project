@@ -83,6 +83,31 @@ std::string object_type_to_string(ObjectType type) {
   }
 }
 
+// converts an object type to it's symbol name to be converted into a typespec
+// returns 'object' otherwise
+std::string object_type_to_type_name(ObjectType kind) {
+  switch (kind) {
+    case ObjectType::INTEGER:
+      return "uint";
+    case ObjectType::FLOAT:
+      return "float";
+    case ObjectType::CHAR:
+      return "uint";
+    case ObjectType::SYMBOL:
+      return "symbol";
+    case ObjectType::STRING:
+      return "string";
+    case ObjectType::PAIR:
+      return "pair";
+    case ObjectType::ARRAY:
+      return "array";
+    case ObjectType::LAMBDA:
+      return "function";
+    default:
+      return "object";
+  }
+}
+
 /*!
  * Special case to print a float
  */
