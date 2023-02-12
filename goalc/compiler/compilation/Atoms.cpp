@@ -304,10 +304,10 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
 Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   auto pair = code.as_pair();
   auto& head = pair->car;
-  auto& rest = pair->cdr;
 
   if (head.is_symbol()) {
     auto head_sym = head.as_symbol();
+    auto& rest = pair->cdr;
     // first try as a macro
     goos::Object macro_obj;
     if (try_getting_macro_from_goos(head, &macro_obj)) {
