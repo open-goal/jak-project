@@ -735,7 +735,10 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid debug declare");
       }
-      env->file_env()->set_debug_file();
+      if (!env->file_env()->is_debug_file()) {
+        env->file_env()->set_debug_file();
+        throw DebugFileDeclareException();
+      }
 
     } else {
       throw_compiler_error(first, "Unrecognized declare-file option {}.", first.print());
