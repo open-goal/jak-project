@@ -54,8 +54,10 @@ Compiler::Compiler(GameVersion version,
   }
 
   // add built-in forms to symbol info
-  for (auto& builtin : g_goal_forms) {
-    m_symbol_info.add_builtin(builtin.first);
+  for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
+    SymbolInfo::Metadata sym_meta;
+    sym_meta.docstring = builtin_info.first;
+    m_symbol_info.add_builtin(builtin_name, sym_meta);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.
