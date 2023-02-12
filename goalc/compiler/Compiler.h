@@ -105,7 +105,9 @@ class Compiler {
   listener::Listener m_listener;
   goos::Interpreter m_goos;
   Debugger m_debugger;
+  std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
+  std::unordered_map<std::string, goos::Object> m_global_constant_types;
   std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
@@ -608,14 +610,13 @@ class Compiler {
   Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_add_macro_to_autocomplete(const goos::Object& form,
-                                         const goos::Object& rest,
-                                         Env* env);
+  Val* compile_update_macro_metadata(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_print_debug_compiler_stats(const goos::Object& form,
                                           const goos::Object& rest,
                                           Env* env);
+  Val* compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
@@ -709,5 +710,6 @@ class Compiler {
 
 extern const std::unordered_map<
     std::string,
-    Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
+    std::pair<std::string,
+              Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>>
     g_goal_forms;
