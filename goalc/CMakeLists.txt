@@ -54,7 +54,7 @@ add_library(compiler
         regalloc/Allocator.cpp
         regalloc/allocator_interface.cpp
         regalloc/Allocator_v2.cpp
-        )
+        compiler/docs/DocTypes.cpp)
 
 target_link_libraries(compiler common Zydis tiny_gltf)
 
