@@ -154,7 +154,7 @@
   (let ((dgo-data (car (read-data-file (string-append "goal_src/jak2/dgos/" dgo-file-name)))))
     ;; Get the name of the DGO
     (let ((dgo-name (car dgo-data))
-          (files (cdr dgo-data))
+          (files (cadr dgo-data))
           (gsrc-seq-args '())
           (textures '())
           (gos '()))
@@ -163,19 +163,18 @@
       ;; Now we iterate through the list of files, skipping ones we've already processed
       ;; and creating steps for the ones that are new!
       (while (not (null? files))
-        (let ((file-name (car (car files)))
-              (obj-name (car (cdr (car files)))))
+        (let ((file-name (car files)))
           ;; Check to see if we've already handled this file
           (when (not (car (hash-table-try-ref *file-entry-map* file-name)))
             ;; Depending on the type of file, generate the appropriate steps
             (cond
               ((string-ends-with? file-name ".o")
                ;; build up a list of all gsrc files needing to be compiled
-               (let ((gsrc-path (get-gsrc-path obj-name)))
+               (let ((gsrc-path (get-gsrc-path (symbol->string (first (string-split file-name "."))))))
                 (set! gsrc-seq-args (cons gsrc-path gsrc-seq-args))))
-              ((string-starts-with? obj-name "tpage-")
+              ((string-starts-with? file-name "tpage-")
                ;; copy textures
-               (let ((tpage-id (car (cdr (string-split obj-name "-")))))
+               (let ((tpage-id (second (string-split (symbol->string (first (string-split file-name "."))) "-"))))
                 (set! textures (cons tpage-id textures))))
               ((string-ends-with? file-name ".go")
                ;; copy art files

@@ -516,7 +516,64 @@ u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
     u64 run_start = 0;
     for (auto& grp : draw.vis_groups) {
       sanity_check += grp.num_inds;
-      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
+      bool vis = grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
+        num_tris += grp.num_tris;
+      }
+
+      if (building_run) {
+        if (!vis) {
+          building_run = false;
+          counts_out[md_idx] = iidx - run_start;
+          index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+          ds.second++;
+          md_idx++;
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start = iidx;
+        }
+      }
+
+      iidx += grp.num_inds;
+    }
+
+    if (building_run) {
+      building_run = false;
+      counts_out[md_idx] = iidx - run_start;
+      index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+      ds.second++;
+      md_idx++;
+    }
+
+    draw_ptrs_out[i] = ds;
+  }
+  return num_tris;
+}
+
+u32 make_multidraws_from_vis_and_proto_string(std::pair<int, int>* draw_ptrs_out,
+                                              GLsizei* counts_out,
+                                              void** index_offsets_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data) {
+  u64 md_idx = 0;
+  u32 num_tris = 0;
+  u32 sanity_check = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
+    ASSERT(sanity_check == iidx);
+    std::pair<int, int> ds;
+    ds.first = md_idx;
+    ds.second = 0;
+    bool building_run = false;
+    u64 run_start = 0;
+    for (auto& grp : draw.vis_groups) {
+      sanity_check += grp.num_inds;
+      bool vis = (grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh]) &&
+                 proto_vis_data[grp.tie_proto_idx];
       if (vis) {
         num_tris += grp.num_tris;
       }
@@ -569,7 +626,64 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
     int run_start_out = 0;
     int run_start_in = 0;
     for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
+      bool vis = grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
+        num_tris += grp.num_tris;
+      }
+
+      if (building_run) {
+        if (vis) {
+          idx_buffer_ptr += grp.num_inds;
+        } else {
+          building_run = false;
+          memcpy(&idx_out[run_start_out],
+                 idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
+                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start_out = idx_buffer_ptr;
+          run_start_in = vtx_idx;
+          idx_buffer_ptr += grp.num_inds;
+        }
+      }
+      vtx_idx += grp.num_inds;
+    }
+
+    if (building_run) {
+      memcpy(&idx_out[run_start_out],
+             idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
+             (idx_buffer_ptr - run_start_out) * sizeof(u32));
+    }
+
+    ds.second = idx_buffer_ptr - ds.first;
+    group_out[i] = ds;
+  }
+  *num_tris_out = num_tris;
+  return idx_buffer_ptr;
+}
+
+u32 make_index_list_from_vis_and_proto_string(std::pair<int, int>* group_out,
+                                              u32* idx_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data,
+                                              const u32* idx_in,
+                                              u32* num_tris_out) {
+  int idx_buffer_ptr = 0;
+  u32 num_tris = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    int vtx_idx = 0;
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    bool building_run = false;
+    int run_start_out = 0;
+    int run_start_in = 0;
+    for (auto& grp : draw.vis_groups) {
+      bool vis = (grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh]) &&
+                 proto_vis_data[grp.tie_proto_idx];
       if (vis) {
         num_tris += grp.num_tris;
       }

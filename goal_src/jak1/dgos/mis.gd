@@ -1,62 +1,61 @@
-
 ("MIS.DGO"
-  ("target-racer-h.o" "target-racer-h")
-  ("racer-part.o" "racer-part")
-  ("racer.o" "racer")
-  ("target-racer.o" "target-racer")
-  ("racer-states.o" "racer-states")
-  ("collide-reaction-racer.o" "collide-reaction-racer")
-  ("eichar-racer+0-ag.go" "eichar-racer+0")
-  ("tpage-1119.go" "tpage-1119")
-  ("battlecontroller.o" "battlecontroller")
-  ("mistycannon.o" "mistycannon")
-  ("babak-with-cannon.o" "babak-with-cannon")
-  ("blocking-plane.o" "blocking-plane")
-  ("misty-obs.o" "misty-obs")
-  ("misty-warehouse.o" "misty-warehouse")
-  ("misty-conveyor.o" "misty-conveyor")
-  ("mud.o" "mud")
-  ("muse.o" "muse")
-  ("bonelurker.o" "bonelurker")
-  ("quicksandlurker.o" "quicksandlurker")
-  ("misty-teetertotter.o" "misty-teetertotter")
-  ("balloonlurker.o" "balloonlurker")
-  ("misty-part.o" "misty-part")
-  ("sidekick-human.o" "sidekick-human")
-  ("tpage-516.go" "tpage-516")
-  ("tpage-521.go" "tpage-521")
-  ("tpage-518.go" "tpage-518")
-  ("tpage-520.go" "tpage-520")
-  ("babak-ag.go" "babak")
-  ("balloonlurker-ag.go" "balloonlurker")
-  ("boatpaddle-ag.go" "boatpaddle")
-  ("bonelurker-ag.go" "bonelurker")
-  ("breakaway-left-ag.go" "breakaway-left")
-  ("breakaway-mid-ag.go" "breakaway-mid")
-  ("breakaway-right-ag.go" "breakaway-right")
-  ("darkecocan-ag.go" "darkecocan")
-  ("ef-plane-ag.go" "ef-plane")
-  ("keg-ag.go" "keg")
-  ("keg-conveyor-ag.go" "keg-conveyor")
-  ("keg-conveyor-paddle-ag.go" "keg-conveyor-paddle")
-  ("mis-bone-bridge-ag.go" "mis-bone-bridge")
-  ("mis-bone-platform-ag.go" "mis-bone-platform")
-  ("mistycam-ag.go" "mistycam")
-  ("mistycannon-ag.go" "mistycannon")
-  ("muse-ag.go" "muse")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("plat-eco-ag.go" "plat-eco")
-  ("quicksandlurker-ag.go" "quicksandlurker")
-  ("racer-ag.go" "racer")
-  ("ropebridge-36-ag.go" "ropebridge-36")
-  ("rounddoor-ag.go" "rounddoor")
-  ("sack-ag.go" "sack")
-  ("sharkey-ag.go" "sharkey")
-  ("sidekick-human-ag.go" "sidekick-human")
-  ("silostep-ag.go" "silostep")
-  ("teetertotter-ag.go" "teetertotter")
-  ("water-anim-misty-ag.go" "water-anim-misty")
-  ("wheel-ag.go" "wheel")
-  ("windturbine-ag.go" "windturbine")
-  ("misty-vis.go" "misty-vis")
-  )
+ ("target-racer-h.o"
+  "racer-part.o"
+  "racer.o"
+  "target-racer.o"
+  "racer-states.o"
+  "collide-reaction-racer.o"
+  "eichar-racer+0-ag.go"
+  "tpage-1119.go"
+  "battlecontroller.o"
+  "mistycannon.o"
+  "babak-with-cannon.o"
+  "blocking-plane.o"
+  "misty-obs.o"
+  "misty-warehouse.o"
+  "misty-conveyor.o"
+  "mud.o"
+  "muse.o"
+  "bonelurker.o"
+  "quicksandlurker.o"
+  "misty-teetertotter.o"
+  "balloonlurker.o"
+  "misty-part.o"
+  "sidekick-human.o"
+  "tpage-516.go"
+  "tpage-521.go"
+  "tpage-518.go"
+  "tpage-520.go"
+  "babak-ag.go"
+  "balloonlurker-ag.go"
+  "boatpaddle-ag.go"
+  "bonelurker-ag.go"
+  "breakaway-left-ag.go"
+  "breakaway-mid-ag.go"
+  "breakaway-right-ag.go"
+  "darkecocan-ag.go"
+  "ef-plane-ag.go"
+  "keg-ag.go"
+  "keg-conveyor-ag.go"
+  "keg-conveyor-paddle-ag.go"
+  "mis-bone-bridge-ag.go"
+  "mis-bone-platform-ag.go"
+  "mistycam-ag.go"
+  "mistycannon-ag.go"
+  "muse-ag.go"
+  "orb-cache-top-ag.go"
+  "plat-eco-ag.go"
+  "quicksandlurker-ag.go"
+  "racer-ag.go"
+  "ropebridge-36-ag.go"
+  "rounddoor-ag.go"
+  "sack-ag.go"
+  "sharkey-ag.go"
+  "sidekick-human-ag.go"
+  "silostep-ag.go"
+  "teetertotter-ag.go"
+  "water-anim-misty-ag.go"
+  "wheel-ag.go"
+  "windturbine-ag.go"
+  "misty-vis.go"
+ ))

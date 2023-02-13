@@ -915,7 +915,7 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (local-vars (r0-0 uint128) (a0-20 object) (a1-14 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
   (let ((s3-0 ((method-of-type res-lump get-property-struct)
@@ -971,22 +971,11 @@ This commonly includes things such as:
     (format (clear *temp-string*) "~S-idle" (-> obj art-name))
     (set! (-> s5-1 frame-group) (the-as art-joint-anim (s3-1 s4-1 *temp-string* (the-as type #f))))
     )
-  (set! sv-16 0)
-  (let ((v1-35 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-35 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (cond
-      ((and v1-35 (begin
-                    (let ((a0-21 #t))
-                      (let ((a1-13 (the-as uint128 sv-16)))
-                        (.pcpyud a1-14 a1-13 r0-0)
-                        )
-                      (let ((a1-16 (the-as int (shr (* (the-as int a1-14) 2) 49))))
-                        (cmove-#f-zero a0-20 a1-16 a0-21)
-                        )
-                      )
-                    a0-20
-                    )
-            )
-       (set! (-> obj egg-group) (the-as actor-group (-> (the-as (pointer uint32) v1-35))))
+      ((and v1-35 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> obj egg-group) (-> v1-35 0))
        )
       (else
         )

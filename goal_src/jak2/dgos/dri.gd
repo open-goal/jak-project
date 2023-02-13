@@ -1,23 +1,23 @@
 ("DRI.DGO"
-  ("tpage-1204.go" "tpage-1204")
-  ("tpage-1205.go" "tpage-1205")
-  ("tpage-1239.go" "tpage-1239")
-  ("tpage-1203.go" "tpage-1203")
-  ("tpage-1206.go" "tpage-1206")
-  ("centurion-ag.go" "centurion")
-  ("drill-turret-ext-ag.go" "drill-turret-ext")
-  ("mech-ag.go" "mech")
-  ("port-turret-ag.go" "port-turret")
-  ("ginsu-ag.go" "ginsu")
-  ("drill-elevator-ag.go" "drill-elevator")
-  ("drill-plat-falling-ag.go" "drill-plat-falling")
-  ("drill-bridge-shot-ag.go" "drill-bridge-shot")
-  ("warp-gate-ag.go" "warp-gate")
-  ("drill-elevator-base-ag.go" "drill-elevator-base")
-  ("drill-wall-ag.go" "drill-wall")
-  ("drill-metalhead-eggs-c-ag.go" "drill-metalhead-eggs-c")
-  ("drill-metalhead-eggs-b-ag.go" "drill-metalhead-eggs-b")
-  ("drill-metalhead-eggs-a-ag.go" "drill-metalhead-eggs-a")
-  ("drill-turret-int-ag.go" "drill-turret-int")
-  ("drill-vis.go" "drill-vis")
-  )
+ ("tpage-1204.go"
+  "tpage-1205.go"
+  "tpage-1239.go"
+  "tpage-1203.go"
+  "tpage-1206.go"
+  "centurion-ag.go"
+  "drill-turret-ext-ag.go"
+  "mech-ag.go"
+  "port-turret-ag.go"
+  "ginsu-ag.go"
+  "drill-elevator-ag.go"
+  "drill-plat-falling-ag.go"
+  "drill-bridge-shot-ag.go"
+  "warp-gate-ag.go"
+  "drill-elevator-base-ag.go"
+  "drill-wall-ag.go"
+  "drill-metalhead-eggs-c-ag.go"
+  "drill-metalhead-eggs-b-ag.go"
+  "drill-metalhead-eggs-a-ag.go"
+  "drill-turret-int-ag.go"
+  "drill-vis.go"
+ ))
