@@ -302,6 +302,7 @@
   "part-tester.o"
   "anim-tester-x.o" ;; added
   "default-menu.o"
+  "entity-debug.o" ;; added
   "subtitle.o" ;; added
  ))
 
