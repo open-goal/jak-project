@@ -347,7 +347,7 @@ class TexturePool {
   void draw_debug_window();
   void relocate(u32 destination, u32 source, u32 format);
   void draw_debug_for_tex(const std::string& name, GpuTexture* tex, u32 slot);
-  const std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256> all_textures() const {
+  const std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256>& all_textures() const {
     return m_textures;
   }
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);

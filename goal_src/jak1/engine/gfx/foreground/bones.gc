@@ -1326,7 +1326,8 @@
                       )
                     (set! sv-144 (-> arg0 ripple))
                     (let* ((f1-4 (/ (- (-> sv-144 far-fade-dist) arg2) (- (-> sv-144 far-fade-dist) (-> sv-144 close-fade-dist))))
-                           (f1-6 (fmax 0.0 (fmin 1.0 f1-4)))
+                           (f1-6 (#if PC_PORT (if (and *pc-settings* (-> *pc-settings* force-envmap?)) 1.0 (fmax 0.0 (fmin 1.0 f1-4)))
+                                              (fmax 0.0 (fmin 1.0 f1-4))))
                            (f0-4 f1-6)
                            (f30-0 (* f1-6 (-> sv-144 global-scale)))
                            )
@@ -1401,14 +1402,11 @@
                    ;; the game switches from mercneric to merc after the envmap is faded out.
                    ;; this would normally be fine in the PC port too, but we want the eyes to remain
                    ;; using mercneric (dynamic texture updates) in PC.
-                   ;; so we force mercneric on models with envmap and very few tris.
-                   ;; it seems to work so far... (flutflut has 134 triangles in the eye effect)
+                   ;; so we force mercneric on models with envmap.
+                   ;; it seems to work so far...
                    (#when PC_PORT
-                     (when (and
-                             (< (-> geom effect effect-idx tri-count) 200)
-                             (-> geom header eye-ctrl)
-                             (nonzero? (-> geom header eye-ctrl))
-                             )
+                     (when (and (-> geom header eye-ctrl)
+                                (nonzero? (-> geom header eye-ctrl)))
                        (set! pc-force-mercneric #t)
                        )
                      )

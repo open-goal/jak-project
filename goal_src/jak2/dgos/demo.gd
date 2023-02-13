@@ -1,10 +1,10 @@
 ("DEMO.DGO"
-  ("demo-obs.o" "demo-obs")
-  ("tpage-1872.go" "tpage-1872")
-  ("tpage-1876.go" "tpage-1876")
-  ("tpage-1868.go" "tpage-1868")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-logo-ag.go" "jak-logo")
-  ("jak-stand-ag.go" "jak-stand")
-  ("demo.go" "demo")
-  )
+ ("demo-obs.o"
+  "tpage-1872.go"
+  "tpage-1876.go"
+  "tpage-1868.go"
+  "daxter-highres-ag.go"
+  "jak-logo-ag.go"
+  "jak-stand-ag.go"
+  "demo.go"
+ ))

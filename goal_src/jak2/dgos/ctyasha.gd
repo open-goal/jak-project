@@ -1,33 +1,33 @@
 ("CTYASHA.DGO"
-  ("ai-task-h.o" "ai-task-h")
-  ("bot-h.o" "bot-h")
-  ("bot.o" "bot")
-  ("bot-states.o" "bot-states")
-  ("ash-h.o" "ash-h")
-  ("ash-task.o" "ash-task")
-  ("ash-shot.o" "ash-shot")
-  ("ash.o" "ash")
-  ("ash-states.o" "ash-states")
-  ("juicer.o" "juicer")
-  ("ctyasha-obs.o" "ctyasha-obs")
-  ("ash4-course.o" "ash4-course")
-  ("tpage-1496.go" "tpage-1496")
-  ("tpage-1409.go" "tpage-1409")
-  ("tpage-3240.go" "tpage-3240")
-  ("tpage-3416.go" "tpage-3416")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("grunt-ag.go" "grunt")
-  ("jak-highres-ag.go" "jak-highres")
-  ("juicer-ag.go" "juicer")
-  ("ashelin-highres-ag.go" "ashelin-highres")
-  ("ashelin-ag.go" "ashelin")
-  ("crimson-guard-highres-ag.go" "crimson-guard-highres")
-  ("tanker-ag.go" "tanker")
-  ("crimson-guard-lowres-ag.go" "crimson-guard-lowres")
-  ("tanker-roof-break-ag.go" "tanker-roof-break")
-  ("tanker-crash-ag.go" "tanker-crash")
-  ("tanker-barrels-ag.go" "tanker-barrels")
-  ("tanker-container-ag.go" "tanker-container")
-  ("tanker-one-barrel-ag.go" "tanker-one-barrel")
-  ("ctyasha.go" "ctyasha")
-  )
+ ("ai-task-h.o"
+  "bot-h.o"
+  "bot.o"
+  "bot-states.o"
+  "ash-h.o"
+  "ash-task.o"
+  "ash-shot.o"
+  "ash.o"
+  "ash-states.o"
+  "juicer.o"
+  "ctyasha-obs.o"
+  "ash4-course.o"
+  "tpage-1496.go"
+  "tpage-1409.go"
+  "tpage-3240.go"
+  "tpage-3416.go"
+  "daxter-highres-ag.go"
+  "grunt-ag.go"
+  "jak-highres-ag.go"
+  "juicer-ag.go"
+  "ashelin-highres-ag.go"
+  "ashelin-ag.go"
+  "crimson-guard-highres-ag.go"
+  "tanker-ag.go"
+  "crimson-guard-lowres-ag.go"
+  "tanker-roof-break-ag.go"
+  "tanker-crash-ag.go"
+  "tanker-barrels-ag.go"
+  "tanker-container-ag.go"
+  "tanker-one-barrel-ag.go"
+  "ctyasha.go"
+ ))

@@ -1,20 +1,20 @@
 ("GARAGE.DGO"
-  ("keira-garage+0-ag.go" "keira-garage+0")
-  ("tpage-1369.go" "tpage-1369")
-  ("tpage-1430.go" "tpage-1430")
-  ("tpage-1786.go" "tpage-1786")
-  ("tpage-1787.go" "tpage-1787")
-  ("tpage-3025.go" "tpage-3025")
-  ("keira-highres-ag.go" "keira-highres")
-  ("rift-rider-ag.go" "rift-rider")
-  ("gar-curtain-ag.go" "gar-curtain")
-  ("gar-trophy-ca-ag.go" "gar-trophy-ca")
-  ("gar-trophy-cb-ag.go" "gar-trophy-cb")
-  ("gar-trophy-cc-ag.go" "gar-trophy-cc")
-  ("garage-bikec-ag.go" "garage-bikec")
-  ("gar-weld-project-ag.go" "gar-weld-project")
-  ("garage-bikeb-ag.go" "garage-bikeb")
-  ("particleman-ag.go" "particleman")
-  ("spotlight-ag.go" "spotlight")
-  ("garage.go" "garage")
-  )
+ ("keira-garage+0-ag.go"
+  "tpage-1369.go"
+  "tpage-1430.go"
+  "tpage-1786.go"
+  "tpage-1787.go"
+  "tpage-3025.go"
+  "keira-highres-ag.go"
+  "rift-rider-ag.go"
+  "gar-curtain-ag.go"
+  "gar-trophy-ca-ag.go"
+  "gar-trophy-cb-ag.go"
+  "gar-trophy-cc-ag.go"
+  "garage-bikec-ag.go"
+  "gar-weld-project-ag.go"
+  "garage-bikeb-ag.go"
+  "particleman-ag.go"
+  "spotlight-ag.go"
+  "garage.go"
+ ))

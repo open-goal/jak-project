@@ -1,47 +1,47 @@
 ("ATE.DGO"
-  ("ai-task-h.o" "ai-task-h")
-  ("bot-h.o" "bot-h")
-  ("bot.o" "bot")
-  ("bot-states.o" "bot-states")
-  ("sig-h.o" "sig-h")
-  ("sig-task.o" "sig-task")
-  ("sig-shot.o" "sig-shot")
-  ("sig-plasma.o" "sig-plasma")
-  ("sig.o" "sig")
-  ("sig-states.o" "sig-states")
-  ("ash-h.o" "ash-h")
-  ("ash-task.o" "ash-task")
-  ("ash-shot.o" "ash-shot")
-  ("ash.o" "ash")
-  ("ash-states.o" "ash-states")
-  ("spyder.o" "spyder")
-  ("sig0-course.o" "sig0-course")
-  ("ash1-course.o" "ash1-course")
-  ("atoll-tank.o" "atoll-tank")
-  ("atoll-scenes.o" "atoll-scenes")
-  ("sniper.o" "sniper")
-  ("amphibian.o" "amphibian")
-  ("juicer.o" "juicer")
-  ("metalmonk.o" "metalmonk")
-  ("tpage-1606.go" "tpage-1606")
-  ("tpage-1607.go" "tpage-1607")
-  ("tpage-2461.go" "tpage-2461")
-  ("tpage-3237.go" "tpage-3237")
-  ("tpage-3412.go" "tpage-3412")
-  ("sig-ag.go" "sig")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("atoll-tank-ag.go" "atoll-tank")
-  ("sig-highres-ag.go" "sig-highres")
-  ("juicer-ag.go" "juicer")
-  ("ashelin-highres-ag.go" "ashelin-highres")
-  ("atoll-hellcat-ag.go" "atoll-hellcat")
-  ("ashelin-ag.go" "ashelin")
-  ("metalmonk-ag.go" "metalmonk")
-  ("amphibian-ag.go" "amphibian")
-  ("spyder-ag.go" "spyder")
-  ("com-airlock-inner-ag.go" "com-airlock-inner")
-  ("palmpilot-ag.go" "palmpilot")
-  ("particleman-ag.go" "particleman")
-  ("atollext-vis.go" "atollext-vis")
-  )
+ ("ai-task-h.o"
+  "bot-h.o"
+  "bot.o"
+  "bot-states.o"
+  "sig-h.o"
+  "sig-task.o"
+  "sig-shot.o"
+  "sig-plasma.o"
+  "sig.o"
+  "sig-states.o"
+  "ash-h.o"
+  "ash-task.o"
+  "ash-shot.o"
+  "ash.o"
+  "ash-states.o"
+  "spyder.o"
+  "sig0-course.o"
+  "ash1-course.o"
+  "atoll-tank.o"
+  "atoll-scenes.o"
+  "sniper.o"
+  "amphibian.o"
+  "juicer.o"
+  "metalmonk.o"
+  "tpage-1606.go"
+  "tpage-1607.go"
+  "tpage-2461.go"
+  "tpage-3237.go"
+  "tpage-3412.go"
+  "sig-ag.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "atoll-tank-ag.go"
+  "sig-highres-ag.go"
+  "juicer-ag.go"
+  "ashelin-highres-ag.go"
+  "atoll-hellcat-ag.go"
+  "ashelin-ag.go"
+  "metalmonk-ag.go"
+  "amphibian-ag.go"
+  "spyder-ag.go"
+  "com-airlock-inner-ag.go"
+  "palmpilot-ag.go"
+  "particleman-ag.go"
+  "atollext-vis.go"
+ ))
