@@ -300,9 +300,10 @@
   "anim-tester.o"
   "viewer.o"
   "part-tester.o"
-  "anim-tester-x.o" ;; added
   "default-menu.o"
+  "anim-tester-x.o" ;; added
   "entity-debug.o" ;; added
   "subtitle.o" ;; added
+  "default-menu-pc.o" ;; added
  ))
 
