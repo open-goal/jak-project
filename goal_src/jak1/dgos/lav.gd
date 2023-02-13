@@ -1,40 +1,39 @@
-
 ("LAV.DGO"
-  ("target-racer-h.o" "target-racer-h")
-  ("racer-part.o" "racer-part")
-  ("racer.o" "racer")
-  ("target-racer.o" "target-racer")
-  ("racer-states.o" "racer-states")
-  ("collide-reaction-racer.o" "collide-reaction-racer")
-  ("eichar-racer+0-ag.go" "eichar-racer+0")
-  ("tpage-1119.go" "tpage-1119")
-  ("blocking-plane.o" "blocking-plane")
-  ("lavatube-obs.o" "lavatube-obs")
-  ("lavatube-energy.o" "lavatube-energy")
-  ("lavatube-part.o" "lavatube-part")
-  ("assistant-lavatube.o" "assistant-lavatube")
-  ("tpage-1338.go" "tpage-1338")
-  ("tpage-1340.go" "tpage-1340")
-  ("tpage-1339.go" "tpage-1339")
-  ("tpage-1337.go" "tpage-1337")
-  ("assistant-lavatube-start-ag.go" "assistant-lavatube-start")
-  ("chainmine-ag.go" "chainmine")
-  ("darkecobarrel-ag.go" "darkecobarrel")
-  ("ecovalve-ag.go" "ecovalve")
-  ("ef-plane-ag.go" "ef-plane")
-  ("energyarm-ag.go" "energyarm")
-  ("energyball-ag.go" "energyball")
-  ("energybase-ag.go" "energybase")
-  ("energydoor-ag.go" "energydoor")
-  ("energyhub-ag.go" "energyhub")
-  ("lavaballoon-ag.go" "lavaballoon")
-  ("lavabase-ag.go" "lavabase")
-  ("lavafall-ag.go" "lavafall")
-  ("lavafallsewera-ag.go" "lavafallsewera")
-  ("lavafallsewerb-ag.go" "lavafallsewerb")
-  ("lavashortcut-ag.go" "lavashortcut")
-  ("lavayellowtarp-ag.go" "lavayellowtarp")
-  ("racer-ag.go" "racer")
-  ("water-anim-lavatube-ag.go" "water-anim-lavatube")
-  ("lavatube-vis.go" "lavatube-vis")
-  )
+ ("target-racer-h.o"
+  "racer-part.o"
+  "racer.o"
+  "target-racer.o"
+  "racer-states.o"
+  "collide-reaction-racer.o"
+  "eichar-racer+0-ag.go"
+  "tpage-1119.go"
+  "blocking-plane.o"
+  "lavatube-obs.o"
+  "lavatube-energy.o"
+  "lavatube-part.o"
+  "assistant-lavatube.o"
+  "tpage-1338.go"
+  "tpage-1340.go"
+  "tpage-1339.go"
+  "tpage-1337.go"
+  "assistant-lavatube-start-ag.go"
+  "chainmine-ag.go"
+  "darkecobarrel-ag.go"
+  "ecovalve-ag.go"
+  "ef-plane-ag.go"
+  "energyarm-ag.go"
+  "energyball-ag.go"
+  "energybase-ag.go"
+  "energydoor-ag.go"
+  "energyhub-ag.go"
+  "lavaballoon-ag.go"
+  "lavabase-ag.go"
+  "lavafall-ag.go"
+  "lavafallsewera-ag.go"
+  "lavafallsewerb-ag.go"
+  "lavashortcut-ag.go"
+  "lavayellowtarp-ag.go"
+  "racer-ag.go"
+  "water-anim-lavatube-ag.go"
+  "lavatube-vis.go"
+ ))

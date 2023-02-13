@@ -51,21 +51,28 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
   DgoDescription desc;
   auto& first = dgo.as_pair()->car;
   desc.dgo_name = first.as_string()->data;
-  auto& dgo_rest = dgo.as_pair()->cdr;
+  auto& dgo_rest = dgo.as_pair()->cdr.as_pair()->car;
 
   for_each_in_list(dgo_rest, [&](const goos::Object& entry) {
-    goos::Arguments e_arg;
-    std::string err;
-    if (!goos::get_va(entry, &err, &e_arg)) {
-      throw std::runtime_error(fmt::format("Invalid DGO description: {}\n", err));
+    if (!entry.is_string()) {
+      throw std::runtime_error(fmt::format("Invalid file name for DGO: {}\n", entry.print()));
     }
 
-    if (!goos::va_check(e_arg, {goos::ObjectType::STRING, goos::ObjectType::STRING}, {}, &err)) {
-      throw std::runtime_error(fmt::format("Invalid DGO description: {}\n", err));
-    }
     DgoDescription::DgoEntry o;
-    o.file_name = e_arg.unnamed.at(0).as_string()->data;
-    o.name_in_dgo = e_arg.unnamed.at(1).as_string()->data;
+    const auto& file_name = entry.as_string()->data;
+    // automatically deduce dgo name
+    // (not really a fan of how this is written...)
+    if (file_name.length() > 2 && file_name.substr(file_name.length() - 2, 2) == ".o") {
+      // ends with .o so it's a code file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 2);
+    } else if (file_name.length() > 6 && file_name.substr(file_name.length() - 6, 6) == "-ag.go") {
+      // ends with -ag.go so it's an art group file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 6);
+    } else if (file_name.length() > 3 && file_name.substr(file_name.length() - 3, 3) == ".go") {
+      // ends with .go so it's a generic data file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 3);
+    }
+    o.file_name = file_name;
     desc.entries.push_back(o);
   });
   return desc;
