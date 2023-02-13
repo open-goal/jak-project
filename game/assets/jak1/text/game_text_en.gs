@@ -426,8 +426,8 @@
 (#x151f "NEW CATEGORY EXTENSION RUN"
         "NEW CATEGORY EXTENSION RUN")
 
-(#x1520 "NEW GAME+"
-        "NEW GAME+")
+(#x1520 "NG+"
+        "NG+")
 (#x1521 "HUB 1 100%"
         "HUB 1 100%")
 (#x1522 "HUB 2 100%"
