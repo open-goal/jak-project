@@ -1,28 +1,27 @@
-
 ("FIC.DGO"
-  ("target-racer-h.o" "target-racer-h")
-  ("racer-part.o" "racer-part")
-  ("racer.o" "racer")
-  ("target-racer.o" "target-racer")
-  ("racer-states.o" "racer-states")
-  ("collide-reaction-racer.o" "collide-reaction-racer")
-  ("eichar-racer+0-ag.go" "eichar-racer+0")
-  ("tpage-1119.go" "tpage-1119")
-  ("blocking-plane.o" "blocking-plane")
-  ("firecanyon-part.o" "firecanyon-part")
-  ("assistant-firecanyon.o" "assistant-firecanyon")
-  ("firecanyon-obs.o" "firecanyon-obs")
-  ("tpage-815.go" "tpage-815")
-  ("tpage-822.go" "tpage-822")
-  ("tpage-854.go" "tpage-854")
-  ("tpage-1123.go" "tpage-1123")
-  ("assistant-firecanyon-ag.go" "assistant-firecanyon")
-  ("babak-ag.go" "babak")
-  ("balloon-ag.go" "balloon")
-  ("crate-darkeco-cluster-ag.go" "crate-darkeco-cluster")
-  ("ecovalve-ag.go" "ecovalve")
-  ("ef-plane-ag.go" "ef-plane")
-  ("racer-ag.go" "racer")
-  ("spike-ag.go" "spike")
-  ("firecanyon-vis.go" "firecanyon-vis")
-  )
+ ("target-racer-h.o"
+  "racer-part.o"
+  "racer.o"
+  "target-racer.o"
+  "racer-states.o"
+  "collide-reaction-racer.o"
+  "eichar-racer+0-ag.go"
+  "tpage-1119.go"
+  "blocking-plane.o"
+  "firecanyon-part.o"
+  "assistant-firecanyon.o"
+  "firecanyon-obs.o"
+  "tpage-815.go"
+  "tpage-822.go"
+  "tpage-854.go"
+  "tpage-1123.go"
+  "assistant-firecanyon-ag.go"
+  "babak-ag.go"
+  "balloon-ag.go"
+  "crate-darkeco-cluster-ag.go"
+  "ecovalve-ag.go"
+  "ef-plane-ag.go"
+  "racer-ag.go"
+  "spike-ag.go"
+  "firecanyon-vis.go"
+ ))

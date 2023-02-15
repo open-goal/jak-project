@@ -1,19 +1,18 @@
-
 ("DAR.DGO"
-  ("darkcave-obs.o" "darkcave-obs")
-  ("tpage-1306.go" "tpage-1306")
-  ("tpage-1307.go" "tpage-1307")
-  ("tpage-1305.go" "tpage-1305")
-  ("tpage-1304.go" "tpage-1304")
-  ("tpage-1352.go" "tpage-1352")
-  ("baby-spider-ag.go" "baby-spider")
-  ("cavecrystal-ag.go" "cavecrystal")
-  ("caveelevator-ag.go" "caveelevator")
-  ("cavespatula-darkcave-ag.go" "cavespatula-darkcave")
-  ("cavetrapdoor-ag.go" "cavetrapdoor")
-  ("dark-crystal-ag.go" "dark-crystal")
-  ("mother-spider-ag.go" "mother-spider")
-  ("spider-egg-ag.go" "spider-egg")
-  ("water-anim-darkcave-ag.go" "water-anim-darkcave")
-  ("darkcave-vis.go" "darkcave-vis")
-  )
+ ("darkcave-obs.o"
+  "tpage-1306.go"
+  "tpage-1307.go"
+  "tpage-1305.go"
+  "tpage-1304.go"
+  "tpage-1352.go"
+  "baby-spider-ag.go"
+  "cavecrystal-ag.go"
+  "caveelevator-ag.go"
+  "cavespatula-darkcave-ag.go"
+  "cavetrapdoor-ag.go"
+  "dark-crystal-ag.go"
+  "mother-spider-ag.go"
+  "spider-egg-ag.go"
+  "water-anim-darkcave-ag.go"
+  "darkcave-vis.go"
+ ))

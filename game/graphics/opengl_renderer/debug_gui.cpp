@@ -99,6 +99,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
       ImGui::MenuItem("Small Profiler", nullptr, &small_profiler);
+      ImGui::MenuItem("Loader", nullptr, &m_draw_loader);
       ImGui::EndMenu();
     }
 

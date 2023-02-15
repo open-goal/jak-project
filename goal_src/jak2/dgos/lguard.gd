@@ -1,13 +1,13 @@
 ("LGUARD.DGO"
-  ("tpage-1753.go" "tpage-1753")
-  ("tpage-2883.go" "tpage-2883")
-  ("tpage-3272.go" "tpage-3272")
-  ("krew-highres-ag.go" "krew-highres")
-  ("sig-highres-ag.go" "sig-highres")
-  ("crimson-guard-highres-ag.go" "crimson-guard-highres")
-  ("gun-upgrade-a-ag.go" "gun-upgrade-a")
-  ("palmpilot-ag.go" "palmpilot")
-  ("hip-mug-ag.go" "hip-mug")
-  ("computerpaper-ag.go" "computerpaper")
-  ("lguard.go" "lguard")
-  )
+ ("tpage-1753.go"
+  "tpage-2883.go"
+  "tpage-3272.go"
+  "krew-highres-ag.go"
+  "sig-highres-ag.go"
+  "crimson-guard-highres-ag.go"
+  "gun-upgrade-a-ag.go"
+  "palmpilot-ag.go"
+  "hip-mug-ag.go"
+  "computerpaper-ag.go"
+  "lguard.go"
+ ))

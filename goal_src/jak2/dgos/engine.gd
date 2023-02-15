@@ -1,374 +1,374 @@
 ("ENGINE.CGO"
-  ("types-h.o" "types-h")
-  ("vu1-macros.o" "vu1-macros")
-  ("math.o" "math")
-  ("vector-h.o" "vector-h")
-  ("gravity-h.o" "gravity-h")
-  ("bounding-box-h.o" "bounding-box-h")
-  ("matrix-h.o" "matrix-h")
-  ("quaternion-h.o" "quaternion-h")
-  ("euler-h.o" "euler-h")
-  ("transform-h.o" "transform-h")
-  ("geometry-h.o" "geometry-h")
-  ("trigonometry-h.o" "trigonometry-h")
-  ("transformq-h.o" "transformq-h")
-  ("bounding-box.o" "bounding-box")
-  ("matrix.o" "matrix")
-  ("transform.o" "transform")
-  ("quaternion.o" "quaternion")
-  ("euler.o" "euler")
-  ("trigonometry.o" "trigonometry")
-  ("gsound-h.o" "gsound-h")
-  ("timer-h.o" "timer-h")
-  ("vif-h.o" "vif-h")
-  ("dma-h.o" "dma-h")
-  ("video-h.o" "video-h")
-  ("vu1-user-h.o" "vu1-user-h")
-  ("profile-h.o" "profile-h")
-  ("dma.o" "dma")
-  ("dma-buffer.o" "dma-buffer")
-  ("dma-bucket.o" "dma-bucket")
-  ("dma-disasm.o" "dma-disasm")
-  ("pad.o" "pad")
-  ("pckernel-h.o" "pckernel-h") ;; added
-  ("gs.o" "gs")
-  ("display-h.o" "display-h")
-  ("geometry.o" "geometry")
-  ("timer.o" "timer")
-  ("vector.o" "vector")
-  ("file-io.o" "file-io")
-  ("loader-h.o" "loader-h")
-  ("texture-h.o" "texture-h")
-  ("texture-anim-h.o" "texture-anim-h")
-  ("lights-h.o" "lights-h")
-  ("mood-h.o" "mood-h")
-  ("level-h.o" "level-h")
-  ("capture-h.o" "capture-h")
-  ("math-camera-h.o" "math-camera-h")
-  ("math-camera.o" "math-camera")
-  ("font-h.o" "font-h")
-  ("decomp-h.o" "decomp-h")
-  ("profile.o" "profile")
-  ("display.o" "display")
-  ("connect.o" "connect")
-  ("text-id-h.o" "text-id-h")
-  ("text-h.o" "text-h")
-  ("camera-defs-h.o" "camera-defs-h")
-  ("trail-h.o" "trail-h")
-  ("minimap-h.o" "minimap-h")
-  ("bigmap-h.o" "bigmap-h")
-  ("settings-h.o" "settings-h")
-  ("capture.o" "capture")
-  ("memory-usage-h.o" "memory-usage-h")
-  ("blit-displays-h.o" "blit-displays-h")
-  ("texture.o" "texture")
-  ("main-h.o" "main-h")
-  ("mspace-h.o" "mspace-h")
-  ("drawable-h.o" "drawable-h")
-  ("drawable-group-h.o" "drawable-group-h")
-  ("drawable-inline-array-h.o" "drawable-inline-array-h")
-  ("draw-node-h.o" "draw-node-h")
-  ("drawable-tree-h.o" "drawable-tree-h")
-  ("drawable-actor-h.o" "drawable-actor-h")
-  ("region-h.o" "region-h")
-  ("traffic-h.o" "traffic-h")
-  ("game-task-h.o" "game-task-h")
-  ("task-control-h.o" "task-control-h")
-  ("generic-h.o" "generic-h")
-  ("sky-h.o" "sky-h")
-  ("ocean-h.o" "ocean-h")
-  ("ocean-trans-tables.o" "ocean-trans-tables")
-  ("ocean-tables.o" "ocean-tables")
-  ("ocean-frames.o" "ocean-frames")
-  ("time-of-day-h.o" "time-of-day-h")
-  ("art-h.o" "art-h")
-  ("generic-vu1-h.o" "generic-vu1-h")
-  ("merc-h.o" "merc-h")
-  ("generic-merc-h.o" "generic-merc-h")
-  ("generic-tie-h.o" "generic-tie-h")
-  ("generic-work-h.o" "generic-work-h")
-  ("shadow-cpu-h.o" "shadow-cpu-h")
-  ("shadow-vu1-h.o" "shadow-vu1-h")
-  ("memcard-h.o" "memcard-h")
-  ("game-info-h.o" "game-info-h")
-  ("gui-h.o" "gui-h")
-  ("ambient-h.o" "ambient-h")
-  ("speech-h.o" "speech-h")
-  ("wind-h.o" "wind-h")
-  ("prototype-h.o" "prototype-h")
-  ("joint-h.o" "joint-h")
-  ("bones-h.o" "bones-h")
-  ("foreground-h.o" "foreground-h")
-  ("engines.o" "engines")
-  ("lightning-h.o" "lightning-h")
-  ("res-h.o" "res-h")
-  ("res.o" "res")
-  ("lights.o" "lights")
-  ("dynamics-h.o" "dynamics-h")
-  ("surface-h.o" "surface-h")
-  ("pat-h.o" "pat-h")
-  ("fact-h.o" "fact-h")
-  ("aligner-h.o" "aligner-h")
-  ("penetrate-h.o" "penetrate-h")
-  ("game-h.o" "game-h")
-  ("script-h.o" "script-h")
-  ("scene-h.o" "scene-h")
-  ("sync-info-h.o" "sync-info-h")
-  ("pov-camera-h.o" "pov-camera-h")
-  ("smush-control-h.o" "smush-control-h")
-  ("debug-h.o" "debug-h")
-  ("joint-mod-h.o" "joint-mod-h")
-  ("collide-func-h.o" "collide-func-h")
-  ("collide-mesh-h.o" "collide-mesh-h")
-  ("collide-shape-h.o" "collide-shape-h")
-  ("generic-obs-h.o" "generic-obs-h")
-  ("trajectory-h.o" "trajectory-h")
-  ("collide-target-h.o" "collide-target-h")
-  ("collide-touch-h.o" "collide-touch-h")
-  ("collide-edge-grab-h.o" "collide-edge-grab-h")
-  ("process-drawable-h.o" "process-drawable-h")
-  ("process-focusable.o" "process-focusable")
-  ("process-taskable-h.o" "process-taskable-h")
-  ("focus.o" "focus")
-  ("effect-control-h.o" "effect-control-h")
-  ("collide-frag-h.o" "collide-frag-h")
-  ("collide-hash-h.o" "collide-hash-h")
-  ("chain-physics-h.o" "chain-physics-h")
-  ("projectile-h.o" "projectile-h")
-  ("find-nearest-h.o" "find-nearest-h")
-  ("target-h.o" "target-h")
-  ("stats-h.o" "stats-h")
-  ("bsp-h.o" "bsp-h")
-  ("collide-cache-h.o" "collide-cache-h")
-  ("collide-h.o" "collide-h")
-  ("shrubbery-h.o" "shrubbery-h")
-  ("tie-h.o" "tie-h")
-  ("tfrag-h.o" "tfrag-h")
-  ("background-h.o" "background-h")
-  ("subdivide-h.o" "subdivide-h")
-  ("entity-h.o" "entity-h")
-  ("sprite-h.o" "sprite-h")
-  ("simple-sprite-h.o" "simple-sprite-h")
-  ("eye-h.o" "eye-h")
-  ("sparticle-launcher-h.o" "sparticle-launcher-h")
-  ("sparticle-h.o" "sparticle-h")
-  ("actor-link-h.o" "actor-link-h")
-  ("camera-h.o" "camera-h")
-  ("cam-debug-h.o" "cam-debug-h")
-  ("cam-interface-h.o" "cam-interface-h")
-  ("cam-update-h.o" "cam-update-h")
-  ("hud-h.o" "hud-h")
-  ("progress-h.o" "progress-h")
-  ("rpc-h.o" "rpc-h")
-  ("path-h.o" "path-h")
-  ("nav-mesh-h.o" "nav-mesh-h")
-  ("nav-control-h.o" "nav-control-h")
-  ("spatial-hash-h.o" "spatial-hash-h")
-  ("actor-hash-h.o" "actor-hash-h")
-  ("load-dgo.o" "load-dgo")
-  ("ramdisk.o" "ramdisk")
-  ("gsound.o" "gsound")
-  ("transformq.o" "transformq")
-  ("collide-func.o" "collide-func")
-  ("joint.o" "joint")
-  ("joint-mod.o" "joint-mod")
-  ("chain-physics.o" "chain-physics")
-  ("cylinder.o" "cylinder")
-  ("wind-work.o" "wind-work")
-  ("wind.o" "wind")
-  ("bsp.o" "bsp")
-  ("subdivide.o" "subdivide")
-  ("sprite.o" "sprite")
-  ("sprite-distort.o" "sprite-distort")
-  ("sprite-glow.o" "sprite-glow")
-  ("debug-sphere.o" "debug-sphere")
-  ("debug.o" "debug")
-  ("history.o" "history")
-  ("merc-vu1.o" "merc-vu1")
-  ("emerc-vu1.o" "emerc-vu1")
-  ("merc-blend-shape.o" "merc-blend-shape")
-  ("merc.o" "merc")
-  ("emerc.o" "emerc")
-  ("ripple.o" "ripple")
-  ("bones.o" "bones")
-  ("debug-foreground.o" "debug-foreground")
-  ("foreground.o" "foreground")
-  ("generic-vu0.o" "generic-vu0")
-  ("generic-vu1.o" "generic-vu1")
-  ("generic-effect.o" "generic-effect")
-  ("generic-merc.o" "generic-merc")
-  ("generic-tie.o" "generic-tie")
-  ("shadow-cpu.o" "shadow-cpu")
-  ("shadow-vu1.o" "shadow-vu1")
-  ("warp.o" "warp")
-  ("texture-anim.o" "texture-anim")
-  ("texture-anim-funcs.o" "texture-anim-funcs")
-  ("texture-anim-tables.o" "texture-anim-tables")
-  ("blit-displays.o" "blit-displays")
-  ("font-data.o" "font-data")
-  ("font.o" "font")
-  ("decomp.o" "decomp")
-  ("background.o" "background")
-  ("draw-node.o" "draw-node")
-  ("shrubbery.o" "shrubbery")
-  ("shrub-work.o" "shrub-work")
-  ("tfrag-near.o" "tfrag-near")
-  ("tfrag.o" "tfrag")
-  ("tfrag-methods.o" "tfrag-methods")
-  ("tfrag-work.o" "tfrag-work")
-  ("tie.o" "tie")
-  ("etie-vu1.o" "etie-vu1")
-  ("etie-near-vu1.o" "etie-near-vu1")
-  ("tie-near.o" "tie-near")
-  ("tie-work.o" "tie-work")
-  ("tie-methods.o" "tie-methods")
-  ("sync-info.o" "sync-info")
-  ("trajectory.o" "trajectory")
-  ("sparticle-launcher.o" "sparticle-launcher")
-  ("sparticle.o" "sparticle")
-  ("entity-table.o" "entity-table")
-  ("loader.o" "loader")
-  ("game-info.o" "game-info")
-  ("game-task.o" "game-task")
-  ("game-save.o" "game-save")
-  ("settings.o" "settings")
-  ("mood-tables.o" "mood-tables")
-  ("mood-tables2.o" "mood-tables2")
-  ("mood.o" "mood")
-  ("mood-funcs.o" "mood-funcs")
-  ("mood-funcs2.o" "mood-funcs2")
-  ("weather-part.o" "weather-part")
-  ("time-of-day.o" "time-of-day")
-  ("sky-data.o" "sky-data")
-  ("sky-tng.o" "sky-tng")
-  ("load-state.o" "load-state")
-  ("level-info.o" "level-info")
-  ("level.o" "level")
-  ("text.o" "text")
-  ("collide-hash.o" "collide-hash")
-  ("collide-probe.o" "collide-probe")
-  ("collide-frag.o" "collide-frag")
-  ("collide-mesh.o" "collide-mesh")
-  ("collide-touch.o" "collide-touch")
-  ("collide-edge-grab.o" "collide-edge-grab")
-  ("collide-shape.o" "collide-shape")
-  ("collide-shape-rider.o" "collide-shape-rider")
-  ("collide.o" "collide")
-  ;; ("collide-planes.o" "collide-planes")
-  ("spatial-hash.o" "spatial-hash")
-  ("actor-hash.o" "actor-hash")
-  ("merc-death.o" "merc-death")
-  ("water-flow.o" "water-flow")
-  ("water-h.o" "water-h")
-  ("camera.o" "camera")
-  ("cam-interface.o" "cam-interface")
-  ("cam-master.o" "cam-master")
-  ("cam-states.o" "cam-states")
-  ("cam-states-dbg.o" "cam-states-dbg")
-  ("cam-combiner.o" "cam-combiner")
-  ("cam-update.o" "cam-update")
-  ("vol-h.o" "vol-h")
-  ("cam-layout.o" "cam-layout")
-  ("cam-debug.o" "cam-debug")
-  ("cam-start.o" "cam-start")
-  ("process-drawable.o" "process-drawable")
-  ("ambient.o" "ambient")
-  ("speech.o" "speech")
-  ("region.o" "region")
-  ("fma-sphere.o" "fma-sphere")
-  ("script.o" "script")
-  ("generic-obs.o" "generic-obs")
-  ("lightning.o" "lightning")
-  ("carry-h.o" "carry-h")
-  ("pilot-h.o" "pilot-h")
-  ("gun-h.o" "gun-h")
-  ("board-h.o" "board-h")
-  ("darkjak-h.o" "darkjak-h")
-  ("target-util.o" "target-util")
-  ("target-part.o" "target-part")
-  ("gun-part.o" "gun-part")
-  ("collide-reaction-target.o" "collide-reaction-target")
-  ("logic-target.o" "logic-target")
-  ("sidekick.o" "sidekick")
-  ("effect-control.o" "effect-control")
-  ("voicebox.o" "voicebox")
-  ("collectables-part.o" "collectables-part")
-  ("debug-part.o" "debug-part")
-  ("find-nearest.o" "find-nearest")
-  ("task-arrow.o" "task-arrow")
-  ("projectile.o" "projectile")
-  ("target-handler.o" "target-handler")
-  ("target-anim.o" "target-anim")
-  ("target.o" "target")
-  ("target2.o" "target2")
-  ("target-swim.o" "target-swim")
-  ("target-carry.o" "target-carry")
-  ("target-darkjak.o" "target-darkjak")
-  ("target-death.o" "target-death")
-  ("target-gun.o" "target-gun")
-  ("gun-util.o" "gun-util")
-  ("gun-blue-shot.o" "gun-blue-shot")
-  ("gun-yellow-shot.o" "gun-yellow-shot")
-  ("gun-red-shot.o" "gun-red-shot")
-  ("gun-dark-shot.o" "gun-dark-shot")
-  ("gun-states.o" "gun-states")
-  ("board-util.o" "board-util")
-  ("target-board.o" "target-board")
-  ("board-part.o" "board-part")
-  ("board-states.o" "board-states")
-  ("mech-h.o" "mech-h")
-  ("menu.o" "menu")
-  ("drawable.o" "drawable")
-  ("drawable-group.o" "drawable-group")
-  ("drawable-inline-array.o" "drawable-inline-array")
-  ("drawable-tree.o" "drawable-tree")
-  ("prototype.o" "prototype")
-  ("main-collide.o" "main-collide")
-  ("video.o" "video")
-  ("pckernel.o" "pckernel") ;; added
-  ("main.o" "main")
-  ("collide-cache.o" "collide-cache")
-  ("collide-debug.o" "collide-debug")
-  ("relocate.o" "relocate")
-  ("memory-usage.o" "memory-usage")
-  ("entity.o" "entity")
-  ("path.o" "path")
-  ("vol.o" "vol")
-  ("nav-mesh.o" "nav-mesh")
-  ("nav-control.o" "nav-control")
-  ("aligner.o" "aligner")
-  ("water.o" "water")
-  ("collectables.o" "collectables")
-  ("task-control.o" "task-control")
-  ("scene.o" "scene")
-  ("pov-camera.o" "pov-camera")
-  ("powerups.o" "powerups")
-  ("crates.o" "crates")
-  ("hud.o" "hud")
-  ("hud-classes.o" "hud-classes")
-  ("progress-static.o" "progress-static")
-  ("progress.o" "progress")
-  ("progress-draw.o" "progress-draw")
-  ("ocean.o" "ocean")
-  ("ocean-vu0.o" "ocean-vu0")
-  ("ocean-texture.o" "ocean-texture")
-  ("ocean-mid.o" "ocean-mid")
-  ("ocean-transition.o" "ocean-transition")
-  ("ocean-near.o" "ocean-near")
-  ("minimap.o" "minimap")
-  ("bigmap-data.o" "bigmap-data")
-  ("bigmap.o" "bigmap")
-  ("eye.o" "eye")
-  ("glist-h.o" "glist-h")
-  ("glist.o" "glist")
-  ("anim-tester.o" "anim-tester")
-  ("viewer.o" "viewer")
-  ("part-tester.o" "part-tester")
-  ("editable-h.o" "editable-h")
-  ("editable.o" "editable")
-  ("editable-player.o" "editable-player")
-  ("mysql-nav-graph.o" "mysql-nav-graph")
-  ("nav-graph-editor.o" "nav-graph-editor")
-  ("sampler.o" "sampler")
-  ("default-menu.o" "default-menu")
-  )
+ ("types-h.o"
+  "vu1-macros.o"
+  "math.o"
+  "vector-h.o"
+  "gravity-h.o"
+  "bounding-box-h.o"
+  "matrix-h.o"
+  "quaternion-h.o"
+  "euler-h.o"
+  "transform-h.o"
+  "geometry-h.o"
+  "trigonometry-h.o"
+  "transformq-h.o"
+  "bounding-box.o"
+  "matrix.o"
+  "transform.o"
+  "quaternion.o"
+  "euler.o"
+  "trigonometry.o"
+  "gsound-h.o"
+  "timer-h.o"
+  "vif-h.o"
+  "dma-h.o"
+  "video-h.o"
+  "vu1-user-h.o"
+  "profile-h.o"
+  "dma.o"
+  "dma-buffer.o"
+  "dma-bucket.o"
+  "dma-disasm.o"
+  "pad.o"
+  "pckernel-h.o" ;; added
+  "gs.o"
+  "display-h.o"
+  "geometry.o"
+  "timer.o"
+  "vector.o"
+  "file-io.o"
+  "loader-h.o"
+  "texture-h.o"
+  "texture-anim-h.o"
+  "lights-h.o"
+  "mood-h.o"
+  "level-h.o"
+  "capture-h.o"
+  "math-camera-h.o"
+  "math-camera.o"
+  "font-h.o"
+  "decomp-h.o"
+  "profile.o"
+  "display.o"
+  "connect.o"
+  "text-id-h.o"
+  "text-h.o"
+  "camera-defs-h.o"
+  "trail-h.o"
+  "minimap-h.o"
+  "bigmap-h.o"
+  "settings-h.o"
+  "capture.o"
+  "memory-usage-h.o"
+  "blit-displays-h.o"
+  "texture.o"
+  "main-h.o"
+  "mspace-h.o"
+  "drawable-h.o"
+  "drawable-group-h.o"
+  "drawable-inline-array-h.o"
+  "draw-node-h.o"
+  "drawable-tree-h.o"
+  "drawable-actor-h.o"
+  "region-h.o"
+  "traffic-h.o"
+  "game-task-h.o"
+  "task-control-h.o"
+  "generic-h.o"
+  "sky-h.o"
+  "ocean-h.o"
+  "ocean-trans-tables.o"
+  "ocean-tables.o"
+  "ocean-frames.o"
+  "time-of-day-h.o"
+  "art-h.o"
+  "generic-vu1-h.o"
+  "merc-h.o"
+  "generic-merc-h.o"
+  "generic-tie-h.o"
+  "generic-work-h.o"
+  "shadow-cpu-h.o"
+  "shadow-vu1-h.o"
+  "memcard-h.o"
+  "game-info-h.o"
+  "gui-h.o"
+  "ambient-h.o"
+  "speech-h.o"
+  "wind-h.o"
+  "prototype-h.o"
+  "joint-h.o"
+  "bones-h.o"
+  "foreground-h.o"
+  "engines.o"
+  "lightning-h.o"
+  "res-h.o"
+  "res.o"
+  "lights.o"
+  "dynamics-h.o"
+  "surface-h.o"
+  "pat-h.o"
+  "fact-h.o"
+  "aligner-h.o"
+  "penetrate-h.o"
+  "game-h.o"
+  "script-h.o"
+  "scene-h.o"
+  "sync-info-h.o"
+  "pov-camera-h.o"
+  "smush-control-h.o"
+  "debug-h.o"
+  "joint-mod-h.o"
+  "collide-func-h.o"
+  "collide-mesh-h.o"
+  "collide-shape-h.o"
+  "generic-obs-h.o"
+  "trajectory-h.o"
+  "collide-target-h.o"
+  "collide-touch-h.o"
+  "collide-edge-grab-h.o"
+  "process-drawable-h.o"
+  "process-focusable.o"
+  "process-taskable-h.o"
+  "focus.o"
+  "effect-control-h.o"
+  "collide-frag-h.o"
+  "collide-hash-h.o"
+  "chain-physics-h.o"
+  "projectile-h.o"
+  "find-nearest-h.o"
+  "target-h.o"
+  "stats-h.o"
+  "bsp-h.o"
+  "collide-cache-h.o"
+  "collide-h.o"
+  "shrubbery-h.o"
+  "tie-h.o"
+  "tfrag-h.o"
+  "background-h.o"
+  "subdivide-h.o"
+  "entity-h.o"
+  "sprite-h.o"
+  "simple-sprite-h.o"
+  "eye-h.o"
+  "sparticle-launcher-h.o"
+  "sparticle-h.o"
+  "actor-link-h.o"
+  "camera-h.o"
+  "cam-debug-h.o"
+  "cam-interface-h.o"
+  "cam-update-h.o"
+  "hud-h.o"
+  "progress-h.o"
+  "rpc-h.o"
+  "path-h.o"
+  "nav-mesh-h.o"
+  "nav-control-h.o"
+  "spatial-hash-h.o"
+  "actor-hash-h.o"
+  "load-dgo.o"
+  "ramdisk.o"
+  "gsound.o"
+  "transformq.o"
+  "collide-func.o"
+  "joint.o"
+  "joint-mod.o"
+  "chain-physics.o"
+  "cylinder.o"
+  "wind-work.o"
+  "wind.o"
+  "bsp.o"
+  "subdivide.o"
+  "sprite.o"
+  "sprite-distort.o"
+  "sprite-glow.o"
+  "debug-sphere.o"
+  "debug.o"
+  "history.o"
+  "merc-vu1.o"
+  "emerc-vu1.o"
+  "merc-blend-shape.o"
+  "merc.o"
+  "emerc.o"
+  "ripple.o"
+  "bones.o"
+  "debug-foreground.o"
+  "foreground.o"
+  "generic-vu0.o"
+  "generic-vu1.o"
+  "generic-effect.o"
+  "generic-merc.o"
+  "generic-tie.o"
+  "shadow-cpu.o"
+  "shadow-vu1.o"
+  "warp.o"
+  "texture-anim.o"
+  "texture-anim-funcs.o"
+  "texture-anim-tables.o"
+  "blit-displays.o"
+  "font-data.o"
+  "font.o"
+  "decomp.o"
+  "background.o"
+  "draw-node.o"
+  "shrubbery.o"
+  "shrub-work.o"
+  "tfrag-near.o"
+  "tfrag.o"
+  "tfrag-methods.o"
+  "tfrag-work.o"
+  "tie.o"
+  "etie-vu1.o"
+  "etie-near-vu1.o"
+  "tie-near.o"
+  "tie-work.o"
+  "tie-methods.o"
+  "sync-info.o"
+  "trajectory.o"
+  "sparticle-launcher.o"
+  "sparticle.o"
+  "entity-table.o"
+  "loader.o"
+  "game-info.o"
+  "game-task.o"
+  "game-save.o"
+  "settings.o"
+  "mood-tables.o"
+  "mood-tables2.o"
+  "mood.o"
+  "mood-funcs.o"
+  "mood-funcs2.o"
+  "weather-part.o"
+  "time-of-day.o"
+  "sky-data.o"
+  "sky-tng.o"
+  "load-state.o"
+  "level-info.o"
+  "level.o"
+  "text.o"
+  "collide-hash.o"
+  "collide-probe.o"
+  "collide-frag.o"
+  "collide-mesh.o"
+  "collide-touch.o"
+  "collide-edge-grab.o"
+  "collide-shape.o"
+  "collide-shape-rider.o"
+  "collide.o"
+  ;;  "collide-planes.o"
+  "spatial-hash.o"
+  "actor-hash.o"
+  "merc-death.o"
+  "water-flow.o"
+  "water-h.o"
+  "camera.o"
+  "cam-interface.o"
+  "cam-master.o"
+  "cam-states.o"
+  "cam-states-dbg.o"
+  "cam-combiner.o"
+  "cam-update.o"
+  "vol-h.o"
+  "cam-layout.o"
+  "cam-debug.o"
+  "cam-start.o"
+  "process-drawable.o"
+  "ambient.o"
+  "speech.o"
+  "region.o"
+  "fma-sphere.o"
+  "script.o"
+  "generic-obs.o"
+  "lightning.o"
+  "carry-h.o"
+  "pilot-h.o"
+  "gun-h.o"
+  "board-h.o"
+  "darkjak-h.o"
+  "target-util.o"
+  "target-part.o"
+  "gun-part.o"
+  "collide-reaction-target.o"
+  "logic-target.o"
+  "sidekick.o"
+  "effect-control.o"
+  "voicebox.o"
+  "collectables-part.o"
+  "debug-part.o"
+  "find-nearest.o"
+  "task-arrow.o"
+  "projectile.o"
+  "target-handler.o"
+  "target-anim.o"
+  "target.o"
+  "target2.o"
+  "target-swim.o"
+  "target-carry.o"
+  "target-darkjak.o"
+  "target-death.o"
+  "target-gun.o"
+  "gun-util.o"
+  "gun-blue-shot.o"
+  "gun-yellow-shot.o"
+  "gun-red-shot.o"
+  "gun-dark-shot.o"
+  "gun-states.o"
+  "board-util.o"
+  "target-board.o"
+  "board-part.o"
+  "board-states.o"
+  "mech-h.o"
+  "menu.o"
+  "drawable.o"
+  "drawable-group.o"
+  "drawable-inline-array.o"
+  "drawable-tree.o"
+  "prototype.o"
+  "main-collide.o"
+  "video.o"
+  "pckernel.o" ;; added
+  "main.o"
+  "collide-cache.o"
+  "collide-debug.o"
+  "relocate.o"
+  "memory-usage.o"
+  "entity.o"
+  "path.o"
+  "vol.o"
+  "nav-mesh.o"
+  "nav-control.o"
+  "aligner.o"
+  "water.o"
+  "collectables.o"
+  "task-control.o"
+  "scene.o"
+  "pov-camera.o"
+  "powerups.o"
+  "crates.o"
+  "hud.o"
+  "hud-classes.o"
+  "progress-static.o"
+  "progress.o"
+  "progress-draw.o"
+  "ocean.o"
+  "ocean-vu0.o"
+  "ocean-texture.o"
+  "ocean-mid.o"
+  "ocean-transition.o"
+  "ocean-near.o"
+  "minimap.o"
+  "bigmap-data.o"
+  "bigmap.o"
+  "eye.o"
+  "glist-h.o"
+  "glist.o"
+  "anim-tester.o"
+  "viewer.o"
+  "part-tester.o"
+  "editable-h.o"
+  "editable.o"
+  "editable-player.o"
+  "mysql-nav-graph.o"
+  "nav-graph-editor.o"
+  "sampler.o"
+  "default-menu.o"
+ ))

@@ -1,14 +1,14 @@
 ("LWHACK.DGO"
-  ("daxter-mole+0-ag.go" "daxter-mole+0")
-  ("tess-lwhack+0-ag.go" "tess-lwhack+0")
-  ("whack.o" "whack")
-  ("tpage-2889.go" "tpage-2889")
-  ("tpage-3256.go" "tpage-3256")
-  ("tess-highres-ag.go" "tess-highres")
-  ("time-map-ag.go" "time-map")
-  ("grunt-fma-ag.go" "grunt-fma")
-  ("hip-mole-ag.go" "hip-mole")
-  ("big-bopper-ag.go" "big-bopper")
-  ("particleman-ag.go" "particleman")
-  ("lwhack.go" "lwhack")
-  )
+ ("daxter-mole+0-ag.go"
+  "tess-lwhack+0-ag.go"
+  "whack.o"
+  "tpage-2889.go"
+  "tpage-3256.go"
+  "tess-highres-ag.go"
+  "time-map-ag.go"
+  "grunt-fma-ag.go"
+  "hip-mole-ag.go"
+  "big-bopper-ag.go"
+  "particleman-ag.go"
+  "lwhack.go"
+ ))

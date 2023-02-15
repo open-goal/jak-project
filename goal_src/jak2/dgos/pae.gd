@@ -1,24 +1,24 @@
 ("PAE.DGO"
-  ("jak-pole+0-ag.go" "jak-pole+0")
-  ("crimson-guard-level.o" "crimson-guard-level")
-  ("guard-conversation.o" "guard-conversation")
-  ("transport-level.o" "transport-level")
-  ("sew-gunturret.o" "sew-gunturret")
-  ("palent-part.o" "palent-part")
-  ("pal-obs.o" "pal-obs")
-  ("tpage-3169.go" "tpage-3169")
-  ("tpage-3171.go" "tpage-3171")
-  ("tpage-3170.go" "tpage-3170")
-  ("tpage-3168.go" "tpage-3168")
-  ("crimson-guard-ag.go" "crimson-guard")
-  ("palent-turret-ag.go" "palent-turret")
-  ("pal-breakable-window-ag.go" "pal-breakable-window")
-  ("com-airlock-outer-ag.go" "com-airlock-outer")
-  ("pal-grind-ring-ag.go" "pal-grind-ring")
-  ("pal-grind-ring-center-ag.go" "pal-grind-ring-center")
-  ("pal-throne-door-ag.go" "pal-throne-door")
-  ("pal-falling-plat-ag.go" "pal-falling-plat")
-  ("pal-ent-door-ag.go" "pal-ent-door")
-  ("pal-ent-glass-ag.go" "pal-ent-glass")
-  ("palent-vis.go" "palent-vis")
-  )
+ ("jak-pole+0-ag.go"
+  "crimson-guard-level.o"
+  "guard-conversation.o"
+  "transport-level.o"
+  "sew-gunturret.o"
+  "palent-part.o"
+  "pal-obs.o"
+  "tpage-3169.go"
+  "tpage-3171.go"
+  "tpage-3170.go"
+  "tpage-3168.go"
+  "crimson-guard-ag.go"
+  "palent-turret-ag.go"
+  "pal-breakable-window-ag.go"
+  "com-airlock-outer-ag.go"
+  "pal-grind-ring-ag.go"
+  "pal-grind-ring-center-ag.go"
+  "pal-throne-door-ag.go"
+  "pal-falling-plat-ag.go"
+  "pal-ent-door-ag.go"
+  "pal-ent-glass-ag.go"
+  "palent-vis.go"
+ ))
