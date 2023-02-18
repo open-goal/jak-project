@@ -1,20 +1,20 @@
 ("STADBLMP.DGO"
-  ("tpage-2956.go" "tpage-2956")
-  ("tpage-2957.go" "tpage-2957")
-  ("tpage-2958.go" "tpage-2958")
-  ("tpage-3280.go" "tpage-3280")
-  ("tpage-3457.go" "tpage-3457")
-  ("tpage-3418.go" "tpage-3418")
-  ("youngsamos-highres-ag.go" "youngsamos-highres")
-  ("brutter-highres-ag.go" "brutter-highres")
-  ("grunt-ag.go" "grunt")
-  ("samos-highres-ag.go" "samos-highres")
-  ("samos-ag.go" "samos")
-  ("keira-ag.go" "keira")
-  ("brutter-balloon-ag.go" "brutter-balloon")
-  ("babak-ag.go" "babak")
-  ("flitter-ag.go" "flitter")
-  ("hopper-ag.go" "hopper")
-  ("brutter-low-ag.go" "brutter-low")
-  ("stadblmp.go" "stadblmp")
-  )
+ ("tpage-2956.go"
+  "tpage-2957.go"
+  "tpage-2958.go"
+  "tpage-3280.go"
+  "tpage-3457.go"
+  "tpage-3418.go"
+  "youngsamos-highres-ag.go"
+  "brutter-highres-ag.go"
+  "grunt-ag.go"
+  "samos-highres-ag.go"
+  "samos-ag.go"
+  "keira-ag.go"
+  "brutter-balloon-ag.go"
+  "babak-ag.go"
+  "flitter-ag.go"
+  "hopper-ag.go"
+  "brutter-low-ag.go"
+  "stadblmp.go"
+ ))
