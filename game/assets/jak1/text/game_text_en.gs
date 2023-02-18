@@ -434,6 +434,8 @@
         "HUB 2 100%")
 (#x1523 "HUB 3 100%"
         "HUB 3 100%")
+(#x1524 "ALL CUTSCENES"
+        "ALL CUTSCENES")
 
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
