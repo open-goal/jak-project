@@ -44837,38 +44837,36 @@
 ;; palcab-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pal-fan-ring (structure)
-  ((lightning      basic  :offset-assert 0)
+  ((lightning      lightning-control :offset-assert 0)
    (radius         float  :offset-assert 4)
    (dist           float  :offset-assert 8)
    (local-z-rotate float  :offset-assert 12)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype pal-fan-pole (structure)
-  ((rings    UNKNOWN 6 :offset-assert 0)
-   (z-rotate float     :offset-assert 96)
+  ((rings    pal-fan-ring 6 :inline :offset-assert 0)
+   (z-rotate float          :offset 96)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype pal-electric-fan (process-drawable)
-  ((poles              UNKNOWN 3 :offset-assert 196)
-   (no-collision-timer uint64    :offset-assert 532)
-   (sound-timer        uint64    :offset-assert 540)
-   (rotate-speed       float     :offset-assert 548)
-   (attack-id          uint32    :offset-assert 552)
-   (sound-id           uint32    :offset-assert 556)
+  ((root-override      collide-shape-moving :offset 128 :score 1)
+   (poles              pal-fan-pole 3 :inline :offset-assert 200)
+   (no-collision-timer time-frame :offset 536)
+   (sound-timer        time-frame :offset-assert 544)
+   (rotate-speed       float      :offset-assert 552)
+   (attack-id          uint32     :offset-assert 556)
+   (sound-id           sound-id   :offset-assert 560)
    )
   :method-count-assert 21
   :size-assert         #x234
@@ -44877,15 +44875,14 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype pal-cable-nut (process-drawable)
-  ((sync              sync-linear :inline :offset-assert 196)
-   (init-quat         quaternion  :inline :offset-assert 220)
-   (sound-played?     UNKNOWN     2       :offset-assert 236)
-   (hold-percentage   float               :offset-assert 244)
-   (wiggle-percentage float               :offset-assert 248)
+  ((root-override     collide-shape-moving :offset 128 :score 1)
+   (sync              sync-linear :inline :offset-assert 200)
+   (init-quat         quaternion  :inline :offset-assert 224)
+   (sound-played?     symbol      2       :offset-assert 240)
+   (hold-percentage   float               :offset-assert 248)
+   (wiggle-percentage float               :offset-assert 252)
    )
   :method-count-assert 21
   :size-assert         #x100
@@ -44894,9 +44891,7 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype pal-rot-gun-shot (guard-shot)
   ()
   :method-count-assert 40
@@ -44905,18 +44900,16 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype pal-rot-gun (process-drawable)
-  ((init-quat       quaternion :inline :offset-assert 204)
-   (fire-timer      uint64             :offset-assert 220)
-   (gun-index       int32              :offset-assert 228)
-   (spin-rate       float              :offset-assert 232)
-   (spin-rate-final float              :offset-assert 236)
-   (sound-id        uint32             :offset-assert 240)
-   (shot-sound-id   uint32             :offset-assert 244)
-   (prev-z-rot      float              :offset-assert 248)
+  ((init-quat       quaternion :inline :offset-assert 208)
+   (fire-timer      time-frame         :offset-assert 224)
+   (gun-index       int32              :offset-assert 232)
+   (spin-rate       float              :offset-assert 236)
+   (spin-rate-final float              :offset-assert 240)
+   (sound-id        sound-id           :offset-assert 244)
+   (shot-sound-id   sound-id           :offset-assert 248)
+   (prev-z-rot      float              :offset-assert 252)
    )
   :method-count-assert 24
   :size-assert         #x100
@@ -44925,12 +44918,10 @@
     (idle () _type_ :state 20)
     (spin () _type_ :state 21)
     (spin-down () _type_ :state 22)
-    (pal-rot-gun-method-23 () none 23)
+    (pal-rot-gun-method-23 (_type_ matrix) none 23)
     )
   )
-|#
 
-#|
 (deftype pal-windmill (process-drawable)
   ()
   :method-count-assert 21
@@ -44940,11 +44931,9 @@
     (idle () _type_ :state 20)
     )
   )
-|#
 
-#|
 (deftype pal-flip-step (process-drawable)
-  ((task-node basic  :offset-assert 196)
+  ((task-node game-task-node-info :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xcc
@@ -44955,9 +44944,8 @@
     (fallen () _type_ :state 22)
     )
   )
-|#
 
-;; (define-extern pal-rot-gun-shot-move function)
+(define-extern pal-rot-gun-shot-move (function pal-rot-gun-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; searchlight                    ;;
