@@ -52,7 +52,8 @@ void VisDataHandler::render(DmaFollower& dma,
 
   for (int i = 0; i < render_state->num_vis_to_copy; i++) {
     auto vis_data = dma.read_and_advance();
-    ASSERT(vis_data.vif0() == 0);
+    u32 vif0 = vis_data.vif0();
+    memcpy(render_state->fog_color.data(), &vif0, 4);
     if (vis_data.vifcode1().kind != VifCode::Kind::PC_PORT) {
       break;
     }
@@ -75,8 +76,7 @@ void VisDataHandler::render(DmaFollower& dma,
   }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto x = dma.read_and_advance();
-    fmt::print("{} {}\n", x.vifcode0().print(), x.vifcode1().print());
+    dma.read_and_advance();
     ASSERT(false);
   }
 }

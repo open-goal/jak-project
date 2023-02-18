@@ -1011,6 +1011,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
 
   // TODO ending data.
 }
+
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */
