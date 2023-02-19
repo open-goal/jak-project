@@ -1,54 +1,53 @@
-
 ("SNO.DGO"
-  ("blocking-plane.o" "blocking-plane")
-  ;; ("flut-part.o" "flut-part")
-  ;; ("flutflut.o" "flutflut")
-  ;; ("target-flut.o" "target-flut")
-  ("eichar-flut+0-ag.go" "eichar-flut+0")
-  ("target-snowball.o" "target-snowball")
-  ("target-ice.o" "target-ice")
-  ("ice-cube.o" "ice-cube")
-  ("snow-ball.o" "snow-ball")
-  ("snow-obs.o" "snow-obs")
-  ("snow-flutflut-obs.o" "snow-flutflut-obs")
-  ("snow-bumper.o" "snow-bumper")
-  ("snow-ram-h.o" "snow-ram-h")
-  ("snow-ram-boss.o" "snow-ram-boss")
-  ("snow-ram.o" "snow-ram")
-  ("snow-part.o" "snow-part")
-  ("yeti.o" "yeti")
-  ("eichar-pole+0-ag.go" "eichar-pole+0")
-  ("eichar-ice+0-ag.go" "eichar-ice+0")
-  ("snow-bunny.o" "snow-bunny")
-  ("tpage-710.go" "tpage-710")
-  ("tpage-842.go" "tpage-842")
-  ("tpage-711.go" "tpage-711")
-  ("tpage-712.go" "tpage-712")
-  ("babak-ag.go" "babak")
-  ("ecovalve-ag.go" "ecovalve")
-  ("ef-plane-ag.go" "ef-plane")
-  ("flut-saddle-ag.go" "flut-saddle")
-  ("flutflut-plat-large-ag.go" "flutflut-plat-large")
-  ("flutflut-plat-med-ag.go" "flutflut-plat-med")
-  ("flutflut-plat-small-ag.go" "flutflut-plat-small")
-  ("ice-cube-ag.go" "ice-cube")
-  ("ice-cube-break-ag.go" "ice-cube-break")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("ram-ag.go" "ram")
-  ("ram-boss-ag.go" "ram-boss")
-  ("snow-ball-ag.go" "snow-ball")
-  ("snow-bridge-36-ag.go" "snow-bridge-36")
-  ("snow-bumper-ag.go" "snow-bumper")
-  ("snow-bunny-ag.go" "snow-bunny")
-  ("snow-button-ag.go" "snow-button")
-  ("snow-eggtop-ag.go" "snow-eggtop")
-  ("snow-fort-gate-ag.go" "snow-fort-gate")
-  ("snow-gears-ag.go" "snow-gears")
-  ("snow-log-ag.go" "snow-log")
-  ("snow-spatula-ag.go" "snow-spatula")
-  ("snow-switch-ag.go" "snow-switch")
-  ("snowcam-ag.go" "snowcam")
-  ("snowpusher-ag.go" "snowpusher")
-  ("yeti-ag.go" "yeti")
-  ("snow-vis.go" "snow-vis")
-  )
+ ("blocking-plane.o"
+  ;; "flut-part.o"
+  ;; "flutflut.o"
+  ;; "target-flut.o"
+  "eichar-flut+0-ag.go"
+  "target-snowball.o"
+  "target-ice.o"
+  "ice-cube.o"
+  "snow-ball.o"
+  "snow-obs.o"
+  "snow-flutflut-obs.o"
+  "snow-bumper.o"
+  "snow-ram-h.o"
+  "snow-ram-boss.o"
+  "snow-ram.o"
+  "snow-part.o"
+  "yeti.o"
+  "eichar-pole+0-ag.go"
+  "eichar-ice+0-ag.go"
+  "snow-bunny.o"
+  "tpage-710.go"
+  "tpage-842.go"
+  "tpage-711.go"
+  "tpage-712.go"
+  "babak-ag.go"
+  "ecovalve-ag.go"
+  "ef-plane-ag.go"
+  "flut-saddle-ag.go"
+  "flutflut-plat-large-ag.go"
+  "flutflut-plat-med-ag.go"
+  "flutflut-plat-small-ag.go"
+  "ice-cube-ag.go"
+  "ice-cube-break-ag.go"
+  "orb-cache-top-ag.go"
+  "ram-ag.go"
+  "ram-boss-ag.go"
+  "snow-ball-ag.go"
+  "snow-bridge-36-ag.go"
+  "snow-bumper-ag.go"
+  "snow-bunny-ag.go"
+  "snow-button-ag.go"
+  "snow-eggtop-ag.go"
+  "snow-fort-gate-ag.go"
+  "snow-gears-ag.go"
+  "snow-log-ag.go"
+  "snow-spatula-ag.go"
+  "snow-switch-ag.go"
+  "snowcam-ag.go"
+  "snowpusher-ag.go"
+  "yeti-ag.go"
+  "snow-vis.go"
+ ))

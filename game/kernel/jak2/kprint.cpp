@@ -515,6 +515,7 @@ s32 format_impl_jak2(uint64_t* args) {
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
+          MsgErr("input was %s\n", format_cstring);
           ASSERT(false);
           break;
       }

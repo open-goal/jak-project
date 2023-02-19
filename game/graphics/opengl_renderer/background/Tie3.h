@@ -9,6 +9,16 @@
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/pipelines/opengl.h"
 
+struct TieProtoVisibility {
+  void init(const std::vector<std::string>& names);
+  void update(const u8* data, size_t size);
+
+  std::vector<u8> vis_flags;
+  std::unordered_map<std::string, std::vector<u32>> name_to_idx;
+
+  bool all_visible = true;
+};
+
 class Tie3 : public BucketRenderer {
  public:
   Tie3(const std::string& name, int my_id, int level_id);
@@ -19,12 +29,16 @@ class Tie3 : public BucketRenderer {
   void render_all_trees(int geom,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
-                        ScopedProfilerNode& prof);
+                        ScopedProfilerNode& prof,
+                        const u8* proto_vis_data,
+                        size_t proto_vis_data_size);
   void render_tree(int idx,
                    int geom,
                    const TfragRenderSettings& settings,
                    SharedRenderState* render_state,
-                   ScopedProfilerNode& prof);
+                   ScopedProfilerNode& prof,
+                   const u8* proto_vis_data,
+                   size_t proto_vis_data_size);
   bool setup_for_level(const std::string& str, SharedRenderState* render_state);
 
   struct WindWork {
@@ -70,12 +84,16 @@ class Tie3 : public BucketRenderer {
     GLuint wind_vertex_index_buffer;
     std::vector<u32> wind_vertex_index_offsets;
 
+    bool has_proto_visibility = false;
+    TieProtoVisibility proto_visibility;
+
     struct {
       u32 draws = 0;
       u32 wind_draws = 0;
       Filtered<float> cull_time;
       Filtered<float> index_time;
       Filtered<float> tod_time;
+      Filtered<float> proto_vis_time;
       Filtered<float> setup_time;
       Filtered<float> draw_time;
       Filtered<float> tree_time;

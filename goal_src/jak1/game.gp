@@ -1984,6 +1984,7 @@
  "debug/anim-tester.gc"
  "debug/viewer.gc"
  "debug/part-tester.gc"
+ "debug/default-menu.gc"
 
  "gfx/texture/texture-upload.gc"
  "common-obs/rigid-body-h.gc"
@@ -2041,15 +2042,18 @@
 
 ;; Custom or Modified Code
 (goal-src "pc/features/autosplit-h.gc")
-(goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h")
+(goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h" "progress-static")
 (goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
 (goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
-(goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
+
+(goal-src "pc/debug/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+(goal-src "pc/debug/entity-debug.gc" "debug" "main-h" "entity" "pckernel" "font")
+(goal-src "pc/debug/default-menu-pc.gc" "anim-tester-x" "part-tester" "entity-debug")
 
 (goal-src-sequence
  ;; prefix
@@ -2059,9 +2063,6 @@
  "mods/define-custom-functions-here.gc"
  "mods/put-custom-code-here.gc"
 )
-
-;; the debug menu is modified to include PC specific options:
-(goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))
