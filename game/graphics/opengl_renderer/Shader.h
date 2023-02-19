@@ -48,6 +48,7 @@ enum class ShaderId {
   POST_PROCESSING = 22,
   DEPTH_CUE = 23,
   EMERC = 24,
+  GLOW_PROBE = 25,
   MAX_SHADERS
 };
 

@@ -112,7 +112,9 @@ This basically just copies the inner square from draw 2 to a separate texture.
 ## Draw 4: Repeat draw
 This appears to draw over itself again and again. I think it effectively blends using texture filtering. So the 0, 0 px will have the average value of alpha.
 
-## Draw
+## Draw 5: flare alpha
+This is set up in the `repeat-draw-adcmds`. Drawing to the framebuffer again.
+
 
 
 

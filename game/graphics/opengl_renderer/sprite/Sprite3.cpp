@@ -408,8 +408,7 @@ void Sprite3::render_jak2(DmaFollower& dma,
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBlendEquation(GL_FUNC_ADD);
 
-  // TODO finish this up.
-  glow(dma, render_state, prof);
+  glow_dma_and_draw(dma, render_state, prof);
 
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   fmt::print("DMA START------------\n");

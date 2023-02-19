@@ -18,9 +18,6 @@ struct SpriteGlowData {
 };
 static_assert(sizeof(SpriteGlowData) == 16 * 4);
 
-// 980: consts
-// 800:
-
 /*!
  * Transformation math from the sprite-glow vu1 program.
  * Populates the SpriteGlowOutput struct with the same data that would get filled into the
@@ -91,6 +88,7 @@ bool glow_math(const SpriteGlowConsts* consts,
   p0.x() *= perspective_q;
   p0.y() *= perspective_q;
   p0.z() *= perspective_q;
+  out->perspective_q = perspective_q;
 
   // apply offset to final point. These offsets are applied after perspective divide, and are
   // required for the PS2 screen coordinates (centered at 2048, 2048).
@@ -138,7 +136,7 @@ bool glow_math(const SpriteGlowConsts* consts,
   // limit position so the clear doesn't go out of bounds
   // max.xy vf20, vf01, vf09 -> is this bugged? I think the x broadcast here is wrong
   math::Vector2f vf20_pos(std::max(p0.x(), vf09_min_probe_center.x()),
-                          std::max(p0.x(), vf09_min_probe_center.x()));
+                          std::max(p0.y(), vf09_min_probe_center.x()));
   vf20_pos.min_in_place(vf10_max_probe_center);
 
   // vf17 thing, vf18 thing
@@ -152,9 +150,9 @@ bool glow_math(const SpriteGlowConsts* consts,
   out->offscreen_uv[1] = vf18;
 
   out->first_clear_pos[0] =
-      math::Vector2f(vf20_pos.x() - vf02.x() - 1, vf20_pos.y() - vf02.x() - 1);
+      Vector4f(vf20_pos.x() - vf02.x() - 1, vf20_pos.y() - vf02.x() - 1, p0.z(), p0.w());
   out->first_clear_pos[1] =
-      math::Vector2f(vf20_pos.x() + vf02.x() + 1, vf20_pos.y() + vf02.x() + 1);
+      Vector4f(vf20_pos.x() + vf02.x() + 1, vf20_pos.y() + vf02.x() + 1, p0.z(), p0.w());
 
   // mulaw.xyzw ACC, vf01, vf00
   // maddax.xyzw ACC, vf15, vf11
@@ -169,7 +167,12 @@ bool glow_math(const SpriteGlowConsts* consts,
   return true;
 }
 
-void Sprite3::glow(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+/*!
+ * Handle glow dma and draw glow sprites using GlowRenderer
+ */
+void Sprite3::glow_dma_and_draw(DmaFollower& dma,
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
   auto maybe_consts_setup = dma.read_and_advance();
   if (maybe_consts_setup.size_bytes != sizeof(SpriteGlowConsts)) {
     return;
@@ -190,7 +193,6 @@ void Sprite3::glow(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   auto flushe = dma.read_and_advance();
   ASSERT(flushe.size_bytes == 0);
 
-  int sprite_count = 0;
   auto control_xfer = dma.read_and_advance();
   while (control_xfer.size_bytes == 16) {
     auto vecdata_xfer = dma.read_and_advance();
@@ -204,15 +206,12 @@ void Sprite3::glow(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     ASSERT(vecdata_xfer.size_bytes == 4 * 16);
     ASSERT(shader_xfer.size_bytes == 5 * 16);
 
-    SpriteGlowOutput out;
-    if (glow_math(&consts, vecdata_xfer.data, shader_xfer.data, &out)) {
-      sprite_count++;
-      m_glow_renderer.add_sprite(out);
+    auto* out = m_glow_renderer.alloc_sprite();
+    if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
+      m_glow_renderer.cancel_sprite();
     }
     control_xfer = dma.read_and_advance();
   }
 
-  if (sprite_count) {
-    m_glow_renderer.flush(render_state, prof);
-  }
+  m_glow_renderer.flush(render_state, prof);
 }
