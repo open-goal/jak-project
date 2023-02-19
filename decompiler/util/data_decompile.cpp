@@ -749,6 +749,8 @@ const std::unordered_map<
          {
              {"ocean-near-indices",
               {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
+             {"simple-sprite-system",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
              {"sparticle-launcher",
               {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},

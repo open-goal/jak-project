@@ -9,7 +9,26 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
-#include "game/graphics/opengl_renderer/sprite_common.h"
+#include "game/graphics/opengl_renderer/sprite/sprite_common.h"
+#include "game/graphics/opengl_renderer/sprite/GlowRenderer.h"
+
+struct SpriteGlowConsts {
+  math::Vector4f camera[4];
+  math::Vector4f perspective[4];
+  math::Vector4f hvdf;
+  math::Vector4f hmge;
+  float pfog0;
+  float deg_to_rad;
+  float min_scale;
+  float inv_area;
+  math::Vector4f sincos[5];
+  math::Vector4f basis_x;
+  math::Vector4f basis_y;
+  math::Vector4f xy_array[4];
+  math::Vector4f clamp_min;
+  math::Vector4f clamp_max;
+};
+static_assert(sizeof(SpriteGlowConsts) == 0x180);
 
 class Sprite3 : public BucketRenderer {
  public:
@@ -60,6 +79,9 @@ class Sprite3 : public BucketRenderer {
   void handle_alpha(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof, bool double_draw);
+
+  GlowRenderer m_glow_renderer;
+  void glow(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   struct SpriteDistorterSetup {
     GifTag gif_tag;

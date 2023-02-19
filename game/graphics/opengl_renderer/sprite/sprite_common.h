@@ -210,3 +210,15 @@ enum SpriteProgMem {
 static_assert(offsetof(SpriteFrameData, hmge_scale) == 256);
 static_assert(sizeof(SpriteFrameDataJak1) == 0x290, "SpriteFrameData size");
 static_assert(sizeof(SpriteFrameData) == 0x2a0, "SpriteFrameData size");
+
+/*!
+ * Post-transformation description of a sprite glow - passed to the GlowRenderer.
+ */
+struct SpriteGlowOutput {
+  math::Vector2f first_clear_pos[2];   // 8, 9
+  math::Vector4f second_clear_pos[2];  // 11, 12 corners for the second clear draw
+  math::Vector2f offscreen_uv[2];      // 24, 26
+  math::Vector4f flare_xyzw[4];
+  AdGifData adgif;                  // 68, 69, 70, 71, 72
+  math::Vector4f flare_draw_color;  // 75
+};
