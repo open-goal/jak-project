@@ -49,6 +49,8 @@ enum class ShaderId {
   DEPTH_CUE = 23,
   EMERC = 24,
   GLOW_PROBE = 25,
+  GLOW_PROBE_READ = 26,
+  GLOW_PROBE_READ_DEBUG = 27,
   MAX_SHADERS
 };
 

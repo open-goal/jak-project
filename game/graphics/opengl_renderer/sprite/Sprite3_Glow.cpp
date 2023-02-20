@@ -150,9 +150,9 @@ bool glow_math(const SpriteGlowConsts* consts,
   out->offscreen_uv[1] = vf18;
 
   out->first_clear_pos[0] =
-      Vector4f(vf20_pos.x() - vf02.x() - 1, vf20_pos.y() - vf02.x() - 1, p0.z(), p0.w());
+      Vector4f(vf20_pos.x() - vf02.x() - 1, vf20_pos.y() - vf02.x() - 1, 0xffffff, p0.w());
   out->first_clear_pos[1] =
-      Vector4f(vf20_pos.x() + vf02.x() + 1, vf20_pos.y() + vf02.x() + 1, p0.z(), p0.w());
+      Vector4f(vf20_pos.x() + vf02.x() + 1, vf20_pos.y() + vf02.x() + 1, 0xffffff, p0.w());
 
   // mulaw.xyzw ACC, vf01, vf00
   // maddax.xyzw ACC, vf15, vf11
@@ -179,7 +179,6 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
   }
   SpriteGlowConsts consts;
   memcpy(&consts, maybe_consts_setup.data, sizeof(SpriteGlowConsts));
-  fmt::print("got consts\n");
 
   auto templ_1 = dma.read_and_advance();
   ASSERT(templ_1.size_bytes == 16 * 0x54);

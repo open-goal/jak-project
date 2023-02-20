@@ -408,18 +408,20 @@ void Sprite3::render_jak2(DmaFollower& dma,
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBlendEquation(GL_FUNC_ADD);
 
-  glow_dma_and_draw(dma, render_state, prof);
+  {
+    auto p = prof.make_scoped_child("glow");
+    glow_dma_and_draw(dma, render_state, p);
+  }
 
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
-  fmt::print("DMA START------------\n");
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag();
-    fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
+    // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     auto data = dma.read_and_advance();
     VifCode code(data.vif0());
-    fmt::print(" vif0: {}\n", code.print());
+    // fmt::print(" vif0: {}\n", code.print());
     // if (code.kind == VifCode::Kind::NOP) {
-    fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
+    // fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
     //}
   }
 }
@@ -506,6 +508,8 @@ void Sprite3::draw_debug_window() {
   ImGui::Checkbox("3d", &m_3d_enable);
   ImGui::Checkbox("Distort", &m_distort_enable);
   ImGui::Checkbox("Distort instancing", &m_enable_distort_instancing);
+  ImGui::Separator();
+  m_glow_renderer.draw_debug_window();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

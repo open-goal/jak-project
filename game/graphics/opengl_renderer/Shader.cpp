@@ -96,6 +96,8 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::DEPTH_CUE) = {"depth_cue", version};
   at(ShaderId::EMERC) = {"emerc", version};
   at(ShaderId::GLOW_PROBE) = {"glow_probe", version};
+  at(ShaderId::GLOW_PROBE_READ) = {"glow_probe_read", version};
+  at(ShaderId::GLOW_PROBE_READ_DEBUG) = {"glow_probe_read_debug", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");
