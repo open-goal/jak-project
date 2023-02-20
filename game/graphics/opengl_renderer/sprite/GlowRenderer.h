@@ -18,7 +18,7 @@ class GlowRenderer {
     float x, y, z, w;
     float r, g, b, a;
     float u, v;
-    u32 pad[2];
+    float uu, vv;
   };
 
  private:
@@ -27,18 +27,36 @@ class GlowRenderer {
     int num_sprites = 0;
   } m_debug;
   void add_sprite_pass_1(const SpriteGlowOutput& data);
-  void add_sprite_pass_2(const SpriteGlowOutput& data);
+  void add_sprite_pass_2(const SpriteGlowOutput& data, int sprite_idx);
+  void add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_idx);
 
   void blit_depth(SharedRenderState* render_state);
 
+  void draw_probes(SharedRenderState* render_state,
+                   ScopedProfilerNode& prof,
+                   u32 idx_start,
+                   u32 idx_end);
 
-  //  struct SpriteRecord {
-  //    int draw1_probe_alpha_clear_idx = -1;
-  //  };
+  void debug_draw_probes(SharedRenderState* render_state,
+                         ScopedProfilerNode& prof,
+                         u32 idx_start,
+                         u32 idx_end);
 
-  static constexpr int kMaxSprites = 128 * 4;
-  static constexpr int kMaxVertices = kMaxSprites * 32;  // check.
-  static constexpr int kMaxIndices = kMaxSprites * 32;   // check.
+  void draw_probe_copies(SharedRenderState* render_state,
+                         ScopedProfilerNode& prof,
+                         u32 idx_start,
+                         u32 idx_end);
+
+  void debug_draw_probe_copies(SharedRenderState* render_state,
+                               ScopedProfilerNode& prof,
+                               u32 idx_start,
+                               u32 idx_end);
+  void downsample_chain(SharedRenderState* render_state, ScopedProfilerNode& prof, u32 num_sprites);
+
+  void draw_sprites(SharedRenderState* render_state,
+                    ScopedProfilerNode& prof,
+                    u32 idx_start,
+                    u32 idx_end);
 
   std::vector<Vertex> m_vertex_buffer;
   std::vector<SpriteGlowOutput> m_sprite_data_buffer;
@@ -52,6 +70,19 @@ class GlowRenderer {
   u32 m_next_index = 0;
   u32* alloc_index(int num);
 
+  struct DsFbo {
+    int size = -1;
+    GLuint fbo;
+    GLuint tex;
+  };
+
+  static constexpr int kDownsampleBatchWidth = 16;
+  static constexpr int kMaxSprites = kDownsampleBatchWidth * kDownsampleBatchWidth;
+  static constexpr int kMaxVertices = kMaxSprites * 32;  // check.
+  static constexpr int kMaxIndices = kMaxSprites * 32;   // check.
+  static constexpr int kDownsampleIterations = 5;
+  static constexpr int kFirstDownsampleSize = 32;  // should be power of 2.
+
   struct {
     GLuint vertex_buffer;
     GLuint vao;
@@ -63,7 +94,14 @@ class GlowRenderer {
     int probe_fbo_w = 640;
     int probe_fbo_h = 480;
 
-    GLuint downsample_fbo;
-    GLuint downsample_fbo_tex;
+    DsFbo downsample_fbos[kDownsampleIterations];
   } m_ogl;
+
+  struct {
+    GLuint vao;
+    GLuint index_buffer;
+    GLuint vertex_buffer;
+  } m_ogl_downsampler;
+  // static constexpr int kDownsamplerVertexCount = 4 * kMaxSprites;
+  // static constexpr int kDownsampleIndexCount = 5 * kMaxSprites;
 };

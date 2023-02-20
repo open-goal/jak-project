@@ -98,6 +98,8 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::GLOW_PROBE) = {"glow_probe", version};
   at(ShaderId::GLOW_PROBE_READ) = {"glow_probe_read", version};
   at(ShaderId::GLOW_PROBE_READ_DEBUG) = {"glow_probe_read_debug", version};
+  at(ShaderId::GLOW_PROBE_DOWNSAMPLE) = {"glow_probe_downsample", version};
+  at(ShaderId::GLOW_DRAW) = {"glow_draw", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");
