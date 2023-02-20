@@ -345,3 +345,6 @@
        "$OUT/iso/KERNEL.CGO"
        "$OUT/iso/GAME.CGO"
        )
+
+;; Custom or Modified Code
+
