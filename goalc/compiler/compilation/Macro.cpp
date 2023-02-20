@@ -206,7 +206,8 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
     m_goos.global_environment.as_env()->vars[sym] = value;
   }
 
-  m_global_constant_types.emplace(sym->name, value);
+  // TODO - eventually, it'd be nice if global constants were properly typed
+  // and this information was propagated
   m_symbol_info.add_constant(sym->name, form, sym_meta);
 
   return get_none();

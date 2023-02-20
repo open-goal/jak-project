@@ -85,7 +85,6 @@ enum class ObjectType : u8 {
 };
 
 std::string object_type_to_string(ObjectType kind);
-std::string object_type_to_type_name(ObjectType kind);
 
 // Some objects are "fixed", meaning they are stored inline in the Object, and not heap allocated.
 

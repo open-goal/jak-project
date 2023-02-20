@@ -107,7 +107,6 @@ class Compiler {
   Debugger m_debugger;
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<std::string, goos::Object> m_global_constant_types;
   std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;

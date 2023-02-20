@@ -46,7 +46,9 @@ class SymbolInfo {
     info.m_kind = Kind::GLOBAL_VAR;
     info.m_name = name;
     info.m_def_form = defining_form;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     return info;
   }
 
@@ -67,7 +69,9 @@ class SymbolInfo {
     info.m_kind = Kind::FUNCTION;
     info.m_name = name;
     info.m_def_form = defining_form;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     info.m_args = args;
     return info;
   }
@@ -79,7 +83,9 @@ class SymbolInfo {
     info.m_kind = Kind::TYPE;
     info.m_name = name;
     info.m_def_form = defining_form;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     return info;
   }
 
@@ -90,7 +96,9 @@ class SymbolInfo {
     info.m_kind = Kind::CONSTANT;
     info.m_name = name;
     info.m_def_form = defining_form;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     return info;
   }
 
@@ -101,7 +109,9 @@ class SymbolInfo {
     info.m_kind = Kind::MACRO;
     info.m_name = name;
     info.m_def_form = defining_form;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     return info;
   }
 
@@ -109,7 +119,9 @@ class SymbolInfo {
     SymbolInfo info;
     info.m_kind = Kind::LANGUAGE_BUILTIN;
     info.m_name = name;
-    info.m_meta = meta ? meta.value() : Metadata();
+    if (meta) {
+      info.m_meta = *meta;
+    }
     return info;
   }
 
@@ -133,7 +145,7 @@ class SymbolInfo {
   Kind kind() const { return m_kind; }
   const goos::Object& src_form() const { return m_def_form; }
   const Metadata& meta() const { return m_meta; }
-  const std::vector<GoalArg> args() const { return m_args; }
+  const std::vector<GoalArg>& args() const { return m_args; }
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -164,8 +176,7 @@ class SymbolInfoMap {
   }
 
   // The m_symbol_types container stores TypeSpecs -- this does have argument information but not
-  // the names! The actual `LambdaVal` however does have all the types and names, so thats why its
-  // being used here
+  // the names, which is why they have to be explicitly provided
   void add_function(const std::string& name,
                     const std::vector<GoalArg> args,
                     const goos::Object& defining_form,
@@ -195,6 +206,8 @@ class SymbolInfoMap {
     m_map[name]->push_back(SymbolInfo::make_builtin(name, meta));
   }
 
+  // The m_symbol_types container stores TypeSpecs -- this does have argument information but not
+  // the names, which is why they have to be explicitly provided
   void add_method(const std::string& method_name,
                   const std::vector<GoalArg> args,
                   const MethodInfo& method_info,

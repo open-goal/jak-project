@@ -558,8 +558,14 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
                                              Env* env) {
   (void)env;
   auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING, goos::ObjectType::PAIR},
-           {});
+  // We have to manually check the args here, as an empty list is considered something distinct from
+  // a pair
+  if (args.unnamed.size() != 3 || args.unnamed.at(0).type != goos::ObjectType::SYMBOL ||
+      args.unnamed.at(1).type != goos::ObjectType::STRING ||
+      (args.unnamed.at(2).type != goos::ObjectType::PAIR &&
+       args.unnamed.at(2).type != goos::ObjectType::EMPTY_LIST)) {
+    throw_compiler_error(form, "Invalid arguments provided to `update-macro-metadata");
+  }
 
   auto& name = args.unnamed.at(0).as_symbol()->name;
 
@@ -638,8 +644,8 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
 
   const auto symbols = m_symbol_info.get_all_symbols();
 
-  std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols = {};
-  std::unordered_map<std::string, Docs::FileDocumentation> file_docs = {};
+  std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;
+  std::unordered_map<std::string, Docs::FileDocumentation> file_docs;
 
   lg::info("Processing {} symbols...", symbols.size());
   int count = 0;
@@ -693,7 +699,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
       var.name = sym_info.name();
       var.description = sym_info.meta().docstring;
       if (sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
-        var.type = object_type_to_type_name(m_global_constant_types.at(var.name).type);
+        var.type = "unknown";  // Unfortunately, constants are not properly typed
       } else {
         var.type = m_symbol_types.at(var.name).base_type();
       }
