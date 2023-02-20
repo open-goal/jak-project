@@ -7,6 +7,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
 
 #include "game/discord.h"
 #include "game/kernel/common/Symbol4.h"
@@ -576,6 +577,7 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -586,6 +588,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
