@@ -135,8 +135,10 @@ bool glow_math(const SpriteGlowConsts* consts,
 
   // limit position so the clear doesn't go out of bounds
   // max.xy vf20, vf01, vf09 -> is this bugged? I think the x broadcast here is wrong
+  // this breaks fadeout as the sprite moves off the top of the screen. I've fixed it here because
+  // I'm pretty sure this is just a mistake.
   math::Vector2f vf20_pos(std::max(p0.x(), vf09_min_probe_center.x()),
-                          std::max(p0.y(), vf09_min_probe_center.x()));
+                          std::max(p0.y(), vf09_min_probe_center.y()));
   vf20_pos.min_in_place(vf10_max_probe_center);
 
   // vf17 thing, vf18 thing
@@ -175,6 +177,7 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
                                 ScopedProfilerNode& prof) {
   auto maybe_consts_setup = dma.read_and_advance();
   if (maybe_consts_setup.size_bytes != sizeof(SpriteGlowConsts)) {
+    fmt::print("no consts...\n");
     return;
   }
   SpriteGlowConsts consts;
@@ -193,10 +196,15 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
   ASSERT(flushe.size_bytes == 0);
 
   auto control_xfer = dma.read_and_advance();
+  while (control_xfer.size_bytes == 0 && control_xfer.vifcode0().kind == VifCode::Kind::NOP &&
+         control_xfer.vifcode1().kind == VifCode::Kind::NOP) {
+    control_xfer = dma.read_and_advance();
+  }
   while (control_xfer.size_bytes == 16) {
     auto vecdata_xfer = dma.read_and_advance();
     auto shader_xfer = dma.read_and_advance();
     auto call = dma.read_and_advance();
+    (void)call;
 
     u32 num_sprites;
     memcpy(&num_sprites, control_xfer.data, 4);
@@ -210,6 +218,10 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
       m_glow_renderer.cancel_sprite();
     }
     control_xfer = dma.read_and_advance();
+    while (control_xfer.size_bytes == 0 && control_xfer.vifcode0().kind == VifCode::Kind::NOP &&
+           control_xfer.vifcode1().kind == VifCode::Kind::NOP) {
+      control_xfer = dma.read_and_advance();
+    }
   }
 
   m_glow_renderer.flush(render_state, prof);

@@ -172,6 +172,22 @@ GlowRenderer::GlowRenderer() {
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // from the giftag
+  m_default_draw_mode.set_ab(true);
+
+  // leftovers
+  //  ;; (new 'static 'gs-test :ate 1 :afail 1 :zte 1 :ztst 2)
+  //  (new 'static 'gs-adcmd :cmds (gs-reg64 test-1) :x #x51001)
+  m_default_draw_mode.set_at(true);
+  m_default_draw_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+  m_default_draw_mode.set_zt(true);
+  m_default_draw_mode.set_depth_test(GsTest::ZTest::GEQUAL);
+  m_default_draw_mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+
+  //  ;; (new 'static 'gs-zbuf :zbp 304 :psm 1 :zmsk 1)
+  //  (new 'static 'gs-adcmd :cmds (gs-reg64 zbuf-1) :x #x1000130 :y #x1)
+  m_default_draw_mode.disable_depth_write();
 }
 
 namespace {
@@ -301,13 +317,18 @@ void GlowRenderer::add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_id
     copy_to_vertex(&vtx[i], data.flare_xyzw[i]);
     vtx[i].u = 0;
     vtx[i].v = 0;
-    vtx[i].uu = x * step;
-    vtx[i].vv = y * step;
+    vtx[i].uu = x * step + step / 2;
+    vtx[i].vv = y * step + step / 2;
   }
   vtx[1].u = 1;
-  vtx[2].v = 1;
-  vtx[3].u = 1;
   vtx[3].v = 1;
+  vtx[2].u = 1;
+  vtx[2].v = 1;
+
+  auto& record = m_sprite_records[sprite_idx];
+  record.draw_mode = m_default_draw_mode;
+  record.tbp = 0;
+  record.idx = m_next_index;
 
   u32* idx = alloc_index(5);
   // flip first two - fan -> strip
@@ -316,6 +337,51 @@ void GlowRenderer::add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_id
   idx[2] = idx_start + 2;
   idx[3] = idx_start + 3;
   idx[4] = UINT32_MAX;
+
+  // handle adgif stuff
+  {
+    ASSERT(data.adgif.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
+    GsTex0 reg(data.adgif.tex0_data);
+    record.tbp = reg.tbp0();
+    record.draw_mode.set_tcc(reg.tcc());
+    // shader is hardcoded for this right now.
+    ASSERT(reg.tcc() == 1);
+    ASSERT(reg.tfx() == GsTex0::TextureFunction::MODULATE);
+  }
+
+  {
+    ASSERT((u8)data.adgif.tex1_addr == (u8)GsRegisterAddress::TEX1_1);
+    GsTex1 reg(data.adgif.tex1_data);
+    record.draw_mode.set_filt_enable(reg.mmag());
+  }
+
+  {
+    ASSERT(data.adgif.mip_addr == (u32)GsRegisterAddress::MIPTBP1_1);
+    // ignore
+  }
+
+  // clamp or zbuf
+  if (GsRegisterAddress(data.adgif.clamp_addr) == GsRegisterAddress::ZBUF_1) {
+    GsZbuf x(data.adgif.clamp_data);
+    record.draw_mode.set_depth_write_enable(!x.zmsk());
+  } else if (GsRegisterAddress(data.adgif.clamp_addr) == GsRegisterAddress::CLAMP_1) {
+    u32 val = data.adgif.clamp_data;
+    if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
+      ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
+    }
+    record.draw_mode.set_clamp_s_enable(val & 0b001);
+    record.draw_mode.set_clamp_t_enable(val & 0b100);
+  } else {
+    ASSERT(false);
+  }
+
+  // alpha
+  ASSERT(data.adgif.alpha_addr == (u32)GsRegisterAddress::ALPHA_1);  // ??
+
+  // ;; a = 0, b = 2, c = 1, d = 1
+  // Cv = (Cs - 0) * Ad + D
+  // leaving out the multiply by Ad.
+  record.draw_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
 }
 
 void GlowRenderer::blit_depth(SharedRenderState* render_state) {
@@ -352,9 +418,9 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 
 void GlowRenderer::draw_debug_window() {
   ImGui::Checkbox("Show Probes", &m_debug.show_probes);
+  ImGui::Checkbox("Show Copy", &m_debug.show_probe_copies);
+
   ImGui::Text("Count: %d", m_debug.num_sprites);
-  //  ImGui::InputFloat("hack", &m_debug.hack);
-  //  ImGui::InputFloat("hack2", &m_debug.hack2);
 }
 
 void GlowRenderer::downsample_chain(SharedRenderState* render_state,
@@ -491,7 +557,7 @@ void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& pr
 
   // copy probes
   draw_probe_copies(render_state, prof, copy_idx_start, copy_idx_end);
-  if (m_debug.show_probes) {
+  if (m_debug.show_probe_copies) {
     debug_draw_probe_copies(render_state, prof, copy_idx_start, copy_idx_end);
   }
 
@@ -515,8 +581,58 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-  // do probes
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, m_ogl.downsample_fbos[kDownsampleIterations - 1].tex);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
   render_state->shaders[ShaderId::GLOW_DRAW].activate();
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_GEQUAL);
+  glEnable(GL_BLEND);
+  // Cv = (Cs - 0) * Ad + D
+  glBlendFunc(GL_ONE, GL_ONE);
+  glBlendEquation(GL_FUNC_ADD);
+
+  glDepthMask(GL_FALSE);
+
+  for (u32 i = 0; i < m_next_sprite; i++) {
+    const auto& record = m_sprite_records[i];
+    auto tex = render_state->texture_pool->lookup(record.tbp);
+    if (!tex) {
+      fmt::print("Failed to find texture at {}, using random", record.tbp);
+      tex = render_state->texture_pool->get_placeholder_texture();
+    }
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, *tex);
+    if (record.draw_mode.get_clamp_s_enable()) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    } else {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    }
+
+    if (record.draw_mode.get_clamp_t_enable()) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    } else {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+
+    if (record.draw_mode.get_filt_enable()) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    } else {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    prof.add_draw_call();
+    prof.add_tri(2);
+    glDrawElements(GL_TRIANGLE_STRIP, 5, GL_UNSIGNED_INT, (void*)(record.idx * sizeof(u32)));
+  }
+
+  /*
   prof.add_draw_call();
   prof.add_tri(m_next_sprite * 4);
   glDisable(GL_BLEND);
@@ -524,6 +640,7 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state,
   glDepthFunc(GL_GEQUAL);
   glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
                  (void*)(idx_start * sizeof(u32)));
+                 */
 }
 
 GlowRenderer::Vertex* GlowRenderer::alloc_vtx(int num) {

@@ -414,15 +414,15 @@ void Sprite3::render_jak2(DmaFollower& dma,
   }
 
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
+  fmt::print("--------------------------\n");
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto tag = dma.current_tag();
-    // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
+    // auto tag = dma.current_tag();
     auto data = dma.read_and_advance();
-    VifCode code(data.vif0());
+    (void)data;
+    // VifCode code(data.vif0());
+    // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     // fmt::print(" vif0: {}\n", code.print());
-    // if (code.kind == VifCode::Kind::NOP) {
     // fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
-    //}
   }
 }
 

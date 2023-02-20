@@ -7,9 +7,12 @@ layout (location = 3) in vec2 uv_probe_in;
 
 out vec4 fragment_color;
 out vec2 uv_texture;
-out int discard_flag;
+out float discard_flag;
 
 const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
+
+layout (binding = 1) uniform sampler2D probe_tex;
+
 
 void main() {
   vec4 transformed = position_in;
@@ -24,4 +27,5 @@ void main() {
   gl_Position = transformed;
   fragment_color = rgba_in;
   uv_texture = uv_texture_in;
+  discard_flag = texture(probe_tex, uv_probe_in).a;
 }

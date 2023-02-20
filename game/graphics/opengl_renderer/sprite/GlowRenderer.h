@@ -24,6 +24,7 @@ class GlowRenderer {
  private:
   struct {
     bool show_probes = false;
+    bool show_probe_copies = false;
     int num_sprites = 0;
   } m_debug;
   void add_sprite_pass_1(const SpriteGlowOutput& data);
@@ -102,6 +103,14 @@ class GlowRenderer {
     GLuint index_buffer;
     GLuint vertex_buffer;
   } m_ogl_downsampler;
-  // static constexpr int kDownsamplerVertexCount = 4 * kMaxSprites;
-  // static constexpr int kDownsampleIndexCount = 5 * kMaxSprites;
+
+  DrawMode m_default_draw_mode;
+
+  struct SpriteRecord {
+    u32 tbp;
+    DrawMode draw_mode;
+    u32 idx;
+  };
+
+  std::array<SpriteRecord, kMaxSprites> m_sprite_records;
 };
