@@ -54,15 +54,11 @@ class GlowRenderer {
                                u32 idx_end);
   void downsample_chain(SharedRenderState* render_state, ScopedProfilerNode& prof, u32 num_sprites);
 
-  void draw_sprites(SharedRenderState* render_state,
-                    ScopedProfilerNode& prof,
-                    u32 idx_start,
-                    u32 idx_end);
+  void draw_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   std::vector<Vertex> m_vertex_buffer;
   std::vector<SpriteGlowOutput> m_sprite_data_buffer;
   u32 m_next_sprite = 0;
-  //  std::vector<SpriteRecord> m_sprite_records;
 
   u32 m_next_vertex = 0;
   Vertex* alloc_vtx(int num);
