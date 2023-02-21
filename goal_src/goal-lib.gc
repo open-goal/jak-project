@@ -208,6 +208,7 @@
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
 ;;;;;;;;;;;;;;;;;;;
+
 ;; Bind vars in body
 (defmacro let (bindings &rest body)
   `((lambda :inline-only #t ,(apply first bindings) ,@body)
@@ -237,15 +238,11 @@
 
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
-  (if (and (> (length body) 1)      ;; more than one thing in function
-           (string? (first body))   ;; first thing is a string
-           )
-    ;; then it's a docstring and we ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
-    ;; otherwise don't ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@body))
-    )
-  )
+  (let ((docstring ""))
+    (when (and (> (length body) 1) (string? (first body)))
+      (set! docstring (first body))
+      (set! body (cdr body)))
+    `(define ,name ,docstring (lambda :name ,name ,bindings ,@body))))
 
 ;; the compiler can't figure out types of a recursive function without
 ;; first knowing the return type, so we use this form to forward declare
