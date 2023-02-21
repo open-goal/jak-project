@@ -5,7 +5,7 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
-#include "game/graphics/opengl_renderer/sprite_common.h"
+#include "game/graphics/opengl_renderer/sprite/sprite_common.h"
 
 class SpriteRenderer : public BucketRenderer {
  public:
