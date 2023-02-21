@@ -3662,6 +3662,7 @@
   (signal 96)
   (finish 97)
   (label 98)
+  (hack 127)
   )
 
 (defenum gs-reg64
@@ -4047,10 +4048,10 @@
   )
 
 (deftype gs-adcmd (structure)
-  ((word uint32 4  :offset-assert 0)
-   (quad uint128   :offset        0)
-   (data uint64    :offset        0)
-   (cmds gs-reg64    :offset        8)
+  ((word uint32 4  :offset-assert 0 :score -10)
+   (quad uint128   :offset        0 :score -10)
+   (data uint64    :offset        0 :score -10)
+   (cmds gs-reg64    :offset      8 :score 10)
    (cmd  uint8     :offset        8)
    (x    uint32    :offset        0)
    (y    uint32    :offset        4)
@@ -4356,10 +4357,10 @@
   )
 
 (deftype gs-packed-xyzw (vector)
-  ((ix   int32     :offset 0)
-   (iy   int32     :offset 4)
-   (iz   int32     :offset 8)
-   (iw   int32     :offset 12)
+  ((ix   int32     :offset 0 :score 10)
+   (iy   int32     :offset 4 :score 10)
+   (iz   int32     :offset 8 :score 10)
+   (iw   int32     :offset 12 :score 10)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -20356,6 +20357,7 @@
    (fade-b     float          :offset-assert 52)
    (tex-id     texture-id     :offset-assert 56)
    (dummy      uint32         :offset-assert 60)
+   (quads      vector 4 :inline :offset 0)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -20368,14 +20370,14 @@
 (deftype simple-sprite-system (structure)
   ((count     int16   :offset-assert 0)
    (max-count int16   :offset-assert 2)
-   (data      sprite-glow-data :offset-assert 4)
+   (data      (inline-array sprite-glow-data) :offset-assert 4)
    )
   :method-count-assert 12
   :size-assert         #x8
   :flag-assert         #xc00000008
   (:methods
-    (add! (_type_ dma-buffer) none 9)
-    (simple-sprite-system-method-10 (_type_ dma-buffer) none 10)
+    (add! (_type_ sprite-glow-data) none 9)
+    (draw-all-sprites! (_type_ dma-buffer) none 10)
     (clear! (_type_) none 11)
     )
   )
@@ -23852,14 +23854,14 @@
 
 (deftype sprite-glow-template (structure)
   ((clear-init-giftag   gs-gif-tag     :inline :offset-assert 0)
-   (clear-init-adcmds   vector4w     5 :inline :offset-assert 16) ;; gs-adcmd?
+   (clear-init-adcmds   gs-adcmd     5 :inline :offset-assert 16) ;; gs-adcmd?
    (clear-draw-giftag   gs-gif-tag     :inline :offset-assert 96)
    (clear-draw-clr-0    gs-packed-rgba :inline :offset-assert 112)
-   (clear-draw-xyz-0    vector       2 :inline :offset-assert 128)
+   (clear-draw-xyz-0    gs-packed-xyzw 2 :inline :offset-assert 128)
    (clear-draw-clr-1    gs-packed-rgba :inline :offset-assert 160)
    (clear-draw-xyz-1    vector       2 :inline :offset-assert 176)
    (offscr-setup-giftag gs-gif-tag     :inline :offset-assert 208)
-   (offscr-setup-adcmds vector4w     8 :inline :offset-assert 224) ;; gs-adcmd?
+   (offscr-setup-adcmds gs-adcmd     8 :inline :offset-assert 224) ;; gs-adcmd?
    (offscr-first-giftag gs-gif-tag     :inline :offset-assert 352)
    (offscr-first-clr    gs-packed-rgba :inline :offset-assert 368)
    (offscr-first-uv-0   gs-packed-uv   :inline :offset-assert 384)
@@ -23867,7 +23869,7 @@
    (offscr-first-uv-1   gs-packed-uv   :inline :offset-assert 416)
    (offscr-first-xyzw-1 gs-packed-xyzw :inline :offset-assert 432)
    (repeat-draw-giftag  gs-gif-tag     :inline :offset-assert 448)
-   (repeat-draw-adcmds  vector4w    29 :inline :offset-assert 464) ;; gs-adcmd?
+   (repeat-draw-adcmds  gs-adcmd    29 :inline :offset-assert 464) ;; gs-adcmd?
    (flare-alpha-giftag  gs-gif-tag     :inline :offset-assert 928)
    (flare-alpha-clr     gs-packed-rgba :inline :offset-assert 944)
    (flare-alpha-uv      gs-packed-uv   :inline :offset-assert 960)
@@ -23876,7 +23878,7 @@
    (flare-alpha-xyzw-2  gs-packed-xyzw :inline :offset-assert 1008)
    (flare-alpha-xyzw-3  gs-packed-xyzw :inline :offset-assert 1024)
    (flare-init-giftag   gs-gif-tag     :inline :offset-assert 1040)
-   (flare-init-adcmds   vector4w     8 :inline :offset-assert 1056) ;; gs-adcmd?
+   (flare-init-adcmds   gs-adcmd     8 :inline :offset-assert 1056) ;; gs-adcmd?
    (flare-draw-giftag   gs-gif-tag     :inline :offset-assert 1184)
    (flare-draw-clr      gs-packed-rgba :inline :offset-assert 1200)
    (flare-draw-stq-0    gs-packed-stq  :inline :offset-assert 1216)
@@ -23894,11 +23896,11 @@
   )
 
 (deftype sprite-glow-consts (structure)
-  ((camera      matrix   :inline :offset-assert 0)
-   (perspective matrix   :inline :offset-assert 64)
-   (hvdf-offset vector   :inline :offset-assert 128)
-   (hmge-scale  vector   :inline :offset-assert 144)
-   (consts      vector   :inline :offset-assert 160 :score -1)
+  ((camera      matrix   :inline :offset-assert 0)  ;; 0
+   (perspective matrix   :inline :offset-assert 64) ;; 4
+   (hvdf-offset vector   :inline :offset-assert 128);; 8
+   (hmge-scale  vector   :inline :offset-assert 144) ;; 9
+   (consts      vector   :inline :offset-assert 160 :score -1) ;; 10
    (pfog0       float            :offset 160)
    (deg-to-rad  float            :offset 164)
    (min-scale   float            :offset 168)
@@ -23935,6 +23937,7 @@
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32         3         :offset-assert 20)
+   (num-sprites-quad uint128                :offset 16)
    (vecdata-packet dma-packet       :inline :offset-assert 32)
    (vecdata        sprite-glow-data :inline :offset-assert 48)
    (shader-packet  dma-packet       :inline :offset-assert 112)
@@ -23950,9 +23953,11 @@
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32           3       :offset-assert 20)
+   (num-sprites-quad uint128                :offset 16)
    (vecdata-packet dma-packet       :inline :offset-assert 32)
    (vecdata        sprite-glow-data :inline :offset-assert 48)
    (shader-packet  dma-packet       :inline :offset-assert 112)
+   (shader-packet-ptr pointer               :offset 116) ;; pointer to adgif shader to upload.
    (mscal-packet   dma-packet       :inline :offset-assert 128)
    )
   :method-count-assert 9
@@ -23966,9 +23971,9 @@
 (define-extern sprite-glow-init-engine (function dma-buffer none))
 (define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data)
 (define-extern sprite-glow-add-sprite (function dma-buffer sprite-vec-data-2d float float float adgif-shader none))
-(define-extern sprite-glow-add-simple-sprite (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer))
+(define-extern sprite-glow-add-simple-sprite (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none))
 (define-extern sprite-glow-draw (function dma-buffer none))
-(define-extern add-shader-to-dma (function dma-buffer pointer))
+(define-extern add-shader-to-dma (function dma-buffer adgif-shader))
 (define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
