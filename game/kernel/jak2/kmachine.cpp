@@ -369,7 +369,7 @@ int InitMachine() {
 
   kmemopen_from_c(kglobalheap, "global");
   kmemopen_from_c(kglobalheap, "scheme-globals");
-  
+
   if (!MasterDebug && !DebugSegment) {
     // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
     // note: either MasterDebug or DebugSegment is enough to give use the debug heap.
@@ -381,7 +381,7 @@ int InitMachine() {
   InitIOP();
   // sceGsResetPath();
   InitVideo();
-  
+
   // FlushCache(0);
   // FlushCache(2);
   // sceGsSyncV(0);
@@ -392,7 +392,6 @@ int InitMachine() {
     InitGoalProto();
   }
 
-
   printf("InitSound\n");
   InitSound();
   printf("InitRPC\n");
@@ -400,9 +399,6 @@ int InitMachine() {
   reset_output();
   clear_print();
   auto status = InitHeapAndSymbol();
-  // TODO - better place to put this?
-  gAutoSplitterBlock.pointer_to_symbol =
-      (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak2*")->value();
 
   if (status >= 0) {
     printf("InitListenerConnect\n");
@@ -585,7 +581,10 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-
+void init_autosplit_struct() {
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
+}
 
 void InitMachine_PCPort() {
   // PC Port added functions
@@ -598,6 +597,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
+
+  make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
