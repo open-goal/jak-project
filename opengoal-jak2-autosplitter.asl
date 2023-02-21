@@ -183,7 +183,7 @@ init {
   sw.Start();
   var exported_ptr = IntPtr.Zero;
   vars.foundPointers = false;
-  byte[] marker = Encoding.ASCII.GetBytes("UnLiStEdStRaTs_jak2" + Char.MinValue);
+  byte[] marker = Encoding.ASCII.GetBytes("UnLiStEdStRaTs_JaK1" + Char.MinValue);
   vars.debugTick = 0;
   vars.DebugOutput(String.Format("Base Addr - {0}", modules.First().BaseAddress.ToString("x8")), true);
   exported_ptr = new SignatureScanner(game, modules.First().BaseAddress, modules.First().ModuleMemorySize).Scan(
