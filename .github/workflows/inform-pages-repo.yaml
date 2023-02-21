@@ -66,13 +66,8 @@ jobs:
             ./jak1*.json
             ./jak2*.json
 
-      - name: Get Artifact ID
-        env:
-          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
-        id: get-artifact-id
-        run: | # grab the id of the artifact we just created
-          echo "ARTIFACT_ID=$(gh api -H 'Accept: application/vnd.github+json' ${{github.event.workflow_run.artifacts_url}} --jq .artifacts[].id)" >> $GITHUB_ENV
-          echo "artifact id is ${{ env.ARTIFACT_ID }}"
+      - name: Log Run ID
+        run: echo ${{ github.run_id }}
 
       - name: Send Dispatch
         uses: peter-evans/repository-dispatch@v2
@@ -80,4 +75,4 @@ jobs:
           token: ${{ secrets.BOT_PAT }}
           repository: 'open-goal/open-goal.github.io'
           event-type: updateProgress
-          client-payload: '{"docArtifactId": "${{ env.ARTIFACT_ID }}"}'
+          client-payload: '{"docGenRunId": "${{ github.run_id }}"}'
