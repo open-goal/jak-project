@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
     }
   } catch (std::exception& e) {
     lg::error("Compiler Fatal Error: {}", e.what());
+    return 1;
   }
 
   // Otherwise, start the REPL normally
