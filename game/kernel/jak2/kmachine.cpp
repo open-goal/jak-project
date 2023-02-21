@@ -356,6 +356,7 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
+AutoSplitterBlock gAutoSplitterBlock;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -368,6 +369,7 @@ int InitMachine() {
 
   kmemopen_from_c(kglobalheap, "global");
   kmemopen_from_c(kglobalheap, "scheme-globals");
+  
   if (!MasterDebug && !DebugSegment) {
     // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
     // note: either MasterDebug or DebugSegment is enough to give use the debug heap.
@@ -379,6 +381,7 @@ int InitMachine() {
   InitIOP();
   // sceGsResetPath();
   InitVideo();
+  
   // FlushCache(0);
   // FlushCache(2);
   // sceGsSyncV(0);
@@ -389,6 +392,7 @@ int InitMachine() {
     InitGoalProto();
   }
 
+
   printf("InitSound\n");
   InitSound();
   printf("InitRPC\n");
@@ -396,6 +400,10 @@ int InitMachine() {
   reset_output();
   clear_print();
   auto status = InitHeapAndSymbol();
+  // TODO - better place to put this?
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak2*")->value();
+
   if (status >= 0) {
     printf("InitListenerConnect\n");
     InitListenerConnect();
@@ -576,6 +584,7 @@ void update_discord_rpc(u32 discord_info) {
     Discord_ClearPresence();
   }
 }
+
 
 
 void InitMachine_PCPort() {
