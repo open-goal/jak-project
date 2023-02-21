@@ -1,5 +1,4 @@
 #include "Sprite3.h"
-
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
 namespace {
@@ -12,10 +11,9 @@ bool looks_like_distort_frame_data(const DmaFollower& dma) {
          dma.current_tag_vifcode1().kind == VifCode::Kind::UNPACK_V4_32;
 }
 
-
 constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
     256 * 10;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
-}
+}  // namespace
 
 void Sprite3::opengl_setup_distort() {
   // Create framebuffer to snapshot current render to a texture that can be bound for the distort

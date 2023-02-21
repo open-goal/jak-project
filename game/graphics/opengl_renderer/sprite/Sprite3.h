@@ -9,8 +9,8 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
-#include "game/graphics/opengl_renderer/sprite/sprite_common.h"
 #include "game/graphics/opengl_renderer/sprite/GlowRenderer.h"
+#include "game/graphics/opengl_renderer/sprite/sprite_common.h"
 
 class Sprite3 : public BucketRenderer {
  public:
@@ -63,7 +63,9 @@ class Sprite3 : public BucketRenderer {
   void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof, bool double_draw);
 
   GlowRenderer m_glow_renderer;
-  void glow_dma_and_draw(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void glow_dma_and_draw(DmaFollower& dma,
+                         SharedRenderState* render_state,
+                         ScopedProfilerNode& prof);
 
   struct SpriteDistorterSetup {
     GifTag gif_tag;

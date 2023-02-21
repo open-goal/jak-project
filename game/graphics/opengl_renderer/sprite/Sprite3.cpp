@@ -414,7 +414,6 @@ void Sprite3::render_jak2(DmaFollower& dma,
   }
 
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
-  fmt::print("--------------------------\n");
   while (dma.current_tag_offset() != render_state->next_bucket) {
     // auto tag = dma.current_tag();
     auto data = dma.read_and_advance();
