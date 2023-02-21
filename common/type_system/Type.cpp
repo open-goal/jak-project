@@ -462,7 +462,7 @@ std::string Type::print_method_info() const {
 
 void Type::add_state(const std::string& name, const TypeSpec& type) {
   if (!m_states.insert({name, type}).second) {
-    throw std::runtime_error(fmt::format("State {} is multiply defined", name));
+    throw std::runtime_error(fmt::format("State {} is already defined in type", name));
   }
 }
 

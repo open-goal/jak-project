@@ -62,8 +62,11 @@ class Interpreter {
       const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
+
+ public:
   ArgumentSpec parse_arg_spec(const Object& form, Object& rest);
 
+ private:
   Object quasiquote_helper(const Object& form, const std::shared_ptr<EnvironmentObject>& env);
 
   IntType number_to_integer(const Object& obj);
