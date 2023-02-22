@@ -8,7 +8,6 @@
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 
-
 #include "game/discord.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
@@ -369,7 +368,6 @@ int InitMachine() {
 
   kmemopen_from_c(kglobalheap, "global");
   kmemopen_from_c(kglobalheap, "scheme-globals");
-
   if (!MasterDebug && !DebugSegment) {
     // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
     // note: either MasterDebug or DebugSegment is enough to give use the debug heap.
@@ -381,7 +379,6 @@ int InitMachine() {
   InitIOP();
   // sceGsResetPath();
   InitVideo();
-
   // FlushCache(0);
   // FlushCache(2);
   // sceGsSyncV(0);
@@ -399,7 +396,6 @@ int InitMachine() {
   reset_output();
   clear_print();
   auto status = InitHeapAndSymbol();
-
   if (status >= 0) {
     printf("InitListenerConnect\n");
     InitListenerConnect();
