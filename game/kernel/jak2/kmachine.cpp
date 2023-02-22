@@ -7,7 +7,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
-#include "common/util/Timer.h"
+
 
 #include "game/discord.h"
 #include "game/kernel/common/Symbol4.h"
@@ -597,7 +597,6 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
-
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
   // pad stuff

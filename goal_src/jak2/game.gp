@@ -346,5 +346,4 @@
        "$OUT/iso/GAME.CGO"
        )
 
-;; Custom or Modified Code
 
