@@ -232,7 +232,6 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
-  "pckernel.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -372,6 +371,9 @@
   "nav-graph-editor.o"
   "sampler.o"
   "default-menu.o"
+  "anim-tester-x.o" ;; added
+  "entity-debug.o" ;; added
+  "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-11.go"
   "tpage-31.go"
