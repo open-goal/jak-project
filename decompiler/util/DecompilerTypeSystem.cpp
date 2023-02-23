@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/Disasm/Register.h"
 
@@ -54,28 +55,38 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   for_each_in_list(data, [&](goos::Object& o) {
     try {
       if (car(o).as_symbol()->name == "define-extern") {
+        auto symbol_metadata = DefinitionMetadata();
         auto* rest = &cdr(o);
         auto sym_name = car(*rest);
         rest = &cdr(*rest);
+        // check for docstring
+        if (rest->is_pair() && car(*rest).is_string()) {
+          symbol_metadata.docstring = str_util::trim_newline_indents(car(*rest).as_string()->data);
+          rest = &cdr(*rest);
+        }
         auto sym_type = car(*rest);
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed define-extern");
         }
-        auto info = m_reader.db.get_short_info_for(o);
-        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), info);
-
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), symbol_metadata);
       } else if (car(o).as_symbol()->name == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
-        auto info = m_reader.db.get_short_info_for(o);
+        dtr.type_info->m_metadata.definition_info = m_reader.db.get_short_info_for(o);
         if (dtr.create_runtime_type) {
-          add_symbol(dtr.type.base_type(), "type", info);
+          add_symbol(dtr.type.base_type(), "type", dtr.type_info->m_metadata);
         }
         // declare the type's states globally
         for (auto& state : dtr.type_info->get_states_declared_for_type()) {
           // TODO - get definition info for the state definitions specifically
-          add_symbol(state.first, state.second, info);
+          add_symbol(state.first, state.second, dtr.type_info->m_metadata);
         }
-
+        // add state documentation to the DTS
+        virtual_state_metadata.emplace(dtr.type.base_type(),
+                                       dtr.type_info->m_virtual_state_definition_meta);
+        for (const auto& [state_name, meta] : dtr.type_info->m_state_definition_meta) {
+          state_metadata.emplace(state_name, meta);
+        }
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
         auto type_name = car(*rest);
@@ -86,14 +97,19 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         }
         ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
       } else if (car(o).as_symbol()->name == "defenum") {
-        parse_defenum(cdr(o), &ts);
+        auto symbol_metadata = DefinitionMetadata();
+        parse_defenum(cdr(o), &ts, &symbol_metadata);
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        auto* rest = &cdr(o);
+        const auto& enum_name = car(*rest).as_symbol()->name;
+        symbol_metadata_map[enum_name] = symbol_metadata;
         // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
       }
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);
-      lg::error("{} when parsing decompiler type file:\n{}", e.what(), info);
+      lg::error("{} when parsing decompiler type file:{}", e.what(), info);
       throw e;
     }
   });
@@ -161,22 +177,22 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
   return false;
 }
 
-void DecompilerTypeSystem::add_symbol(
-    const std::string& name,
-    const TypeSpec& type_spec,
-    const std::optional<goos::TextDb::ShortInfo>& definition_info) {
+void DecompilerTypeSystem::add_symbol(const std::string& name,
+                                      const TypeSpec& type_spec,
+                                      const DefinitionMetadata& symbol_metadata) {
   add_symbol(name);
   auto skv = symbol_types.find(name);
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
-    if (definition_info) {
-      symbol_definition_info[name] = definition_info.value();
+    // TODO - could get rid of this if there is a way to go from TypeSpec -> full Type
+    if (symbol_metadata.definition_info) {
+      symbol_metadata_map[name] = symbol_metadata;
     }
   } else {
     if (ts.tc(type_spec, skv->second)) {
     } else {
-      lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
-               skv->second.print(), type_spec.print());
+      lg::warn("Attempting to redefine type of symbol {} from {} to {}", name, skv->second.print(),
+               type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }
@@ -278,10 +294,10 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         }
       case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
         if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_t = coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                                    add.get_objects_typespec()));
           auto new_child = TP_Type::make_from_integer_constant_plus_var(
-              existing.get_integer_constant(),
-              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
-                                                           add.get_objects_typespec())));
+              existing.get_integer_constant(), new_t, new_t);
           *changed = (new_child != existing);
           return new_child;
         } else {
@@ -309,6 +325,9 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::LABEL_ADDR:
         *changed = false;
         return existing;
+      case TP_Type::Kind::SYMBOL:
+        *changed = true;
+        return TP_Type::make_from_ts("symbol");
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
@@ -411,32 +430,31 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
     return bad_it->second;
   }
 
-  static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L",  "3L", "1K", "2j",
-                                                                  "0k", "30L", "1T", "2T"};
+  static const std::vector<std::string> code_ignore_list = {
+      "%",  "T",   "0L", "1L", "3L",   "1k",   "1K",   "2j", "0k",
+      "0K", "30L", "1T", "2T", "100h", "200h", "350h", "t"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
 
-      // Check for codes that take no args
       bool code_takes_no_arg = false;
-      for (char c : single_char_ignore_list) {
-        if (i < str.length() && str.at(i) == c) {
-          code_takes_no_arg = true;
-          break;
+      for (auto& ignored_code : code_ignore_list) {
+        size_t j = i;
+        bool match = true;
+        for (const char c : ignored_code) {
+          if (j > str.length()) {
+            match = false;
+            break;
+          }
+          if (str.at(j) != c) {
+            match = false;
+            break;
+          }
+          j++;
         }
-      }
-
-      for (auto& code : multi_char_ignore_list) {
-        if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1)) {
-          code_takes_no_arg = true;
-          break;
-        }
-        if (i + 2 < str.length() && code.length() == 3 && (str.at(i) == code.at(0)) &&
-            str.at(i + 1) == code.at(1) && str.at(i + 2) == code.at(2)) {
+        if (match) {
           code_takes_no_arg = true;
           break;
         }

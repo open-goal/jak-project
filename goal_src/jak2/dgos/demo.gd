@@ -1,0 +1,10 @@
+("DEMO.DGO"
+ ("demo-obs.o"
+  "tpage-1872.go"
+  "tpage-1876.go"
+  "tpage-1868.go"
+  "daxter-highres-ag.go"
+  "jak-logo-ag.go"
+  "jak-stand-ag.go"
+  "demo.go"
+ ))

@@ -605,11 +605,11 @@
 ;; failed to figure out what this is:
 (defstate play-anim (process-taskable)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('shadow)
        (cond
-         ((-> arg3 param 0)
+         ((-> event param 0)
           (let ((v0-0 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-0))
             v0-0
@@ -624,10 +624,10 @@
       (('shadow-min-max)
        (let ((v1-5 (-> self draw shadow-ctrl)))
          (let ((a0-4 v1-5))
-           (set! (-> a0-4 settings bot-plane w) (- (the-as float (-> arg3 param 0))))
+           (set! (-> a0-4 settings bot-plane w) (- (the-as float (-> event param 0))))
            )
          0
-         (set! (-> v1-5 settings top-plane w) (- (the-as float (-> arg3 param 1))))
+         (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
          )
        0
        )
@@ -793,44 +793,42 @@
 ;; failed to figure out what this is:
 (defstate be-clone (process-taskable)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as shadow-geo (cond
-                           ((= v1-0 'shadow)
-                            (the-as shadow-geo (cond
-                                                 ((-> arg3 param 0)
-                                                  (let ((v0-0 (-> self shadow-backup)))
-                                                    (set! (-> self draw shadow) v0-0)
-                                                    v0-0
-                                                    )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as shadow-geo (case event-type
+                         (('shadow)
+                          (the-as shadow-geo (cond
+                                               ((-> event param 0)
+                                                (let ((v0-0 (-> self shadow-backup)))
+                                                  (set! (-> self draw shadow) v0-0)
+                                                  v0-0
                                                   )
-                                                 (else
-                                                   (set! (-> self draw shadow) #f)
-                                                   (the-as shadow-geo #f)
-                                                   )
+                                                )
+                                               (else
+                                                 (set! (-> self draw shadow) #f)
+                                                 (the-as shadow-geo #f)
                                                  )
-                                    )
-                            )
-                           ((= v1-0 'shadow-min-max)
-                            (let ((v1-5 (-> self draw shadow-ctrl)))
-                              (let ((a0-5 v1-5))
-                                (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> arg3 param 0))))
-                                )
-                              0
-                              (set! (-> v1-5 settings top-plane w) (- (the-as float (-> arg3 param 1))))
+                                               )
+                                  )
+                          )
+                         (('shadow-min-max)
+                          (let ((v1-5 (-> self draw shadow-ctrl)))
+                            (let ((a0-5 v1-5))
+                              (set! (-> a0-5 settings bot-plane w) (- (the-as float (-> event param 0))))
                               )
-                            (the-as shadow-geo 0)
+                            0
+                            (set! (-> v1-5 settings top-plane w) (- (the-as float (-> event param 1))))
                             )
-                           ((= v1-0 'end-mode)
-                            (the-as shadow-geo (if (should-display? self)
-                                                   (the-as shadow-geo (go-virtual idle))
-                                                   (the-as shadow-geo (go-virtual hidden))
-                                                   )
-                                    )
-                            )
-                           )
-              )
-      )
+                          (the-as shadow-geo 0)
+                          )
+                         (('end-mode)
+                          (the-as shadow-geo (if (should-display? self)
+                                                 (the-as shadow-geo (go-virtual idle))
+                                                 (the-as shadow-geo (go-virtual hidden))
+                                                 )
+                                  )
+                          )
+                         )
+            )
     )
   :enter (behavior ((arg0 handle))
     (logior! (-> self skel status) (janim-status blerc))
@@ -870,47 +868,45 @@
 ;; failed to figure out what this is:
 (defstate idle (process-taskable)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (the-as
-             symbol
-             (if (-> self bounce-away)
-                 (the-as
-                   symbol
-                   (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 3)) (shove-up (meters 1)))))
-                   )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (the-as
+           symbol
+           (if (-> self bounce-away)
+               (the-as
+                 symbol
+                 (send-event proc 'shove #f (static-attack-info ((shove-back (meters 3)) (shove-up (meters 1)))))
                  )
-             )
+               )
            )
-          ((= v1-0 'touch)
-           (the-as symbol (send-shove-back
-                            (-> self root-override)
-                            arg0
-                            (the-as touching-shapes-entry (-> arg3 param 0))
-                            0.7
-                            6144.0
-                            16384.0
-                            )
-                   )
+         )
+        (('touch)
+         (the-as symbol (send-shove-back
+                          (-> self root-override)
+                          proc
+                          (the-as touching-shapes-entry (-> event param 0))
+                          0.7
+                          6144.0
+                          16384.0
+                          )
+                 )
+         )
+        (('clone)
+         (the-as symbol (go-virtual be-clone (the-as handle (-> event param 0))))
+         )
+        (('play-anim)
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (let ((v0-0 #t))
+           (set! (-> self been-kicked) v0-0)
+           v0-0
            )
-          ((= v1-0 'clone)
-           (the-as symbol (go-virtual be-clone (the-as handle (-> arg3 param 0))))
-           )
-          ((= v1-0 'play-anim)
-           (logclear! (-> self mask) (process-mask actor-pause))
-           (let ((v0-0 #t))
-             (set! (-> self been-kicked) v0-0)
-             v0-0
-             )
-           )
-          ((= v1-0 'hidden-other)
-           (the-as symbol (go-virtual hidden-other))
-           )
-          )
+         )
+        (('hidden-other)
+         (the-as symbol (go-virtual hidden-other))
+         )
         )
       )
     )
@@ -1177,9 +1173,9 @@
 
 ;; failed to figure out what this is:
 (defstate othercam-running (othercam)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
-    (case arg2
+    (case event-type
       (('die)
        (set! v0-0 #t)
        (set! (-> self die?) (the-as symbol v0-0))
@@ -1187,13 +1183,13 @@
        )
       (('joint)
        (let ((t9-0 type-type?)
-             (v1-1 (-> arg3 param 0))
+             (v1-1 (-> event param 0))
              )
          (cond
            ((t9-0 (rtype-of v1-1) string)
             (let ((v1-8 (lookup-art
                           (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
-                          (the-as string (-> arg3 param 0))
+                          (the-as string (-> event param 0))
                           (the-as type #f)
                           )
                         )
@@ -1205,8 +1201,8 @@
                 )
               )
             )
-           ((zero? (logand (-> arg3 param 0) 7))
-            (set! v0-0 (-> arg3 param 0))
+           ((not (logtest? (-> event param 0) 7))
+            (set! v0-0 (-> event param 0))
             (set! (-> self cam-joint-index) (the-as int v0-0))
             v0-0
             )
@@ -1214,7 +1210,7 @@
          )
        )
       (('mask)
-       (set! v0-0 (-> arg3 param 0))
+       (set! v0-0 (-> event param 0))
        (set! (-> self mask-to-clear) (the-as process-mask v0-0))
        v0-0
        )

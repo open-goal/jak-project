@@ -212,37 +212,37 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-missile-impact (ogreboss-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (#f
            (cond
-             ((= (-> arg0 type) target)
-              (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+             ((= (-> proc type) target)
+              (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
               )
              (else
                (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
                  (set! (-> a1-2 from) self)
                  (set! (-> a1-2 num-params) 4)
                  (set! (-> a1-2 message) 'attack)
-                 (set! (-> a1-2 param 0) (-> arg3 param 0))
+                 (set! (-> a1-2 param 0) (-> event param 0))
                  (set! (-> a1-2 param 1) (the-as uint 'explode))
                  (let ((v1-12 (+ *global-attack-id* 1)))
                    (set! *global-attack-id* v1-12)
                    (set! (-> a1-2 param 2) (the-as uint v1-12))
                    )
                  (set! (-> a1-2 param 3) (the-as uint 0))
-                 (send-event-function arg0 a1-2)
+                 (send-event-function proc a1-2)
                  )
                )
              )
-           (if (= (-> arg0 type) target)
+           (if (= (-> proc type) target)
                (send-event (ppointer->process (-> self parent-override)) 'victory)
                )
            )
          (else
-           (let* ((s4-0 arg0)
+           (let* ((s4-0 proc)
                   (t1-0 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) target))
                             s4-0
                             )
@@ -280,7 +280,7 @@
                        (the-as rgba (new 'static 'rgba :g #xff :a #x80))
                        )
                      (when (>= f30-0 0.0)
-                       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'damage))))
+                       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'damage))))
                        (send-event (ppointer->process (-> self parent-override)) 'victory)
                        )
                      )
@@ -289,7 +289,7 @@
                (else
                  (let ((v1-37 (new 'stack-no-clear 'vector)))
                    (set-vector! v1-37 0.0 -12288000.0 0.0 1.0)
-                   (send-event arg0 'impulse v1-37)
+                   (send-event proc 'impulse v1-37)
                    )
                  )
                )
@@ -524,19 +524,13 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-idle (ogreboss-super-boulder)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('speedup)
-       (let ((f0-1 (* 1.3 (-> self speed))))
-         (set! (-> self speed) f0-1)
-         f0-1
-         )
+       (set! (-> self speed) (* 1.3 (-> self speed)))
        )
       (('grow-faster)
-       (let ((f0-2 1.0))
-         (set! (-> self grow-rate) f0-2)
-         f0-2
-         )
+       (set! (-> self grow-rate) 1.0)
        )
       (('go-throw)
        (go ogreboss-super-boulder-throw)
@@ -1564,8 +1558,8 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-stage1 (ogreboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('next-stage)
        (set! (-> self bridge-assembled) #t)
        (go ogreboss-stage2)
@@ -1758,41 +1752,41 @@
 ;; definition for function ogreboss-attack-event-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior ogreboss-attack-event-handler ogreboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'attack)
-                     (when (-> self vulnerable)
-                       (if ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> arg3 param 0))
-                            (the-as collide-shape-moving (-> self root-override))
-                            (the-as uint 128)
-                            )
-                           (ja :chan 1 :group! ogreboss-hit-crotch-ja :num! min :frame-interp 0.0)
-                           (ja :chan 1 :group! ogreboss-hit-chest-ja :num! min :frame-interp 0.0)
+  (the-as object (case arg2
+                   (('attack)
+                    (when (-> self vulnerable)
+                      (if ((method-of-type touching-shapes-entry prims-touching?)
+                           (the-as touching-shapes-entry (-> arg3 param 0))
+                           (the-as collide-shape-moving (-> self root-override))
+                           (the-as uint 128)
                            )
-                       (set! (-> self hit-time) (-> *display* base-frame-counter))
-                       (let ((v1-17 (rand-vu-int-range 0 2)))
-                         (cond
-                           ((zero? v1-17)
-                            (sound-play "ogre-grunt1" :position (the-as symbol (-> self root-override trans)))
-                            )
-                           ((= v1-17 1)
-                            (sound-play "ogre-grunt2" :position (the-as symbol (-> self root-override trans)))
-                            )
-                           (else
-                             (sound-play "ogre-grunt3" :position (the-as symbol (-> self root-override trans)))
-                             )
+                          (ja :chan 1 :group! ogreboss-hit-crotch-ja :num! min :frame-interp 0.0)
+                          (ja :chan 1 :group! ogreboss-hit-chest-ja :num! min :frame-interp 0.0)
+                          )
+                      (set! (-> self hit-time) (-> *display* base-frame-counter))
+                      (let ((v1-17 (rand-vu-int-range 0 2)))
+                        (cond
+                          ((zero? v1-17)
+                           (sound-play "ogre-grunt1" :position (the-as symbol (-> self root-override trans)))
                            )
-                         )
-                       (+! (-> self hit-count) 1)
-                       (if (>= (-> self hit-count) (-> self max-hit-count))
-                           (go ogreboss-stage3-hit)
+                          ((= v1-17 1)
+                           (sound-play "ogre-grunt2" :position (the-as symbol (-> self root-override trans)))
                            )
-                       (send-event (handle->process (-> self boulder)) 'speedup)
-                       )
-                     #t
-                     )
-            )
-    )
+                          (else
+                            (sound-play "ogre-grunt3" :position (the-as symbol (-> self root-override trans)))
+                            )
+                          )
+                        )
+                      (+! (-> self hit-count) 1)
+                      (if (>= (-> self hit-count) (-> self max-hit-count))
+                          (go ogreboss-stage3-hit)
+                          )
+                      (send-event (handle->process (-> self boulder)) 'speedup)
+                      )
+                    #t
+                    )
+                   )
+          )
   )
 
 ;; failed to figure out what this is:

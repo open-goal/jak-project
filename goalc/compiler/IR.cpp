@@ -7,6 +7,7 @@
 #include "goalc/emitter/IGen.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 using namespace emitter;
 namespace {
@@ -239,7 +240,11 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    if (dest_reg.is_xmm()) {
+      gen->add_instr(IGen::movq_xmm64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    } else {
+      gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+    }
   } else if (m_name == "#t") {
     gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
                                            true_symbol_offset(gen->version())),
@@ -1006,7 +1011,7 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
   } else {
     throw std::runtime_error(
         fmt::format("IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})",
-                    m_value->ireg().reg_class, m_size));
+                    fmt::underlying(m_value->ireg().reg_class), m_size));
   }
 }
 
@@ -1600,6 +1605,9 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PAND:
       function = ".pand";
       break;
+    case Kind::PACKUSWB:
+      function = ".packuswb";
+      break;
     default:
       ASSERT(false);
   }
@@ -1687,6 +1695,9 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::PAND:
       gen->add_instr(IGen::parallel_bitwise_and(dst, src2, src1), irec);
       break;
+    case Kind::PACKUSWB:
+      gen->add_instr(IGen::vpackuswb(dst, src1, src2), irec);
+      break;
     default:
       ASSERT(false);
   }
@@ -1770,6 +1781,14 @@ std::string IR_Int128Math2Asm::print() {
       use_imm = true;
       function = ".pw.sra";
       break;
+    case Kind::PH_SLL:
+      use_imm = true;
+      function = ".ph.sll";
+      break;
+    case Kind::PH_SRL:
+      use_imm = true;
+      function = ".ph.srl";
+      break;
     case Kind::VPSRLDQ:
       use_imm = true;
       function = ".VPSRLDQ";
@@ -1828,6 +1847,19 @@ void IR_Int128Math2Asm::do_codegen(emitter::ObjectGenerator* gen,
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
       gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
+      break;
+    case Kind::PH_SLL:
+      // you are technically allowed to put values > 32 in here.
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
+      gen->add_instr(IGen::ph_sll(dst, src, *m_imm), irec);
+      break;
+    case Kind::PH_SRL:
+      ASSERT(m_imm.has_value());
+      ASSERT(*m_imm >= 0);
+      ASSERT(*m_imm <= 255);
+      gen->add_instr(IGen::ph_srl(dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRA:
       ASSERT(m_imm.has_value());
@@ -1907,7 +1939,7 @@ IR_SplatVF::IR_SplatVF(bool use_color,
 
 std::string IR_SplatVF::print() {
   return fmt::format(".splat.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                     m_src->print(), m_element);
+                     m_src->print(), fmt::underlying(m_element));
 }
 
 RegAllocInstr IR_SplatVF::to_rai() {

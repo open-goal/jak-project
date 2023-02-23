@@ -98,7 +98,6 @@
 
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
-
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
@@ -246,6 +245,10 @@
     (pc-sound-set-fade-hack fade-hack)
     )
 
+  (if (pc-cheats? (-> obj cheats) mirror)
+      (sound-set-mirror-mode (sound-mirror-mode mirrored))
+      (sound-set-mirror-mode (sound-mirror-mode normal)))
+
   (none))
 
 ;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
@@ -328,8 +331,8 @@
 
   ;; update auto-splitter info
   (when (-> *pc-settings* speedrunner-mode?)
-    (with-profiler "autosplit-update-jak1"
-      (update-autosplit-info-jak1)))
+    (with-profiler "speedrun-update-jak1"
+      (speedrun-mode-update)))
 
   (when (not (-> obj use-vis?))
     (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
@@ -525,8 +528,16 @@
   (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
 
   ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
-  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
-      (add-to-music-log obj 'village1 1))
+  (if (task-closed? (game-task village1-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava assistant))))
+  (if (task-closed? (game-task village2-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
+  (if (task-closed? (game-task village3-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
+  (when (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1)
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage)))
+      )
   (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
       (add-to-music-log obj 'jungleb 2))
   (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
@@ -539,10 +550,14 @@
       (add-to-music-log obj 'misty 4))
   (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
       (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task village2-levitator) (task-status need-hint))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
   (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
       (add-to-music-log obj 'swamp 1))
   (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
       (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task village3-button) (task-status need-hint))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
   (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
       (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
   (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
@@ -555,6 +570,10 @@
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
   (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
       (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (task-closed? (game-task finalboss-movies) (task-status unknown))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end)))
+      )
   (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
       (add-to-music-log obj 'credits 0)
       (add-to-music-log obj 'credits 1)
@@ -782,14 +801,15 @@
       (with-settings-scope (file)
         (case-str (file-stream-read-word file)
           (("settings")
-            (set! version (file-stream-read-int file))
+            (set! version (the pckernel-version (file-stream-read-int file)))
             (cond
-              ((= (logand version #xffffffff00000000) (logand PC_KERNEL_VERSION #xffffffff00000000))
-                ;; minor difference
+              ((and (= (-> version major) PC_KERNEL_VER_MAJOR)
+                    (= (-> version minor) PC_KERNEL_VER_MINOR))
+                ;; minor or no difference
                 )
               (else
                 ;; major difference
-                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR (bit-field int version 32 16) (bit-field int version 48 16))
+                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR (-> version major) (-> version minor))
                 (file-stream-close file)
                 (return #f)
                 )
@@ -837,6 +857,8 @@
                 (("lod-force-tie") (set! (-> obj lod-force-tie) (file-stream-read-int file)))
                 (("lod-force-ocean") (set! (-> obj lod-force-ocean) (file-stream-read-int file)))
                 (("lod-force-actor") (set! (-> obj lod-force-actor) (file-stream-read-int file)))
+                (("game-language") (set! (-> *setting-control* default language) (the-as language-enum (file-stream-read-int file))))
+                (("text-language") (set! (-> obj text-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
                 (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
@@ -855,6 +877,7 @@
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
                 (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
+                (("cutscene-skips?") (file-stream-read-symbol file))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -909,6 +932,15 @@
                   )
                 )
               )
+            ;; upgrade settings if minor changes
+            ;; remember to delete this when major changes to the version number are made
+            (when (and (= PC_KERNEL_VER_MAJOR 1)
+                       (= PC_KERNEL_VER_MINOR 10)
+                       (or (!= PC_KERNEL_VER_BUILD (-> version build))
+                           (!= PC_KERNEL_VER_REVISION (-> version revision))))
+                ;; 1.10 upgrade: turn envmap on
+                (set! (-> obj force-envmap?) #t)
+                )
             )
           )
         )
@@ -992,6 +1024,8 @@
     (format file "  (music-fadeout? ~A)~%" (-> obj music-fadeout?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
     (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
+    (format file "  (game-language ~D)~%" (-> *setting-control* default language))
+    (format file "  (text-language ~D)~%" (-> obj text-language))
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
     (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
@@ -1137,8 +1171,8 @@
 
 ) ;; when debug_segment
 
-(defun-debug draw-build-revision ()
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                      (bucket-id debug-no-zbuf))
           (draw-string-xy *pc-settings-built-sha*
                           buf

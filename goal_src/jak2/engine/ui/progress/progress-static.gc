@@ -7,3 +7,1621 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-hud-ring hud-ring hud-ring-lod0-jg hud-ring-idle-ja
+              ((hud-ring-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 55)
+              )
+
+(defskelgroup skel-hud-ring-part hud-ring hud-ring-part-lod0-jg hud-ring-part-idle-ja
+              ((hud-ring-part-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 55)
+              )
+
+(define *main-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-missions)
+        :scale #t
+        :next-state 'missions
+        )
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-root-show-map) :scale #t :next-state 'bigmap)
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-highscores)
+        :scale #t
+        :next-state 'highscores
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-game-options)
+        :scale #t
+        :next-state 'game-options
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-graphic-options)
+        :scale #t
+        :next-state 'graphic-options
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-sound-options)
+        :scale #t
+        :next-state 'sound-options
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-load-game)
+        :scale #t
+        :next-state 'select-load
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-save-game)
+        :scale #t
+        :next-state 'select-save
+        )
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-root-secrets) :scale #t :next-state 'secret)
+      (new 'static 'menu-main-menu-option :name (game-text-id text-x173) :scale #t :next-state 'quit-restart)
+      )
+    )
+  )
+
+(define *main-options-debug*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (game-text-id text-x135) :scale #t :next-state 'select-start)
+      (new 'static 'menu-main-menu-option :name (game-text-id text-x16a) :scale #t :next-state 'select-pre-start)
+      (new 'static 'menu-main-menu-option :name (game-text-id text-x16b) :scale #t :next-state 'select-kiosk-start)
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-main-secrets-sceneplayer-1)
+        :scale #t
+        :next-state 'select-scene
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-main-secrets-sceneplayer-2)
+        :scale #t
+        :next-state 'select-scene
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-main-secrets-sceneplayer-3)
+        :scale #t
+        :next-state 'select-scene
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-load-game)
+        :scale #t
+        :next-state 'select-load
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-save-game)
+        :scale #t
+        :next-state 'select-save
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-secrets)
+        :scale #t
+        :next-state 'unlocked-secrets
+        )
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *main-kiosk-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-restart-mission)
+        :scale #t
+        :next-state 'restart
+        )
+      (new 'static 'menu-main-menu-option
+        :name (game-text-id progress-root-missions)
+        :scale #t
+        :next-state 'missions
+        )
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *main-demo-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-demo-exit) :scale #t :next-state 'back)
+      (new 'static 'menu-main-menu-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *title*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sub-menu-option
+        :name (game-text-id progress-title-new-game)
+        :scale #t
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-sub-menu-option :name (game-text-id progress-load-game) :scale #t :next-state 'select-load)
+      (new 'static 'menu-sub-menu-option
+        :name (game-text-id progress-title-options)
+        :scale #t
+        :next-state 'title-options
+        )
+      (new 'static 'menu-sub-menu-option
+        :name (game-text-id progress-root-secrets)
+        :scale #t
+        :next-state 'unlocked-secrets
+        )
+      )
+    )
+  )
+
+(define *unlocked-secrets*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-unlocked-menu-option :name (game-text-id progress-main-secrets-scrapbook) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (game-text-id progress-main-secrets-mega-scrapbook) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (game-text-id progress-main-secrets-sceneplayer-1) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (game-text-id progress-main-secrets-sceneplayer-2) :scale #f)
+      (new 'static 'menu-unlocked-menu-option :name (game-text-id progress-main-secrets-sceneplayer-3) :scale #f)
+      (new 'static 'menu-unlocked-menu-option
+        :name (game-text-id progress-main-secrets-hero-mode)
+        :scale #f
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-unlocked-menu-option
+        :name (game-text-id progress-main-secrets-levelselect)
+        :scale #f
+        :next-state 'select-start
+        )
+      )
+    )
+  )
+
+(define *options* (new 'static 'menu-option-list
+                    :y-center #xc6
+                    :y-space 30
+                    :scale 0.82
+                    :options (new 'static 'boxed-array :type menu-option
+                      (new 'static 'menu-sub-menu-option
+                        :name (game-text-id progress-root-game-options)
+                        :scale #t
+                        :next-state 'game-options
+                        )
+                      (new 'static 'menu-sub-menu-option
+                        :name (game-text-id progress-root-graphic-options)
+                        :scale #t
+                        :next-state 'graphic-options
+                        )
+                      (new 'static 'menu-sub-menu-option
+                        :name (game-text-id progress-root-sound-options)
+                        :scale #t
+                        :next-state 'sound-options
+                        )
+                      )
+                    )
+        )
+
+(define *game-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-on-off-game-vibrations-option :name (game-text-id text-x10b) :scale #t)
+      (new 'static 'menu-on-off-game-subtitles-option :name (game-text-id text-x16d) :scale #t)
+      (new 'static 'menu-subtitle-language-game-option :name (game-text-id text-x102) :scale #t)
+      (new 'static 'menu-language-game-option :name (game-text-id text-x10a) :scale #t)
+      (new 'static 'menu-sub-menu-game-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *game-options-japan*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-on-off-game-vibrations-option :name (game-text-id text-x10b) :scale #t)
+      (new 'static 'menu-sub-menu-game-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *game-options-demo*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-on-off-option :name (game-text-id text-x10b) :scale #t)
+      (new 'static 'menu-on-off-option :name (game-text-id text-x10c) :scale #t)
+      (new 'static 'menu-sub-menu-option :name (game-text-id progress-back) :scale #t :next-state 'back)
+      )
+    )
+  )
+
+(define *graphic-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-center-screen-graphic-option :name (game-text-id text-x10d) :scale #t)
+      (new 'static 'menu-aspect-ratio-option :name (game-text-id progress-aspect-ratio) :scale #t)
+      (new 'static 'menu-on-off-progressive-scan-graphic-option
+        :name (game-text-id progress-progressive-scan)
+        :scale #t
+        )
+      )
+    )
+  )
+
+(define *graphic-title-options-pal*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-center-screen-graphic-option :name (game-text-id text-x10d) :scale #t)
+      (new 'static 'menu-aspect-ratio-option :name (game-text-id progress-aspect-ratio) :scale #t)
+      (new 'static 'menu-on-off-progressive-scan-graphic-option
+        :name (game-text-id progress-progressive-scan)
+        :scale #t
+        )
+      (new 'static 'menu-video-mode-option :name (game-text-id progress-video-mode) :scale #t)
+      )
+    )
+  )
+
+(define *sound-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-slider-option :name (game-text-id text-x107) :scale #t)
+      (new 'static 'menu-slider-option :name (game-text-id progress-sound-music-volume) :scale #t)
+      (new 'static 'menu-slider-option :name (game-text-id progress-sound-speech-volume) :scale #t)
+      (new 'static 'menu-stereo-mode-sound-option :name (game-text-id text-x103) :scale #t)
+      )
+    )
+  )
+
+(define *quit-restart-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-restart-mission-qr-option :name (game-text-id progress-root-restart-mission) :scale #t)
+      (new 'static 'menu-quit-qr-option :name (game-text-id progress-quit) :scale #t)
+      )
+    )
+  )
+
+(define *load-save-options* (new 'static 'menu-option-list
+                              :y-center #xdc
+                              :y-space 30
+                              :scale 0.82
+                              :options (new 'static 'boxed-array :type menu-option
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                )
+                              )
+        )
+
+(define *save-options-title* (new 'static 'menu-option-list
+                               :y-center #xdc
+                               :y-space 30
+                               :scale 0.82
+                               :options (new 'static 'boxed-array :type menu-option
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-sub-menu-option
+                                   :name (game-text-id progress-continue-without-saving)
+                                   :scale #f
+                                   :next-state 'continue
+                                   )
+                                 )
+                               )
+        )
+
+(define *loading-options* (new 'static 'menu-option-list
+                            :y-center #xc6
+                            :y-space 30
+                            :scale 0.82
+                            :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-loading-option))
+                            )
+        )
+
+(define *insufficient-space-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-insufficient-space-option))
+    )
+  )
+
+(define *secrets-insufficient-space-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-secrets-insufficient-space-option))
+    )
+  )
+
+(define *insert-card-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-insert-card-option))
+    )
+  )
+
+(define *error-loading-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-loading-option))
+    )
+  )
+
+(define *error-auto-saving-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-auto-saving-option))
+    )
+  )
+
+(define *card-removed-options*
+  (new 'static 'menu-option-list
+    :y-center #x104
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-card-removed-option))
+    )
+  )
+
+(define *error-disc-removed-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-disc-removed-option))
+    )
+  )
+
+(define *error-reading-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-reading-option))
+    )
+  )
+
+(define *icon-info-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-icon-info-option))
+    )
+  )
+
+(define *format-card-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-format-card-option))
+    )
+  )
+
+(define *already-exists-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-already-exists-option))
+    )
+  )
+
+(define *create-game-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-create-game-option))
+    )
+  )
+
+(define *video-mode-warning-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-video-mode-warning-option))
+    )
+  )
+
+(define *video-mode-ok-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-video-mode-ok-option))
+    )
+  )
+
+(define *progressive-mode-warning-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-progressive-mode-warning-option))
+    )
+  )
+
+(define *progressive-mode-ok-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-progressive-mode-ok-option))
+    )
+  )
+
+(define *quit-options* (new 'static 'menu-option-list
+                         :y-center #xc6
+                         :y-space 30
+                         :scale 0.82
+                         :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-quit-option))
+                         )
+        )
+
+(define *select-start-options*
+  "List of [[menu-select-start-option]]"
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-select-start-option))
+    )
+  )
+
+(define *select-scene-options*
+  "List of [[menu-select-scene-option]]"
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-select-scene-option))
+    )
+  )
+
+(define *bigmap-options* (new 'static 'menu-option-list
+                           :y-center #xc6
+                           :y-space 30
+                           :scale 0.82
+                           :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-bigmap-option))
+                           )
+        )
+
+(define *missions-options*
+  "List of [[menu-missions-option]]"
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-missions-option :num-pages 2))
+    )
+  )
+
+(define *highscores-options*
+  "List of [[menu-highscores-option]]"
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-highscores-option :num-pages 15 :slide-dir 1.0)
+      )
+    )
+  )
+
+(define *secret-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-secret-option
+                                                  :num-items 16
+                                                  :num-hero-items 16
+                                                  :secret-items (new 'static 'boxed-array :type secret-item-option
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x155)
+                                                      :scale #t
+                                                      :cost 5
+                                                      :can-toggle #t
+                                                      :flag #x1
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x156)
+                                                      :scale #t
+                                                      :cost 15
+                                                      :can-toggle #t
+                                                      :flag #x2
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x165)
+                                                      :scale #t
+                                                      :cost 30
+                                                      :can-toggle #t
+                                                      :flag #x10000
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x166)
+                                                      :scale #t
+                                                      :cost 45
+                                                      :can-toggle #t
+                                                      :flag #x20000
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-scrapbook)
+                                                      :scale #t
+                                                      :cost 55
+                                                      :can-toggle #f
+                                                      :flag #x200
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-1)
+                                                      :scale #t
+                                                      :cost 65
+                                                      :can-toggle #f
+                                                      :flag #x20
+                                                      :avail-after #x62
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x162)
+                                                      :scale #t
+                                                      :cost 75
+                                                      :can-toggle 'auto
+                                                      :flag #x1000
+                                                      :avail-after #x62
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-2)
+                                                      :scale #t
+                                                      :cost 95
+                                                      :can-toggle #f
+                                                      :flag #x40
+                                                      :avail-after #xaa
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x163)
+                                                      :scale #t
+                                                      :cost #x69
+                                                      :can-toggle 'auto
+                                                      :flag #x2000
+                                                      :avail-after #xb1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-3)
+                                                      :scale #t
+                                                      :cost #x7d
+                                                      :can-toggle #f
+                                                      :flag #x80
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x164)
+                                                      :scale #t
+                                                      :cost #x87
+                                                      :can-toggle 'auto
+                                                      :flag #x4000
+                                                      :avail-after #xd3
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-levelselect)
+                                                      :scale #t
+                                                      :cost #x91
+                                                      :can-toggle #f
+                                                      :flag #x100
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x157)
+                                                      :scale #t
+                                                      :cost #x9b
+                                                      :can-toggle #t
+                                                      :flag #x4
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x161)
+                                                      :scale #t
+                                                      :cost #xa5
+                                                      :can-toggle #t
+                                                      :flag #x10
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x158)
+                                                      :scale #t
+                                                      :cost #xaf
+                                                      :can-toggle #t
+                                                      :flag #x8
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-hero-mode)
+                                                      :scale #t
+                                                      :cost #xc8
+                                                      :can-toggle #f
+                                                      :flag #x8000
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x155)
+                                                      :scale #t
+                                                      :cost 5
+                                                      :can-toggle #t
+                                                      :flag #x1
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x156)
+                                                      :scale #t
+                                                      :cost 15
+                                                      :can-toggle #t
+                                                      :flag #x2
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x157)
+                                                      :scale #t
+                                                      :cost 20
+                                                      :can-toggle #t
+                                                      :flag #x4
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x161)
+                                                      :scale #t
+                                                      :cost 25
+                                                      :can-toggle #t
+                                                      :flag #x10
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x158)
+                                                      :scale #t
+                                                      :cost 30
+                                                      :can-toggle #t
+                                                      :flag #x8
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x165)
+                                                      :scale #t
+                                                      :cost 35
+                                                      :can-toggle #t
+                                                      :flag #x10000
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x166)
+                                                      :scale #t
+                                                      :cost 40
+                                                      :can-toggle #t
+                                                      :flag #x20000
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-scrapbook)
+                                                      :scale #t
+                                                      :cost 55
+                                                      :can-toggle #f
+                                                      :flag #x200
+                                                      :avail-after #x1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-1)
+                                                      :scale #t
+                                                      :cost 65
+                                                      :can-toggle #f
+                                                      :flag #x20
+                                                      :avail-after #x62
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x162)
+                                                      :scale #t
+                                                      :cost 75
+                                                      :can-toggle 'auto
+                                                      :flag #x1000
+                                                      :avail-after #x62
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-2)
+                                                      :scale #t
+                                                      :cost 95
+                                                      :can-toggle #f
+                                                      :flag #x40
+                                                      :avail-after #xaa
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x163)
+                                                      :scale #t
+                                                      :cost #x69
+                                                      :can-toggle 'auto
+                                                      :flag #x2000
+                                                      :avail-after #xb1
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-sceneplayer-3)
+                                                      :scale #t
+                                                      :cost #x7d
+                                                      :can-toggle #f
+                                                      :flag #x80
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id text-x164)
+                                                      :scale #t
+                                                      :cost #x87
+                                                      :can-toggle 'auto
+                                                      :flag #x4000
+                                                      :avail-after #xd3
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-levelselect)
+                                                      :scale #t
+                                                      :cost #x91
+                                                      :can-toggle #f
+                                                      :flag #x100
+                                                      :avail-after #xf5
+                                                      )
+                                                    (new 'static 'secret-item-option
+                                                      :name (game-text-id progress-main-secrets-mega-scrapbook)
+                                                      :scale #t
+                                                      :cost #xc8
+                                                      :can-toggle #f
+                                                      :flag #x400
+                                                      :avail-after #x1
+                                                      )
+                                                    )
+                                                  )
+                                                )
+    )
+  )
+
+(define *language-name-remap*
+  (the-as (array game-text-id)
+    (new 'static 'boxed-array :type uint32 #x111 #x112 #x113 #x114 #x115 #x117 #x116 #x30b)
+    )
+  )
+
+(define *stereo-mode-name-remap*
+  (the-as (array game-text-id) (new 'static 'boxed-array :type uint32 #x104 #x105 #x106))
+  )
+
+(define *hud-ring-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x80 #x40 #x10 #x4 #x8 #x400 #x20 #x100 #x200 #x2)
+  )
+
+(define *hud-ring-kiosk-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x40 #x80 #x2 #x200 #x200 #x200 #x200 #x200 #x200 #x200)
+  )
+
+(define *hud-ring-demo-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x80 #x2 #x200 #x200 #x200 #x200 #x200 #x200 #x200 #x200)
+  )
+
+(deftype hud-scene-info (basic)
+  ((name      string  :offset-assert   4)
+   (continue  string  :offset-assert   8)
+   (info      object  :offset-assert  12)
+   (info-str  string  :offset         12)
+   (info-list pair    :offset         12)
+   (text      uint32  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(define *hud-select-scene-act1*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :name "intro"
+      :continue "village1-start"
+      :info '("intro-samos-hut" "intro-vortex" "intro-city-square" "intro-prison")
+      :text #x307
+      )
+    (new 'static 'hud-scene-info
+      :name "city-help-kid-intro"
+      :continue "ctyslumb-fort"
+      :info "city-help-kid-intro"
+      :text #x28c
+      )
+    (new 'static 'hud-scene-info
+      :name "city-help-kid-resolution"
+      :continue "ctyslumb-fort"
+      :info "city-help-kid-resolution"
+      :text #x28d
+      )
+    (new 'static 'hud-scene-info
+      :name "ruins-tower-intro"
+      :continue "ctysluma-tower-intro"
+      :info "ruins-tower-intro"
+      :text #x281
+      )
+    (new 'static 'hud-scene-info
+      :name "ruins-tower-victory"
+      :continue "ruins-hut"
+      :info "ruins-tower-victory"
+      :text #x282
+      )
+    (new 'static 'hud-scene-info :name "atoll-1-int" :continue "hideout-start" :info "atoll-1-int" :text #x2c8)
+    (new 'static 'hud-scene-info :name "atoll-1-res" :continue "atoll-movie" :info "atoll-1-res" :text #x2c9)
+    (new 'static 'hud-scene-info
+      :name "fortress-2-intro"
+      :continue "hideout-start"
+      :info "fortress-2-intro"
+      :text #x2bc
+      )
+    (new 'static 'hud-scene-info
+      :name "fortress-blow-up-ammo-res-a"
+      :continue "fordumpc-start"
+      :info "fortress-blow-up-ammo-res-a"
+      :text #x2bd
+      )
+    (new 'static 'hud-scene-info
+      :name "fortress-blow-up-ammo-res-b"
+      :continue "fordumpc-explode-movie"
+      :info "fortress-blow-up-ammo-res-b"
+      :text #x2be
+      )
+    (new 'static 'hud-scene-info
+      :name "city-krew-delivery-intro"
+      :continue "hideout-start"
+      :info "city-krew-delivery-intro"
+      :text #x28f
+      )
+    (new 'static 'hud-scene-info
+      :name "krew-delivery-res"
+      :continue "hiphog-start"
+      :info "krew-delivery-res"
+      :text #x290
+      )
+    (new 'static 'hud-scene-info :name "atoll-2-intro" :continue "hiphog-start" :info "atoll-2-intro" :text #x2ca)
+    (new 'static 'hud-scene-info
+      :name "atoll-sig-intro"
+      :continue "atoll-movie"
+      :info "atoll-sig-intro"
+      :text #x2ce
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sig-tank"
+      :continue "atoll-movie"
+      :info "atoll-sig-tank"
+      :text #x2cf
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sniper-a"
+      :continue "atoll-movie"
+      :info "atoll-sniper-a"
+      :text #x2d0
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sniper-b"
+      :continue "atoll-movie"
+      :info "atoll-sniper-b"
+      :text #x2d1
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sniper-c"
+      :continue "atoll-movie"
+      :info "atoll-sniper-c"
+      :text #x2d2
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sniper-d"
+      :continue "atoll-movie"
+      :info "atoll-sniper-d"
+      :text #x2d3
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-sniper-e"
+      :continue "atoll-movie"
+      :info "atoll-sniper-e"
+      :text #x2d4
+      )
+    (new 'static 'hud-scene-info
+      :name "city-oracle-intro"
+      :continue "oracle-start"
+      :info "city-oracle-intro"
+      :text #x29d
+      )
+    (new 'static 'hud-scene-info
+      :name "city-oracle-level-0"
+      :continue "oracle-start"
+      :info "city-oracle-level-0"
+      :text #x29e
+      )
+    (new 'static 'hud-scene-info
+      :name "city-oracle-level-1"
+      :continue "oracle-start"
+      :info "city-oracle-level-1"
+      :text #x29f
+      )
+    (new 'static 'hud-scene-info
+      :name "city-oracle-level-2"
+      :continue "oracle-start"
+      :info "city-oracle-level-2"
+      :text #x2a0
+      )
+    (new 'static 'hud-scene-info
+      :name "city-oracle-level-3"
+      :continue "oracle-start"
+      :info "city-oracle-level-3"
+      :text #x2a1
+      )
+    (new 'static 'hud-scene-info :name "sewer-1-intro" :continue "hiphog-start" :info "sewer-1-intro" :text #x2c1)
+    (new 'static 'hud-scene-info :name "sewer-1-res" :continue "hiphog-start" :info "sewer-1-res" :text #x2c2)
+    (new 'static 'hud-scene-info
+      :name "city-get-yellow-gun"
+      :continue "gungame-movie"
+      :info "city-get-yellow-gun"
+      :text #x2b2
+      )
+    (new 'static 'hud-scene-info
+      :name "vin-rescue-intro"
+      :continue "hideout-start"
+      :info "vin-rescue-intro"
+      :text #x286
+      )
+    (new 'static 'hud-scene-info :name "vin-rescue" :continue "strip-start" :info "vin-rescue" :text #x287)
+    (new 'static 'hud-scene-info
+      :name "city-keira-delivery-intro"
+      :continue "hiphog-start"
+      :info "city-keira-delivery-intro"
+      :text #x2a7
+      )
+    (new 'static 'hud-scene-info
+      :name "city-krew-collection-intro"
+      :continue "hiphog-start"
+      :info "city-krew-collection-intro"
+      :text #x2a2
+      )
+    (new 'static 'hud-scene-info
+      :name "city-krew-collection-res"
+      :continue "hiphog-start"
+      :info "city-krew-collection-res"
+      :text #x2a3
+      )
+    (new 'static 'hud-scene-info
+      :name "city-keira-hover-challenge-intro"
+      :continue "garage-start-skate"
+      :info "city-keira-hover-challenge-intro"
+      :text #x294
+      )
+    (new 'static 'hud-scene-info
+      :name "city-put-hoverboard"
+      :continue "skatea-start"
+      :info "city-put-hoverboard"
+      :text #x2b4
+      )
+    (new 'static 'hud-scene-info
+      :name "city-keira-hover-challenge-res"
+      :continue "garage-start-skate"
+      :info "city-keira-hover-challenge-res"
+      :text #x295
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-3-intro"
+      :continue "hideout-start"
+      :info "atoll-3-intro"
+      :text #x2cb
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-save-ashelin-res-a"
+      :continue "atoll-movie"
+      :info "atoll-save-ashelin-res-a"
+      :text #x2cc
+      )
+    (new 'static 'hud-scene-info
+      :name "atoll-save-ashelin-res-b"
+      :continue "atoll-movie"
+      :info "atoll-save-ashelin-res-b"
+      :text #x2cd
+      )
+    (new 'static 'hud-scene-info
+      :name "drill-kill-metal-heads-intro"
+      :continue "vinroom-start"
+      :info "drill-kill-metal-heads-intro"
+      :text #x2d5
+      )
+    (new 'static 'hud-scene-info
+      :name "mountain-finditems-intro"
+      :continue "onintent-start"
+      :info "mountain-finditems-intro"
+      :text #x2d9
+      )
+    (new 'static 'hud-scene-info
+      :name "mountain-gear-res"
+      :continue "mountain-start"
+      :info "mountain-gear-res"
+      :text #x2da
+      )
+    (new 'static 'hud-scene-info
+      :name "mountain-shard-res"
+      :continue "mountain-start"
+      :info "mountain-shard-res"
+      :text #x2db
+      )
+    (new 'static 'hud-scene-info
+      :name "mountain-lens-res"
+      :continue "mountain-start"
+      :info "mountain-lens-res"
+      :text #x2dc
+      )
+    (new 'static 'hud-scene-info
+      :name "city-switch-on-power-intro"
+      :continue "vinroom-start"
+      :info "city-switch-on-power-intro"
+      :text #x293
+      )
+    (new 'static 'hud-scene-info
+      :name "palace-outside-window-res"
+      :continue "palroof-throne"
+      :info "palace-outside-window-res"
+      :text #x2dd
+      )
+    (new 'static 'hud-scene-info
+      :name "palace-outside-window-res-b"
+      :continue "palroof-boss"
+      :info "palace-outside-window-res-b"
+      :text #x2de
+      )
+    (new 'static 'hud-scene-info
+      :name "palace-boss-res"
+      :continue "palroof-boss"
+      :info "palace-boss-res"
+      :text #x2df
+      )
+    (new 'static 'hud-scene-info
+      :name "city-shuttle-underground-intro"
+      :continue "hideout-start"
+      :info "city-shuttle-underground-intro"
+      :text #x2a8
+      )
+    (new 'static 'hud-scene-info
+      :name "ruins-sacred-intro"
+      :continue "hideout-start"
+      :info "ruins-sacred-intro"
+      :text #x283
+      )
+    (new 'static 'hud-scene-info
+      :name "ruins-sacred-victory"
+      :continue "ruins-hut"
+      :info "ruins-sacred-victory"
+      :text #x284
+      )
+    )
+  )
+
+(define *hud-select-scene-act2*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :name "forest-catch-metal-heads-intro"
+      :continue "hideout-start"
+      :info "forest-catch-metal-heads-intro"
+      :text #x2f1
+      )
+    (new 'static 'hud-scene-info
+      :name "city-get-hoverboard"
+      :continue "ctyfarma-airlock-movie"
+      :info "city-get-hoverboard"
+      :text #x2b3
+      )
+    (new 'static 'hud-scene-info
+      :name "city-escort-kid-intro"
+      :continue "escort-kid-intro"
+      :info "city-escort-kid-intro"
+      :text #x2a4
+      )
+    (new 'static 'hud-scene-info
+      :name "dig-knock-down-scaffolding-intro"
+      :continue "vinroom-start"
+      :info "dig-knock-down-scaffolding-intro"
+      :text #x2f6
+      )
+    (new 'static 'hud-scene-info
+      :name "dig-digger-explode"
+      :continue "dig1-start"
+      :info "dig-digger-explode"
+      :text #x2fa
+      )
+    (new 'static 'hud-scene-info
+      :name "city-intercept-tanker-intro"
+      :continue "ctymarkb-tanker"
+      :info "city-intercept-tanker-intro"
+      :text #x291
+      )
+    (new 'static 'hud-scene-info
+      :name "city-intercept-tanker-res"
+      :continue "ctymarkb-tanker"
+      :info "city-intercept-tanker-res"
+      :text #x292
+      )
+    (new 'static 'hud-scene-info
+      :name "city-meet-brutter-intro"
+      :continue "hiphog-start"
+      :info "city-meet-brutter-intro"
+      :text #x2a5
+      )
+    (new 'static 'hud-scene-info
+      :name "city-meet-brutter-res"
+      :continue "kiosk-start"
+      :info "city-meet-brutter-res"
+      :text #x2a6
+      )
+    (new 'static 'hud-scene-info :name "sewer-2-intro" :continue "hiphog-start" :info "sewer-2-intro" :text #x2c3)
+    (new 'static 'hud-scene-info
+      :name "sewer-drain-res"
+      :continue "sewer-start"
+      :info "sewer-drain-res"
+      :text #x2c4
+      )
+    (new 'static 'hud-scene-info
+      :name "ecowells-intro"
+      :continue "vinroom-start"
+      :info "ecowells-intro"
+      :text #x28a
+      )
+    (new 'static 'hud-scene-info
+      :name "ecowells-victory"
+      :continue "strip-start"
+      :info "ecowells-victory"
+      :text #x28b
+      )
+    (new 'static 'hud-scene-info
+      :name "drill-destroy-ship-intro"
+      :continue "vinroom-start"
+      :info "drill-destroy-ship-intro"
+      :text #x2d6
+      )
+    (new 'static 'hud-scene-info
+      :name "forest-hunt-camo-metal-heads-intro"
+      :continue "hiphog-start"
+      :info "forest-hunt-camo-metal-heads-intro"
+      :text #x2f2
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-3-race-intro"
+      :continue "garage-class3-movie"
+      :info "city-class-3-race-intro"
+      :text #x296
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-3-race-res"
+      :continue "garage-class3-movie"
+      :info "city-class-3-race-res"
+      :text #x297
+      )
+    (new 'static 'hud-scene-info
+      :name "city-protect-slums-intro"
+      :continue "ctyslumc-seal-movie"
+      :info "city-protect-slums-intro"
+      :text #x2ba
+      )
+    (new 'static 'hud-scene-info
+      :name "dig-find-totem-intro"
+      :continue "onintent-start"
+      :info "dig-find-totem-intro"
+      :text #x2f8
+      )
+    (new 'static 'hud-scene-info
+      :name "city-air-train-in-caspad"
+      :continue "ctyport-air-train"
+      :info "city-air-train-in-caspad"
+      :text #x2b6
+      )
+    (new 'static 'hud-scene-info
+      :name "caspad-air-train-out"
+      :continue "caspad-warp"
+      :info "caspad-air-train-out"
+      :text #x2e5
+      )
+    (new 'static 'hud-scene-info
+      :name "dig-find-totem-res"
+      :continue "dig-totem"
+      :info "dig-find-totem-res"
+      :text #x2f9
+      )
+    (new 'static 'hud-scene-info
+      :name "caspad-air-train-in"
+      :continue "caspad-warp"
+      :info "caspad-air-train-in"
+      :text #x2e4
+      )
+    (new 'static 'hud-scene-info
+      :name "city-air-train-out"
+      :continue "ctyport-air-train"
+      :info "city-air-train-out"
+      :text #x2b8
+      )
+    (new 'static 'hud-scene-info
+      :name "city-destroy-guard-vehicles-intro"
+      :continue "hideout-start"
+      :info "city-destroy-guard-vehicles-intro"
+      :text #x28e
+      )
+    (new 'static 'hud-scene-info
+      :name "city-play-onin-game-intro"
+      :continue "onintent-start"
+      :info "city-play-onin-game-intro"
+      :text #x2a9
+      )
+    (new 'static 'hud-scene-info
+      :name "city-play-onin-game-res"
+      :continue "onintent-start"
+      :info "city-play-onin-game-res"
+      :text #x2aa
+      )
+    (new 'static 'hud-scene-info
+      :name "canyon-insert-items-intro"
+      :continue "mountain-movie"
+      :info "canyon-insert-items-intro"
+      :text #x2fc
+      )
+    (new 'static 'hud-scene-info
+      :name "canyon-insert-items-res"
+      :continue "mincan-city"
+      :info "canyon-insert-items-res"
+      :text #x2fb
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-face-tests-intro"
+      :continue "tombd-start"
+      :info "tomb-face-tests-intro"
+      :text #x2e6
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-boulder-start"
+      :continue "tomb-boulder"
+      :info "tomb-boulder-start"
+      :text #x2ef
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-spider-scare"
+      :continue "tomb-boulder-explode"
+      :info "tomb-spider-scare"
+      :text #x2f0
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-unlock-start"
+      :continue "tomb-water-switch"
+      :info "tomb-unlock-start"
+      :text #x2e9
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-unlock-water"
+      :continue "tomb-water-switch"
+      :info "tomb-unlock-water"
+      :text #x2ea
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-unlock-poles"
+      :continue "tomb-poles-switch"
+      :info "tomb-unlock-poles"
+      :text #x2eb
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-boss-open"
+      :continue "tombboss-start"
+      :info "tomb-boss-open"
+      :text #x2ec
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-boss-intro"
+      :continue "tombboss-start"
+      :info "tomb-boss-intro"
+      :text #x2ed
+      )
+    (new 'static 'hud-scene-info
+      :name "tomb-boss-res"
+      :continue "tombboss-start"
+      :info "tomb-boss-res"
+      :text #x2ee
+      )
+    )
+  )
+
+(define *hud-select-scene-act3*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :name "fortress-save-friends-intro-a"
+      :continue "hideout-start"
+      :info "fortress-save-friends-intro-a"
+      :text #x2bf
+      )
+    (new 'static 'hud-scene-info
+      :name "fortress-save-friends-res"
+      :continue "prison-start"
+      :info "fortress-save-friends-res"
+      :text #x2c0
+      )
+    (new 'static 'hud-scene-info
+      :name "sewer-blow-up-statue-intro"
+      :continue "hiphog-start"
+      :info "sewer-blow-up-statue-intro"
+      :text #x2c5
+      )
+    (new 'static 'hud-scene-info
+      :name "sewer-hosehead"
+      :continue "sewesc-start"
+      :info "sewer-hosehead"
+      :text #x2c7
+      )
+    (new 'static 'hud-scene-info
+      :name "sewer-blow-up-statue-res"
+      :continue "sewesc-start"
+      :info "sewer-blow-up-statue-res"
+      :text #x2c6
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-2-race-intro"
+      :continue "garage-class3-movie"
+      :info "city-class-2-race-intro"
+      :text #x298
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-2-race-res"
+      :continue "garage-class3-movie"
+      :info "city-class-2-race-res"
+      :text #x299
+      )
+    (new 'static 'hud-scene-info
+      :name "city-stop-bomb-bots-intro"
+      :continue "hideout-start"
+      :info "city-stop-bomb-bots-intro"
+      :text #x2ac
+      )
+    (new 'static 'hud-scene-info
+      :name "city-get-dark-gun"
+      :continue "gungame-movie"
+      :info "city-get-dark-gun"
+      :text #x2b5
+      )
+    (new 'static 'hud-scene-info
+      :name "city-errol-challenge-intro"
+      :continue "hiphog-start"
+      :info "city-errol-challenge-intro"
+      :text #x2ad
+      )
+    (new 'static 'hud-scene-info
+      :name "city-errol-challenge-res"
+      :continue "garage-start-class3"
+      :info "city-errol-challenge-res"
+      :text #x2bb
+      )
+    (new 'static 'hud-scene-info
+      :name "ruins-get-to-hut-res"
+      :continue "ruins-hut"
+      :info "ruins-get-to-hut-res"
+      :text #x285
+      )
+    (new 'static 'hud-scene-info
+      :name "forest-protect-samos-intro-a"
+      :continue "onintent-start"
+      :info "forest-protect-samos-intro-a"
+      :text #x2f3
+      )
+    (new 'static 'hud-scene-info
+      :name "forest-protect-samos-intro-b"
+      :continue "forest-tree"
+      :info "forest-protect-samos-intro-b"
+      :text #x2f4
+      )
+    (new 'static 'hud-scene-info
+      :name "forest-protect-samos-res"
+      :continue "forest-tree"
+      :info "forest-protect-samos-res"
+      :text #x2f5
+      )
+    (new 'static 'hud-scene-info :name "crane-intro" :continue "vinroom-start" :info "crane-intro" :text #x288)
+    (new 'static 'hud-scene-info :name "crane-victory" :continue "strip-start" :info "crane-victory" :text #x289)
+    (new 'static 'hud-scene-info
+      :name "drill-destroy-control-tower-intro"
+      :continue "vinroom-start"
+      :info "drill-destroy-control-tower-intro"
+      :text #x2d7
+      )
+    (new 'static 'hud-scene-info
+      :name "drill-top-explode"
+      :continue "drillmid-checkpoint"
+      :info "drill-top-explode"
+      :text #x2d8
+      )
+    (new 'static 'hud-scene-info
+      :name "city-save-lurkers-intro"
+      :continue "kiosk-start"
+      :info "city-save-lurkers-intro"
+      :text #x2ab
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-1-race-intro-a"
+      :continue "garage-class3-movie"
+      :info "city-class-1-race-intro-a"
+      :text #x29a
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-1-race-intro-b"
+      :continue "stadiumd-start"
+      :info "city-class-1-race-intro-b"
+      :text #x29b
+      )
+    (new 'static 'hud-scene-info
+      :name "city-class-1-race-res"
+      :continue "stadiumd-start"
+      :info "city-class-1-race-res"
+      :text #x29c
+      )
+    (new 'static 'hud-scene-info
+      :name "palace-sneak-in-res"
+      :continue "palroof-throne"
+      :info "palace-sneak-in-res"
+      :text #x2e0
+      )
+    (new 'static 'hud-scene-info
+      :name "castle-krew-boss-fight-intro"
+      :continue "casboss-start"
+      :info "castle-krew-boss-fight-intro"
+      :text #x2e2
+      )
+    (new 'static 'hud-scene-info
+      :name "castle-krew-boss-fight-res"
+      :continue "casboss-start"
+      :info "castle-krew-boss-fight-res"
+      :text #x2e3
+      )
+    (new 'static 'hud-scene-info
+      :name "city-ashelin-drop-off"
+      :continue "ctyport-air-train-ashelin"
+      :info "city-ashelin-drop-off"
+      :text #x2b9
+      )
+    (new 'static 'hud-scene-info
+      :name "city-whack-a-metal-intro"
+      :continue "hiphog-start"
+      :info "city-whack-a-metal-intro"
+      :text #x2ae
+      )
+    (new 'static 'hud-scene-info
+      :name "city-whack-a-metal-res"
+      :continue "hiphog-start"
+      :info "city-whack-a-metal-res"
+      :text #x2af
+      )
+    (new 'static 'hud-scene-info
+      :name "city-defend-stadium-intro"
+      :continue "stadium-blimp"
+      :info "city-defend-stadium-intro"
+      :text #x2b0
+      )
+    (new 'static 'hud-scene-info
+      :name "city-defend-stadium-res"
+      :continue "stadium-blimp"
+      :info "city-defend-stadium-res"
+      :text #x2b1
+      )
+    (new 'static 'hud-scene-info
+      :name "under-find-sig-res"
+      :continue "under-start"
+      :info "under-find-sig-res"
+      :text #x2fd
+      )
+    (new 'static 'hud-scene-info
+      :name "under-centipede-one"
+      :continue "under-start"
+      :info "under-centipede-one"
+      :text #x2fe
+      )
+    (new 'static 'hud-scene-info
+      :name "under-centipede-two"
+      :continue "under-start"
+      :info "under-centipede-two"
+      :text #x2ff
+      )
+    (new 'static 'hud-scene-info
+      :name "under-centipede-three"
+      :continue "under-start"
+      :info "under-centipede-three"
+      :text #x300
+      )
+    (new 'static 'hud-scene-info
+      :name "under-get-sig-out-res"
+      :continue "under-start"
+      :info "under-get-sig-out-res"
+      :text #x301
+      )
+    (new 'static 'hud-scene-info
+      :name "consite-find-baron-res"
+      :continue "consite-start"
+      :info "consite-find-baron-res"
+      :text #x2e1
+      )
+    (new 'static 'hud-scene-info
+      :name "nest-break-barrier-res"
+      :continue "nest-gun"
+      :info "nest-break-barrier-res"
+      :text #x302
+      )
+    (new 'static 'hud-scene-info
+      :name "nest-air-train-out"
+      :continue "nest-warp"
+      :info "nest-air-train-out"
+      :text #x303
+      )
+    (new 'static 'hud-scene-info
+      :name "nest-air-train-in"
+      :continue "nest-warp"
+      :info "nest-air-train-in"
+      :text #x304
+      )
+    (new 'static 'hud-scene-info
+      :name "nest-boss-intro"
+      :continue "nestb-boss"
+      :info "nest-kor-boss-fight-intro-b"
+      :text #x306
+      )
+    (new 'static 'hud-scene-info
+      :name "nest-boss-mid"
+      :continue "nestb-boss"
+      :info "nest-kor-boss-fight-mid"
+      :text #x305
+      )
+    (new 'static 'hud-scene-info
+      :name "outro"
+      :continue "nestb-outro"
+      :info '("outro-nest" "outro-palace" "outro-hiphog" "outro-port")
+      :text #x308
+      )
+    )
+  )

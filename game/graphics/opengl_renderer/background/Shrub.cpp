@@ -1,6 +1,8 @@
 #include "Shrub.h"
 
-Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+#include "common/log/log.h"
+
+Shrub::Shrub(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
 
@@ -17,8 +19,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -27,6 +30,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
       dma.read_and_advance();
     }
     ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+  if (dma.current_tag_offset() == render_state->next_bucket) {
     return;
   }
 
@@ -46,9 +52,8 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
 
-  for (int i = 0; i < 8; i++) {
-    settings.time_of_day_weights[i] =
-        2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
+  for (int i = 0; i < 4; i++) {
+    settings.itimes[i] = m_pc_port_data.itimes[i];
   }
 
   update_render_state_from_pc_settings(render_state, m_pc_port_data);
@@ -180,7 +185,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("Shrub setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("Shrub setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -223,7 +228,7 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+  interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;

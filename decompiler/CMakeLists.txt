@@ -79,6 +79,7 @@ add_library(
         util/goal_data_reader.cpp
         util/sparticle_decompile.cpp
         util/TP_Type.cpp
+        util/type_utils.cpp
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp

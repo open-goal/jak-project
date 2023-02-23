@@ -49,515 +49,273 @@
 (define *all-vag* '())
 (define *all-gc* '())
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; Build system macros
-;;;;;;;;;;;;;;;;;;;;;;;
+(define *file-entry-map* (make-string-hash-table))
 
-(defun gc-file->o-file (filename)
-  "Get the name of the object file for the given GOAL (*.gc) source file."
-  (string-append "$OUT/obj/" (stem filename) ".o")
-  )
-
-(defmacro goal-src (src-file &rest deps)
-  "Add a GOAL source file with the given dependencies"
-  `(let ((output-file ,(gc-file->o-file src-file)))
-    (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak2/" src-file)
-     ;; use goal compiler
-     :tool 'goalc
-     ;; will output the obj file
-     :out (list output-file)
-     ;; dependencies are the obj files
-     :dep '(,@(apply gc-file->o-file deps))
-     )
-    )
-  )
-
-(defun make-src-sequence-elt (current previous prefix)
-  "Helper for goal-src-sequence"
-  `(let ((output-file ,(gc-file->o-file current)))
-    (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak2/" prefix current)
-     :tool 'goalc
-     :out (list output-file)
-     :dep '(,(gc-file->o-file previous))
-     )
-    )
-  )
-
-(defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
-  "Add a sequence of GOAL files (each depending on the previous) in the given directory,
-   with all depending on the given deps."
-  (let* ((first-thing `(goal-src ,(string-append prefix (first sequence)) ,@deps))
-         (result (cons first-thing '()))
-         (iter result))
-
-    (let ((prev (first sequence))
-          (in-iter (rest sequence)))
-
-      (while (not (null? in-iter))
-        ;; (fmt #t "{} dep on {}\n" (first in-iter) prev)
-        (let ((next (make-src-sequence-elt (first in-iter) prev prefix)))
-          (set-cdr! iter (cons next '()))
-          (set! iter (cdr iter))
-          )
-
-        (set! prev (car in-iter))
-        (set! in-iter (cdr in-iter))
-        )
-      )
-
-    `(begin ,@result)
-    )
-  )
-
-(defun cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in $OUT/iso) and input name (in goal_src/jak2/dgos)"
-  (let ((out-name (string-append "$OUT/iso/" output-name)))
-    (defstep :in (string-append "goal_src/jak2/dgos/" desc-file-name)
-      :tool 'dgo
-      :out `(,out-name)
-      )
-    (set! *all-cgos* (cons out-name *all-cgos*))
-    )
-  )
-
-(defmacro group (name &rest stuff)
-  `(defstep :in ""
-     :tool 'group
-     :out '(,(string-append "GROUP:" name))
-     :dep '(,@stuff))
-  )
-
-(defun group-list (name stuff)
-  (defstep :in ""
-     :tool 'group
-     :out `(,(string-append "GROUP:" name))
-     :dep stuff)
-  )
+;; Load required macros
+(load-file "goal_src/jak2/lib/project-lib.gp")
+(set-gsrc-folder! "goal_src/jak2")
 
 ;;;;;;;;;;;;;;;;;
 ;; GOAL Kernel
 ;;;;;;;;;;;;;;;;;
 
-;; These are set up with proper dependencies
+(cgo-file "kernel.gd" ())
 
-(goal-src "kernel/gcommon.gc")
-(goal-src "kernel/gstring-h.gc")
-(goal-src "kernel/gkernel-h.gc"
-  "gcommon"
-  "gstring-h")
-(goal-src "kernel/gkernel.gc"
-  "gkernel-h")
-(goal-src "kernel/pskernel.gc"
-  "gcommon"
-  "gkernel-h")
-(goal-src "kernel/gstring.gc"
-  "gcommon"
-  "gstring-h")
-(goal-src "kernel/dgo-h.gc")
-(goal-src "kernel/gstate.gc"
-  "gkernel")
+;;;;;;;;;;;;;;;;;;;;;
+;; DGOs
+;;;;;;;;;;;;;;;;;;;;;
 
-(cgo "KERNEL.CGO" "kernel.gd")
-
-;;;;;;;;;;;;;
-;; engine
-;;;;;;;;;;;;;
-
-(goal-src-sequence
-  "engine/"
-  :deps
-  ("$OUT/obj/gcommon.o"
-    "$OUT/obj/gstate.o"
-    "$OUT/obj/gstring.o"
-    "$OUT/obj/gkernel.o"
-    )
-"util/types-h.gc"
-"ps2/vu1-macros.gc"
-"math/math.gc"
-"math/vector-h.gc"
-"physics/gravity-h.gc"
-"geometry/bounding-box-h.gc"
-"math/matrix-h.gc"
-"math/quaternion-h.gc"
-"math/euler-h.gc"
-"math/transform-h.gc"
-"geometry/geometry-h.gc"
-"math/trigonometry-h.gc"
-"math/transformq-h.gc"
-"geometry/bounding-box.gc"
-"math/matrix.gc"
-"math/transform.gc"
-"math/quaternion.gc"
-"math/euler.gc"
-"math/trigonometry.gc"
-"sound/gsound-h.gc"
-"ps2/timer-h.gc"
-"ps2/vif-h.gc"
-"dma/dma-h.gc"
-"gfx/hw/video-h.gc"
-"gfx/vu1-user-h.gc"
-"util/profile-h.gc"
-"dma/dma.gc"
-"dma/dma-buffer.gc"
-"dma/dma-bucket.gc"
-"dma/dma-disasm.gc"
-"ps2/pad.gc"
-"gfx/hw/gs.gc"
-"gfx/hw/display-h.gc"
-"geometry/geometry.gc"
-"ps2/timer.gc"
-"math/vector.gc"
-"load/file-io.gc"
-"load/loader-h.gc"
-"gfx/texture/texture-h.gc"
-"gfx/texture/texture-anim-h.gc"
-"gfx/lights-h.gc"
-"gfx/mood/mood-h.gc"
-"level/level-h.gc"
-"util/capture-h.gc"
-"gfx/math-camera-h.gc"
-"gfx/math-camera.gc"
-"gfx/font-h.gc"
-"load/decomp-h.gc"
-"util/profile.gc"
-"gfx/hw/display.gc"
-"engine/connect.gc"
-"ui/text-id-h.gc"
-"ui/text-h.gc"
-"camera/camera-defs-h.gc"
-)
-
-(goal-src-sequence
-  "levels/"
-  :deps ("$OUT/obj/camera-defs-h.o")
-  "city/common/trail-h.gc"
+(defstep :in "$DECOMP/textures/tpage-dir.txt"
+  :tool 'tpage-dir
+  :out '("$OUT/obj/dir-tpages.go")
   )
+(hash-table-set! *file-entry-map* "dir-tpages.go" #f)
 
-(goal-src-sequence
-  "engine/"
-  :deps
-  ("$OUT/obj/trail-h.o")
-"ui/minimap-h.gc"
-"ui/bigmap-h.gc"
-"game/settings-h.gc"
-"util/capture.gc"
-"debug/memory-usage-h.gc"
-"gfx/blit-displays-h.gc"
-"gfx/texture/texture.gc"
-"game/main-h.gc"
-"anim/mspace-h.gc"
-"draw/drawable-h.gc"
-"draw/drawable-group-h.gc"
-"draw/drawable-inline-array-h.gc"
-"draw/draw-node-h.gc"
-"draw/drawable-tree-h.gc"
-"draw/drawable-actor-h.gc"
-"level/region-h.gc"
-"ai/traffic-h.gc"
-"game/task/game-task-h.gc"
-"game/task/task-control-h.gc"
-"gfx/generic/generic-h.gc"
-"gfx/sky/sky-h.gc"
-"gfx/ocean/ocean-h.gc"
-"gfx/ocean/ocean-trans-tables.gc"
-"gfx/ocean/ocean-tables.gc"
-"gfx/ocean/ocean-frames.gc"
-"gfx/mood/time-of-day-h.gc"
-"data/art-h.gc"
-"gfx/generic/generic-vu1-h.gc"
-"gfx/merc/merc-h.gc"
-"gfx/merc/generic-merc-h.gc"
-"gfx/tie/generic-tie-h.gc"
-"gfx/generic/generic-work-h.gc"
-"gfx/foreground/shadow-cpu-h.gc"
-"gfx/foreground/shadow-vu1-h.gc"
-"ps2/memcard-h.gc"
-"game/game-info-h.gc"
-"ui/gui-h.gc"
-"ambient/ambient-h.gc"
-"sound/speech-h.gc"
-"gfx/background/wind-h.gc"
-"gfx/background/prototype-h.gc"
-"anim/joint-h.gc"
-"gfx/foreground/bones-h.gc"
-"gfx/foreground/foreground-h.gc"
-"engine/engines.gc"
-"gfx/lightning-h.gc"
-"entity/res-h.gc"
-"entity/res.gc"
-"gfx/lights.gc"
-"physics/dynamics-h.gc"
-"target/surface-h.gc"
-"collide/pat-h.gc"
-"game/fact-h.gc"
-"anim/aligner-h.gc"
-"game/penetrate-h.gc"
-"game/game-h.gc"
-"util/script-h.gc"
-"scene/scene-h.gc"
-"util/sync-info-h.gc"
-"camera/pov-camera-h.gc"
-"util/smush-control-h.gc"
-"debug/debug-h.gc"
-"anim/joint-mod-h.gc"
-"collide/collide-func-h.gc"
-"collide/collide-mesh-h.gc"
-"collide/collide-shape-h.gc"
-"common_objs/generic-obs-h.gc"
-"physics/trajectory-h.gc"
-"collide/collide-target-h.gc"
-"collide/collide-touch-h.gc"
-"collide/collide-edge-grab-h.gc"
-"process-drawable/process-drawable-h.gc"
-"process-drawable/process-focusable.gc"
-"process-drawable/process-taskable-h.gc"
-"process-drawable/focus.gc"
-"game/effect-control-h.gc"
-"collide/collide-frag-h.gc"
-"spatial-hash/collide-hash-h.gc"
-"physics/chain-physics-h.gc"
-"common_objs/projectile-h.gc"
-"collide/find-nearest-h.gc"
-"target/target-h.gc"
-"debug/stats-h.gc"
-"level/bsp-h.gc"
-"collide/collide-cache-h.gc"
-"collide/collide-h.gc"
-"gfx/shrub/shrubbery-h.gc"
-"gfx/tie/tie-h.gc"
-"gfx/tfrag/tfrag-h.gc"
-"gfx/background/background-h.gc"
-"gfx/background/subdivide-h.gc"
-"entity/entity-h.gc"
-"gfx/sprite/sprite-h.gc"
-"gfx/sprite/simple-sprite-h.gc"
-"gfx/foreground/eye-h.gc"
-"gfx/sprite/particles/sparticle-launcher-h.gc"
-"gfx/sprite/particles/sparticle-h.gc"
-"entity/actor-link-h.gc"
-"camera/camera-h.gc"
-"camera/cam-debug-h.gc"
-"camera/cam-interface-h.gc"
-"camera/cam-update-h.gc"
-"ui/hud-h.gc"
-"ui/progress/progress-h.gc"
-"ps2/rpc-h.gc"
-"geometry/path-h.gc"
-"nav/nav-mesh-h.gc"
-"nav/nav-control-h.gc"
-"spatial-hash/spatial-hash-h.gc"
-"spatial-hash/actor-hash-h.gc"
-"load/load-dgo.gc"
-"load/ramdisk.gc"
-"sound/gsound.gc"
-"math/transformq.gc"
-"collide/collide-func.gc"
-"anim/joint.gc"
-"anim/joint-mod.gc"
-"physics/chain-physics.gc"
-"geometry/cylinder.gc"
-"gfx/background/wind-work.gc"
-"gfx/background/wind.gc"
-"level/bsp.gc"
-"gfx/background/subdivide.gc"
-"gfx/sprite/sprite.gc"
-"gfx/sprite/sprite-distort.gc"
-"gfx/sprite/sprite-glow.gc"
-"debug/debug-sphere.gc"
-"debug/debug.gc"
-"debug/history.gc"
-"gfx/merc/merc-vu1.gc"
-"gfx/merc/emerc-vu1.gc"
-"gfx/merc/merc-blend-shape.gc"
-"gfx/merc/merc.gc"
-"gfx/merc/emerc.gc"
-"gfx/foreground/ripple.gc"
-"gfx/foreground/bones.gc"
-"gfx/foreground/debug-foreground.gc"
-"gfx/foreground/foreground.gc"
-"gfx/generic/generic-vu0.gc"
-"gfx/generic/generic-vu1.gc"
-"gfx/generic/generic-effect.gc"
-"gfx/generic/generic-merc.gc"
-"gfx/generic/generic-tie.gc"
-"gfx/foreground/shadow-cpu.gc"
-"gfx/foreground/shadow-vu1.gc"
-"gfx/warp.gc"
-"gfx/texture/texture-anim.gc"
-"gfx/texture/texture-anim-funcs.gc"
-"gfx/texture/texture-anim-tables.gc"
-"gfx/blit-displays.gc"
-"data/font-data.gc"
-"gfx/font.gc"
-"load/decomp.gc"
-"gfx/background/background.gc"
-"draw/draw-node.gc"
-"gfx/shrub/shrubbery.gc"
-"gfx/shrub/shrub-work.gc"
-"gfx/tfrag/tfrag-near.gc"
-"gfx/tfrag/tfrag.gc"
-"gfx/tfrag/tfrag-methods.gc"
-"gfx/tfrag/tfrag-work.gc"
-"gfx/tie/tie.gc"
-"gfx/tie/etie-vu1.gc"
-"gfx/tie/etie-near-vu1.gc"
-"gfx/tie/tie-near.gc"
-"gfx/tie/tie-work.gc"
-"gfx/tie/tie-methods.gc"
-"util/sync-info.gc"
-"physics/trajectory.gc"
-"gfx/sprite/particles/sparticle-launcher.gc"
-"gfx/sprite/particles/sparticle.gc"
-"entity/entity-table.gc"
-"load/loader.gc"
-"game/game-info.gc"
-"game/task/game-task.gc"
-"game/game-save.gc"
-"game/settings.gc"
-"gfx/mood/mood-tables.gc"
-"gfx/mood/mood-tables2.gc"
-"gfx/mood/mood.gc"
-"gfx/mood/mood-funcs.gc"
-"gfx/mood/mood-funcs2.gc"
-"gfx/mood/weather-part.gc"
-"gfx/mood/time-of-day.gc"
-"gfx/sky/sky-data.gc"
-"gfx/sky/sky-tng.gc"
-"load/load-state.gc"
-"level/level-info.gc"
-"level/level.gc"
-"ui/text.gc"
-"spatial-hash/collide-hash.gc"
-"collide/collide-probe.gc"
-"collide/collide-frag.gc"
-"collide/collide-mesh.gc"
-"collide/collide-touch.gc"
-"collide/collide-edge-grab.gc"
-"collide/collide-shape.gc"
-"collide/collide-shape-rider.gc"
-"collide/collide.gc"
-"collide/collide-planes.gc"
-"spatial-hash/spatial-hash.gc"
-"spatial-hash/actor-hash.gc"
-"gfx/merc/merc-death.gc"
-"common_objs/water-flow.gc"
-"common_objs/water-h.gc"
-"camera/camera.gc"
-"camera/cam-interface.gc"
-"camera/cam-master.gc"
-"camera/cam-states.gc"
-"camera/cam-states-dbg.gc"
-"camera/cam-combiner.gc"
-"camera/cam-update.gc"
-"geometry/vol-h.gc"
-"camera/cam-layout.gc"
-"camera/cam-debug.gc"
-"camera/cam-start.gc"
-"process-drawable/process-drawable.gc"
-"ambient/ambient.gc"
-"sound/speech.gc"
-"level/region.gc"
-"anim/fma-sphere.gc"
-"util/script.gc"
-"common_objs/generic-obs.gc"
-"gfx/lightning.gc"
-"target/mech_suit/carry-h.gc"
-"game/pilot-h.gc"
-"target/gun/gun-h.gc"
-"target/board/board-h.gc"
-"target/darkjak-h.gc"
-"target/target-util.gc"
-"target/target-part.gc"
-"target/gun/gun-part.gc"
-"target/collide-reaction-target.gc"
-"target/logic-target.gc"
-"target/sidekick.gc"
-"common_objs/voicebox.gc"
-"common_objs/collectables-part.gc"
-"debug/debug-part.gc"
-"collide/find-nearest.gc"
-"game/task/task-arrow.gc"
-"common_objs/projectile.gc"
-"target/target-handler.gc"
-"target/target-anim.gc"
-"target/target.gc"
-"target/target2.gc"
-"target/target-swim.gc"
-"target/target-carry.gc"
-"target/target-darkjak.gc"
-"target/target-death.gc"
-"target/target-gun.gc"
-"target/gun/gun-util.gc"
-"target/gun/gun-blue-shot.gc"
-"target/gun/gun-yellow-shot.gc"
-"target/gun/gun-red-shot.gc"
-"target/gun/gun-dark-shot.gc"
-"target/gun/gun-states.gc"
-"target/board/board-util.gc"
-"target/board/target-board.gc"
-"target/board/board-part.gc"
-"target/board/board-states.gc"
-"target/mech_suit/mech-h.gc"
-"debug/menu.gc"
-"draw/drawable.gc"
-"draw/drawable-group.gc"
-"draw/drawable-inline-array.gc"
-"draw/drawable-tree.gc"
-"gfx/background/prototype.gc"
-"collide/main-collide.gc"
-"gfx/hw/video.gc"
-"game/main.gc"
-"collide/collide-cache.gc"
-"collide/collide-debug.gc"
-"entity/relocate.gc"
-"debug/memory-usage.gc"
-"entity/entity.gc"
-"geometry/path.gc"
-"geometry/vol.gc"
-"nav/nav-mesh.gc"
-"nav/nav-control.gc"
-"anim/aligner.gc"
-"common_objs/water.gc"
-"common_objs/collectables.gc"
-"game/task/task-control.gc"
-"scene/scene.gc"
-"camera/pov-camera.gc"
-"common_objs/powerups.gc"
-"common_objs/crates.gc"
-"ui/hud.gc"
-"ui/hud-classes.gc"
-"ui/progress/progress-static.gc"
-"ui/progress/progress.gc"
-"ui/progress/progress-draw.gc"
-"gfx/ocean/ocean.gc"
-"gfx/ocean/ocean-vu0.gc"
-"gfx/ocean/ocean-texture.gc"
-"gfx/ocean/ocean-mid.gc"
-"gfx/ocean/ocean-transition.gc"
-"gfx/ocean/ocean-near.gc"
-"ui/minimap.gc"
-"ui/bigmap-data.gc"
-"ui/bigmap.gc"
-"gfx/foreground/eye.gc"
-"util/glist-h.gc"
-"util/glist.gc"
-"debug/anim-tester.gc"
-"debug/viewer.gc"
-"debug/part-tester.gc"
-"debug/editable-h.gc"
-"debug/editable.gc"
-"debug/editable-player.gc"
-"debug/nav/mysql-nav-graph.gc"
-"debug/nav/nav-graph-editor.gc"
-"debug/sampler.gc"
-"debug/default-menu.gc"
+(cgo-file "engine.gd" ("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
+(cgo-file "game.gd" ("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
 
+;; TODO - can't use a variable because :deps downstream doesn't take a proper list (can't pass it in quoted)
+;; (define common-dep ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cwi.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lmeetbrt.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cta.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "palout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "std.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "for.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "hideout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ctb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "kiosk.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "dg1.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "feb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "dmi.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "oracle.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lbrnermk.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ctc.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fra.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "mtn.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "introcst.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ate.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cfb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cab.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "str.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ato.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "seb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lpower.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cib.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lshuttle.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fordumpc.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "thr.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "pri.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lkiddoge.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "nestt.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "neb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cob.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lbombbot.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "demo.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lerlchal.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "outrocst.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "par.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fda.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lwhack.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cas.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "coa.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "toe.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "palboss.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "frb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "pae.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "title.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "drillmtn.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "pac.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lprotect.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fea.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "onintent.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "sta.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cgc.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cma.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fdb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ska.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cia.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "toa.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "pas.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+;; (cgo-file "lbbush.gd" ("$OUT/obj/cty-guard-turret-button.o")) - moved
+;; (cgo-file "lpackage.gd" ("$OUT/obj/cty-guard-turret-button.o")) - moved
+(cgo-file "lportrun.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cgb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lhelldog.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "gga.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "mcn.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "vin.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cga.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cpa.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "unb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cpo.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cap.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lbbush.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lpackage.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ctykora.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "rui.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lsack.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ctyasha.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "hiphog.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "tod.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lerltess.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "tob.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "vi1.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracecb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lhipout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "garage.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "casext.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "stadblmp.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "sag.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lintcstb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lcitylow.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracelit.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fordumpd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "swe.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "sew.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracedb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lsamergd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ljakdax.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lysamsam.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lwidesta.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lsmysbrt.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lwideb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ldjakbrn.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltrnysam.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "und.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "swb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "dri.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cascity.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lashthrn.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lcguard.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "tombext.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "mtx.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracedf.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ljkdxash.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lerrol.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "d3b.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lwidea.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "fob.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lkeirift.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "d3a.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lashgrd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltess.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "portwall.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "nes.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lwidec.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cfa.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lprtrace.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "tbo.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "loutcstb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltrnkrkd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "toc.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltrntess.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lguard.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lerbrngd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracecf.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lprsncst.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "drb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lyskdcd.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lthrnout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "stc.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "halfpipe.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "cmb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "stb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracebf.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltentout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lgarcsta.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "lracebb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+(cgo-file "ltentob.gd" ("$OUT/obj/cty-guard-turret-button.o"))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; ANIMATIONS
+;;;;;;;;;;;;;;;;;;;;;
+
+(copy-strs "AT1INT" "AT1RES" "AT2INTRO" "AT3INTRO" "ATSA"
+  "ATSARA" "ATSARB" "ATSB" "ATSC" "ATSD" "ATSE" "ATSINTRO"
+  "ATSTANK" "BACONSIT" "BASQUID" "BAWIDOW" "CAATIN" "CAATOUT"
+  "CAIIINTR" "CAIIRES" "CAKBFINT" "CAKBFRES" "CASEXPLO" "CIADOFF"
+  "CIATICAS" "CIATINES" "CIATOUT" "CIC1RIA" "CIC1RIB" "CIC1RRES"
+  "CIC2RINT" "CIC2RRES" "CIC3RINT" "CIC3RRES" "CIDGVINT" "CIDSINTR"
+  "CIDSRES" "CIECINTR" "CIECRES" "CIEKINTR" "CIGDGUN" "CIGHOVER"
+  "CIGYGUN" "CIHKINTR" "CIHKRESO" "CIIDINTR" "CIIHCINT" "CIIHCRES"
+  "CIITINTR" "CIITRES" "CIKCINTR" "CIKCRES" "CIKDINTR" "CIMBINTR"
+  "CIMBRES" "CIOINTRO" "CIOL0" "CIOL1" "CIOL2" "CIOL3" "CIPHOVER"
+  "CIPOGINT" "CIPOGRES" "CIPSINTR" "CISBBINT" "CISLINTR" "CISOPINT"
+  "CISUINTR" "CIWAMINT" "CIWAMRES" "COFBRES" "CRINTRO" "CRVICTOR"
+  "DAMOLE" "DEDINTRO" "DESCREEN" "DIDEXPLO" "DIFTINTR" "DIFTRES"
+  "DIKDSINT" "DRBSBREA" "DRCBREAK" "DRDCTINT" "DRDSINTR" "DRKMHINT"
+  "DRTEXPLO" "DRW1" "DRW2" "ECINTRO" "ECVICTOR" "FO2INTRO" "FOBUARA"
+  "FOBUARB" "FOCMHINT" "FOFA" "FOFB" "FOHCMHIN" "FOPSIA" "FOPSIB"
+  "FOPSRES" "FOSFIA" "FOSFRES" "GRMANIMS" "INCSQUAR" "INPRISON"
+  "INSHUT" "INVORTEX" "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6"
+  "JAA7" "JABOARD" "JACARRY" "JAD1" "JAD2" "JAD3" "JAD4" "JAD5"
+  "JADARK" "JADON" "JADUMMY" "JAFLUT" "JAGUN" "JAICE" "JAINDAX"
+  "JAMECH" "JAPEGASU" "JAPIDAX" "JAPILOT" "JAPOLE" "JARACER" "JASWIM"
+  "JATUBE" "JATURRET" "KEANIM" "KEGARAGE" "KILTRNKR" "KILYSKDC"
+  "KINESTB" "KITOMBD" "KRDRES" "MOFINTRO" "MOGRES" "MOLRES" "MOSRES"
+  "MTAR1" "MTPBRA" "MTSPRA" "MTSPRB" "MTSPRC" "NEATIN" "NEATOUT"
+  "NEBBRES" "NEKBFIB" "NEKBFMID" "ONGAME" "OUHIPHOG" "OUNEST"
+  "OUPALACE" "OUPORT" "PABRES" "PAOWRB" "PAOWRES" "PASIRES"
+  "PRMINIMA" "RHW1" "RHW2" "RUB1" "RUBW1" "RUBW2" "RUBW3"
+  "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUDPB1" "RUDPC1" "RUGTHRES"
+  "RUPC1" "RUPC2" "RUPC3" "RUSINTRO" "RUSVICTO" "RUTINTRO"
+  "RUTVICTO" "SALSAMER" "SCBOOK" "SE1INTRO" "SE1RES" "SE2INTRO"
+  "SEBUSINT" "SEBUSRES" "SEC1" "SEDRES" "SEHOSEHE" "SESGRUNT"
+  "SEW1" "SEW2" "TELHIPHO" "TELTRNTE" "TELWHACK" "TESCENE" "TIDINTRO"
+  "TOBBA" "TOBBB" "TOBINTRO" "TOBOPEN" "TOBRES" "TOBSTART" "TOFTINTR"
+  "TOSC0" "TOSC1" "TOSC2" "TOSSCARE" "TOTURRET" "TOUPOLES" "TOUSTART"
+  "TOUWATER" "UNBD1" "UNBD2" "UNBD3" "UNBD4" "UNCONE" "UNCTHREE" "UNCTWO"
+  "UNFSRES" "UNGSORES" "VIRESCUE" "VIRINTRO" "WOMAP" "YOFOREST" "YOLTRNYS"
+  "YOLYSAMS" "YOLYSKDC" "YOONINTE" "YOTOMBD")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; MUSIC
+;;;;;;;;;;;;;;;;;;;;;
+
+(copy-vag-files "ENG")
+
+(copy-sbk-files
+  "ASHTAN1" "ASHTAN2" "ATOLL1" "ATOLL2" "ATOLL3" "ATOLL4"
+  "BBUSH1" "BOARD" "BOMBBOT1" "CASBOSS1" "CASBOSS2" "CASBOSS3"
+  "CASTLE1" "CASTLE2" "CASTLE3" "COMMON" "COMMONJ" "CONSITE1"
+  "CONSITE2" "CONSITE3" "CTYFARM1" "CTYWIDE1" "CTYWIDE2" "CTYWIDE3"
+  "CTYWIDE4" "CTYWIDE5" "DEMO1" "DIG1" "DIG2" "DIG3" "DIG4" "DIG5"
+  "DIG6" "DIG7" "DIG8" "DRILL1" "DRILL2" "DRILL3" "DRILL4" "DRILL5"
+  "DRILL6" "DRILL7" "DRILL8" "EMPTY0" "EMPTY1" "EMPTY2" "ERLCHAL1"
+  "ESCKID1" "FORDUMP1" "FORDUMP2" "FOREST1" "FOREST2" "FOREST3"
+  "FOREST4" "FOREST5" "FOREXIT1" "FOREXIT2" "FORRESC1" "FORRESC2"
+  "GUN" "GUNGAME1" "HELLDOG1" "HIDEOUT1" "HIPHOG1" "INTRO1" "INTRO2"
+  "INTRO3" "MECH" "MECHWAT" "MEETBRT1" "MENU1" "MOUNT1" "MOUNT2"
+  "MOUNT3" "NEST1" "NEST2" "NEST3" "NEST4" "NEST5" "NEST6" "ONIN1"
+  "ONIN2" "ORACLE1" "OUTRO1" "PALCAB1" "PALCAB2" "PALCAB3" "PALENT1"
+  "PALENT2" "PALENT3" "PALROOF1" "PALROOF2" "PALROOF3" "PORTRUN1"
+  "PROTECT1" "RUINS1" "RUINS2" "RUINS3" "SACK1" "SEWER1" "SEWER2"
+  "SEWER3" "SEWER4" "SEWER5" "SEWER6" "SKATE1" "STADIUM1" "STRIP1"
+  "STRIP2" "STRIP3" "TOMB1" "TOMB2" "TOMB3" "TOMB4" "TOMB5" "TOMB6"
+  "TOMB7" "TOMB8" "TOMB9" "UNDER1" "UNDER2" "UNDER3" "UNDER4" "UNDER5" "VINROOM1")
+
+(copy-mus-files
+  "ATOLL" "BATTLE" "CITY1" "CREDITS" "DANGER" "DANGER1" "DANGER2"
+  "DANGER3" "DANGER4" "DANGER6" "DANGER7" "DANGER9" "DANGER10"
+  "DANGER11" "DIG" "FOREST" "FORTRESS" "MOUNTAIN" "PALCAB" "RACE"
+  "RUINS" "SEWER" "STRIP" "TOMB" "TWEAKVAL")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Text
+;;;;;;;;;;;;;;;;;;;;;
+
+(defstep :in "game/assets/jak2/game_text.gp"
+  :tool 'text
+  :out '("$OUT/iso/0COMMON.TXT"
+         "$OUT/iso/1COMMON.TXT"
+         "$OUT/iso/2COMMON.TXT"
+         "$OUT/iso/3COMMON.TXT"
+         "$OUT/iso/4COMMON.TXT"
+         "$OUT/iso/5COMMON.TXT"
+         "$OUT/iso/6COMMON.TXT"
+         "$OUT/iso/7COMMON.TXT")
   )
-
-(cgo "ENGINE.CGO" "engine.gd")
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
@@ -565,7 +323,8 @@
 ;; the iso group is a group of files built by the "(mi)" command.
 
 (group-list "iso"
- `(,@(reverse *all-vis*)
+ `("$OUT/iso/0COMMON.TXT"
+   ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
    ,@(reverse *all-mus*)
@@ -573,7 +332,16 @@
    ,@(reverse *all-cgos*))
  )
 
+(group-list "text"
+ `("$OUT/iso/0COMMON.TXT")
+ )
+
 ;; used for the type consistency test.
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+
+(group "engine"
+       "$OUT/iso/KERNEL.CGO"
+       "$OUT/iso/GAME.CGO"
+       )

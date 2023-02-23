@@ -5,12 +5,14 @@
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -25,13 +27,14 @@ OverlordDataSource isodrv;
 u32 modsrc;
 
 // Reboot IOP with IOP kernel from DVD/CD on boot
-u32 reboot;
+u32 reboot_iop;
 
 const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 
 // added
 u32 vif1_interrupt_handler = 0;
+u32 vblank_interrupt_handler = 0;
 
 Timer ee_clock_timer;
 
@@ -39,8 +42,9 @@ void kmachine_init_globals_common() {
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
   modsrc = 1;
-  reboot = 1;
+  reboot_iop = 1;
   vif1_interrupt_handler = 0;
+  vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
 }
 
@@ -212,8 +216,17 @@ u64 CPadGetData(u64 cpad_info) {
 
 // should make sure this works the same way in jak 2
 void InstallHandler(u32 handler_idx, u32 handler_func) {
-  ASSERT(handler_idx == 5);  // vif1
-  vif1_interrupt_handler = handler_func;
+  switch (handler_idx) {
+    case 3:
+      vblank_interrupt_handler = handler_func;
+      break;
+    case 5:
+      vif1_interrupt_handler = handler_func;
+      break;
+    default:
+      printf("unknown handler: %d\n", handler_idx);
+      ASSERT(false);
+  }
 }
 
 // nothing used this in jak1, hopefully same for 2
@@ -478,10 +491,10 @@ void set_gfx_hack(u64 which, u32 symptr) {
  * PC PORT FUNCTIONS END
  */
 
-void vif_interrupt_callback() {
+void vif_interrupt_callback(int bucket_id) {
   // added for the PC port for faking VIF interrupts from the graphics system.
   if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
-    call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+    call_goal(Ptr<Function>(vif1_interrupt_handler), bucket_id, 0, 0, s7.offset, g_ee_main_mem);
   }
 }
 
@@ -489,5 +502,72 @@ void vif_interrupt_callback() {
  * Added in PC port.
  */
 u32 offset_of_s7() {
+  return s7.offset;
+}
+
+/*!
+ * Called from the game thread at initialization.
+ * The game thread is the only one to touch the mips2c function table (through the linker and
+ * through this function), so no locking is needed.
+ */
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+/*!
+ * Called from game thread to submit rendering DMA chain.
+ */
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
+}
+
+/*!
+ * Called from game thread to upload a texture outside of the main DMA chain.
+ */
+void pc_texture_upload_now(u32 page, u32 mode) {
+  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
+}
+
+u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
+  auto str = std::string(Ptr<String>(str_ptr).c()->data());
+  float dist;
+  memcpy(&dist, &dist_ptr, 4);
+
+  // Check distance first
+  if (Gfx::g_debug_settings.debug_text_check_range) {
+    if (dist / 4096.0 > Gfx::g_debug_settings.debug_text_max_range) {
+      return s7.offset + true_symbol_offset(g_game_version);
+    }
+  }
+
+  // Get the current filters
+  const auto& filters = Gfx::g_debug_settings.debug_text_filters;
+  if (filters.empty()) {
+    // there are no filters, exit early
+    return s7.offset;
+  }
+
+  // Currently very dumb contains check
+  for (const auto& filter : filters) {
+    if (filter.type == DebugTextFilter::Type::CONTAINS) {
+      if (!str.empty() && !filter.content.empty() && !str_util::contains(str, filter.content)) {
+        return s7.offset + true_symbol_offset(g_game_version);
+      }
+    } else if (filter.type == DebugTextFilter::Type::NOT_CONTAINS) {
+      if (!str.empty() && !filter.content.empty() && str_util::contains(str, filter.content)) {
+        return s7.offset + true_symbol_offset(g_game_version);
+      }
+    } else if (filter.type == DebugTextFilter::Type::REGEX) {
+      if (str_util::valid_regex(filter.content) &&
+          std::regex_match(str, std::regex(filter.content))) {
+        return s7.offset + true_symbol_offset(g_game_version);
+      }
+    }
+  }
   return s7.offset;
 }

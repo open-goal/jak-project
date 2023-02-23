@@ -1,5 +1,6 @@
 #include <set>
 
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Env.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -66,7 +67,7 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   auto b = m_entries.at(var_b.m_entry_id);
   ASSERT(a.reg == b.reg);
   if (b.var_id == 0) {
-    //    fmt::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
+    //    lg::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
 
     for (auto& entry : m_entries) {
       if (entry.var_id == a.var_id && entry.reg == a.reg) {
@@ -75,7 +76,7 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
     }
     a.var_id = b.var_id;
   } else {
-    //    fmt::print("Merge {} <- {}\n", to_string(var_a), to_string(var_b));
+    //    lg::print("Merge {} <- {}\n", to_string(var_a), to_string(var_b));
 
     for (auto& entry : m_entries) {
       if (entry.var_id == b.var_id && entry.reg == b.reg) {
@@ -101,17 +102,17 @@ void VarMapSSA::merge_to_first(const VarSSA& var_a, const VarSSA& var_b) {
   auto& a = m_entries.at(var_a.m_entry_id);
   auto b = m_entries.at(var_b.m_entry_id);
 
-  //  fmt::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
+  //  lg::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
   ASSERT(a.reg == b.reg);
 
   //  for (auto& entry : m_entries) {
   for (size_t i = 0; i < m_entries.size(); i++) {
     auto& entry = m_entries.at(i);
     if (entry.var_id == b.var_id && entry.reg == b.reg) {
-      //      fmt::print("remap extra {} var_id from {} to {}\n", i, entry.var_id, a.var_id);
+      //      lg::print("remap extra {} var_id from {} to {}\n", i, entry.var_id, a.var_id);
       entry.var_id = a.var_id;
     } else {
-      //      fmt::print("no remap at {} (prev is {} {})\n", i, entry.reg.to_charp(), entry.var_id);
+      //      lg::print("no remap at {} (prev is {} {})\n", i, entry.reg.to_charp(), entry.var_id);
     }
   }
   b.var_id = a.var_id;
@@ -163,7 +164,7 @@ void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& rema
 
 void VarMapSSA::debug_print_map() const {
   for (auto& entry : m_entries) {
-    fmt::print("[{:02d}] {} {}\n", entry.entry_id, entry.reg.to_charp(), entry.var_id);
+    lg::print("[{:02d}] {} {}\n", entry.entry_id, entry.reg.to_charp(), entry.var_id);
   }
 }
 
@@ -651,18 +652,37 @@ void SSA::remap(int) {
 }
 
 namespace {
+
+TP_Type lca_for_var_types(const TP_Type& existing,
+                          const TP_Type& add,
+                          const DecompilerTypeSystem& dts,
+                          bool event_handler_hack) {
+  bool changed;
+  auto normal = dts.tp_lca(existing, add, &changed);
+  if (!event_handler_hack || normal.typespec().base_type() != "none") {
+    return normal;
+  }
+  if (existing.typespec().base_type() == "none") {
+    return add;
+  } else if (add.typespec().base_type() == "none") {
+    return existing;
+  } else {
+    return normal;
+  }
+}
+
 void update_var_info(VariableNames::VarInfo* info,
                      Register reg,
                      const TypeState& ts,
                      int var_id,
-                     const DecompilerTypeSystem& dts) {
+                     const DecompilerTypeSystem& dts,
+                     bool event_handler_hack) {
   auto& type = ts.get(reg);
   if (info->initialized) {
     ASSERT(info->reg_id.id == var_id);
     ASSERT(info->reg_id.reg == reg);
 
-    bool changed;
-    info->type = dts.tp_lca(info->type, type, &changed);
+    info->type = lca_for_var_types(info->type, type, dts, event_handler_hack);
 
   } else {
     info->reg_id.id = var_id;
@@ -675,10 +695,11 @@ void update_var_info(VariableNames::VarInfo* info,
 
 bool merge_infos(VariableNames::VarInfo* info1,
                  VariableNames::VarInfo* info2,
-                 const DecompilerTypeSystem& dts) {
+                 const DecompilerTypeSystem& dts,
+                 bool event_handler_hack) {
   if (info1->initialized && info2->initialized) {
-    bool changed;
-    auto new_type = dts.tp_lca(info1->type, info2->type, &changed);
+    auto new_type = lca_for_var_types(info1->type, info2->type, dts, event_handler_hack);
+
     info1->type = new_type;
     info2->type = new_type;
     return true;
@@ -689,12 +710,13 @@ bool merge_infos(VariableNames::VarInfo* info1,
 void merge_infos(
     std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info1,
     std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info2,
-    const DecompilerTypeSystem& dts) {
+    const DecompilerTypeSystem& dts,
+    bool event_handler_hack) {
   for (auto& [reg, infos] : info1) {
     auto other = info2.find(reg);
     if (other != info2.end()) {
       for (size_t i = 0; i < std::min(other->second.size(), infos.size()); i++) {
-        merge_infos(&infos.at(i), &other->second.at(i), dts);
+        merge_infos(&infos.at(i), &other->second.at(i), dts, event_handler_hack);
       }
     }
   }
@@ -703,8 +725,26 @@ void merge_infos(
 
 /*!
  * Create variable info for each variable.
+ * Note: the "event_handler_hack" is supposed to help with the use of "none" typed variables
+ * that are actually used. It's a hack because we don't really have enough information to know if
+ * the none variables
  */
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
+  bool event_handler_hack = false;
+
+  if (function.ir2.env.version == GameVersion::Jak2) {
+    event_handler_hack = function.guessed_name.is_event_handler() ||
+                         function.guessed_name.to_string() == "target-generic-event-handler" ||
+                         function.guessed_name.to_string() == "target-standard-event-handler" ||
+                         function.guessed_name.to_string() == "(method 74 pegasus)" ||
+                         function.guessed_name.to_string() == "(method 74 crimson-guard-level)" ||
+                         function.guessed_name.to_string() == "widow-handler" ||
+                         function.guessed_name.to_string() == "(method 74 hal)" ||
+                         function.guessed_name.to_string() == "water-anim-event-handler" ||
+                         function.guessed_name.to_string() == "(method 74 civilian)" ||
+                         function.guessed_name.to_string() == "(method 74 crimson-guard)";
+  }
+
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
@@ -719,13 +759,13 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
       if (instr.dst.has_value()) {
         auto var_id = map.var_id(*instr.dst);
         auto* info = &program_write_vars[instr.dst->reg()].at(var_id);
-        update_var_info(info, instr.dst->reg(), *end_types, var_id, dts);
+        update_var_info(info, instr.dst->reg(), *end_types, var_id, dts, event_handler_hack);
       }
 
       for (auto& src : instr.src) {
         auto var_id = map.var_id(src);
         auto* info = &program_read_vars[src.reg()].at(var_id);
-        update_var_info(info, src.reg(), *init_types, var_id, dts);
+        update_var_info(info, src.reg(), *init_types, var_id, dts, event_handler_hack);
       }
 
       init_types = end_types;
@@ -746,26 +786,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     }
   }
 
-  //  if (function.type.last_arg() != TypeSpec("none")) {
-  //    auto return_var = function.ir2.atomic_ops->end_op().return_var();
-  //    auto return_reg = return_var.reg();
-  //    const auto& last_block = blocks.at(blocks.size() - 1);
-  //    const auto& last_ins = last_block.ins.at(last_block.ins.size() - 1);
-  //    ASSERT(last_ins.src.size() == 1);
-  //    auto return_idx = map.var_id(last_ins.src.at(0));
-  //
-  //    if (!program_read_vars[return_reg].empty()) {
-  //      program_read_vars[return_reg].at(return_idx).type =
-  //          TP_Type::make_from_ts(function.type.last_arg());
-  //    }
-  //
-  //    if (!program_write_vars[return_reg].empty()) {
-  //      program_write_vars[return_reg].at(return_idx).type =
-  //          TP_Type::make_from_ts(function.type.last_arg());
-  //    }
-  //  }
-
-  merge_infos(program_write_vars, program_read_vars, dts);
+  merge_infos(program_write_vars, program_read_vars, dts, event_handler_hack);
 
   // copy types from input argument coloring moves:
   for (auto& instr : blocks.at(0).ins) {
@@ -1012,7 +1033,7 @@ void promote_register_class(const Function& func,
   }
 
   for (const auto& promotion : promote_map) {
-    // fmt::print("Promote {} to {}\n", promotion.first.print(), "uint128");
+    // lg::print("Promote {} to {}\n", promotion.first.print(), "uint128");
 
     // first reads:
     auto read_info = try_lookup_read(result, promotion.first);
@@ -1068,21 +1089,21 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
       debug_in += fmt::format(" out: {}\n\n", reg_to_string(block_info.output));
     }
 
-    fmt::print("Debug Input\n{}\n----------------------------------\n", debug_in);
+    lg::print("Debug Input\n{}\n----------------------------------\n", debug_in);
   }
 
   // Create and convert to SSA
   auto ssa = make_rc_ssa(function, rui, ops);
 
   if (debug_prints) {
-    fmt::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
+    lg::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
   }
 
   // eliminate PHIs that are not needed, still keeping us in SSA.
   while (ssa.simplify()) {
   }
   if (debug_prints) {
-    fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
+    lg::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
 
   // merge special registers
@@ -1099,7 +1120,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
 
   ssa.merge_all_phis();
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    lg::print("{}", ssa.print());
   }
   if (debug_prints) {
     ssa.map.debug_print_map();
@@ -1110,7 +1131,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   // do rename
   ssa.remap(arg_count(function));
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    lg::print("{}", ssa.print());
   }
 
   if (function.ir2.env.has_type_analysis()) {

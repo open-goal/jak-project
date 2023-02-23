@@ -30,7 +30,8 @@
 (set! (-> *lb-editor-parms* boundary) #f)
 
 ;; definition (debug) for function init-boundary-regs
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c init-boundary-regs (function none))
 
 ;; definition (debug) for function add-boundary-shader
 ;; INFO: Return type mismatch pointer vs none.
@@ -62,13 +63,16 @@
   )
 
 ;; definition (debug) for function draw-boundary-polygon
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-boundary-polygon function)
 
 ;; definition (debug) for function render-boundary-quad
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c render-boundary-quad (function lbvtx dma-buffer none))
 
 ;; definition (debug) for function render-boundary-tri
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c render-boundary-tri (function lbvtx dma-buffer none))
 
 ;; definition for symbol *boundary-polygon*, type (inline-array lbvtx)
 (define *boundary-polygon* (new 'static 'inline-array lbvtx 12
@@ -348,25 +352,7 @@
            (a0-7 (the-as object (-> v1-9 base)))
            )
       (set! (-> (the-as gs-gif-tag a0-7) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
-      (set! (-> (the-as gs-gif-tag a0-7) regs) (new 'static 'gif-tag-regs
-                                                 :regs0 (gif-reg-id a+d)
-                                                 :regs1 (gif-reg-id a+d)
-                                                 :regs2 (gif-reg-id a+d)
-                                                 :regs3 (gif-reg-id a+d)
-                                                 :regs4 (gif-reg-id a+d)
-                                                 :regs5 (gif-reg-id a+d)
-                                                 :regs6 (gif-reg-id a+d)
-                                                 :regs7 (gif-reg-id a+d)
-                                                 :regs8 (gif-reg-id a+d)
-                                                 :regs9 (gif-reg-id a+d)
-                                                 :regs10 (gif-reg-id a+d)
-                                                 :regs11 (gif-reg-id a+d)
-                                                 :regs12 (gif-reg-id a+d)
-                                                 :regs13 (gif-reg-id a+d)
-                                                 :regs14 (gif-reg-id a+d)
-                                                 :regs15 (gif-reg-id a+d)
-                                                 )
-            )
+      (set! (-> (the-as gs-gif-tag a0-7) regs) GIF_REGS_ALL_AD)
       (set! (-> v1-9 base) (&+ (the-as pointer a0-7) 16))
       )
     (let* ((v1-10 s5-0)
@@ -495,7 +481,7 @@
           (set! (-> s2-0 quad) (-> s5-0 data (-> gp-0 vertex) quad))
           (set! (-> s2-0 y) (-> s5-0 top-plane))
           (add-debug-sphere #t (bucket-id debug-no-zbuf) s2-0 8192.0 (new 'static 'rgba :a #x80))
-          (when (zero? (logand (-> s5-0 flags) (load-boundary-flags closed)))
+          (when (not (logtest? (-> s5-0 flags) (load-boundary-flags closed)))
             (set! (-> s2-0 y) (-> s5-0 bot-plane))
             (add-debug-sphere #t (bucket-id debug-no-zbuf) s2-0 8192.0 (new 'static 'rgba :a #x80))
             )
@@ -1117,7 +1103,7 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs object.
 (defun triangulate-boundary ((arg0 load-boundary))
-  (when (zero? (logand (-> arg0 flags) (load-boundary-flags closed)))
+  (when (not (logtest? (-> arg0 flags) (load-boundary-flags closed)))
     (set! (-> arg0 tri-cnt) 1)
     (return (the-as object 0))
     )
@@ -1439,6 +1425,8 @@
   )
 
 ;; definition for function command-get-int
+;; WARN: Failed load: (set! a0-2 (l.wu (+ a0-0 -4))) at op 23
+;; WARN: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
 (defun command-get-int ((arg0 object) (arg1 int))
   (cond
     ((null? arg0)
@@ -1459,6 +1447,8 @@
   )
 
 ;; definition for function command-get-float
+;; WARN: Failed load: (set! a0-2 (l.wu (+ a0-0 -4))) at op 26
+;; WARN: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
 (defun command-get-float ((arg0 object) (arg1 float))
   (cond
     ((null? arg0)
@@ -1479,6 +1469,8 @@
   )
 
 ;; definition for function command-get-time
+;; WARN: Failed load: (set! a0-5 (l.wu (+ a0-0 -4))) at op 42
+;; WARN: Failed load: (set! a0-4 (l.wu (+ a0-0 -4))) at op 30
 (defun command-get-time ((arg0 object) (arg1 int))
   (cond
     ((null? arg0)
@@ -1502,6 +1494,8 @@
   )
 
 ;; definition for function command-get-param
+;; WARN: Failed load: (set! a0-16 (l.wu (+ a0-0 -4))) at op 121
+;; WARN: Failed load: (set! a0-15 (l.wu (+ a0-0 -4))) at op 109
 (defun command-get-param ((arg0 object) (arg1 object))
   (cond
     ((null? arg0)
@@ -1724,6 +1718,8 @@
 
 ;; definition for function command-list-get-process
 ;; INFO: Return type mismatch object vs process.
+;; WARN: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
+;; WARN: Failed load: (set! a0-2 (l.wu (+ a0-0 -4))) at op 51
 (defun command-list-get-process ((arg0 object))
   (with-pp
     (set! arg0
@@ -1829,6 +1825,7 @@
 
 ;; definition for method 15 of type load-state
 ;; INFO: Return type mismatch int vs none.
+;; WARN: Failed load: (set! v1-138 (l.wu (+ a0-142 -4))) at op 648
 (defmethod execute-command load-state ((obj load-state) (arg0 pair))
   (local-vars (v1-26 int) (v1-57 int))
   (with-pp

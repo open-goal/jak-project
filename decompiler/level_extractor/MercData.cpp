@@ -2,6 +2,7 @@
 
 #include "common/dma/gs.h"
 
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 #include "third-party/fmt/core.h"
@@ -152,7 +153,7 @@ void MercByteHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
     } else {
       // ASSERT(!got_end);
       if (got_end) {
-        // fmt::print("got something after the end\n");  // todo, should investigate more
+        // lg::print("got something after the end\n");  // todo, should investigate more
       }
     }
   }
@@ -199,14 +200,52 @@ std::string MercShader::print() const {
   return result;
 }
 
+MercShader make_shader(Ref& ref, bool expected_eop) {
+  // adgif0
+  MercShader shader;
+  u8 adgif0_addr = deref_u8(ref, 8);
+  ASSERT(adgif0_addr == (u8)GsRegisterAddress::TEX0_1);
+  shader.output_offset = deref_u32(ref, 3);
+  shader.tex0 = GsTex0(deref_u64(ref, 0));
+  ref.byte_offset += 16;
+
+  // adgif1
+  u8 adgif1_addr = deref_u8(ref, 8);
+  ASSERT(adgif1_addr == (u8)GsRegisterAddress::TEX1_1);
+  shader.tex1 = GsTex1(deref_u64(ref, 0));
+  u16 stash = deref_u32(ref, 3);
+  shader.original_tex = deref_u32(ref, 2);
+  shader.next_strip_nloop = stash & 0x7fff;
+  ASSERT((!!(stash & 0x8000)) == expected_eop);  // set eop on last
+  ref.byte_offset += 16;
+
+  // adgif2
+  u8 adgif2_addr = deref_u8(ref, 8);
+  ASSERT(adgif2_addr == (u8)GsRegisterAddress::MIPTBP1_1);
+  ref.byte_offset += 16;
+
+  // adgif3
+  u8 adgif3_addr = deref_u8(ref, 8);
+  ASSERT(adgif3_addr == (u8)GsRegisterAddress::CLAMP_1);
+  shader.clamp = deref_u64(ref, 0);
+  ref.byte_offset += 16;
+
+  // adgif4
+  u8 adgif4_addr = deref_u8(ref, 8);
+  ASSERT(adgif4_addr == (u8)GsRegisterAddress::ALPHA_1);
+  shader.alpha = GsAlpha(deref_u64(ref, 0));
+  ref.byte_offset += 16;
+  return shader;
+}
+
 TypedRef MercFragment::from_ref(TypedRef tr,
                                 const DecompilerTypeSystem& dts,
                                 const MercFragmentControl& control,
                                 const MercCtrlHeader& main_control) {
-  // fmt::print("frag::from_ref:\n{}\n", control.print());
+  // lg::print("frag::from_ref:\n{}\n", control.print());
   TypedRef byte_hdr(get_field_ref(tr, "header", dts), dts.ts.lookup_type("merc-byte-header"));
   header.from_ref(byte_hdr, dts);
-  // fmt::print("{}\n", header.print());
+  // lg::print("{}\n", header.print());
 
   // all these offsets are super confusing.
   // the DMA transfers require source and dest addresses/sized to have alignment of 16 bytes.
@@ -225,7 +264,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // dsll32 s0, v0, 4
   // daddu t3, t2, s0
   u32 my_u4_count = ((control.unsigned_four_count + 3) / 4) * 16;
-  // fmt::print("my u4: {} ({} qwc)\n", my_u4_count, my_u4_count / 16);
+  // lg::print("my u4: {} ({} qwc)\n", my_u4_count, my_u4_count / 16);
   for (u32 w = 0; w < my_u4_count / 4; w++) {
     u32 val = deref_u32(tr.ref, w);
     memcpy(unsigned_four_including_header.emplace_back().data(), &val, 4);
@@ -237,7 +276,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // srl s0, s0, 2
   // dsll32 s2, s0, 4
   u32 my_l4_count = my_u4_count + ((control.lump_four_count + 3) / 4) * 16;
-  // fmt::print("my l4: {} ({} qwc)\n", my_l4_count, my_l4_count / 16);
+  // lg::print("my l4: {} ({} qwc)\n", my_l4_count, my_l4_count / 16);
   // end of lump should align with mm (main memory?) fp off. which
   // is used for accessing the fp data in main memory.
   ASSERT(my_l4_count / 16 == header.mm_quadword_fp_off);
@@ -265,40 +304,8 @@ TypedRef MercFragment::from_ref(TypedRef tr,
 
   // fp shaders
   for (int i = 0; i < fp_header.shader_cnt; i++) {
-    auto& shader = shaders.emplace_back();
-    // adgif0
-    u8 adgif0_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif0_addr == (u8)GsRegisterAddress::TEX0_1);
-    shader.output_offset = deref_u32(fp_ref, 3);
-    shader.tex0 = GsTex0(deref_u64(fp_ref, 0));
-    fp_ref.byte_offset += 16;
-
-    // adgif1
-    u8 adgif1_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif1_addr == (u8)GsRegisterAddress::TEX1_1);
-    shader.tex1 = GsTex1(deref_u64(fp_ref, 0));
-    u16 stash = deref_u32(fp_ref, 3);
-    shader.original_tex = deref_u32(fp_ref, 2);
-    shader.next_strip_nloop = stash & 0x7fff;
-    ASSERT((!!(stash & 0x8000)) == (i == fp_header.shader_cnt - 1));  // set eop on last
-    fp_ref.byte_offset += 16;
-
-    // adgif2
-    u8 adgif2_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif2_addr == (u8)GsRegisterAddress::MIPTBP1_1);
-    fp_ref.byte_offset += 16;
-
-    // adgif3
-    u8 adgif3_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif3_addr == (u8)GsRegisterAddress::CLAMP_1);
-    shader.clamp = deref_u64(fp_ref, 0);
-    fp_ref.byte_offset += 16;
-
-    // adgif4
-    u8 adgif4_addr = deref_u8(fp_ref, 8);
-    ASSERT(adgif4_addr == (u8)GsRegisterAddress::ALPHA_1);
-    shader.alpha = GsAlpha(deref_u64(fp_ref, 0));
-    fp_ref.byte_offset += 16;
+    bool expected_eop = (i == fp_header.shader_cnt - 1);
+    shaders.push_back(make_shader(fp_ref, expected_eop));
   }
 
   tr.ref.byte_offset += (header.mm_quadword_size) * 16;
@@ -341,7 +348,17 @@ void MercEffect::from_ref(TypedRef tr,
   blend_frag_count = read_plain_data_field<u16>(tr, "blend-frag-count", dts);
   tri_count = read_plain_data_field<u16>(tr, "tri-count", dts);
   dvert_count = read_plain_data_field<u16>(tr, "dvert-count", dts);
-  envmap_usage = read_plain_data_field<u8>(tr, "envmap-usage", dts);
+  auto* type = dynamic_cast<StructureType*>(dts.ts.lookup_type("merc-effect"));
+  Field temp;
+  if (type->lookup_field("envmap-usage", &temp)) {
+    envmap_or_effect_usage = read_plain_data_field<u8>(tr, "envmap-usage", dts);
+  } else {
+    envmap_or_effect_usage = read_plain_data_field<u8>(tr, "effect-usage", dts);
+  }
+
+  if (type->lookup_field("texture-index", &temp)) {
+    texture_index = read_plain_data_field<u8>(tr, "texture-index", dts);
+  }
 
   // do frag-ctrls
   TypedRef fc(deref_label(get_field_ref(tr, "frag-ctrl", dts)),
@@ -355,6 +372,28 @@ void MercEffect::from_ref(TypedRef tr,
   for (u32 i = 0; i < frag_count; i++) {
     f = frag_geo.emplace_back().from_ref(f, dts, frag_ctrl.at(i), main_control);
   }
+
+  // do blend ctrls
+  if (blend_frag_count) {
+    TypedRef bc(deref_label(get_field_ref(tr, "blend-ctrl", dts)),
+                dts.ts.lookup_type("merc-blend-ctrl"));
+    for (u32 i = 0; i < blend_frag_count; i++) {
+      bc = blend_ctrl.emplace_back().from_ref(bc, dts, main_control.blend_target_count);
+    }
+  }
+
+  // do extra info
+  auto fr = get_field_ref(tr, "extra-info", dts);
+  const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+  if (word.kind() == LinkedWord::PTR) {
+    TypedRef mei(deref_label(fr), dts.ts.lookup_type("merc-extra-info"));
+    u8 shader_offset = read_plain_data_field<u8>(mei, "shader-offset", dts);
+    if (shader_offset) {
+      Ref r = mei.ref;
+      r.byte_offset += 16 * shader_offset;
+      extra_info.shader = make_shader(r, false);
+    }
+  }
 }
 
 std::string MercEffect::print() {
@@ -364,7 +403,7 @@ std::string MercEffect::print() {
   result += fmt::format("  blend_frag_count: {}\n", blend_frag_count);
   result += fmt::format("  tri_count: {}\n", tri_count);
   result += fmt::format("  dvert_count: {}\n", dvert_count);
-  result += fmt::format("  envmap_usage: {}\n", envmap_usage);
+  result += fmt::format("  envmap_or_effect_usage: {}\n", envmap_or_effect_usage);
 
   for (u32 i = 0; i < frag_count; i++) {
     result += fmt::format("  +FRAGMENT {}\n", i);
@@ -388,6 +427,55 @@ void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
     effects.emplace_back().from_ref(eff_ref, dts, header);
     eff_ref.ref.byte_offset += 32;  //
   }
+  // debug_print_blerc();
+}
+
+void MercCtrl::debug_print_blerc() {
+  int total_verts = 0;
+  int blerc_verts = 0;
+  int total_frags = 0;
+  int blerc_frags = 0;
+  int total_effects = effects.size();
+  int blerc_effects = 0;
+
+  for (auto& effect : effects) {
+    bool effect_has_blerc = false;
+    for (size_t frag_idx = 0; frag_idx < effect.frag_count; frag_idx++) {
+      total_frags++;
+      auto& fc = effect.frag_ctrl.at(frag_idx);
+      total_verts += fc.lump_four_count;
+
+      if (frag_idx < effect.blend_ctrl.size()) {
+        auto& bfc = effect.blend_ctrl.at(frag_idx);
+        if (bfc.blend_vtx_count) {
+          effect_has_blerc = true;
+          blerc_frags++;
+          blerc_verts += fc.lump_four_count;
+        }
+      }
+    }
+
+    if (effect_has_blerc) {
+      blerc_effects++;
+    }
+  }
+  if (blerc_effects) {
+    fmt::print("BLERC: {}, {}/{} e, {}/{} f, {}/{} v\n", name, blerc_effects, total_effects,
+               blerc_frags, total_frags, blerc_verts, total_verts);
+  }
+}
+
+TypedRef MercBlendCtrl::from_ref(TypedRef tr,
+                                 const DecompilerTypeSystem& dts,
+                                 int blend_target_count) {
+  blend_vtx_count = read_plain_data_field<u8>(tr, "blend-vtx-count", dts);
+  nonzero_index_count = read_plain_data_field<u8>(tr, "nonzero-index-count", dts);
+  tr.ref.byte_offset += 2;
+  for (int i = 0; i < blend_target_count; i++) {
+    bt_index.push_back(deref_u8(tr.ref, 0));
+    tr.ref.byte_offset += 1;
+  }
+  return tr;
 }
 
 std::string MercCtrl::print() {

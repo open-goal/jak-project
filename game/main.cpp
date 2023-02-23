@@ -12,10 +12,8 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
+#include "common/util/unicode_util.h"
 #include "common/versions.h"
-#include <common/util/unicode_util.h>
-
-#include "game/discord.h"
 
 #ifdef _WIN32
 extern "C" {
@@ -23,9 +21,6 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 #endif
-
-// Discord RPC
-extern int64_t gStartTime;
 
 /*!
  * Set up logging system to log to file.
@@ -86,10 +81,6 @@ int main(int argc, char** argv) {
   if (!file_util::setup_project_path(project_path_override)) {
     return 1;
   }
-
-  // set up discord stuff
-  gStartTime = time(nullptr);
-  init_discord_rpc();
 
   if (disable_avx2) {
     // for debugging the non-avx2 code paths, there's a flag to manually disable.

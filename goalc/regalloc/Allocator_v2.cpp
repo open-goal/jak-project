@@ -4,6 +4,7 @@
 #include <optional>
 #include <unordered_map>
 
+#include "common/log/log.h"
 #include "common/util/Range.h"
 
 #include "third-party/fmt/core.h"
@@ -522,7 +523,7 @@ void do_constrained_alloc(RACache* cache, const AllocationInput& input, bool tra
   for (auto& constr : input.constraints) {
     auto var_id = constr.ireg.id;
     if (trace_debug) {
-      fmt::print("[RA] Apply constraint {}\n", constr.to_string());
+      lg::print("[RA] Apply constraint {}\n", constr.to_string());
     }
     cache->vars.at(var_id).constrain_to_register(constr.desired_register);
   }
@@ -573,8 +574,8 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
     for (int i = lr.first_live(); i <= lr.last_live(); i++) {
       if (lr.assigned()) {
         if (!lr.assigned_to_reg(constr.desired_register)) {
-          fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                     constr.ireg.to_string(), constr.desired_register.print(), "???");
+          lg::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
+                    constr.ireg.to_string(), constr.desired_register.print(), "???");
           ok = false;
         }
       }
@@ -598,7 +599,7 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
         if (lr1.assigned_to_reg() && lr2.assigned_to_reg()) {
           if (lr1.reg() == lr2.reg() && !safe_overlap(in, *cache, lr1, lr2, i)) {
             // todo, this error won't be helpful
-            fmt::print(
+            lg::print(
                 "[RegAlloc Error] {} Cannot satisfy constraints at instruction {} due to "
                 "constraints "
                 "on {} and {}, both are assigned to register {}\n",
@@ -857,15 +858,23 @@ bool setup_stack_bonus_ops(const AllocationInput& input,
                            int my_slot) {
   auto& var = cache->vars.at(var_idx);
   // loop over all possible instruction that might use this var
-  //  bool successful = false;
-  //  while (!successful) {
+
+  // we may retry, so don't add bonus ops until the end (
+  struct BonusToAdd {
+    StackOp::Op op;
+    int instr_idx = -1;
+  };
+  std::vector<BonusToAdd> bonus_ops;
+
 loop_top:
+  bonus_ops.clear();
+
   for (int instr_idx = var.first_live(); instr_idx <= var.last_live(); instr_idx++) {
     // check out the instruction
     auto& op = input.instructions.at(instr_idx);
     bool is_read = op.reads(var_idx);
     bool is_written = op.writes(var_idx);
-    //    fmt::print("op {} {} {}\n", instr_idx, is_read, is_written);
+    //    lg::print("op {} {} {}\n", instr_idx, is_read, is_written);
     if (!is_read && !is_written) {
       continue;
     }
@@ -916,7 +925,7 @@ loop_top:
         }
       }
 
-      fmt::print(
+      lg::print(
           "In function {}, register allocator fell back to a highly inefficient strategy to create "
           "a spill temporary register.\n",
           input.function_name);
@@ -944,19 +953,22 @@ loop_top:
     bonus.store = is_written;
 
     if (bonus.load || bonus.store) {
-      cache->stack_ops.at(instr_idx).ops.push_back(bonus);
-      if (bonus.load) {
-        cache->stats.num_spill_ops++;
-      }
-      if (bonus.store) {
-        cache->stats.num_spill_ops++;
-      }
+      bonus_ops.push_back(BonusToAdd{bonus, instr_idx});
     }
   }
 
   //  }
 
   cache->stats.num_spilled_vars++;
+  for (auto& op : bonus_ops) {
+    if (op.op.load) {
+      cache->stats.num_spill_ops++;
+    }
+    if (op.op.store) {
+      cache->stats.num_spill_ops++;
+    }
+    cache->stack_ops.at(op.instr_idx).ops.push_back(op.op);
+  }
 
   return true;
 }
@@ -1003,8 +1015,8 @@ bool run_assignment_on_var(const AllocationInput& input,
         if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
-            fmt::print("m0 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                       other_var.reg().print(), worked);
+            lg::print("m0 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
+                      other_var.reg().print(), worked);
           }
 
           if (worked) {
@@ -1020,10 +1032,10 @@ bool run_assignment_on_var(const AllocationInput& input,
 
       const auto& other_var = cache->vars.at(other_live_var_idx);
       if (trace && var_idx == 5) {
-        fmt::print("  consider {} {} {} {} [{} {}]\n", other_live_var_idx,
-                   other_var.assigned_to_reg(), var.last_live() == other_var.first_live(),
-                   safe_overlap(input, *cache, var, other_var, var.last_live()), var.last_live(),
-                   other_var.first_live());
+        lg::print("  consider {} {} {} {} [{} {}]\n", other_live_var_idx,
+                  other_var.assigned_to_reg(), var.last_live() == other_var.first_live(),
+                  safe_overlap(input, *cache, var, other_var, var.last_live()), var.last_live(),
+                  other_var.first_live());
       }
 
       if (other_var.assigned_to_reg() &&
@@ -1031,8 +1043,8 @@ bool run_assignment_on_var(const AllocationInput& input,
         if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
-            fmt::print("m1 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                       other_var.reg().print(), worked);
+            lg::print("m1 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
+                      other_var.reg().print(), worked);
           }
 
           if (worked) {
@@ -1048,8 +1060,8 @@ bool run_assignment_on_var(const AllocationInput& input,
       for (auto& reg : assign_order) {
         bool worked = check_register_assign(input, *cache, var_idx, reg);
         if (trace) {
-          fmt::print("m2 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                     reg.print(), worked);
+          lg::print("m2 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
+                    reg.print(), worked);
         }
         if (worked) {
           var.assign_to_register(reg);
@@ -1120,7 +1132,7 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
   check_constrained_alloc(&cache, input);
   if (!check_constrained_alloc(&cache, input)) {
     result.ok = false;
-    fmt::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
+    lg::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
     return result;
   }
 
@@ -1157,7 +1169,7 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
   for (int var_idx = 0; var_idx < input.max_vars; var_idx++) {
     auto& var = cache.vars.at(var_idx);
     if (var.seen() && !var.assigned()) {
-      //      fmt::print("av2: {} failed\n", input.function_name);
+      //      lg::print("av2: {} failed\n", input.function_name);
       result.ok = false;
       return result;
     }

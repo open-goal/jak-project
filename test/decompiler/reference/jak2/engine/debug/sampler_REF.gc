@@ -1,0 +1,59 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for symbol *sampler-mem*, type pointer
+(define *sampler-mem* "A pointer to where the sampled data should be stored" (the-as pointer #f))
+
+;; definition for symbol *sampler-compare*, type uint
+(define *sampler-compare*
+  "The value used to set the EE register's `Timer 0 Compare Value`.  Always `1`"
+  (the-as uint 1)
+  )
+
+;; definition for symbol *sampler-count*, type int
+(define *sampler-count* "Incremented everytime a metric is sampled
+@see [[timer0-handler]]" 0)
+
+;; definition (debug) for function timer0-handler
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; failed to figure out what this is:
+(set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+
+;; failed to figure out what this is:
+(install-handler 9 timer0-handler)
+
+;; definition (debug) for function sampler-start
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-start ()
+  "Reset the [[timer-bank]] EE registers.
+- If [[*sampler-mem*]] is undefined, allocate 16.7MB in the debug segment
+- and when [[*sampler-mem*]] is defined, initialize the [[timer-bank]] fully.  Reset [[*sampler-count*]] to 0 as well"
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (set! (-> (the-as timer-bank #x10000000) count) (the-as uint 0))
+  (set! (-> (the-as timer-bank #x10000000) comp) *sampler-compare*)
+  (if (not *sampler-mem*)
+      (set! *sampler-mem* (malloc 'debug #x1000000))
+      )
+  (when (nonzero? *sampler-mem*)
+    (mem-set32! *sampler-mem* #x400000 0)
+    (set! (-> (the-as timer-bank #x10000000) mode)
+          (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+          )
+    (set! *sampler-count* 0)
+    0
+    )
+  (none)
+  )
+
+;; definition (debug) for function sampler-stop
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-stop ()
+  "Sets the [[timer-bank]] mode EE register to 0"
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  0
+  (none)
+  )

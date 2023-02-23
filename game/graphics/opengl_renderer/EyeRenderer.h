@@ -12,11 +12,11 @@ constexpr int SINGLE_EYE_SIZE = 32;
 
 class EyeRenderer : public BucketRenderer {
  public:
-  EyeRenderer(const std::string& name, BucketId id);
+  EyeRenderer(const std::string& name, int id);
   ~EyeRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
-  void init_textures(TexturePool& texture_pool) override;
+  void init_textures(TexturePool& texture_pool, GameVersion) override;
 
   void handle_eye_dma2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 

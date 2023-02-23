@@ -7,3 +7,1483 @@
 
 ;; DECOMP BEGINS
 
+(deftype pegasus-path-info (structure)
+  ((num-data     int32            :offset-assert   0)
+   (path-data    curve-control    :offset-assert   4)
+   (control-data (pointer float)  :offset-assert   8)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+(deftype pegasus (enemy)
+  ((curve-position   float                        :offset-assert 532)
+   (speed            float                        :offset-assert 536)
+   (facing           vector            :inline    :offset-assert 544)
+   (tangent          vector            :inline    :offset-assert 560)
+   (run-blend-interp float                        :offset-assert 576)
+   (near-timer       int32                        :offset-assert 580)
+   (far-time         time-frame                   :offset-assert 584)
+   (y-offset         float                        :offset-assert 592)
+   (y-offset-desired float                        :offset-assert 596)
+   (y-vel            float                        :offset-assert 600)
+   (water-height     float                        :offset-assert 604)
+   (timeout          uint64                       :offset-assert 608)
+   (ambient-possible uint64                       :offset-assert 616)
+   (ambient-expire   uint64                       :offset-assert 624)
+   (can-run          symbol                       :offset-assert 632)
+   (on-ground        symbol                       :offset-assert 636)
+   (over-ground      symbol                       :offset-assert 640)
+   (allow-idle       symbol                       :offset-assert 644)
+   (path-info        pegasus-path-info 20 :inline :offset-assert 648)
+   (previous-path    int32                        :offset        968)
+   (current-path     int32                        :offset        972)
+   (num-paths        int32                        :offset        976)
+   (display-path     int32                        :offset        980)
+   (targetted-timer  time-frame                   :offset        984)
+   )
+  :heap-base #x360
+  :method-count-assert 138
+  :size-assert         #x3e0
+  :flag-assert         #x8a036003e0
+  (:methods
+    (run-logic? (_type_) symbol :replace 12)
+    (damage-amount-from-attack (_type_ process event-message-block) int :replace 56)
+    (update-target-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware :replace 57)
+    (track-how-long-aimed-at! (_type_) none 137)
+    )
+  (:states
+    pegasus-debug
+    pegasus-tired
+    )
+  )
+
+
+(defskelgroup skel-pegasus pegasus pegasus-lod0-jg pegasus-idle-ja
+              ((pegasus-lod0-mg (meters 20)) (pegasus-lod1-mg (meters 40)) (pegasus-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow pegasus-shadow-mg
+              )
+
+(define *pegasus-enemy-info*
+  (new 'static 'enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 5
+    :notice-anim 6
+    :hostile-anim 8
+    :hit-anim 5
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim 15
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint -1
+    :sound-die (static-sound-name "pegasus-die")
+    :notice-distance (meters 45)
+    :notice-distance-delta (meters 30)
+    :proximity-notice-distance (meters 55)
+    :default-hit-points 6
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint 9
+    :gem-seg #x2
+    :gem-no-seg #x4
+    :gem-offset (new 'static 'sphere :y 942.08 :z 40.96 :r 163840.0)
+    )
+  )
+
+(set! (-> *pegasus-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod run-logic? pegasus ((obj pegasus))
+  "Calls [[process-tree::12]] if we are considered in-range of the [[pegasus]], otherwise returns [[#t]]"
+  (let ((min-distance 491520.0))
+    (if (< (* min-distance min-distance) (vector-vector-distance-squared (-> obj root-override2 trans) (camera-pos)))
+        ((method-of-type enemy run-logic?) obj)
+        #t
+        )
+    )
+  )
+
+(defmethod track-how-long-aimed-at! pegasus ((obj pegasus))
+  "Updates `targetted-timer` with the `frame-counter` while Jak is aiming at the [[pegasus]]"
+  (with-pp
+    (let ((target *target*))
+      (when (and target (-> target gun active?))
+        (let ((inaccuracy-dir (new 'stack-no-clear 'vector))
+              (inaccuracy-vec (new 'stack-no-clear 'vector))
+              )
+          (vector-! inaccuracy-dir (-> obj root-override2 trans) (-> target gun fire-point))
+          (vector+float*!
+            inaccuracy-vec
+            (-> target gun fire-point)
+            (-> target gun fire-dir-out)
+            (vector-length inaccuracy-dir)
+            )
+          (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> obj root-override2 trans)))
+                (threshold 20480.0)
+                )
+            (if (< inaccuracy-mag (* threshold threshold))
+                (set! (-> obj targetted-timer) (-> pp clock frame-counter))
+                )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch int vs enemy-aware.
+(defmethod update-target-awareness! pegasus ((obj pegasus) (proc process-focusable) (focus enemy-best-focus))
+  "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
+For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
+@returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
+  (with-pp
+    (the-as enemy-aware (if (>= (- (-> pp clock frame-counter) (-> obj targetted-timer)) (seconds 5))
+                            (the-as int ((method-of-type enemy update-target-awareness!) obj proc focus))
+                            4
+                            )
+            )
+    )
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defmethod general-event-handler pegasus ((obj pegasus) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (with-pp
+    (let ((v1-0 event-type))
+      (the-as
+        object
+        (cond
+          ((= v1-0 'track)
+           #f
+           )
+          ((or (= v1-0 'hit) (= v1-0 'hit-knocked))
+           (cond
+             ((zero? (-> obj hit-points))
+              (logclear! (-> obj mask) (process-mask actor-pause))
+              (logclear! (-> obj focus-status) (focus-status dangerous))
+              (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
+              (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
+              (logior! (-> obj focus-status) (focus-status hit))
+              (if (zero? (-> obj hit-points))
+                  (logior! (-> obj focus-status) (focus-status dead))
+                  )
+              (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+              (enemy-method-62 obj)
+              (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+              (process-contact-action proc)
+              (send-event proc 'get-attack-count 1)
+              (the-as object (kill-prefer-falling obj))
+              )
+             (else
+               (let ((v0-0 (the-as object (-> pp clock frame-counter))))
+                 (set! (-> obj targetted-timer) (the-as time-frame v0-0))
+                 v0-0
+                 )
+               )
+             )
+           )
+          (else
+            ((method-of-type enemy general-event-handler) obj proc arg2 event-type event)
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod damage-amount-from-attack pegasus ((obj pegasus) (arg0 process) (arg1 event-message-block))
+  "Only attacks from the jetboard will deal max damage (6), but by default it will return `1`.
+This is why the scouts are technically killable by other means
+@returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
+@see [[*pegasus-enemy-info*]]"
+  (with-pp
+    (let ((hitpoints 1))
+      (let ((attack-info (the-as attack-info (-> arg1 param 1))))
+        (case (-> arg1 message)
+          (('attack)
+           (if (and (logtest? (-> attack-info mask) (attack-info-mask mode)) (= (-> attack-info mode) 'board))
+               (set! hitpoints (-> obj hit-points))
+               )
+           )
+          )
+        )
+      (set! (-> obj targetted-timer) (-> pp clock frame-counter))
+      hitpoints
+      )
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior pegasus-draw-section pegasus ((path-percent-a float) (path-percent-b float) (color rgba))
+  "Draws the [[pegasus]] curve section between the two provided points.
+@param path-percent-a Percentage along the path for the first point
+@param path-percent-b Percentage along the path for the second point
+param color The color to draw the curve with
+@see [[curve-control]]"
+  (let ((point-a (new 'stack-no-clear 'vector))
+        (point-b (new 'stack-no-clear 'vector))
+        )
+    (get-point-at-percent-along-path!
+      (-> self path-info (-> self current-path) path-data)
+      point-a
+      path-percent-a
+      'interp
+      )
+    (get-point-at-percent-along-path!
+      (-> self path-info (-> self current-path) path-data)
+      point-b
+      path-percent-b
+      'interp
+      )
+    (add-debug-line #t (bucket-id debug-no-zbuf1) point-a point-b color #f (the-as rgba -1))
+    )
+  (none)
+  )
+
+(defbehavior pegasus-show-runs pegasus ()
+  "When [[*display-path-marks*]] is enabled, allow the user to cycle through the displayed path
+- Pressing [[up]] on the D-Pad will increment the path index
+- Pressing [[down]] on the D-Pad will decrement the path index
+Additional debug text will be displayed as well.  This is useful as many paths overlap other paths"
+  (when *display-path-marks*
+    (when (cpad-pressed? 0 up)
+      (+! (-> self display-path) 1)
+      (if (>= (-> self display-path) (-> self num-paths))
+          (set! (-> self display-path) -1)
+          )
+      )
+    (when (cpad-pressed? 0 down)
+      (+! (-> self display-path) -1)
+      (if (< (-> self display-path) -1)
+          (set! (-> self display-path) (+ (-> self num-paths) -1))
+          )
+      )
+    (cond
+      ((< (-> self display-path) 0)
+       (countdown (path-idx 20)
+         (let ((path (-> self path-info path-idx path-data)))
+           (if path
+               (debug-draw path)
+               )
+           )
+         )
+       )
+      (else
+        (format
+          *stdcon*
+          "~A old-path ~D can run ~A at ~D ~F~%"
+          (-> self name)
+          (-> self previous-path)
+          (-> self can-run)
+          (-> self current-path)
+          (-> self curve-position)
+          )
+        (format *stdcon* "~A showing path ~D~%" (-> self name) (-> self display-path))
+        (let ((_path (-> self path-info (-> self display-path) path-data)))
+          (if _path
+              (debug-draw _path)
+              )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defbehavior pegasus-rotate pegasus ((influenced-by-target? symbol) (angle float))
+  "Rotates the [[pegasus]] along the path, factoring in the current speed and the target's position
+@param influenced-by-target? Whether or not to care about [[target]]'s position
+@param angle The hopeful angle to use when constructing the rotation matrix, ultimately limited to `0.25` (radians?) though
+@see [[target-pos]] and [[matrix-from-two-vectors-max-angle-partial!]]
+@TODO - `float` should be `degrees` -- The usual amount passed in is `(degrees 100.0835)`"
+  (let ((rotation-matrix (new 'stack-no-clear 'matrix))
+        (flee-direction-vec (new 'stack-no-clear 'vector))
+        )
+    (displacement-between-points-at-percent-normalized!
+      (-> self path-info (-> self current-path) path-data)
+      (-> self tangent)
+      (-> self curve-position)
+      )
+    (cond
+      ((and influenced-by-target? *target*)
+       (vector-! flee-direction-vec (-> self root-override2 trans) (target-pos 0))
+       (vector-normalize! flee-direction-vec 1.0)
+       )
+      ((= (-> self speed) 0.0)
+       (set! (-> flee-direction-vec quad) (-> self facing quad))
+       )
+      ((< (-> self speed) 0.0)
+       (vector-negate! flee-direction-vec (-> self tangent))
+       )
+      (else
+        (set! (-> flee-direction-vec quad) (-> self tangent quad))
+        )
+      )
+    (matrix-from-two-vectors-max-angle-partial! rotation-matrix (-> self facing) flee-direction-vec angle 0.25)
+    (vector-matrix*! flee-direction-vec (-> self facing) rotation-matrix)
+    (vector-normalize! flee-direction-vec 1.0)
+    (forward-down->inv-matrix rotation-matrix flee-direction-vec (new 'static 'vector :y -1.0))
+    (matrix->quaternion (-> self root-override2 quat) rotation-matrix)
+    (set! (-> self run-blend-interp) (acos (vector-dot flee-direction-vec (-> self facing))))
+    (set! (-> self run-blend-interp) (* 0.0002746582 (-> self run-blend-interp)))
+    (if (< (vector-dot (-> self facing) (the-as vector (-> rotation-matrix vector))) 0.0)
+        (set! (-> self run-blend-interp) (- (-> self run-blend-interp)))
+        )
+    (set! (-> self facing quad) (-> flee-direction-vec quad))
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defbehavior pegasus-loop-on-same-path pegasus ()
+  "Creates an endless loop on the same path as the name suggests
+- If we are beyond the end of the path, start again near the beginning (1%)
+- If we are far before the beginning, start at the beginning (0%)
+- If we are atleast 1% into the path, step back 1%
+- If we are less than 0% somehow, slowly add 1%
+Ultimately this appears to be some sort of safe-guard to get things back into a somewhat working state
+if there are unexpected path conditions -- but the results of this are not great!
+Another potential explaination is to make it easy during development to identify and debug a bad path
+In practice, this is never called"
+  (cond
+    ((< 100.0 (-> self curve-position))
+     (set! (-> self curve-position) 1.0)
+     )
+    ((< (-> self curve-position) -100.0)
+     (set! (-> self curve-position) 0.0)
+     )
+    ((< 1.0 (-> self curve-position))
+     (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+     )
+    ((< (-> self curve-position) 0.0)
+     (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+     )
+    )
+  (none)
+  )
+
+(defbehavior pegasus-choose-path pegasus ()
+  "Determines the next path the pegasus should take if we have completed the current path it's on
+There are many fail-safes here if something goes wrong to try to keep the pegasus behaving
+@see [[pegasus-look-on-same-path]]
+@TODO - understand the path selection better"
+  (local-vars (f0-15 float) (f30-0 float))
+  (while (begin (label cfg-61) (or (< 1.0 (-> self curve-position)) (< (-> self curve-position) 0.0)))
+    (let ((curr-pegasus-path (-> self path-info (-> self current-path)))
+          (control-data-idx 3)
+          )
+      0.0
+      (set! f30-0 (cond
+                    ((or (>= (-> self current-path) (-> self num-paths))
+                         (< (-> self current-path) 0)
+                         (<= (-> curr-pegasus-path num-data) 0)
+                         )
+                     (format
+                       0
+                       "<GMJ>: ~A has path out of range cur ~D num ~D num-data ~D~%"
+                       (-> self name)
+                       (-> self current-path)
+                       (-> self num-paths)
+                       (-> curr-pegasus-path num-data)
+                       )
+                     (pegasus-loop-on-same-path)
+                     (goto cfg-61)
+                     f30-0
+                     )
+                    ((< (-> self curve-position) 0.0)
+                     (while (and (< control-data-idx (-> curr-pegasus-path num-data))
+                                 (>= (-> curr-pegasus-path control-data control-data-idx) 0.0)
+                                 )
+                       (+! control-data-idx 3)
+                       )
+                     (+! control-data-idx 1)
+                     (* (total-distance (-> curr-pegasus-path path-data)) (- (-> self curve-position)))
+                     )
+                    (else
+                      (* (total-distance (-> curr-pegasus-path path-data)) (+ -1.0 (-> self curve-position)))
+                      )
+                    )
+            )
+      (when (or (< (- (-> curr-pegasus-path num-data) control-data-idx) 3)
+                (< (-> curr-pegasus-path control-data control-data-idx) 0.0)
+                )
+        (format
+          0
+          "<GMJ>: ~A has bad path connect data format num-data ~D ctrl-data ~F~%"
+          (-> self name)
+          (- (-> curr-pegasus-path num-data) control-data-idx)
+          (-> curr-pegasus-path control-data control-data-idx)
+          )
+        (pegasus-loop-on-same-path)
+        (goto cfg-61)
+        )
+      (let* ((rand-int (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (rand-float (the-as float (logior #x3f800000 rand-int)))
+             (_rand (+ -1.0 rand-float))
+             )
+        (while (and (>= (- (-> curr-pegasus-path num-data) control-data-idx) 6)
+                    (>= (-> curr-pegasus-path control-data control-data-idx) 0.0)
+                    (< (-> curr-pegasus-path control-data (+ control-data-idx 2)) _rand)
+                    (!= (-> curr-pegasus-path control-data (+ control-data-idx 3)) -1.0)
+                    (!= (-> curr-pegasus-path control-data (+ control-data-idx 5)) 0.0)
+                    )
+          (set! _rand (- _rand (-> curr-pegasus-path control-data (+ control-data-idx 2))))
+          (+! control-data-idx 3)
+          )
+        )
+      (let ((control-data (the int (-> curr-pegasus-path control-data control-data-idx)))
+            (f28-0 (fmin 1.0 (fmax 0.0 (-> curr-pegasus-path control-data (+ control-data-idx 1)))))
+            )
+        (when (or (>= control-data (-> self num-paths)) (< control-data 0))
+          (format
+            0
+            "<GMJ>: ~A has bad path connect data prev ~D current ~D desired ~D num ~D~%"
+            (-> self name)
+            (-> self previous-path)
+            (-> self current-path)
+            control-data
+            (-> self num-paths)
+            )
+          (pegasus-loop-on-same-path)
+          (goto cfg-61)
+          )
+        (set! (-> self previous-path) (-> self current-path))
+        (set! (-> self current-path) control-data)
+        (let ((_curr-pegasus-path (-> self path-info (-> self current-path))))
+          (let ((f0-14 (/ f30-0 (total-distance (-> _curr-pegasus-path path-data)))))
+            (cond
+              ((< 0.5 f28-0)
+               (set! f0-15 (- f28-0 f0-14))
+               (if (< 0.0 (-> self speed))
+                   (set! (-> self speed) (- (-> self speed)))
+                   )
+               )
+              (else
+                (set! f0-15 (+ f28-0 f0-14))
+                (if (< (-> self speed) 0.0)
+                    (set! (-> self speed) (- (-> self speed)))
+                    )
+                )
+              )
+            )
+          (set! (-> self curve-position) f0-15)
+          (set! (-> self can-run) #f)
+          (if (> (-> _curr-pegasus-path num-data) 0)
+              (set! (-> self can-run) (!= (-> _curr-pegasus-path control-data 0) 0.0))
+              )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defbehavior pegasus-move pegasus ((explicit-y-vel float) (adjust-y-offset? symbol))
+  "Moves the pegasus along the path by smoothly interpolating along it
+@param explicit-y-vel Normally `0.0` but this value is used when the pegasus needs to switch direction
+@param adjust-y-offset? Normally [[#f]] which forces the movement to reflect the result of the collison query - the [[pegasus]] will stay close to the ground.  [[#t]] ignores this"
+  (+! (-> self curve-position)
+      (/ (the float (* (- (-> self clock frame-counter) (-> self clock old-frame-counter)) (the int (-> self speed))))
+         (total-distance (-> self path-info (-> self current-path) path-data))
+         )
+      )
+  (pegasus-choose-path)
+  (get-point-at-percent-along-path!
+    (-> self path-info (-> self current-path) path-data)
+    (-> self root-override2 trans)
+    (-> self curve-position)
+    'interp
+    )
+  (let ((y-pos (+ -81920.0 (-> self root-override2 trans y)))
+        (draw-shadow? #f)
+        )
+    (let ((cquery (new 'stack 'collide-query))
+          (start-pos (new 'stack-no-clear 'vector))
+          )
+      (set! (-> start-pos quad) (-> self root-override2 trans quad))
+      (set! (-> self over-ground) #f)
+      (when (enemy-above-ground? self cquery start-pos (collide-spec backgnd) 12288.0 81920.0 1024.0)
+        (set! y-pos (-> cquery best-other-tri intersect y))
+        (set! draw-shadow? #t)
+        (set! (-> self over-ground) (< 204.8 (fabs (- y-pos (-> self water-height)))))
+        (set! adjust-y-offset? (and (-> self over-ground) adjust-y-offset?))
+        (if adjust-y-offset?
+            (set! (-> self y-offset-desired) (- y-pos (-> start-pos y)))
+            )
+        )
+      )
+    (cond
+      ((< (-> self y-offset-desired) (-> self y-offset))
+       (set! (-> self y-vel) (* 0.25 (- (-> self y-offset-desired) (-> self y-offset))))
+       (set! (-> self y-vel) (fmax -68.26667 (-> self y-vel)))
+       (if (!= explicit-y-vel 0.0)
+           (set! (-> self y-vel) (- explicit-y-vel))
+           )
+       (+! (-> self y-offset) (-> self y-vel))
+       (when (>= (-> self y-offset-desired) (-> self y-offset))
+         (set! (-> self y-offset) (-> self y-offset-desired))
+         (set! (-> self y-vel) 0.0)
+         )
+       )
+      ((< (-> self y-offset) (-> self y-offset-desired))
+       (set! (-> self y-vel) (* 0.5 (- (-> self y-offset-desired) (-> self y-offset))))
+       (set! (-> self y-vel) (fmin 13.653334 (-> self y-vel)))
+       (if (!= explicit-y-vel 0.0)
+           (set! (-> self y-vel) explicit-y-vel)
+           )
+       (+! (-> self y-offset) (-> self y-vel))
+       (when (>= (-> self y-offset) (-> self y-offset-desired))
+         (set! (-> self y-offset) (-> self y-offset-desired))
+         (set! (-> self y-vel) 0.0)
+         )
+       )
+      )
+    (+! (-> self root-override2 trans y) (-> self y-offset))
+    (when (< (-> self root-override2 trans y) y-pos)
+      (set! (-> self y-offset) (- y-pos (- (-> self root-override2 trans y) (-> self y-offset))))
+      (set! (-> self root-override2 trans y) y-pos)
+      (set! (-> self y-vel) (fmax 0.0 (-> self y-vel)))
+      )
+    (set! (-> self on-ground) (< (fabs (- (-> self root-override2 trans y) y-pos)) 409.6))
+    (cond
+      (draw-shadow?
+        (let ((shadow-ctrl (-> self draw shadow-ctrl)))
+          (logclear! (-> shadow-ctrl settings flags) (shadow-flags disable-draw))
+          )
+        0
+        (let ((_shadow-ctrl (-> self draw shadow-ctrl)))
+          (set! (-> _shadow-ctrl settings bot-plane w) (- (+ (- -6144.0 (-> self root-override2 trans y)) y-pos)))
+          )
+        0
+        )
+      (else
+        (let ((__shadow-ctrl (-> self draw shadow-ctrl)))
+          (logior! (-> __shadow-ctrl settings flags) (shadow-flags disable-draw))
+          )
+        0
+        )
+      )
+    )
+  (none)
+  )
+
+(defbehavior pegasus-calc-speed pegasus ((min-dist float) (max-dist float) (max-speed float) (min-speed float))
+  "Calculates the pegasus' speed based on a number of factors:
+- Speed up as the target gets closer (up to a max) and slow down as the target is further away (up to a min)
+This function also is what causes the pegasus to flip around
+@param min-dist TODO
+@param max-dist TODO
+@param max-speed The maximum speed the pegasus can go
+@param min-speed The minimum speed the pegasus can go
+@returns If there should be a reaction to the target via [[enemy::72]]"
+  (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (-> self root-override2 trans) (target-pos 0)))
+        (react-to-target? #f)
+        )
+    (set! (-> dir-to-target y) 0.0)
+    (let* ((dist-from-target (/ (- (vector-length dir-to-target) min-dist) (- max-dist min-dist)))
+           (interpolant (- 1.0 (fmax 0.0 (fmin 1.0 dist-from-target))))
+           (interpolated-speed (lerp min-speed max-speed interpolant))
+           )
+      (if (< (- (-> self clock frame-counter) (-> self targetted-timer)) (seconds 5))
+          (set! interpolated-speed (fmax 163840.0 interpolated-speed))
+          )
+      (let ((movement-speed (* 0.0033333334 interpolated-speed)))
+        (cond
+          ((< (vector-dot dir-to-target (-> self tangent)) 0.0)
+           (if (< 0.0 (-> self speed))
+               (set! react-to-target? #t)
+               )
+           )
+          ((< (-> self speed) 0.0)
+           (set! react-to-target? #t)
+           )
+          )
+        (let ((anim-group (ja-group)))
+          (cond
+            ((and anim-group (= anim-group pegasus-flip-around-a-ja))
+             (if (< 1.0 (fabs (-> self speed)))
+                 (set! (-> self speed) (* 0.92 (-> self speed)))
+                 )
+             )
+            (else
+              (let ((_anim-group (ja-group)))
+                (cond
+                  ((and _anim-group (= _anim-group pegasus-flip-around-b-ja))
+                   (if (< (-> self speed) 0.0)
+                       (seek! (-> self speed) (- movement-speed) 13.653334)
+                       (seek! (-> self speed) movement-speed 13.653334)
+                       )
+                   )
+                  ((< (-> self speed) 0.0)
+                   (set! (-> self speed) (- movement-speed))
+                   )
+                  (else
+                    (set! (-> self speed) movement-speed)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    react-to-target?
+    )
+  )
+
+(defbehavior pegasus-calc-anim-speed pegasus ()
+  "Based on `speed`, adjust how fast the pegasus should animate.
+The faster it's moving the fast it flaps it's wings, etc
+@TODO understand the magic values here better
+@returns The anim speed, it can be no lower than `1.5`"
+  (let* ((speed-abs (fabs (-> self speed)))
+         (f0-2 (* 0.07324219 speed-abs))
+         (f0-3 (+ -15.0 f0-2))
+         (f0-4 (* 0.13333334 f0-3))
+         )
+    (fmin 1.5 (fmax 0.9 f0-4))
+    )
+  )
+
+(defmethod track-target! pegasus ((obj pegasus))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (track-how-long-aimed-at! obj)
+  (pegasus-show-runs)
+  ((method-of-type enemy track-target!) obj)
+  (none)
+  )
+
+(defmethod enemy-method-99 pegasus ((obj pegasus) (arg0 process-focusable))
+  #t
+  )
+
+(defstate pegasus-debug (pegasus)
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (let ((cam-dbg-vec (new 'stack-no-clear 'vector)))
+          (let ((vec (new 'stack-no-clear 'vector)))
+            (clmf-input cam-dbg-vec vec 1)
+            )
+          (vector-float*! cam-dbg-vec cam-dbg-vec 4096.0)
+          (+! (-> self curve-position)
+              (/ (-> cam-dbg-vec y) (total-distance (-> self path-info (-> self current-path) path-data)))
+              )
+          )
+        (cond
+          ((< 1.0 (-> self curve-position))
+           (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+           )
+          ((< (-> self curve-position) 0.0)
+           (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+           )
+          )
+        (get-point-at-percent-along-path!
+          (-> self path-info (-> self current-path) path-data)
+          (-> self root-override2 trans)
+          (-> self curve-position)
+          'interp
+          )
+        (pegasus-rotate #f 1820.4445)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior pegasus) ja-post)
+  )
+
+(defstate die (pegasus)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (let ((evt (new 'stack-no-clear 'event-message-block)))
+      (set! (-> evt from) (process->ppointer self))
+      (set! (-> evt num-params) 1)
+      (set! (-> evt message) 'change-mode)
+      (set! (-> evt param 0) (the-as uint 'pegasus))
+      (let ((event-result (send-event-function (handle->process (-> self incoming attacker-handle)) evt)))
+        (-> self speed)
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! pegasus-board-attack-pegasus-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim pegasus-board-attack-pegasus-ja) frames num-frames) -1)) 1.5)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (let ((frame-num (ja-aframe-num 0))
+                (speed (-> self speed))
+                )
+            (when (>= frame-num 60.0)
+              (set! (-> self speed) (lerp-scale speed 0.0 frame-num 60.0 100.0))
+              (set! (-> self y-offset-desired) 0.0)
+              )
+            )
+          (pegasus-move 0.0 #t)
+          (pegasus-rotate #f 1820.4445)
+          (suspend)
+          (ja :num! (seek! max 1.5))
+          )
+        (if event-result
+            (send-event (handle->process (-> self incoming attacker-handle)) 'end-mode)
+            )
+        )
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+(defstate stare (pegasus)
+  :virtual #t
+  :trans (behavior ()
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+      (let ((awareness (-> self focus aware)))
+        (cond
+          ((and (>= 1 (the-as int awareness))
+                (-> self over-ground)
+                (< (fabs (- (-> self y-offset) (-> self y-offset-desired))) 409.6)
+                )
+           (go-virtual active)
+           )
+          ((and (= awareness (enemy-aware enemy-aware-3)) (get-enemy-target self))
+           (go-hostile self)
+           )
+          ((= awareness (enemy-aware unaware))
+           (go-flee self)
+           )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((anim-group (ja-group)))
+      (when (not (and anim-group (= anim-group pegasus-fly-ja)))
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja :group! pegasus-fly-ja)
+        )
+      )
+    (until #f
+      (ja :num! (loop! (pegasus-calc-anim-speed)))
+      (if (< 27.306667 (fabs (-> self speed)))
+          (set! (-> self speed) (* 0.95 (-> self speed)))
+          )
+      (set! (-> self y-offset-desired) 0.0)
+      (pegasus-move 409.6 #t)
+      (pegasus-rotate #f 1820.4445)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior pegasus) enemy-simple-post)
+  )
+
+(defbehavior pegasus-fly-code pegasus ((arg0 int))
+  "Handles the flying animations and sounds
+@TODO - cleanup a bit more"
+  (let ((anim-speed (pegasus-calc-anim-speed)))
+    (let ((gp-0
+            (and (-> self can-run) (< (the-as time-frame (-> self ambient-possible)) (-> self clock frame-counter)))
+            )
+          )
+      (let* ((min-dist (lerp-scale 61440.0 32768.0 (the float arg0) 0.0 3000.0))
+             (min-speed (lerp-scale 122880.0 81920.0 (the float arg0) 0.0 3000.0))
+             (s4-0 (pegasus-calc-speed min-dist 122880.0 min-speed 49152.0))
+             )
+        (case (ja-group)
+          (('pegasus-fly-doublespeed-ja)
+           (ja :num! (seek! max (fmax 1.0 (* 0.8 anim-speed))))
+           )
+          (('pegasus-fly-ja)
+           (ja :num! (seek! max (* 1.5 anim-speed)))
+           )
+          (else
+            (ja :num! (seek!))
+            )
+          )
+        (let ((v1-34 #f)
+              (s5-1 12)
+              )
+          (let ((a0-13 (ja-group)))
+            (when (not (and a0-13
+                            (or (= a0-13 pegasus-fly-glide-ja)
+                                (= a0-13 pegasus-fly-doublespeed-ja)
+                                (= a0-13 pegasus-fly-ja)
+                                (= a0-13 pegasus-flip-around-a-ja)
+                                (= a0-13 pegasus-flip-around-b-ja)
+                                (= a0-13 pegasus-fly-to-run-ja)
+                                (= a0-13 pegasus-run-ja)
+                                (= a0-13 pegasus-run-to-fly-ja)
+                                )
+                            )
+                       )
+              (set! s5-1 37)
+              (set! v1-34 #t)
+              )
+            )
+          (cond
+            ((and s4-0 (let ((a0-21 (ja-group)))
+                         (not (and a0-21 (or (= a0-21 pegasus-flip-around-a-ja) (= a0-21 pegasus-flip-around-b-ja))))
+                         )
+                  )
+             (ja-channel-push! 1 (seconds 0.125))
+             (ja :group! pegasus-flip-around-a-ja)
+             (ja :num-func num-func-identity :frame-num 0.0)
+             )
+            ((and (not v1-34) (not (ja-done? 0)))
+             )
+            (else
+              (let ((v1-46 (ja-group)))
+                (cond
+                  ((and v1-46 (= v1-46 pegasus-fly-to-run-ja))
+                   (ja :group! pegasus-run-ja)
+                   (ja :num-func num-func-identity :frame-num 0.0)
+                   )
+                  ((let ((v1-58 (ja-group)))
+                     (and v1-58 (= v1-58 pegasus-flip-around-a-ja))
+                     )
+                   (ja :group! pegasus-flip-around-b-ja :num! min)
+                   (set! (-> self speed) (- (-> self speed)))
+                   (let ((s5-3 (new 'stack-no-clear 'vector))
+                         (s4-1 (new 'stack-no-clear 'matrix))
+                         )
+                     (new 'stack-no-clear 'vector)
+                     (vector-cross! s5-3 (-> self tangent) (new 'static 'vector :y 1.0))
+                     (vector-cross! s5-3 s5-3 (-> self tangent))
+                     (vector-normalize! s5-3 1.0)
+                     (matrix-axis-angle! s4-1 s5-3 32768.0)
+                     (vector-matrix*! (-> self facing) (-> self facing) s4-1)
+                     )
+                   )
+                  ((let ((v1-72 (ja-group)))
+                     (and v1-72 (= v1-72 pegasus-run-ja))
+                     )
+                   (if (or (not (-> self can-run)) (< (the-as time-frame (-> self ambient-expire)) (-> self clock frame-counter)))
+                       (ja :group! pegasus-run-to-fly-ja)
+                       )
+                   (ja :num-func num-func-identity :frame-num 0.0)
+                   )
+                  ((and gp-0 (-> self on-ground))
+                   (ja-channel-push! 1 (seconds 0.125))
+                   (ja :group! pegasus-fly-to-run-ja)
+                   (ja :num-func num-func-identity :frame-num 0.0)
+                   (let* ((s5-4 (-> self clock frame-counter))
+                          (f30-1 300.0)
+                          (f28-1 2.0)
+                          (f26-0 3.0)
+                          (v1-99 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                          (v1-100 (the-as number (logior #x3f800000 v1-99)))
+                          )
+                     (set! (-> self ambient-expire)
+                           (the-as uint (+ s5-4 (the int (* f30-1 (+ f28-1 (* f26-0 (+ -1.0 (the-as float v1-100))))))))
+                           )
+                     )
+                   (let* ((s5-5 (-> self ambient-expire))
+                          (f30-2 300.0)
+                          (f28-2 2.0)
+                          (f26-1 3.0)
+                          (v1-108 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                          (v1-109 (the-as number (logior #x3f800000 v1-108)))
+                          )
+                     (set! (-> self ambient-possible)
+                           (+ s5-5 (the int (* f30-2 (+ f28-2 (* f26-1 (+ -1.0 (the-as float v1-109)))))))
+                           )
+                     )
+                   )
+                  ((or (and (< (-> self speed) 0.0) (< 0.125 (-> self tangent y)))
+                       (and (< 0.0 (-> self speed)) (< (-> self tangent y) -0.125))
+                       )
+                   (let ((v1-121 (ja-group)))
+                     (when (not (and v1-121 (= v1-121 pegasus-fly-glide-ja)))
+                       (ja-channel-push! 1 (the-as time-frame s5-1))
+                       (ja :group! pegasus-fly-glide-ja)
+                       )
+                     )
+                   (ja :num-func num-func-identity :frame-num 0.0)
+                   )
+                  ((< 1.25 anim-speed)
+                   (let ((v1-135 (ja-group)))
+                     (when (not (and v1-135 (= v1-135 pegasus-fly-doublespeed-ja)))
+                       (ja-channel-push! 1 (the-as time-frame s5-1))
+                       (ja :group! pegasus-fly-doublespeed-ja)
+                       )
+                     )
+                   (ja :num-func num-func-identity :frame-num 0.0)
+                   )
+                  (else
+                    (let ((v1-148 (ja-group)))
+                      (when (not (and v1-148 (= v1-148 pegasus-fly-ja)))
+                        (ja-channel-push! 1 (the-as time-frame s5-1))
+                        (ja :group! pegasus-fly-ja)
+                        )
+                      )
+                    (ja :num-func num-func-identity :frame-num 0.0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (pegasus-move
+        0.0
+        (the-as symbol (or gp-0 (let ((v1-161 (ja-group)))
+                                  (and v1-161 (or (= v1-161 pegasus-fly-to-run-ja) (= v1-161 pegasus-run-ja)))
+                                  )
+                           )
+                )
+        )
+      )
+    )
+  (pegasus-rotate #f 1820.4445)
+  (none)
+  )
+
+(defstate pegasus-tired (pegasus)
+  :event (the-as (function process int symbol event-message-block object :behavior pegasus) enemy-event-handler)
+  :enter (behavior ()
+    (let ((func (-> (method-of-type enemy flee) enter)))
+      (if func
+          (func)
+          )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self far-time) (-> self clock frame-counter))
+    (set-setting! 'sound-mode #f 0 1)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((func (-> (method-of-type enemy flee) exit)))
+      (if func
+          (func)
+          )
+      )
+    (remove-setting! 'sound-mode)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((func (-> (method-of-type enemy flee) trans)))
+      (if func
+          (func)
+          )
+      )
+    (cond
+      ((and *target*
+            (and (>= 102400.0 (vector-vector-xz-distance (-> self root-override2 trans) (-> *target* control trans)))
+                 (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                 )
+            )
+       (set! (-> self state-time)
+             (the-as time-frame (max (+ (-> self clock frame-counter) (seconds -10)) (-> self state-time)))
+             )
+       )
+      (else
+        (+! (-> self state-time) (* 10 (- (-> self clock frame-counter) (-> self far-time))))
+        (if (>= (-> self state-time) (-> self clock frame-counter))
+            (go-virtual flee)
+            )
+        )
+      )
+    (set! (-> self far-time) (-> self clock frame-counter))
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (set! (-> self y-offset-desired) 0.0)
+      (pegasus-fly-code (the-as int (- (-> self clock frame-counter) (-> self state-time))))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (-> (method-of-type enemy flee) post)
+  )
+
+(defstate flee (pegasus)
+  :virtual #t
+  :enter (behavior ()
+    (let ((func (-> (method-of-type enemy flee) enter)))
+      (if func
+          (func)
+          )
+      )
+    (set! (-> self near-timer) 3000)
+    (set! (-> self far-time) (-> self clock frame-counter))
+    (set-setting! 'sound-mode #f 0 1)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((func (-> (method-of-type enemy flee) exit)))
+      (if func
+          (func)
+          )
+      )
+    (set! (-> self y-offset-desired) 0.0)
+    (remove-setting! 'sound-mode)
+    (none)
+    )
+  :trans (behavior ()
+    (when (-> self can-run)
+      (let ((func (-> (method-of-type enemy flee) trans)))
+        (if func
+            (func)
+            )
+        )
+      )
+    (when (and *target*
+               (and (>= 102400.0 (vector-vector-xz-distance (-> self root-override2 trans) (-> *target* control trans)))
+                    (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                    )
+               )
+      (set! (-> self near-timer) (- (the-as time-frame (-> self near-timer))
+                                    (- (-> self clock frame-counter) (-> self clock old-frame-counter))
+                                    )
+            )
+      (if (<= (-> self near-timer) 0)
+          (go pegasus-tired)
+          )
+      (set! (-> self far-time) (-> self clock frame-counter))
+      )
+    (if (>= (- (-> self clock frame-counter) (-> self far-time)) (seconds 3))
+        (set! (-> self near-timer) (the-as int (-> self timeout)))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (set! (-> self y-offset-desired) 2.0)
+      (pegasus-fly-code 0)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate active (pegasus)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self allow-idle) #f)
+    (let ((anim-group (ja-group)))
+      (when (not (and anim-group (= anim-group pegasus-idle-ja)))
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! pegasus-fly-to-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim pegasus-fly-to-idle-ja) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (set! (-> self allow-idle) #t)
+    (ja-channel-push! 1 (seconds 0.1))
+    (sleep-code)
+    (none)
+    )
+  :post (behavior ()
+    (if (-> self allow-idle)
+        (idle-control-method-10 (-> self idle-anim-player) self)
+        )
+    (enemy-simple-post)
+    (none)
+    )
+  )
+
+(defstate notice (pegasus)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-setting! 'sound-mode #f 0 1)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((func (-> (method-of-type enemy notice) exit)))
+      (if func
+          (func)
+          )
+      )
+    (remove-setting! 'sound-mode)
+    (none)
+    )
+  :code (behavior ()
+    (displacement-between-points-at-percent-normalized!
+      (-> self path-info (-> self current-path) path-data)
+      (-> self tangent)
+      (-> self curve-position)
+      )
+    (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
+        (react-to-focus self)
+        )
+    (let ((anim-length (get-rand-float-range self 0.8 1.2)))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
+                  :num! (seek!
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
+                            -1
+                            )
+                         )
+                    anim-length
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
+            (react-to-focus self)
+            )
+        (pegasus-rotate #f 1820.4445)
+        (suspend)
+        (ja :num! (seek! max anim-length))
+        )
+      (ja-no-eval :group! pegasus-idle-takeoff-in-air-ja
+                  :num! (seek!
+                    (the float (+ (-> (the-as art-joint-anim pegasus-idle-takeoff-in-air-ja) frames num-frames) -1))
+                    anim-length
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
+            (react-to-focus self)
+            )
+        (pegasus-rotate #f 1820.4445)
+        (set! (-> self y-offset-desired) 0.0)
+        (pegasus-move 0.0 #f)
+        (suspend)
+        (ja :num! (seek! max anim-length))
+        )
+      )
+    (react-to-focus self)
+    (none)
+    )
+  )
+
+(defstate idle (pegasus)
+  :virtual #t
+  :post (behavior ()
+    (pegasus-show-runs)
+    (track-how-long-aimed-at! self)
+    (let ((func (-> (method-of-type enemy idle) post)))
+      (if func
+          ((the-as (function none) func))
+          )
+      )
+    (none)
+    )
+  )
+
+(defmethod init-enemy-collision! pegasus ((obj pegasus))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (stack-size-set! (-> obj main-thread) 512)
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> cshape penetrated-by) (penetrate
+                                      generic-attack
+                                      lunge
+                                      flop
+                                      punch
+                                      spin
+                                      roll
+                                      uppercut
+                                      bonk
+                                      tube
+                                      vehicle
+                                      flut-attack
+                                      board
+                                      mech-punch
+                                      dark-punch
+                                      dark-giant
+                                      )
+          )
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 1) 0)))
+      (set! (-> cshape total-prims) (the-as uint 2))
+      (set! (-> prim-group prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid no-standon))
+      (set! (-> prim-group transform-index) 3)
+      (set-vector! (-> prim-group local-sphere) 0.0 9216.0 4096.0 18432.0)
+      (set! (-> cshape root-prim) prim-group)
+      )
+    (let ((prim-sphere (new 'process 'collide-shape-prim-sphere cshape (the-as uint 0))))
+      (set! (-> prim-sphere prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-sphere prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-sphere prim-core action) (collide-action solid no-standon))
+      (set! (-> prim-sphere transform-index) 3)
+      (set-vector! (-> prim-sphere local-sphere) 0.0 6144.0 0.0 11264.0)
+      )
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root-override2) cshape)
+    )
+  0
+  (none)
+  )
+
+(defmethod coin-flip? pegasus ((obj pegasus))
+  "@returns The result of a 50/50 RNG roll"
+  #f
+  )
+
+(defmethod enemy-method-108 pegasus ((obj pegasus) (arg0 enemy) (arg1 event-message-block))
+  0
+  )
+
+;; WARN: Return type mismatch enemy vs pegasus.
+(defmethod relocate pegasus ((obj pegasus) (arg0 int))
+  (countdown (v1-0 20)
+    (if (-> obj path-info v1-0 path-data)
+        (&+! (-> obj path-info v1-0 path-data) arg0)
+        )
+    )
+  (the-as pegasus ((method-of-type enemy relocate) obj arg0))
+  )
+
+(defmethod init-enemy! pegasus ((obj pegasus))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (local-vars (tag res-tag))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pegasus" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *pegasus-enemy-info*)
+  (logclear! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf00))
+  (set! (-> obj link) (new 'process 'actor-link-info obj #f))
+  (dotimes (v1-8 20)
+    (set! (-> obj path-info v1-8 path-data) #f)
+    )
+  (set! (-> obj num-paths) 0)
+  (set! (-> obj path-info 0 path-data) (new 'process 'curve-control obj 'path -1000000000.0))
+  (when (-> obj path-info 0 path-data)
+    (logior! (-> obj path-info 0 path-data flags) (path-control-flag display draw-line draw-point draw-text))
+    (set! (-> obj num-paths) 1)
+    )
+  (dotimes (path-info-idx 20)
+    (let ((curve (new 'process 'curve-control obj 'path (the float path-info-idx))))
+      (if (logtest? (-> curve flags) (path-control-flag not-found))
+          (goto cfg-15)
+          )
+      (set! (-> obj num-paths) (+ path-info-idx 1))
+      (set! (-> obj path-info path-info-idx path-data) curve)
+      (logior! (-> curve flags) (path-control-flag display draw-line draw-point))
+      )
+    (set! tag (new 'static 'res-tag))
+    (let ((data
+            (res-lump-data (-> obj entity) 'path-connection pointer :tag-ptr (& tag) :time (the float path-info-idx))
+            )
+          )
+      (cond
+        (data
+          (set! (-> obj path-info path-info-idx num-data) (the-as int (-> tag elt-count)))
+          (set! (-> obj path-info path-info-idx control-data) (the-as (pointer float) data))
+          )
+        (else
+          (set! (-> obj path-info path-info-idx num-data) 0)
+          0
+          )
+        )
+      )
+    )
+  (label cfg-15)
+  (set! (-> obj current-path) 0)
+  (set! (-> obj previous-path) 0)
+  (set! (-> obj display-path) -1)
+  (set! (-> obj curve-position) (res-lump-float (-> obj entity) 'initial-spline-pos))
+  (get-point-at-percent-along-path!
+    (-> obj path-info (-> obj current-path) path-data)
+    (-> obj root-override2 trans)
+    (-> obj curve-position)
+    'interp
+    )
+  (displacement-between-points-at-percent-normalized!
+    (-> obj path-info (-> obj current-path) path-data)
+    (-> obj tangent)
+    (-> obj curve-position)
+    )
+  (set! (-> obj facing quad) (-> obj tangent quad))
+  (let ((matrix (new 'stack-no-clear 'matrix)))
+    (forward-down->inv-matrix matrix (-> obj facing) (new 'static 'vector :y -1.0))
+    (matrix->quaternion (-> obj root-override2 quat) matrix)
+    )
+  (set! (-> obj y-vel) 0.0)
+  (set! (-> obj water-height) (res-lump-float (-> obj entity) 'water-height))
+  (set! (-> obj timeout) (the-as uint 3000))
+  (when (-> obj entity)
+    (let ((timeout (res-lump-float (-> obj entity) 'timeout :default 10.0)))
+      (set! (-> obj timeout) (the-as uint (the int (* 300.0 timeout))))
+      )
+    )
+  (set! (-> obj ambient-possible) (the-as uint 0))
+  (set! (-> obj speed) 0.0)
+  (set! (-> obj y-offset-desired) 0.0)
+  (pegasus-move 409600.0 #t)
+  (pegasus-calc-speed 61440.0 122880.0 2048.0 2048.0)
+  (set! (-> obj can-run) #f)
+  0
+  (none)
+  )
+
+(set-subtask-hook!
+  *game-info*
+  107
+  0
+  (lambda :behavior task-manager
+    ()
+    (set! (-> *game-info* controller 0) (process->handle self))
+    (set! (-> self entity) (entity-by-type pegasus))
+    (set! (-> self actor-group 0) (res-lump-struct (-> self entity) 'actor-groups (pointer entity-actor)))
+    (when (-> self actor-group 0)
+      (let ((actor-group (-> self actor-group 0 0)))
+        (set! (-> self data-int32 0) (the-as int actor-group))
+        (set! (-> self data-int32 1) (the-as int actor-group))
+        )
+      (dotimes (actor-idx (the-as int (-> self actor-group 0 0)))
+        (let ((actor (-> (&+ (-> self actor-group 0) (* actor-idx 8)) 3)))
+          (if actor
+              (add-icon! *minimap* self (the-as uint 16) (the-as int #f) (the-as vector actor) 0)
+              )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  107
+  3
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (local-vars (data int))
+      (set! (-> self start-time) (-> self clock frame-counter))
+      (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
+      (while (> (-> self data-int32 0) 0)
+        (set! data (-> self data-int32 1))
+        (when (-> self actor-group 0)
+          (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
+            (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
+              (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
+                  (set! data (+ data -1))
+                  )
+              )
+            )
+          )
+        (let ((_data data))
+          (set! (-> self data-int32 0) _data)
+          (set! (-> *game-info* counter) (the float _data))
+          )
+        (suspend)
+        )
+      (go-virtual complete)
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  107
+  4
+  (the-as
+    (function object)
+    (lambda ()
+      (task-node-close! (game-task-node forest-scouts-resolution))
+      (talker-spawn-func (-> *talker-speech* 90) *entity-pool* (target-pos 0) (the-as region #f))
+      (none)
+      )
+    )
+  )

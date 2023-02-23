@@ -9,9 +9,9 @@
 /////////////////////////
 // Bucket Renderer
 /////////////////////////
-EyeRenderer::EyeRenderer(const std::string& name, BucketId id) : BucketRenderer(name, id) {}
+EyeRenderer::EyeRenderer(const std::string& name, int id) : BucketRenderer(name, id) {}
 
-void EyeRenderer::init_textures(TexturePool& texture_pool) {
+void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion) {
   // set up eyes
   for (int pair_idx = 0; pair_idx < NUM_EYE_PAIRS; pair_idx++) {
     for (int lr = 0; lr < 2; lr++) {

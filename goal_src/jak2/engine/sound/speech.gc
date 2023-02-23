@@ -7,3 +7,490 @@
 
 ;; DECOMP BEGINS
 
+(defmethod speech-channel-method-12 speech-channel ((obj speech-channel))
+  (set! (-> obj request handle) (the-as handle #f))
+  (set! (-> obj request priority) -10000000000000000000000000000000000000.0)
+  0
+  (none)
+  )
+
+(defmethod speech-channel-method-13 speech-channel ((obj speech-channel))
+  (set! (-> obj id) (new 'static 'sound-id))
+  (set! (-> obj last-request handle) (the-as handle #f))
+  (set! (-> obj last-request priority) -10000000000000000000000000000000000000.0)
+  0
+  (none)
+  )
+
+(defmethod speech-channel-method-11 speech-channel ((obj speech-channel))
+  (local-vars (v1-44 int))
+  (with-pp
+    (logclear! (-> obj flags) (speech-channel-flag disable))
+    (if (or (not (-> *setting-control* user-current speech-control))
+            (load-in-progress? *level*)
+            (nonzero? (-> obj id))
+            )
+        (logior! (-> obj flags) (speech-channel-flag disable))
+        )
+    (set! (-> obj target-pos quad) (-> (target-pos 0) quad))
+    (when (not (logtest? (-> obj flags) (speech-channel-flag disable)))
+      (let ((s5-1 (-> obj speech-table (-> obj request speech-type))))
+        (cond
+          (s5-1
+            (let ((a0-8 (- (-> obj update-time) (-> obj request time)))
+                  (v1-20 (handle->process (-> obj request handle)))
+                  )
+              (if (or (< (the-as time-frame (-> s5-1 request-timeout)) a0-8)
+                      (or (not v1-20)
+                          (let ((f0-0 245760.0))
+                            (< (* f0-0 f0-0)
+                               (vector-vector-distance-squared (-> obj target-pos) (-> (the-as process-drawable v1-20) root trans))
+                               )
+                            )
+                          )
+                      )
+                  (speech-channel-method-12 obj)
+                  )
+              )
+            (let ((s4-0 (handle->process (-> obj request handle))))
+              (when s4-0
+                (when (or (and (>= (-> obj request priority) 0.0)
+                               (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
+                               )
+                          (and (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
+                               (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> obj delay)))
+                               )
+                          )
+                  (let ((s3-0 (-> s5-1 list length))
+                        (v1-43 (-> s5-1 play-index))
+                        )
+                    (when (> s3-0 0)
+                      (cond
+                        ((logtest? (-> s5-1 flags) (speech-type-flag random-order))
+                         (set! v1-44 (rand-vu-int-count s3-0))
+                         (when (= v1-44 (-> s5-1 play-index))
+                           (+! v1-44 1)
+                           (if (>= v1-44 s3-0)
+                               (set! v1-44 0)
+                               )
+                           )
+                         )
+                        (else
+                          (set! v1-44 (+ v1-43 1))
+                          (if (>= v1-44 s3-0)
+                              (set! v1-44 0)
+                              )
+                          )
+                        )
+                      (set! (-> s5-1 play-index) v1-44)
+                      (let ((s3-1 (-> s5-1 list v1-44)))
+                        (mem-copy! (the-as pointer (-> obj last-request)) (the-as pointer (-> obj request)) 21)
+                        (set! (-> obj start-time) (-> pp clock frame-counter))
+                        (set! (-> obj delay)
+                              (the-as uint (rand-vu-int-range (the-as int (-> s5-1 min-delay)) (the-as int (-> s5-1 max-delay))))
+                              )
+                        (set! (-> s5-1 delay) (-> obj delay))
+                        (set! (-> obj id) (add-process *gui-control* s4-0 (-> obj gui-channel) (gui-action play) s3-1 -99.0 0))
+                        )
+                      (speech-channel-method-12 obj)
+                      (logior! (-> obj flags) (speech-channel-flag disable))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (else
+            (speech-channel-method-12 obj)
+            )
+          )
+        )
+      )
+    (set! (-> obj update-time) (-> pp clock frame-counter))
+    (when (nonzero? (-> obj id))
+      (let ((s4-1 (handle->process (-> obj last-request handle))))
+        (cond
+          ((and s4-1 (-> *setting-control* user-current speech-control))
+           (when *sound-player-enable*
+             (let ((s5-2 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+               (set! (-> s5-2 command) (sound-command set-param))
+               (set! (-> s5-2 id) (-> obj id))
+               (set! (-> s5-2 params fo-min) 15)
+               (set! (-> s5-2 params fo-max) 90)
+               (set! (-> s5-2 params fo-curve) 9)
+               (let ((a1-12 (-> (the-as process-drawable s4-1) root trans)))
+                 (let ((s4-2 pp))
+                   (when (= a1-12 #t)
+                     (if (and s4-2 (type? s4-2 process-drawable) (nonzero? (-> (the-as process-drawable s4-2) root)))
+                         (set! a1-12 (-> (the-as process-drawable s4-2) root trans))
+                         (set! a1-12 (the-as vector #f))
+                         )
+                     )
+                   )
+                 (sound-trans-convert (the-as vector3w (-> s5-2 params trans)) a1-12)
+                 )
+               (set! (-> s5-2 params mask) (the-as uint 480))
+               (-> s5-2 id)
+               )
+             )
+           )
+          (else
+            (set-action!
+              *gui-control*
+              (gui-action stop)
+              (-> obj id)
+              (gui-channel none)
+              (gui-action none)
+              (the-as string #f)
+              (the-as (function gui-connection symbol) #f)
+              (the-as process #f)
+              )
+            (set! (-> obj id) (new 'static 'sound-id))
+            0
+            )
+          )
+        )
+      (case (get-status *gui-control* (-> obj id))
+        (((gui-status pending))
+         (when (>= (- (-> pp clock frame-counter) (-> obj start-time)) (seconds 1))
+           (set-action!
+             *gui-control*
+             (gui-action stop)
+             (-> obj id)
+             (gui-channel none)
+             (gui-action none)
+             (the-as string #f)
+             (the-as (function gui-connection symbol) #f)
+             (the-as process #f)
+             )
+           (set! (-> obj id) (new 'static 'sound-id))
+           (set! (-> obj end-time) (-> obj update-time))
+           )
+         )
+        (((gui-status unknown))
+         (set! (-> obj id) (new 'static 'sound-id))
+         (set! (-> obj last-request handle) (the-as handle #f))
+         (set! (-> obj end-time) (-> obj update-time))
+         )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod speech-channel-method-9 speech-channel ((obj speech-channel) (arg0 process-drawable) (arg1 speech-type))
+  (with-pp
+    (let ((f0-0 (vector-vector-distance-squared (-> arg0 root trans) (-> obj target-pos)))
+          (f1-0 245760.0)
+          )
+      (when (< f0-0 (* f1-0 f1-0))
+        (let* ((f1-3 -1.0)
+               (f2-0 409600.0)
+               (f0-2 (+ (* f0-0 (/ f1-3 (* f2-0 f2-0))) (the float (-> obj speech-table arg1 priority))))
+               )
+          (when (< (-> obj request priority) f0-2)
+            (set! (-> obj request priority) f0-2)
+            (set! (-> obj request handle) (process->handle arg0))
+            (set! (-> obj request speech-type) arg1)
+            (set! (-> obj request time) (-> pp clock frame-counter))
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod speech-channel-method-10 speech-channel ((obj speech-channel) (arg0 handle))
+  (when (= arg0 (handle->process (-> obj last-request handle)))
+    (set-action!
+      *gui-control*
+      (gui-action stop)
+      (-> obj id)
+      (gui-channel none)
+      (gui-action none)
+      (the-as string #f)
+      (the-as (function gui-connection symbol) #f)
+      (the-as process #f)
+      )
+    (set! (-> obj id) (new 'static 'sound-id))
+    (set! (-> obj last-request handle) (the-as handle #f))
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-12 speech-control ((obj speech-control) (arg0 process-drawable) (arg1 speech-type))
+  (let ((v1-2 (-> obj speech-table arg1)))
+    (when v1-2
+      (let ((a0-1 (-> obj channel-array (-> v1-2 channel))))
+        (if (not (logtest? (-> a0-1 flags) (speech-channel-flag disable)))
+            (speech-channel-method-9 a0-1 arg0 arg1)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-11 speech-control ((obj speech-control))
+  (dotimes (s5-0 2)
+    (speech-channel-method-11 (-> obj channel-array s5-0))
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-10 speech-control ((obj speech-control) (arg0 int) (arg1 speech-type-info))
+  (set! (-> obj speech-table arg0) arg1)
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-13 speech-control ((obj speech-control) (arg0 handle))
+  (dotimes (s4-0 2)
+    (speech-channel-method-10 (-> obj channel-array s4-0) arg0)
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-14 speech-control ((obj speech-control))
+  (speech-control-method-9 obj)
+  (let ((s5-0 (-> obj channel-array)))
+    ((method-of-type speech-channel speech-channel-method-13) (the-as speech-channel s5-0))
+    (set! (-> s5-0 0 speech-table) (-> obj speech-table))
+    (set! (-> s5-0 0 gui-channel) (gui-channel guard))
+    )
+  (let ((s5-1 (-> obj channel-array 1)))
+    (speech-channel-method-13 s5-1)
+    (set! (-> s5-1 speech-table) (-> obj speech-table))
+    (set! (-> s5-1 gui-channel) (gui-channel citizen))
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-15 speech-control ((obj speech-control) (arg0 process-drawable))
+  (when (not (logtest? (-> obj channel-array 0 flags) (speech-channel-flag disable)))
+    (let ((v1-3 *target*))
+      (when v1-3
+        (cond
+          ((logtest? (focus-status dark) (-> v1-3 focus-status))
+           (speech-control-method-12 obj arg0 (speech-type speech-type-3))
+           )
+          ((logtest? (focus-status pilot) (-> v1-3 focus-status))
+           (speech-control-method-12 obj arg0 (speech-type speech-type-0 speech-type-1 speech-type-2))
+           )
+          (else
+            (speech-control-method-12 obj arg0 (speech-type speech-type-1 speech-type-2))
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-16 speech-control ((obj speech-control))
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id 1)
+    (gui-channel guard)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id 1)
+    (gui-channel citizen)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (dotimes (s5-0 2)
+    (speech-channel-method-12 (-> obj channel-array s5-0))
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-control-method-9 speech-control ((obj speech-control))
+  (dotimes (v1-0 57)
+    (set! (-> obj speech-table v1-0) #f)
+    )
+  (dotimes (s5-0 2)
+    (speech-channel-method-12 (-> obj channel-array s5-0))
+    )
+  (speech-control-method-10 obj 0 (new 'static 'speech-type-info
+                                    :priority 3
+                                    :request-timeout #x12c
+                                    :min-delay #x12c
+                                    :max-delay #x12c
+                                    :list (new 'static 'boxed-array :type string)
+                                    )
+                            )
+  (speech-control-method-10 obj 3 (new 'static 'speech-type-info
+                                    :priority 3
+                                    :request-timeout #x12c
+                                    :min-delay #x12c
+                                    :max-delay #x12c
+                                    :list (new 'static 'boxed-array :type string
+                                      "kg136"
+                                      "kg139"
+                                      "kg140"
+                                      "kg141"
+                                      "kg142"
+                                      "kg134"
+                                      "kg157"
+                                      "kg143"
+                                      "kg156"
+                                      "kg176"
+                                      "kg177"
+                                      "kg536"
+                                      "kg551"
+                                      )
+                                    )
+                            )
+  (speech-control-method-10 obj 9 (new 'static 'speech-type-info
+                                    :priority 1
+                                    :min-delay #x258
+                                    :max-delay #x4b0
+                                    :list (new 'static 'boxed-array :type string
+                                      "kg133"
+                                      "kg135"
+                                      "kg137"
+                                      "kg138"
+                                      "kg144"
+                                      "kg145"
+                                      "kg146"
+                                      "kg147"
+                                      "kg148"
+                                      "kg149"
+                                      "kg150"
+                                      "kg151"
+                                      "kg152"
+                                      "kg153"
+                                      "kg154"
+                                      "kg155"
+                                      "kg158"
+                                      "kg159"
+                                      "kg160"
+                                      "kg163"
+                                      "kg164"
+                                      "kg507"
+                                      "kg508"
+                                      "kg509"
+                                      "kg511"
+                                      "kg513"
+                                      "kg514"
+                                      "kg515"
+                                      "kg516"
+                                      "kg517"
+                                      "kg518"
+                                      "kg520"
+                                      "kg521"
+                                      "kg523"
+                                      "kg526"
+                                      "kg527"
+                                      "kg528"
+                                      "kg529"
+                                      "kg530"
+                                      "kg532"
+                                      "kg534"
+                                      "kg535"
+                                      "kg537"
+                                      "kg538"
+                                      "kg539"
+                                      "kg540"
+                                      "kg541"
+                                      "kg542"
+                                      "kg543"
+                                      "kg544"
+                                      "kg545"
+                                      "kg546"
+                                      "kg549"
+                                      "kg550"
+                                      )
+                                    )
+                            )
+  (speech-control-method-10 obj 10 (new 'static 'speech-type-info
+                                     :flags (speech-type-flag random-order)
+                                     :priority #xa
+                                     :request-timeout #x258
+                                     :min-delay #x258
+                                     :max-delay #x4b0
+                                     :list (new 'static 'boxed-array :type string
+                                       "kg165"
+                                       "kg165a"
+                                       "kg165b"
+                                       "kg166"
+                                       "kg166a"
+                                       "kg166b"
+                                       "kg167"
+                                       "kg167a"
+                                       "kg167b"
+                                       "kg168"
+                                       "kg168a"
+                                       "kg168b"
+                                       "kg169"
+                                       "kg169a"
+                                       "kg169b"
+                                       "kg170"
+                                       "kg170a"
+                                       "kg170b"
+                                       "kg171"
+                                       "kg171a"
+                                       "kg171b"
+                                       "kg172"
+                                       "kg172a"
+                                       "kg172b"
+                                       "kg173"
+                                       "kg173a"
+                                       "kg173b"
+                                       "kg174"
+                                       "kg174a"
+                                       "kg174b"
+                                       "kg175"
+                                       "kg175a"
+                                       "kg175b"
+                                       "kg510"
+                                       )
+                                     )
+                            )
+  (speech-control-method-10 obj 11 (new 'static 'speech-type-info
+                                     :priority 2
+                                     :min-delay #x1e
+                                     :max-delay #x1e
+                                     :list (new 'static 'boxed-array :type string
+                                       "kg386a"
+                                       "kg428a"
+                                       "kg641"
+                                       "kg650"
+                                       "kg338a"
+                                       "kg339a"
+                                       "kg340a"
+                                       "kg341a"
+                                       "kg342a"
+                                       "kg343a"
+                                       "kg344a"
+                                       "kg512"
+                                       )
+                                     )
+                            )
+  0
+  (none)
+  )
+
+(define *speech-control* (new 'static 'speech-control))
+
+(speech-control-method-14 *speech-control*)

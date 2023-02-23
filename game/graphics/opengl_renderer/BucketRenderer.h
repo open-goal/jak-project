@@ -23,8 +23,9 @@ class EyeRenderer;
  */
 struct SharedRenderState {
   explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
-                             std::shared_ptr<Loader> _loader)
-      : texture_pool(_texture_pool), loader(_loader) {}
+                             std::shared_ptr<Loader> _loader,
+                             GameVersion version)
+      : shaders(version), texture_pool(_texture_pool), loader(_loader) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   std::shared_ptr<Loader> loader;
@@ -38,14 +39,13 @@ struct SharedRenderState {
 
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
-  bool enable_merc_xgkick = true;
-  math::Vector<u8, 4> fog_color;
+  math::Vector<u8, 4> fog_color = math::Vector<u8, 4>{0, 0, 0, 0};
   float fog_intensity = 1.f;
   bool no_multidraw = false;
 
   void reset();
   bool has_pc_data = false;
-  LevelVis occlusion_vis[2];
+  LevelVis occlusion_vis[6];
 
   math::Vector4f camera_planes[4];
   math::Vector4f camera_matrix[4];
@@ -74,6 +74,10 @@ struct SharedRenderState {
   int draw_region_h = 0;
   int draw_offset_x = 0;
   int draw_offset_y = 0;
+
+  int bucket_for_vis_copy = 0;
+  int num_vis_to_copy = 0;
+  GameVersion version;
 };
 
 /*!
@@ -81,7 +85,7 @@ struct SharedRenderState {
  */
 class BucketRenderer {
  public:
-  BucketRenderer(const std::string& name, BucketId my_id) : m_name(name), m_my_id(my_id) {}
+  BucketRenderer(const std::string& name, int my_id) : m_name(name), m_my_id(my_id) {}
   virtual void render(DmaFollower& dma,
                       SharedRenderState* render_state,
                       ScopedProfilerNode& prof) = 0;
@@ -91,23 +95,23 @@ class BucketRenderer {
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
   virtual void init_shaders(ShaderLibrary&) {}
-  virtual void init_textures(TexturePool&) {}
+  virtual void init_textures(TexturePool&, GameVersion) {}
 
  protected:
   std::string m_name;
-  BucketId m_my_id;
+  int m_my_id;
   bool m_enabled = true;
 };
 
 class RenderMux : public BucketRenderer {
  public:
   RenderMux(const std::string& name,
-            BucketId my_id,
+            int my_id,
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary&) override;
-  void init_textures(TexturePool&) override;
+  void init_textures(TexturePool&, GameVersion) override;
   void set_idx(u32 i) { m_render_idx = i; };
 
  private:
@@ -122,7 +126,7 @@ class RenderMux : public BucketRenderer {
  */
 class EmptyBucketRenderer : public BucketRenderer {
  public:
-  EmptyBucketRenderer(const std::string& name, BucketId my_id);
+  EmptyBucketRenderer(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}
@@ -130,7 +134,7 @@ class EmptyBucketRenderer : public BucketRenderer {
 
 class SkipRenderer : public BucketRenderer {
  public:
-  SkipRenderer(const std::string& name, BucketId my_id);
+  SkipRenderer(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}

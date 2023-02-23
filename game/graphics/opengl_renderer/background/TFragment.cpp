@@ -17,7 +17,7 @@ bool looks_like_tfrag_init(const DmaFollower& follow) {
 }  // namespace
 
 TFragment::TFragment(const std::string& name,
-                     BucketId my_id,
+                     int my_id,
                      const std::vector<tfrag3::TFragmentTreeKind>& trees,
                      bool child_mode,
                      int level_id)
@@ -46,8 +46,8 @@ void TFragment::render(DmaFollower& dma,
   // unless we are a child, in which case our parent took this already.
   if (!m_child_mode) {
     auto data0 = dma.read_and_advance();
-    ASSERT(data0.vif1() == 0);
-    ASSERT(data0.vif0() == 0);
+    ASSERT(data0.vifcode1().kind == VifCode::Kind::NOP);
+    ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
     ASSERT(data0.size_bytes == 0);
   }
 
@@ -60,17 +60,17 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
-  if (m_my_id == BucketId::TFRAG_LEVEL0) {
-    DmaTransfer transfers[2];
+  if (m_my_id == render_state->bucket_for_vis_copy &&
+      dma.current_tag_vifcode1().kind == VifCode::Kind::PC_PORT) {
+    DmaTransfer transfers[20];
 
-    transfers[0] = dma.read_and_advance();
-    auto next0 = dma.read_and_advance();
-    ASSERT(next0.size_bytes == 0);
-    transfers[1] = dma.read_and_advance();
-    auto next1 = dma.read_and_advance();
-    ASSERT(next1.size_bytes == 0);
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
+      transfers[i] = dma.read_and_advance();
+      auto next0 = dma.read_and_advance();
+      ASSERT(next0.size_bytes == 0);
+    }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < render_state->num_vis_to_copy; i++) {
       if (transfers[i].size_bytes == 128 * 16) {
         if (render_state->use_occlusion_culling) {
           render_state->occlusion_vis[i].valid = true;
@@ -109,7 +109,9 @@ void TFragment::render(DmaFollower& dma,
     dma.read_and_advance();
   }
 
-  ASSERT(!level_name.empty());
+  if (level_name.empty()) {
+    return;
+  }
   {
     m_tfrag3.setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;
@@ -126,17 +128,7 @@ void TFragment::render(DmaFollower& dma,
 
     for (int i = 0; i < 4; i++) {
       settings.planes[i] = m_pc_port_data.planes[i];
-    }
-
-    if (m_override_time_of_day) {
-      for (int i = 0; i < 8; i++) {
-        settings.time_of_day_weights[i] = m_time_of_days[i];
-      }
-    } else {
-      for (int i = 0; i < 8; i++) {
-        settings.time_of_day_weights[i] =
-            2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
-      }
+      settings.itimes[i] = m_pc_port_data.itimes[i];
     }
 
     auto t3prof = prof.make_scoped_child("t3");
@@ -150,13 +142,6 @@ void TFragment::render(DmaFollower& dma,
 }
 
 void TFragment::draw_debug_window() {
-  ImGui::Checkbox("Manual Time of Day", &m_override_time_of_day);
-  if (m_override_time_of_day) {
-    for (int i = 0; i < 8; i++) {
-      ImGui::SliderFloat(fmt::format("{}", i).c_str(), m_time_of_days + i, 0.f, 1.f);
-    }
-  }
-
   m_tfrag3.draw_debug_window();
 }
 

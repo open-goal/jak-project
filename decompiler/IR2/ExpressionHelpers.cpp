@@ -1,6 +1,7 @@
 #include "ExpressionHelpers.h"
 
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 
 #include "decompiler/IR2/Env.h"
 #include "decompiler/IR2/Form.h"
@@ -44,14 +45,14 @@ FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
   // get the time. It must be DEFAULT_RES_TIME
   auto lookup_time = try_get_const_float(forms.at(3));
   if (!lookup_time || *lookup_time != DEFAULT_RES_TIME) {
-    fmt::print("fail: bad time {}\n", forms.at(3)->to_string(env));
+    lg::error("fail: bad time {}\n", forms.at(3)->to_string(env));
     return nullptr;
   }
 
@@ -119,7 +120,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail data: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
@@ -134,7 +135,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   Form* default_value = forms.at(4);
   // but let's see if it's 0, because that's the default in the macro
   if (default_value->to_string(env) != expcted_default) {
-    fmt::print("fail data: bad default {}\n", default_value->to_string(env));
+    lg::error("fail data: bad default {}", default_value->to_string(env));
     return nullptr;
   }
 
@@ -184,7 +185,7 @@ FormElement* handle_get_property_value(const std::vector<Form*>& forms,
   // get the mode. It must be interp.
   auto mode_atom = form_as_atom(forms.at(2));
   if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
-    fmt::print("fail data: bad mode {}\n", forms.at(2)->to_string(env));
+    lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
   }
 
@@ -225,11 +226,48 @@ Form* var_to_form(const RegisterAccess& var, FormPool& pool) {
   return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
+/*!
+ * Try to see if this form is a variable, or variable in a cast. If so, return the variable,
+ * and set cast_out if there was a cast.
+ */
+std::optional<RegisterAccess> try_strip_cast_get_var(Form* in, std::optional<TypeSpec>& cast_out) {
+  auto* elt = in->try_as_single_element();
+  if (!elt) {
+    return {};
+  }
+  auto* as_cast_elt = dynamic_cast<CastElement*>(elt);
+  if (as_cast_elt) {
+    cast_out = as_cast_elt->type();
+    elt = as_cast_elt->source()->try_as_single_element();
+  }
+  if (!elt) {
+    return {};
+  }
+  auto as_atom = form_element_as_atom(elt);
+  if (!as_atom || !as_atom->is_var()) {
+    return {};
+  }
+  return as_atom->var();
+}
+
+/*!
+ * Return (the-as <type> <in>) or <in>.
+ */
+FormElement* maybe_cast(FormElement* in, std::optional<TypeSpec>& maybe_cast_type, FormPool& pool) {
+  if (maybe_cast_type) {
+    return pool.alloc_element<CastElement>(*maybe_cast_type, pool.alloc_single_form(nullptr, in));
+  } else {
+    return in;
+  }
+}
+
 }  // namespace
 
 /*!
  * Recognize the handle->process macro.
  * If it occurs inside of another and, the part_of_longer_sc argument should be set.
+ *
+ * Will move the cast out from the `if` to surround the output.
  */
 FormElement* last_two_in_and_to_handle_get_proc(Form* first,
                                                 Form* second,
@@ -242,7 +280,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
   constexpr int reg_input_3 = 2;
   constexpr int reg_temp_1 = 10;
   constexpr int reg_temp_2 = 11;
-  constexpr int reg_temp_3 = 12;
+  constexpr int kValInIf = 12;
 
   // only used if part of a longer sc.
   Form* longer_sc_src = nullptr;  // the source (can be found without repopping)
@@ -281,7 +319,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
   }
 
   // auto first_use_of_in = *first_result.maps.regs.at(reg_input_1);
-  // fmt::print("reg1: {}\n", first_use_of_in.to_string(env));
+  // lg::print("reg1: {}\n", first_use_of_in.to_string(env));
 
   auto setup_matcher = Matcher::set_var(
       Matcher::deref(Matcher::any_reg(reg_input_2), false,
@@ -294,7 +332,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
           {Matcher::deref(Matcher::any_reg(reg_input_3), false, {DerefTokenMatcher::string("pid")}),
            Matcher::deref(Matcher::any_reg(reg_temp_2), false,
                           {DerefTokenMatcher::string("pid")})}),
-      Matcher::any_reg(reg_temp_3));
+      Matcher::any(kValInIf));
 
   auto second_matcher = Matcher::begin({setup_matcher, if_matcher});
 
@@ -321,35 +359,41 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     return nullptr;
   }
 
-  if (temp_name != second_result.maps.regs.at(reg_temp_3)->to_string(env)) {
+  std::optional<TypeSpec> cast_type_for_result;
+  auto val_in_if =
+      try_strip_cast_get_var(second_result.maps.forms.at(kValInIf), cast_type_for_result);
+
+  if (!val_in_if || temp_name != val_in_if->to_string(env)) {
     return nullptr;
   }
 
   const auto& temp_use_def = env.get_use_def_info(*second_result.maps.regs.at(reg_temp_1));
   if (temp_use_def.use_count() != 2 || temp_use_def.def_count() != 1) {
-    fmt::print("failed usedef: {} {}\n", temp_use_def.use_count(), temp_use_def.def_count());
+    lg::error("failed usedef: {} {}", temp_use_def.use_count(), temp_use_def.def_count());
     return nullptr;
   }
 
   if (part_of_longer_sc) {
     // check that our temporary name matches (it's the var used inside the macro)
     if (in_name != longer_sc_var.to_string(env)) {
-      fmt::print("failed var name: {} vs {}\n", temp_name, longer_sc_var.to_string(env));
+      lg::error("failed var name: {} vs {}", temp_name, longer_sc_var.to_string(env));
       return nullptr;
     }
 
     // check that our temporary has the right usage pattern.
     const auto& outer_temp_usedef = env.get_use_def_info(longer_sc_var);
     if (outer_temp_usedef.use_count() != 3 || outer_temp_usedef.def_count() != 1) {
-      fmt::print("failed usedef2: {} {}\n", outer_temp_usedef.use_count(),
-                 outer_temp_usedef.def_count());
+      lg::error("failed usedef2: {} {}", outer_temp_usedef.use_count(),
+                outer_temp_usedef.def_count());
       return nullptr;
     }
 
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
-        longer_sc_src);
+    return maybe_cast(
+        pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
+            longer_sc_src),
+        cast_type_for_result, pool);
   } else {
     // modify use def:
     auto* menv = const_cast<Env*>(&env);
@@ -357,16 +401,18 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     menv->disable_use(in3);
 
     auto repopped = stack.pop_reg(in1, {}, env, true);
-    // fmt::print("repopped: {}\n", repopped->to_string(env));
+    // lg::print("repopped: {}\n", repopped->to_string(env));
 
     if (!repopped) {
       repopped = var_to_form(in1, pool);
     }
 
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
-        repopped);
+    return maybe_cast(
+        pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
+            repopped),
+        cast_type_for_result, pool);
   }
 }
 }  // namespace decompiler

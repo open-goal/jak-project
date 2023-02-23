@@ -69,9 +69,14 @@
 ;; failed to figure out what this is:
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
+(define *pc-perf-stat-counter* (the-as uint 0))
+
 (defmethod reset! perf-stat ((obj perf-stat))
-  "Perfomance counters are not implemented, so this does nothing."
+  "Perfomance counters are partially implemented, they just count cycles."
   (+! (-> obj count) 1)
+  (when (nonzero? (-> obj ctrl))
+    (set! *pc-perf-stat-counter* (get-cpu-clock))
+    )
   #|
   (let ((v1-0 (-> obj ctrl)))
     (+! (-> obj count) 1)
@@ -93,7 +98,12 @@
   )
 
 (defmethod read! perf-stat ((obj perf-stat))
-  "Perfomance counters are not implemented, so this does nothing."
+  "Perfomance counters are partially implemented, they just count cycles."
+  (when (nonzero? (-> obj ctrl))
+    (+! (-> obj accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
+    (set! (-> obj accum1) 0)
+    )
+
   #|
   (b! (zero? (-> obj ctrl)) cfg-2)
   (.mtc0 Perf r0-0)

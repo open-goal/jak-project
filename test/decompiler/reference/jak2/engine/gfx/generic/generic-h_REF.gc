@@ -1,0 +1,545 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type gsf-vertex
+(deftype gsf-vertex (structure)
+  ((data uint32    8       :offset-assert   0)
+   (byte uint8     32      :offset          0)
+   (quad uint128   2       :offset          0)
+   (vt   qword     :inline :offset          0)
+   (pos  vector3s  :inline :offset          0)
+   (tex  vector2uh :inline :offset         12)
+   (nrm  vector3s  :inline :offset         16)
+   (nc   qword     :inline :offset         16)
+   (clr  vector4ub :inline :offset         28)
+   (dtex vector2uh :inline :offset         16)
+   (dclr vector4ub :inline :offset         20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type gsf-vertex
+(defmethod inspect gsf-vertex ((obj gsf-vertex))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-vertex)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> obj data))
+  (format #t "~1Tbyte[32] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tvt: #<qword @ #x~X>~%" (-> obj data))
+  (format #t "~1Tpos: #<vector3s @ #x~X>~%" (-> obj data))
+  (format #t "~1Ttex: #<vector2uh @ #x~X>~%" (&-> obj vt vector4w w))
+  (format #t "~1Tnrm: #<vector3s @ #x~X>~%" (-> obj nrm))
+  (format #t "~1Tnc: #<qword @ #x~X>~%" (-> obj nrm))
+  (format #t "~1Tclr: #<vector4ub @ #x~X>~%" (&-> obj nc vector4w w))
+  (format #t "~1Tdtex: #<vector2uh @ #x~X>~%" (-> obj nrm))
+  (format #t "~1Tdclr: #<vector4ub @ #x~X>~%" (&-> obj nrm y))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-vertex-array
+(deftype gsf-vertex-array (structure)
+  ((vtx gsf-vertex :dynamic :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x0
+  :flag-assert         #x900000000
+  )
+
+;; definition for method 3 of type gsf-vertex-array
+(defmethod inspect gsf-vertex-array ((obj gsf-vertex-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-vertex-array)
+  (format #t "~1Tvtx[0] @ #x~X~%" (-> obj vtx))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-fx-vertex
+(deftype gsf-fx-vertex (structure)
+  ((clr vector4ub :inline :offset-assert   0)
+   (tex vector2uh :inline :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type gsf-fx-vertex
+(defmethod inspect gsf-fx-vertex ((obj gsf-fx-vertex))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-fx-vertex)
+  (format #t "~1Tclr: #<vector4ub @ #x~X>~%" (-> obj clr))
+  (format #t "~1Ttex: #<vector2uh @ #x~X>~%" (-> obj tex))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-fx-vertex-array
+(deftype gsf-fx-vertex-array (structure)
+  ((data gsf-fx-vertex :dynamic :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x0
+  :flag-assert         #x900000000
+  )
+
+;; definition for method 3 of type gsf-fx-vertex-array
+(defmethod inspect gsf-fx-vertex-array ((obj gsf-fx-vertex-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-fx-vertex-array)
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-header
+(deftype gsf-header (structure)
+  ((num-strips   uint8     :offset-assert   0)
+   (num-new-vtxs uint8     :offset-assert   1)
+   (num-dps      uint16    :offset-assert   2)
+   (num-vtxs     uint16    :offset-assert   4)
+   (strip-table  uint8  10 :offset-assert   6)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type gsf-header
+(defmethod inspect gsf-header ((obj gsf-header))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-header)
+  (format #t "~1Tnum-strips: ~D~%" (-> obj num-strips))
+  (format #t "~1Tnum-new-vtxs: ~D~%" (-> obj num-new-vtxs))
+  (format #t "~1Tnum-dps: ~D~%" (-> obj num-dps))
+  (format #t "~1Tnum-vtxs: ~D~%" (-> obj num-vtxs))
+  (format #t "~1Tstrip-table[10] @ #x~X~%" (-> obj strip-table))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-ik
+(deftype gsf-ik (structure)
+  ((index   uint8  :offset-assert   0)
+   (no-kick uint8  :offset-assert   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; definition for method 3 of type gsf-ik
+(defmethod inspect gsf-ik ((obj gsf-ik))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-ik)
+  (format #t "~1Tindex: ~D~%" (-> obj index))
+  (format #t "~1Tno-kick: ~D~%" (-> obj no-kick))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-info
+(deftype gsf-info (structure)
+  ((ptr-iks   uint32  :offset-assert   0)
+   (ptr-verts uint32  :offset-assert   4)
+   (ptr-fx    uint32  :offset-assert   8)
+   (dummy2    uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type gsf-info
+(defmethod inspect gsf-info ((obj gsf-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-info)
+  (format #t "~1Tptr-iks: #x~X~%" (-> obj ptr-iks))
+  (format #t "~1Tptr-verts: #x~X~%" (-> obj ptr-verts))
+  (format #t "~1Tptr-fx: #x~X~%" (-> obj ptr-fx))
+  (format #t "~1Tdummy2: ~D~%" (-> obj dummy2))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gsf-buffer
+(deftype gsf-buffer (structure)
+  ((data      uint8      8192     :offset-assert   0)
+   (info      gsf-info   :inline  :offset          0)
+   (header    gsf-header :inline  :offset         16)
+   (work-area uint8      :dynamic :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x2000
+  :flag-assert         #x900002000
+  )
+
+;; definition for method 3 of type gsf-buffer
+(defmethod inspect gsf-buffer ((obj gsf-buffer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gsf-buffer)
+  (format #t "~1Tdata[8192] @ #x~X~%" (-> obj data))
+  (format #t "~1Tinfo: #<gsf-info @ #x~X>~%" (-> obj data))
+  (format #t "~1Theader: #<gsf-header @ #x~X>~%" (-> obj header))
+  (format #t "~1Twork-area[0] @ #x~X~%" (-> obj work-area))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-frag
+(deftype generic-frag (structure)
+  ((start-pos uint16  :offset-assert   0)
+   (end-pos   uint16  :offset-assert   2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type generic-frag
+(defmethod inspect generic-frag ((obj generic-frag))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-frag)
+  (format #t "~1Tstart-pos: ~D~%" (-> obj start-pos))
+  (format #t "~1Tend-pos: ~D~%" (-> obj end-pos))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-strip
+(deftype generic-strip (structure)
+  ((pos uint16  :offset-assert   0)
+   (len uint16  :offset-assert   2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type generic-strip
+(defmethod inspect generic-strip ((obj generic-strip))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-strip)
+  (format #t "~1Tpos: ~D~%" (-> obj pos))
+  (format #t "~1Tlen: ~D~%" (-> obj len))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-envmap-saves
+(deftype generic-envmap-saves (structure)
+  ((index-mask vector4w :inline :offset-assert   0)
+   (verts      uint128  12      :offset-assert  16)
+   (kicks      uint128  4       :offset-assert 208)
+   )
+  :method-count-assert 9
+  :size-assert         #x110
+  :flag-assert         #x900000110
+  )
+
+;; definition for method 3 of type generic-envmap-saves
+(defmethod inspect generic-envmap-saves ((obj generic-envmap-saves))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-envmap-saves)
+  (format #t "~1Tindex-mask: #<vector4w @ #x~X>~%" (-> obj index-mask))
+  (format #t "~1Tverts[12] @ #x~X~%" (-> obj verts))
+  (format #t "~1Tkicks[4] @ #x~X~%" (-> obj kicks))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-interp-job
+(deftype generic-interp-job (structure)
+  ((job-type uint16  :offset-assert   0)
+   (num      uint16  :offset-assert   2)
+   (first    uint16  :offset-assert   4)
+   (pad      uint16  :offset-assert   6)
+   (ptr-data uint32  :offset-assert   8)
+   (morph-z  uint16  :offset-assert  12)
+   (morph-w  uint16  :offset-assert  14)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type generic-interp-job
+(defmethod inspect generic-interp-job ((obj generic-interp-job))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-interp-job)
+  (format #t "~1Tjob-type: ~D~%" (-> obj job-type))
+  (format #t "~1Tnum: ~D~%" (-> obj num))
+  (format #t "~1Tfirst: ~D~%" (-> obj first))
+  (format #t "~1Tpad: ~D~%" (-> obj pad))
+  (format #t "~1Tptr-data: #x~X~%" (-> obj ptr-data))
+  (format #t "~1Tmorph-z: ~D~%" (-> obj morph-z))
+  (format #t "~1Tmorph-w: ~D~%" (-> obj morph-w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-saves
+(deftype generic-saves (structure)
+  ((ptr-dma           uint32                       :offset-assert   0)
+   (ptr-vtxs          uint32                       :offset-assert   4)
+   (ptr-clrs          uint32                       :offset-assert   8)
+   (ptr-texs          uint32                       :offset-assert  12)
+   (ptr-env-clrs      uint32                       :offset-assert  16)
+   (ptr-env-texs      uint32                       :offset-assert  20)
+   (cur-outbuf        uint32                       :offset-assert  24)
+   (ptr-fx-buf        uint32                       :offset-assert  28)
+   (xor-outbufs       uint32                       :offset-assert  32)
+   (num-dps           uint32                       :offset-assert  36)
+   (qwc               uint32                       :offset-assert  40)
+   (gsf-buf           gsf-buffer                   :offset-assert  44)
+   (ptr-shaders       uint32                       :offset-assert  48)
+   (ptr-env-shader    uint32                       :offset-assert  52)
+   (is-envmap         uint16                       :offset-assert  56)
+   (is-translucent    uint16                       :offset-assert  58)
+   (basep             uint32                       :offset-assert  60)
+   (ptr-interp-job    generic-interp-job           :offset-assert  64)
+   (gifbuf-adr        uint32                       :offset-assert  68)
+   (inbuf-adr         uint32                       :offset-assert  72)
+   (fade-val          uint32                       :offset-assert  76)
+   (time-of-day-color rgba                         :offset-assert  80)
+   (to-vu0-waits      uint32                       :offset-assert  84)
+   (to-spr-waits      uint32                       :offset-assert  88)
+   (from-spr-waits    uint32                       :offset-assert  92)
+   (envmap            generic-envmap-saves :inline :offset-assert  96)
+   )
+  :method-count-assert 9
+  :size-assert         #x170
+  :flag-assert         #x900000170
+  )
+
+;; definition for method 3 of type generic-saves
+(defmethod inspect generic-saves ((obj generic-saves))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-saves)
+  (format #t "~1Tptr-dma: #x~X~%" (-> obj ptr-dma))
+  (format #t "~1Tptr-vtxs: #x~X~%" (-> obj ptr-vtxs))
+  (format #t "~1Tptr-clrs: #x~X~%" (-> obj ptr-clrs))
+  (format #t "~1Tptr-texs: #x~X~%" (-> obj ptr-texs))
+  (format #t "~1Tptr-env-clrs: #x~X~%" (-> obj ptr-env-clrs))
+  (format #t "~1Tptr-env-texs: #x~X~%" (-> obj ptr-env-texs))
+  (format #t "~1Tcur-outbuf: #x~X~%" (-> obj cur-outbuf))
+  (format #t "~1Tptr-fx-buf: ~D~%" (-> obj ptr-fx-buf))
+  (format #t "~1Txor-outbufs: ~D~%" (-> obj xor-outbufs))
+  (format #t "~1Tnum-dps: ~D~%" (-> obj num-dps))
+  (format #t "~1Tqwc: ~D~%" (-> obj qwc))
+  (format #t "~1Tgsf-buf: #<gsf-buffer @ #x~X>~%" (-> obj gsf-buf))
+  (format #t "~1Tptr-shaders: #x~X~%" (-> obj ptr-shaders))
+  (format #t "~1Tptr-env-shader: ~D~%" (-> obj ptr-env-shader))
+  (format #t "~1Tis-envmap: ~D~%" (-> obj is-envmap))
+  (format #t "~1Tis-translucent: ~D~%" (-> obj is-translucent))
+  (format #t "~1Tbasep: #x~X~%" (-> obj basep))
+  (format #t "~1Tptr-interp-job: #<generic-interp-job @ #x~X>~%" (-> obj ptr-interp-job))
+  (format #t "~1Tgifbuf-adr: ~D~%" (-> obj gifbuf-adr))
+  (format #t "~1Tinbuf-adr: ~D~%" (-> obj inbuf-adr))
+  (format #t "~1Tfade-val: ~D~%" (-> obj fade-val))
+  (format #t "~1Ttime-of-day-color: ~D~%" (-> obj time-of-day-color))
+  (format #t "~1Tto-vu0-waits: ~D~%" (-> obj to-vu0-waits))
+  (format #t "~1Tto-spr-waits: ~D~%" (-> obj to-spr-waits))
+  (format #t "~1Tfrom-spr-waits: ~D~%" (-> obj from-spr-waits))
+  (format #t "~1Tenvmap: #<generic-envmap-saves @ #x~X>~%" (-> obj envmap))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-gif-tag
+(deftype generic-gif-tag (structure)
+  ((data       uint32          4       :offset-assert   0)
+   (qword      qword           :inline :offset          0)
+   (fan-prim   gif-tag-prim            :offset          0)
+   (str-prim   gif-tag-prim            :offset          4)
+   (regs       gif-tag-regs-32         :offset          8)
+   (num-strips uint32                  :offset         12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type generic-gif-tag
+(defmethod inspect generic-gif-tag ((obj generic-gif-tag))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-gif-tag)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj fan-prim))
+  (format #t "~1Tqword: #<qword @ #x~X>~%" (&-> obj fan-prim))
+  (format #t "~1Tfan-prim: ~D~%" (-> obj fan-prim))
+  (format #t "~1Tstr-prim: ~D~%" (-> obj str-prim))
+  (format #t "~1Tregs: ~D~%" (-> obj regs))
+  (format #t "~1Tnum-strips: ~D~%" (-> obj num-strips))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-envmap-consts
+(deftype generic-envmap-consts (structure)
+  ((consts vector          :inline :offset-assert   0)
+   (strgif generic-gif-tag :inline :offset-assert  16)
+   (colors vector4w        :inline :offset-assert  32)
+   (shader adgif-shader    :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+;; definition for method 3 of type generic-envmap-consts
+(defmethod inspect generic-envmap-consts ((obj generic-envmap-consts))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-envmap-consts)
+  (format #t "~1Tconsts: #<vector @ #x~X>~%" (-> obj consts))
+  (format #t "~1Tstrgif: #<generic-gif-tag @ #x~X>~%" (-> obj strgif))
+  (format #t "~1Tcolors: #<vector4w @ #x~X>~%" (-> obj colors))
+  (format #t "~1Tshader: #<adgif-shader @ #x~X>~%" (-> obj shader))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-consts
+(deftype generic-consts (structure)
+  ((dma-header        dma-packet            :inline :offset-assert   0)
+   (vif-header        uint32                4       :offset-assert  16)
+   (dma-ref-vtxs      dma-packet            :inline :offset-assert  32)
+   (dma-cnt-call      dma-packet            :inline :offset-assert  48)
+   (matrix            matrix                :inline :offset-assert  64)
+   (base-strgif       generic-gif-tag       :inline :offset-assert 128)
+   (alpha-opaque      gs-adcmd              :inline :offset-assert 144)
+   (alpha-translucent gs-adcmd              :inline :offset-assert 160)
+   (ztest-normal      gs-adcmd              :inline :offset-assert 176)
+   (ztest-opaque      gs-adcmd              :inline :offset-assert 192)
+   (adcmd-offsets     uint8                 16      :offset-assert 208)
+   (stcycle-tag       uint32                        :offset-assert 224)
+   (unpack-vtx-tag    uint32                        :offset-assert 228)
+   (unpack-clr-tag    uint32                        :offset-assert 232)
+   (unpack-tex-tag    uint32                        :offset-assert 236)
+   (mscal-tag         uint32                        :offset-assert 240)
+   (flush-tag         uint32                        :offset-assert 244)
+   (reset-cycle-tag   uint32                        :offset-assert 248)
+   (dummy0            uint32                        :offset-assert 252)
+   (dma-tag-cnt       uint64                        :offset-assert 256)
+   (envmap            generic-envmap-consts :inline :offset-assert 272)
+   (light-consts      vector                :inline :offset-assert 400)
+   (texture-offset    uint16                8       :offset-assert 416)
+   )
+  :method-count-assert 9
+  :size-assert         #x1b0
+  :flag-assert         #x9000001b0
+  )
+
+;; definition for method 3 of type generic-consts
+(defmethod inspect generic-consts ((obj generic-consts))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-consts)
+  (format #t "~1Tdma-header: #<dma-packet @ #x~X>~%" (-> obj dma-header))
+  (format #t "~1Tvif-header[4] @ #x~X~%" (-> obj vif-header))
+  (format #t "~1Tdma-ref-vtxs: #<dma-packet @ #x~X>~%" (-> obj dma-ref-vtxs))
+  (format #t "~1Tdma-cnt-call: #<dma-packet @ #x~X>~%" (-> obj dma-cnt-call))
+  (format #t "~1Tmatrix: #<matrix @ #x~X>~%" (-> obj matrix))
+  (format #t "~1Tbase-strgif: #<generic-gif-tag @ #x~X>~%" (-> obj base-strgif))
+  (format #t "~1Talpha-opaque: #<gs-adcmd @ #x~X>~%" (-> obj alpha-opaque))
+  (format #t "~1Talpha-translucent: #<gs-adcmd @ #x~X>~%" (-> obj alpha-translucent))
+  (format #t "~1Tztest-normal: #<gs-adcmd @ #x~X>~%" (-> obj ztest-normal))
+  (format #t "~1Tztest-opaque: #<gs-adcmd @ #x~X>~%" (-> obj ztest-opaque))
+  (format #t "~1Tadcmd-offsets[16] @ #x~X~%" (-> obj adcmd-offsets))
+  (format #t "~1Tadcmds[4] @ #x~X~%" (-> obj alpha-opaque))
+  (format #t "~1Tstcycle-tag: ~D~%" (-> obj stcycle-tag))
+  (format #t "~1Tunpack-vtx-tag: ~D~%" (-> obj unpack-vtx-tag))
+  (format #t "~1Tunpack-clr-tag: ~D~%" (-> obj unpack-clr-tag))
+  (format #t "~1Tunpack-tex-tag: ~D~%" (-> obj unpack-tex-tag))
+  (format #t "~1Tmscal-tag: ~D~%" (-> obj mscal-tag))
+  (format #t "~1Tflush-tag: ~D~%" (-> obj flush-tag))
+  (format #t "~1Treset-cycle-tag: ~D~%" (-> obj reset-cycle-tag))
+  (format #t "~1Tdummy0: ~D~%" (-> obj dummy0))
+  (format #t "~1Tdma-tag-cnt: ~D~%" (-> obj dma-tag-cnt))
+  (format #t "~1Tenvmap: #<generic-envmap-consts @ #x~X>~%" (-> obj envmap))
+  (format #t "~1Tlight-consts: #<vector @ #x~X>~%" (-> obj light-consts))
+  (format #t "~1Ttexture-offset[8] @ #x~X~%" (-> obj texture-offset))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type generic-storage
+(deftype generic-storage (structure)
+  ((data uint128 16 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+;; definition for method 3 of type generic-storage
+(defmethod inspect generic-storage ((obj generic-storage))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'generic-storage)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "gsf-buffer")
+
+;; definition for symbol *gsf-buffer*, type gsf-buffer
+(define *gsf-buffer* (the-as gsf-buffer (kmalloc global 9216 (kmalloc-flags align-64) "malloc")))
+
+;; failed to figure out what this is:
+(kmemclose)

@@ -7,3 +7,1177 @@
 
 ;; DECOMP BEGINS
 
+(deftype sew-blade (process-drawable)
+  ((y-min        float       :offset-assert 200)
+   (y-max        float       :offset-assert 204)
+   (snd-water    sound-name  :offset-assert 208)
+   (snd-no-water sound-name  :offset-assert 224)
+   (last-sound   int32       :offset-assert 240)
+   (attack-id    uint32      :offset-assert 244)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #xf8
+  :flag-assert         #x15008000f8
+  (:methods
+    (update-sound! (_type_) none 20)
+    )
+  )
+
+
+(defmethod update-sound! sew-blade ((obj sew-blade))
+  "Updates the sound of the [[sew-blade]] based on if it's under or above the water"
+  (when (nonzero? (-> obj sound))
+    (let ((f30-0 (+ (-> obj root trans y) (-> obj y-max)))
+          (f28-0 (+ (-> obj root trans y) (-> obj y-min)))
+          (ocean-base-height (get-base-height *ocean-map-sewer*))
+          )
+      (cond
+        ((< f30-0 ocean-base-height)
+         (stop! (-> obj sound))
+         )
+        ((< ocean-base-height f28-0)
+         (when (!= (-> obj last-sound) 1)
+           (change-sound! (-> obj sound) (-> obj snd-no-water))
+           (set! (-> obj last-sound) 1)
+           )
+         (update! (-> obj sound))
+         )
+        (else
+          (when (!= (-> obj last-sound) 2)
+            (change-sound! (-> obj sound) (-> obj snd-water))
+            (set! (-> obj last-sound) 2)
+            )
+          (update! (-> obj sound))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(deftype sew-single-blade (sew-blade)
+  ((quat quaternion :inline :offset-assert 256)
+   )
+  :heap-base #x90
+  :method-count-assert 22
+  :size-assert         #x110
+  :flag-assert         #x1600900110
+  (:methods
+    (idle () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-sew-single-blade sew-single-blade sew-single-blade-lod0-jg sew-single-blade-idle-ja
+              ((sew-single-blade-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4 5.5)
+              )
+
+(defstate idle (sew-single-blade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch 'attack)
+       (let* ((_proc proc)
+              (hit-proc (if (type? _proc process-focusable)
+                            (the-as process-focusable _proc)
+                            )
+                        )
+              )
+         (when hit-proc
+           (let ((hit-direction
+                   (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root-override trans) (-> self root trans))
+                   )
+                 (v1-5 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                 )
+             (if (< (vector-dot v1-5 hit-direction) 0.0)
+                 (vector-float*! v1-5 v1-5 -1.0)
+                 )
+             (let ((evt (new 'stack-no-clear 'event-message-block)))
+               (set! (-> evt from) (process->ppointer self))
+               (set! (-> evt num-params) 2)
+               (set! (-> evt message) 'attack-or-shove)
+               (set! (-> evt param 0) (-> event param 0))
+               (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
+                 (set! (-> attack-info id) (-> self attack-id))
+                 (set! (-> attack-info vector quad) (-> v1-5 quad))
+                 (set! (-> attack-info shove-back) 20480.0)
+                 (set! (-> attack-info shove-up) 12288.0)
+                 (set! (-> evt param 1) (the-as uint attack-info))
+                 )
+               (send-event-function hit-proc evt)
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.02))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (update-sound! self)
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-single-blade ((obj sew-single-blade) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid deadly))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 16384.0 22528.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
+      )
+    (pusher-init cshape)
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-single-blade" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (quaternion-copy! (-> obj quat) (-> obj root quat))
+  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
+  (set-falloff-far! (-> obj sound) 286720.0)
+  (set! (-> obj y-min) -16384.0)
+  (set! (-> obj y-max) 16384.0)
+  (set! (-> obj snd-water) (static-sound-name "single-blade-w"))
+  (set! (-> obj snd-no-water) (static-sound-name "single-blade"))
+  (let* ((game-info *game-info*)
+         (id (+ (-> game-info attack-id) 1))
+         )
+    (set! (-> game-info attack-id) id)
+    (set! (-> obj attack-id) id)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype sew-tri-blade (sew-blade)
+  ((anim-time    float  :offset-assert 248)
+   (anim-offset  float  :offset-assert 252)
+   (switch-state int32  :offset-assert 256)
+   )
+  :heap-base #x90
+  :method-count-assert 22
+  :size-assert         #x104
+  :flag-assert         #x1600900104
+  (:methods
+    (idle () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-sew-tri-blade sew-tri-blade sew-tri-blade-lod0-jg sew-tri-blade-idle-ja
+              ((sew-tri-blade-lod0-mg (meters 20)) (sew-tri-blade-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 2.5 0 9)
+              )
+
+(defun sew-tri-blade-joint-callback ((arg0 draw-control) (arg1 cspace-array) (arg2 joint-control))
+  "Handles the rotation and transformation of the [[sew-tri-blade]]"
+  (with-pp
+    (let ((blade (the-as sew-tri-blade (-> arg0 process)))
+          (matrix (new-stack-matrix0))
+          (f30-0 (* 182.04445 (* 0.0033333334 (the float (-> pp clock frame-counter)))))
+          )
+      (let ((s3-0 (-> arg1 data 4 bone transform)))
+        (matrix-rotate-y! matrix (* 240.0 f30-0))
+        (matrix*! s3-0 matrix s3-0)
+        )
+      (let ((s3-1 (-> arg1 data 5 bone transform)))
+        (matrix-rotate-y! matrix (* -240.0 f30-0))
+        (matrix*! s3-1 matrix s3-1)
+        (set! (-> blade y-max) (+ (- 25395.2 (-> blade root trans y)) (-> s3-1 trans y)))
+        )
+      (let ((s4-1 (-> arg1 data 6 bone transform)))
+        (matrix-rotate-y! matrix (* 240.0 f30-0))
+        (matrix*! s4-1 matrix s4-1)
+        (set! (-> blade y-max) (fmax (-> blade y-max) (+ (- 19251.2 (-> blade root trans y)) (-> s4-1 trans y))))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defstate idle (sew-tri-blade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch 'attack)
+       (let* ((_proc proc)
+              (hit-proc (if (type? _proc process-focusable)
+                            _proc
+                            )
+                        )
+              )
+         (when hit-proc
+           (let ((evt (new 'stack-no-clear 'event-message-block)))
+             (set! (-> evt from) (process->ppointer self))
+             (set! (-> evt num-params) 2)
+             (set! (-> evt message) 'attack-or-shove)
+             (set! (-> evt param 0) (-> event param 0))
+             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
+               (set! (-> attack-info id) (-> self attack-id))
+               (set! (-> attack-info shove-back) 20480.0)
+               (set! (-> attack-info shove-up) 8192.0)
+               (set! (-> evt param 1) (the-as uint attack-info))
+               )
+             (send-event-function hit-proc evt)
+             )
+           )
+         )
+       )
+      (('on)
+       (when (!= (-> self anim-offset) 0.0)
+         (let ((f30-0 (+ (-> self root trans y) (-> self y-max))))
+           (if (< (get-base-height *ocean-map-sewer*) f30-0)
+               (sound-play "tri-blade-up")
+               )
+           )
+         )
+       (let ((v0-1 (the-as object 1)))
+         (set! (-> self switch-state) (the-as int v0-1))
+         v0-1
+         )
+       )
+      (('off)
+       (when (= (-> self anim-offset) 0.0)
+         (let ((f30-1 (+ (-> self root trans y) (-> self y-max))))
+           (if (< (get-base-height *ocean-map-sewer*) f30-1)
+               (sound-play "tri-blade-up")
+               )
+           )
+         )
+       (set! (-> self switch-state) 0)
+       0
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (cond
+        ((zero? (-> self switch-state))
+         (cond
+           ((>= 3.0 (-> self anim-time))
+            (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+            (set! (-> self anim-time) (fmin 3.0 (-> self anim-time)))
+            )
+           (else
+             (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+             (if (< 6.0 (-> self anim-time))
+                 (set! (-> self anim-time) 0.0)
+                 )
+             )
+           )
+         )
+        (else
+          (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+          (set! (-> self anim-time) (fmin 6.0 (-> self anim-time)))
+          )
+        )
+      (let ((f30-0 (+ (-> self anim-time) (-> self anim-offset))))
+        (if (< 6.0 f30-0)
+            (set! f30-0 (+ -6.0 f30-0))
+            )
+        (ja :group! (-> self draw art-group data 3) :num! (identity f30-0))
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (update-sound! self)
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-tri-blade ((obj sew-tri-blade) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (with-pp
+    (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
+    (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+      (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+      (set! (-> cshape reaction) cshape-reaction-default)
+      (set! (-> cshape no-reaction)
+            (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+            )
+      (let ((s3-0 (new 'process 'collide-shape-prim-group cshape (the-as uint 3) 0)))
+        (set! (-> cshape total-prims) (the-as uint 4))
+        (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
+        (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+        (set! (-> s3-0 prim-core action) (collide-action solid deadly))
+        (set-vector! (-> s3-0 local-sphere) 0.0 10240.0 0.0 36864.0)
+        (set! (-> cshape root-prim) s3-0)
+        )
+      (pusher-init cshape)
+      (let ((v1-16 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 2) (the-as uint 0))))
+        (set! (-> v1-16 prim-core collide-as) (collide-spec camera-blocker pusher))
+        (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
+        (set! (-> v1-16 prim-core action) (collide-action solid deadly))
+        (set! (-> v1-16 transform-index) 4)
+        (set-vector! (-> v1-16 local-sphere) 0.0 8192.0 0.0 18841.6)
+        )
+      (let ((v1-18 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 1) (the-as uint 0))))
+        (set! (-> v1-18 prim-core collide-as) (collide-spec camera-blocker pusher))
+        (set! (-> v1-18 prim-core collide-with) (collide-spec jak player-list))
+        (set! (-> v1-18 prim-core action) (collide-action solid deadly))
+        (set! (-> v1-18 transform-index) 5)
+        (set-vector! (-> v1-18 local-sphere) 0.0 8192.0 0.0 12288.0)
+        )
+      (let ((v1-20 (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+        (set! (-> v1-20 prim-core collide-as) (collide-spec camera-blocker pusher))
+        (set! (-> v1-20 prim-core collide-with) (collide-spec jak player-list))
+        (set! (-> v1-20 prim-core action) (collide-action solid deadly))
+        (set! (-> v1-20 transform-index) 6)
+        (set-vector! (-> v1-20 local-sphere) 0.0 4915.2 0.0 7372.8)
+        )
+      (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+      (let ((v1-23 (-> cshape root-prim)))
+        (set! (-> cshape backup-collide-as) (-> v1-23 prim-core collide-as))
+        (set! (-> cshape backup-collide-with) (-> v1-23 prim-core collide-with))
+        )
+      (set! (-> obj root) cshape)
+      )
+    (process-drawable-from-entity! obj entity)
+    (logclear! (-> obj mask) (process-mask actor-pause))
+    (initialize-skeleton
+      obj
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-tri-blade" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (set! (-> obj state-time) (-> pp clock frame-counter))
+    (set! (-> obj anim-time) 0.0)
+    (set! (-> obj anim-offset) 0.0)
+    (set! (-> obj skel postbind-function) sew-tri-blade-joint-callback)
+    (let* ((v1-33 *game-info*)
+           (a0-33 (+ (-> v1-33 attack-id) 1))
+           )
+      (set! (-> v1-33 attack-id) a0-33)
+      (set! (-> obj attack-id) a0-33)
+      )
+    (if (>= (res-lump-value entity 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
+        (set! (-> obj anim-offset) 3.0)
+        )
+    (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
+    (set-falloff-far! (-> obj sound) 286720.0)
+    (set! (-> obj y-min) 0.0)
+    (set! (-> obj y-max) 48332.8)
+    (set! (-> obj snd-water) (static-sound-name "tri-blade-w"))
+    (set! (-> obj snd-no-water) (static-sound-name "tri-blade"))
+    (transform-post)
+    (go (method-of-object obj idle))
+    (none)
+    )
+  )
+
+(deftype sew-arm-blade (sew-blade)
+  ()
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #xf8
+  :flag-assert         #x16008000f8
+  (:methods
+    (idle () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-sew-arm-blade sew-arm-blade sew-arm-blade-lod0-jg sew-arm-blade-idle-ja
+              ((sew-arm-blade-lod0-mg (meters 20)) (sew-arm-blade-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 7)
+              )
+
+(defstate idle (sew-arm-blade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch 'attack)
+       (let* ((s5-0 proc)
+              (a0-2 (if (type? s5-0 process-focusable)
+                        s5-0
+                        )
+                    )
+              )
+         (when a0-2
+           (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-4 from) (process->ppointer self))
+             (set! (-> a1-4 num-params) 2)
+             (set! (-> a1-4 message) 'attack-or-shove)
+             (set! (-> a1-4 param 0) (-> event param 0))
+             (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
+               (set! (-> v1-6 id) (-> self attack-id))
+               (set! (-> v1-6 shove-back) 20480.0)
+               (set! (-> v1-6 shove-up) 8192.0)
+               (set! (-> a1-4 param 1) (the-as uint v1-6))
+               )
+             (send-event-function a0-2 a1-4)
+             )
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.02))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (update-sound! self)
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-arm-blade ((obj sew-arm-blade) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid deadly))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 -24576.0 0.0 28672.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
+      )
+    (pusher-init cshape)
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (process-drawable-from-entity! obj entity)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-arm-blade" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
+  (set-falloff-far! (-> obj sound) 286720.0)
+  (set! (-> obj y-min) -43008.0)
+  (set! (-> obj y-max) -4096.0)
+  (set! (-> obj snd-water) (static-sound-name "arm-blade-w"))
+  (set! (-> obj snd-no-water) (static-sound-name "arm-blade"))
+  (let* ((game-info *game-info*)
+         (id (+ (-> game-info attack-id) 1))
+         )
+    (set! (-> game-info attack-id) id)
+    (set! (-> obj attack-id) id)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype sew-multi-blade (sew-blade)
+  ()
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #xf8
+  :flag-assert         #x16008000f8
+  (:methods
+    (idle () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-sew-multi-blade sew-multi-blade sew-multi-blade-lod0-jg sew-multi-blade-idle-ja
+              ((sew-multi-blade-lod0-mg (meters 20)) (sew-multi-blade-lod1-mg (meters 999999)))
+              :bounds (static-spherem 18 0 0 22)
+              )
+
+(defstate idle (sew-multi-blade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch 'attack)
+       (let* ((_proc proc)
+              (hit-proc (if (type? _proc process-focusable)
+                            (the-as process-focusable _proc)
+                            )
+                        )
+              )
+         (when hit-proc
+           (let ((hit-direction
+                   (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root-override trans) (-> self root trans))
+                   )
+                 (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                 )
+             (if (< (vector-dot v1-5 hit-direction) 0.0)
+                 (vector-float*! v1-5 v1-5 -1.0)
+                 )
+             (let ((evt (new 'stack-no-clear 'event-message-block)))
+               (set! (-> evt from) (process->ppointer self))
+               (set! (-> evt num-params) 2)
+               (set! (-> evt message) 'attack-or-shove)
+               (set! (-> evt param 0) (-> event param 0))
+               (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
+                 (set! (-> attack-info id) (-> self attack-id))
+                 (set! (-> attack-info vector quad) (-> v1-5 quad))
+                 (set! (-> attack-info shove-back) 28672.0)
+                 (set! (-> attack-info shove-up) 16384.0)
+                 (set! (-> evt param 1) (the-as uint attack-info))
+                 )
+               (send-event-function hit-proc evt)
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (update-sound! self)
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-multi-blade ((obj sew-multi-blade) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 73728.0 0.0 0.0 90112.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
+      )
+    (pusher-init cshape)
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (process-drawable-from-entity! obj entity)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-multi-blade" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
+  (set-falloff-far! (-> obj sound) 368640.0)
+  (set! (-> obj y-min) -16384.0)
+  (set! (-> obj y-max) 16384.0)
+  (set! (-> obj snd-water) (static-sound-name "multi-blade-w"))
+  (set! (-> obj snd-no-water) (static-sound-name "multi-blade"))
+  (let* ((game-info *game-info*)
+         (id (+ (-> game-info attack-id) 1))
+         )
+    (set! (-> game-info attack-id) id)
+    (set! (-> obj attack-id) id)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype sew-twist-blade (sew-blade)
+  ((root-overide       collide-shape-moving  :offset        128)
+   (no-collision-timer uint64                :offset-assert 248)
+   )
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #x100
+  :flag-assert         #x1600800100
+  (:methods
+    (idle () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-sew-twist-blade sew-twist-blade sew-twist-blade-lod0-jg sew-twist-blade-idle-ja
+              ((sew-twist-blade-lod0-mg (meters 20)) (sew-twist-blade-lod1-mg (meters 999999)))
+              :bounds (static-spherem 10 0 0 12)
+              )
+
+(defstate idle (sew-twist-blade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('touch 'attack)
+         (let* ((_proc proc)
+                (hit-proc (if (type? _proc process-focusable)
+                              (the-as process-focusable _proc)
+                              )
+                          )
+                )
+           (when hit-proc
+             (let ((hit-direction
+                     (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root-override trans) (-> self root-overide trans))
+                     )
+                   (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-overide quat)))
+                   )
+               (if (< (vector-dot v1-5 hit-direction) 0.0)
+                   (vector-float*! v1-5 v1-5 -1.0)
+                   )
+               (let ((evt (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> evt from) (process->ppointer self))
+                 (set! (-> evt num-params) 2)
+                 (set! (-> evt message) 'attack-or-shove)
+                 (set! (-> evt param 0) (-> event param 0))
+                 (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
+                   (set! (-> attack-info id) (-> self attack-id))
+                   (set! (-> attack-info vector quad) (-> v1-5 quad))
+                   (set! (-> attack-info shove-back) 16384.0)
+                   (set! (-> attack-info shove-up) 8192.0)
+                   (set! (-> evt param 1) (the-as uint attack-info))
+                   )
+                 (send-event-function hit-proc evt)
+                 )
+               )
+             (set! (-> self no-collision-timer) (the-as uint (-> self clock frame-counter)))
+             (let ((root-prim (-> self root-overide root-prim)))
+               (set! (-> root-prim prim-core collide-as) (collide-spec))
+               (set! (-> root-prim prim-core collide-with) (collide-spec))
+               )
+             0
+             )
+           )
+         )
+        )
+      )
+    )
+  :trans (behavior ()
+    (when (and (nonzero? (-> self no-collision-timer))
+               (>= (- (-> self clock frame-counter) (the-as int (-> self no-collision-timer)))
+                   (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
+                   )
+               )
+      (let ((root-prim (-> self root-overide root-prim)))
+        (set! (-> root-prim prim-core collide-as) (-> self root-overide backup-collide-as))
+        (set! (-> root-prim prim-core collide-with) (-> self root-overide backup-collide-with))
+        )
+      (set! (-> self no-collision-timer) (the-as uint 0))
+      0
+      )
+    (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> overlap-params options) (overlaps-others-options oo0))
+      (set! (-> overlap-params collide-with-filter) (the-as collide-spec -1))
+      (set! (-> overlap-params tlist) *touching-list*)
+      (find-overlapping-shapes (-> self root-overide) overlap-params)
+      )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.02))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (update-sound! self)
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-twist-blade ((obj sew-twist-blade) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid deadly))
+      (set! (-> prim-mesh transform-index) 0)
+      (set-vector! (-> prim-mesh local-sphere) 40960.0 0.0 0.0 49152.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
+      )
+    (pusher-init cshape)
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root-overide) cshape)
+    )
+  (process-drawable-from-entity! obj entity)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-twist-blade" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (transform-post)
+  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root-overide trans)))
+  (set-falloff-far! (-> obj sound) 245760.0)
+  (set! (-> obj y-min) -4096.0)
+  (set! (-> obj y-max) 4096.0)
+  (set! (-> obj snd-water) (static-sound-name "twist-blade-w"))
+  (set! (-> obj snd-no-water) (static-sound-name "twist-blade"))
+  (let* ((game-info *game-info*)
+         (id (+ (-> game-info attack-id) 1))
+         )
+    (set! (-> game-info attack-id) id)
+    (set! (-> obj attack-id) id)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype sew-light-switch (process-drawable)
+  ((light-state       symbol                 :offset-assert 200)
+   (actor-group       (pointer actor-group)  :offset-assert 204)
+   (actor-group-count int32                  :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 24
+  :size-assert         #xd4
+  :flag-assert         #x18006000d4
+  (:methods
+    (idle () _type_ :state 20)
+    (pressed () _type_ :state 21)
+    (init-switch-collision! (_type_) none 22)
+    (broadcast-to-actors (_type_ symbol) none 23)
+    )
+  )
+
+
+(deftype sew-light-control (process)
+  ((search-switches basic         :offset-assert 128)
+   (search-turrets  basic         :offset-assert 132)
+   (switch-ent      entity-actor  :offset-assert 136)
+   (turret-ent      entity-actor  :offset-assert 140)
+   )
+  :heap-base #x10
+  :method-count-assert 17
+  :size-assert         #x90
+  :flag-assert         #x1100100090
+  (:methods
+    (idle () _type_ :state 14)
+    (press! (_type_ symbol symbol) float 15)
+    (sew-light-control-method-16 (_type_ object vector float) symbol 16)
+    )
+  )
+
+
+(defskelgroup skel-sew-light-switch sew-light-switch 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              )
+
+(defstate idle (sew-light-switch)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (broadcast-to-actors self 'cue-chase)
+       (go-virtual pressed)
+       )
+      (('touch 'attack)
+       (let* ((gp-0 (-> event param 0))
+              (_proc proc)
+              (target-proc (if (type? _proc target)
+                               _proc
+                               )
+                           )
+              )
+         (when (and gp-0 target-proc)
+           (broadcast-to-actors self 'cue-chase)
+           (go-virtual pressed)
+           )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self light-state) #f)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (ja :group! (-> self draw art-group data 2) :num! min)
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 sp-launch-particles-var)
+          (a0-0 *sp-particle-system-2d*)
+          (a1-0 (-> *part-id-table* 1442))
+          (a2-0 *launch-matrix*)
+          )
+      (set! (-> a2-0 trans quad) (-> self root trans quad))
+      (t9-0 a0-0 a1-0 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate pressed (sew-light-switch)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('untrigger)
+       (go-virtual idle)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self light-state) #t)
+    (sound-play "sew-light-switc")
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 2)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (transform-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (sleep-code)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-switch-collision! sew-light-switch ((obj sew-light-switch))
+  "Initializes the collision on the switch"
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid rideable))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> cshape total-prims) (the-as uint 1))
+      (set! (-> cshape root-prim) prim-mesh)
+      )
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod broadcast-to-actors sew-light-switch ((obj sew-light-switch) (event-type symbol))
+  "Broadcast event to all associated [[entity]]s via the `actor-group`s
+@param `event-type` the symbol to broadcast"
+  (with-pp
+    (dotimes (group-idx (-> obj actor-group-count))
+      (let ((group (-> obj actor-group group-idx)))
+        (dotimes (actor-idx (-> group length))
+          (let ((evt (new 'stack-no-clear 'event-message-block)))
+            (set! (-> evt from) (process->ppointer pp))
+            (set! (-> evt num-params) 0)
+            (set! (-> evt message) event-type)
+            (let ((func send-event-function)
+                  (actor (-> group data actor-idx actor))
+                  )
+              (func
+                (if actor
+                    (-> actor extra process)
+                    )
+                evt
+                )
+              )
+            )
+          )
+        )
+      )
+    (if (-> *game-info* controller 0)
+        (send-event (-> *game-info* controller 0 process 0) event-type)
+        )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! sew-light-switch ((obj sew-light-switch) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (tag res-tag))
+  (init-switch-collision! obj)
+  (process-drawable-from-entity! obj entity)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-light-switch" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (process-entity-status! obj (entity-perm-status no-kill) #t)
+  (set! tag (new 'static 'res-tag))
+  (let ((data (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& tag))))
+    (cond
+      ((and data (nonzero? (-> tag elt-count)))
+       (set! (-> obj actor-group) (the-as (pointer actor-group) data))
+       (set! (-> obj actor-group-count) (the-as int (-> tag elt-count)))
+       )
+      (else
+        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> obj actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> obj light-state) #f)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(defmethod sew-light-control-method-16 sew-light-control ((a0-0 sew-light-control) (a1-0 object) (a2-0 vector) (a3-0 float))
+  (format 0 "SEWER - FIX ME!~%")
+  #f
+  )
+
+(defstate idle (sew-light-control)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (local-vars (v0-0 entity))
+    (the-as object (case event-type
+                     (('use-switch)
+                      (set! v0-0 (entity-by-name (the-as string (-> event param 0))))
+                      (set! (-> self switch-ent) (the-as entity-actor v0-0))
+                      v0-0
+                      )
+                     (('use-turret)
+                      (set! v0-0 (entity-by-name (the-as string (-> event param 0))))
+                      (set! (-> self turret-ent) (the-as entity-actor v0-0))
+                      v0-0
+                      )
+                     )
+            )
+    )
+  :code (behavior ()
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let* ((target *target*)
+           (target-proc (if (type? target process-focusable)
+                            target
+                            )
+                        )
+           )
+      (when target-proc
+        (get-trans target-proc 0)
+        (let ((switch-pressed? #f)
+              (should-flash? (the-as object #f))
+              )
+          (let* ((switch (-> self switch-ent))
+                 (switch-proc (if switch
+                                  (-> switch extra process)
+                                  )
+                              )
+                 )
+            (if switch-proc
+                (set! switch-pressed? (-> (the-as sew-light-switch switch-proc) light-state))
+                )
+            )
+          (let* ((turret (-> self turret-ent))
+                 (turret-proc (if turret
+                                  (-> turret extra process)
+                                  )
+                              )
+                 )
+            (when turret-proc
+              (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-2 from) (process->ppointer self))
+                (set! (-> a1-2 num-params) 0)
+                (set! (-> a1-2 message) 'flash-state)
+                (set! should-flash? (send-event-function turret-proc a1-2))
+                )
+              )
+            )
+          (press! self switch-pressed? (the-as symbol should-flash?))
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod press! sew-light-control ((obj sew-light-control) (switched-on? symbol) (should-turret-flash? symbol))
+  "Turns the lights on (or off)
+@param switched-on? Should the sewer lights be turned on or off?
+@param should-turret-flash? Should the turret have it's `flash` set as well"
+  (set-sewer-lights-flag! switched-on?)
+  (if should-turret-flash?
+      (set-sewer-turret-flash!)
+      )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior sew-light-control-init-by-other sew-light-control ((switch entity-actor) (turret entity-actor))
+  "Creates a [[sew-light-control]] given two entities for the turret and switch itself
+@param switch The entity for the switch
+@param turret The entity for the turret"
+  (process-entity-set! self switch)
+  (set! (-> *game-info* controller 0) (process->handle self))
+  (set! (-> self switch-ent) switch)
+  (set! (-> self turret-ent) turret)
+  (press! self #f #f)
+  (go-virtual idle)
+  (none)
+  )
+
+(defun sewer-startup ()
+  "Basic house-keeping for starting the sewer area:
+- sets up the bigmap
+- spawns the first switch and turret"
+  (cond
+    ((task-node-closed? (game-task-node sewer-board-introduction))
+     (set! (-> sewer bigmap-id) (bigmap-id sewer-with-board-area))
+     (set! (-> sewerb bigmap-id) (bigmap-id sewer-with-board-area))
+     )
+    (else
+      (set! (-> sewer bigmap-id) (bigmap-id sewer-default))
+      (set! (-> sewerb bigmap-id) (bigmap-id sewer-default))
+      )
+    )
+  (process-spawn
+    sew-light-control
+    (entity-by-name "sew-light-switch-13")
+    (entity-by-name "sew-gunturret-13")
+    :to *entity-pool*
+    )
+  0
+  (none)
+  )

@@ -8,9 +8,9 @@
 
 struct ProfNode {
   u64 ts;
-  char name[32];
+  u64 tid;
+  char name[128];
   enum Kind : u8 { BEGIN, END, INSTANT, UNUSED } kind = UNUSED;
-  u32 tid;
 };
 
 class GlobalProfiler {

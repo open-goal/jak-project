@@ -7,3 +7,834 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-citizen-fat citizen-fat citizen-fat-lod0-jg -1
+              ((citizen-fat-lod0-mg (meters 20)) (citizen-fat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 3)
+              :shadow citizen-fat-shadow-mg
+              )
+
+(define *citizen-fat-global-info*
+  (new 'static 'civilian-global-info
+    :knocked (new 'static 'array int32 2 20 22)
+    :knocked-land (new 'static 'array int32 2 21 23)
+    :yellow-hit-anim (new 'static 'inline-array civilian-anim-info 1
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 20 22))
+      )
+    :blue-hit-anim (new 'static 'inline-array civilian-anim-info 3
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 27 26))
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 27 26))
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 27 26))
+      )
+    :anim-cover-head-start 28
+    :anim-cover-head-loop 29
+    :anim-cover-head-end 30
+    :speech-ambient #xf
+    :speech-alert #x10
+    :speech-cower #x11
+    :speech-touched-by-player #x12
+    :speech-shot-by-player #x13
+    :speech-avoiding-player-vehicle #x14
+    :speech-hit-by-player-vehicle #x15
+    )
+  )
+
+(deftype citizen-fat (civilian)
+  ()
+  :heap-base #x3b0
+  :method-count-assert 218
+  :size-assert         #x424
+  :flag-assert         #xda03b00424
+  )
+
+
+(define *citizen-fat-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 4
+    :hostile-anim -1
+    :hit-anim 4
+    :knocked-anim 20
+    :knocked-land-anim 21
+    :die-anim 4
+    :die-falling-anim 4
+    :victory-anim 4
+    :jump-wind-up-anim 11
+    :jump-in-air-anim 11
+    :jump-land-anim 11
+    :neck-joint 5
+    :look-at-joint 5
+    :bullseye-joint 4
+    :notice-distance-delta (meters 0.1)
+    :default-hit-points 1
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 20480.0
+    :knocked-soft-vy-hi 40960.0
+    :knocked-medium-vxz-lo 40960.0
+    :knocked-medium-vxz-hi 73728.0
+    :knocked-medium-vy-lo 24576.0
+    :knocked-medium-vy-hi 53248.0
+    :knocked-hard-vxz-lo 53248.0
+    :knocked-hard-vxz-hi 102400.0
+    :knocked-hard-vy-lo 40960.0
+    :knocked-hard-vy-hi 81920.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 8192.0
+    :knocked-yellow-vxz-hi 16384.0
+    :knocked-yellow-vy-lo 12288.0
+    :knocked-yellow-vy-hi 24576.0
+    :knocked-red-vxz-lo 12288.0
+    :knocked-red-vxz-hi 24576.0
+    :knocked-red-vy-lo 20480.0
+    :knocked-red-vy-hi 36864.0
+    :knocked-blue-vxz-lo 16384.0
+    :knocked-blue-vxz-hi 32768.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 11
+    :turn-anim 11
+    :run-anim 15
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 30)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720.0)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *citizen-fat-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod get-inv-mass citizen-fat ((obj citizen-fat))
+  0.5
+  )
+
+(defmethod enemy-method-51 citizen-fat ((obj citizen-fat))
+  (let ((f30-0 (quaternion-y-angle (-> obj root-override2 quat))))
+    (case (-> obj incoming knocked-type)
+      (((knocked-type knocked-type-4) (knocked-type knocked-type-6))
+       (let ((a0-5 (handle->process (-> obj focus handle))))
+         (when a0-5
+           (get-trans (the-as process-focusable a0-5) 0)
+           (let ((s5-0 (new 'stack-no-clear 'vector)))
+             (set! (-> s5-0 quad) (-> obj root-override2 transv quad))
+             (if (< (vector-dot
+                      (-> obj root-override2 transv)
+                      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat))
+                      )
+                    0.0
+                    )
+                 (vector-negate-in-place! s5-0)
+                 )
+             (set! f30-0 (atan (-> s5-0 x) (-> s5-0 z)))
+             )
+           )
+         )
+       )
+      (else
+        (let ((s5-1 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-1 quad) (-> obj root-override2 transv quad))
+          (if (< (vector-dot s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat))) 0.0)
+              (vector-negate-in-place! s5-1)
+              )
+          (let* ((f28-0 (atan (-> s5-1 x) (-> s5-1 z)))
+                 (f1-2 (deg- f30-0 f28-0))
+                 (f2-0 (fabs f1-2))
+                 (f0-8 (-> obj enemy-info-override knocked-seek-ry-clamp))
+                 )
+            (when (and (< f0-8 f2-0) (< f2-0 (- 32768.0 f0-8)))
+              (set! f30-0 (+ (cond
+                               ((< f2-0 16384.0)
+                                (if (>= f1-2 0.0)
+                                    f0-8
+                                    (- f0-8)
+                                    )
+                                )
+                               ((>= f1-2 0.0)
+                                (- 32768.0 f0-8)
+                                )
+                               (else
+                                 (+ -32768.0 f0-8)
+                                 )
+                               )
+                             f28-0
+                             )
+                    )
+              (if (< f30-0 0.0)
+                  (set! f30-0 (+ 65536.0 f30-0))
+                  )
+              )
+            )
+          )
+        )
+      )
+    f30-0
+    )
+  )
+
+(defmethod enemy-method-79 citizen-fat ((obj citizen-fat) (arg0 int) (arg1 enemy-knocked-info))
+  (case arg0
+    ((1)
+     (case (-> obj incoming knocked-type)
+       (((knocked-type knocked-type-6))
+        (let ((s5-0 (ja-done? 0)))
+          (let ((a0-4 (-> obj skel root-channel 0)))
+            (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
+            (set! (-> a0-4 param 1) (-> arg1 anim-speed))
+            (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          (when s5-0
+            (ja-channel-push! 1 (seconds 0.1))
+            (let ((a0-6 (-> obj skel root-channel 0)))
+              (set! (-> a0-6 frame-group)
+                    (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+                    )
+              (set! (-> a0-6 param 0)
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+                                frames
+                                num-frames
+                                )
+                            -1
+                            )
+                         )
+                    )
+              (set! (-> a0-6 param 1) (-> arg1 anim-speed))
+              (set! (-> a0-6 frame-num) 3.0)
+              (joint-control-channel-group!
+                a0-6
+                (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked (-> obj hit-face))))
+                num-func-seek!
+                )
+              )
+            )
+          s5-0
+          )
+        )
+       (else
+         ((method-of-type nav-enemy enemy-method-79) obj arg0 arg1)
+         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy enemy-method-79) obj arg0 arg1)
+      )
+    )
+  )
+
+(defmethod enemy-method-77 citizen-fat ((obj citizen-fat) (arg0 (pointer float)))
+  (case (-> obj incoming knocked-type)
+    (((knocked-type knocked-type-4))
+     (ja-channel-push! 1 (seconds 0.01))
+     (let* ((a2-0 (ash 1 (-> obj info prev-yellow-hit)))
+            (v1-3 (enemy-method-120 obj 1 a2-0))
+            (a1-7
+              (-> obj
+                  draw
+                  art-group
+                  data
+                  (-> (the-as civilian-global-info (+ (+ (* (-> obj hit-face) 4) (* v1-3 8)) (the-as uint (-> obj info))))
+                      yellow-hit-anim
+                      0
+                      anim-index-front
+                      )
+                  )
+              )
+            )
+       (set! (-> obj info prev-yellow-hit) v1-3)
+       (let ((a0-15 (-> obj skel root-channel 0)))
+         (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-7))
+         (set! (-> a0-15 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
+         (set! (-> a0-15 param 1) (-> arg0 0))
+         (set! (-> a0-15 frame-num) 0.0)
+         (joint-control-channel-group! a0-15 (the-as art-joint-anim a1-7) num-func-seek!)
+         )
+       )
+     )
+    (((knocked-type knocked-type-6))
+     (ja-channel-push! 1 (seconds 0.01))
+     (let* ((a2-2 (ash 1 (-> obj info prev-blue-hit)))
+            (v1-12 (enemy-method-120 obj 3 a2-2))
+            (a1-14
+              (-> obj
+                  draw
+                  art-group
+                  data
+                  (-> (the-as civilian-global-info (+ (+ (* (-> obj hit-face) 4) (* v1-12 8)) (the-as uint (-> obj info))))
+                      blue-hit-anim
+                      0
+                      anim-index-front
+                      )
+                  )
+              )
+            )
+       (set! (-> obj info prev-blue-hit) v1-12)
+       (let ((a0-30 (-> obj skel root-channel 0)))
+         (set! (-> a0-30 frame-group) (the-as art-joint-anim a1-14))
+         (set! (-> a0-30 param 0) (the float (+ (-> (the-as art-joint-anim a1-14) frames num-frames) -1)))
+         (set! (-> a0-30 param 1) 1.0)
+         (set! (-> a0-30 frame-num) 0.0)
+         (joint-control-channel-group! a0-30 (the-as art-joint-anim a1-14) num-func-seek!)
+         )
+       )
+     )
+    (else
+      (let ((s4-0 (if (= (-> obj incoming knocked-type) (knocked-type knocked-type-2))
+                      (-> obj draw art-group data (-> obj info knocked (-> obj hit-face)))
+                      (-> obj draw art-group data (-> obj info knocked (-> obj hit-face)))
+                      )
+                  )
+            )
+        (ja-channel-push! 1 (seconds 0.01))
+        (let ((a0-39 (-> obj skel root-channel 0)))
+          (set! (-> a0-39 frame-group) (the-as art-joint-anim s4-0))
+          (set! (-> a0-39 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+          (set! (-> a0-39 param 1) (-> arg0 0))
+          (set! (-> a0-39 frame-num) 0.0)
+          (joint-control-channel-group! a0-39 (the-as art-joint-anim s4-0) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+(defmethod enemy-method-78 citizen-fat ((obj citizen-fat) (arg0 (pointer float)))
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((a0-2 (-> obj skel root-channel 0)))
+    (set! (-> a0-2 frame-group)
+          (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+          )
+    (set! (-> a0-2 param 0)
+          (the float
+               (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+                      frames
+                      num-frames
+                      )
+                  -1
+                  )
+               )
+          )
+    (set! (-> a0-2 param 1) (-> arg0 0))
+    (set! (-> a0-2 frame-num) 0.0)
+    (joint-control-channel-group!
+      a0-2
+      (the-as art-joint-anim (-> obj draw art-group data (-> obj info knocked-land (-> obj hit-face))))
+      num-func-seek!
+      )
+    )
+  #t
+  )
+
+(defstate knocked (citizen-fat)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (the-as collide-shape-prim-group (-> self root-override2 root-prim))))
+      (logior! (-> v1-5 child 0 prim-core action) (collide-action no-standon))
+      (logclear! (-> v1-5 child 1 prim-core action) (collide-action no-standon))
+      (set! (-> v1-5 child 1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-5 child 1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (none)
+    )
+  )
+
+(defstate get-up-front (citizen-fat)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian get-up-front) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self root-override2 root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-with)
+            (collide-spec backgnd jak civilian enemy hit-by-others-list player-list)
+            )
+      )
+    (none)
+    )
+  )
+
+(defstate get-up-back (citizen-fat)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian get-up-back) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self root-override2 root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-with)
+            (collide-spec backgnd jak civilian enemy hit-by-others-list player-list)
+            )
+      )
+    (none)
+    )
+  )
+
+(defstate wait (citizen-fat)
+  :virtual #t
+  :trans (behavior ()
+    '()
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (let ((f30-1 (/ 1.0 (rand-vu-float-range 10.0 13.0)))
+            (gp-0 (rand-vu-int-range 1 5))
+            (s5-0 (rand-vu-int-count 2))
+            )
+        (ja-channel-push! 1 (seconds 0.2))
+        (if (zero? s5-0)
+            (ja-no-eval :group! citizen-fat-idle-to-arms-hips-ja :num! min)
+            (ja-no-eval :group! citizen-fat-idle-to-arms-crossed-ja :num! min)
+            )
+        (let ((f28-0 0.0))
+          (while (< f28-0 1.0)
+            (ja :num-func num-func-identity
+                :frame-num (lerp-scale 0.0 2.0 (+ (* -2.0 f28-0 f28-0 f28-0) (* 3.0 f28-0 f28-0)) 0.0 1.0)
+                )
+            (suspend)
+            (+! f28-0 (-> self clock seconds-per-frame))
+            )
+          )
+        (ja-channel-push! 1 (seconds 0.1))
+        (while (> gp-0 0)
+          (+! gp-0 -1)
+          (cond
+            ((zero? s5-0)
+             (ja-no-eval :group! citizen-fat-arms-hips-ja
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim citizen-fat-arms-hips-ja) frames num-frames) -1)) f30-1)
+                         :frame-num 0.0
+                         )
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek! max f30-1))
+               )
+             )
+            (else
+              (ja-no-eval :group! citizen-fat-arms-crossed-ja
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim citizen-fat-arms-crossed-ja) frames num-frames) -1)) f30-1)
+                          :frame-num 0.0
+                          )
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek! max f30-1))
+                )
+              )
+            )
+          )
+        )
+      (if (-> self wait-return-state)
+          (go (-> self wait-return-state))
+          )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defmethod init-enemy-collision! citizen-fat ((obj citizen-fat))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec civilian))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4096.0 0.0 4096.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 9830.4 0.0 4096.0)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-17 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! citizen-fat ((obj citizen-fat))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-citizen-fat" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *citizen-fat-nav-enemy-info*)
+  (let ((v1-5 (-> obj nav)))
+    (set! (-> v1-5 speed-scale) 1.0)
+    )
+  0
+  (set! (-> obj draw lod-set lod 0 dist) 204800.0)
+  (set! (-> obj draw lod-set lod 1 dist) 491520.0)
+  (set! (-> obj info) *citizen-fat-global-info*)
+  (try-update-focus (-> obj focus) *target* obj)
+  (set-vector! (-> obj neck twist-max) 10922.667 18204.445 0.0 1.0)
+  (set! (-> obj anim-shuffle) 12)
+  (let ((v1-18 (get-rand-int obj 3)))
+    (cond
+      ((zero? v1-18)
+       (set! (-> obj anim-walk) 11)
+       (set! (-> obj dist-walk-anim) 16384.0)
+       (set! (-> obj speed-walk) 12288.0)
+       )
+      ((= v1-18 1)
+       (set! (-> obj anim-walk) 13)
+       (set! (-> obj dist-walk-anim) 16384.0)
+       (set! (-> obj speed-walk) 12288.0)
+       )
+      ((= v1-18 2)
+       (set! (-> obj anim-walk) 14)
+       (set! (-> obj dist-walk-anim) 16384.0)
+       (set! (-> obj speed-walk) 12288.0)
+       )
+      )
+    )
+  (let ((v1-33 (get-rand-int obj 3)))
+    (cond
+      ((zero? v1-33)
+       (set! (-> obj anim-panic-run) 17)
+       )
+      ((= v1-33 1)
+       (set! (-> obj anim-panic-run) 17)
+       )
+      ((= v1-33 2)
+       (set! (-> obj anim-panic-run) 15)
+       )
+      )
+    )
+  (set! (-> obj dist-run-anim) 20480.0)
+  (let ((v1-40 (get-rand-int obj 3)))
+    (cond
+      ((zero? v1-40)
+       (set! (-> obj anim-run) 15)
+       )
+      ((= v1-40 1)
+       (set! (-> obj anim-run) 16)
+       )
+      ((= v1-40 2)
+       (set! (-> obj anim-run) 16)
+       )
+      )
+    )
+  (set! (-> obj speed-run) 32768.0)
+  (set! (-> obj anim-on-ground) 19)
+  (set! (-> obj anim-dive) 18)
+  (set! (-> obj anim-get-up-back) 25)
+  (set! (-> obj anim-get-up-front) 24)
+  (let ((f30-0 (get-rand-float-range obj 1.0 1.25))
+        (f0-15 (get-rand-float-range obj 1.0 1.25))
+        )
+    (set-vector! (-> obj root-override2 scale) f0-15 f30-0 f0-15 1.0)
+    )
+  (let ((f0-17 (get-rand-float-range obj 0.9 1.0)))
+    (set-vector! (-> obj draw color-mult) f0-17 f0-17 f0-17 1.0)
+    )
+  (set! (-> obj water-anim) 32)
+  0
+  (none)
+  )
+
+(defmethod citizen-init! citizen-fat ((obj citizen-fat))
+  "Initialize [[citizen]] defaults."
+  (let ((t9-0 (method-of-type civilian citizen-init!)))
+    (t9-0 obj)
+    )
+  (set! (-> obj dive-reaction) (* 0.2 (rand-vu)))
+  (logclear! (-> obj mask) (process-mask enemy))
+  (setup-masks (-> obj draw) 0 -1)
+  (let ((v1-7 (get-rand-int obj 2)))
+    (cond
+      ((zero? v1-7)
+       (setup-masks (-> obj draw) 8 0)
+       (let ((v1-11 (get-rand-int obj 3)))
+         (cond
+           ((zero? v1-11)
+            (setup-masks (-> obj draw) 4 0)
+            )
+           ((= v1-11 1)
+            (setup-masks (-> obj draw) 256 0)
+            )
+           ((= v1-11 2)
+            (setup-masks (-> obj draw) #x8000 0)
+            )
+           )
+         )
+       (let ((v1-20 (get-rand-int obj 4)))
+         (cond
+           ((zero? v1-20)
+            (setup-masks (-> obj draw) 2 0)
+            )
+           ((= v1-20 1)
+            (setup-masks (-> obj draw) 128 0)
+            )
+           ((= v1-20 2)
+            (setup-masks (-> obj draw) 130 0)
+            )
+           )
+         )
+       (setup-masks (-> obj draw) 512 0)
+       (let ((v1-31 (get-rand-int obj 3)))
+         (cond
+           ((zero? v1-31)
+            (setup-masks (-> obj draw) 64 0)
+            )
+           ((= v1-31 1)
+            (setup-masks (-> obj draw) 4096 0)
+            )
+           ((= v1-31 2)
+            (setup-masks (-> obj draw) 8192 0)
+            )
+           )
+         )
+       (let ((v1-40 (get-rand-int obj 3)))
+         (cond
+           ((zero? v1-40)
+            (setup-masks (-> obj draw) 32 0)
+            )
+           ((= v1-40 1)
+            (setup-masks (-> obj draw) 2048 0)
+            )
+           ((= v1-40 2)
+            (setup-masks (-> obj draw) #x20000 0)
+            )
+           )
+         )
+       (let ((v1-49 (get-rand-int obj 3)))
+         (cond
+           ((zero? v1-49)
+            (setup-masks (-> obj draw) 16 0)
+            )
+           ((= v1-49 1)
+            (setup-masks (-> obj draw) 1024 0)
+            )
+           ((= v1-49 2)
+            (setup-masks (-> obj draw) #x10000 0)
+            )
+           )
+         )
+       )
+      ((= v1-7 1)
+       (setup-masks (-> obj draw) #x400000 0)
+       (setup-masks (-> obj draw) #x200000 0)
+       (let ((v1-63 (get-rand-int obj 2)))
+         (cond
+           ((zero? v1-63)
+            (setup-masks (-> obj draw) 4096 0)
+            )
+           ((= v1-63 1)
+            (setup-masks (-> obj draw) #x80000 0)
+            )
+           )
+         )
+       (let ((v1-70 (get-rand-int obj 2)))
+         (cond
+           ((zero? v1-70)
+            (setup-masks (-> obj draw) 256 0)
+            )
+           ((= v1-70 1)
+            (setup-masks (-> obj draw) #x100000 0)
+            )
+           )
+         )
+       (let ((v1-77 (get-rand-int obj 4)))
+         (cond
+           ((zero? v1-77)
+            (setup-masks (-> obj draw) 2 0)
+            )
+           ((= v1-77 1)
+            (setup-masks (-> obj draw) 128 0)
+            )
+           ((= v1-77 2)
+            (setup-masks (-> obj draw) 130 0)
+            )
+           )
+         )
+       (if (zero? (get-rand-int obj 1))
+           (setup-masks (-> obj draw) #x20000 0)
+           )
+       (let ((v1-91 (get-rand-int obj 3)))
+         (cond
+           ((zero? v1-91)
+            (setup-masks (-> obj draw) 16 0)
+            )
+           ((= v1-91 1)
+            (setup-masks (-> obj draw) 1024 0)
+            )
+           ((= v1-91 2)
+            (setup-masks (-> obj draw) #x10000 0)
+            )
+           )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )

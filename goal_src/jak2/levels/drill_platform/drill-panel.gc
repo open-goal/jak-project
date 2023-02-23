@@ -5,5 +5,852 @@
 ;; name in dgo: drill-panel
 ;; dgos: DMI
 
+(declare-type mech-target process-drawable)
+(define-extern mech-target-spawn (function vector process quaternion entity-actor (pointer mech-target)))
+
 ;; DECOMP BEGINS
 
+(defskelgroup skel-drill-control-panel drill-control-panel drill-control-panel-lod0-jg drill-control-panel-idle-ja
+              ((drill-control-panel-lod0-mg (meters 20)) (drill-control-panel-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0.5 0 -2 10.5)
+              :origin-joint-index 26
+              )
+
+(defskelgroup skel-drill-control-panel-a drill-control-panel drill-control-panel-a-lod0-jg drill-control-panel-a-idle-ja
+              ((drill-control-panel-a-lod0-mg (meters 20)) (drill-control-panel-a-lod1-mg (meters 999999)))
+              :bounds (static-spherem -0.5 2 -2 10)
+              :origin-joint-index 19
+              )
+
+(deftype drill-control-panel (process-focusable)
+  ((id             int8                      :offset-assert 204)
+   (idle-sound-id  sound-id                  :offset-assert 208)
+   (debris-part    sparticle-launch-control  :offset-assert 212)
+   (next-warn-time time-frame                :offset        224)
+   )
+  :heap-base #x70
+  :method-count-assert 33
+  :size-assert         #xe8
+  :flag-assert         #x21007000e8
+  (:methods
+    (idle () _type_ :state 27)
+    (hit (symbol) _type_ :state 28)
+    (init-collision! (_type_) none 29)
+    (init-panel (_type_) none 30)
+    (spawn-shock-part (_type_) none 31)
+    (spawn-explode-part (_type_) none 32)
+    )
+  )
+
+
+;; WARN: Return type mismatch process-drawable vs drill-control-panel.
+(defmethod relocate drill-control-panel ((obj drill-control-panel) (arg0 int))
+  (if (nonzero? (-> obj debris-part))
+      (&+! (-> obj debris-part) arg0)
+      )
+  (the-as drill-control-panel ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(defmethod deactivate drill-control-panel ((obj drill-control-panel))
+  (sound-stop (-> obj idle-sound-id))
+  (if (nonzero? (-> obj debris-part))
+      (kill-and-free-particles (-> obj debris-part))
+      )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs none.
+(defun spawn-drill-panel-explode ((arg0 drill-control-panel))
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 429)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 18 bone transform)
+    :to *entity-pool*
+    )
+  (if (zero? (-> arg0 id))
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 430)
+        300
+        #f
+        #f
+        #f
+        (-> arg0 node-list data 50 bone transform)
+        :to *entity-pool*
+        )
+      )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 431)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 19 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 21 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 22 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 23 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 24 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 25 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 434)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 8 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 434)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 9 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 434)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 10 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 3 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 4 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 5 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 6 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 7 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 11 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 12 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 13 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 14 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 15 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 16 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 17 bone transform)
+    :to *entity-pool*
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs none.
+(defun spawn-drill-panel-ab-explode ((arg0 drill-control-panel))
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 429)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 12 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 431)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 13 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 14 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 15 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 16 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 17 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 432)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 18 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 434)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 3 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 434)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 4 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 10 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 9 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 8 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 435)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 11 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 5 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 6 bone transform)
+    :to *entity-pool*
+    )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 433)
+    300
+    #f
+    #f
+    #f
+    (-> arg0 node-list data 7 bone transform)
+    :to *entity-pool*
+    )
+  (none)
+  )
+
+(defmethod spawn-explode-part drill-control-panel ((obj drill-control-panel))
+  "Spawn explosion particles."
+  (let ((v1-0 (-> obj id)))
+    (if (or (zero? v1-0) (= v1-0 1))
+        (spawn-drill-panel-explode obj)
+        (spawn-drill-panel-ab-explode obj)
+        )
+    )
+  (none)
+  )
+
+(defmethod spawn-shock-part drill-control-panel ((obj drill-control-panel))
+  "Spawn shock particles."
+  (with-pp
+    (let ((v1-0 (-> obj id)))
+      (cond
+        ((or (zero? v1-0) (= v1-0 1))
+         (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -4.0 4.0)))
+         (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -2.0 2.0)))
+         (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range 1.0 3.0)))
+         (when (= (-> obj id) 1)
+           (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) 8192.0)
+           (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) 8192.0)
+           (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) 8192.0)
+           (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) 8192.0)
+           (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) 8192.0)
+           (when (>= (-> pp clock frame-counter) (-> obj next-warn-time))
+             (set! (-> obj next-warn-time)
+                   (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 1.0 2.0))))
+                   )
+             (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) -4096.0)
+             (set! (-> *part-id-table* 1851 init-specs 24 initial-valuef) (* 182.04445 (rand-vu-float-range -45.0 45.0)))
+             (set! (-> *part-id-table* 1851 init-specs 25 initial-valuef) (* 182.04445 (rand-vu-float-range 0.0 45.0)))
+             (set! (-> *part-id-table* 1851 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -3.0 3.0)))
+             (set! (-> *part-id-table* 1851 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
+             )
+           )
+         (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 18))
+         )
+        (else
+          (case (-> obj id)
+            ((3 5 7 8)
+             (if (zero? (rand-vu-int-count 2))
+                 (process-drawable-shock-effect
+                   obj
+                   (new 'static 'lightning-spec
+                     :name #f
+                     :flags (lightning-spec-flags lsf0)
+                     :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                     :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                     :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                     :fade-start-factor 0.2
+                     :texture (new 'static 'texture-id :index #x83 :page #xc)
+                     :reduction 0.42
+                     :num-points 16
+                     :box-size 16384.0
+                     :merge-factor 0.5
+                     :merge-count 2
+                     :radius 2048.0
+                     :duration 30.0
+                     :sound (static-sound-spec "shock" :volume 50.0)
+                     )
+                   lightning-probe-callback
+                   (-> *part-id-table* 166)
+                   12
+                   0
+                   12288.0
+                   )
+                 )
+             )
+            (else
+              0
+              )
+            )
+          (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
+          (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -0.5 3.0)))
+          (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 -1.25)))
+          (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) -6144.0)
+          (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) -6144.0)
+          (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) -6144.0)
+          (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) -6144.0)
+          (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) -6144.0)
+          (when (>= (-> pp clock frame-counter) (-> obj next-warn-time))
+            (set! (-> obj next-warn-time)
+                  (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 1.5 3.0))))
+                  )
+            (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) 4096.0)
+            (set! (-> *part-id-table* 1879 init-specs 23 initial-valuef) (* 182.04445 (rand-vu-float-range -30.0 30.0)))
+            (set! (-> *part-id-table* 1879 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.5 1.5)))
+            (set! (-> *part-id-table* 1879 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
+            )
+          (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 12))
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate hit (drill-control-panel)
+  :virtual #t
+  :enter (behavior ((arg0 symbol))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self next-warn-time) (-> self clock frame-counter))
+    (process-entity-status! self (entity-perm-status bit-12) #t)
+    (set! (-> self draw force-lod) 0)
+    (logior! (-> self focus-status) (focus-status disable dead ignore))
+    (when (not arg0)
+      (send-event (ppointer->process *drill-mech-master*) 'drill-control-panel (-> self id))
+      (sound-play "crush-console")
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+        (spawn-shock-part self)
+        )
+    (none)
+    )
+  :code (behavior ((arg0 symbol))
+    (when (not arg0)
+      (spawn-explode-part self)
+      (ja-no-eval :group! (get-art-by-name (-> self draw art-group) "break" art-joint-anim)
+                  :num! (seek!
+                    (the float (+ (-> (get-art-by-name (-> self draw art-group) "break" art-joint-anim) frames num-frames) -1))
+                    )
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (transform-post)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (ja :group! (get-art-by-name (-> self draw art-group) "break" art-joint-anim)
+        :num! (identity
+          (the float (+ (-> (get-art-by-name (-> self draw art-group) "break" art-joint-anim) frames num-frames) -1))
+          )
+        )
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defstate idle (drill-control-panel)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('attack)
+       (case (-> (the-as attack-info (-> event param 1)) mode)
+         (('mech-punch 'crush)
+          (go-virtual hit #f)
+          )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (when (= (level-status *level* 'drillmtn) 'active)
+      (let ((a2-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> self root-override trans)))))
+        (if (= (-> self type) drill-control-panel)
+            (mech-target-spawn
+              (vector-matrix*! (new 'stack-no-clear 'vector) (new 'static 'vector :y 18841.6 :z -2048.0 :w 1.0) a2-0)
+              self
+              (-> self root-override quat)
+              (the-as entity-actor (entity-by-name "mech-5"))
+              )
+            (mech-target-spawn
+              (vector-matrix*! (new 'stack-no-clear 'vector) (new 'static 'vector :y 18841.6 :z -10240.0 :w 1.0) a2-0)
+              self
+              (-> self root-override quat)
+              (the-as entity-actor (entity-by-name "mech-5"))
+              )
+            )
+        )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (sound-stop (-> self idle-sound-id))
+    (while (-> self child)
+      (deactivate (-> self child 0))
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior drill-control-panel) sleep-code)
+  :post (behavior ()
+    (spawn-with-cspace (-> self part) (the-as cspace (-> self node-list data)))
+    (sound-play "small-panel" :id (-> self idle-sound-id))
+    (none)
+    )
+  )
+
+(defmethod init-collision! drill-control-panel ((obj drill-control-panel))
+  "Define the collision for the panel."
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec crate camera-blocker))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-6 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-6 transform-index) 26)
+      (set-vector! (-> v1-6 local-sphere) 0.0 49152.0 0.0 155648.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-panel drill-control-panel ((obj drill-control-panel))
+  "Init some parameters for the panel."
+  (set! (-> obj idle-sound-id) (new-sound-id))
+  (set! (-> obj mask) (logior (process-mask crate) (-> obj mask)))
+  (set! (-> obj id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-control-panel ((obj drill-control-panel) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-collision! obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-drill-control-panel" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (init-panel obj)
+  (transform-post)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 427) obj))
+  (if (zero? (-> obj id))
+      (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 436) obj))
+      (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 437) obj))
+      )
+  (if (task-node-closed? (game-task-node drill-mech-smash-consoles))
+      (process-entity-status! obj (entity-perm-status bit-12) #t)
+      )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
+      (go (method-of-object obj hit) #t)
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(deftype drill-control-panel-a (drill-control-panel)
+  ()
+  :heap-base #x70
+  :method-count-assert 33
+  :size-assert         #xe8
+  :flag-assert         #x21007000e8
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-control-panel-a ((obj drill-control-panel-a) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-collision! obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-drill-control-panel-a" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> obj root-override root-prim transform-index) (the-as int (-> obj draw origin-joint-index)))
+  (init-panel obj)
+  (set! (-> obj draw force-lod) 1)
+  (transform-post)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 428) obj))
+  (case (-> obj id)
+    ((3 6 8)
+     (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 438) obj))
+     )
+    ((5 9)
+     (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 440) obj))
+     )
+    ((7)
+     (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 441) obj))
+     )
+    (else
+      (set! (-> obj debris-part) (create-launch-control (-> *part-group-id-table* 439) obj))
+      )
+    )
+  (if (task-node-closed? (game-task-node drill-mech-smash-consoles))
+      (process-entity-status! obj (entity-perm-status bit-12) #t)
+      )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
+      (go (method-of-object obj hit) #t)
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(defstate hit (drill-control-panel-a)
+  :virtual #t
+  :code (behavior ((arg0 symbol))
+    (when (not arg0)
+      (spawn-explode-part self)
+      (ja-no-eval :group! (-> self draw art-group data 9)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (transform-post)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (ja :group! (-> self draw art-group data 9)
+        :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+        )
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+(deftype drill-control-panel-b (drill-control-panel-a)
+  ()
+  :heap-base #x70
+  :method-count-assert 33
+  :size-assert         #xe8
+  :flag-assert         #x21007000e8
+  )

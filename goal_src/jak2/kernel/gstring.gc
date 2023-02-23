@@ -458,6 +458,21 @@
     (cat-string<-string_to_charp arg0 arg1 s4-0)
     )
   )
+(defmacro is-whitespace-char? (c)
+  ;; 32 = space
+  ;; 9 = \t
+  ;; 13 = \r
+  ;; 10 = \n
+  `(or (= ,c 32)
+       (= ,c 9)
+       (= ,c 13)
+       (= ,c 10)
+       )
+  )
+
+(defmacro not-whitespace-char? (c)
+  `(not (is-whitespace-char? ,c))
+  )
 
 (defun string-skip-whitespace ((arg0 (pointer uint8)))
   "Skip over spaces, tabs, r's and n's"
@@ -783,6 +798,16 @@
 
 ;; up from 256 bytes in jak 1
 (define *temp-string* (new 'global 'string 2048 (the-as string #f)))
+
+(defmacro string-format (&rest args)
+  "Formats into *temp-string* and returns it, for in-place string formating.
+   DO NOT USE *temp-string* WITH THIS MACRO! It is read as input AFTER all of the args evaluate."
+
+  `(begin
+     (format (clear *temp-string*) ,@args)
+     *temp-string*
+     )
+  )
 
 (kmemclose)
 

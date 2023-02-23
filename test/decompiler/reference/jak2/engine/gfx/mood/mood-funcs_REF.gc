@@ -1,0 +1,2108 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function update-mood-default
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-default time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  0
+  (none)
+  )
+
+;; definition for function get-sphere-interp
+;; INFO: Used lq/sq
+(defun get-sphere-interp ((arg0 sphere) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    0.0
+    (set! (-> v1-0 quad) (-> arg0 quad))
+    (vector-! v1-0 arg1 v1-0)
+    (let ((f1-0 (vector-length v1-0)))
+      (/ (fmax 0.0 (fmin (- f1-0 arg2) arg3)) arg3)
+      )
+    )
+  )
+
+;; definition of type ruins-states
+(deftype ruins-states (structure)
+  ((light  light-state        :inline :offset-assert   0)
+   (spec-0 sp-field-init-spec         :offset-assert   8)
+   (spec-1 sp-field-init-spec         :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type ruins-states
+(defmethod inspect ruins-states ((obj ruins-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ruins-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-ruins
+;; WARN: Return type mismatch sp-field-init-spec vs none.
+(defun init-mood-ruins ((arg0 mood-context))
+  (let ((gp-0 (the-as ruins-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 1)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 spec-0) (get-field-spec-by-id a0-1 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 2)))
+      (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-2)
+          (set! (-> gp-0 spec-1) (get-field-spec-by-id a0-2 (sp-field-id spt-a)))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for function update-mood-ruins
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ruins time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as (pointer float) (-> arg0 state))))
+      (update-mood-light arg0 6 0 1.0 0.0 arg1 0.0 2.0)
+      (if (nonzero? (-> (the-as ruins-states gp-1) spec-0))
+          (set! (-> (the-as ruins-states gp-1) spec-0 initial-valuef)
+                (* 32.0 (-> (the-as ruins-states gp-1) light fade))
+                )
+          )
+      (if (nonzero? (-> (the-as ruins-states gp-1) spec-1))
+          (set! (-> (the-as ruins-states gp-1) spec-1 initial-valuef)
+                (* 8.0 (-> (the-as ruins-states gp-1) light fade))
+                )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type strip-states
+(deftype strip-states (structure)
+  ((light0 light-state        :inline :offset-assert   0)
+   (light1 light-state        :inline :offset-assert   8)
+   (spec-0 sp-field-init-spec         :offset-assert  16)
+   (spec-1 sp-field-init-spec         :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type strip-states
+(defmethod inspect strip-states ((obj strip-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'strip-states)
+  (format #t "~1Tlight0: #<light-state @ #x~X>~%" (-> obj light0))
+  (format #t "~1Tlight1: #<light-state @ #x~X>~%" (-> obj light1))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-strip
+;; WARN: Return type mismatch sp-field-init-spec vs uint.
+(defun init-mood-strip ((arg0 mood-context))
+  (let ((gp-0 (the-as strip-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 3)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 spec-0) (get-field-spec-by-id a0-1 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 4)))
+      (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+      (the-as uint (when (nonzero? a0-2)
+                     (let ((v0-1 (get-field-spec-by-id a0-2 (sp-field-id spt-a))))
+                       (set! (-> gp-0 spec-1) v0-1)
+                       v0-1
+                       )
+                     )
+              )
+      )
+    )
+  )
+
+;; definition for function update-mood-strip
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-strip time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (set! (-> arg0 times 5 w) 1.0)
+    (let ((s4-1 (the-as (pointer float) (-> arg0 state))))
+      (if (task-complete? *game-info* (game-task strip-grenade))
+          (update-mood-light arg0 6 0 0.875 0.25 8.0 0.0 2.0)
+          (update-mood-light arg0 6 0 0.875 0.25 20.0 0.0 2.0)
+          )
+      (update-mood-light arg0 7 8 1.0 0.0 arg1 0.0 2.0)
+      (if (nonzero? (-> (the-as strip-states s4-1) spec-0))
+          (set! (-> (the-as strip-states s4-1) spec-0 initial-valuef)
+                (* 32.0 (-> (the-as strip-states s4-1) light1 fade))
+                )
+          )
+      (if (nonzero? (-> (the-as strip-states s4-1) spec-1))
+          (set! (-> (the-as strip-states s4-1) spec-1 initial-valuef)
+                (* 8.0 (-> (the-as strip-states s4-1) light1 fade))
+                )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctywide-states
+(deftype ctywide-states (structure)
+  ((light light-state  :inline :offset-assert   0)
+   (flame flames-state :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
+  )
+
+;; definition for method 3 of type ctywide-states
+(defmethod inspect ctywide-states ((obj ctywide-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctywide-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-ctywide
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctywide time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 2 8 0.5 0.0009765625 1.5)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-copy-ctywide
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-copy-ctywide time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (let ((v1-1 (level-get *level* 'ctywide)))
+    (cond
+      ((and v1-1 (= (-> v1-1 status) 'active))
+       (mem-copy! (the-as pointer arg0) (the-as pointer (-> v1-1 mood-context)) 1968)
+       )
+      (else
+        (update-mood-ctywide arg0 arg1 arg2)
+        (if (or (>= arg1 18.0) (>= 6.0 arg1))
+            (set! (-> arg0 times 5 w) 1.0)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctyind-states
+(deftype ctyind-states (structure)
+  ((light light-state :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type ctyind-states
+(defmethod inspect ctyind-states ((obj ctyind-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctyind-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-ctyind
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctyind time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (set! (-> arg0 times 6 w) 1.0)
+    (let ((f0-1 0.5))
+      (let ((f1-0 1.0))
+        (cond
+          ((or (>= 6.0 arg1) (>= arg1 18.0))
+           (set! f0-1 f1-0)
+           )
+          ((and (< 6.0 arg1) (< arg1 7.0))
+           (+! f0-1 (* (- f1-0 f0-1) (- 7.0 arg1)))
+           )
+          ((and (< 17.0 arg1) (< arg1 18.0))
+           (+! f0-1 (* (- f1-0 f0-1) (+ -17.0 arg1)))
+           )
+          )
+        )
+      (set! (-> arg0 times 7 w) f0-1)
+      )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctysluma-states
+(deftype ctysluma-states (structure)
+  ((light           light-state        :inline :offset-assert   0)
+   (neon            light-state        :inline :offset-assert   8)
+   (flame           flames-state       :inline :offset-assert  16)
+   (spec-0          sp-field-init-spec         :offset-assert  24)
+   (spec-1          sp-field-init-spec         :offset-assert  28)
+   (neon-min-bright float                      :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; definition for method 3 of type ctysluma-states
+(defmethod inspect ctysluma-states ((obj ctysluma-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctysluma-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tneon: #<light-state @ #x~X>~%" (-> obj neon))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (format #t "~1Tneon-min-bright: ~f~%" (-> obj neon-min-bright))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-ctysluma
+(defun init-mood-ctysluma ((arg0 mood-context))
+  (let ((gp-0 (the-as ctysluma-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 5)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 spec-0) (get-field-spec-by-id a0-1 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 6)))
+      (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-2)
+          (set! (-> gp-0 spec-1) (get-field-spec-by-id a0-2 (sp-field-id spt-a)))
+          )
+      )
+    (set! (-> gp-0 neon-min-bright) (rand-vu-float-range 0.8 1.0))
+    )
+  )
+
+;; definition for function update-mood-ctysluma
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctysluma time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (!= arg2 -1)
+             (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as ctysluma-states (-> arg0 state))))
+      (update-mood-flames arg0 6 1 16 0.5 0.001953125 2.0)
+      (update-mood-light arg0 7 8 (-> gp-1 neon-min-bright) 0.0 arg1 32.0 2.0)
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (if (nonzero? (-> gp-1 spec-0))
+          (set! (-> gp-1 spec-0 initial-valuef) (* 32.0 (-> gp-1 light fade)))
+          )
+      (if (nonzero? (-> gp-1 spec-1))
+          (set! (-> gp-1 spec-1 initial-valuef) (* 8.0 (-> gp-1 light fade)))
+          )
+      (if (not (paused?))
+          (set! (-> gp-1 neon-min-bright) (rand-vu-float-range 0.8 1.0))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctyslumb-states
+(deftype ctyslumb-states (structure)
+  ((light  light-state        :inline :offset-assert   0)
+   (flame  flames-state       :inline :offset-assert   8)
+   (spec-0 sp-field-init-spec         :offset-assert  16)
+   (spec-1 sp-field-init-spec         :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type ctyslumb-states
+(defmethod inspect ctyslumb-states ((obj ctyslumb-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctyslumb-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-ctyslumb
+;; WARN: Return type mismatch sp-field-init-spec vs uint.
+(defun init-mood-ctyslumb ((arg0 mood-context))
+  (let ((gp-0 (-> arg0 state)))
+    (set! (-> gp-0 4) (the-as uint 0))
+    (set! (-> gp-0 5) (the-as uint 0))
+    (let ((a0-1 (-> *part-id-table* 7)))
+      (set! (-> gp-0 4) (the-as uint 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 4) (the-as uint (get-field-spec-by-id a0-1 (sp-field-id spt-a))))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 8)))
+      (set! (-> gp-0 5) (the-as uint 0))
+      (the-as uint (when (nonzero? a0-2)
+                     (let ((v0-1 (get-field-spec-by-id a0-2 (sp-field-id spt-a))))
+                       (set! (-> gp-0 5) (the-as uint v0-1))
+                       v0-1
+                       )
+                     )
+              )
+      )
+    )
+  )
+
+;; definition for function update-mood-ctyslumb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctyslumb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s5-1 (the-as ctyslumb-states (-> arg0 state))))
+      (update-mood-flames arg0 6 1 8 0.5 0.001953125 2.0)
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      (if (nonzero? (-> s5-1 spec-0))
+          (set! (-> s5-1 spec-0 initial-valuef) (* 32.0 (-> s5-1 light fade)))
+          )
+      (if (nonzero? (-> s5-1 spec-1))
+          (set! (-> s5-1 spec-1 initial-valuef) (* 8.0 (-> s5-1 light fade)))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctyslumc-states
+(deftype ctyslumc-states (structure)
+  ((light  light-state        :inline :offset-assert   0)
+   (spec-0 sp-field-init-spec         :offset-assert   8)
+   (spec-1 sp-field-init-spec         :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type ctyslumc-states
+(defmethod inspect ctyslumc-states ((obj ctyslumc-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctyslumc-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-ctyslumc
+;; WARN: Return type mismatch sp-field-init-spec vs none.
+(defun init-mood-ctyslumc ((arg0 mood-context))
+  (let ((gp-0 (the-as ctyslumc-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 9)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 spec-0) (get-field-spec-by-id a0-1 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 10)))
+      (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-2)
+          (set! (-> gp-0 spec-1) (get-field-spec-by-id a0-2 (sp-field-id spt-a)))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for function update-mood-ctyslumc
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctyslumc time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as ctyslumc-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (if (nonzero? (-> gp-1 spec-0))
+          (set! (-> gp-1 spec-0 initial-valuef) (* 32.0 (-> gp-1 light fade)))
+          )
+      (if (nonzero? (-> gp-1 spec-1))
+          (set! (-> gp-1 spec-1 initial-valuef) (* 8.0 (-> gp-1 light fade)))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctyport-states
+(deftype ctyport-states (structure)
+  ((light           light-state        :inline :offset-assert   0)
+   (spec-0          sp-field-init-spec         :offset-assert   8)
+   (neon-min-bright float                      :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type ctyport-states
+(defmethod inspect ctyport-states ((obj ctyport-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctyport-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tneon-min-bright: ~f~%" (-> obj neon-min-bright))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-ctyport
+;; WARN: Return type mismatch sp-field-init-spec vs uint.
+(defun init-mood-ctyport ((arg0 mood-context))
+  (let ((gp-0 (the-as ctyport-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 11)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (the-as uint (when (nonzero? a0-1)
+                     (let ((v0-0 (get-field-spec-by-id a0-1 (sp-field-id spt-r))))
+                       (set! (-> gp-0 spec-0) v0-0)
+                       v0-0
+                       )
+                     )
+              )
+      )
+    )
+  )
+
+;; definition for function init-mood-ctyport-no-part
+;; WARN: Return type mismatch int vs none.
+(defun init-mood-ctyport-no-part ((arg0 mood-context))
+  (set! (-> (the-as ctyport-states (-> arg0 state)) spec-0) (the-as sp-field-init-spec 0))
+  0
+  (none)
+  )
+
+;; definition for function update-mood-ctyport
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctyport time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (!= arg2 -1)
+             (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s5-1 (the-as ctyport-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (if (= (-> s5-1 neon-min-bright) 0.0)
+                                    0.0
+                                    1.0
+                                    )
+            )
+      (if (nonzero? (-> s5-1 spec-0))
+          (set! (-> s5-1 spec-0 initial-valuef) (-> s5-1 neon-min-bright))
+          )
+      (set! (-> arg0 times 7 w) 1.0)
+      (when (not (paused?))
+        (if (< (mod (-> *display* part-clock frame-counter) 600) 300)
+            (set! (-> s5-1 neon-min-bright) 0.0)
+            (set! (-> s5-1 neon-min-bright) (rand-vu-float-range 128.0 255.0))
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctymarka-states
+(deftype ctymarka-states (structure)
+  ((light light-state :inline :offset-assert   0)
+   (blink float               :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type ctymarka-states
+(defmethod inspect ctymarka-states ((obj ctymarka-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctymarka-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tblink: ~f~%" (-> obj blink))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-ctymarka
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctymarka time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (-> arg0 state)))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (the-as float (-> gp-1 2)))
+      (set! (-> arg0 times 7 w) 0.75)
+      (when (not (paused?))
+        (let ((v1-11 (-> *display* part-clock frame-counter)))
+          (if (< (* 0.2 (the float (mod v1-11 600))) 60.0)
+              (set! (-> gp-1 2) (the-as uint 0.0))
+              (set! (-> gp-1 2) (the-as uint 1.0))
+              )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type ctymarkb-states
+(deftype ctymarkb-states (structure)
+  ((light light-state :inline :offset-assert   0)
+   (blink float               :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type ctymarkb-states
+(defmethod inspect ctymarkb-states ((obj ctymarkb-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ctymarkb-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tblink: ~f~%" (-> obj blink))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-ctymarkb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ctymarkb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (!= arg2 -1)
+             (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as ctymarkb-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> gp-1 blink))
+      (set! (-> arg0 times 7 w) 0.75)
+      (when (not (paused?))
+        (let* ((v1-12 (-> *display* part-clock frame-counter))
+               (f0-3 (* 0.2 (the float (mod v1-12 300))))
+               )
+          (cond
+            ((< f0-3 15.0)
+             (set! (-> gp-1 blink) (* 0.06666667 f0-3))
+             )
+            ((< 45.0 f0-3)
+             (set! (-> gp-1 blink) (* 0.06666667 (- 60.0 f0-3)))
+             )
+            (else
+              (set! (-> gp-1 blink) 1.0)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type palcab-states
+(deftype palcab-states (structure)
+  ((light        light-state       :inline :offset-assert   0)
+   (turret-value float                     :offset-assert   8)
+   (electricity  electricity-state :inline :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type palcab-states
+(defmethod inspect palcab-states ((obj palcab-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'palcab-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tturret-value: ~f~%" (-> obj turret-value))
+  (format #t "~1Telectricity: #<electricity-state @ #x~X>~%" (-> obj electricity))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-palcab
+(defun init-mood-palcab ((arg0 mood-context))
+  (let ((v1-0 (the-as object (-> arg0 state))))
+    (set! (-> (the-as palcab-states v1-0) electricity scale) 1.0)
+    )
+  )
+
+;; definition for function update-mood-palcab
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-palcab time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (!= arg2 -1)
+             (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s4-1 (the-as palcab-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> s4-1 turret-value))
+      (update-mood-electricity arg0 7 12 0.8 1.0)
+      (if (not (paused?))
+          (set! (-> s4-1 turret-value) (fmax 0.0 (+ -0.2 (-> s4-1 turret-value))))
+          )
+      )
+    (let ((a0-9 (new 'stack-no-clear 'sphere))
+          (a1-3 (-> *math-camera* trans))
+          )
+      (let ((v1-12 a0-9))
+        (set! (-> v1-12 x) 786432.0)
+        (set! (-> v1-12 y) 1818624.0)
+        (set! (-> v1-12 z) 2498560.0)
+        (set! (-> v1-12 r) 1.0)
+        )
+      (let ((f0-8 (- 1.0 (get-sphere-interp a0-9 a1-3 1024000.0 2048000.0))))
+        (update-mood-weather! *mood-control* (+ 0.25 (* 0.75 f0-8)) (+ 0.5 (* 0.5 f0-8)) 30.0 30.0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-palcab-turret-flash!
+(defun set-palcab-turret-flash! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'palcab)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as palcab-states v1-2) turret-value) arg0)
+        )
+      )
+    )
+  )
+
+;; definition of type stadium-states
+(deftype stadium-states (structure)
+  ((light light-state  :inline :offset-assert   0)
+   (flame flames-state :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
+  )
+
+;; definition for method 3 of type stadium-states
+(defmethod inspect stadium-states ((obj stadium-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'stadium-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-stadium-lights
+;; WARN: Return type mismatch int vs none.
+(defun update-stadium-lights ((arg0 mood-context))
+  (let ((a1-0 (-> arg0 light-group))
+        (gp-0 (-> arg0 light-group 2))
+        )
+    (mem-copy! (the-as pointer gp-0) (the-as pointer a1-0) 192)
+    (set! (-> gp-0 dir0 extra x) 0.0)
+    (set! (-> gp-0 dir1 extra x) 0.0)
+    (set! (-> gp-0 dir2 extra x) 0.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-stadium
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-stadium time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-stadium-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 1 8 0.5 0.001953125 2.0)
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-copy-stadium
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-copy-stadium time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (let ((v1-1 (level-get *level* 'stadium)))
+    (cond
+      ((and v1-1 (= (-> v1-1 status) 'active))
+       (mem-copy! (the-as pointer arg0) (the-as pointer (-> v1-1 mood-context)) 1968)
+       )
+      (else
+        (copy-mood-exterior arg0)
+        (update-stadium-lights arg0)
+        (if (or (>= arg1 18.0) (>= 6.0 arg1))
+            (set! (-> arg0 times 5 w) 1.0)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type stadiumb-states
+(deftype stadiumb-states (structure)
+  ((light        light-state :inline :offset-assert   0)
+   (shield-count float               :offset-assert   8)
+   (shield       float               :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type stadiumb-states
+(defmethod inspect stadiumb-states ((obj stadiumb-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'stadiumb-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tshield-count: ~f~%" (-> obj shield-count))
+  (format #t "~1Tshield: ~f~%" (-> obj shield))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-stadiumb-lights
+;; WARN: Return type mismatch int vs none.
+(defun update-stadiumb-lights ((arg0 mood-context))
+  (let ((gp-0 (-> arg0 light-group)))
+    (let ((a0-1 (-> arg0 light-group 1)))
+      (mem-copy! (the-as pointer a0-1) (the-as pointer gp-0) 192)
+      )
+    (set! (-> gp-0 0 dir0 extra x) 0.0)
+    (set! (-> gp-0 0 dir1 extra x) 0.0)
+    (set! (-> gp-0 0 dir2 extra x) 0.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-stadiumb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-stadiumb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-stadiumb-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as stadiumb-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> gp-1 shield))
+      (set! (-> arg0 times 7 w) 1.0)
+      (when (not (paused?))
+        (+! (-> gp-1 shield-count) (* 262144.0 (-> self clock seconds-per-frame)))
+        (set! (-> gp-1 shield) (+ 0.875 (* 0.125 (cos (-> gp-1 shield-count)))))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type skatea-states
+(deftype skatea-states (structure)
+  ((light light-state  :inline :offset-assert   0)
+   (flame flames-state :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
+  )
+
+;; definition for method 3 of type skatea-states
+(defmethod inspect skatea-states ((obj skatea-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'skatea-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-skatea
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-skatea time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 1 8 0.5 0.0009765625 1.5)
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type ltentout-states
+(deftype ltentout-states (structure)
+  ((light light-state  :inline :offset-assert   0)
+   (flame flames-state :inline :offset-assert   8)
+   (totem flames-state :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x17
+  :flag-assert         #x900000017
+  )
+
+;; definition for method 3 of type ltentout-states
+(defmethod inspect ltentout-states ((obj ltentout-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'ltentout-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (format #t "~1Ttotem: #<flames-state @ #x~X>~%" (-> obj totem))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-ltentout-lights
+;; WARN: Return type mismatch int vs none.
+(defun update-ltentout-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group 2)))
+    (set-vector! (-> v1-0 dir0 color) 0.822 0.694 0.613 1.0)
+    (set-vector! (-> v1-0 ambi color) 0.21 0.188 0.163 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-ltentout
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ltentout time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-ltentout-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 1 8 0.75 0.0009765625 2.0)
+    (update-mood-flames arg0 7 1 16 0.333 0.001953125 2.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type mountain-states
+(deftype mountain-states (structure)
+  ((light0 light-state        :inline :offset-assert   0)
+   (light1 light-state        :inline :offset-assert   8)
+   (spec-0 sp-field-init-spec         :offset-assert  16)
+   (spec-1 sp-field-init-spec         :offset-assert  20)
+   (spec-2 sp-field-init-spec         :offset-assert  24)
+   (spec-3 sp-field-init-spec         :offset-assert  28)
+   (spec-4 sp-field-init-spec         :offset-assert  32)
+   (spec-5 sp-field-init-spec         :offset-assert  36)
+   (spec-6 sp-field-init-spec         :offset-assert  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+;; definition for method 3 of type mountain-states
+(defmethod inspect mountain-states ((obj mountain-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mountain-states)
+  (format #t "~1Tlight0: #<light-state @ #x~X>~%" (-> obj light0))
+  (format #t "~1Tlight1: #<light-state @ #x~X>~%" (-> obj light1))
+  (format #t "~1Tspec-0: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-0))
+  (format #t "~1Tspec-1: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-1))
+  (format #t "~1Tspec-2: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-2))
+  (format #t "~1Tspec-3: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-3))
+  (format #t "~1Tspec-4: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-4))
+  (format #t "~1Tspec-5: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-5))
+  (format #t "~1Tspec-6: #<sp-field-init-spec @ #x~X>~%" (-> obj spec-6))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-mountain
+;; WARN: Return type mismatch sp-field-init-spec vs uint.
+(defun init-mood-mountain ((arg0 mood-context))
+  (let ((gp-0 (the-as mountain-states (-> arg0 state))))
+    (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-2) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-3) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-4) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-5) (the-as sp-field-init-spec 0))
+    (set! (-> gp-0 spec-6) (the-as sp-field-init-spec 0))
+    (let ((a0-1 (-> *part-id-table* 12)))
+      (set! (-> gp-0 spec-0) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-1)
+          (set! (-> gp-0 spec-0) (get-field-spec-by-id a0-1 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-2 (-> *part-id-table* 13)))
+      (set! (-> gp-0 spec-1) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-2)
+          (set! (-> gp-0 spec-1) (get-field-spec-by-id a0-2 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-3 (-> *part-id-table* 14)))
+      (set! (-> gp-0 spec-2) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-3)
+          (set! (-> gp-0 spec-2) (get-field-spec-by-id a0-3 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-4 (-> *part-id-table* 15)))
+      (set! (-> gp-0 spec-3) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-4)
+          (set! (-> gp-0 spec-3) (get-field-spec-by-id a0-4 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-5 (-> *part-id-table* 16)))
+      (set! (-> gp-0 spec-4) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-5)
+          (set! (-> gp-0 spec-4) (get-field-spec-by-id a0-5 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-6 (-> *part-id-table* 17)))
+      (set! (-> gp-0 spec-5) (the-as sp-field-init-spec 0))
+      (if (nonzero? a0-6)
+          (set! (-> gp-0 spec-5) (get-field-spec-by-id a0-6 (sp-field-id spt-a)))
+          )
+      )
+    (let ((a0-7 (-> *part-id-table* 18)))
+      (set! (-> gp-0 spec-6) (the-as sp-field-init-spec 0))
+      (the-as uint (when (nonzero? a0-7)
+                     (let ((v0-6 (get-field-spec-by-id a0-7 (sp-field-id spt-a))))
+                       (set! (-> gp-0 spec-6) v0-6)
+                       v0-6
+                       )
+                     )
+              )
+      )
+    )
+  )
+
+;; definition for function update-mood-mountain
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-mountain time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as mountain-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 0.875 0.25 2.0 0.0 1.0)
+      (update-mood-light arg0 6 8 1.0 0.0 arg1 0.0 1.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      (let* ((f0-1 (-> arg0 times 5 w))
+             (f1-1 (* 24.0 f0-1))
+             (f0-2 (* 20.0 f0-1))
+             )
+        (if (nonzero? (-> gp-1 spec-0))
+            (set! (-> gp-1 spec-0 initial-valuef) f1-1)
+            )
+        (if (nonzero? (-> gp-1 spec-1))
+            (set! (-> gp-1 spec-1 initial-valuef) f0-2)
+            )
+        (if (nonzero? (-> gp-1 spec-2))
+            (set! (-> gp-1 spec-2 initial-valuef) f0-2)
+            )
+        (if (nonzero? (-> gp-1 spec-3))
+            (set! (-> gp-1 spec-3 initial-valuef) f0-2)
+            )
+        (if (nonzero? (-> gp-1 spec-4))
+            (set! (-> gp-1 spec-4 initial-valuef) f0-2)
+            )
+        (if (nonzero? (-> gp-1 spec-5))
+            (set! (-> gp-1 spec-5 initial-valuef) f0-2)
+            )
+        (if (nonzero? (-> gp-1 spec-6))
+            (set! (-> gp-1 spec-6 initial-valuef) f0-2)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type forest-states
+(deftype forest-states (structure)
+  ((light light-state :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type forest-states
+(defmethod inspect forest-states ((obj forest-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'forest-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-forest
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-forest time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 0.875 0.25 2.0 0.0 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type atoll-states
+(deftype atoll-states (structure)
+  ((light     light-state :inline :offset-assert   0)
+   (explosion float               :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type atoll-states
+(defmethod inspect atoll-states ((obj atoll-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'atoll-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Texplosion: ~f~%" (-> obj explosion))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-atoll
+(defun init-mood-atoll ((arg0 mood-context))
+  (let ((v1-0 (the-as object (-> arg0 state))))
+    (set! (-> (the-as atoll-states v1-0) explosion) 0.0)
+    )
+  )
+
+;; definition for function update-mood-atoll
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-atoll time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s4-1 (the-as atoll-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 7 w) (-> s4-1 explosion))
+      (if (not (paused?))
+          (seek! (-> s4-1 explosion) 0.0 (* 2.0 (-> self clock seconds-per-frame)))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-atoll-explosion!
+(defun set-atoll-explosion! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'atoll)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as atoll-states v1-2) explosion) arg0)
+        )
+      )
+    )
+  )
+
+;; definition for function update-mood-atollext
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-atollext time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior-ambi arg0 #t)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (set-vector! (-> arg0 times 1) 1.0 1.0 1.0 1.0)
+    (set! (-> arg0 times 2 w) 0.0)
+    (set! (-> arg0 times 3 w) 0.0)
+    (set! (-> arg0 times 4 w) 0.0)
+    (set! (-> arg0 times 5 w) 0.0)
+    (set! (-> arg0 times 6 w) 0.0)
+    (set! (-> arg0 times 7 w) 0.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type drill-states
+(deftype drill-states (structure)
+  ((fire-floor      float                       :offset-assert   0)
+   (fire-floor-fade float                       :offset-assert   4)
+   (fire-floor-flag symbol                      :offset-assert   8)
+   (flame           flames-state      :inline   :offset-assert  12)
+   (electricity     electricity-state 2 :inline :offset-assert  20)
+   (pulse           pulse-state       :inline   :offset         52)
+   (light-flag      basic                       :offset-assert  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
+  )
+
+;; definition for method 3 of type drill-states
+(defmethod inspect drill-states ((obj drill-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'drill-states)
+  (format #t "~1Tfire-floor: ~f~%" (-> obj fire-floor))
+  (format #t "~1Tfire-floor-fade: ~f~%" (-> obj fire-floor-fade))
+  (format #t "~1Tfire-floor-flag: ~A~%" (-> obj fire-floor-flag))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (format #t "~1Telectricity[2] @ #x~X~%" (-> obj electricity))
+  (format #t "~1Tpulse: #<pulse-state @ #x~X>~%" (-> obj pulse))
+  (format #t "~1Tlight-flag: ~A~%" (-> obj light-flag))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-drill
+(defun init-mood-drill ((arg0 mood-context))
+  (set! (-> (the-as drill-states (-> arg0 state)) light-flag) #f)
+  #f
+  )
+
+;; definition for function update-drill-lights
+;; WARN: Return type mismatch int vs none.
+(defun update-drill-lights ((arg0 mood-context))
+  (let ((a1-0 (-> arg0 light-group))
+        (s5-0 (-> arg0 light-group 1))
+        (gp-0 (-> arg0 light-group 2))
+        )
+    (mem-copy! (the-as pointer s5-0) (the-as pointer a1-0) 192)
+    (let ((a0-2 (new 'static 'vector :x 0.902 :y 0.675)))
+      (vector+float*! (the-as vector (-> s5-0 ambi color)) (the-as vector (-> s5-0 ambi color)) a0-2 0.3)
+      )
+    (let ((v1-2 (-> gp-0 dir0)))
+      (set! (-> v1-2 direction x) 0.0)
+      (set! (-> v1-2 direction y) 1.0)
+      (set! (-> v1-2 direction z) 0.0)
+      (set! (-> v1-2 direction w) 1.0)
+      )
+    (set-vector! (-> gp-0 dir0 color) 0.3 0.3 0.35 1.0)
+    (set-vector! (-> gp-0 ambi color) 0.3 0.3 0.35 1.0)
+    (set! (-> gp-0 dir0 extra x) 0.5)
+    (set! (-> gp-0 ambi extra x) 0.5)
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-drill
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-drill time-of-day-proc ((arg0 mood-context) (arg1 object) (arg2 int))
+  (copy-mood-exterior-ambi arg0 #t)
+  (update-drill-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as drill-states (-> arg0 state))))
+      (update-mood-electricity arg0 2 20 0.75 1.0)
+      (update-mood-electricity arg0 3 36 0.75 1.0)
+      (set! (-> arg0 times 5 w) 1.0)
+      (set! (-> arg0 times 4 w) (-> gp-1 fire-floor))
+      (update-mood-flames arg0 6 1 12 0.9 0.0009765625 2.0)
+      (if (and (task-node-closed? (game-task-node drill-mech-smash-consoles))
+               (not (task-node-closed? (game-task-node drill-mech-resolution)))
+               )
+          (update-mood-pulse arg0 7 52 0.75 0.25 (* 65536.0 (-> self clock seconds-per-frame)) 16384.0)
+          )
+      (when (not (paused?))
+        (if (-> gp-1 fire-floor-flag)
+            (seek! (-> gp-1 fire-floor-fade) 1.5 (* 3.0 (-> self clock seconds-per-frame)))
+            (seek! (-> gp-1 fire-floor-fade) 0.5 (* 3.0 (-> self clock seconds-per-frame)))
+            )
+        (set! (-> gp-1 fire-floor)
+              (+ (-> gp-1 fire-floor-fade) (* (-> gp-1 fire-floor-fade) (rand-vu-float-range 0.0 0.1)))
+              )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-drill-fire-floor!
+(defun set-drill-fire-floor! ((arg0 symbol))
+  (let ((v1-1 (level-get *level* 'drillmid)))
+    (if v1-1
+        (set! (-> (the-as drill-states (-> v1-1 mood-context state)) fire-floor-flag) arg0)
+        )
+    )
+  (let ((v1-4 (level-get *level* 'drillb)))
+    (when v1-4
+      (set! (-> (the-as drill-states (-> v1-4 mood-context state)) fire-floor-flag) arg0)
+      arg0
+      )
+    )
+  )
+
+;; definition for function set-drill-electricity-scale!
+(defun set-drill-electricity-scale! ((arg0 float) (arg1 int))
+  (let ((v1-1 (level-get *level* 'drill)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as drill-states v1-2) electricity arg1 scale) arg0)
+        )
+      )
+    )
+  (let ((v1-5 (level-get *level* 'drillmid)))
+    (when v1-5
+      (let ((v1-6 (the-as object (-> v1-5 mood-context state))))
+        (set! (-> (the-as drill-states v1-6) electricity arg1 scale) arg0)
+        )
+      )
+    )
+  )
+
+;; definition for function update-mood-drillmnt
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-drillmnt time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior-ambi arg0 #t)
+  (update-drill-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s5-1 *math-camera*))
+      (set! (-> arg0 times 5 w) 1.0)
+      (if (not (paused?))
+          (quaternion-rotate-y!
+            (-> s5-1 quat-other)
+            (-> s5-1 quat-other)
+            (* 273.06668 (-> self clock seconds-per-frame))
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type drillb-states
+(deftype drillb-states (structure)
+  ((fire-floor      float               :offset-assert   0)
+   (fire-floor-fade float               :offset-assert   4)
+   (fire-floor-flag symbol              :offset-assert   8)
+   (pulse           pulse-state :inline :offset-assert  12)
+   (light-flag      symbol              :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type drillb-states
+(defmethod inspect drillb-states ((obj drillb-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'drillb-states)
+  (format #t "~1Tfire-floor: ~f~%" (-> obj fire-floor))
+  (format #t "~1Tfire-floor-fade: ~f~%" (-> obj fire-floor-fade))
+  (format #t "~1Tfire-floor-flag: ~A~%" (-> obj fire-floor-flag))
+  (format #t "~1Tpulse: #<pulse-state @ #x~X>~%" (-> obj pulse))
+  (format #t "~1Tlight-flag: ~A~%" (-> obj light-flag))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-drillb
+(defun init-mood-drillb ((arg0 mood-context))
+  (set! (-> (the-as drillb-states (-> arg0 state)) light-flag) #f)
+  #f
+  )
+
+;; definition for function update-mood-drillb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-drillb time-of-day-proc ((arg0 mood-context))
+  (copy-mood-exterior-ambi arg0 #f)
+  (update-drill-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((gp-0 (the-as drillb-states (-> arg0 state))))
+        (set! (-> arg0 times 1 w) 1.0)
+        (set! (-> arg0 times 4 w) (-> gp-0 fire-floor))
+        (if (and (task-node-closed? (game-task-node drill-mech-smash-consoles))
+                 (not (task-node-closed? (game-task-node drill-mech-resolution)))
+                 )
+            (update-mood-pulse arg0 7 12 0.75 0.25 (* 65536.0 (-> self clock seconds-per-frame)) 16384.0)
+            )
+        (when (not (paused?))
+          (if (-> gp-0 fire-floor-flag)
+              (seek! (-> gp-0 fire-floor-fade) 1.5 (* 3.0 (-> self clock seconds-per-frame)))
+              (seek! (-> gp-0 fire-floor-fade) 0.5 (* 3.0 (-> self clock seconds-per-frame)))
+              )
+          (set! (-> gp-0 fire-floor)
+                (+ (-> gp-0 fire-floor-fade) (* (-> gp-0 fire-floor-fade) (rand-vu-float-range 0.0 0.1)))
+                )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type casboss-states
+(deftype casboss-states (structure)
+  ((light     light-state :inline :offset-assert   0)
+   (explosion float               :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type casboss-states
+(defmethod inspect casboss-states ((obj casboss-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'casboss-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Texplosion: ~f~%" (-> obj explosion))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-casboss-lights
+(defun update-casboss-lights ((arg0 mood-context))
+  (let ((s4-0 (-> arg0 light-group 1))
+        (s5-0 (-> arg0 light-group 2))
+        (gp-0 (-> arg0 light-group 3))
+        )
+    (let ((v1-0 (-> s4-0 dir0)))
+      (set! (-> v1-0 direction x) 0.707)
+      (set! (-> v1-0 direction y) -0.5)
+      (set! (-> v1-0 direction z) 0.707)
+      (set! (-> v1-0 direction w) 1.0)
+      )
+    (vector-normalize! (the-as vector (-> s4-0 dir0)) 1.0)
+    (set-vector! (-> s4-0 dir0 color) 0.0 1.9921875 0.0 1.0)
+    (set! (-> s4-0 dir0 extra x) 1.0)
+    (set! (-> s4-0 ambi extra x) 0.0)
+    (set-vector! (-> s5-0 ambi color) 0.3 0.3 0.5 1.0)
+    (set! (-> s5-0 dir0 extra x) 0.0)
+    (set! (-> s5-0 ambi extra x) 1.0)
+    (let ((v1-5 (-> gp-0 dir0)))
+      (set! (-> v1-5 direction x) 0.6499)
+      (set! (-> v1-5 direction y) 0.7134)
+      (set! (-> v1-5 direction z) 0.2619)
+      (set! (-> v1-5 direction w) 1.0)
+      )
+    (set-vector! (-> gp-0 dir0 color) 0.65 0.575 0.575 1.0)
+    (let ((v1-7 (-> gp-0 dir1)))
+      (set! (-> v1-7 direction x) -0.6499)
+      (set! (-> v1-7 direction y) 0.7134)
+      (set! (-> v1-7 direction z) -0.2619)
+      (set! (-> v1-7 direction w) 1.0)
+      )
+    (set-vector! (-> gp-0 dir1 color) 0.75 0.6 0.5 1.0)
+    (set-vector! (-> gp-0 ambi color) 0.2 0.2 0.25 1.0)
+    (set! (-> gp-0 dir0 extra x) 0.65)
+    (set! (-> gp-0 dir1 extra x) 1.0)
+    (set! (-> gp-0 ambi extra x) 0.7)
+    )
+  )
+
+;; definition for function update-mood-casboss
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-casboss time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-casboss-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s4-1 (the-as casboss-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) 1.0)
+      (set! (-> arg0 times 7 w) 0.0)
+      (if (not (paused?))
+          (set! (-> s4-1 explosion) (- (-> s4-1 explosion) (-> self clock seconds-per-frame)))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-casboss-explosion!
+(defun set-casboss-explosion! ()
+  (let ((v1-1 (level-get *level* 'ctywide)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as casboss-states v1-2) explosion) 1.0)
+        )
+      )
+    )
+  )
+
+;; definition of type caspad-states
+(deftype caspad-states (structure)
+  ((light       light-state :inline :offset-assert   0)
+   (red         float               :offset-assert   8)
+   (white       float               :offset-assert  12)
+   (white-count int32               :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type caspad-states
+(defmethod inspect caspad-states ((obj caspad-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'caspad-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tred: ~f~%" (-> obj red))
+  (format #t "~1Twhite: ~f~%" (-> obj white))
+  (format #t "~1Twhite-count: ~D~%" (-> obj white-count))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-caspad
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-caspad time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as caspad-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> gp-1 red))
+      (set! (-> arg0 times 7 w) (-> gp-1 white))
+      (set! (-> arg0 times 5 w) 1.0)
+      (when (not (paused?))
+        (let* ((v1-11 (-> *display* part-clock frame-counter))
+               (f0-4 (* 0.006666667 (the float (mod v1-11 150))))
+               )
+          (set! (-> gp-1 red) (+ 0.75 (* 0.25 (cos (* 65536.0 f0-4)))))
+          )
+        (when (<= (-> gp-1 white-count) 0)
+          (set! (-> gp-1 white) (rand-vu-float-range 0.85 1.05))
+          (set! (-> gp-1 white-count) 2)
+          )
+        (+! (-> gp-1 white-count) -1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type palout-states
+(deftype palout-states (structure)
+  ((light light-state  :inline :offset-assert   0)
+   (flame flames-state :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
+  )
+
+;; definition for method 3 of type palout-states
+(defmethod inspect palout-states ((obj palout-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'palout-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-palout
+(defun init-mood-palout ((arg0 mood-context))
+  (let ((v0-0 (-> *math-camera* trans-other)))
+    (set! (-> v0-0 x) 760754.2)
+    (set! (-> v0-0 y) 0.0)
+    (set! (-> v0-0 z) 2471944.2)
+    (set! (-> v0-0 w) 1.0)
+    v0-0
+    )
+  )
+
+;; definition for function update-mood-palout
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-palout time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior-ambi arg0 #t)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 2 8 0.5 0.0009765625 1.5)
+    (let ((gp-1 *math-camera*))
+      (if (not (paused?))
+          (quaternion-rotate-y!
+            (-> gp-1 quat-other)
+            (-> gp-1 quat-other)
+            (* 273.06668 (-> self clock seconds-per-frame))
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type palroof-states
+(deftype palroof-states (structure)
+  ((electricity electricity-state 2 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type palroof-states
+(defmethod inspect palroof-states ((obj palroof-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'palroof-states)
+  (format #t "~1Telectricity[2] @ #x~X~%" (-> obj electricity))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-palroof
+(defun init-mood-palroof ((arg0 mood-context))
+  (let ((v1-0 (the-as palroof-states (-> arg0 state))))
+    (set! (-> v1-0 electricity 0 scale) 1.0)
+    (set! (-> v1-0 electricity 1 scale) 1.0)
+    )
+  )
+
+;; definition for function update-mood-palroof
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-palroof time-of-day-proc ((arg0 mood-context) (arg1 object) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (set! (-> arg0 times 7 w) 1.0)
+    (update-mood-electricity arg0 5 0 1.2 1.7)
+    (update-mood-electricity arg0 6 16 1.2 1.7)
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-palroof-electricity-scale!
+(defun set-palroof-electricity-scale! ((arg0 float) (arg1 int))
+  (let ((v1-1 (level-get *level* 'palroof)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as palroof-states v1-2) electricity arg1 scale) arg0)
+        )
+      )
+    )
+  )
+
+;; definition of type palent-states
+(deftype palent-states (structure)
+  ((flame        flames-state :inline :offset-assert   0)
+   (turret-value float                :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type palent-states
+(defmethod inspect palent-states ((obj palent-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'palent-states)
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> obj flame))
+  (format #t "~1Tturret-value: ~f~%" (-> obj turret-value))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-palent
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-palent time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s5-1 (the-as palent-states (-> arg0 state))))
+      (update-mood-flames arg0 6 1 0 0.75 0.00048828125 2.0)
+      (set! (-> arg0 times 5 w) (-> s5-1 turret-value))
+      (set! (-> arg0 times 7 w) 1.0)
+      (if (not (paused?))
+          (set! (-> s5-1 turret-value) (fmax 0.0 (+ -0.025 (-> s5-1 turret-value))))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-palent-turret-flash!
+(defun set-palent-turret-flash! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'palent)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as palent-states v1-2) turret-value) (* 0.5 arg0))
+        )
+      )
+    )
+  )
+
+;; definition of type nest-states
+(deftype nest-states (structure)
+  ((light       light-state :inline :offset-assert   0)
+   (green-flag  symbol              :offset-assert   8)
+   (green       float               :offset-assert  12)
+   (green-noise float               :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type nest-states
+(defmethod inspect nest-states ((obj nest-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'nest-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tgreen-flag: ~A~%" (-> obj green-flag))
+  (format #t "~1Tgreen: ~f~%" (-> obj green))
+  (format #t "~1Tgreen-noise: ~f~%" (-> obj green-noise))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-nest
+(defun init-mood-nest ((arg0 mood-context))
+  (set! (-> (the-as nest-states (-> arg0 state)) green-flag) #f)
+  #f
+  )
+
+;; definition for function update-nest-lights
+(defun update-nest-lights ((arg0 mood-context))
+  (let ((a2-0 (new 'stack-no-clear 'vector4)))
+    (set-vector! a2-0 0.53660715 0.26964286 1.0 1.0)
+    (vector4-mul! (the-as vector4 (-> arg0 current-fog)) (the-as vector4 (-> arg0 current-fog)) a2-0)
+    )
+  (mem-copy! (the-as pointer (-> arg0 light-group 1)) (the-as pointer (-> arg0 light-group)) 192)
+  )
+
+;; definition for function update-mood-nest
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-nest time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-nest-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s5-1 (the-as nest-states (-> arg0 state))))
+      (when (not (paused?))
+        (cond
+          ((-> s5-1 green-flag)
+           (set! (-> s5-1 green) (fmin 1.9 (+ (-> s5-1 green) (* 2.0 (-> self clock seconds-per-frame)))))
+           (set! (-> s5-1 green-noise) (rand-vu-float-range 0.0 (-> s5-1 green)))
+           )
+          (else
+            (set! (-> s5-1 green) (fmax 0.0 (- (-> s5-1 green) (* 2.0 (-> self clock seconds-per-frame)))))
+            (set! (-> s5-1 green-noise) 0.0)
+            )
+          )
+        )
+      (update-mood-light arg0 5 0 1.0 0.25 20.0 0.0 1.0)
+      (set! (-> arg0 times 6 w) (+ (-> s5-1 green) (-> s5-1 green-noise)))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-nest-green-flag!
+(defun set-nest-green-flag! ((arg0 symbol))
+  (let ((v1-1 (level-get *level* 'nest)))
+    (when v1-1
+      (set! (-> (the-as nest-states (-> v1-1 mood-context state)) green-flag) arg0)
+      arg0
+      )
+    )
+  )
+
+;; definition of type village1-states
+(deftype village1-states (structure)
+  ((interp      float   :offset-assert   0)
+   (interp-flag symbol  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type village1-states
+(defmethod inspect village1-states ((obj village1-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'village1-states)
+  (format #t "~1Tinterp: ~f~%" (-> obj interp))
+  (format #t "~1Tinterp-flag: ~A~%" (-> obj interp-flag))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function init-mood-village1
+(defun init-mood-village1 ((arg0 mood-context))
+  (let ((v1-0 (the-as village1-states (-> arg0 state))))
+    (set! (-> v1-0 interp) 0.0)
+    (set! (-> v1-0 interp-flag) #f)
+    )
+  #f
+  )
+
+;; definition for function update-village1-lights
+(defun update-village1-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group)))
+    (set! (-> v1-0 0 dir0 extra x) (* 0.5 (-> v1-0 0 dir0 extra x)))
+    (set! (-> v1-0 0 dir1 extra x) (* 0.5 (-> v1-0 0 dir1 extra x)))
+    (set! (-> v1-0 0 dir2 extra x) (* 0.5 (-> v1-0 0 dir2 extra x)))
+    (set! (-> v1-0 0 ambi extra x) (* 0.75 (-> v1-0 0 ambi extra x)))
+    )
+  )
+
+;; definition for function update-mood-village1
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-village1 time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-village1-lights arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as village1-states (-> arg0 state))))
+      (let ((f0-0 (-> gp-1 interp)))
+        (set! (-> arg0 times 6 w) (- 1.0 f0-0))
+        (set! (-> arg0 times 7 w) f0-0)
+        (if (!= f0-0 0.0)
+            (set-filter-color! (- 1.0 (* 0.25 f0-0)) (- 1.0 (* 0.5 f0-0)) 1.0)
+            )
+        )
+      (when (not (paused?))
+        (if (-> gp-1 interp-flag)
+            (seek! (-> gp-1 interp) 1.0 (* 0.5 (-> self clock seconds-per-frame)))
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function update-mood-copy-village1
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-copy-village1 time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (let ((v1-1 (level-get *level* 'village1)))
+    (if (and v1-1 (= (-> v1-1 status) 'active))
+        (mem-copy! (the-as pointer arg0) (the-as pointer (-> v1-1 mood-context)) 1968)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function clear-village1-interp!
+(defun clear-village1-interp! ()
+  (let ((v1-1 (level-get *level* 'village1)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as village1-states v1-2) interp) 0.0)
+        (set! (-> (the-as village1-states v1-2) interp-flag) #f)
+        )
+      #f
+      )
+    )
+  )
+
+;; definition for function set-village1-interp!
+(defun set-village1-interp! ()
+  (let ((v1-1 (level-get *level* 'village1)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state)))
+            (v0-1 #t)
+            )
+        (set! (-> (the-as village1-states v1-2) interp-flag) v0-1)
+        v0-1
+        )
+      )
+    )
+  )
+
+;; definition of type consite-states
+(deftype consite-states (structure)
+  ((light light-state :inline :offset-assert   0)
+   (flash float               :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type consite-states
+(defmethod inspect consite-states ((obj consite-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'consite-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> obj light))
+  (format #t "~1Tflash: ~f~%" (-> obj flash))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-consite
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-consite time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((f0-0 0.5))
+      (let ((f1-0 1.0))
+        (cond
+          ((or (>= 6.0 arg1) (>= arg1 18.0))
+           (set! f0-0 f1-0)
+           )
+          ((and (< 6.0 arg1) (< arg1 7.0))
+           (+! f0-0 (* (- f1-0 f0-0) (- 7.0 arg1)))
+           )
+          ((and (< 17.0 arg1) (< arg1 18.0))
+           (+! f0-0 (* (- f1-0 f0-0) (+ -17.0 arg1)))
+           )
+          )
+        )
+      (set! (-> arg0 times 7 w) f0-0)
+      )
+    (let ((s4-1 (the-as consite-states (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> s4-1 flash))
+      (if (not (paused?))
+          (set! (-> s4-1 flash) (fmax 0.0 (- (-> s4-1 flash) (* 2.0 (-> self clock seconds-per-frame)))))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-consite-flash!
+(defun set-consite-flash! ()
+  (let ((v1-1 (level-get *level* 'consite)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as consite-states v1-2) flash) 2.0)
+        )
+      )
+    )
+  )
+
+;; definition of type mincan-states
+(deftype mincan-states (structure)
+  ((beams float 2 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type mincan-states
+(defmethod inspect mincan-states ((obj mincan-states))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mincan-states)
+  (format #t "~1Tbeams[2] @ #x~X~%" (-> obj beams))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function update-mood-mincan
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-mincan time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((v1-7 (the-as mincan-states (-> arg0 state))))
+      (set! (-> arg0 times 5 w) (-> v1-7 beams 0))
+      (set! (-> arg0 times 6 w) (-> v1-7 beams 1))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-mincan-beam!
+(defun set-mincan-beam! ((arg0 int) (arg1 float))
+  (let ((v1-1 (level-get *level* 'mincan)))
+    (when v1-1
+      (let ((v1-2 (-> v1-1 mood-context state)))
+        (set! (-> (the-as mincan-states (+ (* arg0 4) (the-as int v1-2))) beams 0) arg1)
+        )
+      )
+    )
+  )

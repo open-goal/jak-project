@@ -5,5 +5,634 @@
 ;; name in dgo: water-anim
 ;; dgos: GAME, COMMON
 
+(declare-type flow-control basic)
+
 ;; DECOMP BEGINS
 
+(deftype water-anim (process-drawable)
+  ((water-height        meters        :offset-assert 200)
+   (wade-height         meters        :offset-assert 204)
+   (swim-height         meters        :offset-assert 208)
+   (bottom-height       meters        :offset-assert 212)
+   (attack-event        symbol        :offset-assert 216)
+   (attack-id           uint32        :offset-assert 220)
+   (flow                flow-control  :offset-assert 224)
+   (target              handle        :offset-assert 232)
+   (flags               water-flags   :offset-assert 240)
+   (look                int32         :offset-assert 244)
+   (play-ambient-sound? symbol        :offset-assert 248)
+   (visible             symbol        :offset-assert 252)
+   )
+  :heap-base #x80
+  :method-count-assert 29
+  :size-assert         #x100
+  :flag-assert         #x1d00800100
+  (:methods
+    (water-anim-method-20 () none 20)
+    (idle () _type_ :state 21)
+    (move-to-point! (_type_ vector) int 22)
+    (get-ripple-height (_type_ vector) float 23)
+    (init-water! (_type_) none 24)
+    (reset-root! (_type_) trsqv 25)
+    (water-anim-init! (_type_) none 26)
+    (water-anim-method-27 (_type_) none 27)
+    (offset! (_type_) none 28)
+    )
+  )
+
+
+(defmethod relocate water-anim ((obj water-anim) (arg0 int))
+  (if (nonzero? (-> obj flow))
+      (&+! (-> obj flow) arg0)
+      )
+  ((the-as (function water-anim int water-anim) (find-parent-method water-anim 7)) obj arg0)
+  )
+
+(defskelgroup skel-water-anim-nest-dark-eco-largepool water-anim-nest-dark-eco water-anim-nest-dark-eco-largepool-lod0-jg -1
+              ((water-anim-nest-dark-eco-largepool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 50)
+              )
+
+(defskelgroup skel-water-anim-nest-dark-eco-smlupperpool water-anim-nest-dark-eco water-anim-nest-dark-eco-smlupperpool-lod0-jg -1
+              ((water-anim-nest-dark-eco-smlupperpool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
+
+(defskelgroup skel-water-anim-nest-dark-eco-middlepool water-anim-nest-dark-eco water-anim-nest-dark-eco-middlepool-lod0-jg -1
+              ((water-anim-nest-dark-eco-middlepool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 32)
+              )
+
+(defskelgroup skel-water-anim-nest-dark-eco-botpool water-anim-nest-dark-eco water-anim-nest-dark-eco-botpool-lod0-jg -1
+              ((water-anim-nest-dark-eco-botpool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 35)
+              )
+
+(defskelgroup skel-water-anim-strip-dark-eco-near-lift water-anim-strip-dark-eco water-anim-strip-dark-eco-near-lift-lod0-jg -1
+              ((water-anim-strip-dark-eco-near-lift-lod0-mg (meters 20))
+               (water-anim-strip-dark-eco-near-lift-lod1-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 29)
+              )
+
+(defskelgroup skel-water-anim-strip-dark-eco-near-crane water-anim-strip-dark-eco water-anim-strip-dark-eco-near-crane-lod0-jg -1
+              ((water-anim-strip-dark-eco-near-crane-lod0-mg (meters 20))
+               (water-anim-strip-dark-eco-near-crane-lod1-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 35)
+              )
+
+(defskelgroup skel-water-anim-strip-dark-eco-with-eggs water-anim-strip-dark-eco water-anim-strip-dark-eco-with-eggs-lod0-jg -1
+              ((water-anim-strip-dark-eco-with-eggs-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
+
+(defskelgroup skel-water-anim-strip-dark-eco-under-bridge water-anim-strip-dark-eco water-anim-strip-dark-eco-under-bridge-lod0-jg -1
+              ((water-anim-strip-dark-eco-under-bridge-lod0-mg (meters 20))
+               (water-anim-strip-dark-eco-under-bridge-lod1-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 32)
+              )
+
+(defskelgroup skel-water-anim-mountain-dark-eco-dice water-anim-mountain-dark-eco water-anim-mountain-dark-eco-dice-lod0-jg -1
+              ((water-anim-mountain-dark-eco-dice-lod0-mg (meters 999999)))
+              :bounds (static-spherem -20 0 0 110)
+              )
+
+(defskelgroup skel-water-anim-under-pool water-anim-under water-anim-under-pool-lod0-jg -1
+              ((water-anim-under-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 51)
+              )
+
+(defskelgroup skel-water-anim-under-drainout water-anim-under water-anim-under-drainout-lod0-jg -1
+              ((water-anim-under-drainout-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              )
+
+(defskelgroup skel-water-anim-under-fillup water-anim-under water-anim-under-fillup-lod0-jg -1
+              ((water-anim-under-fillup-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 23)
+              )
+
+(defskelgroup skel-water-anim-mountain-fall-hi water-anim-mountain water-anim-mountain-fall-hi-lod0-jg -1
+              ((water-anim-mountain-fall-hi-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 42)
+              )
+
+(defskelgroup skel-water-anim-mountain-fall-med water-anim-mountain water-anim-mountain-fall-med-lod0-jg -1
+              ((water-anim-mountain-fall-med-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
+
+(defskelgroup skel-water-anim-mountain-fall-low water-anim-mountain water-anim-mountain-fall-low-lod0-jg -1
+              ((water-anim-mountain-fall-low-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 25)
+              )
+
+(defskelgroup skel-water-anim-stadium-middle-pool water-anim-stadium water-anim-stadium-middle-pool-lod0-jg -1
+              ((water-anim-stadium-middle-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 24)
+              )
+
+(defskelgroup skel-water-anim-stadium-top-fountain water-anim-stadium water-anim-stadium-top-fountain-lod0-jg -1
+              ((water-anim-stadium-top-fountain-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 9.5)
+              )
+
+(defskelgroup skel-water-anim-stadium-floor-pool water-anim-stadium water-anim-stadium-floor-pool-lod0-jg -1
+              ((water-anim-stadium-floor-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 22)
+              )
+
+(defskelgroup skel-water-anim-tomb-dark-eco-stair-block water-anim-tomb-dark-eco water-anim-tomb-dark-eco-stair-block-lod0-jg -1
+              ((water-anim-tomb-dark-eco-stair-block-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
+
+(defskelgroup skel-water-anim-tomb-dark-eco-raised-block water-anim-tomb-dark-eco water-anim-tomb-dark-eco-raised-block-lod0-jg -1
+              ((water-anim-tomb-dark-eco-raised-block-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
+
+(defskelgroup skel-water-anim-fortress-exitb-pool water-anim-fortress water-anim-fortress-exitb-pool-lod0-jg -1
+              ((water-anim-fortress-exitb-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 51)
+              )
+
+(defskelgroup skel-water-anim-tomb-main-hall water-anim-tomb water-anim-tomb-main-hall-lod0-jg -1
+              ((water-anim-tomb-main-hall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 150)
+              )
+
+(defskelgroup skel-water-anim-tomb-tunnel-b water-anim-tomb water-anim-tomb-tunnel-b-lod0-jg -1
+              ((water-anim-tomb-tunnel-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 36)
+              )
+
+(defskelgroup skel-water-anim-tomb-tunnel-c water-anim-tomb water-anim-tomb-tunnel-c-lod0-jg -1
+              ((water-anim-tomb-tunnel-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 23)
+              )
+
+(defskelgroup skel-water-anim-tomb-tunnel-d water-anim-tomb water-anim-tomb-tunnel-d-lod0-jg -1
+              ((water-anim-tomb-tunnel-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 5 0 5 42)
+              )
+
+(defskelgroup skel-water-anim-tomb-tunnel-e water-anim-tomb water-anim-tomb-tunnel-e-lod0-jg -1
+              ((water-anim-tomb-tunnel-e-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 37)
+              )
+
+(defskelgroup skel-water-anim-tomb-tunnel-f water-anim-tomb water-anim-tomb-tunnel-f-lod0-jg -1
+              ((water-anim-tomb-tunnel-f-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 24)
+              )
+
+(defskelgroup skel-water-anim-mincan-exitb-pool water-anim-mincan water-anim-mincan-exitb-pool-lod0-jg -1
+              ((water-anim-mincan-exitb-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 55)
+              )
+
+(defskelgroup skel-water-anim-ctypal-lrgsqr-pool water-anim-ctypal water-anim-ctypal-lrgsqr-pool-lod0-jg -1
+              ((water-anim-ctypal-lrgsqr-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 24)
+              )
+
+(defskelgroup skel-water-anim-ctypal-smlsqr-pool water-anim-ctypal water-anim-ctypal-smlsqr-pool-lod0-jg -1
+              ((water-anim-ctypal-smlsqr-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 11.25)
+              )
+
+(defskelgroup skel-water-anim-ctypal-lrgfloor-pool water-anim-ctypal water-anim-ctypal-lrgfloor-pool-lod0-jg -1
+              ((water-anim-ctypal-lrgfloor-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 22)
+              )
+
+(defskelgroup skel-water-anim-ctypal-smlground-pool water-anim-ctypal water-anim-ctypal-smlground-pool-lod0-jg -1
+              ((water-anim-ctypal-smlground-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 22.5)
+              )
+
+(defskelgroup skel-water-anim-ctypal-middle-fountain water-anim-ctypal water-anim-ctypal-middle-fountain-lod0-jg -1
+              ((water-anim-ctypal-middle-fountain-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 22.5)
+              )
+
+(defskelgroup skel-water-anim-ctypal-long-grnd-pool water-anim-ctypal water-anim-ctypal-long-grnd-pool-lod0-jg -1
+              ((water-anim-ctypal-long-grnd-pool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 50)
+              )
+
+(deftype water-anim-look (structure)
+  ((skel-group         string      :offset-assert   0)
+   (anim               int32       :offset-assert   4)
+   (ambient-sound-spec sound-spec  :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+(define *water-anim-look*
+  (new 'static 'boxed-array :type water-anim-look
+    (new 'static 'water-anim-look :skel-group "water-anim-nest-dark-eco-largepool" :anim 8 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-nest-dark-eco-smlupperpool"
+      :anim 8
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-nest-dark-eco-middlepool"
+      :anim 8
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look :skel-group "water-anim-nest-dark-eco-botpool" :anim 8 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-strip-dark-eco-near-lift"
+      :anim 12
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-strip-dark-eco-near-lift"
+      :anim 12
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-strip-dark-eco-near-crane"
+      :anim 12
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-strip-dark-eco-with-eggs"
+      :anim 12
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-strip-dark-eco-under-bridge"
+      :anim 12
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look :skel-group "water-anim-mountain-dark-eco-dice" :anim 2 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-under-pool" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-under-drainout" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-under-fillup" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-mountain-fall-hi" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-mountain-fall-med" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-mountain-fall-low" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-stadium-middle-pool" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-stadium-top-fountain" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-stadium-floor-pool" :anim 6 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-tomb-dark-eco-stair-block"
+      :anim 4
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look
+      :skel-group "water-anim-tomb-dark-eco-raised-block"
+      :anim 4
+      :ambient-sound-spec #f
+      )
+    (new 'static 'water-anim-look :skel-group "water-anim-fortress-exitb-pool" :anim 2 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-main-hall" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-tunnel-b" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-tunnel-c" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-tunnel-d" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-tunnel-e" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-tomb-tunnel-f" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-mincan-exitb-pool" :anim 2 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-lrgsqr-pool" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-smlsqr-pool" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-lrgfloor-pool" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-smlground-pool" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-middle-fountain" :anim 12 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-ctypal-long-grnd-pool" :anim 12 :ambient-sound-spec #f)
+    )
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defbehavior water-anim-event-handler water-anim ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-1 object))
+  (the-as
+    object
+    (case arg2
+      (('move-to)
+       (move-to-point! self (the-as vector (-> arg3 param 0)))
+       (set! v0-1 (logclear (-> self mask) (process-mask sleep-code)))
+       (set! (-> self mask) (the-as process-mask v0-1))
+       v0-1
+       )
+      (('move-to-y)
+       (let ((a1-2 (new 'stack-no-clear 'vector)))
+         (set! (-> a1-2 quad) (-> self root trans quad))
+         (set! (-> a1-2 y) (the-as float (-> arg3 param 0)))
+         (move-to-point! self a1-2)
+         )
+       (set! v0-1 (logclear (-> self mask) (process-mask sleep-code)))
+       (set! (-> self mask) (the-as process-mask v0-1))
+       v0-1
+       )
+      (('water)
+       (let* ((s5-0 (the-as object (-> arg3 param 0)))
+              (s4-0 (the-as object (-> arg3 param 1)))
+              (gp-0 (if (type? (the-as process s4-0) process-focusable)
+                        (the-as uint s4-0)
+                        )
+                    )
+              )
+         (when (and (logtest? (-> self flags) (water-flags deadly))
+                    (logtest? (water-flags touch-water) (-> (the-as water-info s5-0) flags))
+                    (the-as uint gp-0)
+                    )
+           (let ((v1-15 (-> self attack-event)))
+             (case v1-15
+               ((#f)
+                )
+               (('heat)
+                (send-event (the-as process-tree gp-0) 'heat (* 10.0 (-> self clock seconds-per-frame)))
+                )
+               (('drown-death 'lava 'dark-eco-pool)
+                (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
+                         (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-10 from) (process->ppointer self))
+                           (set! (-> a1-10 num-params) 2)
+                           (set! (-> a1-10 message) 'attack-invinc)
+                           (set! (-> a1-10 param 0) (the-as uint #f))
+                           (let ((a2-4 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                             (set! (-> a2-4 id) (-> self attack-id))
+                             (set! (-> a2-4 mode) v1-15)
+                             (set! (-> a1-10 param 1) (the-as uint a2-4))
+                             )
+                           (send-event-function (the-as process-focusable gp-0) a1-10)
+                           )
+                         )
+                    (send-event self 'notify 'attack)
+                    )
+                )
+               (else
+                 (if (and (not (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status)))
+                          (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+                            (set! (-> a1-13 from) (process->ppointer self))
+                            (set! (-> a1-13 num-params) 2)
+                            (set! (-> a1-13 message) 'attack)
+                            (set! (-> a1-13 param 0) (the-as uint #f))
+                            (let ((a2-6 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                              (set! (-> a2-6 id) (-> self attack-id))
+                              (set! (-> a2-6 mode) v1-15)
+                              (set! (-> a1-13 param 1) (the-as uint a2-6))
+                              )
+                            (send-event-function (the-as process-tree gp-0) a1-13)
+                            )
+                          )
+                     (send-event self 'notify 'attack)
+                     )
+                 )
+               )
+             )
+           )
+         (when (and (logtest? (-> self flags) (water-flags flow))
+                    (logtest? (water-flags touch-water) (-> (the-as water-info s5-0) flags))
+                    )
+           (let ((a0-40 (-> self flow)))
+             (if (nonzero? a0-40)
+                 (the-as object (push-process a0-40 (the-as process-focusable gp-0)))
+                 )
+             )
+           )
+         )
+       )
+      (('visible)
+       (cond
+         ((-> arg3 param 0)
+          (set! (-> self visible) #t)
+          )
+         (else
+           (set! (-> self visible) #f)
+           (logior! (-> self draw status) (draw-control-status no-draw))
+           )
+         )
+       (logclear! (-> self mask) (process-mask sleep-code))
+       #t
+       )
+      )
+    )
+  )
+
+(defstate idle (water-anim)
+  :virtual #t
+  :event water-anim-event-handler
+  :trans (behavior ()
+    (let ((a0-0 (-> self flow)))
+      (if (and (nonzero? a0-0) *display-vol-marks*)
+          (draw-path a0-0)
+          )
+      )
+    (cond
+      ((not (-> self visible))
+       )
+      ((< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
+       (logior! (-> self draw status) (draw-control-status no-draw))
+       )
+      (else
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        )
+      )
+    (if (and (-> self visible) (and (-> self play-ambient-sound?) (nonzero? (-> self sound))))
+        (update! (-> self sound))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-post)
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defmethod move-to-point! water-anim ((obj water-anim) (arg0 vector))
+  "Set a [[water-anim]]'s `trans` as specified by the [[vector]] and update `water-height`."
+  (set! (-> obj root trans quad) (-> arg0 quad))
+  (set! (-> obj water-height) (-> obj root trans y))
+  (if (nonzero? (-> obj sound))
+      (update-trans! (-> obj sound) (-> obj root trans))
+      )
+  )
+
+(defmethod get-ripple-height water-anim ((obj water-anim) (arg0 vector))
+  (ripple-find-height obj 0 arg0)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod water-anim-method-27 water-anim ((obj water-anim))
+  "Empty."
+  (none)
+  )
+
+;; WARN: Return type mismatch quaternion vs none.
+(defmethod offset! water-anim ((obj water-anim))
+  "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj play-ambient-sound?) #t)
+  (set! (-> obj visible) #t)
+  (set! (-> obj look)
+        (res-lump-value (-> obj entity) 'look int :default (the-as uint128 -1) :time -1000000000.0)
+        )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-4 (res-lump-data (-> obj entity) 'trans-offset vector :tag-ptr (& sv-16))))
+    (when v1-4
+      (+! (-> obj root trans x) (-> v1-4 x))
+      (+! (-> obj root trans y) (-> v1-4 y))
+      (+! (-> obj root trans z) (-> v1-4 z))
+      )
+    )
+  (let ((f0-6 (res-lump-float (-> obj entity) 'rotoffset)))
+    (if (!= f0-6 0.0)
+        (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-6)
+        )
+    )
+  (none)
+  )
+
+(defmethod init-water! water-anim ((obj water-anim))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((s5-0 (-> obj look)))
+    (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
+        (go process-drawable-art-error "skel group")
+        )
+    (let ((s5-1 (-> *water-anim-look* s5-0)))
+      (initialize-skeleton-by-name obj (-> s5-1 skel-group))
+      (ja-channel-set! 1)
+      (let ((s4-0 (-> obj skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s4-0
+          (the-as art-joint-anim (-> obj draw art-group data (-> s5-1 anim)))
+          num-func-identity
+          )
+        (set! (-> s4-0 frame-num) 0.0)
+        )
+      (let ((a2-1 (-> s5-1 ambient-sound-spec)))
+        (when a2-1
+          (let ((a3-0 (new 'stack-no-clear 'vector)))
+            (vector+! a3-0 (-> obj root trans) (-> obj draw bounds))
+            (set! (-> obj sound) (new 'process 'ambient-sound a2-1 a3-0))
+            )
+          )
+        )
+      )
+    )
+  (ja-post)
+  (none)
+  )
+
+(defmethod reset-root! water-anim ((obj water-anim))
+  "Reset a [[water-anim]]'s `root`."
+  (let ((v0-0 (new 'process 'trsqv)))
+    (set! (-> obj root) v0-0)
+    v0-0
+    )
+  )
+
+;; WARN: Return type mismatch water-flags vs none.
+(defmethod water-anim-init! water-anim ((obj water-anim))
+  "Initialize a [[water-anim]]."
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
+                                              (-> obj entity)
+                                              'attack-event
+                                              'interp
+                                              -1000000000.0
+                                              (the-as structure 'drown)
+                                              (the-as (pointer res-tag) #f)
+                                              *res-static-buf*
+                                              )
+                                      )
+        )
+  (process-drawable-from-entity! obj (-> obj entity))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj vol) (new 'process 'vol-control obj))
+  (logior! (-> obj vol flags) (vol-flags display? vol-flags-1))
+  (set! (-> obj bottom-height) 32768.0)
+  (let* ((v1-8 *game-info*)
+         (a0-7 (+ (-> v1-8 attack-id) 1))
+         )
+    (set! (-> v1-8 attack-id) a0-7)
+    (set! (-> obj attack-id) a0-7)
+    )
+  (set! (-> obj target) (the-as handle #f))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
+                                        (-> obj entity)
+                                        'water-height
+                                        'exact
+                                        -1000000000.0
+                                        (the-as pointer #f)
+                                        (& sv-16)
+                                        *res-static-buf*
+                                        )
+                       )
+               )
+        )
+    (when v1-10
+      (set! (-> obj water-height) (-> v1-10 0))
+      (set! (-> obj wade-height) (-> v1-10 1))
+      (set! (-> obj swim-height) (-> v1-10 2))
+      (if (>= (-> sv-16 elt-count) (the-as uint 4))
+          (set! (-> obj flags) (the-as water-flags (the int (-> v1-10 3))))
+          )
+      (if (>= (-> sv-16 elt-count) (the-as uint 5))
+          (set! (-> obj bottom-height) (-> v1-10 4))
+          )
+      )
+    )
+  (set! (-> obj flags) (logior (water-flags part-water) (-> obj flags)))
+  (if (logtest? (-> obj flags) (water-flags flow))
+      (set! (-> obj flow) (new 'process 'flow-control obj (the-as res-lump #f)))
+      )
+  (cond
+    ((zero? (-> obj flags))
+     (if (< 0.0 (-> obj wade-height))
+         (logior! (-> obj flags) (water-flags can-wade))
+         )
+     (if (< 0.0 (-> obj swim-height))
+         (logior! (-> obj flags) (water-flags can-swim))
+         )
+     )
+    (else
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior water-anim-init-by-other water-anim ((arg0 entity-actor))
+  (process-entity-set! self arg0)
+  (water-anim-method-27 self)
+  (reset-root! self)
+  (water-anim-init! self)
+  (offset! self)
+  (init-water! self)
+  (go-virtual idle)
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! water-anim ((obj water-anim) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (water-anim-method-27 obj)
+  (reset-root! obj)
+  (water-anim-init! obj)
+  (offset! obj)
+  (init-water! obj)
+  (go (method-of-object obj idle))
+  (none)
+  )

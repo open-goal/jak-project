@@ -1,8 +1,10 @@
 #include "MakeSystem.h"
 
 #include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "goalc/make/Tools.h"
 
@@ -52,6 +54,11 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
     return handle_stem(obj, args, env);
   });
 
+  m_goos.register_form("get-gsrc-path", [=](const goos::Object& obj, goos::Arguments& args,
+                                            const std::shared_ptr<goos::EnvironmentObject>& env) {
+    return handle_get_gsrc_path(obj, args, env);
+  });
+
   m_goos.register_form("map-path!", [=](const goos::Object& obj, goos::Arguments& args,
                                         const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_map_path(obj, args, env);
@@ -61,6 +68,12 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
                        [=](const goos::Object& obj, goos::Arguments& args,
                            const std::shared_ptr<goos::EnvironmentObject>& env) {
                          return handle_set_output_prefix(obj, args, env);
+                       });
+
+  m_goos.register_form("set-gsrc-folder!",
+                       [=](const goos::Object& obj, goos::Arguments& args,
+                           const std::shared_ptr<goos::EnvironmentObject>& env) {
+                         return handle_set_gsrc_folder(obj, args, env);
                        });
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
@@ -89,8 +102,8 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
   m_goos.eval(data, m_goos.global_environment.as_env_ptr());
-  fmt::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
-             (int)timer.getMs());
+  lg::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
+            (int)timer.getMs());
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,
@@ -192,6 +205,39 @@ goos::Object MakeSystem::handle_stem(const goos::Object& form,
   return goos::StringObject::make_new(input.stem().u8string());
 }
 
+goos::Object MakeSystem::handle_get_gsrc_path(const goos::Object& form,
+                                              goos::Arguments& args,
+                                              const std::shared_ptr<goos::EnvironmentObject>& env) {
+  if (m_gsrc_folder.empty()) {
+    throw std::runtime_error("`set-gsrc-folder!` was not called before a `get-src-path`");
+  }
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& file_name = args.unnamed.at(0).as_string()->data;
+
+  // Keep things fast by scanning the gsrc directory _once_ on the first call
+  if (m_gsrc_files.empty()) {
+    auto folder = file_util::get_file_path(m_gsrc_folder);
+    auto src_files = file_util::find_files_recursively(folder, std::regex(".*\\.gc"));
+
+    for (const auto& path : src_files) {
+      auto name = file_util::base_name_no_ext(path.u8string());
+      auto gsrc_path =
+          file_util::convert_to_unix_path_separators(file_util::split_path_at(path, m_gsrc_folder));
+      // TODO - this is only "safe" because the current OpenGOAL system requires globally unique
+      // file names
+      m_gsrc_files.emplace(name, gsrc_path);
+    }
+  }
+
+  if (m_gsrc_files.count(file_name) != 0) {
+    return goos::StringObject::make_new(m_gsrc_files.at(file_name));
+  } else {
+    return goos::SymbolObject::make_new(m_goos.reader.symbolTable, "#f");
+  }
+}
+
 goos::Object MakeSystem::handle_map_path(const goos::Object& form,
                                          goos::Arguments& args,
                                          const std::shared_ptr<goos::EnvironmentObject>& env) {
@@ -216,10 +262,23 @@ goos::Object MakeSystem::handle_set_output_prefix(
   return goos::Object::make_empty_list();
 }
 
+goos::Object MakeSystem::handle_set_gsrc_folder(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& folder = args.unnamed.at(0).as_string()->data;
+  m_gsrc_folder = str_util::split(folder, '/');
+  return goos::Object::make_empty_list();
+}
+
 void MakeSystem::get_dependencies(const std::string& master_target,
                                   const std::string& output,
                                   std::vector<std::string>* result,
                                   std::unordered_set<std::string>* result_set) const {
+  // fmt::print(output + "\n");
   if (result_set->find(output) != result_set->end()) {
     return;
   }
@@ -256,8 +315,8 @@ std::vector<std::string> MakeSystem::get_dependencies(const std::string& target)
 
   get_dependencies(target, target, &result, &added_deps);
 
-  fmt::print("Successfully found all {} dependencies for target in {:.3f}s\n", result.size(),
-             timer.getSeconds());
+  lg::print("Successfully found all {} dependencies for target in {:.3f}s\n", result.size(),
+            timer.getSeconds());
   return result;
 }
 
@@ -312,8 +371,8 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
     }
   }
 
-  fmt::print("Found that {} of {} targets do need rebuilding in {:.3f}s\n", result.size(),
-             all_deps.size(), timer.getSeconds());
+  lg::print("Found that {} of {} targets do need rebuilding in {:.3f}s\n", result.size(),
+            all_deps.size(), timer.getSeconds());
   return result;
 }
 
@@ -328,9 +387,9 @@ void print_input(const std::vector<std::string>& in, char end) {
     all_names += name;
   }
   if (all_names.length() > 70) {
-    fmt::print("{}...{}", all_names.substr(0, 70 - 3), end);
+    lg::print("{}...{}", all_names.substr(0, 70 - 3), end);
   } else {
-    fmt::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
+    lg::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
   }
 }
 }  // namespace
@@ -338,21 +397,21 @@ void print_input(const std::vector<std::string>& in, char end) {
 bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
   std::string target = m_path_map.apply_remaps(target_in);
   auto deps = get_dependencies(target);
-  //  fmt::print("All deps:\n");
+  //  lg::print("All deps:\n");
   //  for (auto& dep : deps) {
-  //    fmt::print("{}\n", dep);
+  //    lg::print("{}\n", dep);
   //  }
   if (!force) {
     deps = filter_dependencies(deps);
   }
 
-  //  fmt::print("Filt deps:\n");
+  //  lg::print("Filt deps:\n");
   //  for (auto& dep : filtered_deps) {
-  //    fmt::print("{}\n", dep);
+  //    lg::print("{}\n", dep);
   //  }
 
   Timer make_timer;
-  fmt::print("Building {} targets...\n", deps.size());
+  lg::print("Building {} targets...\n", deps.size());
   int i = 0;
   for (auto& to_make : deps) {
     Timer step_timer;
@@ -360,10 +419,10 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
     auto& tool = m_tools.at(rule->tool);
     int percent = (100.0 * (1 + (i++)) / (deps.size())) + 0.5;
     if (verbose) {
-      fmt::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
-                 rule->input.size() > 1 ? ", ..." : "");
+      lg::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
+                rule->input.size() > 1 ? ", ..." : "");
     } else {
-      fmt::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
+      lg::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
       print_input(rule->input, '\r');
     }
 
@@ -371,35 +430,34 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
     try {
       success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg}, m_path_map);
     } catch (std::exception& e) {
-      fmt::print("\n");
-      fmt::print("Error: {}\n", e.what());
+      lg::print("\n");
+      lg::print("Error: {}\n", e.what());
     }
     if (!success) {
-      fmt::print("Build failed on {}{}.\n", rule->input.at(0),
-                 rule->input.size() > 1 ? ", ..." : "");
+      lg::print("Build failed on {}{}\n", rule->input.at(0), rule->input.size() > 1 ? ", ..." : "");
       throw std::runtime_error("Build failed.");
       return false;
     }
 
     if (verbose) {
       if (step_timer.getSeconds() > 0.05) {
-        fmt::print(fg(fmt::color::yellow), " {:.3f}\n", step_timer.getSeconds());
+        lg::print(fg(fmt::color::yellow), " {:.3f}\n", step_timer.getSeconds());
       } else {
-        fmt::print(" {:.3f}\n", step_timer.getSeconds());
+        lg::print(" {:.3f}\n", step_timer.getSeconds());
       }
     } else {
       if (step_timer.getSeconds() > 0.05) {
-        fmt::print("[{:3d}%] [{:8s}] ", percent, tool->name());
-        fmt::print(fg(fmt::color::yellow), "{:.3f} ", step_timer.getSeconds());
+        lg::print("[{:3d}%] [{:8s}] ", percent, tool->name());
+        lg::print(fg(fmt::color::yellow), "{:.3f} ", step_timer.getSeconds());
         print_input(rule->input, '\n');
       } else {
-        fmt::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
+        lg::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
         print_input(rule->input, '\n');
       }
     }
   }
-  fmt::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
-             make_timer.getSeconds());
+  lg::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
+            make_timer.getSeconds());
   return true;
 }
 

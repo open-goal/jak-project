@@ -4,8 +4,7 @@
 
 #include "third-party/imgui/imgui.h"
 
-ShadowRenderer::ShadowRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
 
@@ -158,9 +157,8 @@ void ShadowRenderer::xgkick(u16 imm) {
               }
               break;
             default:
-              fmt::print("Register {} is not supported in packed mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 16;  // PACKED = quadwords
         }

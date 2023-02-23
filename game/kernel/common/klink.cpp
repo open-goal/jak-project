@@ -144,7 +144,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
     m_opengoal = false;
     // not an open goal object.
     if (link_debug_printfs) {
-      printf("Linking GOAL style object\n");
+      printf("Linking GOAL style object %s\n", name);
     }
 
     // initialize
@@ -252,6 +252,9 @@ Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable) {
       *(objPtr.cast<u32>()) = linkObj.offset;
     } else {
       // I don't think we should hit this ever.
+      // if this is hit - there's a good chance something has overwritten the object file data
+      // after linking has started.
+      printf("val is 0x%x ptr %p\n", objValue, relocPtr - 1);
       ASSERT(false);
     }
   } while (*relocPtr);

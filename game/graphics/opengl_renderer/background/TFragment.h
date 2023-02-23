@@ -37,7 +37,7 @@ static_assert(sizeof(TFragBufferedData) == 328 * 16);
 class TFragment : public BucketRenderer {
  public:
   TFragment(const std::string& name,
-            BucketId my_id,
+            int my_id,
             const std::vector<tfrag3::TFragmentTreeKind>& trees,
             bool child_mode,
             int level_id);
@@ -48,8 +48,6 @@ class TFragment : public BucketRenderer {
   void handle_initialization(DmaFollower& dma);
 
   bool m_child_mode = false;
-  bool m_override_time_of_day = false;
-  float m_time_of_days[8] = {1, 0, 0, 0, 0, 0, 0, 0};
 
   // GS setup data
   u8 m_test_setup[32];

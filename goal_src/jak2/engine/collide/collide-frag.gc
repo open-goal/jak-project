@@ -5,5 +5,95 @@
 ;; name in dgo: collide-frag
 ;; dgos: ENGINE, GAME
 
+;; Note: this is probably not used in jak 2 - this is the old tree-based background collision stuff.
+
 ;; DECOMP BEGINS
+
+(defmethod login drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment))
+  obj
+  )
+
+(defmethod draw drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 drawable-tree-collide-fragment) (arg1 display-frame))
+  (when *display-render-collision*
+    (dotimes (s4-0 (-> obj length))
+      (draw (-> obj data s4-0) (-> obj data s4-0) arg1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod unpack-vis drawable-tree-collide-fragment ((obj drawable-tree-collide-fragment) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  arg1
+  )
+
+(defmethod mem-usage collide-fragment ((obj collide-fragment) (arg0 memory-usage-block) (arg1 int))
+  (let ((s5-0 (if (logtest? arg1 1)
+                  54
+                  50
+                  )
+              )
+        (s4-0 (-> obj mesh))
+        )
+    (set! (-> arg0 data s5-0 name) (symbol->string 'collide-fragment))
+    (+! (-> arg0 data s5-0 count) 1)
+    (let ((v1-11 (+ (asize-of obj) (asize-of s4-0))))
+      (+! (-> arg0 data s5-0 used) v1-11)
+      (+! (-> arg0 data s5-0 total) (logand -16 (+ v1-11 15)))
+      )
+    (set! (-> arg0 data (+ s5-0 1) name) "collision-poly")
+    (+! (-> arg0 data (+ s5-0 1) count) (-> s4-0 poly-count))
+    (let ((v1-22 (+ (-> s4-0 strip-data-len) (-> s4-0 poly-count))))
+      (+! (-> arg0 data (+ s5-0 1) used) v1-22)
+      (+! (-> arg0 data (+ s5-0 1) total) v1-22)
+      )
+    (set! (-> arg0 data (+ s5-0 2) name) "collision-vertex")
+    (+! (-> arg0 data (+ s5-0 2) count) (-> s4-0 vertex-count))
+    (let ((v1-31 (* (-> s4-0 vertex-data-qwc) 16)))
+      (+! (-> arg0 data (+ s5-0 2) used) v1-31)
+      (let ((v0-2 (+ (-> arg0 data (+ s5-0 2) total) v1-31)))
+        (set! (-> arg0 data (+ s5-0 2) total) v0-2)
+        (the-as collide-fragment v0-2)
+        )
+      )
+    )
+  )
+
+(defmethod login drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment))
+  obj
+  )
+
+(defmethod draw collide-fragment ((obj collide-fragment) (arg0 collide-fragment) (arg1 display-frame))
+  0
+  (none)
+  )
+
+(defmethod draw drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment)
+                                                      (arg0 drawable-inline-array-collide-fragment)
+                                                      (arg1 display-frame)
+                                                      )
+  (dotimes (s4-0 (-> obj length))
+    (let ((s3-0 (-> obj data s4-0)))
+      (if (sphere-cull (-> s3-0 bsphere))
+          (draw s3-0 s3-0 arg1)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod mem-usage drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 1 (-> arg0 length)))
+  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
+  (+! (-> arg0 data 0 count) 1)
+  (let ((v1-7 32))
+    (+! (-> arg0 data 0 used) v1-7)
+    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
+    )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
 

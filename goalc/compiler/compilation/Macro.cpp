@@ -44,40 +44,42 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
   auto compile_env_for_macro =
       env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
   try {
-    return compile(goos_result, compile_env_for_macro);
+    const auto& compile_result = compile(goos_result, compile_env_for_macro);
+    m_macro_specs.emplace(macro->name, macro->args);
+    return compile_result;
   } catch (CompilerException& ce) {
     if (ce.print_err_stack) {
       bool good_info = false;
       auto info = m_goos.reader.db.get_info_for(o, &good_info);
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
-      fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+      lg::print("{}\n", pretty_print::to_string(goos_result, 120));
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+      lg::print(fg(fmt::color::orange), "{}\n", name.print());
       if (good_info) {
-        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
-        fmt::print("{}\n", info);
+        lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+        lg::print("{}\n", info);
         ce.print_err_stack = false;
       }
       std::string line(80, '-');
       line.push_back('\n');
-      fmt::print(line);
+      lg::print(line);
     }
 
     throw;
   } catch (std::runtime_error& e) {
     bool good_info = false;
     auto info = m_goos.reader.db.get_info_for(o, &good_info);
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
-    fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+    lg::print("{}\n", pretty_print::to_string(goos_result, 120));
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+    lg::print(fg(fmt::color::orange), "{}\n", name.print());
     if (good_info) {
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
-      fmt::print("{}\n", info);
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+      lg::print("{}\n", info);
     }
     std::string line(80, '-');
     line.push_back('\n');
-    fmt::print(line);
+    lg::print(line);
 
     throw;
   }
@@ -166,7 +168,16 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   auto sym = pair_car(*rest).as_symbol();
   rest = &pair_cdr(*rest);
-  auto value = pair_car(*rest);
+
+  // check for potential docstring
+  SymbolInfo::Metadata sym_meta;
+  if (rest->is_pair() && pair_car(*rest).is_string() && !pair_cdr(*rest).is_empty_list()) {
+    std::string docstring = pair_car(*rest).as_string()->data;
+    sym_meta.docstring = docstring;
+    rest = &pair_cdr(*rest);
+  }
+
+  auto& value = pair_car(*rest);
 
   rest = &rest->as_pair()->cdr;
   if (!rest->is_empty_list()) {
@@ -195,7 +206,9 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
     m_goos.global_environment.as_env()->vars[sym] = value;
   }
 
-  m_symbol_info.add_constant(sym->name, form);
+  // TODO - eventually, it'd be nice if global constants were properly typed
+  // and this information was propagated
+  m_symbol_info.add_constant(sym->name, form, sym_meta);
 
   return get_none();
 }

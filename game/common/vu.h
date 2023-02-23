@@ -95,6 +95,13 @@ struct alignas(16) Vf {
     data[3] = 0;
   }
 
+  void set_u32s(u32 xx, u32 yy, u32 zz, u32 ww) {
+    memcpy(&data[0], &xx, 4);
+    memcpy(&data[1], &yy, 4);
+    memcpy(&data[2], &zz, 4);
+    memcpy(&data[3], &ww, 4);
+  }
+
   u16 x_as_u16() const {
     u16 result;
     memcpy(&result, &data[0], 2);

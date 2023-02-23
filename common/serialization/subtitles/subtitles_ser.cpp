@@ -389,7 +389,7 @@ void GameSubtitleGroups::hydrate_from_asset_file() {
         m_groups[key] = val.get<std::vector<std::string>>();
       }
     } catch (std::exception& ex) {
-      fmt::print("Bad subtitle group entry - {} - {}", key, ex.what());
+      lg::print("Bad subtitle group entry - {} - {}", key, ex.what());
     }
   }
 }

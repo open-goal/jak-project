@@ -9,6 +9,7 @@ class OceanMid {
  public:
   OceanMid();
   void run(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void run_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
  private:
   void run_call0();
@@ -17,13 +18,18 @@ class OceanMid {
   void run_call43_vu2c();
   void run_call46_vu2c();
   void run_call73_vu2c();
+  void run_call73_vu2c_jak2();
   void run_call107_vu2c();
+  void run_call107_vu2c_jak2();
   void run_call275_vu2c();
+  void run_call275_vu2c_jak2();
   void xgkick(u16 addr);
 
   void run_L26_vu2c();
   void run_L32_vu2c();
+  void run_L32_vu2c_jak2();
   void run_L38_vu2c();
+  void run_L38_vu2c_jak2();
   void run_L43_vu2c();
   void run_L45_vu2c();
 

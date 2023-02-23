@@ -2,6 +2,7 @@
 
 #include "mips2c.h"
 
+#include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/print_float.h"
 #include "decompiler/Disasm/InstructionMatching.h"
@@ -153,14 +154,17 @@ struct Mips2C_Output {
    * Convert the output to a string.
    */
   std::string write_to_string(const FunctionName& goal_func_name,
+                              GameVersion version,
                               const std::string& extra = "") const {
     std::string name = goal_to_c_function_name(goal_func_name);
     std::string result = "//--------------------------MIPS2C---------------------\n";
+    result += "// clang-format off\n";
     result += "#include \"game/mips2c/mips2c_private.h\"\n";
-    result += "#include \"game/kernel/kscheme.h\"\n";
+    result += fmt::format("#include \"game/kernel/{}/kscheme.h\"\n", game_version_names[version]);
+    result += fmt::format("using ::{}::intern_from_c;\n", game_version_names[version]);
 
     // start of namespace for this function
-    result += "namespace Mips2C {\n";
+    result += fmt::format("namespace Mips2C::{} {{\n", game_version_names[version]);
     result += fmt::format("namespace {} {{\n", name);
 
     // definition of the symbol cache.
@@ -227,8 +231,8 @@ struct Mips2C_Output {
       result += fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
     }
     // this adds us to a table for lookup later, and also allocates our trampoline.
-    result +=
-        fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute);\n", goal_func_name.to_string());
+    result += fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute, PUT_STACK_SIZE_HERE);\n",
+                          goal_func_name.to_string());
     result += "}\n\n";
 
     result += extra;
@@ -552,12 +556,13 @@ Mips2C_Line handle_lwc1(const Instruction& i0,
 Mips2C_Line handle_lw(Mips2C_Output& out,
                       const Instruction& i0,
                       const std::string& instr_str,
-                      const LinkedObjectFile* file) {
+                      const LinkedObjectFile* file,
+                      GameVersion version) {
   if (i0.get_src(1).is_reg(rs7()) && i0.get_src(0).is_sym()) {
     // symbol load.
     out.require_symbol(i0.get_src(0).get_sym());
-    return {fmt::format("c->load_symbol({}, cache.{});", reg_to_name(i0.get_dst(0)),
-                        goal_to_c_name(i0.get_src(0).get_sym())),
+    return {fmt::format("c->load_symbol{}({}, cache.{});", version == GameVersion::Jak1 ? "" : "2",
+                        reg_to_name(i0.get_dst(0)), goal_to_c_name(i0.get_src(0).get_sym())),
             instr_str};
   }
   if (i0.get_src(1).is_reg(rfp()) && i0.get_src(0).is_label()) {
@@ -611,11 +616,14 @@ Mips2C_Line handle_daddiu(Mips2C_Output& out,
   }
 }
 
-Mips2C_Line handle_sw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
+Mips2C_Line handle_sw(Mips2C_Output& out,
+                      const Instruction& i0,
+                      const std::string& instr_str,
+                      GameVersion version) {
   if (i0.get_src(1).is_sym() && i0.get_src(2).is_reg(rs7())) {
     out.require_symbol(i0.get_src(1).get_sym());
-    return {fmt::format("c->store_symbol({}, cache.{});", reg_to_name(i0.get_src(0)),
-                        goal_to_c_name(i0.get_src(1).get_sym())),
+    return {fmt::format("c->store_symbol{}({}, cache.{});", version == GameVersion::Jak1 ? "" : "2",
+                        reg_to_name(i0.get_src(0)), goal_to_c_name(i0.get_src(1).get_sym())),
             instr_str};
     return handle_unknown(instr_str);
     //    auto name = i0.get_src(1).get_sym();
@@ -745,6 +753,18 @@ Mips2C_Line handle_vmadda_bc(const Instruction& i0, const std::string& instr_str
 
 Mips2C_Line handle_vmadda(const Instruction& i0, const std::string& instr_str) {
   return {fmt::format("c->vmadda(DEST::{},  {}, {});", dest_to_char(i0.cop2_dest),
+                      reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_vmsuba(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vmsuba(DEST::{},  {}, {});", dest_to_char(i0.cop2_dest),
+                      reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_vmula(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vmula(DEST::{},  {}, {});", dest_to_char(i0.cop2_dest),
                       reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
           instr_str};
 }
@@ -884,11 +904,14 @@ Mips2C_Line handle_vopmsub(const Instruction& i0, const std::string& instr_strin
           instr_string};
 }
 
-Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string, Mips2C_Output& op) {
+Mips2C_Line handle_lui(const Instruction& i0,
+                       const std::string& instr_string,
+                       Mips2C_Output& op,
+                       GameVersion version) {
   if (i0.get_src(0).get_imm() == 0x7000) {
     op.require_symbol("*fake-scratchpad-data*");
-    return {fmt::format("get_fake_spad_addr({}, cache.fake_scratchpad_data, 0, c);",
-                        reg_to_name(i0.get_dst(0))),
+    return {fmt::format("get_fake_spad_addr{}({}, cache.fake_scratchpad_data, 0, c);",
+                        version == GameVersion::Jak1 ? "" : "2", reg_to_name(i0.get_dst(0))),
             instr_string};
   } else {
     return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
@@ -942,7 +965,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::CFC2:
       return handle_cfc2(i0, instr_str);
     case InstructionKind::LW:
-      return handle_lw(output, i0, instr_str, file);
+      return handle_lw(output, i0, instr_str, file, version);
     case InstructionKind::LB:
     case InstructionKind::LWL:
     case InstructionKind::LWR:
@@ -977,6 +1000,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_bc_mask(i0, instr_str, "vmul_bc");
     case InstructionKind::VMADD:
       return handle_generic_op3_mask(i0, instr_str, "vmadd");
+    case InstructionKind::VMSUB:
+      return handle_generic_op3_mask(i0, instr_str, "vmsub");
     case InstructionKind::VMUL:
       return handle_generic_op3_mask(i0, instr_str, "vmul");
     case InstructionKind::VADD:
@@ -990,7 +1015,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::OR:
       return handle_or(i0, instr_str);
     case InstructionKind::SW:
-      return handle_sw(output, i0, instr_str);
+      return handle_sw(output, i0, instr_str, version);
     case InstructionKind::VMOVE:
       return handle_generic_op2_mask(i0, instr_str, "vmove");
     case InstructionKind::VITOF0:
@@ -1009,6 +1034,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2_mask(i0, instr_str, "vabs");
     case InstructionKind::VADDQ:
       return handle_generic_op2_mask(i0, instr_str, "vaddq");
+    case InstructionKind::VMR32:
+      return handle_generic_op2_mask(i0, instr_str, "vmr32");
     case InstructionKind::ANDI:
     case InstructionKind::ORI:
     case InstructionKind::XORI:
@@ -1044,6 +1071,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PCGTW:
     case InstructionKind::PPACB:
     case InstructionKind::PADDW:
+    case InstructionKind::PADDB:
     case InstructionKind::PEXTUB:
     case InstructionKind::PMULTH:
     case InstructionKind::PMADDH:
@@ -1060,9 +1088,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::SLTU:
     case InstructionKind::DSRAV:
     case InstructionKind::DSLLV:
+    case InstructionKind::DSRLV:
+    case InstructionKind::SLLV:
     case InstructionKind::PAND:
     case InstructionKind::PCEQB:
     case InstructionKind::PPACW:
+    case InstructionKind::PCEQW:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -1072,13 +1103,21 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3(i0, instr_str, "adds");
     case InstructionKind::SUBS:
       return handle_generic_op3(i0, instr_str, "subs");
+    case InstructionKind::MINS:
+      return handle_generic_op3(i0, instr_str, "mins");
+    case InstructionKind::MAXS:
+      return handle_generic_op3(i0, instr_str, "maxs");
     case InstructionKind::XOR:
       return handle_generic_op3(i0, instr_str, "xor_");
     case InstructionKind::AND:
       return handle_generic_op3(i0, instr_str, "and_");  // and isn't allowed in C++
+    case InstructionKind::NOR:
+      return handle_generic_op3(i0, instr_str, "nor");  // and isn't allowed in C++
     case InstructionKind::DADDIU:
       return handle_daddiu(output, i0, instr_str, version);
     case InstructionKind::ADDIU:
+    case InstructionKind::SLTI:
+    case InstructionKind::SLTIU:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::QMTC2:
       return handle_generic_op2(i0, instr_str, "mov128_vf_gpr");
@@ -1094,6 +1133,10 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vmsuba_bc(i0, instr_str);
     case InstructionKind::VMADDA:
       return handle_vmadda(i0, instr_str);
+    case InstructionKind::VMSUBA:
+      return handle_vmsuba(i0, instr_str);
+    case InstructionKind::VMULA:
+      return handle_vmula(i0, instr_str);
     case InstructionKind::VMADD_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmadd_bc");
     case InstructionKind::VMSUB_BC:
@@ -1122,6 +1165,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "mtc1");
     case InstructionKind::NEGS:
       return handle_generic_op2(i0, instr_str, "negs");
+    case InstructionKind::ABSS:
+      return handle_generic_op2(i0, instr_str, "abss");
     case InstructionKind::MOVS:
       return handle_generic_op2(i0, instr_str, "movs");
     case InstructionKind::CVTWS:
@@ -1139,7 +1184,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PROT3W:
       return handle_generic_op2(i0, instr_str, "prot3w");
     case InstructionKind::LUI:
-      return handle_lui(i0, instr_str, output);
+      return handle_lui(i0, instr_str, output, version);
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);
@@ -1179,7 +1224,7 @@ struct JumpTableBlock {
 void run_mips2c_jump_table(Function* f,
                            const std::vector<int>& jump_table_locations,
                            GameVersion version) {
-  fmt::print("mips2c-jump on {}\n", f->name());
+  lg::info("mips2c-jump on {}", f->name());
   u32 magic_code = std::hash<std::string>()(f->name());
   std::unordered_map<int, int> loc_to_block;
   for (size_t bb_idx = 0; bb_idx < f->basic_blocks.size(); bb_idx++) {
@@ -1313,7 +1358,7 @@ void run_mips2c_jump_table(Function* f,
   }
   jump_loc_table += "};\n\n";
 
-  f->mips2c_output = output.write_to_string(f->guessed_name, jump_loc_table);
+  f->mips2c_output = output.write_to_string(f->guessed_name, version, jump_loc_table);
   if (g_unknown > 0) {
     lg::error("Mips to C pass in {} hit {} unknown instructions", f->name(), g_unknown);
   }
@@ -1431,7 +1476,7 @@ void run_mips2c(Function* f, GameVersion version) {
     }
   }
 
-  f->mips2c_output = output.write_to_string(f->guessed_name);
+  f->mips2c_output = output.write_to_string(f->guessed_name, version);
   if (g_unknown > 0) {
     lg::error("Mips to C pass in {} hit {} unknown instructions", f->name(), g_unknown);
   }

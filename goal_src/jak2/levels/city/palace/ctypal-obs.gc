@@ -5,5 +5,275 @@
 ;; name in dgo: ctypal-obs
 ;; dgos: CPA
 
+;; og:update-with-merge:substr
+
 ;; DECOMP BEGINS
 
+(deftype water-anim-ctypal (water-anim)
+  ()
+  :heap-base #x80
+  :method-count-assert 29
+  :size-assert         #x100
+  :flag-assert         #x1d00800100
+  )
+
+
+(define ripple-for-water-anim-ctypal (new 'static 'ripple-wave-set
+                                       :count 3
+                                       :converted #f
+                                       :normal-scale 1.0
+                                       :wave (new 'static 'inline-array ripple-wave 4
+                                         (new 'static 'ripple-wave :scale 20.0 :xdiv 1 :speed 1.5)
+                                         (new 'static 'ripple-wave :scale 20.0 :xdiv -1 :zdiv 1 :speed 1.5)
+                                         (new 'static 'ripple-wave :scale 10.0 :xdiv 5 :zdiv 3 :speed 0.75)
+                                         (new 'static 'ripple-wave)
+                                         )
+                                       )
+        )
+
+(define ripple-ctypal-smlground-pool (new 'static 'ripple-wave-set
+                                       :count 3
+                                       :converted #f
+                                       :normal-scale 1.0
+                                       :wave (new 'static 'inline-array ripple-wave 4
+                                         (new 'static 'ripple-wave :scale 10.0 :xdiv 1 :speed 1.5)
+                                         (new 'static 'ripple-wave :scale 10.0 :xdiv -1 :zdiv 1 :speed 1.5)
+                                         (new 'static 'ripple-wave :scale 10.0 :xdiv 1 :zdiv 1 :speed 0.75)
+                                         (new 'static 'ripple-wave)
+                                         )
+                                       )
+        )
+
+;; WARN: Return type mismatch ripple-wave-set vs none.
+(defmethod init-water! water-anim-ctypal ((obj water-anim-ctypal))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((t9-0 (method-of-type water-anim init-water!)))
+    (t9-0 obj)
+    )
+  (let ((v1-2 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) v1-2)
+    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> v1-2 global-scale) 3072.0)
+    (set! (-> v1-2 close-fade-dist) 163840.0)
+    (set! (-> v1-2 far-fade-dist) 245760.0)
+    (set! (-> v1-2 waveform) ripple-for-water-anim-ctypal)
+    (case (-> obj look)
+      ((32 30)
+       (set! (-> v1-2 waveform) ripple-ctypal-smlground-pool)
+       )
+      )
+    )
+  (none)
+  )
+
+(defskelgroup skel-palace-door palace-door palace-door-lod0-jg palace-door-idle-ja
+              ((palace-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 30 0 36)
+              )
+
+(deftype palace-door (com-airlock)
+  ()
+  :heap-base #x100
+  :method-count-assert 28
+  :size-assert         #x174
+  :flag-assert         #x1c01000174
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! palace-door ((obj palace-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stack-size-set! (-> obj main-thread) 1024)
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 122880.0 0.0 147456.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-7 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set! (-> v1-7 transform-index) 3)
+      (set-vector! (-> v1-7 local-sphere) 0.0 57344.0 0.0 90112.0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 5)
+      (set-vector! (-> v1-9 local-sphere) 0.0 -61440.0 0.0 73728.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-palace-door" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! obj)
+  (set! (-> obj pre-open-frame) 48.0)
+  (set! (-> obj lock-frame) 60.0)
+  (set! (-> obj open-frame) 60.0)
+  (set! (-> obj sound-pre-open) (static-sound-spec "pal-door-open-1"))
+  (set! (-> obj sound-open) (static-sound-spec "pal-door-open-2"))
+  (set! (-> obj sound-close) (static-sound-spec "pal-door-close"))
+  (set! (-> obj sound-post-close) (static-sound-spec "pal-door-close2"))
+  (set! (-> obj sound-behind?) #t)
+  (set! (-> obj door-radius) 40960.0)
+  (go (method-of-object obj close) #t)
+  (none)
+  )
+
+(deftype ctypal-broke-wall (process-drawable)
+  ((ent basic  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xcc
+  :flag-assert         #x16005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    (done () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-ctypal-broke-wall ctypal-broke-wall ctypal-broke-wall-lod0-jg ctypal-broke-wall-idle-ja
+              ((ctypal-broke-wall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 20)
+              )
+
+(defstate idle (ctypal-broke-wall)
+  :virtual #t
+  :trans (behavior ()
+    (when (task-node-closed? (game-task-node canyon-insert-items-resolution))
+      (format 0 "~A canyon-insert-items-resolution done~%" (-> self name))
+      (process-drawable-from-entity! self (the-as entity-actor (-> self ent)))
+      (go-virtual done)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior ctypal-broke-wall) sleep-code)
+  :post (behavior ()
+    (transform-post)
+    (none)
+    )
+  )
+
+(defstate done (ctypal-broke-wall)
+  :virtual #t
+  :code (the-as (function none :behavior ctypal-broke-wall) sleep-code)
+  :post (behavior ()
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! ctypal-broke-wall ((obj ctypal-broke-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (format #t "~A initialising~%" (-> obj name))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 40960.0 0.0 122880.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-ctypal-broke-wall" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-10 (-> obj root)))
+    (format
+      0
+      "trans ~F ~F ~F~%"
+      (* 0.00024414062 (-> v1-10 trans x))
+      (* 0.00024414062 (-> v1-10 trans y))
+      (* 0.00024414062 (-> v1-10 trans z))
+      )
+    )
+  (set! (-> obj ent) arg0)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype ctypal-baron-statue-broken (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-ctypal-baron-statue-broken ctypal-baron-statue-broken ctypal-baron-statue-broken-lod0-jg ctypal-baron-statue-broken-idle-ja
+              ((ctypal-baron-statue-broken-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 72)
+              )
+
+(defmethod run-logic? ctypal-baron-statue-broken ((obj ctypal-baron-statue-broken))
+  #t
+  )
+
+(defstate idle (ctypal-baron-statue-broken)
+  :virtual #t
+  :code (the-as (function none :behavior ctypal-baron-statue-broken) sleep-code)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! ctypal-baron-statue-broken ((obj ctypal-baron-statue-broken) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-ctypal-baron-statue-broken" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (if (not (task-node-closed? (game-task-node canyon-insert-items-resolution)))
+      (logior! (-> obj draw status) (draw-control-status no-draw))
+      )
+  (ja-post)
+  (go (method-of-object obj idle))
+  (none)
+  )

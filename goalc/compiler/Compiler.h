@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "common/goos/Interpreter.h"
-#include "common/goos/ReplUtils.h"
+#include "common/repl/util.h"
 #include "common/type_system/TypeSystem.h"
 
 #include "goalc/compiler/CompilerException.h"
@@ -41,12 +41,12 @@ class Compiler {
  public:
   Compiler(GameVersion version,
            const std::string& user_profile = "#f",
-           std::unique_ptr<ReplWrapper> repl = nullptr);
+           std::unique_ptr<REPL::Wrapper> repl = nullptr);
   ~Compiler();
   void asm_file(const CompilationOptions& options);
 
   void save_repl_history();
-  void print_to_repl(const std::string_view& str);
+  void print_to_repl(const std::string& str);
   std::string get_prompt();
   std::string get_repl_input();
   ReplStatus handle_repl_string(const std::string& input);
@@ -74,20 +74,24 @@ class Compiler {
   void add_ignored_define_extern_symbol(const std::string& name) {
     m_allow_inconsistent_definition_symbols.insert(name);
   }
+  void add_ignored_type_definition(const std::string& type_name) {
+    m_ts.add_type_to_allowed_redefinition_list(type_name);
+  }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
-  Replxx::completions_t find_symbols_by_prefix(std::string const& context,
+  replxx::Replxx::completions_t find_symbols_or_object_file_by_prefix(
+      std::string const& context,
+      int& contextLen,
+      std::vector<std::string> const& user_data);
+  replxx::Replxx::hints_t find_hints_by_prefix(std::string const& context,
                                                int& contextLen,
+                                               replxx::Replxx::Color& color,
                                                std::vector<std::string> const& user_data);
-  Replxx::hints_t find_hints_by_prefix(std::string const& context,
-                                       int& contextLen,
-                                       Replxx::Color& color,
-                                       std::vector<std::string> const& user_data);
   void repl_coloring(std::string const& str,
-                     Replxx::colors_t& colors,
-                     std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
+                     replxx::Replxx::colors_t& colors,
+                     std::vector<std::pair<std::string, replxx::Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
 
@@ -101,6 +105,7 @@ class Compiler {
   listener::Listener m_listener;
   goos::Interpreter m_goos;
   Debugger m_debugger;
+  std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
   std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
@@ -108,7 +113,7 @@ class Compiler {
   bool m_throw_on_define_extern_redefinition = false;
   std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
   SymbolInfoMap m_symbol_info;
-  std::unique_ptr<ReplWrapper> m_repl;
+  std::unique_ptr<REPL::Wrapper> m_repl;
   MakeSystem m_make;
 
   struct DebugStats {
@@ -273,7 +278,8 @@ class Compiler {
   StaticResult fill_static_boxed_array(const goos::Object& form,
                                        const goos::Object& rest,
                                        Env* env,
-                                       int seg);
+                                       int seg,
+                                       const std::string& array_type);
 
   StaticResult fill_static_inline_array(const goos::Object& form,
                                         const goos::Object& rest,
@@ -414,38 +420,38 @@ class Compiler {
   [[noreturn]] void throw_compiler_error(const goos::Object& code,
                                          const std::string& str,
                                          Args&&... args) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
-    fmt::print("{}\n", code.print());
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    lg::print("{}\n", code.print());
     throw CompilerException("Compilation Error");
   }
 
   template <typename... Args>
   [[noreturn]] void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    lg::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
+      lg::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
     throw CompilerException("Compilation Error");
   }
 
   template <typename... Args>
   void print_compiler_warning(const std::string& str, Args&&... args) {
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
+    lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      lg::print(str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      lg::print(str + '\n', std::forward<Args>(args)...);
     }
   }
 
@@ -545,6 +551,7 @@ class Compiler {
   Val* compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env);
 
   Val* compile_asm_por(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pxor(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pnor(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pand(const goos::Object& form, const goos::Object& rest, Env* env);
 
@@ -567,6 +574,7 @@ class Compiler {
   Val* compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ppacb(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env);
 
@@ -590,6 +598,7 @@ class Compiler {
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_repl_keybinds(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_poke(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -600,14 +609,13 @@ class Compiler {
   Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_add_macro_to_autocomplete(const goos::Object& form,
-                                         const goos::Object& rest,
-                                         Env* env);
+  Val* compile_update_macro_metadata(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_print_debug_compiler_stats(const goos::Object& form,
                                           const goos::Object& rest,
                                           Env* env);
+  Val* compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
@@ -623,6 +631,7 @@ class Compiler {
 
   // Debug
   Val* compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dbg_and_continue(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -700,5 +709,6 @@ class Compiler {
 
 extern const std::unordered_map<
     std::string,
-    Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
+    std::pair<std::string,
+              Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>>
     g_goal_forms;

@@ -75,6 +75,7 @@ void GfxDisplay::save_display_settings() {
   json["window_ypos"] = m_last_windowed_ypos;
   std::string file_path =
       (file_util::get_user_settings_dir(g_game_version) / "display-settings.json").string();
+  file_util::create_dir_if_needed_for_file(file_path);
   file_util::write_text_file(file_path, json.dump(2));
 }
 
@@ -85,6 +86,7 @@ void GfxDisplay::restore_display_settings() {
     if (!file_util::file_exists(file_path)) {
       return;
     }
+    lg::info("reading {}", file_path);
     auto raw = file_util::read_text_file(file_path);
     auto json = parse_commented_json(raw, "display-settings.json");
     if (json.contains("window_xpos")) {

@@ -541,7 +541,7 @@
 
 ;; definition for method 9 of type art-mesh-geo
 ;; ERROR: Type Propagation failed: Failed type prop at op 20 ((set! v1 (l.h (+ s4 6)))): Could not get type of load: (set! v1 (l.h (+ s4 6))). 
-;; WARN: Type analysis failed
+;; ERROR: Type analysis failed
 (defmethod login art-mesh-geo ((a0-0 art-mesh-geo))
   (local-vars
     (v0-0 none)
@@ -741,6 +741,7 @@
 ;; definition for function joint-control-remap!
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch symbol vs object.
+;; WARN: Failed load: (set! v1-29 (l.wu (+ a0-9 -4))) at op 75
 (defun joint-control-remap! ((arg0 joint-control) (arg1 art-group) (arg2 art-group) (arg3 pair) (arg4 int) (arg5 string))
   (local-vars
     (sv-16 int)
@@ -976,7 +977,7 @@
         (v0-0 (the-as object (-> arg0 data arg2 data)))
         )
     (cond
-      ((zero? (logand (-> arg0 fixed hdr matrix-bits) 1))
+      ((not (logtest? (-> arg0 fixed hdr matrix-bits) 1))
        (set! v1-1 (cond
                     ((zero? arg1)
                      (return (the-as matrix v1-1))
@@ -995,7 +996,7 @@
         (set! v0-0 (-> (the-as (inline-array vector) v0-0) 4))
         )
       )
-    (if (zero? (logand (-> arg0 fixed hdr matrix-bits) 2))
+    (if (not (logtest? (-> arg0 fixed hdr matrix-bits) 2))
         (return (the-as matrix v1-1))
         )
     (the-as matrix v0-0)
@@ -1055,7 +1056,7 @@
        )
       (else
         (let ((a2-3 (matrix-from-control-channel!
-                      (the-as matrix (+ 16 (the-as int (the-as terrain-context #x70000000))))
+                      (the-as matrix (-> (the-as terrain-context #x70000000) work))
                       arg2
                       (the-as joint-control-channel arg1)
                       )
@@ -1213,7 +1214,7 @@
 ;; INFO: Used lq/sq
 (defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 joint-control))
   (let ((v1-2 (matrix-from-control!
-                (the-as matrix-stack (+ 80 (the-as int (the-as terrain-context #x70000000))))
+                (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack)
                 (-> arg0 joint)
                 arg1
                 'no-push
@@ -1260,22 +1261,28 @@
   )
 
 ;; definition for function cspace<-parented-transformq-joint!
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c cspace<-parented-transformq-joint! (function cspace transformq none))
 
 ;; definition for function clear-frame-accumulator
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c clear-frame-accumulator (function (inline-array vector) none))
 
 ;; definition for function normalize-frame-quaternions
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c normalize-frame-quaternions function)
 
 ;; definition for function decompress-fixed-data-to-accumulator
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-fixed-data-to-accumulator (function none))
 
 ;; definition for function decompress-frame-data-to-accumulator
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-frame-data-to-accumulator (function none))
 
 ;; definition for function decompress-frame-data-pair-to-accumulator
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-frame-data-pair-to-accumulator (function none))
 
 ;; definition for function make-joint-jump-tables
 (defun make-joint-jump-tables ()
@@ -1427,7 +1434,8 @@
   )
 
 ;; definition for function calc-animation-from-spr
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c calc-animation-from-spr (function (inline-array vector) int none))
 
 ;; definition for function create-interpolated-joint-animation-frame
 (defun create-interpolated-joint-animation-frame ((arg0 (inline-array vector)) (arg1 int) (arg2 process-drawable))

@@ -45,6 +45,7 @@ Ptr<Type> intern_type_from_c(const char* name, u64 methods);
 u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32 a2);
 Ptr<Symbol4<u32>> find_symbol_from_c(const char* name);
 u64 make_string_from_c(const char* c_str);
+u64 make_debug_string_from_c(const char* c_str);
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
 u64 inspect_object(u32 obj);
 u64 print_object(u32 obj);
@@ -57,4 +58,6 @@ u64 loado(u32 file_name_in, u32 heap_in);
 u64 unload(u32 name);
 u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
 u64 call_goal_function_by_name(const char* name);
+u64 alloc_heap_object(u32 heap, u32 type, u32 size, u32 pp);
+u32 u32_in_fixed_sym(u32 offset);
 }  // namespace jak2

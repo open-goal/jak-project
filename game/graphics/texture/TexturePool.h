@@ -10,6 +10,7 @@
 #include "common/common_types.h"
 #include "common/util/Serializer.h"
 #include "common/util/SmallVector.h"
+#include "common/versions.h"
 
 #include "game/graphics/texture/TextureConverter.h"
 
@@ -300,7 +301,7 @@ struct GoalTexturePage {
  */
 class TexturePool {
  public:
-  TexturePool();
+  TexturePool(GameVersion version);
   void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
   GpuTexture* give_texture(const TextureInput& in);
   GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
@@ -346,7 +347,7 @@ class TexturePool {
   void draw_debug_window();
   void relocate(u32 destination, u32 source, u32 format);
   void draw_debug_for_tex(const std::string& name, GpuTexture* tex, u32 slot);
-  const std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256> all_textures() const {
+  const std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256>& all_textures() const {
     return m_textures;
   }
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
@@ -379,6 +380,7 @@ class TexturePool {
   std::unordered_map<std::string, PcTextureId> m_name_to_id;
 
   u32 m_next_pc_texture_to_allocate = 0;
+  u32 m_tpage_dir_size = 0;
 
   std::mutex m_mutex;
 };

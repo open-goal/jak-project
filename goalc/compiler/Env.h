@@ -84,6 +84,8 @@ class GlobalEnv : public Env {
   ~GlobalEnv() = default;
 
   FileEnv* add_file(std::string name);
+  // TODO - consider refactoring to use a Trie
+  std::vector<std::string> list_files_with_prefix(const std::string& prefix);
 
  private:
   std::vector<std::unique_ptr<FileEnv>> m_files;
@@ -122,7 +124,9 @@ class FileEnv : public Env {
   }
 
   int default_segment() const { return m_default_segment; }
+  void set_nondebug_file() { m_default_segment = MAIN_SEGMENT; }
   void set_debug_file() { m_default_segment = DEBUG_SEGMENT; }
+  bool is_debug_file() const { return default_segment() == DEBUG_SEGMENT; }
 
  protected:
   std::string m_name;

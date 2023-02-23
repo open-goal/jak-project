@@ -3,8 +3,6 @@
  * Forms which define or set things.
  */
 
-#include "common/log/log.h"
-
 #include "goalc/compiler/Compiler.h"
 
 /*!
@@ -13,6 +11,13 @@
  */
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
+  SymbolInfo::Metadata sym_meta;
+  // Grab the docstring (if it's there) and then rip it out so we can do the normal validation
+  if (args.unnamed.size() == 3 && args.unnamed.at(1).is_string()) {
+    sym_meta.docstring = args.unnamed.at(1).as_string()->data;
+    args.unnamed.erase(args.unnamed.begin() + 1);
+  }
+
   va_check(form, args, {goos::ObjectType::SYMBOL, {}},
            {{"no-typecheck", {false, goos::ObjectType::SYMBOL}}});
   auto& sym = args.unnamed.at(0);
@@ -39,7 +44,14 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     if ((as_lambda->func && as_lambda->func->settings.allow_inline) || !as_lambda->func) {
       m_inlineable_functions[sym.as_symbol()] = as_lambda;
     }
-    m_symbol_info.add_function(symbol_string(sym), form);
+    // Most defines come via macro invokations, we want the TRUE defining form location
+    // if we can get it
+    if (env->macro_expand_env()) {
+      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params,
+                                 env->macro_expand_env()->root_form(), sym_meta);
+    } else {
+      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params, form, sym_meta);
+    }
   }
 
   if (!sym_val->settable()) {
@@ -61,7 +73,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  m_symbol_info.add_global(symbol_string(sym), form);
+  m_symbol_info.add_global(symbol_string(sym), form, sym_meta);
 
   env->emit(form, std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
@@ -73,6 +85,12 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
 Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
+  // Grab the docstring (if it's there) and then rip it out so we can do the normal validation
+  if (args.unnamed.size() == 3 && args.unnamed.at(1).is_string()) {
+    // TODO - docstring - actually use it!
+    // std::string docstring = args.unnamed.at(1).as_string()->data;
+    args.unnamed.erase(args.unnamed.begin() + 1);
+  }
   va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
   auto& sym = args.unnamed.at(0);
   auto& typespec = args.unnamed.at(1);

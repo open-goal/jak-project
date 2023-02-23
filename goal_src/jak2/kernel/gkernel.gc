@@ -89,7 +89,9 @@
         )
 
 ;; the main execution stack that's not on the scratchpad
+;; (define *canary-1* (the-as (pointer uint64) (malloc 'global 8)))
 (define *dram-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
+;; (define *canary-2* (the-as (pointer uint64) (malloc 'global 8)))
 
 ;; DECOMP DEVIATION
 ;; the top of the stack.
@@ -119,6 +121,7 @@
   ;; use the same memory for the scratchpad stacks.
   ;; defining it as a separate thing so we can split them for debugging stack corruption easily.
   (define *fake-scratchpad-stack* *fake-scratchpad-data*)
+  ;; (define *canary-3* (the-as (pointer uint64) (malloc 'global 8)))
 
   (defmacro scratchpad-start ()
     "Get the start of the scratchpad. At least 64kB aligned."
@@ -1559,6 +1562,9 @@
   (execute-process-tree
     *active-pool*
     (lambda ((arg0 process))
+      ;; (+! (-> *canary-1*) 1)
+      ;; (+! (-> *canary-2*) 1)
+      ;; (+! (-> *canary-3*) 1)
       (let ((s5-0 *kernel-context*))
         (case (-> arg0 status)
           (('waiting-to-run 'suspended)
@@ -1580,9 +1586,12 @@
              )
 
            ;; run the trans function.
+          ;;  (format 0 "Trans | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
            (when (-> arg0 trans-hook)
              (let ((s4-0 (new 'process 'cpu-thread arg0 'trans 256 (-> arg0 main-thread stack-top))))
-               (reset-and-call s4-0 (-> arg0 trans-hook))
+               (with-pc-profiler "trans"
+                  (reset-and-call s4-0 (-> arg0 trans-hook))
+                  )
                (delete s4-0)
                )
              (when (= (-> arg0 status) 'dead) ;; handle deactivates in trans
@@ -1593,10 +1602,14 @@
              )
 
            ;; run the main thread!
+          ;;  (format 0 "Code | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
            (if (logtest? (-> arg0 mask) (process-mask sleep-code))
                (set! (-> arg0 status) 'suspended)
-               ((-> arg0 main-thread resume-hook) (-> arg0 main-thread))
+               (with-pc-profiler "code"
+                 ((-> arg0 main-thread resume-hook) (-> arg0 main-thread))
+                 )
                )
+          ;;  (format 0 "Finished Code | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
 
 
            (cond
@@ -1608,9 +1621,12 @@
              (else
                ;; run post.
                ;; NOTE: post always runs on the dram stack, so you can use ja-post and use the scratchpad for anims.
+              ;;  (format 0 "Post | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
                (when (-> arg0 post-hook)
                  (let ((s4-1 (new 'process 'cpu-thread arg0 'post 256 *kernel-dram-stack*)))
-                   (reset-and-call s4-1 (-> arg0 post-hook))
+                   (with-pc-profiler "post"
+                     (reset-and-call s4-1 (-> arg0 post-hook))
+                     )
                    (delete s4-1)
                    )
                  (when (= (-> arg0 status) 'dead) ;; handle death in post
@@ -2162,6 +2178,10 @@
   The function will run until it attempts to change state. At the first attempt to change state,
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
+  (when (zero? func)
+    (format 0 "attempting to run nullptr function!~%")
+    (break!)
+    )
   (rlet ((pp :reg r13 :type process))
 
     (let ((param-array (new 'stack-no-clear 'array 'uint64 6))

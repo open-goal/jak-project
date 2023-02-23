@@ -11,8 +11,10 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/mips2c/mips2c_table.h"
 
 #include "third-party/fmt/core.h"
+
 static constexpr bool link_debug_printfs = false;
 
 /*!
@@ -346,8 +348,15 @@ uint32_t link_control::jak2_work_v2() {
         MsgErr("dkernel: heap overflow\n");  // game has ~% instead of \n :P
         return 1;
       }
-    } else {  // not close enough, need to move the object
 
+      // added in jak 2, move the link block to the top of the heap so we can allocate on
+      // the level heap during linking without overwriting link data. this is used for level types
+      u32 link_block_size = *m_link_block_ptr.cast<u32>();
+      auto new_link_block = kmalloc(m_heap, link_block_size, KMALLOC_TOP, "link-block");
+      memmove(new_link_block.c(), m_link_block_ptr.c() - 4, link_block_size);
+      m_link_block_ptr = Ptr<uint8_t>(new_link_block.offset + 4);  // basic offset
+
+    } else {  // not close enough, need to move the object
       // on the first run of this state...
       if (m_segment_process == 0) {
         m_original_object_location = m_object_data;
@@ -540,11 +549,12 @@ void link_control::jak2_finish(bool jump_from_c_to_goal) {
     // todo check function type of entry
 
     // setup mips2c functions
-    /*
-    for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
-      x();
+    const auto& it = Mips2C::gMips2CLinkCallbacks[GameVersion::Jak2].find(m_object_name);
+    if (it != Mips2C::gMips2CLinkCallbacks[GameVersion::Jak2].end()) {
+      for (auto& x : it->second) {
+        x();
+      }
     }
-     */
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {

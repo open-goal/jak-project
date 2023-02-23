@@ -1,15 +1,28 @@
 #include "Tie3.h"
 
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/log/log.h"
+#include "common/util/Assert.h"
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
+Tie3::Tie3(const std::string& name, int my_id, int level_id)
     : BucketRenderer(name, my_id), m_level_id(level_id) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+
+  m_wind_data.paused = 0;
+  math::Vector4f ones(1, 1, 1, 1);
+  m_wind_data.wind_normal = ones;
+  m_wind_data.wind_temp = ones;
+  for (auto& wv : m_wind_data.wind_array) {
+    wv = ones;
+  }
+  for (auto& wf : m_wind_data.wind_force) {
+    wf = 1.f;
+  }
 }
 
 Tie3::~Tie3() {
@@ -108,6 +121,11 @@ void Tie3::update_load(const LevelData* loader_data) {
         }
       }
 
+      lod_tree[l_tree].has_proto_visibility = tree.has_per_proto_visibility_toggle;
+      if (tree.has_per_proto_visibility_toggle) {
+        lod_tree[l_tree].proto_visibility.init(tree.proto_names);
+      }
+
       glActiveTexture(GL_TEXTURE10);
       glGenTextures(1, &lod_tree[l_tree].time_of_day_texture);
       glBindTexture(GL_TEXTURE_1D, lod_tree[l_tree].time_of_day_texture);
@@ -127,6 +145,7 @@ void Tie3::update_load(const LevelData* loader_data) {
   m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
   m_cache.draw_idx_temp.resize(max_draws);
   m_cache.index_temp.resize(max_inds);
+
   ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
 }
 
@@ -157,7 +176,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("TIE setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("TIE setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -209,19 +228,19 @@ void do_wind_math(u16 wind_idx,
   // vmula.xyzw acc, vf16, vf1       # acc = vf16
   // vmsubax.xyzw acc, vf18, vf19    # acc = vf16 - vf18 * wind_const.x
   // vmsuby.xyzw vf16, vf17, vf19
-  //# vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
+  // # vf16 -= (vf18 * wind_const.x) + (vf17 * wind_const.y)
   vf16.x() -= cx * vf18_x + cy * vf17_x;
   vf16.z() -= cx * vf18_z + cy * vf17_z;
 
   // vmulaz.xyzw acc, vf16, vf19     # acc = vf16 * wind_const.z
   // vmadd.xyzw vf18, vf1, vf18
-  //# vf18 += vf16 * wind_const.z
+  // # vf18 += vf16 * wind_const.z
   math::Vector4f vf18(vf18_x, 0.f, vf18_z, 0.f);
   vf18 += vf16 * cz;
 
   // vmulaz.xyzw acc, vf18, vf19    # acc = vf18 * wind_const.z
   // vmadd.xyzw vf17, vf17, vf1
-  //# vf17 += vf18 * wind_const.z
+  // # vf17 += vf18 * wind_const.z
   math::Vector4f vf17(vf17_x, 0.f, vf17_z, 0.f);
   vf17 += vf18 * cz;
 
@@ -301,8 +320,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -314,11 +334,18 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     return;
   }
 
-  auto gs_test = dma.read_and_advance();
-  ASSERT(gs_test.size_bytes == 32);
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    return;
+  }
 
-  auto tie_consts = dma.read_and_advance();
-  ASSERT(tie_consts.size_bytes == 9 * 16);
+  auto gs_test = dma.read_and_advance();
+  if (gs_test.size_bytes == 160) {
+  } else {
+    ASSERT(gs_test.size_bytes == 32);
+
+    auto tie_consts = dma.read_and_advance();
+    ASSERT(tie_consts.size_bytes == 9 * 16);
+  }
 
   auto mscalf = dma.read_and_advance();
   ASSERT(mscalf.size_bytes == 0);
@@ -327,6 +354,9 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   ASSERT(row.size_bytes == 32);
 
   auto next = dma.read_and_advance();
+  if (next.size_bytes == 32) {
+    next = dma.read_and_advance();
+  }
   ASSERT(next.size_bytes == 0);
 
   auto pc_port_data = dma.read_and_advance();
@@ -334,9 +364,19 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
-  auto wind_data = dma.read_and_advance();
-  ASSERT(wind_data.size_bytes == sizeof(WindWork));
-  memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  if (render_state->version == GameVersion::Jak1) {
+    auto wind_data = dma.read_and_advance();
+    ASSERT(wind_data.size_bytes == sizeof(WindWork));
+    memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  }
+
+  const u8* proto_vis_data = nullptr;
+  size_t proto_vis_data_size = 0;
+  if (render_state->version == GameVersion::Jak2) {
+    auto proto_mask_data = dma.read_and_advance();
+    proto_vis_data = proto_mask_data.data;
+    proto_vis_data_size = proto_mask_data.size_bytes;
+  }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     dma.read_and_advance();
@@ -357,37 +397,29 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
 
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-  }
-
-  if (false) {
-    //    for (int i = 0; i < 8; i++) {
-    //      settings.time_of_day_weights[i] = m_time_of_days[i];
-    //    }
-  } else {
-    for (int i = 0; i < 8; i++) {
-      settings.time_of_day_weights[i] =
-          2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
-    }
+    settings.itimes[i] = m_pc_port_data.itimes[i];
   }
 
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }
 
-  render_all_trees(lod(), settings, render_state, prof);
+  render_all_trees(lod(), settings, render_state, prof, proto_vis_data, proto_vis_data_size);
 }
 
 void Tie3::render_all_trees(int geom,
                             const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
-                            ScopedProfilerNode& prof) {
+                            ScopedProfilerNode& prof,
+                            const u8* proto_vis_data,
+                            size_t proto_vis_data_size) {
   Timer all_tree_timer;
   if (m_override_level && m_pending_user_level) {
     m_has_level = setup_for_level(*m_pending_user_level, render_state);
     m_pending_user_level = {};
   }
   for (u32 i = 0; i < m_trees[geom].size(); i++) {
-    render_tree(i, geom, settings, render_state, prof);
+    render_tree(i, geom, settings, render_state, prof, proto_vis_data, proto_vis_data_size);
   }
   m_all_tree_time.add(all_tree_timer.getSeconds());
 }
@@ -507,7 +539,9 @@ void Tie3::render_tree(int idx,
                        int geom,
                        const TfragRenderSettings& settings,
                        SharedRenderState* render_state,
-                       ScopedProfilerNode& prof) {
+                       ScopedProfilerNode& prof,
+                       const u8* proto_vis_data,
+                       size_t proto_vis_data_size) {
   // reset perf
   Timer tree_timer;
   auto& tree = m_trees.at(geom).at(idx);
@@ -524,11 +558,16 @@ void Tie3::render_tree(int idx,
     m_color_result.resize(tree.colors->size());
   }
 
+  // update proto vis mask
+  if (proto_vis_data) {
+    tree.proto_visibility.update(proto_vis_data, proto_vis_data_size);
+  }
+
   Timer interp_timer;
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
@@ -572,9 +611,15 @@ void Tie3::render_tree(int idx,
           make_all_visible_index_list(m_cache.draw_idx_temp.data(), m_cache.index_temp.data(),
                                       *tree.draws, tree.index_data, &num_tris);
     } else {
-      idx_buffer_size = make_index_list_from_vis_string(
-          m_cache.draw_idx_temp.data(), m_cache.index_temp.data(), *tree.draws, m_cache.vis_temp,
-          tree.index_data, &num_tris);
+      if (tree.has_proto_visibility) {
+        idx_buffer_size = make_index_list_from_vis_and_proto_string(
+            m_cache.draw_idx_temp.data(), m_cache.index_temp.data(), *tree.draws, m_cache.vis_temp,
+            tree.proto_visibility.vis_flags, tree.index_data, &num_tris);
+      } else {
+        idx_buffer_size = make_index_list_from_vis_string(
+            m_cache.draw_idx_temp.data(), m_cache.index_temp.data(), *tree.draws, m_cache.vis_temp,
+            tree.index_data, &num_tris);
+      }
     }
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_size * sizeof(u32), m_cache.index_temp.data(),
@@ -590,9 +635,17 @@ void Tie3::render_tree(int idx,
       tree.perf.index_time.add(index_timer.getSeconds());
     } else {
       Timer index_timer;
-      num_tris = make_multidraws_from_vis_string(
-          m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
-          m_cache.multidraw_index_offset_buffer.data(), *tree.draws, m_cache.vis_temp);
+      if (tree.has_proto_visibility) {
+        num_tris = make_multidraws_from_vis_and_proto_string(
+            m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
+            m_cache.multidraw_index_offset_buffer.data(), *tree.draws, m_cache.vis_temp,
+            tree.proto_visibility.vis_flags);
+      } else {
+        num_tris = make_multidraws_from_vis_string(
+            m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
+            m_cache.multidraw_index_offset_buffer.data(), *tree.draws, m_cache.vis_temp);
+      }
+
       tree.perf.index_time.add(index_timer.getSeconds());
     }
   }
@@ -715,6 +768,7 @@ void Tie3::draw_debug_window() {
     ImGui::Text("draw: %d", perf.draws);
     ImGui::Text("wind draw: %d", perf.wind_draws);
     ImGui::Text("total: %.2f", perf.tree_time.get());
+    ImGui::Text("proto vis: %.2f", perf.proto_vis_time.get() * 1000.f);
     ImGui::Text("cull: %.2f index: %.2f tod: %.2f setup: %.2f draw: %.2f",
                 perf.cull_time.get() * 1000.f, perf.index_time.get() * 1000.f,
                 perf.tod_time.get() * 1000.f, perf.setup_time.get() * 1000.f,
@@ -722,4 +776,56 @@ void Tie3::draw_debug_window() {
     ImGui::Separator();
   }
   ImGui::Text("All trees: %.2f", 1000.f * m_all_tree_time.get());
+}
+
+void TieProtoVisibility::init(const std::vector<std::string>& names) {
+  vis_flags.resize(names.size());
+  for (auto& x : vis_flags) {
+    x = 1;
+  }
+  all_visible = true;
+  name_to_idx.clear();
+  size_t i = 0;
+  for (auto& name : names) {
+    name_to_idx[name].push_back(i++);
+  }
+}
+
+void TieProtoVisibility::update(const u8* data, size_t size) {
+  char name_buffer[256];  // ??
+
+  if (!all_visible) {
+    for (auto& x : vis_flags) {
+      x = 1;
+    }
+    all_visible = true;
+  }
+
+  const u8* end = data + size;
+
+  while (true) {
+    int name_idx = 0;
+    while (*data) {
+      name_buffer[name_idx++] = *data;
+      data++;
+    }
+    if (name_idx) {
+      ASSERT(name_idx < 254);
+      name_buffer[name_idx] = '\0';
+      const auto& it = name_to_idx.find(name_buffer);
+      if (it != name_to_idx.end()) {
+        all_visible = false;
+        for (auto x : name_to_idx.at(name_buffer)) {
+          vis_flags[x] = 0;
+        }
+      }
+    }
+
+    while (*data == 0) {
+      if (data >= end) {
+        return;
+      }
+      data++;
+    }
+  }
 }

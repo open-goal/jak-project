@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "common/type_system/state.h"
@@ -371,8 +372,8 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   auto kv = m_symbol_types.find(result.type.base_type());
   if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
     // we already have something that's not a type with the same name, this is bad.
-    fmt::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
-               kv->second.print());
+    lg::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
+              kv->second.print());
   }
   // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
@@ -479,7 +480,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
   lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
 
-  // skip docstring
+  // TODO - docstring - do something with the docstring!
   if (body->as_pair()->car.is_string() && !body->as_pair()->cdr.is_empty_list()) {
     body = &pair_cdr(*body);
   }
@@ -611,13 +612,13 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   }
   place->set_type(lambda_ts);
 
-  m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
-
-  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts);
+  auto info =
+      m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
   auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
+  m_symbol_info.add_method(symbol_string(method_name), lambda.params, info, form);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
 
@@ -725,7 +726,15 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // deref thing is one of the field names. Otherwise, array.
           if (field_name == "content-type" || field_name == "length" ||
               field_name == "allocated-length" || field_name == "type" || field_name == "data") {
-            result = get_field_of_structure(struct_type, result, field_name, env);
+            // if accessing data, give the more specific pointer type.
+            if (field_name == "data" && result->type().has_single_arg()) {
+              auto elt_type = m_ts.make_pointer_typespec(result->type().get_single_arg());
+              result = get_field_of_structure(struct_type, result, field_name, env);
+              result->set_type(elt_type);
+            } else {
+              // otherwise, deref as normal
+              result = get_field_of_structure(struct_type, result, field_name, env);
+            }
             continue;
           }
         } else {
@@ -948,7 +957,7 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
   auto result = compile(args.unnamed.at(0), env)->to_reg(form, env);
-  fmt::print("[TYPE] {} {}\n", result->type().print(), result->print());
+  lg::print("[TYPE] {} {}\n", result->type().print(), result->print());
   return result;
 }
 
@@ -1040,7 +1049,8 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     auto new_method = compile_get_method_of_type(form, main_type, "new", env);
     auto new_obj = compile_real_function_call(form, new_method, args, env);
     if (making_boxed_array) {
-      new_obj->set_type(m_ts.make_array_typespec(m_ts.make_typespec(content_type)));
+      // TODO - handle array subtypes here as well?
+      new_obj->set_type(m_ts.make_array_typespec("array", m_ts.make_typespec(content_type)));
     } else {
       new_obj->set_type(main_type);
     }
@@ -1053,16 +1063,21 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object& type,
                                   const goos::Object* rest,
                                   Env* env) {
-  auto unquoted = unquote(type);
-  if (unquoted.is_symbol() &&
-      (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array" ||
-       unquoted.as_symbol()->name == "inline-array")) {
+  auto unquoted_type = unquote(type);
+  const auto& sym_name = unquoted_type.as_symbol()->name;
+  // Check if the type is an array or a subtype of 'array'
+  bool is_array = sym_name == "boxed-array" || sym_name == "array" || sym_name == "inline-array";
+  if (!is_array) {
+    const auto type_of_object = parse_typespec(unquoted_type, env);
+    is_array = m_ts.typecheck_and_throw(TypeSpec("array"), type_of_object, "", false, false, false);
+  }
+  if (unquoted_type.is_symbol() && is_array) {
     auto fe = env->function_env();
     auto sr = compile_static(form, env);
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
     return result;
   } else {
-    auto type_of_object = parse_typespec(unquote(type), env);
+    const auto type_of_object = parse_typespec(unquoted_type, env);
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env,
                                                    env->function_env()->segment_for_static_data());
@@ -1124,13 +1139,18 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
     }
-    auto type_info = m_ts.lookup_type(ts.get_single_arg());
-    if (!m_ts.lookup_type(elt_type)->is_reference()) {
+    auto type_info = m_ts.lookup_type_allow_partial_def(ts.get_single_arg());
+    if (!m_ts.lookup_type_allow_partial_def(elt_type)->is_reference()) {
       // not a reference type
+      m_ts.lookup_type(elt_type);  // should be fully defined
       int size_in_bytes = info.stride * constant_count;
       auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes,
                                                       type_info->get_in_memory_alignment());
       return addr;
+    }
+
+    if (is_inline) {
+      m_ts.lookup_type(elt_type);  // should be fully defined
     }
 
     int stride = is_inline ? align(type_info->get_size_in_memory(),
@@ -1327,7 +1347,7 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  parse_defenum(rest, &m_ts);
+  parse_defenum(rest, &m_ts, {});
   return get_none();
 }
 

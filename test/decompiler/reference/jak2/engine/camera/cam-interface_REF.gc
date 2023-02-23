@@ -1,0 +1,100 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function position-in-front-of-camera!
+(defun position-in-front-of-camera! ((arg0 vector) (arg1 float) (arg2 float))
+  (vector-float*! arg0 (-> *math-camera* inv-camera-rot vector 2) arg1)
+  (vector+float*! arg0 arg0 (-> *math-camera* inv-camera-rot vector 1) arg2)
+  (vector+! arg0 arg0 (-> *math-camera* trans))
+  arg0
+  )
+
+;; definition for function position-in-front-of-screen!
+(defun position-in-front-of-screen! ((arg0 vector) (arg1 float) (arg2 vector))
+  (let ((a2-1 (vector-negate! (new 'stack-no-clear 'vector) (-> *math-camera* inv-camera-rot vector 2)))
+        (a1-3 (vector-float*! (new 'stack-no-clear 'vector) (-> *math-camera* inv-camera-rot vector 2) arg1))
+        )
+    (vector+! a1-3 a1-3 (-> *math-camera* trans))
+    (reverse-transform-point! arg0 a1-3 a2-1 arg2)
+    )
+  arg0
+  )
+
+;; definition for function matrix-local->world
+(defun matrix-local->world ((smooth? symbol))
+  "Returns [[*math-camera*]]'s `inv-camera-rot-smooth` if `smooth?` is true, else return `inv-camera-rot`"
+  (if smooth?
+      (-> *math-camera* inv-camera-rot-smooth)
+      (-> *math-camera* inv-camera-rot)
+      )
+  )
+
+;; definition for function matrix-world->local
+(defun matrix-world->local ((arg0 symbol) (arg1 object))
+  "Returns [[*math-camera*]]'s `camera-rot`"
+  (-> *math-camera* camera-rot)
+  )
+
+;; definition (perm) for symbol *camera-dummy-vector*, type vector
+(define-perm *camera-dummy-vector* vector (vector-reset! (new 'global 'vector)))
+
+;; definition for function camera-pos
+(defun camera-pos ()
+  "Returns the `trans` vector from whatever is first determined to exist:
+- [[*camera-combiner*]]
+- [[*math-camera*]]
+- else, [[*camera-dummy-vector*]]"
+  (cond
+    (*camera-combiner*
+      (-> *camera-combiner* trans)
+      )
+    (*math-camera*
+      (-> *math-camera* trans)
+      )
+    (else
+      *camera-dummy-vector*
+      )
+    )
+  )
+
+;; definition for function math-camera-pos
+(defun math-camera-pos ()
+  "Returns [[*math-camera*]]'s `trans`"
+  (-> *math-camera* trans)
+  )
+
+;; definition for function camera-matrix
+(defun camera-matrix ()
+  "If [[*camera-combiner*]] exists, return it's `inv-camera-rot`.  Else, return [[*math-camera*]]'s"
+  (if *camera-combiner*
+      (-> *camera-combiner* inv-camera-rot)
+      (-> *math-camera* inv-camera-rot)
+      )
+  )
+
+;; definition for function math-camera-matrix
+(defun math-camera-matrix ()
+  "Returns [[*math-camera*]]'s `inv-camera-rot`"
+  (-> *math-camera* inv-camera-rot)
+  )
+
+;; definition for function camera-angle
+(defun camera-angle ()
+  (let ((f0-0 (-> *math-camera* camera-rot vector 0 x))
+        (f1-0 (-> *math-camera* camera-rot vector 0 z))
+        )
+    (atan f1-0 f0-0)
+    )
+  )
+
+;; definition for function camera-teleport-to-entity
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs symbol.
+(defbehavior camera-teleport-to-entity process ((arg0 entity-actor))
+  (let ((gp-0 (new 'stack 'transformq)))
+    (set! (-> gp-0 trans quad) (-> arg0 extra trans quad))
+    (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
+    (vector-identity! (-> gp-0 scale))
+    (the-as symbol (send-event *camera* 'teleport-to-transformq gp-0))
+    )
+  )

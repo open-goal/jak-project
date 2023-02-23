@@ -34,12 +34,12 @@
 
 ;; failed to figure out what this is:
 (defstate shover-idle (shover)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
-       (when (= (-> arg0 type) target)
+       (when (= (-> proc type) target)
          (when ((method-of-type touching-shapes-entry prims-touching-action?)
-                (the-as touching-shapes-entry (-> arg3 param 0))
+                (the-as touching-shapes-entry (-> event param 0))
                 (-> *target* control)
                 (collide-action solid)
                 (collide-action)
@@ -52,15 +52,15 @@
                      (< 0.75 (-> *target* control poly-normal y))
                      )
                  (send-event
-                   arg0
+                   proc
                    'attack-or-shove
-                   (-> arg3 param 0)
+                   (-> event param 0)
                    (static-attack-info ((mode 'burn) (vector (-> s4-0 vector)) (shove-up (-> s4-0 shove-up))))
                    )
                  (send-event
-                   arg0
+                   proc
                    'attack-or-shove
-                   (-> arg3 param 0)
+                   (-> event param 0)
                    (static-attack-info ((mode 'burn)
                                         (shove-up (meters 0))
                                         (shove-back (meters 2))

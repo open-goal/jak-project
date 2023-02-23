@@ -7,3 +7,1834 @@
 
 ;; DECOMP BEGINS
 
+(defmethod draw hud-plasmite ((obj hud-plasmite))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    210
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 20)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-plasmite ((obj hud-plasmite))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-plasmite ((obj hud-plasmite))
+  (set! (-> obj level) (level-get *level* 'strip))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xb26)))
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (set! (-> obj sprites 0 scale-x) 1.0)
+  (set! (-> obj sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(deftype strip-hazard (process-drawable)
+  ((root-override      collide-shape-moving         :offset        128)
+   (sync               sync-linear          :inline :offset-assert 200)
+   (shove-vec          vector               :inline :offset-assert 224)
+   (no-collision-timer uint64                       :offset-assert 240)
+   (attack-id          uint32                       :offset-assert 248)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #xfc
+  :flag-assert         #x15008000fc
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior strip-handler strip-hazard ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (the-as
+    object
+    (case arg2
+      (('touch 'attack)
+       (let* ((s4-0 arg0)
+              (gp-0 (if (type? s4-0 process-focusable)
+                        (the-as process-focusable s4-0)
+                        )
+                    )
+              )
+         (when gp-0
+           (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat))))
+             (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root-override quat)))
+                    (f0-1 (vector-dot s4-1 v1-4))
+                    )
+               (if (< 0.0 f0-1)
+                   (vector-float*! s4-1 s4-1 -1.0)
+                   )
+               )
+             (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-7 from) (process->ppointer self))
+               (set! (-> a1-7 num-params) 2)
+               (set! (-> a1-7 message) 'attack)
+               (set! (-> a1-7 param 0) (-> arg3 param 0))
+               (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
+                 (set! (-> v1-13 id) (-> self attack-id))
+                 (set! (-> v1-13 vector quad) (-> s4-1 quad))
+                 (set! (-> v1-13 shove-back) (-> self shove-vec z))
+                 (set! (-> v1-13 shove-up) (-> self shove-vec y))
+                 (set! (-> v1-13 control) (if (logtest? (focus-status board) (-> gp-0 focus-status))
+                                              1.0
+                                              0.0
+                                              )
+                       )
+                 (set! (-> a1-7 param 1) (the-as uint v1-13))
+                 )
+               (when (send-event-function gp-0 a1-7)
+                 (set! (-> self no-collision-timer) (the-as uint (-> self clock frame-counter)))
+                 (let ((v1-18 (-> self root-override root-prim)))
+                   (set! (-> v1-18 prim-core collide-as) (collide-spec))
+                   (set! (-> v1-18 prim-core collide-with) (collide-spec))
+                   )
+                 0
+                 )
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior strip-trans strip-hazard ()
+  (when (and (nonzero? (-> self no-collision-timer))
+             (>= (- (-> self clock frame-counter) (the-as int (-> self no-collision-timer))) (seconds 0.3))
+             )
+    (let ((v1-7 (-> self root-override root-prim)))
+      (set! (-> v1-7 prim-core collide-as) (-> self root-override backup-collide-as))
+      (set! (-> v1-7 prim-core collide-with) (-> self root-override backup-collide-with))
+      )
+    (set! (-> self no-collision-timer) (the-as uint 0))
+    0
+    )
+  (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+    (set! (-> a1-0 options) (overlaps-others-options oo0))
+    (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
+    (set! (-> a1-0 tlist) *touching-list*)
+    (find-overlapping-shapes (-> self root-override) a1-0)
+    )
+  (none)
+  )
+
+(defstate idle (strip-hazard)
+  :virtual #t
+  :event strip-handler
+  :trans strip-trans
+  :code (behavior ()
+    (until #f
+      (let ((f0-1 (* (get-current-phase-no-mod (-> self sync)) (the float (+ (-> (ja-group) frames num-frames) -1))))
+            (a0-1 (-> self skel root-channel 0))
+            )
+        (let ((v1-14 (ja-group)))
+          (set! (-> a0-1 frame-group) v1-14)
+          )
+        (set! (-> a0-1 param 0) 1.0)
+        (set! (-> a0-1 frame-num) f0-1)
+        (joint-control-channel-group! a0-1 (ja-group) num-func-loop!)
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior strip-hazard) transform-post)
+  )
+
+(defmethod init-from-entity! strip-hazard ((obj strip-hazard) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-64 res-tag))
+  (set-vector! (-> obj shove-vec) 0.0 12288.0 24576.0 1.0)
+  (set! (-> obj no-collision-timer) (the-as uint 0))
+  (let* ((v1-1 *game-info*)
+         (a0-5 (+ (-> v1-1 attack-id) 1))
+         )
+    (set! (-> v1-1 attack-id) a0-5)
+    (set! (-> obj attack-id) a0-5)
+    )
+  (let ((s4-0 (new 'stack-no-clear 'sync-info-params))
+        (s3-0 1200)
+        (f30-0 0.0)
+        )
+    (set! sv-64 (new 'static 'res-tag))
+    (let ((v1-3 (res-lump-data arg0 'sync (pointer float) :tag-ptr (& sv-64))))
+      (when v1-3
+        (set! s3-0 (the int (* 300.0 (-> v1-3 0))))
+        (set! f30-0 (-> v1-3 1))
+        )
+      )
+    (let ((v1-4 0))
+      (if #t
+          (set! v1-4 (logior v1-4 1))
+          )
+      (set! (-> s4-0 sync-type) 'sync-linear)
+      (set! (-> s4-0 sync-flags) (the-as sync-flags v1-4))
+      )
+    (set! (-> s4-0 entity) arg0)
+    (set! (-> s4-0 period) (the-as uint s3-0))
+    (set! (-> s4-0 percent) 0.0)
+    (initialize! (-> obj sync) s4-0)
+    (sync-now! (-> obj sync) f30-0)
+    )
+  (none)
+  )
+
+(deftype fencespikes (strip-hazard)
+  ((start-quat   quaternion :inline :offset-assert 256)
+   (spin         float              :offset-assert 272)
+   (offset       float              :offset-assert 276)
+   (sparks-group uint32             :offset-assert 280)
+   )
+  :heap-base #xa0
+  :method-count-assert 21
+  :size-assert         #x11c
+  :flag-assert         #x1500a0011c
+  )
+
+
+(defskelgroup skel-fencespikes fencespikes fencespikes-lod0-jg fencespikes-idle-ja
+              ((fencespikes-lod0-mg (meters 20)) (fencespikes-lod1-mg (meters 999999)))
+              :bounds (static-spherem 12 0 0 10.5)
+              )
+
+(defstate idle (fencespikes)
+  :virtual #t
+  :trans (behavior ()
+    (let ((gp-0 (ja-group))
+          (f0-0 (ja-aframe-num 0))
+          )
+      (cond
+        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 47.0) (>= 67.0 f0-0))
+         (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 9)))
+         )
+        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 42.0) (>= 65.0 f0-0))
+         (seek! (-> self spin) 393216.0 32768.0)
+         )
+        ((and (= gp-0 (-> self draw art-group data 3)) (>= f0-0 66.0) (>= 78.0 f0-0))
+         (seek! (-> self spin) 0.0 16384.0)
+         )
+        )
+      )
+    (quaternion-rotate-local-x!
+      (-> self root-override quat)
+      (-> self root-override quat)
+      (* (-> self spin) (-> self clock seconds-per-frame))
+      )
+    (strip-trans)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fencespikes ((obj fencespikes) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 string))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s3-0 local-sphere) 40960.0 0.0 0.0 45056.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-14 transform-index) 10)
+      (set-vector! (-> v1-14 local-sphere) 36864.0 0.0 0.0 28672.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-16 transform-index) 9)
+      (set-vector! (-> v1-16 local-sphere) 0.0 0.0 0.0 8192.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-19 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-fencespikes" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((t9-9 (method-of-type strip-hazard init-from-entity!)))
+    (t9-9 obj arg0)
+    )
+  (quaternion-copy! (-> obj start-quat) (-> obj root-override quat))
+  (set! sv-16 "#f")
+  (let ((a0-24 (entity-lookup-part-group arg0 (& sv-16) 'art-name)))
+    (when a0-24
+      (let ((a0-25 (-> a0-24 0)))
+        (if (and (nonzero? a0-25) (= (-> a0-25 type) sparticle-launch-group))
+            (set! (-> obj part) (create-launch-control a0-25 obj))
+            )
+        )
+      )
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype pitspikes (strip-hazard)
+  ((spinner basic  :offset-assert 252)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #x100
+  :flag-assert         #x1500800100
+  )
+
+
+(defskelgroup skel-pitspikes pitspikes pitspikes-lod0-jg pitspikes-idle-ja
+              ((pitspikes-lod0-mg (meters 20)) (pitspikes-lod1-mg (meters 999999)))
+              :bounds (static-spherem 8 0 0 12)
+              )
+
+(define *pitspikes-rotate-pos* (new 'static 'vector))
+
+(defun pitspikes-birth-func ((arg0 sparticle-system)
+                    (arg1 sparticle-cpuinfo)
+                    (arg2 sprite-vec-data-3d)
+                    (arg3 sparticle-launcher)
+                    (arg4 sparticle-launch-state)
+                    )
+  (let* ((gp-0 (-> arg2 x-y-z-sx))
+         (f30-0 (-> gp-0 w))
+         )
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      (vector-! s5-0 gp-0 *pitspikes-rotate-pos*)
+      (vector-rotate-y! s5-0 s5-0 (-> *pitspikes-rotate-pos* w))
+      (vector+! gp-0 *pitspikes-rotate-pos* s5-0)
+      )
+    (set! (-> gp-0 w) f30-0)
+    f30-0
+    )
+  )
+
+(defstate idle (pitspikes)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 4)))
+    (update! (-> self sound))
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))))
+      (let ((f0-0 (quaternion-y-angle (-> self root-override quat))))
+        (set! (-> *pitspikes-rotate-pos* quad) (-> gp-0 quad))
+        (set! (-> *pitspikes-rotate-pos* w) f0-0)
+        )
+      (spawn (-> self part) gp-0)
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch strip-hazard vs pitspikes.
+(defmethod relocate pitspikes ((obj pitspikes) (arg0 int))
+  (if (nonzero? (-> obj spinner))
+      (&+! (-> obj spinner) arg0)
+      )
+  (the-as
+    pitspikes
+    ((the-as (function strip-hazard int strip-hazard) (find-parent-method pitspikes 7)) obj arg0)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pitspikes ((obj pitspikes) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 transform-index) 4)
+      (set-vector! (-> v1-6 local-sphere) 33996.8 0.0 0.0 36864.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pitspikes" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
+    (t9-6 obj arg0)
+    )
+  (set! (-> obj spinner) (new 'process 'joint-mod-spinner obj 4 (new 'static 'vector :x 1.0 :w 1.0) 262144.0))
+  (set! (-> obj sound) (new
+                         'process
+                         'ambient-sound
+                         (static-sound-spec "pit-spikes" :fo-max 55)
+                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 4))
+                         )
+        )
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 214) obj))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype curtainsaw (strip-hazard)
+  ()
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #xfc
+  :flag-assert         #x15008000fc
+  )
+
+
+(defskelgroup skel-curtainsaw curtainsaw curtainsaw-lod0-jg curtainsaw-idle-ja
+              ((curtainsaw-lod0-mg (meters 20)) (curtainsaw-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 10.5)
+              :longest-edge (meters 0.0007044922)
+              )
+
+(defstate idle (curtainsaw)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 3)))
+    (update! (-> self sound))
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 x) -4096.0)
+      (set! (-> gp-0 y) 0.0)
+      (set! (-> gp-0 z) 0.0)
+      (set! (-> gp-0 w) 1.0)
+      (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))))
+        (vector-orient-by-quat! gp-0 gp-0 (-> self root-override quat))
+        (vector+! s5-0 s5-0 gp-0)
+        (spawn (-> self part) s5-0)
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! curtainsaw ((obj curtainsaw) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 15155.2 0.0 15564.8)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-curtainsaw" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
+    (t9-6 obj arg0)
+    )
+  (set! (-> obj sound) (new
+                         'process
+                         'ambient-sound
+                         (static-sound-spec "curtainsaw" :fo-max 55)
+                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 3))
+                         )
+        )
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 213) obj))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype grenade-point (process-drawable)
+  ((root-override      collide-shape             :offset        128)
+   (camera-name        string                    :offset-assert 200)
+   (parented?          symbol                    :offset-assert 204)
+   (lightning-time     time-frame                :offset-assert 208)
+   (strike-table       (array vector)            :offset-assert 216)
+   (last-strike-index  int32                     :offset-assert 220)
+   (speed              meters                    :offset-assert 224)
+   (part2              sparticle-launch-control  :offset-assert 228)
+   (part3              sparticle-launch-control  :offset-assert 232)
+   (part-lightning-hit sparticle-launch-control  :offset-assert 236)
+   (enter-time         time-frame                :offset-assert 240)
+   (minimap            connection-minimap        :offset-assert 248)
+   )
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #xfc
+  :flag-assert         #x16008000fc
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    )
+  )
+
+
+;; WARN: Return type mismatch process-drawable vs grenade-point.
+(defmethod relocate grenade-point ((obj grenade-point) (arg0 int))
+  (if (nonzero? (-> obj part2))
+      (&+! (-> obj part2) arg0)
+      )
+  (if (nonzero? (-> obj part3))
+      (&+! (-> obj part3) arg0)
+      )
+  (if (nonzero? (-> obj part-lightning-hit))
+      (&+! (-> obj part-lightning-hit) arg0)
+      )
+  (the-as grenade-point ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(defmethod deactivate grenade-point ((obj grenade-point))
+  (if (nonzero? (-> obj part2))
+      (kill-and-free-particles (-> obj part2))
+      )
+  (if (nonzero? (-> obj part3))
+      (kill-and-free-particles (-> obj part3))
+      )
+  (if (nonzero? (-> obj part-lightning-hit))
+      (kill-and-free-particles (-> obj part-lightning-hit))
+      )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(define *grenade-point-strike-table*
+  (the-as (array (array vector)) (new 'static 'boxed-array :type array
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 9851774.0 :y 355151.06 :z 669895.5 :w 1.0)
+                                     (new 'static 'vector :x 9872955.0 :y 353935.38 :z 574055.25 :w 1.0)
+                                     (new 'static 'vector :x 9892005.0 :y 352683.22 :z 541480.56 :w 1.0)
+                                     (new 'static 'vector :x 9890721.0 :y 354750.06 :z 587134.2 :w 1.0)
+                                     (new 'static 'vector :x 9880710.0 :y 354607.5 :z 576503.8 :w 1.0)
+                                     (new 'static 'vector :x 9890820.0 :y 352479.66 :z 540885.8 :w 1.0)
+                                     (new 'static 'vector :x 9852036.0 :y 355151.06 :z 668443.9 :w 1.0)
+                                     (new 'static 'vector :x 9960308.0 :y 304776.8 :z 613238.4 :w 1.0)
+                                     (new 'static 'vector :x 9852106.0 :y 355151.06 :z 668483.56 :w 1.0)
+                                     (new 'static 'vector :x 9855421.0 :y 368308.22 :z 637124.6 :w 1.0)
+                                     (new 'static 'vector :x 9869246.0 :y 352797.9 :z 571900.3 :w 1.0)
+                                     (new 'static 'vector :x 9940902.0 :y 321369.28 :z 670668.0 :w 1.0)
+                                     (new 'static 'vector :x 9957645.0 :y 336748.12 :z 560913.2 :w 1.0)
+                                     (new 'static 'vector :x 9858641.0 :y 353133.78 :z 550107.94 :w 1.0)
+                                     (new 'static 'vector :x 9852412.0 :y 355151.06 :z 670355.06 :w 1.0)
+                                     (new 'static 'vector :x 9891777.0 :y 354661.16 :z 588016.44 :w 1.0)
+                                     (new 'static 'vector :x 9881354.0 :y 354869.66 :z 582093.2 :w 1.0)
+                                     (new 'static 'vector :x 9861386.0 :y 400907.47 :z 637982.3 :w 1.0)
+                                     (new 'static 'vector :x 9954322.0 :y 305741.8 :z 638874.8 :w 1.0)
+                                     (new 'static 'vector :x 9879265.0 :y 354705.0 :z 581648.0 :w 1.0)
+                                     )
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 10137684.0 :y 391641.5 :z 918894.2 :w 1.0)
+                                     (new 'static 'vector :x 10218340.0 :y 338097.34 :z 834195.06 :w 1.0)
+                                     (new 'static 'vector :x 10136967.0 :y 353630.62 :z 908138.9 :w 1.0)
+                                     (new 'static 'vector :x 10221039.0 :y 337897.47 :z 828191.94 :w 1.0)
+                                     (new 'static 'vector :x 10236009.0 :y 405893.12 :z 985747.06 :w 1.0)
+                                     (new 'static 'vector :x 10149656.0 :y 365403.75 :z 917042.4 :w 1.0)
+                                     (new 'static 'vector :x 10187889.0 :y 371859.88 :z 866680.8 :w 1.0)
+                                     (new 'static 'vector :x 10138577.0 :y 337364.2 :z 836607.56 :w 1.0)
+                                     (new 'static 'vector :x 10223952.0 :y 337460.84 :z 884244.5 :w 1.0)
+                                     (new 'static 'vector :x 10223439.0 :y 337555.88 :z 882742.06 :w 1.0)
+                                     (new 'static 'vector :x 10152505.0 :y 338543.4 :z 843347.1 :w 1.0)
+                                     (new 'static 'vector :x 10150850.0 :y 386954.44 :z 920844.7 :w 1.0)
+                                     (new 'static 'vector :x 10204596.0 :y 351993.44 :z 874433.75 :w 1.0)
+                                     (new 'static 'vector :x 10151679.0 :y 338524.16 :z 844278.2 :w 1.0)
+                                     (new 'static 'vector :x 10185762.0 :y 394000.38 :z 935632.06 :w 1.0)
+                                     (new 'static 'vector :x 10135712.0 :y 337198.7 :z 840108.9 :w 1.0)
+                                     (new 'static 'vector :x 10208776.0 :y 338327.56 :z 823607.7 :w 1.0)
+                                     (new 'static 'vector :x 10232299.0 :y 390205.84 :z 913453.9 :w 1.0)
+                                     (new 'static 'vector :x 10234443.0 :y 336662.94 :z 884432.9 :w 1.0)
+                                     (new 'static 'vector :x 10104925.0 :y 393302.03 :z 907970.56 :w 1.0)
+                                     )
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 10343547.0 :y 286781.03 :z 386080.78 :w 1.0)
+                                     (new 'static 'vector :x 10522632.0 :y 363217.72 :z 314753.84 :w 1.0)
+                                     (new 'static 'vector :x 10489121.0 :y 322883.6 :z 277910.3 :w 1.0)
+                                     (new 'static 'vector :x 10387710.0 :y 286716.3 :z 369631.66 :w 1.0)
+                                     (new 'static 'vector :x 10379333.0 :y 290298.7 :z 432955.4 :w 1.0)
+                                     (new 'static 'vector :x 10340784.0 :y 286591.38 :z 365989.88 :w 1.0)
+                                     (new 'static 'vector :x 10511347.0 :y 307603.47 :z 401086.47 :w 1.0)
+                                     (new 'static 'vector :x 10507890.0 :y 321704.75 :z 367122.03 :w 1.0)
+                                     (new 'static 'vector :x 10387810.0 :y 286716.3 :z 370902.62 :w 1.0)
+                                     (new 'static 'vector :x 10504520.0 :y 369858.97 :z 445136.06 :w 1.0)
+                                     (new 'static 'vector :x 10341484.0 :y 286593.44 :z 371036.16 :w 1.0)
+                                     (new 'static 'vector :x 10511477.0 :y 323279.66 :z 434872.3 :w 1.0)
+                                     (new 'static 'vector :x 10400610.0 :y 287650.62 :z 405131.7 :w 1.0)
+                                     (new 'static 'vector :x 10353621.0 :y 287260.25 :z 317757.44 :w 1.0)
+                                     (new 'static 'vector :x 10417404.0 :y 287137.78 :z 243988.89 :w 1.0)
+                                     (new 'static 'vector :x 10439075.0 :y 366560.47 :z 362006.12 :w 1.0)
+                                     (new 'static 'vector :x 10396567.0 :y 286829.38 :z 383257.8 :w 1.0)
+                                     (new 'static 'vector :x 10358369.0 :y 287927.9 :z 273398.16 :w 1.0)
+                                     (new 'static 'vector :x 10519587.0 :y 357269.9 :z 374419.47 :w 1.0)
+                                     (new 'static 'vector :x 10458218.0 :y 288614.0 :z 266828.2 :w 1.0)
+                                     )
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 10822574.0 :y 440537.5 :z 270804.6 :w 1.0)
+                                     (new 'static 'vector :x 10815909.0 :y 414513.97 :z 351014.1 :w 1.0)
+                                     (new 'static 'vector :x 10813409.0 :y 430197.97 :z 373880.44 :w 1.0)
+                                     (new 'static 'vector :x 10748137.0 :y 446269.84 :z 411997.8 :w 1.0)
+                                     (new 'static 'vector :x 10767146.0 :y 395104.25 :z 328884.22 :w 1.0)
+                                     (new 'static 'vector :x 10831708.0 :y 435588.3 :z 340518.9 :w 1.0)
+                                     (new 'static 'vector :x 10754486.0 :y 394272.78 :z 318830.6 :w 1.0)
+                                     (new 'static 'vector :x 10810410.0 :y 450610.38 :z 375513.9 :w 1.0)
+                                     (new 'static 'vector :x 10745045.0 :y 445117.66 :z 411724.6 :w 1.0)
+                                     (new 'static 'vector :x 10715008.0 :y 441199.0 :z 409205.97 :w 1.0)
+                                     (new 'static 'vector :x 10776479.0 :y 436273.56 :z 368917.72 :w 1.0)
+                                     (new 'static 'vector :x 10713899.0 :y 393432.7 :z 361731.7 :w 1.0)
+                                     (new 'static 'vector :x 10747318.0 :y 444386.9 :z 411896.62 :w 1.0)
+                                     (new 'static 'vector :x 10796113.0 :y 393866.44 :z 330366.16 :w 1.0)
+                                     (new 'static 'vector :x 10703809.0 :y 394290.38 :z 376960.22 :w 1.0)
+                                     (new 'static 'vector :x 10704370.0 :y 396692.7 :z 388079.62 :w 1.0)
+                                     (new 'static 'vector :x 10695529.0 :y 399682.34 :z 392447.2 :w 1.0)
+                                     (new 'static 'vector :x 10746092.0 :y 409268.22 :z 409342.38 :w 1.0)
+                                     (new 'static 'vector :x 10699801.0 :y 400270.12 :z 400409.4 :w 1.0)
+                                     (new 'static 'vector :x 10744161.0 :y 409268.22 :z 407497.12 :w 1.0)
+                                     )
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 10508804.0 :y 354014.4 :z -12049.613 :w 1.0)
+                                     (new 'static 'vector :x 10429129.0 :y 354537.47 :z -518.9632 :w 1.0)
+                                     (new 'static 'vector :x 10518816.0 :y 381499.4 :z -20251.854 :w 1.0)
+                                     (new 'static 'vector :x 10473917.0 :y 351963.12 :z -55309.926 :w 1.0)
+                                     (new 'static 'vector :x 10524607.0 :y 397019.53 :z 54433.793 :w 1.0)
+                                     (new 'static 'vector :x 10412004.0 :y 357093.38 :z 15287.091 :w 1.0)
+                                     (new 'static 'vector :x 10523902.0 :y 397924.75 :z 104.448 :w 1.0)
+                                     (new 'static 'vector :x 10525589.0 :y 393901.66 :z 59083.57 :w 1.0)
+                                     (new 'static 'vector :x 10499603.0 :y 353315.22 :z -42083.53 :w 1.0)
+                                     (new 'static 'vector :x 10480145.0 :y 368308.22 :z -12931.481 :w 1.0)
+                                     (new 'static 'vector :x 10444827.0 :y 349193.4 :z -71675.086 :w 1.0)
+                                     (new 'static 'vector :x 10531369.0 :y 398163.16 :z -63935.28 :w 1.0)
+                                     (new 'static 'vector :x 10485295.0 :y 402773.6 :z 33989.426 :w 1.0)
+                                     (new 'static 'vector :x 10515049.0 :y 368451.6 :z -25089.229 :w 1.0)
+                                     (new 'static 'vector :x 10388387.0 :y 362443.16 :z 18808.014 :w 1.0)
+                                     (new 'static 'vector :x 10439744.0 :y 349721.8 :z -69525.09 :w 1.0)
+                                     (new 'static 'vector :x 10450132.0 :y 349748.84 :z -79091.71 :w 1.0)
+                                     (new 'static 'vector :x 10532251.0 :y 408451.9 :z -65625.7 :w 1.0)
+                                     (new 'static 'vector :x 10525454.0 :y 393798.88 :z 57976.832 :w 1.0)
+                                     (new 'static 'vector :x 10388897.0 :y 362443.16 :z 9165.21 :w 1.0)
+                                     )
+                                   (new 'static 'boxed-array :type vector
+                                     (new 'static 'vector :x 9545245.0 :y 350857.22 :z -702114.6 :w 1.0)
+                                     (new 'static 'vector :x 9638752.0 :y 350232.16 :z -584073.6 :w 1.0)
+                                     (new 'static 'vector :x 9620120.0 :y 374715.2 :z -722438.94 :w 1.0)
+                                     (new 'static 'vector :x 9572238.0 :y 347940.88 :z -635245.4 :w 1.0)
+                                     (new 'static 'vector :x 9614051.0 :y 369045.1 :z -724078.2 :w 1.0)
+                                     (new 'static 'vector :x 9640533.0 :y 374657.44 :z -718818.94 :w 1.0)
+                                     (new 'static 'vector :x 9580567.0 :y 383478.16 :z -720560.56 :w 1.0)
+                                     (new 'static 'vector :x 9562068.0 :y 347968.72 :z -661853.8 :w 1.0)
+                                     (new 'static 'vector :x 9511132.0 :y 353921.44 :z -721520.25 :w 1.0)
+                                     (new 'static 'vector :x 9582066.0 :y 348591.3 :z -601772.06 :w 1.0)
+                                     (new 'static 'vector :x 9561939.0 :y 347968.72 :z -668384.06 :w 1.0)
+                                     (new 'static 'vector :x 9610257.0 :y 396850.78 :z -717344.4 :w 1.0)
+                                     (new 'static 'vector :x 9665070.0 :y 369430.94 :z -685686.4 :w 1.0)
+                                     (new 'static 'vector :x 9664814.0 :y 383439.66 :z -705868.6 :w 1.0)
+                                     (new 'static 'vector :x 9524381.0 :y 349026.3 :z -631699.06 :w 1.0)
+                                     (new 'static 'vector :x 9650804.0 :y 362843.75 :z -670003.2 :w 1.0)
+                                     (new 'static 'vector :x 9511132.0 :y 353735.88 :z -721145.06 :w 1.0)
+                                     (new 'static 'vector :x 9563552.0 :y 347968.72 :z -667222.8 :w 1.0)
+                                     (new 'static 'vector :x 9512890.0 :y 353549.94 :z -722844.9 :w 1.0)
+                                     (new 'static 'vector :x 9543111.0 :y 348673.62 :z -665425.1 :w 1.0)
+                                     )
+                                   )
+                                 )
+  )
+
+(set! (-> *lightning-spec-id-table* 16) (new 'static 'lightning-spec
+                                          :name "lightning-silo"
+                                          :flags (lightning-spec-flags lsf2)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :fade-time 120.0
+                                          :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                          :reduction 0.42
+                                          :num-points 16
+                                          :box-size 45056.0
+                                          :merge-factor 0.5
+                                          :merge-count 4
+                                          :radius 3276.8
+                                          :duration 195.0
+                                          :duration-rand 24.0
+                                          :sound (static-sound-spec "silo-lightning")
+                                          )
+      )
+
+(defstate idle (grenade-point)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch 'attack)
+                      (send-event proc 'ramp)
+                      (when (logtest? (-> self level task-mask) (task-mask task1))
+                        (cond
+                          ((send-event proc 'grenade (-> self speed))
+                           (if (-> self camera-name)
+                               (set-setting! 'entity-name (-> self camera-name) 0 -1)
+                               )
+                           )
+                          ((>= (- (-> self clock frame-counter) (-> self enter-time)) (seconds 3))
+                           (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
+                           )
+                          )
+                        (set! (-> self enter-time) (-> self clock frame-counter))
+                        )
+                      #f
+                      )
+                     (('exit)
+                      (the-as object (remove-setting! 'entity-name))
+                      )
+                     (('die)
+                      enter-state
+                      #t
+                      (go-virtual die)
+                      )
+                     (('kill)
+                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
+                      (cleanup-for-death self)
+                      (the-as object (deactivate self))
+                      )
+                     )
+            )
+    )
+  :enter (behavior ()
+    (set! (-> self lightning-time) (+ (-> self clock frame-counter) -1))
+    (none)
+    )
+  :exit (behavior ()
+    (remove-setting! 'entity-name)
+    (none)
+    )
+  :code (the-as (function none :behavior grenade-point) sleep-code)
+  :post (behavior ()
+    (spawn (-> self part) (-> self root-override trans))
+    (when (< (-> self lightning-time) (-> self clock frame-counter))
+      (set! (-> self lightning-time)
+            (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.6 1.4))))
+            )
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s5-0 quad) (-> self root-override trans quad))
+        (let* ((gp-1 (-> self strike-table (-> self last-strike-index)))
+               (s4-1 (vector-! (new 'stack-no-clear 'vector) gp-1 s5-0))
+               (a1-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-1 13107.2))
+               (a0-7 (new 'stack-no-clear 'vector))
+               )
+          (vector+! s5-0 s5-0 a1-3)
+          (vector+! a0-7 s5-0 gp-1)
+          (vector-float*! a0-7 a0-7 0.5)
+          (set! (-> a0-7 w) (+ 16384.0 (* 0.5 (vector-length s4-1))))
+          (when (sphere-in-view-frustum? (the-as sphere a0-7))
+            (let ((s3-0 (process-spawn
+                          lightning-tracker
+                          :init lightning-tracker-init
+                          (-> *lightning-spec-id-table* 16)
+                          0
+                          #f
+                          self
+                          s5-0
+                          gp-1
+                          :to self
+                          )
+                        )
+                  (s4-3 (get-field-spec-by-id (-> *part-id-table* 1001) (sp-field-id spt-timer)))
+                  (a1-11 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s5-0 gp-1) 1.0))
+                  (s5-1 (new-stack-matrix0))
+                  )
+              (if s4-3
+                  (set! (-> s4-3 initial-valuef) (the-as float (+ (-> (the-as lightning-tracker (-> s3-0 0)) duration) -120)))
+                  )
+              (forward-down->inv-matrix s5-1 a1-11 (vector-rotate-x! (new 'stack-no-clear 'vector) a1-11 16384.0))
+              (set! (-> s5-1 trans quad) (-> gp-1 quad))
+              (spawn-with-matrix (-> self part-lightning-hit) s5-1)
+              )
+            (set! (-> self last-strike-index) (mod (+ (-> self last-strike-index) (rand-vu-int-range 1 12)) 20))
+            )
+          )
+        )
+      )
+    (update! (-> self sound))
+    (none)
+    )
+  )
+
+(defstate die (grenade-point)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('kill)
+                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
+                      (cleanup-for-death self)
+                      (the-as symbol (deactivate self))
+                      )
+                     )
+            )
+    )
+  :code (behavior ()
+    (play-communicator-speech! (-> *talker-speech* 194))
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (kill-and-free-particles (-> self part))
+    (stop! (-> self sound))
+    (set! (-> self sound spec) (static-sound-spec "eco-plume2" :fo-min 5 :fo-max 90))
+    (while (not (task-complete? *game-info* (the-as game-task (-> self entity extra perm task))))
+      (spawn (-> self part2) (-> self root-override trans))
+      (update! (-> self sound))
+      (suspend)
+      )
+    (kill-and-free-particles (-> self part2))
+    (until #f
+      (spawn (-> self part3) (-> self root-override trans))
+      (update! (-> self sound))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! grenade-point ((obj grenade-point) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj parented?) #f)
+  (when (not (-> obj parented?))
+    (let ((a1-1 (handle->process (-> *game-info* controller 0))))
+      (when a1-1
+        (change-parent obj a1-1)
+        (set! (-> obj parented?) #t)
+        )
+      )
+    )
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((v1-10 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec backgnd obstacle))
+      (set-vector! (-> v1-10 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-10)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj camera-name) (res-lump-struct (-> obj entity) 'camera-name string))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 215) obj))
+  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 216) obj))
+  (set! (-> obj part3) (create-launch-control (-> *part-group-id-table* 217) obj))
+  (set! (-> obj part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) obj))
+  (set! (-> obj lightning-time) 0)
+  (set! (-> obj strike-table)
+        (-> *grenade-point-strike-table*
+            (+ (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 1) :time -1000000000.0) -1)
+            )
+        )
+  (set! (-> obj last-strike-index) (rand-vu-int-range 0 19))
+  (set! (-> obj speed) (res-lump-float (-> obj entity) 'speed :default 118784.0))
+  (set! (-> obj sound) (new
+                         'process
+                         'ambient-sound
+                         (static-sound-spec "eco-plume1" :fo-min 5 :fo-max 90)
+                         (-> obj root-override trans)
+                         )
+        )
+  (update-transforms (-> obj root-override))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (cond
+    ((or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+         (task-complete? *game-info* (game-task strip-grenade))
+         )
+     enter-state
+     (go (method-of-object obj die))
+     )
+    (else
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )
+
+(deftype grenade (projectile)
+  ((tumble-quat  quaternion :inline :offset-assert 480)
+   (blast-radius float              :offset-assert 496)
+   (end-target   handle             :offset-assert 504)
+   )
+  :heap-base #x180
+  :method-count-assert 42
+  :size-assert         #x200
+  :flag-assert         #x2a01800200
+  (:methods
+    (grenade-method-40 (_type_) none 40)
+    (grenade-method-41 (_type_) none 41)
+    )
+  )
+
+
+(defskelgroup skel-grenade plasmitebomb plasmitebomb-lod0-jg plasmitebomb-idle-ja
+              ((plasmitebomb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.3)
+              )
+
+(defpartgroup group-grenade-armed
+  :id 235
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 1118 :flags (bit6)))
+  )
+
+(defpart 1118
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 0.07))
+    (sp-flt spt-scale-x (meters 1))
+    (sp-flt spt-rot-x 409.6)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 64.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-rnd-flt spt-a 32.0 12.0 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.32)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-0 sp-cpuinfo-flag-2 glow)
+    (sp-flt spt-userdata 2048.0)
+    )
+  )
+
+(defpartgroup group-grenade-hit
+  :id 236
+  :duration (seconds 2)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 6)
+  :parts ((sp-item 1119 :period 600 :length 5)
+    (sp-item 1120 :fade-after (meters 80) :falloff-to (meters 80) :period 600 :length 40)
+    (sp-item 1121 :period 600 :length 20)
+    (sp-item 1122 :fade-after (meters 120) :falloff-to (meters 120) :period 600 :length 20)
+    )
+  )
+
+(defpart 1120
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.4) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 64.0 1.0)
+    (sp-rnd-flt spt-g 0.0 64.0 1.0)
+    (sp-flt spt-b 192.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.026666667) (meters 0.10666667) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0016666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-accel-y -0.68266666 -0.68266666 1.0)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-14)
+    (sp-int-plain-rnd spt-next-time 30 29 1)
+    (sp-launcher-by-id spt-next-launcher 1123)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 2) (meters 4) 1.0)
+    )
+  )
+
+(defpart 1123
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0) (sp-flt spt-fade-a -1.4222223))
+  )
+
+(defpart 1122
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-flt spt-num 3.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-flt spt-scale-y (meters 8))
+    (sp-flt spt-r 196.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-scalevel-y (meters 0.42666668))
+    (sp-flt spt-fade-a -1.6)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    )
+  )
+
+(defpart 1119
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x29 :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 16))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 32.0 1.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 96.0)
+    (sp-flt spt-fade-a -1.7454545)
+    (sp-int spt-timer 54)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    )
+  )
+
+(defpart 1121
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 4.0)
+    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 32.0)
+    (sp-rnd-flt spt-b 96.0 64.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.013333334) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -1.6)
+    (sp-rnd-flt spt-accel-y 0.68266666 0.68266666 1.0)
+    (sp-flt spt-friction 0.8)
+    (sp-int spt-timer 510)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-14)
+    (sp-int spt-next-time 42)
+    (sp-launcher-by-id spt-next-launcher 1124)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 1124
+  :init-specs ((sp-flt spt-fade-r -0.53333336)
+    (sp-flt spt-fade-g -1.0666667)
+    (sp-flt spt-fade-b -0.53333336)
+    (sp-flt spt-fade-a -0.53333336)
+    )
+  )
+
+(defpartgroup group-grenade-fired
+  :id 237
+  :duration (seconds 0.017)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1125))
+  )
+
+(defpart 1125
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 16.0 4.0 1.0)
+    (sp-rnd-flt spt-g 8.0 4.0 1.0)
+    (sp-rnd-flt spt-b 16.0 4.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.01) (meters 0.0026666666) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-r -0.35555556)
+    (sp-flt spt-fade-g -0.35555556)
+    (sp-flt spt-fade-b -0.35555556)
+    (sp-flt spt-fade-a -0.30476192)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-int spt-timer 120)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2)
+    (sp-int spt-next-time 60)
+    (sp-launcher-by-id spt-next-launcher 1126)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 180.0) 1.0)
+    )
+  )
+
+(defmethod draw-laser-sight grenade ((obj grenade))
+  "TODO - confirm If applicable, draw the laser sight particles
+:virtual"
+  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when gp-0
+      (let ((t9-1 (method-of-type part-tracker activate)))
+        (t9-1
+          (the-as part-tracker gp-0)
+          *entity-pool*
+          (symbol->string (-> part-tracker symbol))
+          (the-as pointer #x70004000)
+          )
+        )
+      (let ((t9-2 run-function-in-process)
+            (a0-3 gp-0)
+            (a1-2 part-tracker-init)
+            (a2-4 (-> *part-group-id-table* 237))
+            (a3-1 0)
+            (t0-0 #f)
+            (t1-0 #f)
+            (t2-0 #f)
+            (t3-0 *launch-matrix*)
+            )
+        (set! (-> t3-0 trans quad) (-> obj root-override trans quad))
+        ((the-as (function object object object object object object object object none) t9-2)
+         a0-3
+         a1-2
+         a2-4
+         a3-1
+         t0-0
+         t1-0
+         t2-0
+         t3-0
+         )
+        )
+      (-> gp-0 ppointer)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod spawn-impact-particles grenade ((obj grenade))
+  "Spawns associated particles with the projectile if applicable"
+  ((method-of-type projectile spawn-impact-particles) obj)
+  (ja-post)
+  0
+  (none)
+  )
+
+(defmethod spawn-shell-particles grenade ((obj grenade))
+  "TODO - confirm"
+  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when gp-0
+      (let ((t9-1 (method-of-type part-tracker activate)))
+        (t9-1
+          (the-as part-tracker gp-0)
+          *entity-pool*
+          (symbol->string (-> part-tracker symbol))
+          (the-as pointer #x70004000)
+          )
+        )
+      (let ((t9-2 run-function-in-process)
+            (a0-3 gp-0)
+            (a1-2 part-tracker-init)
+            (a2-4 (-> *part-group-id-table* 236))
+            (a3-1 0)
+            (t0-0 #f)
+            (t1-0 #f)
+            (t2-0 #f)
+            (t3-0 *launch-matrix*)
+            )
+        (set! (-> t3-0 trans quad) (-> obj root-override trans quad))
+        ((the-as (function object object object object object object object object none) t9-2)
+         a0-3
+         a1-2
+         a2-4
+         a3-1
+         t0-0
+         t1-0
+         t2-0
+         t3-0
+         )
+        )
+      (-> gp-0 ppointer)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod play-impact-sound grenade ((obj grenade) (arg0 projectile-options))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (sound-play "grenade-fire")
+       )
+      ((= v1-0 (projectile-options lose-altitude))
+       (sound-play "grenade-hit")
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate impact (grenade)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touched)
+       (let* ((s4-0 proc)
+              (v1-1 (if (type? s4-0 process-drawable)
+                        (the-as process-drawable s4-0)
+                        )
+                    )
+              )
+         (when v1-1
+           (let ((a0-3 (-> v1-1 root))
+                 (a1-2 (new 'stack-no-clear 'collide-query))
+                 )
+             (let ((v1-4 (-> self root-override root-prim prim-core))
+                   (a0-5 (-> (the-as collide-shape a0-3) root-prim prim-core))
+                   )
+               0.0
+               (set! (-> a1-2 start-pos quad) (-> v1-4 world-sphere quad))
+               (vector-! (-> a1-2 move-dist) (the-as vector a0-5) (the-as vector v1-4))
+               )
+             (let ((v1-5 a1-2))
+               (set! (-> v1-5 radius) 40.96)
+               (set! (-> v1-5 collide-with) (collide-spec backgnd))
+               (set! (-> v1-5 ignore-process0) self)
+               (set! (-> v1-5 ignore-process1) #f)
+               (set! (-> v1-5 ignore-pat) (-> self root-override pat-ignore-mask))
+               (set! (-> v1-5 action-mask) (collide-action solid))
+               )
+             (when (< (fill-and-probe-using-line-sphere *collide-cache* a1-2) 0.0)
+               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-3 from) (process->ppointer self))
+                 (set! (-> a1-3 num-params) 2)
+                 (set! (-> a1-3 message) 'attack)
+                 (set! (-> a1-3 param 0) (-> event param 0))
+                 (let ((v1-12 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                   (set! (-> v1-12 id) (-> self attack-id))
+                   (set! (-> v1-12 mode) 'explode)
+                   (set! (-> a1-3 param 1) (the-as uint v1-12))
+                   )
+                 (send-event-function proc a1-3)
+                 )
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type projectile impact) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (send-event (handle->process (-> self end-target)) 'die)
+    (remove-setting! 'point-of-interest)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-set! 0)
+    (let ((v1-1 (-> self root-override root-prim)))
+      (set! (-> v1-1 local-sphere w) (-> self blast-radius))
+      (set! (-> v1-1 prim-core world-sphere w) (-> self blast-radius))
+      (set! (-> v1-1 prim-core collide-with)
+            (collide-spec jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list)
+            )
+      (set! (-> v1-1 prim-core collide-as) (collide-spec enemy))
+      )
+    (update-transforms (-> self root-override))
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options))
+      (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (find-overlapping-shapes (-> self root-override) a1-0)
+      )
+    (suspend)
+    (let ((v1-9 (-> self root-override root-prim)))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec))
+      )
+    0
+    (deactivate self)
+    (none)
+    )
+  )
+
+(defstate dissipate (grenade)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual impact)
+    (none)
+    )
+  )
+
+(defmethod grenade-method-40 grenade ((obj grenade))
+  (let ((s5-0 (the-as process-drawable (-> obj end-target process 0))))
+    (when s5-0
+      (set! (-> obj root-override transv x) (* 4.0 (- (-> s5-0 root trans x) (-> obj root-override trans x))))
+      (set! (-> obj root-override transv z) (* 4.0 (- (-> s5-0 root trans z) (-> obj root-override trans z))))
+      (let ((v1-12 (-> obj root-override transv)))
+        (if (< (sqrtf (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z)))) 16384.0)
+            (vector-xz-normalize! (-> obj root-override transv) 16384.0)
+            )
+        )
+      (if (or (logtest? (-> obj root-override status) (collide-status on-surface on-ground))
+              (< (vector-vector-distance (-> s5-0 root trans) (-> obj root-override trans)) 4096.0)
+              )
+          (go (method-of-object obj impact))
+          )
+      )
+    )
+  (vector-v++!
+    (-> obj root-override transv)
+    (compute-acc-due-to-gravity (-> obj root-override) (new-stack-vector0) 1.0)
+    )
+  0
+  (none)
+  )
+
+(defmethod grenade-method-41 grenade ((obj grenade))
+  (quaternion*! (-> obj root-override quat) (-> obj root-override quat) (-> obj tumble-quat))
+  (projectile-move-fill-all-dirs obj)
+  (set-setting! 'point-of-interest 'abs (-> obj root-override trans) 0)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-proj-collision! grenade ((obj grenade))
+  "Init the [[projectile]]'s [[collide-shape]]"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-projectile)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate explode))
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec projectile))
+      (set! (-> v1-7 prim-core collide-with)
+            (collide-spec crate civilian enemy obstacle vehicle-sphere hit-by-others-list pusher)
+            )
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 1228.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> obj root-override) s5-0)
+    )
+  (none)
+  )
+
+(defmethod init-proj-settings! grenade ((obj grenade))
+  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
+:virtual"
+  (with-pp
+    (initialize-skeleton
+      obj
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-grenade" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (logclear! (-> obj options) (projectile-options proj-options-4))
+    (vector-normalize! (-> obj root-override transv) 1.0)
+    (set! (-> obj root-override transv y) (+ 1.0 (-> obj root-override transv y)))
+    (vector-normalize! (-> obj root-override transv) 184320.0)
+    (set! (-> obj attack-mode) 'eco-yellow)
+    (set! (-> obj blast-radius) 20480.0)
+    (set! (-> obj max-speed) 184320.0)
+    (set! (-> obj timeout) (seconds 3.6))
+    (set! (-> obj update-velocity) (method-of-object obj grenade-method-40))
+    (set! (-> obj move) (method-of-object obj grenade-method-41))
+    (set! (-> obj root-override dynam gravity y) 327680.0)
+    (set! (-> obj root-override dynam gravity-length) 327680.0)
+    (set! (-> obj root-override dynam gravity-max) 327680.0)
+    (let ((f0-7 1092.2667))
+      (quaternion-axis-angle! (-> obj tumble-quat) 1.0 0.0 0.0 f0-7)
+      )
+    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-5 from) (process->ppointer pp))
+      (set! (-> a1-5 num-params) 0)
+      (set! (-> a1-5 message) 'target)
+      (let ((s5-1 (send-event-function (ppointer->process (-> obj parent)) a1-5)))
+        (set! (-> obj end-target) (process->handle (if (type? s5-1 process-drawable)
+                                                       (the-as process-drawable s5-1)
+                                                       )
+                                                   )
+              )
+        )
+      )
+    (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 235) obj))
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
+    (none)
+    )
+  )
+
+(defskelgroup skel-ecowell-a ecowell-a ecowell-a-lod0-jg -1
+              ((ecowell-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
+
+(defskelgroup skel-ecowell-b ecowell-b ecowell-b-lod0-jg -1
+              ((ecowell-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
+
+(defskelgroup skel-ecowell-c ecowell-c ecowell-c-lod0-jg -1
+              ((ecowell-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
+
+(defskelgroup skel-ecowell-d ecowell-d ecowell-d-lod0-jg -1
+              ((ecowell-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+(set-subtask-hook!
+  *game-info*
+  115
+  0
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'music 'danger10 0 0)
+    (set! (-> *game-info* controller 0) (process->handle self))
+    (set! (-> self entity) (the-as entity-actor (entity-by-name "grenade-point-1")))
+    (set! (-> self actor-group 0) (res-lump-struct (-> self entity) 'actor-groups (pointer entity-actor)))
+    (set-setting! 'allow-continue #f 0 0)
+    (when (-> self actor-group 0)
+      (dotimes (gp-0 (the-as int (-> self actor-group 0 0)))
+        (let ((s5-0 (-> (&+ (-> self actor-group 0) (* gp-0 8)) 3)))
+          (when s5-0
+            (toggle-status s5-0 (entity-perm-status subtask-complete) #f)
+            (add-icon! *minimap* self (the-as uint 16) (the-as int #f) (the-as vector s5-0) 0)
+            )
+          )
+        )
+      )
+    (let ((v0-6 (-> self actor-group 0 0)))
+      (set! (-> self count) (the-as int v0-6))
+      v0-6
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  115
+  3
+  (lambda :behavior task-manager
+    ()
+    (local-vars (sv-16 object))
+    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self total-time) (seconds 120))
+    (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
+    (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-plasmite :init hud-init-by-other :to self)))
+    (while (or (< (- (-> self clock frame-counter) (-> self start-time)) (-> self total-time))
+               (and *target* (logtest? (-> *target* focus-status) (focus-status in-air)))
+               )
+      (let ((v1-18 (the-as int (- (-> self total-time) (- (-> self clock frame-counter) (-> self start-time))))))
+        (if (< (the-as time-frame v1-18) 0)
+            (set! v1-18 0)
+            )
+        (set! (-> *game-info* timer) (the-as time-frame v1-18))
+        )
+      (set! sv-16 (-> self actor-group 0 0))
+      (when (-> self actor-group 0)
+        (dotimes (v1-23 (the-as int (-> self actor-group 0 0)))
+          (let ((a1-8 (-> (&+ (-> self actor-group 0) (* v1-23 8)) 3)))
+            (if (and a1-8 (logtest? (-> a1-8 extra perm status) (entity-perm-status subtask-complete)))
+                (set! sv-16 (&+ (the-as (pointer entity-actor) sv-16) -1))
+                )
+            )
+          )
+        )
+      (when (!= sv-16 (-> self count))
+        (case sv-16
+          ((5)
+           (talker-spawn-func (-> *talker-speech* 198) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          ((4)
+           (talker-spawn-func (-> *talker-speech* 199) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          ((3)
+           (talker-spawn-func (-> *talker-speech* 200) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          ((2)
+           (talker-spawn-func (-> *talker-speech* 201) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          ((1)
+           (talker-spawn-func (-> *talker-speech* 202) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          )
+        (set! (-> self count) (the-as int sv-16))
+        )
+      (cond
+        ((and (>= (-> self clock frame-counter) (+ #x80e8 (-> self start-time)))
+              (< (-> self state-time) (+ #x80e8 (-> self start-time)))
+              )
+         (talker-spawn-func (-> *talker-speech* 197) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((and (>= (-> self clock frame-counter) (+ (-> self start-time) (seconds 90)))
+              (< (-> self state-time) (+ (-> self start-time) (seconds 90)))
+              )
+         (talker-spawn-func (-> *talker-speech* 196) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((and (>= (-> self clock frame-counter) (+ (-> self start-time) (seconds 60)))
+              (< (-> self state-time) (+ (-> self start-time) (seconds 60)))
+              )
+         (talker-spawn-func (-> *talker-speech* 195) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        )
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (set! (-> *game-info* counter) (the float (the-as int sv-16)))
+      (if (>= 1 (the-as int sv-16))
+          (gui-control-method-12
+            *gui-control*
+            self
+            (gui-channel art-load)
+            (gui-action queue)
+            "ecowells-victory"
+            0
+            -1.0
+            (new 'static 'sound-id)
+            )
+          )
+      (if (not *target*)
+          (go-virtual fail)
+          )
+      (if (zero? sv-16)
+          (go-virtual complete)
+          )
+      (suspend)
+      )
+    (the-as entity-actor (go-virtual fail))
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  115
+  5
+  (the-as (function object) (lambda :behavior task-manager
+                              ()
+                              (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                                (set! (-> a1-0 from) (process->ppointer self))
+                                (set! (-> a1-0 num-params) 2)
+                                (set! (-> a1-0 message) 'attack-invinc)
+                                (set! (-> a1-0 param 0) (the-as uint #f))
+                                (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                                  (let* ((a0-1 *game-info*)
+                                         (a2-1 (+ (-> a0-1 attack-id) 1))
+                                         )
+                                    (set! (-> a0-1 attack-id) a2-1)
+                                    (set! (-> v1-3 id) a2-1)
+                                    )
+                                  (set! (-> v1-3 mode) 'big-explosion)
+                                  (set! (-> a1-0 param 1) (the-as uint v1-3))
+                                  )
+                                (send-event-function *target* a1-0)
+                                )
+                              (none)
+                              )
+          )
+  )
+
+(deftype drill-plat (strip-hazard)
+  ((plat-sound ambient-sound  :offset-assert 252)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #x100
+  :flag-assert         #x1500800100
+  )
+
+
+;; WARN: Return type mismatch process-drawable vs drill-plat.
+(defmethod relocate drill-plat ((obj drill-plat) (arg0 int))
+  (if (nonzero? (-> obj plat-sound))
+      (&+! (-> obj plat-sound) arg0)
+      )
+  (the-as drill-plat ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(defmethod deactivate drill-plat ((obj drill-plat))
+  (if (nonzero? (-> obj plat-sound))
+      (stop! (-> obj plat-sound))
+      )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(defskelgroup skel-drill-plat drill-plat drill-plat-lod0-jg drill-plat-idle-ja
+              ((drill-plat-lod0-mg (meters 20)) (drill-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 14 18 0 26)
+              )
+
+(defstate idle (drill-plat)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch 'attack)
+       #f
+       )
+      (else
+        (strip-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (rider-trans)
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (let ((f0-1 (* (get-current-phase-no-mod (-> self sync)) (the float (+ (-> (ja-group) frames num-frames) -1)))))
+        (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num f0-1)
+        )
+      (let ((f0-5 (/ (* 2.0 (ja-frame-num 0)) (the float (ja-num-frames 0)))))
+        (if (< 1.0 f0-5)
+            (set! f0-5 (+ -1.0 f0-5))
+            )
+        (let* ((f0-6 (* 3.1415925 f0-5))
+               (f0-7 (sin-rad f0-6))
+               )
+          (update-vol! (-> self plat-sound) (sqrtf f0-7))
+          )
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (rider-post)
+    (update! (-> self sound))
+    (update-trans!
+      (-> self plat-sound)
+      (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7))
+      )
+    (update! (-> self plat-sound))
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-plat ((obj drill-plat) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 61440.0 61440.0 0.0 110592.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid))
+      (set! (-> v1-14 transform-index) 0)
+      (set-vector! (-> v1-14 local-sphere) 40960.0 12288.0 0.0 61440.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 2))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid))
+      (set! (-> v1-16 transform-index) 5)
+      (set-vector! (-> v1-16 local-sphere) 0.0 49152.0 0.0 49152.0)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 3))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-18 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-18 transform-index) 7)
+      (set-vector! (-> v1-18 local-sphere) 0.0 6553.6 0.0 26624.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-21 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-plat" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((t9-10 (method-of-type strip-hazard init-from-entity!)))
+    (t9-10 obj arg0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((a3-5 (new 'stack-no-clear 'vector)))
+    (set! (-> a3-5 quad) (-> obj root-override trans quad))
+    (set! (-> a3-5 x) (+ 57344.0 (-> a3-5 x)))
+    (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "drill-plat-a" :fo-max 90) a3-5))
+    )
+  (ja-post)
+  (set! (-> obj plat-sound) (new
+                              'process
+                              'ambient-sound
+                              (static-sound-spec "drill-plat-b" :fo-max 50)
+                              (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))
+                              )
+        )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(set-subtask-hook!
+  *game-info*
+  45
+  3
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+        (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
+        (quaternion-identity! (-> gp-0 quat))
+        (set! (-> gp-0 flags) (task-arrow-flags))
+        (set! (-> gp-0 map-icon) (the-as uint 15))
+        (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
+        )
+      (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
+        (suspend)
+        )
+      (send-event (handle->process (-> self arrow)) 'leave)
+      (sleep-code)
+      (none)
+      )
+    )
+  )
+
+(defun strip-login ()
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  0
+  (none)
+  )
+
+(defun strip-activate ()
+  (setup-user-array (-> *part-id-table* 638) "flamer-part")
+  (setup-user-array (-> *part-id-table* 639) "flamer-part")
+  0
+  (none)
+  )
+
+(defun strip-deactivate ()
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )

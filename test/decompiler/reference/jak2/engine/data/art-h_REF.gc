@@ -1,0 +1,760 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type joint-anim
+(deftype joint-anim (basic)
+  ((name   string  :offset-assert   4)
+   (number int16   :offset-assert   8)
+   (length int16   :offset-assert  10)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type joint-anim
+(defmethod inspect joint-anim ((obj joint-anim))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tnumber: ~D~%" (-> obj number))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type joint-anim-matrix
+(deftype joint-anim-matrix (joint-anim)
+  ((data matrix :inline :dynamic :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition of type joint-anim-transformq
+(deftype joint-anim-transformq (joint-anim)
+  ((data transformq :inline :dynamic :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type joint-anim-transformq
+(defmethod inspect joint-anim-transformq ((obj joint-anim-transformq))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tnumber: ~D~%" (-> obj number))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D]~1Tdata: ~`transformq`P~%" s5-0 (-> obj data s5-0))
+    )
+  (label cfg-7)
+  obj
+  )
+
+;; definition of type joint-anim-drawable
+(deftype joint-anim-drawable (joint-anim)
+  ((data drawable :dynamic :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type joint-anim-drawable
+(defmethod inspect joint-anim-drawable ((obj joint-anim-drawable))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tnumber: ~D~%" (-> obj number))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type joint-anim-frame
+(deftype joint-anim-frame (structure)
+  ((matrices matrix     2 :inline        :offset-assert   0)
+   (data     transformq :inline :dynamic :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-anim-frame
+(defmethod inspect joint-anim-frame ((obj joint-anim-frame))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'joint-anim-frame)
+  (format #t "~1Tmatrices[2] @ #x~X~%" (-> obj matrices))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type joint-anim-frame
+;; WARN: Return type mismatch structure vs joint-anim-frame.
+(defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v1-1 (max 0 (+ arg0 -2))))
+    (the-as
+      joint-anim-frame
+      (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 v1-1))))
+      )
+    )
+  )
+
+;; definition of type joint-anim-compressed-hdr
+(deftype joint-anim-compressed-hdr (structure)
+  ((control-bits uint32 14 :offset-assert   0)
+   (num-joints   uint32    :offset-assert  56)
+   (matrix-bits  uint32    :offset-assert  60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type joint-anim-compressed-hdr
+(defmethod inspect joint-anim-compressed-hdr ((obj joint-anim-compressed-hdr))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'joint-anim-compressed-hdr)
+  (format #t "~1Tcontrol-bits[14] @ #x~X~%" (-> obj control-bits))
+  (format #t "~1Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~1Tmatrix-bits: ~D~%" (-> obj matrix-bits))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type joint-anim-compressed-fixed
+(deftype joint-anim-compressed-fixed (structure)
+  ((hdr       joint-anim-compressed-hdr :inline     :offset-assert   0)
+   (offset-64 uint32                                :offset-assert  64)
+   (offset-32 uint32                                :offset-assert  68)
+   (offset-16 uint32                                :offset-assert  72)
+   (reserved  uint32                                :offset-assert  76)
+   (data      vector                    133 :inline :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x8a0
+  :flag-assert         #x9000008a0
+  )
+
+;; definition for method 3 of type joint-anim-compressed-fixed
+(defmethod inspect joint-anim-compressed-fixed ((obj joint-anim-compressed-fixed))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'joint-anim-compressed-fixed)
+  (format #t "~1Thdr: #<joint-anim-compressed-hdr @ #x~X>~%" (-> obj hdr))
+  (format #t "~1Toffset-64: ~D~%" (-> obj offset-64))
+  (format #t "~1Toffset-32: ~D~%" (-> obj offset-32))
+  (format #t "~1Toffset-16: ~D~%" (-> obj offset-16))
+  (format #t "~1Treserved: ~D~%" (-> obj reserved))
+  (format #t "~1Tdata[133] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type joint-anim-compressed-frame
+(deftype joint-anim-compressed-frame (structure)
+  ((offset-64 uint32             :offset-assert   0)
+   (offset-32 uint32             :offset-assert   4)
+   (offset-16 uint32             :offset-assert   8)
+   (reserved  uint32             :offset-assert  12)
+   (data      vector 133 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x860
+  :flag-assert         #x900000860
+  )
+
+;; definition for method 3 of type joint-anim-compressed-frame
+(defmethod inspect joint-anim-compressed-frame ((obj joint-anim-compressed-frame))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'joint-anim-compressed-frame)
+  (format #t "~1Toffset-64: ~D~%" (-> obj offset-64))
+  (format #t "~1Toffset-32: ~D~%" (-> obj offset-32))
+  (format #t "~1Toffset-16: ~D~%" (-> obj offset-16))
+  (format #t "~1Treserved: ~D~%" (-> obj reserved))
+  (format #t "~1Tdata[133] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type joint-anim-compressed-control
+(deftype joint-anim-compressed-control (structure)
+  ((num-frames uint16                               :offset-assert   0)
+   (flags      uint16                               :offset-assert   2)
+   (fixed-qwc  uint32                               :offset-assert   4)
+   (frame-qwc  uint32                               :offset-assert   8)
+   (fixed      joint-anim-compressed-fixed          :offset-assert  12)
+   (data       joint-anim-compressed-frame :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type joint-anim-compressed-control
+(defmethod inspect joint-anim-compressed-control ((obj joint-anim-compressed-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'joint-anim-compressed-control)
+  (format #t "~1Tnum-frames: ~D~%" (-> obj num-frames))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tfixed-qwc: ~D~%" (-> obj fixed-qwc))
+  (format #t "~1Tframe-qwc: ~D~%" (-> obj frame-qwc))
+  (format #t "~1Tfixed: #<joint-anim-compressed-fixed @ #x~X>~%" (-> obj fixed))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type art
+(deftype art (basic)
+  ((name   string    :offset          8)
+   (length int32     :offset-assert  12)
+   (extra  res-lump  :offset-assert  16)
+   )
+  :method-count-assert 13
+  :size-assert         #x14
+  :flag-assert         #xd00000014
+  (:methods
+    (login (_type_) _type_ 9)
+    (get-art-by-name-method (_type_ string type) basic 10)
+    (get-art-idx-by-name-method (_type_ string type) int 11)
+    (needs-link? (_type_) symbol 12)
+    )
+  )
+
+;; definition for method 3 of type art
+(defmethod inspect art ((obj art))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Textra: ~A~%" (-> obj extra))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type art-element
+(deftype art-element (art)
+  ((pad uint8 12 :offset-assert  20)
+   )
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+;; definition for method 3 of type art-element
+(defmethod inspect art-element ((obj art-element))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Textra: ~A~%" (-> obj extra))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type art-mesh-anim
+(deftype art-mesh-anim (art-element)
+  ((data basic :dynamic :offset-assert  32)
+   )
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+;; definition of type art-joint-anim
+(deftype art-joint-anim (art-element)
+  ((speed                  float                          :offset         20)
+   (artist-base            float                          :offset         24)
+   (artist-step            float                          :offset         28)
+   (eye-anim               merc-eye-anim-block            :offset          4)
+   (master-art-group-name  string                         :offset-assert  32)
+   (master-art-group-index int32                          :offset-assert  36)
+   (blend-shape-anim       (pointer int8)                 :offset-assert  40)
+   (frames                 joint-anim-compressed-control  :offset-assert  44)
+   )
+  :method-count-assert 13
+  :size-assert         #x30
+  :flag-assert         #xd00000030
+  )
+
+;; definition for method 3 of type art-joint-anim
+(defmethod inspect art-joint-anim ((obj art-joint-anim))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Textra: ~A~%" (-> obj extra))
+  (format #t "~1Tspeed: ~f~%" (-> obj speed))
+  (format #t "~1Tartist-base: ~f~%" (-> obj artist-base))
+  (format #t "~1Tartist-step: ~f~%" (-> obj artist-step))
+  (format #t "~1Teye-anim: ~A~%" (-> obj eye-anim))
+  (format #t "~1Tmaster-art-group-name: ~A~%" (-> obj master-art-group-name))
+  (format #t "~1Tmaster-art-group-index: ~D~%" (-> obj master-art-group-index))
+  (format #t "~1Tblend-shape-anim: ~A~%" (-> obj blend-shape-anim))
+  (format #t "~1Tframes: #<joint-anim-compressed-control @ #x~X>~%" (-> obj frames))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type art-group
+(deftype art-group (art)
+  ((info file-info            :offset   4)
+   (data art-element :dynamic :offset  32)
+   )
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (link-art! (_type_) art-group 13)
+    (unlink-art! (_type_) int 14)
+    )
+  )
+
+;; definition of type art-mesh-geo
+(deftype art-mesh-geo (art-element)
+  ((data basic :dynamic :offset-assert  32)
+   )
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+;; definition of type art-joint-geo
+(deftype art-joint-geo (art-element)
+  ((data joint :dynamic :offset-assert  32)
+   )
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+;; definition of type art-joint-anim-manager-slot
+(deftype art-joint-anim-manager-slot (structure)
+  ((anim       art-joint-anim  :offset-assert   0)
+   (comp-data  uint32          :offset-assert   4)
+   (time-stamp uint64          :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type art-joint-anim-manager-slot
+(defmethod inspect art-joint-anim-manager-slot ((obj art-joint-anim-manager-slot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'art-joint-anim-manager-slot)
+  (format #t "~1Tanim: ~A~%" (-> obj anim))
+  (format #t "~1Tcomp-data: #x~X~%" (-> obj comp-data))
+  (format #t "~1Ttime-stamp: ~D~%" (-> obj time-stamp))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type art-joint-anim-manager
+(deftype art-joint-anim-manager (basic)
+  ((kheap      kheap                       :inline    :offset-assert  16)
+   (free-index int32                                  :offset-assert  32)
+   (slot       art-joint-anim-manager-slot 64 :inline :offset-assert  48)
+   )
+  :method-count-assert 14
+  :size-assert         #x430
+  :flag-assert         #xe00000430
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (decompress (_type_ art-joint-anim) art-joint-anim 9)
+    (update-time-stamp (_type_ art-joint-anim) art-joint-anim 10)
+    (unload-from-slot (_type_ int) art-joint-anim 11)
+    (used-bytes-for-slot (_type_ int) int 12)
+    (unload-from-level (_type_ level) none 13)
+    )
+  )
+
+;; definition for method 3 of type art-joint-anim-manager
+(defmethod inspect art-joint-anim-manager ((obj art-joint-anim-manager))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (-> obj kheap))
+  (format #t "~1Tfree-index: ~D~%" (-> obj free-index))
+  (format #t "~1Tslot[64] @ #x~X~%" (-> obj slot))
+  (dotimes (s5-0 64)
+    (format #t "~T  [~D]~1Tslot: ~`art-joint-anim-manager-slot`P~%" s5-0 (-> obj slot s5-0))
+    )
+  (label cfg-7)
+  obj
+  )
+
+;; definition for method 0 of type art-joint-anim-manager
+(defmethod new art-joint-anim-manager ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((s4-0 (-> gp-0 kheap)))
+      (set! (-> s4-0 base) (kmalloc (the-as kheap (-> allocation value)) arg0 (kmalloc-flags) "heap"))
+      (set! (-> s4-0 current) (-> s4-0 base))
+      (set! (-> s4-0 top-base) (&+ (-> s4-0 base) arg0))
+      (set! (-> s4-0 top) (-> s4-0 top-base))
+      )
+    (dotimes (v1-6 64)
+      (set! (-> gp-0 slot v1-6 anim) #f)
+      )
+    (set! (-> gp-0 free-index) 0)
+    gp-0
+    )
+  )
+
+;; definition of type skeleton-group
+(deftype skeleton-group (art-group)
+  ((art-group-name     string         :offset-assert  32)
+   (jgeo               int32          :offset-assert  36)
+   (janim              int32          :offset-assert  40)
+   (bounds             vector :inline :offset-assert  48)
+   (radius             meters         :offset         60)
+   (mgeo               int16  6       :offset-assert  64)
+   (max-lod            int32          :offset-assert  76)
+   (lod-dist           float  6       :offset-assert  80)
+   (longest-edge       meters         :offset-assert 104)
+   (texture-level      int8           :offset-assert 108)
+   (version            int8           :offset-assert 109)
+   (shadow             int8           :offset-assert 110)
+   (sort               int8           :offset-assert 111)
+   (origin-joint-index int8           :offset-assert 112)
+   (shadow-joint-index int8           :offset-assert 113)
+   (light-index        uint8          :offset-assert 114)
+   (pad                uint8          :offset-assert 115)
+   )
+  :method-count-assert 16
+  :size-assert         #x74
+  :flag-assert         #x1000000074
+  (:methods
+    (add-to-loading-level (_type_) skeleton-group 15)
+    )
+  )
+
+;; definition for method 3 of type skeleton-group
+(defmethod inspect skeleton-group ((obj skeleton-group))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Textra: ~A~%" (-> obj extra))
+  (format #t "~1Tinfo: ~A~%" (-> obj info))
+  (format #t "~1Tdata[0] @ #x~X~%" (&-> obj art-group-name))
+  (format #t "~1Tart-group-name: ~A~%" (-> obj art-group-name))
+  (format #t "~1Tjgeo: ~D~%" (-> obj jgeo))
+  (format #t "~1Tjanim: ~D~%" (-> obj janim))
+  (format #t "~1Tbounds: ~`vector`P~%" (-> obj bounds))
+  (format #t "~1Tradius: (meters ~m)~%" (-> obj bounds w))
+  (format #t "~1Tmgeo[6] @ #x~X~%" (-> obj mgeo))
+  (format #t "~1Tmax-lod: ~D~%" (-> obj max-lod))
+  (format #t "~1Tlod-dist[6] @ #x~X~%" (-> obj lod-dist))
+  (format #t "~1Tlongest-edge: (meters ~m)~%" (-> obj longest-edge))
+  (format #t "~1Ttexture-level: ~D~%" (-> obj texture-level))
+  (format #t "~1Tversion: ~D~%" (-> obj version))
+  (format #t "~1Tshadow: ~D~%" (-> obj shadow))
+  (format #t "~1Tsort: ~D~%" (-> obj sort))
+  (format #t "~1Torigin-joint-index: ~D~%" (-> obj origin-joint-index))
+  (format #t "~1Tshadow-joint-index: ~D~%" (-> obj shadow-joint-index))
+  (format #t "~1Tlight-index: ~D~%" (-> obj light-index))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type lod-group
+(deftype lod-group (structure)
+  ((geo  merc-ctrl  :offset-assert   0)
+   (dist meters     :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type lod-group
+(defmethod inspect lod-group ((obj lod-group))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'lod-group)
+  (format #t "~1Tgeo: ~A~%" (-> obj geo))
+  (format #t "~1Tdist: (meters ~m)~%" (-> obj dist))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type lod-set
+(deftype lod-set (structure)
+  ((lod     lod-group 6 :inline :offset-assert   0)
+   (max-lod int8                :offset-assert  48)
+   )
+  :method-count-assert 10
+  :size-assert         #x31
+  :flag-assert         #xa00000031
+  (:methods
+    (setup-lods! (_type_ skeleton-group art-group entity) _type_ 9)
+    )
+  )
+
+;; definition for method 3 of type lod-set
+(defmethod inspect lod-set ((obj lod-set))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'lod-set)
+  (format #t "~1Tlod[6] @ #x~X~%" (-> obj lod))
+  (format #t "~1Tmax-lod: ~D~%" (-> obj max-lod))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type draw-control
+(deftype draw-control (basic)
+  ((process              process-drawable                                                    :offset-assert   4)
+   (status               draw-control-status                                                 :offset-assert   8)
+   (data-format          draw-control-data-format                                            :offset-assert  10)
+   (global-effect        draw-control-global-effect                                          :offset-assert  11)
+   (art-group            art-group                                                           :offset-assert  12)
+   (jgeo                 art-joint-geo                                                       :offset-assert  16)
+   (mgeo                 merc-ctrl                                                           :offset-assert  20)
+   (dma-add-func         (function process-drawable draw-control symbol object none)         :offset-assert  24)
+   (skeleton             skeleton                                                            :offset-assert  28)
+   (lod-set              lod-set                                                     :inline :offset-assert  32)
+   (max-lod              int8                                                                :offset         80)
+   (force-lod            int8                                                                :offset-assert  81)
+   (cur-lod              int8                                                                :offset-assert  82)
+   (desired-lod          int8                                                                :offset-assert  83)
+   (ripple               ripple-control                                                      :offset-assert  84)
+   (longest-edge         meters                                                              :offset-assert  88)
+   (longest-edge?        uint32                                                              :offset         88)
+   (light-index          uint8                                                               :offset-assert  92)
+   (shadow-mask          uint8                                                               :offset-assert  93)
+   (level-index          uint8                                                               :offset-assert  94)
+   (death-draw-overlap   uint8                                                               :offset-assert  95)
+   (death-timer          uint8                                                               :offset-assert  96)
+   (death-timer-org      uint8                                                               :offset-assert  97)
+   (death-vertex-skip    uint16                                                              :offset-assert  98)
+   (death-effect         uint32                                                              :offset-assert 100)
+   (shadow               shadow-geo                                                          :offset-assert 104)
+   (shadow-ctrl          shadow-control                                                      :offset-assert 108)
+   (distance             meters                                                              :offset-assert 112)
+   (origin               vector                                                      :inline :offset-assert 128)
+   (bounds               vector                                                      :inline :offset-assert 144)
+   (radius               meters                                                              :offset        156)
+   (color-mult           rgbaf                                                       :inline :offset-assert 160)
+   (color-emissive       rgbaf                                                       :inline :offset-assert 176)
+   (effect-mask          uint64                                                              :offset-assert 192)
+   (seg-mask             uint64                                                              :offset-assert 200)
+   (origin-joint-index   uint8                                                               :offset-assert 208)
+   (shadow-joint-index   uint8                                                               :offset-assert 209)
+   (force-fade           uint8                                                               :offset-assert 210)
+   (default-texture-page uint8                                                               :offset-assert 211)
+   (shadow-values        uint32                                                              :offset-assert 212)
+   )
+  :method-count-assert 15
+  :size-assert         #xd8
+  :flag-assert         #xf000000d8
+  (:methods
+    (new (symbol type process symbol) _type_ 0)
+    (get-skeleton-origin (_type_) vector 9)
+    (lod-set! (_type_ int) none 10)
+    (lods-assign! (_type_ lod-set) none 11)
+    (setup-masks (_type_ int int) none 12)
+    (setup-cspace-and-add (_type_ art-joint-geo symbol) cspace-array 13)
+    (do-joint-math (_type_ cspace-array joint-control) none 14)
+    )
+  )
+
+;; definition for method 3 of type draw-control
+(defmethod inspect draw-control ((obj draw-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-47)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tstatus: #x~X : (draw-control-status " (-> obj status))
+  (let ((s5-0 (-> obj status)))
+    (if (= (logand s5-0 (draw-control-status no-draw-temp)) (draw-control-status no-draw-temp))
+        (format #t "no-draw-temp ")
+        )
+    (if (= (logand s5-0 (draw-control-status lod-set)) (draw-control-status lod-set))
+        (format #t "lod-set ")
+        )
+    (if (= (logand s5-0 (draw-control-status no-draw-bounds2)) (draw-control-status no-draw-bounds2))
+        (format #t "no-draw-bounds2 ")
+        )
+    (if (= (logand s5-0 (draw-control-status math-skel)) (draw-control-status math-skel))
+        (format #t "math-skel ")
+        )
+    (if (= (logand s5-0 (draw-control-status force-vu1)) (draw-control-status force-vu1))
+        (format #t "force-vu1 ")
+        )
+    (if (= (logand s5-0 (draw-control-status warp-cross-fade)) (draw-control-status warp-cross-fade))
+        (format #t "warp-cross-fade ")
+        )
+    (if (= (logand s5-0 (draw-control-status disable-fog)) (draw-control-status disable-fog))
+        (format #t "disable-fog ")
+        )
+    (if (= (logand s5-0 (draw-control-status no-closest-distance)) (draw-control-status no-closest-distance))
+        (format #t "no-closest-distance ")
+        )
+    (if (= (logand s5-0 (draw-control-status hud)) (draw-control-status hud))
+        (format #t "hud ")
+        )
+    (if (= (logand s5-0 (draw-control-status no-draw)) (draw-control-status no-draw))
+        (format #t "no-draw ")
+        )
+    (if (= (logand s5-0 (draw-control-status on-screen)) (draw-control-status on-screen))
+        (format #t "on-screen ")
+        )
+    (if (= (logand s5-0 (draw-control-status close-to-screen)) (draw-control-status close-to-screen))
+        (format #t "close-to-screen ")
+        )
+    (if (= (logand s5-0 (draw-control-status force-fade)) (draw-control-status force-fade))
+        (format #t "force-fade ")
+        )
+    (if (= (logand s5-0 (draw-control-status no-draw-bounds)) (draw-control-status no-draw-bounds))
+        (format #t "no-draw-bounds ")
+        )
+    (if (= (logand s5-0 (draw-control-status uninited)) (draw-control-status uninited))
+        (format #t "uninited ")
+        )
+    )
+  (format #t ")~%")
+  (let ((t9-19 format)
+        (a0-35 #t)
+        (a1-19 "~1Tdata-format: #x~X : ~S~%")
+        (a2-3 (-> obj data-format))
+        (v1-47 (-> obj data-format))
+        )
+    (t9-19 a0-35 a1-19 a2-3 (cond
+                              ((= v1-47 (draw-control-data-format merc))
+                               "merc"
+                               )
+                              ((= v1-47 (draw-control-data-format pris))
+                               "pris"
+                               )
+                              (else
+                                "*unknown*"
+                                )
+                              )
+           )
+    )
+  (format #t "~1Tglobal-effect: #x~X : (draw-control-global-effect " (-> obj global-effect))
+  (let ((s5-1 (-> obj global-effect)))
+    (if (= (logand s5-1 (draw-control-global-effect title-light)) (draw-control-global-effect title-light))
+        (format #t "title-light ")
+        )
+    (if (= (logand s5-1 (draw-control-global-effect bit-1)) (draw-control-global-effect bit-1))
+        (format #t "bit-1 ")
+        )
+    (if (= (logand s5-1 (draw-control-global-effect disable-envmap)) (draw-control-global-effect disable-envmap))
+        (format #t "disable-envmap ")
+        )
+    (if (= (logand s5-1 (draw-control-global-effect bit-0)) (draw-control-global-effect bit-0))
+        (format #t "bit-0 ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tart-group: ~A~%" (-> obj art-group))
+  (format #t "~1Tjgeo: ~A~%" (-> obj jgeo))
+  (format #t "~1Tmgeo: ~A~%" (-> obj mgeo))
+  (format #t "~1Tdma-add-func: ~A~%" (-> obj dma-add-func))
+  (format #t "~1Tskeleton: ~A~%" (-> obj skeleton))
+  (format #t "~1Tlod-set: #<lod-set @ #x~X>~%" (-> obj lod-set))
+  (format #t "~1Tlod[6] @ #x~X~%" (-> obj lod-set))
+  (format #t "~1Tmax-lod: ~D~%" (-> obj lod-set max-lod))
+  (format #t "~1Tforce-lod: ~D~%" (-> obj force-lod))
+  (format #t "~1Tcur-lod: ~D~%" (-> obj cur-lod))
+  (format #t "~1Tdesired-lod: ~D~%" (-> obj desired-lod))
+  (format #t "~1Tripple: ~A~%" (-> obj ripple))
+  (format #t "~1Tlongest-edge: (meters ~m)~%" (-> obj longest-edge))
+  (format #t "~1Tlongest-edge?: ~D~%" (-> obj longest-edge))
+  (format #t "~1Tlight-index: ~D~%" (-> obj light-index))
+  (format #t "~1Tshadow-mask: ~D~%" (-> obj shadow-mask))
+  (format #t "~1Tlevel-index: ~D~%" (-> obj level-index))
+  (format #t "~1Tdeath-draw-overlap: ~D~%" (-> obj death-draw-overlap))
+  (format #t "~1Tdeath-timer: ~D~%" (-> obj death-timer))
+  (format #t "~1Tdeath-timer-org: ~D~%" (-> obj death-timer-org))
+  (format #t "~1Tdeath-vertex-skip: ~D~%" (-> obj death-vertex-skip))
+  (format #t "~1Tdeath-effect: ~D~%" (-> obj death-effect))
+  (format #t "~1Tshadow: ~A~%" (-> obj shadow))
+  (format #t "~1Tshadow-ctrl: ~A~%" (-> obj shadow-ctrl))
+  (format #t "~1Tdistance: (meters ~m)~%" (-> obj distance))
+  (format #t "~1Torigin: ~`vector`P~%" (-> obj origin))
+  (format #t "~1Tbounds: ~`vector`P~%" (-> obj bounds))
+  (format #t "~1Tradius: (meters ~m)~%" (-> obj bounds w))
+  (format #t "~1Tcolor-mult: #<rgbaf @ #x~X>~%" (-> obj color-mult))
+  (format #t "~1Tcolor-emissive: #<rgbaf @ #x~X>~%" (-> obj color-emissive))
+  (format #t "~1Teffect-mask: #x~X~%" (-> obj effect-mask))
+  (format #t "~1Tseg-mask: #x~X~%" (-> obj seg-mask))
+  (format #t "~1Torigin-joint-index: ~D~%" (-> obj origin-joint-index))
+  (format #t "~1Tshadow-joint-index: ~D~%" (-> obj shadow-joint-index))
+  (format #t "~1Tforce-fade: ~D~%" (-> obj force-fade))
+  (format #t "~1Tdefault-texture-page: ~D~%" (-> obj default-texture-page))
+  (format #t "~1Tshadow-values: ~D~%" (-> obj shadow-values))
+  (label cfg-47)
+  obj
+  )
+
+;; definition for method 9 of type draw-control
+(defmethod get-skeleton-origin draw-control ((obj draw-control))
+  (-> obj skeleton bones 0 transform trans)
+  )
+
+;; failed to figure out what this is:
+0

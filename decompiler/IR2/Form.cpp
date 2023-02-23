@@ -197,8 +197,16 @@ void StoreElement::get_modified_regs(RegSet& regs) const {
 // LoadSourceElement
 /////////////////////////////
 
-LoadSourceElement::LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind)
-    : m_addr(addr), m_size(size), m_kind(kind) {
+LoadSourceElement::LoadSourceElement(Form* addr,
+                                     int size,
+                                     LoadVarOp::Kind kind,
+                                     const std::optional<IR2_RegOffset>& load_source_ro,
+                                     const TP_Type& ro_reg_type)
+    : m_addr(addr),
+      m_size(size),
+      m_kind(kind),
+      m_load_source_ro(load_source_ro),
+      m_ro_reg_type(ro_reg_type) {
   m_addr->parent_element = this;
 }
 
@@ -464,22 +472,25 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
   }
 }
 
-goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
+goos::Object SetFormFormElement::to_form_for_define(
+    const Env& env,
+    const std::optional<std::string>& docstring) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env)};
+  if (docstring) {
+    forms.push_back(pretty_print::to_symbol(fmt::format("\"{}\"", docstring.value())));
+  }
   if (m_cast_for_define) {
     // for vu-function, we just put a 0. These aren't supported
     if (*m_cast_for_define == TypeSpec("vu-function")) {
-      return pretty_print::build_list(
-          fmt::format("define"), m_dst->to_form(env),
-          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                   pretty_print::to_symbol("0")));
+      forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                               pretty_print::to_symbol("0")));
+      return pretty_print::build_list(forms);
     }
-    return pretty_print::build_list(
-        fmt::format("define"), m_dst->to_form(env),
-        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                 m_src->to_form(env)));
+    forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                             m_src->to_form(env)));
+    return pretty_print::build_list(forms);
   } else {
-    std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env),
-                                       m_src->to_form(env)};
+    forms.push_back(m_src->to_form(env));
     return pretty_print::build_list(forms);
   }
 }
@@ -1097,7 +1108,7 @@ void EmptyElement::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 
 bool cmp(Register x, Register y) {
-  int comparison = x.to_string().compare(y.to_string());
+  int comparison = x.to_string() > y.to_string();
   if (comparison <= 0)
     return true;
   return false;
@@ -1107,7 +1118,7 @@ RLetElement::RLetElement(Form* _body, RegSet _regs) : body(_body) {
   for (auto& reg : _regs) {
     sorted_regs.push_back(reg);
   }
-  std::sort(sorted_regs.begin(), sorted_regs.end(), cmp);
+  std::stable_sort(sorted_regs.begin(), sorted_regs.end(), cmp);
 }
 
 void RLetElement::apply(const std::function<void(FormElement*)>& f) {
@@ -1864,6 +1875,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cpad-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
+    case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
+      return "vector+float*!";
     default:
       ASSERT(false);
       return "";
@@ -2468,11 +2481,12 @@ void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 
 void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* file) {
   if (m_label_info) {
-    m_description = decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
-                                                 env.file->words_by_seg, *env.dts, file);
+    m_description =
+        decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
+                                     env.file->words_by_seg, env.dts->ts, file, env.version);
   } else {
     m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
-                                                  env.dts->ts, file);
+                                                  env.dts->ts, file, env.version);
   }
   m_decompiled = true;
 }
@@ -2945,6 +2959,69 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
 // DefskelgroupElement
 ////////////////////////////////
 
+WithDmaBufferAddBucketElement::WithDmaBufferAddBucketElement(RegisterAccess dma_buf,
+                                                             Form* dma_buf_val,
+                                                             Form* bucket,
+                                                             const std::vector<FormElement*>& body)
+    : m_dma_buf(dma_buf), m_dma_buf_val(dma_buf_val), m_bucket(bucket), m_body(body) {
+  m_dma_buf_val->parent_element = this;
+  m_bucket->parent_element = this;
+  for (auto& e : m_body) {
+    e->parent_form = nullptr;
+  }
+}
+
+void WithDmaBufferAddBucketElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_dma_buf_val->apply(f);
+  m_bucket->apply(f);
+  for (auto& e : m_body) {
+    e->apply(f);
+  }
+}
+
+void WithDmaBufferAddBucketElement::apply_form(const std::function<void(Form*)>& f) {
+  m_dma_buf_val->apply_form(f);
+  m_bucket->apply_form(f);
+  for (auto& e : m_body) {
+    e->apply_form(f);
+  }
+}
+
+void WithDmaBufferAddBucketElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  m_dma_buf_val->collect_vars(vars, recursive);
+  m_bucket->collect_vars(vars, recursive);
+  for (auto& e : m_body) {
+    e->collect_vars(vars, recursive);
+  }
+}
+
+void WithDmaBufferAddBucketElement::get_modified_regs(RegSet& regs) const {
+  m_dma_buf_val->get_modified_regs(regs);
+  m_bucket->get_modified_regs(regs);
+  for (auto& e : m_body) {
+    e->get_modified_regs(regs);
+  }
+}
+
+goos::Object WithDmaBufferAddBucketElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("with-dma-buffer-add-bucket"));
+  forms.push_back(pretty_print::build_list(
+      {pretty_print::build_list({pretty_print::to_symbol(env.get_variable_name(m_dma_buf)),
+                                 m_dma_buf_val->to_form(env)}),
+       m_bucket->to_form(env)}));
+  for (auto& e : m_body) {
+    forms.push_back(e->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
+// DefskelgroupElement
+////////////////////////////////
+
 DefskelgroupElement::DefskelgroupElement(const std::string& name,
                                          const DefskelgroupElement::Info& info,
                                          const StaticInfo& data)
@@ -2977,14 +3054,12 @@ void DefskelgroupElement::apply_form(const std::function<void(Form*)>& f) {
 }
 
 void DefskelgroupElement::collect_vars(RegAccessSet& vars, bool recursive) const {
-  if (recursive) {
-    for (auto& e : m_info.lods) {
-      e.mgeo->collect_vars(vars, recursive);
-      e.lod_dist->collect_vars(vars, recursive);
-    }
-    m_info.janim->collect_vars(vars, recursive);
-    m_info.jgeo->collect_vars(vars, recursive);
+  for (auto& e : m_info.lods) {
+    e.mgeo->collect_vars(vars, recursive);
+    e.lod_dist->collect_vars(vars, recursive);
   }
+  m_info.janim->collect_vars(vars, recursive);
+  m_info.jgeo->collect_vars(vars, recursive);
 }
 
 void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
@@ -3000,8 +3075,8 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("defskelgroup"));
   forms.push_back(pretty_print::to_symbol(m_name));
-  forms.push_back(pretty_print::to_symbol(m_static_info.art_name));
-  const auto& art = env.dts->art_group_info.find(m_static_info.art_name + "-ag");
+  forms.push_back(pretty_print::to_symbol(m_static_info.art_group_name));
+  const auto& art = env.dts->art_group_info.find(m_static_info.art_group_name + "-ag");
   bool has_art = art != env.dts->art_group_info.end();
   auto jg = m_info.jgeo->to_form(env);
   if (jg.is_int() && has_art && art->second.count(jg.as_int())) {
@@ -3055,8 +3130,29 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   if (m_static_info.sort != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":sort {}", m_static_info.sort)));
   }
-  if (m_static_info.version != 6) {
-    forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+  // jak 2 skelgroups seem to be using version 7
+  if (env.version != GameVersion::Jak1) {
+    if (m_static_info.version != 7) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+    }
+  } else {
+    if (m_static_info.version != 6) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+    }
+  }
+  if (env.version != GameVersion::Jak1) {
+    if (m_static_info.origin_joint_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":origin-joint-index {}", m_static_info.origin_joint_index)));
+    }
+    if (m_static_info.shadow_joint_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":shadow-joint-index {}", m_static_info.origin_joint_index)));
+    }
+    if (m_static_info.light_index != 0) {
+      forms.push_back(pretty_print::to_symbol(
+          fmt::format(":light-index {}", m_static_info.origin_joint_index)));
+    }
   }
 
   return pretty_print::build_list(forms);
@@ -3082,11 +3178,13 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
   forms.push_back(pretty_print::to_symbol(fmt::format("defpartgroup {}", name())));
   forms.push_back(pretty_print::to_symbol(fmt::format(":id {}", m_group_id)));
   if (m_static_info.duration != 3000) {
-    forms.push_back(pretty_print::to_symbol(fmt::format(":duration {}", m_static_info.duration)));
+    forms.push_back(pretty_print::to_symbol(
+        fmt::format(":duration (seconds {})", seconds_to_string(m_static_info.duration))));
   }
   if (m_static_info.linger != 1500) {
-    forms.push_back(
-        pretty_print::to_symbol(fmt::format(":linger-duration {}", m_static_info.linger)));
+    // 5 seconds is default
+    forms.push_back(pretty_print::to_symbol(
+        fmt::format(":linger-duration (seconds {})", seconds_to_string(m_static_info.linger))));
   }
   if (m_static_info.flags != 0) {
     auto things = decompile_bitfield_enum_from_int(TypeSpec("sp-group-flag"), env.dts->ts,
@@ -3104,6 +3202,21 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
       ":bounds (static-bspherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
       meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
       meters_to_string(m_static_info.bounds.w()))));
+
+  if (env.version != GameVersion::Jak1) {
+    // jak 2 stuff.
+    if (m_static_info.rot != 0) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(
+          ":rotate ((degrees {}) (degrees {}) (degrees {}))",
+          meters_to_string(m_static_info.rot.x()), meters_to_string(m_static_info.rot.y()),
+          meters_to_string(m_static_info.rot.z()))));
+    }
+    if (m_static_info.scale != 1) {
+      forms.push_back(pretty_print::to_symbol(fmt::format(
+          ":scale ({} {} {})", float_to_string(m_static_info.rot.x()),
+          float_to_string(m_static_info.rot.y()), float_to_string(m_static_info.rot.z()))));
+    }
+  }
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.elts) {
@@ -3147,7 +3260,12 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
 
     if (offset) {
-      result += fmt::format(" :offset {}", offset);
+      // jak2 has switched this field to a signed 16 bit number
+      if (env.version == GameVersion::Jak2) {
+        result += fmt::format(" :offset {}", (s16)offset);
+      } else {
+        result += fmt::format(" :offset {}", offset);
+      }
     }
 
     if (hour_mask) {
@@ -3191,12 +3309,11 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
 
   std::vector<goos::Object> item_forms;
   for (const auto& e : m_static_info.fields) {
-    if (e.field_id == 67) {
+    if (e.is_sp_end(env.version)) {
       // sp-end
       break;
     }
-    ASSERT(env.version == GameVersion::Jak1);  // need to update enums
-    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
+    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts, env.version));
   }
   if (!item_forms.empty()) {
     forms.push_back(pretty_print::to_symbol(":init-specs"));
