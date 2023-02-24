@@ -645,12 +645,21 @@ MethodInfo TypeSystem::define_method(Type* type,
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
 
   if (got_existing) {
-    // make sure we aren't changing anything.
-    if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
+    int bad_arg_idx = -99;
+    // make sure we aren't changing anything that isn't the return type.
+    if (!existing_info.type.is_compatible_child_method(ts, type->get_name(), &bad_arg_idx) &&
+        bad_arg_idx != ts.arg_count() - 1) {
       throw_typesystem_error(
           "The method {} of type {} was originally defined as {}, but has been "
-          "redefined as {}\n",
-          method_name, type->get_name(), existing_info.type.print(), ts.print());
+          "redefined as {} (see argument index {})\n",
+          method_name, type->get_name(), existing_info.type.print(), ts.print(), bad_arg_idx);
+    } else if (bad_arg_idx == ts.arg_count() - 1 &&
+               !tc(existing_info.type.last_arg(), ts.last_arg())) {
+      throw_typesystem_error(
+          "The method {} of type {} was originally defined as returning {}, but has been redefined "
+          "and returns {}\n",
+          method_name, type->get_name(), existing_info.type.last_arg().print(),
+          ts.last_arg().print());
     }
 
     return existing_info;
