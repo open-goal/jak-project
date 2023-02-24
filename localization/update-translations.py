@@ -1,6 +1,5 @@
 import json
 import os
-import collections
 
 def get_translations(game_name, info):
   translations = []
@@ -59,5 +58,6 @@ def process_text_translations(game_name):
       for line in output_lines:
         f.write(line)
       f.write("\n")
+
 
 process_text_translations("jak1")
