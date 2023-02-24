@@ -1,0 +1,32 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Various debugging displays made for the pc port. This file includes overrides or game-specific implementations.
+ |#
+
+;; debug-only file!
+(declare-file (debug))
+
+(defconstant MEM_BAR_NUM 7) ;; amount of memory usage bars (override later if wanted)
+(defmethod draw-memory pc-settings ((obj pc-settings) (buf dma-buffer))
+	"draw the memory heap status in the bottom right corner"
+
+	(when (-> obj display-heap-status)
+		(draw-memory-bar-kheap buf global :idx 0 :color (static-rgba 32 32 255 64))
+		(draw-memory-bar-kheap buf debug :idx 1 :color (static-rgba 255 32 32 64))
+		(draw-memory-bar-kheap buf (-> *level* level 0 heap) :name "l0" :idx 2 :color (static-rgba 32 255 255 64))
+		(draw-memory-bar-kheap buf (-> *level* level 1 heap) :name "l1" :idx 3 :color (static-rgba 255 32 255 64))
+		(draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx 4 :color (static-rgba 32 255 32 64))
+		(draw-memory-bar-generic buf
+						:remain (* 16 (dma-buffer-free (-> (current-frame) global-buf)))
+						:total  (length (-> (current-frame) global-buf))
+						:name "dma-global" :idx 5 :color (static-rgba 32 32 255 64))
+		(draw-memory-bar-generic buf
+						:remain (* 16 (dma-buffer-free (-> (current-frame) debug-buf)))
+						:total  (length (-> (current-frame) debug-buf))
+						:name "dma-debug" :idx 6 :color (static-rgba 255 32 32 64))
+		#t)
+	)
+
+

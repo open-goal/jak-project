@@ -1915,7 +1915,16 @@
  "game/task/hint-control.gc"
  "entity/ambient.gc"
  "debug/assert.gc"
- "common-obs/generic-obs.gc"
+ )
+
+(goal-src "engine/common-obs/generic-obs.gc" "pc-anim-util" "assert")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/generic-obs.o")
  "target/target-util.gc"
  "target/target-part.gc"
  "target/collide-reaction-target.gc"
@@ -2053,6 +2062,8 @@
 (goal-src "pc/debug/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/debug/entity-debug.gc" "debug" "main-h" "entity" "pckernel" "font")
 (goal-src "pc/debug/default-menu-pc.gc" "anim-tester-x" "part-tester" "entity-debug")
+(goal-src "pc/debug/pc-debug-common.gc" "pckernel-h" "entity-h" "game-info-h" "level-h" "settings-h" "gsound-h" "target-util")
+(goal-src "pc/debug/pc-debug-methods.gc" "pc-debug-common")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))

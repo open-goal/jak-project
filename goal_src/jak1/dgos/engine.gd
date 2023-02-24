@@ -35,6 +35,8 @@
   "dma-bucket.o"
   "dma-disasm.o"
   "pckernel-h.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pc-debug-methods.o" ;; added
   "pad.o"
   "gs.o"
   "display-h.o"
