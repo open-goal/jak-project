@@ -14,6 +14,12 @@
   (file "game/assets/jak1/text/game_text_ptbr.gs")
   (file "game/assets/jak1/text/game_text_es.gs")
   (file "game/assets/jak1/text/game_text_it.gs")
+  (file "game/assets/jak1/text/game_text_pt-PT.gs")
+  (file "game/assets/jak1/text/game_text_fi.gs")
+  (file "game/assets/jak1/text/game_text_sv-SE.gs")
+  (file "game/assets/jak1/text/game_text_da.gs")
+  (file "game/assets/jak1/text/game_text_no.gs")
+  (file "game/assets/jak1/text/game_text_nl.gs")
   (file "game/assets/jak1/text/game_text_hu.gs")
   )
 
