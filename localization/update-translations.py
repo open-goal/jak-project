@@ -2,6 +2,20 @@ import json
 import os
 import collections
 
+def get_translations(game_name, info):
+  translations = []
+  language_ids = []
+  for language in info["languages"]:
+    for lang_code, lang_info in language.items():
+      language_ids.append(str(lang_info["id"]))
+      file_name = "./localization/{}/text/text_{}.json".format(game_name, lang_code)
+      print("Getting translations from - {}".format(file_name))
+      if not os.path.exists(file_name):
+        return None
+      with open(file_name, 'r', encoding="utf-8") as f:
+        translations.append(json.load(f))
+  return translations
+
 def process_text_translations(game_name):
   with open("./localization/{}/text/meta.json".format(game_name), 'r', encoding="utf-8") as f:
     meta = json.load(f)
@@ -9,26 +23,17 @@ def process_text_translations(game_name):
   for gs_file_name, info in meta.items():
     # NOTE - ignoring most of the meta, as we just append to the `.gs` files
     # so the header and such is assumed to be correct
-
     # Build up the file
-    language_ids = []
-    # output_lines = [
-    #   "(group-name \"{}\")\n".format(info["group-name"]),
-    # ]
     output_lines = []
-    translations = []
-    for language in info["languages"]:
-      for lang_code, lang_info in language.items():
-        language_ids.append(str(lang_info["id"]))
-        file_name = "./localization/{}/text/text_{}.json".format(game_name, lang_code)
-        with open(file_name, 'r', encoding="utf-8") as f:
-          translations.append(json.load(f))
-    # output_lines.append("(language-id {})\n".format(" ".join(language_ids)))
-    # output_lines.append("(text-version {})\n".format(info["version"]))
+    translations = get_translations(game_name, info)
+    if translations is None:
+      print("Couldn't find translation file, skipping")
+      continue
 
     # build up translated strings
     # NOTE - the assumption is that a multi-language file will each have the same strings
-    text_ids = translations[0].keys().sort()
+    text_ids = list(translations[0].keys())
+    text_ids.sort(key=lambda h: int(h, 16))
     for text_id in text_ids:
       if len(translations) == 0:
         output_lines.append("(#x{} \"{}\")\n".format(text_id, translations[0][text_id]["text"]))
@@ -40,6 +45,7 @@ def process_text_translations(game_name):
 
     # read in the existing content from the file
     output_path = "./game/assets/{}/text/{}.gs".format(game_name, gs_file_name)
+    print("Updating - {}".format(output_path))
     with open(output_path, 'r', encoding="utf-8") as f:
       existing_lines = f.readlines()
 
@@ -53,3 +59,5 @@ def process_text_translations(game_name):
       for line in output_lines:
         f.write(line)
       f.write("\n")
+
+process_text_translations("jak1")
