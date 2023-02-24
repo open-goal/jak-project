@@ -251,4 +251,9 @@ void TextDb::inherit_info(const Object& parent, const Object& child) {
     }
   }
 }
+
+void TextDb::clear_info() {
+  m_map.clear();
+  m_fragments.clear();
+}
 }  // namespace goos

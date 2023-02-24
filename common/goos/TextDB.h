@@ -116,6 +116,7 @@ class TextDb {
 
   bool has_info(const Object& o) const;
   void inherit_info(const Object& parent, const Object& child);
+  void clear_info();
 
  private:
   std::vector<std::shared_ptr<SourceText>> m_fragments;
