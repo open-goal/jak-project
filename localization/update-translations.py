@@ -36,11 +36,11 @@ def process_text_translations(game_name):
     text_ids.sort(key=lambda h: int(h, 16))
     for text_id in text_ids:
       if len(translations) == 0:
-        output_lines.append("(#x{} \"{}\")\n".format(text_id, translations[0][text_id]["text"]))
+        output_lines.append("(#x{} \"{}\")\n".format(text_id, translations[0][text_id]))
       else:
-        output_lines.append("(#x{} \"{}\"".format(text_id, translations[0][text_id]["text"]))
+        output_lines.append("(#x{} \"{}\"".format(text_id, translations[0][text_id]))
         for translation in translations[1:]:
-          output_lines.append("\n        \"{}\"".format(translation[text_id]["text"]))
+          output_lines.append("\n        \"{}\"".format(translation[text_id]))
         output_lines.append(")\n")
 
     # read in the existing content from the file
