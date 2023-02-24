@@ -371,4 +371,7 @@
   "nav-graph-editor.o"
   "sampler.o"
   "default-menu.o"
+  "anim-tester-x.o" ;; added
+  "entity-debug.o" ;; added
+  "default-menu-pc.o" ;; added
  ))
