@@ -38,6 +38,18 @@
     )
   )
 
+(defun make-src-sequence-elt-jak1 (current previous prefix)
+  "Helper for goal-src-sequence"
+  `(let ((output-file ,(gc-file->o-file current)))
+    (set! *all-gc* (cons output-file *all-gc*))
+    (defstep :in ,(string-append "goal_src/jak1/" prefix current)
+     :tool 'goalc
+     :out (list output-file)
+     :dep '(,(gc-file->o-file previous))
+     )
+    )
+  )
+
 ;; TODO - deps should probably just treated as a proper list to refactor duplication 
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
   "Add a sequence of GOAL files (each depending on the previous) in the given directory,
@@ -51,7 +63,13 @@
 
       (while (not (null? in-iter))
         ;; (fmt #t "{} dep on {}\n" (first in-iter) prev)
-        (let ((next (make-src-sequence-elt (first in-iter) prev prefix)))
+        (let* ((cur-src-file (first in-iter))
+               ;; grotesque temp hack
+               (next (if (or (eq? "pc/pckernel-h.gc" cur-src-file)
+                             (eq? "pc/pckernel-common.gc" cur-src-file)
+                             (eq? "pc/debug/pc-debug-common.gc" cur-src-file))
+                         (make-src-sequence-elt-jak1 cur-src-file prev prefix)
+                         (make-src-sequence-elt cur-src-file prev prefix))))
           (set-cdr! iter (cons next '()))
           (set! iter (cdr iter))
           )
@@ -170,8 +188,25 @@
             (cond
               ((string-ends-with? file-name ".o")
                ;; build up a list of all gsrc files needing to be compiled
-               (let ((gsrc-path (get-gsrc-path (symbol->string (first (string-split file-name "."))))))
-                (set! gsrc-seq-args (cons gsrc-path gsrc-seq-args))))
+               (let ((base-name (symbol->string (first (string-split file-name ".")))))
+                  (cond
+                    ;; hardcoded cases to grab from jak1... really dont want to copy-paste these all the time!
+                    ((or (eq? base-name "pckernel-h")
+                         (eq? base-name "pckernel-common")
+                         (eq? base-name "pc-debug-common"))
+                      (let ((old-path (get-gsrc-folder))
+                            (gsrc-path (begin (set-gsrc-folder! "goal_src/jak1")
+                                              (get-gsrc-path base-name))))
+                        (set! gsrc-seq-args (cons gsrc-path gsrc-seq-args))
+                        (set-gsrc-folder! old-path)
+                        )
+                      )
+                    (#t
+                      (let ((gsrc-path (get-gsrc-path base-name)))
+                        (set! gsrc-seq-args (cons gsrc-path gsrc-seq-args)))
+                      )
+                    ))
+               )
               ((string-starts-with? file-name "tpage-")
                ;; copy textures
                (let ((tpage-id (second (string-split (symbol->string (first (string-split file-name "."))) "-"))))

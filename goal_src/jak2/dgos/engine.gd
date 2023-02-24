@@ -31,6 +31,9 @@
   "dma-disasm.o"
   "pad.o"
   "pckernel-h.o" ;; added
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pc-debug-methods.o" ;; added
   "gs.o"
   "display-h.o"
   "geometry.o"
@@ -325,6 +328,7 @@
   "prototype.o"
   "main-collide.o"
   "video.o"
+  "pckernel-common.o" ;; added
   "pckernel.o" ;; added
   "main.o"
   "collide-cache.o"
