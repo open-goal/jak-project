@@ -146,7 +146,7 @@ class TypeSpec {
     }
   }
 
-  const cu::SmallVector<TypeTag, 1>& tags() const { return m_tags; }
+  const std::vector<TypeTag>& tags() const { return m_tags; }
 
  private:
   friend class TypeSystem;
@@ -154,5 +154,5 @@ class TypeSpec {
   // hiding this behind a pointer makes things faster in the case where we have no
   // arguments (most of the time) and makes the type analysis pass in the decompiler 2x faster.
   std::vector<TypeSpec>* m_arguments = nullptr;
-  cu::SmallVector<TypeTag, 1> m_tags;
+  std::vector<TypeTag> m_tags;
 };

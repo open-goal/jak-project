@@ -160,6 +160,7 @@ const std::unordered_map<
         {"make", {"", &Compiler::compile_make}},
         {"print-debug-compiler-stats", {"", &Compiler::compile_print_debug_compiler_stats}},
         {"gen-docs", {"", &Compiler::compile_gen_docs}},
+        {"gc-text", {"", &Compiler::compile_gc_text}},
 
         // CONDITIONAL COMPILATION
         {"#cond", {"", &Compiler::compile_gscond}},
