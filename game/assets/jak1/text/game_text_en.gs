@@ -337,6 +337,8 @@
         "DANSK")
 (#x1116 "NORSK"
         "NORSK")
+(#x1117 "MAGYAR"
+        "MAGYAR")
 (#x1500 "SPEEDRUNNER MODE"
         "SPEEDRUNNER MODE")
 
