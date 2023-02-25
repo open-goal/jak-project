@@ -503,6 +503,8 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
   glBindVertexArray(m_ogl_downsampler.vao);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_DOWNSAMPLE].activate();
   for (int i = 0; i < kDownsampleIterations - 1; i++) {
     auto* source = &m_ogl.downsample_fbos[i];
@@ -520,8 +522,7 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
     // if we aren't using all sprites.
     glDrawElements(GL_TRIANGLE_STRIP, num_sprites * 5, GL_UNSIGNED_INT, nullptr);
   }
-  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
-             render_state->draw_region_h);
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
 /*!
@@ -575,6 +576,8 @@ void GlowRenderer::draw_probe_copies(SharedRenderState* render_state,
                                      u32 idx_start,
                                      u32 idx_end) {
   // read probe from probe fbo, write it to the first downsample fbo
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_READ].activate();
   glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.downsample_fbos[0].fbo);
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_rgba_tex);
@@ -587,8 +590,7 @@ void GlowRenderer::draw_probe_copies(SharedRenderState* render_state,
   prof.add_tri(m_next_sprite * 2);
   glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
                  (void*)(idx_start * sizeof(u32)));
-  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
-             render_state->draw_region_h);
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
 /*!
