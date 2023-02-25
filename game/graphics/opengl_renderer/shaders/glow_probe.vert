@@ -5,8 +5,6 @@ layout (location = 1) in vec4 rgba_in;
 
 out vec4 fragment_color;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 void main() {
   vec4 transformed = position_in;
   transformed.xy -= (2048.);
@@ -16,7 +14,7 @@ void main() {
   transformed.y /= -(128);
   transformed.xyz *= transformed.w;
   // scissoring area adjust
-  transformed.y *= SCISSOR_ADJUST;
+  transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;
 
   fragment_color = rgba_in;
