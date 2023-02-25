@@ -29,12 +29,12 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
-  "pad.o"
   "pckernel-h.o" ;; added
-  "gs.o"
-  "display-h.o"
   "pckernel-impl.o" ;; added
   "pc-debug-common.o" ;; added
+  "pad.o"
+  "gs.o"
+  "display-h.o"
   "geometry.o"
   "timer.o"
   "vector.o"
