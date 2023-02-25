@@ -23,23 +23,39 @@
 
 (defun letterbox ()
   "Draw letterbox bars."
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
-    (draw-sprite2d-xy-absolute s5-0 0 0 512 46 (new 'static 'rgba :a #x80))
-    (draw-sprite2d-xy-absolute s5-0 0 370 512 47 (new 'static 'rgba :a #x80))
-    (let ((a3-2 (-> s5-0 base)))
-      (let ((v1-7 (the-as dma-packet (-> s5-0 base))))
-        (set! (-> v1-7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-7 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-7 vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (the-as pointer (&+ v1-7 16)))
+  (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
+                               (bucket-id screen-filter))
+    (#cond
+      ((not PC_PORT)
+        (draw-sprite2d-xy-absolute s5-0 0 0 512 46 (new 'static 'rgba :a #x80))
+        (draw-sprite2d-xy-absolute s5-0 0 370 512 47 (new 'static 'rgba :a #x80))
         )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id screen-filter)
-        gp-0
-        (the-as (pointer dma-tag) a3-2)
+      (#t
+        (if (-> *pc-settings* use-vis?)
+            ;; original game mode. dont do anything.
+            (begin
+              (draw-sprite2d-xy-absolute s5-0 0 0 512 46 (new 'static 'rgba :a #x80))
+              (draw-sprite2d-xy-absolute s5-0 0 370 512 47 (new 'static 'rgba :a #x80)))
+            ;; native mode. force 16x9 letterboxing always.
+            (begin
+              (cond
+                ((< (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too tall. needs vertical letterboxing.
+                  (let ((lbx-h (the int (* 112.0 (- 1.0 (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))))))
+                    (draw-sprite2d-xy dma-buf 0 0 512 lbx-h (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf 0 (- 448 lbx-h) 512 lbx-h (new 'static 'rgba :a #x80))
+                      )
+                  )
+                ((> (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too wide. needs horizontal letterboxing.
+                  (let ((lbx-w (the int (* 256.0 (- 1.0 (/ ASPECT_16X9 (-> *pc-settings* aspect-ratio)))))))
+                    (draw-sprite2d-xy dma-buf 0 0 lbx-w 448 (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf (- 512 lbx-w) 0 lbx-w 448 (new 'static 'rgba :a #x80))
+                      )
+                  )
+                )
+              )
+            )
         )
       )
     )
@@ -1515,6 +1531,16 @@
       (if (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
                (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
                )
+          (letterbox)
+          )
+      (if (#if (not PC_PORT)
+               (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
+                    (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+                    )
+           (or (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
+                    (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+                    )
+               (not (-> *pc-settings* use-vis?))))
           (letterbox)
           )
       )
