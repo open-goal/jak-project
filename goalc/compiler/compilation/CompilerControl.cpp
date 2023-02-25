@@ -816,3 +816,8 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
 
   return get_none();
 }
+
+Val* Compiler::compile_gc_text(const goos::Object&, const goos::Object&, Env*) {
+  m_goos.reader.db.clear_info();
+  return get_none();
+}

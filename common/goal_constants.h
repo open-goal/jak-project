@@ -61,7 +61,7 @@ constexpr s32 max_symbols(GameVersion version) {
   }
 }
 
-enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
+enum class RegClass : u8 { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 
 constexpr u32 GOAL_NEW_METHOD = 0;       // method ID of GOAL new
 constexpr u32 GOAL_DEL_METHOD = 1;       // method ID of GOAL delete
