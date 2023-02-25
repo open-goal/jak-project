@@ -76,11 +76,10 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
                          return handle_set_gsrc_folder(obj, args, env);
                        });
 
-  m_goos.register_form("get-gsrc-folder",
-                       [=](const goos::Object& obj, goos::Arguments& args,
-                           const std::shared_ptr<goos::EnvironmentObject>& env) {
-                         return handle_get_gsrc_folder(obj, args, env);
-                       });
+  m_goos.register_form("get-gsrc-folder", [=](const goos::Object& obj, goos::Arguments& args,
+                                              const std::shared_ptr<goos::EnvironmentObject>& env) {
+    return handle_get_gsrc_folder(obj, args, env);
+  });
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
