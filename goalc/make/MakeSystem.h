@@ -46,6 +46,10 @@ class MakeSystem {
                                       goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env);
 
+  goos::Object handle_get_gsrc_folder(const goos::Object& obj,
+                                      goos::Arguments& args,
+                                      const std::shared_ptr<goos::EnvironmentObject>& env);
+
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 

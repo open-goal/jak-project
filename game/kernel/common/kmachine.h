@@ -59,6 +59,8 @@ u64 DecodeInactiveTimeout();
 void DecodeTime(u32 ptr);
 u64 read_ee_timer();
 void c_memmove(u32 dst, u32 src, u32 size);
+void set_game_resolution(s64 w, s64 h);
+void set_msaa(s64 samples);
 void get_window_size(u32 w_ptr, u32 h_ptr);
 void get_window_scale(u32 x_ptr, u32 y_ptr);
 void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr);

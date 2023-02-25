@@ -2082,7 +2082,7 @@ class IGen {
    */
   static Instruction null() {
     Instruction i(0);
-    i.is_null = true;
+    i.m_flags |= Instruction::kIsNull;
     return i;
   }
 

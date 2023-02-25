@@ -130,7 +130,7 @@
 
 ;; definition for function dma-buffer-add-vu-function
 (defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
-  (let ((func-ptr (&-> vu-func data 4))
+  (let ((func-ptr (the-as object (+ (the-as uint vu-func) 16)))
         (qlen (-> vu-func qlength))
         (origin (-> vu-func origin))
         )
@@ -144,7 +144,7 @@
           (set! (-> buf-ptr vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-now 2) :imm origin))
           (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
           )
-        (&+! func-ptr (* qwc-now 16))
+        (set! func-ptr (+ (the-as uint func-ptr) (* qwc-now 16)))
         (set! qlen (- qlen qwc-now))
         (+! origin (* qwc-now 2))
         )

@@ -112,8 +112,11 @@ class TextDb {
   std::optional<ShortInfo> get_short_info_for(const std::shared_ptr<SourceText>& frag,
                                               int offset) const;
   std::optional<ShortInfo> try_get_short_info(const Object& o) const;
+  std::optional<ShortInfo> try_get_short_info(const std::shared_ptr<goos::HeapObject>& o) const;
+
   bool has_info(const Object& o) const;
   void inherit_info(const Object& parent, const Object& child);
+  void clear_info();
 
  private:
   std::vector<std::shared_ptr<SourceText>> m_fragments;

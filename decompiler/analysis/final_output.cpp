@@ -334,7 +334,6 @@ std::string write_from_top_level_form(Form* top_form,
   }
 
   // look for the whole thing being in a (when *debug-segment* ....)
-  bool in_debug_only_file = false;
   if (forms.size() == 1) {
     auto as_cne = dynamic_cast<CondNoElseElement*>(forms.at(0));
     if (as_cne && as_cne->entries.size() == 1) {
@@ -343,9 +342,7 @@ std::string write_from_top_level_form(Form* top_form,
       if (entry.condition->to_string(env) == "*debug-segment*") {
         forms = entry.body->elts();
         result += ";; this file is debug only\n";
-        result += "(declare-file (debug))\n";
-        result += "(when *debug-segment*\n";
-        in_debug_only_file = true;
+        result += "(declare-file (debug))\n\n";
       }
     }
   }
@@ -557,10 +554,6 @@ std::string write_from_top_level_form(Form* top_form,
       result += pretty_print::to_string(x->to_form(env));
       result += "\n\n";
     }
-  }
-
-  if (in_debug_only_file) {
-    result += ")\n";
   }
 
   if (in_rlet) {

@@ -54,8 +54,10 @@ Compiler::Compiler(GameVersion version,
   }
 
   // add built-in forms to symbol info
-  for (auto& builtin : g_goal_forms) {
-    m_symbol_info.add_builtin(builtin.first);
+  for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
+    SymbolInfo::Metadata sym_meta;
+    sym_meta.docstring = builtin_info.first;
+    m_symbol_info.add_builtin(builtin_name, sym_meta);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.
@@ -152,7 +154,23 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
   auto fe = std::make_unique<FunctionEnv>(env, name, &m_goos.reader);
   fe->set_segment(TOP_LEVEL_SEGMENT);
 
-  auto result = compile_error_guard(code, fe.get());
+  Val* result = nullptr;
+  try {
+    result = compile_error_guard(code, fe.get());
+  } catch (DebugFileDeclareException& de) {
+    // (declare-file (debug)) will throw this exception. the reason for this is so that we can
+    // wrap the entire source code in a (when *debug-segment* ... ) and compile that version
+    // instead. therefore, it is recommended to put that declaration as early as possible so that
+    // the compiler doesn't waste much time.
+    // the actual source code is (top-level ...) right now though so we need some tricks.
+    code.as_pair()->cdr = PairObject::make_new(
+        PairObject::make_new(SymbolObject::make_new(m_goos.reader.symbolTable, "when"),
+                             PairObject::make_new(SymbolObject::make_new(m_goos.reader.symbolTable,
+                                                                         "*debug-segment*"),
+                                                  code.as_pair()->cdr)),
+        Object::make_empty_list());
+    result = compile_error_guard(code, fe.get());
+  }
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
@@ -286,6 +304,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     }
     auto stats = gen.get_obj_stats();
     m_debug_stats.num_moves_eliminated += stats.moves_eliminated;
+    env->cleanup_after_codegen();
     return result;
   } catch (std::exception& e) {
     throw_compiler_error_no_code("Error during codegen: {}", e.what());

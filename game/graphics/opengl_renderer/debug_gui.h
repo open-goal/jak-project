@@ -46,6 +46,7 @@ class OpenGlDebugGui {
   bool should_draw_profiler() const { return master_enable && m_draw_profiler; }
   bool should_draw_subtitle_editor() const { return master_enable && m_subtitle_editor; }
   bool should_draw_filters_menu() const { return master_enable && m_filters_menu; }
+  bool should_draw_loader_menu() const { return master_enable && m_draw_loader; }
   const char* screenshot_name() const { return m_screenshot_save_name; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
@@ -76,6 +77,7 @@ class OpenGlDebugGui {
   bool m_draw_frame_time = false;
   bool m_draw_profiler = false;
   bool m_draw_debug = false;
+  bool m_draw_loader = false;
   bool m_subtitle_editor = false;
   bool m_filters_menu = false;
   bool m_want_screenshot = false;

@@ -1,3 +1,3 @@
 ("LRACEDF.DGO"
-  ("lracedf.go" "lracedf")
-  )
+ ("lracedf.go"
+ ))

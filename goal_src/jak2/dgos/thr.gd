@@ -1,13 +1,13 @@
 ("THR.DGO"
-  ("throne-part.o" "throne-part")
-  ("palace-scenes.o" "palace-scenes")
-  ("tpage-2731.go" "tpage-2731")
-  ("tpage-2733.go" "tpage-2733")
-  ("tpage-3372.go" "tpage-3372")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("throne-throne-ag.go" "throne-throne")
-  ("pal-throne-door-ag.go" "pal-throne-door")
-  ("particleman-ag.go" "particleman")
-  ("throne-vis.go" "throne-vis")
-  )
+ ("throne-part.o"
+  "palace-scenes.o"
+  "tpage-2731.go"
+  "tpage-2733.go"
+  "tpage-3372.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "throne-throne-ag.go"
+  "pal-throne-door-ag.go"
+  "particleman-ag.go"
+  "throne-vis.go"
+ ))

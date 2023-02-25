@@ -1,15 +1,15 @@
 ("KIOSK.DGO"
-  ("kiosk-part.o" "kiosk-part")
-  ("tpage-2192.go" "tpage-2192")
-  ("tpage-2212.go" "tpage-2212")
-  ("tpage-2225.go" "tpage-2225")
-  ("tpage-2911.go" "tpage-2911")
-  ("tpage-2334.go" "tpage-2334")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("brutter-highres-ag.go" "brutter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("kiosk-fish-sign-ag.go" "kiosk-fish-sign")
-  ("kiosk-banner-ag.go" "kiosk-banner")
-  ("particleman-ag.go" "particleman")
-  ("kiosk.go" "kiosk")
-  )
+ ("kiosk-part.o"
+  "tpage-2192.go"
+  "tpage-2212.go"
+  "tpage-2225.go"
+  "tpage-2911.go"
+  "tpage-2334.go"
+  "daxter-highres-ag.go"
+  "brutter-highres-ag.go"
+  "jak-highres-ag.go"
+  "kiosk-fish-sign-ag.go"
+  "kiosk-banner-ag.go"
+  "particleman-ag.go"
+  "kiosk.go"
+ ))
