@@ -1276,48 +1276,6 @@
 ;;             - display-frame-start
 ;;    )
 
-(defconstant MEM_BAR_WIDTH 152)
-(defconstant MEM_BAR_HEIGHT 15)
-(defconstant MEM_BAR_NUM 11)
-(defconstant MEM_BAR_BG_COL (static-rgba 64 64 64 64))
-(defconstant MEM_BAR_X (- 475 MEM_BAR_WIDTH))
-(defconstant MEM_BAR_Y (- 424 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM)))
-(defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
-  `(let* (
-        (total  (the float ,total))
-        (remain (the float ,remain))
-        (used-p (/ (- total remain) total))
-        (used-x (the int (* used-p MEM_BAR_WIDTH)))
-        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
-        )
-      (draw-sprite2d-xy ,buf    MEM_BAR_X         used-y used-x MEM_BAR_HEIGHT ,color)
-      (draw-sprite2d-xy ,buf (+ MEM_BAR_X used-x) used-y (- MEM_BAR_WIDTH used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL)
-      (draw-string-xy ,name ,buf MEM_BAR_X used-y (font-color precursor-#ec3b00) (font-flags shadow kerning right))
-      (draw-string-xy (string-format "~,,2f%" (* used-p 100)) ,buf (+ MEM_BAR_X used-x) used-y (font-color precursor-#ec3b00) (font-flags shadow kerning middle))
-      (draw-string-xy (string-format "~,,1fM" (/ total (* 1024 1024))) ,buf (+ MEM_BAR_X MEM_BAR_WIDTH) used-y (font-color precursor-#ec3b00) (font-flags shadow kerning left))
-      )
-  )
-(defmacro draw-memory-bar-kheap (buf heap &key (name #f) &key idx &key color)
-  `(let ((heap ,heap))
-      (draw-memory-bar-generic ,buf
-              :remain (&- (-> heap top) (-> heap current))
-              :total  (&- (-> heap top) (-> heap base))
-              :name ,(if name name (symbol->string heap))
-              :idx ,idx
-              :color ,color)
-      )
-  )
-(defmacro draw-memory-bar-dead-pool-heap (buf heap &key (name #f) &key idx &key color)
-  `(let* ((heap ,heap) (pool-total (memory-total heap)))
-      (draw-memory-bar-generic ,buf
-              :remain (- pool-total (memory-used heap))
-              :total  pool-total
-              :name ,(if name name (symbol->string heap))
-              :idx ,idx
-              :color ,color)
-      )
-  )
-
 (defun end-display ((arg0 display))
   "Update debug drawing:
     - debug draws (triangles, spheres, etc)
@@ -1368,7 +1326,7 @@
         (when *display-deci-count*
           (let ((s2-0 draw-string-xy))
             (format (clear *temp-string*) "~D" *deci-count*)
-            (s2-0 *temp-string* s3-0 448 210 (font-color default-#cddbcd) (font-flags shadow))
+            (s2-0 *temp-string* s3-0 448 210 (font-color default) (font-flags shadow))
             )
           )
 
@@ -1400,7 +1358,7 @@
                 352
                 320
                 )
-            (font-color precursor-#ec3b00)
+            (font-color red)
             (font-flags shadow kerning middle large)
             )
           )
@@ -1420,7 +1378,7 @@
                      buf
                      (the int (-> *font-context* origin x))
                      s2-2
-                     (font-color default-#cddbcd)
+                     (font-color default)
                      (font-flags shadow)
                      )
                    )
@@ -1431,7 +1389,7 @@
               buf
               (the int (-> *font-context* origin x))
               a3-6
-              (font-color default-#cddbcd)
+              (font-color default)
               (font-flags shadow)
               )
             )

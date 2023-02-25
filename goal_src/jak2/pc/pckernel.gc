@@ -11,6 +11,81 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod set-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol) (value symbol))
+  (case setting
+    (('video-mode)
+      (set! (-> *setting-control* user-current video-mode) #f)
+      (set! (-> *setting-control* user-default video-mode) value)
+      )
+    (('aspect-ratio)
+      (set! (-> *setting-control* user-default aspect-ratio) value)
+      )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
+    )
+  )
+
+(defmethod get-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* user-default video-mode)
+      )
+    (('aspect-ratio)
+      (-> *setting-control* user-default aspect-ratio)
+      )
+    (else
+      (format #t "unknown setting  ~A to get-game-setting!" setting)
+      #f)
+    )
+  )
+
+(defmethod set-game-language! pc-settings-jak2 ((obj pc-settings-jak2) (lang language-enum))
+  (set! (-> *setting-control* user-default language) lang)
+  )
+
+(defmethod get-game-language! pc-settings-jak2 ((obj pc-settings-jak2))
+  (-> *setting-control* user-default language)
+  )
+
+(defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
+  "update discord rpc module"
+
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (&-> *game-info* skill-total))
+    (set! (-> info gem-count) (&-> *game-info* gem-total))
+    (set! (-> info death-count) (&-> *game-info* total-deaths))
+    (set! (-> info status) "Playing Jak II™")
+    ;; grab the name of the level we're in
+    (if (and *level* (level-get-target-inside *level*))
+      (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
+      (set! (-> info level) "unknown"))
+    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
+    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+
+    ;; TODO - wrapping in `with-profiler` causes an error, fix it
+    (pc-discord-rpc-update info)
+    )
+  0)
+
+(defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
+  "update speedrun module"
+
+  #f
+  )
+
+(defmethod update-progress-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
+  "update the graphics hacks used for the progress menu. ugh."
+
+  #f
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; file I/O
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -37,4 +112,12 @@
 
 
 (define *pc-settings* (new 'global 'pc-settings-jak2))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
 

@@ -56,9 +56,30 @@
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj)
+  (set! (-> obj text-language) (case *jak1-territory*
+                                    ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
+                                    (else (pc-subtitle-lang english))))
+  (set! (-> obj subtitle-language) (case *jak1-territory*
+                                        ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
+                                        (else (pc-subtitle-lang english))))
   (set! (-> obj money-starburst?) #f)
   (set! (-> obj extra-hud?) #f)
   (none))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun get-video-params () *video-parms*)
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy *pc-settings-built-sha*
+                          buf
+                          0 (* 10 (-> (get-video-params) relative-y-scale))
+                          (font-color flat-yellow)
+                          (font-flags shadow kerning))))
 
 

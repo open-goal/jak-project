@@ -33,7 +33,6 @@
   "pckernel-h.o" ;; added
   "pckernel-impl.o" ;; added
   "pc-debug-common.o" ;; added
-  "pc-debug-methods.o" ;; added
   "gs.o"
   "display-h.o"
   "geometry.o"
@@ -245,6 +244,7 @@
   "sky-data.o"
   "sky-tng.o"
   "load-state.o"
+  "pc-debug-methods.o" ;; added
   "level-info.o"
   "level.o"
   "text.o"
