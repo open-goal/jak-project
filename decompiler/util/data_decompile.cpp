@@ -366,8 +366,63 @@ int index_of_closest_following_label_in_segment(int start_byte,
   return result_idx;
 }
 
+int guess_array_size_array(int start_offset,
+                           int segment,
+                           int stride,
+                           const std::vector<std::vector<LinkedWord>>& all_words,
+                           const std::vector<DecompilerLabel>& labels) {
+  int end_label_idx = index_of_closest_following_label_in_segment(start_offset, segment, labels);
+
+  int end_offset = all_words.at(segment).size() * 4;
+  if (end_label_idx < 0) {
+    lg::warn(
+        "Failed to find label: likely just an unimplemented case for when the data is the last "
+        "thing in the file.");
+  } else {
+    const auto& end_label = labels.at(end_label_idx);
+    end_offset = end_label.offset;
+    // fmt::print("end label is {}\n", end_label.name);
+  }
+
+  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
+
+  // now we can figure out the size
+  int size_bytes = end_offset - start_offset;
+  int size_elts = size_bytes / stride;
+  int leftover_bytes = size_bytes % stride;
+  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes, size_elts,
+  //          leftover_bytes);
+
+  // if we have leftover, should verify that its all zeros, or that it's the type pointer
+  // of the next basic in the data section.
+  // ex:
+  // .word <data>
+  // .type <some-other-basic's type tag>
+  // L21: ; label some other basic
+  // <other basic's data>
+  int padding_start = end_offset - leftover_bytes;
+  int padding_end = end_offset;
+  for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
+    auto& word = all_words.at(segment).at(pad_byte_idx / 4);
+    switch (word.kind()) {
+      case LinkedWord::PLAIN_DATA:
+        ASSERT(word.get_byte(pad_byte_idx) == 0);
+        break;
+      case LinkedWord::TYPE_PTR:
+        break;
+      default:
+        ASSERT(false);
+    }
+  }
+
+  // if we end exactly on a type_ptr, take off an element.
+  if (all_words.at(segment).at((end_offset - 1) / 4).kind() == LinkedWord::TYPE_PTR) {
+    size_elts--;
+  }
+  return size_elts;
+}
 /*!
- * Attempt to decompile a reference to an inline array, without knowing the size.
+ * Attempt to decompile a reference to an array, without knowing the size.
  */
 goos::Object decomp_ref_to_integer_array_guess_size(
     const std::vector<LinkedWord>& words,
@@ -406,10 +461,20 @@ goos::Object decomp_ref_to_integer_array_guess_size(
   // the data shouldn't have any labels in the middle of it, so we can find the end of the array
   // by searching for the label after the start label.
   const auto& start_label = labels.at(pointer_to_data.label_id());
-  int end_label_idx =
-      index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
+  int size_elts = guess_array_size_array(start_label.offset, my_seg, stride, all_words, labels);
 
-  int end_offset = all_words.at(my_seg).size() * 4;
+  return decompile_value_array(array_elt_type, elt_type_info, size_elts, stride, start_label.offset,
+                               all_words.at(start_label.target_segment), ts);
+}
+
+int guess_array_size_inline_array(int start_offset,
+                                  int segment,
+                                  int stride,
+                                  const std::vector<std::vector<LinkedWord>>& all_words,
+                                  const std::vector<DecompilerLabel>& labels) {
+  int end_label_idx = index_of_closest_following_label_in_segment(start_offset, segment, labels);
+
+  int end_offset = all_words.at(segment).size() * 4;
   if (end_label_idx < 0) {
     lg::warn(
         "Failed to find label: likely just an unimplemented case for when the data is the last "
@@ -417,12 +482,16 @@ goos::Object decomp_ref_to_integer_array_guess_size(
   } else {
     const auto& end_label = labels.at(end_label_idx);
     end_offset = end_label.offset;
+    // if misaligned, round down - labels may point 2 bytes into the first word if the data is a
+    // pair, and we should not treat those 2 bytes as padding for this check
+    end_offset &= ~3;
+    // fmt::print("detected end label of {}\n", end_label.name);
   }
 
   // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
-  int size_bytes = end_offset - start_label.offset;
+  int size_bytes = end_offset - start_offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
   // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
@@ -438,25 +507,26 @@ goos::Object decomp_ref_to_integer_array_guess_size(
   int padding_start = end_offset - leftover_bytes;
   int padding_end = end_offset;
   for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
-    auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
+    auto& word = all_words.at(segment).at(pad_byte_idx / 4);
     switch (word.kind()) {
       case LinkedWord::PLAIN_DATA:
-        ASSERT(word.get_byte(pad_byte_idx) == 0);
+        ASSERT(word.get_byte(pad_byte_idx % 4) == 0);
         break;
       case LinkedWord::TYPE_PTR:
         break;
       default:
+        fmt::print("bad type: {}\n", (int)word.kind());
+        fmt::print("data: {}\n", word.data);
+        if (word.holds_string()) {
+          fmt::print("str: {}\n", word.symbol_name());
+        }
+        if (word.kind() == LinkedWord::PTR) {
+          fmt::print("ptr: {}\n", labels.at(word.label_id()).name);
+        }
         ASSERT(false);
     }
   }
-
-  // if we end exactly on a type_ptr, take off an element.
-  if (all_words.at(my_seg).at((end_offset - 1) / 4).kind() == LinkedWord::TYPE_PTR) {
-    size_elts--;
-  }
-
-  return decompile_value_array(array_elt_type, elt_type_info, size_elts, stride, start_label.offset,
-                               all_words.at(start_label.target_segment), ts);
+  return size_elts;
 }
 
 /*!
@@ -501,52 +571,10 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   // the data shouldn't have any labels in the middle of it, so we can find the end of the array
   // by searching for the label after the start label.
   const auto& start_label = labels.at(pointer_to_data.label_id());
-  int end_label_idx =
-      index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
+  int start_offset = start_label.offset;
 
-  int end_offset = all_words.at(my_seg).size() * 4;
-  if (end_label_idx < 0) {
-    lg::warn(
-        "Failed to find label: likely just an unimplemented case for when the data is the last "
-        "thing in the file.");
-  } else {
-    const auto& end_label = labels.at(end_label_idx);
-    end_offset = end_label.offset;
-    // if misaligned, round down - labels may point 2 bytes into the first word if the data is a
-    // pair, and we should not treat those 2 bytes as padding for this check
-    end_offset &= ~3;
-  }
-
-  // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
-
-  // now we can figure out the size
-  int size_bytes = end_offset - start_label.offset;
-  int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
-  int leftover_bytes = size_bytes % stride;
-  // lg::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
-  // size_elts,leftover_bytes);
-
-  // if we have leftover, should verify that its all zeros, or that it's the type pointer
-  // of the next basic in the data section.
-  // ex:
-  // .word <data>
-  // .type <some-other-basic's type tag>
-  // L21: ; label some other basic
-  // <other basic's data>
-  int padding_start = end_offset - leftover_bytes;
-  int padding_end = end_offset;
-  for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
-    auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
-    switch (word.kind()) {
-      case LinkedWord::PLAIN_DATA:
-        ASSERT(word.get_byte(pad_byte_idx % 4) == 0);
-        break;
-      case LinkedWord::TYPE_PTR:
-        break;
-      default:
-        ASSERT(false);
-    }
-  }
+  int size_elts = guess_array_size_inline_array(start_offset, start_label.target_segment, stride,
+                                                all_words, labels);
 
   // now disassemble:
   std::vector<goos::Object> array_def = {pretty_print::to_symbol(
@@ -1098,12 +1126,10 @@ goos::Object decompile_structure(const TypeSpec& type,
 
     if (all_zero) {
       // special case for dynamic arrays at the end of a type
-      // TODO - this causes an assert in Type.hL240
-      // if (!(field_start == field_end && field.is_dynamic())) {
-      //  // field has nothing in it, just skip it.
-      //  continue;
-      //}
-      continue;
+      if (!(field_start == field_end && field.is_dynamic())) {
+        // field has nothing in it, just skip it.
+        continue;
+      }
     }
 
     if (any_overlap) {
@@ -1278,10 +1304,91 @@ goos::Object decompile_structure(const TypeSpec& type,
         }
         field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
 
+      } else if (field.is_dynamic() && field.is_array() && !field.is_inline()) {
+        // it's a dynamic array hanging off the end of the type
+        auto elt_type_info = ts.lookup_type(field.type());
+        int elt_size = elt_type_info->is_reference() ? 4 : elt_type_info->get_size_in_memory();
+
+        // first byte of the array: type's offset + field's offset + basic offset (if we have it)
+        int array_start_byte = offset_location + field.offset() + field_type_info->get_offset();
+        // inherit segment of our data.
+        int array_data_seg = label.target_segment;
+        // try to find the next thing in the file.
+        int num_elts =
+            guess_array_size_array(array_start_byte, array_data_seg, elt_size, words, labels);
+        int stride = 4;
+
+        std::vector<goos::Object> array_def = {pretty_print::to_symbol(
+            fmt::format("new 'static 'array {} {}", field.type().print(), num_elts))};
+
+        int end_elt = 0;
+        for (int elt = num_elts; elt-- > 0;) {
+          auto& word = words.at(array_data_seg).at((array_start_byte / 4) + elt);
+          if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
+            continue;
+          }
+          end_elt = elt + 1;
+          break;
+        }
+
+        for (int elt = 0; elt < end_elt; elt++) {
+          auto& word = words.at(array_data_seg).at((array_start_byte / 4) + elt);
+
+          if (word.kind() == LinkedWord::PTR) {
+            array_def.push_back(decompile_at_label(field.type(), labels.at(word.label_id()), labels,
+                                                   words, ts, file, version));
+          } else if (word.kind() == LinkedWord::PLAIN_DATA && word.data == 0) {
+            // do nothing, the default is zero?
+            array_def.push_back(pretty_print::to_symbol("0"));
+          } else if (word.kind() == LinkedWord::SYM_PTR) {
+            if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
+              array_def.push_back(pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
+            } else {
+              array_def.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name())));
+            }
+          } else if (word.kind() == LinkedWord::EMPTY_PTR) {
+            array_def.push_back(pretty_print::to_symbol("'()"));
+          } else {
+            throw std::runtime_error(fmt::format(
+                "Field {} in type {} offset {} did not have a proper reference for "
+                "array element {} k = {}",
+                field.name(), actual_type.print(), field.offset(), elt, (int)word.kind()));
+          }
+        }
+        field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
+      } else if (field.is_dynamic() && field.is_array() && field.is_inline()) {
+        // verify the stride matches the type system
+        auto elt_type_info = ts.lookup_type(field.type());
+        int elt_size = align(elt_type_info->get_size_in_memory(),
+                             elt_type_info->get_inline_array_stride_alignment());
+        // first byte of the array: type's offset + field's offset + basic offset (if we have it)
+        int array_start_byte = offset_location + field.offset() + field_type_info->get_offset();
+        // inherit segment of our data.
+        int array_data_seg = label.target_segment;
+
+        // the data shouldn't have any labels in the middle of it, so we can find the end of the
+        // array by searching for the label after the start label.
+        int size_elts = guess_array_size_inline_array(array_start_byte, array_data_seg, elt_size,
+                                                      words, labels);
+        if (size_elts) {
+          // now disassemble:
+          std::vector<goos::Object> array_def = {pretty_print::to_symbol(
+              fmt::format("new 'static 'inline-array {} {}", field.type().print(), size_elts))};
+
+          for (int elt = 0; elt < size_elts; elt++) {
+            // for each element, create a fake temporary label at the start to identify it
+            DecompilerLabel fake_label;
+            fake_label.target_segment = array_data_seg;  // same segment
+            fake_label.offset = array_start_byte + elt * elt_size;
+            array_def.push_back(
+                decompile_at_label(field.type(), fake_label, labels, words, ts, file, version));
+          }
+          // build into a list.
+          field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
+        }
       } else if (field.is_dynamic() || field.is_array() || field.is_inline()) {
-        throw std::runtime_error(fmt::format(
-            "Dynamic/array/inline reference field {} type {} in static data not yet implemented",
-            field.name(), actual_type.print()));
+        throw std::runtime_error(
+            fmt::format("Field {} of type {} not supported", field.name(), type.print()));
       } else {
         // then we expect a label.
         ASSERT(field_end - field_start == 4);
