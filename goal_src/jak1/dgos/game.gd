@@ -31,12 +31,12 @@
   "dma-bucket.o"
   "dma-disasm.o"
   "pckernel-h.o" ;; added
-  "pckernel-impl.o" ;; added
-  "pc-debug-common.o" ;; added
-  "pc-debug-methods.o" ;; added
   "pad.o"
   "gs.o"
   "display-h.o"
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pc-debug-methods.o" ;; added
   "vector.o"
   "file-io.o"
   "loader-h.o"

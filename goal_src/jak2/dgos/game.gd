@@ -31,10 +31,10 @@
   "dma-disasm.o"
   "pad.o"
   "pckernel-h.o" ;; added
-  "pckernel-impl.o" ;; added
-  "pc-debug-common.o" ;; added
   "gs.o"
   "display-h.o"
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
   "geometry.o"
   "timer.o"
   "vector.o"

@@ -334,6 +334,9 @@
   (case-str *pc-temp-string*
     (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
     (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
+    (("skip-movies?") (set! (-> obj skip-movies?) (file-stream-read-symbol file)))
+    (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
+    (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
     )
   0)
 
@@ -343,6 +346,9 @@
 	((method-of-type pc-settings handle-output-settings) obj file)
   (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
   (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
+  (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
+  (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
+  (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -351,6 +357,21 @@
 
 
 (define *pc-settings* (new 'global 'pc-settings-jak1))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy *pc-settings-built-sha*
+                          buf
+                          0 (* 10 (-> (get-video-params) relative-y-scale))
+                          (font-color flat-yellow)
+                          (font-flags shadow kerning))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools
