@@ -1316,7 +1316,6 @@ goos::Object decompile_structure(const TypeSpec& type,
         // try to find the next thing in the file.
         int num_elts =
             guess_array_size_array(array_start_byte, array_data_seg, elt_size, words, labels);
-        int stride = 4;
 
         std::vector<goos::Object> array_def = {pretty_print::to_symbol(
             fmt::format("new 'static 'array {} {}", field.type().print(), num_elts))};

@@ -489,8 +489,10 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
         if (should_envmap) {
           auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture,
                                          lev_bucket, fade_buffer + 4 * ei, first_bone, lights);
-          e->flags |= MOD_VTX;
-          e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          if (e) {
+            e->flags |= MOD_VTX;
+            e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          }
         }
       }
     } else {
