@@ -38,8 +38,9 @@
 
 (defmacro static-pckernel-version (major minor rev build)
   `(new 'static 'pckernel-version :major ,major :minor ,minor :revision ,rev :build ,build))
-                                                  ;; version: 1.10.3.1
-(defglobalconstant PC_KERNEL_VERSION (static-pckernel-version 1 10 3 1))
+(defconstant PC_KERNEL_INVALID_VERSION (static-pckernel-version #xffff #xffff #xffff #xffff))
+                                                  ;; version: invalid
+(defconstant PC_KERNEL_VERSION PC_KERNEL_INVALID_VERSION)
 (defconstant PC_KERNEL_VER_MAJOR (-> PC_KERNEL_VERSION major))
 (defconstant PC_KERNEL_VER_MINOR (-> PC_KERNEL_VERSION minor))
 (defconstant PC_KERNEL_VER_REVISION (-> PC_KERNEL_VERSION revision))
@@ -63,8 +64,6 @@
 ;; how many entries the spool anim log has. only 164 are used in-game.
 (defconstant PC_SPOOL_LOG_LENGTH 170)
 
-
-(defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -296,20 +295,14 @@
 
    ;; misc settings
    (force-actors? symbol) ;; skips vis check for actor entity
-   (music-fade? symbol) ;; if off, music has no fade in
    (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
-   (skip-movies? symbol) ;; if on, enable cutscene skipping
-   (subtitles? symbol) ;; if on, cutscene subtitles will show up
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
    (text-language pc-subtitle-lang) ;; language for game text
-   (subtitle-language pc-subtitle-lang) ;; language for subtitles
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
    (first-camera-h-inverted? symbol) ;; first-person horizontal camera inverted
    (first-camera-v-inverted? symbol) ;; first-person vertical camera inverted
    (third-camera-h-inverted? symbol) ;; third-person horizontal camera inverted
    (third-camera-v-inverted? symbol) ;; third-person vertical camera inverted
-   (money-starburst? symbol) ;; add a starburst to the money
-   (extra-hud? symbol) ;; extra hud elements.
    (music-fadeout? symbol) ;; music fadeout toggle.
    (music-fadein? symbol) ;; music fadein toggle.
 
@@ -335,6 +328,9 @@
     (update (_type_) none)
     (update-from-os (_type_) none)
     (update-to-os (_type_) none)
+    (update-discord-rpc (_type_) object)
+    (update-speedrun (_type_) object)
+    (update-progress-video-hacks (_type_) object)
     (reset (_type_) none)
     (reset-audio (_type_) none)
     (reset-input (_type_) none)
@@ -343,7 +339,9 @@
     (reset-misc (_type_) none)
     (reset-original-camera (_type_) none)
     (reset-extra (_type_) none)
-    (draw (_type_ dma-buffer) none)
+    (print-debug-misc (_type_) object)
+    (draw (_type_ dma-buffer) object)
+    (draw-memory (_type_ dma-buffer) symbol)
     (set-display-mode! (_type_ symbol) int)
     (set-size! (_type_ int int) none)
     (set-aspect! (_type_ int int) none)
@@ -351,8 +349,14 @@
     (set-window-lock! (_type_ symbol) symbol)
     (set-frame-rate! (_type_ int) int)
     (set-monitor! (_type_ int) none)
+    (set-game-setting! (_type_ symbol symbol) object)
+    (get-game-setting! (_type_ symbol) symbol)
+    (set-game-language! (_type_ language-enum) language-enum)
+    (get-game-language! (_type_) language-enum)
     (read-from-file (_type_ string) symbol)
     (write-to-file (_type_ string) symbol)
+    (handle-input-settings (_type_ file-stream) object)
+    (handle-output-settings (_type_ file-stream) object)
     (update-cheats (_type_) int)
     (update-music-log (_type_) int)
     (add-to-music-log (_type_ symbol int) int)
@@ -361,37 +365,10 @@
     )
   )
 
-;; information about a cutscene. placeholder. TODO look at jak 2
-(deftype pc-scene-info (structure)
-  ((name string)
-   (commands pair)
-   (level0 symbol)
-   (level1 symbol)
-   (level0-disp symbol)
-   (level1-disp symbol)
-   )
-  )
-
-(deftype discord-info (structure)
-  ((fuel (pointer float))
-   (money-total (pointer float))
-   (buzzer-total (pointer float))
-   (deaths (pointer int32))
-   (status string)
-   (level string)
-   (cutscene? symbol)
-   (ogreboss? symbol)
-   (plant-boss? symbol)
-   (racer? symbol)
-   (flutflut? symbol)
-   (time-of-day (pointer float))
-    )
-  )
-
 (defconstant PC_TEMP_STRING_LEN 512)
 (define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the string #f)))
-(define *pc-settings* (the pc-settings #f))
-(format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR)
+
+(format 0 "pckernel version: ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR)
 
 (define *pc-temp-string-1* (new 'global 'string 2048 (the string #f)))
 
@@ -450,7 +427,7 @@
   (set! (-> obj letterbox?) #t)
 
   (pc-get-screen-size -1 (&-> obj width) (&-> obj height))
-  (set-display-mode! obj 'fullscreen)
+  (set-display-mode! obj 'borderless)
   (set! (-> obj gfx-msaa) 2) ;; 2x msaa
 
   (none))
@@ -497,20 +474,10 @@
   "Set the default misc settings"
 
   (set! (-> obj force-actors?) #f)
-  (set! (-> obj music-fade?) #f)
-  (set! (-> obj skip-movies?) #t)
-  (set! (-> obj text-language) (case *jak1-territory*
-                                    ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
-                                    (else (pc-subtitle-lang english))))
-  (set! (-> obj subtitles?) *debug-segment*)
+  (set! (-> obj text-language) (pc-subtitle-lang english))
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
-  (set! (-> obj subtitle-language) (case *jak1-territory*
-                                        ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
-                                        (else (pc-subtitle-lang english))))
   (reset-original-camera obj)
-  (set! (-> obj money-starburst?) #f)
-  (set! (-> obj extra-hud?) #f)
   (none))
 
 (defmethod reset-original-camera pc-settings ((obj pc-settings))

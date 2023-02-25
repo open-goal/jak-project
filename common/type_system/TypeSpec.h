@@ -79,7 +79,8 @@ class TypeSpec {
   bool operator!=(const TypeSpec& other) const;
   bool operator==(const TypeSpec& other) const;
   bool is_compatible_child_method(const TypeSpec& implementation,
-                                  const std::string& child_type) const;
+                                  const std::string& child_type,
+                                  int* bad_arg_idx_out = nullptr) const;
   std::string print() const;
 
   void add_arg(const TypeSpec& ts) {
