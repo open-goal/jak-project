@@ -409,7 +409,8 @@ void GlowRenderer::add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_id
 
   // handle adgif stuff
   {
-    ASSERT(data.adgif.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
+    // don't check upper bits: ps2 GS ignores them and ND uses them as flags.
+    ASSERT((u8)data.adgif.tex0_addr == (u8)GsRegisterAddress::TEX0_1);
     GsTex0 reg(data.adgif.tex0_data);
     record.tbp = reg.tbp0();
     record.draw_mode.set_tcc(reg.tcc());
