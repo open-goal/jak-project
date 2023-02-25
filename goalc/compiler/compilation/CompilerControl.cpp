@@ -651,7 +651,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
   int count = 0;
   for (const auto& sym_info : symbols) {
     count++;
-    if (count % 100 == 0 || count == symbols.size()) {
+    if (count % 100 == 0 || count == (int)symbols.size()) {
       lg::info("Processing [{}/{}] symbols...", count, symbols.size());
     }
     std::optional<Docs::DefinitionLocation> def_loc;

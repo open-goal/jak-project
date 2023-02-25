@@ -156,7 +156,7 @@ RegVal* LambdaVal::to_reg(const goos::Object& form, Env* fe) {
   return re;
 }
 
-RegVal* InlinedLambdaVal::to_reg(const goos::Object& form, Env* fe) {
+RegVal* InlinedLambdaVal::to_reg(const goos::Object&, Env*) {
   throw std::runtime_error("Cannot put InlinedLambdaVal in a register.");
   return nullptr;
 }
