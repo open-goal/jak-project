@@ -1146,7 +1146,7 @@ void TypeSystem::add_builtin_types(GameVersion version) {
   add_field_to_type(vu_function_type, "length", make_typespec("int32"));   // todo integer type
   add_field_to_type(vu_function_type, "origin", make_typespec("int32"));   // todo sign extend?
   add_field_to_type(vu_function_type, "qlength", make_typespec("int32"));  // todo integer type
-  add_field_to_type(vu_function_type, "data", make_typespec("uint8"), false, true);
+  add_field_to_type(vu_function_type, "data", make_typespec("uint8"), false, true, -1, -1, true);
 
   // link block
   builtin_structure_inherit(link_block_type);
