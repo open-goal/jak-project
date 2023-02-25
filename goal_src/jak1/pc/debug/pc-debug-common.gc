@@ -16,15 +16,18 @@
 (defconstant MEM_BAR_HEIGHT 8) ;; total height of the bar
 (defconstant MEM_BAR_NUM 7) ;; amount of bars (override later if wanted)
 (defconstant MEM_BAR_BG_COL (static-rgba 64 64 64 64)) ;; color for the empty part of the bar
-(defconstant MEM_BAR_X (- 480 MEM_BAR_WIDTH)) ;; x coord for left side of the bar list
-(defconstant MEM_BAR_Y (- 224 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM))) ;; y coord for top side of the bar list
+(defconstant MEM_BAR_RIGHT 480) ;; x coord for the right side of the bar list
+(defconstant MEM_BAR_BOTTOM 224) ;; x coord for the bottom side of the bar list
+
+(defconstant MEM_BAR_X (- MEM_BAR_RIGHT MEM_BAR_WIDTH)) ;; x coord for left side of the bar list
+(defconstant MEM_BAR_Y (- MEM_BAR_BOTTOM 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM))) ;; y coord for top side of the bar list
 
 (defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
 	"draw a memory usage bar"
   `(let* (
         (total  (the float ,total))
         (remain (the float ,remain))
-        (used-p (/ (- total remain) total))
+        (used-p (if (zero? total) 0.0 (/ (- total remain) total)))
         (used-x (the int (* used-p MEM_BAR_WIDTH)))
         (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
         )
