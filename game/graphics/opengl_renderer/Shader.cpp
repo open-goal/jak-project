@@ -6,8 +6,10 @@
 
 #include "game/graphics/pipelines/opengl.h"
 
-Shader::Shader(const std::string& shader_name, GameVersion version) {
-  std::string height_scale = version == GameVersion::Jak1 ? "1.0" : "0.5";
+Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(shader_name) {
+  const std::string height_scale = version == GameVersion::Jak1 ? "1.0" : "0.5";
+  const std::string scissor_height = version == GameVersion::Jak1 ? "448.0" : "416.0";
+  const std::string scissor_adjust = "512.0 / " + scissor_height;
   // read the shader source
   auto vert_src =
       file_util::read_text_file(file_util::get_file_path({shader_folder, shader_name + ".vert"}));
@@ -15,6 +17,8 @@ Shader::Shader(const std::string& shader_name, GameVersion version) {
       file_util::read_text_file(file_util::get_file_path({shader_folder, shader_name + ".frag"}));
 
   vert_src = std::regex_replace(vert_src, std::regex("HEIGHT_SCALE"), height_scale);
+  vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
+  vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_ADJUST"), "(" + scissor_adjust + ")");
 
   m_vert_shader = glCreateShader(GL_VERTEX_SHADER);
   const char* src = vert_src.c_str();

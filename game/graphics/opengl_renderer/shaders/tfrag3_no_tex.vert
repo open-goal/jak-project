@@ -9,8 +9,6 @@ uniform float fog_constant;
 
 out vec4 fragment_color;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
-
 // this is just for debugging.
 void main() {
     vec4 transformed = camera[3];
