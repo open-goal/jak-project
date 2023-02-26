@@ -26,6 +26,7 @@ class GlowRenderer {
     bool show_probes = false;
     bool show_probe_copies = false;
     int num_sprites = 0;
+    float glow_boost = 1.f;
   } m_debug;
   void add_sprite_pass_1(const SpriteGlowOutput& data);
   void add_sprite_pass_2(const SpriteGlowOutput& data, int sprite_idx);
@@ -73,7 +74,9 @@ class GlowRenderer {
     GLuint tex;
   };
 
-  static constexpr int kDownsampleBatchWidth = 16;
+  // max sprites should be 128 in simple sprite, plus 256 from aux = 384
+  // 20 width = 20 * 20 = 400 sprites > 384.
+  static constexpr int kDownsampleBatchWidth = 20;
   static constexpr int kMaxSprites = kDownsampleBatchWidth * kDownsampleBatchWidth;
   static constexpr int kMaxVertices = kMaxSprites * 32;  // check.
   static constexpr int kMaxIndices = kMaxSprites * 32;   // check.

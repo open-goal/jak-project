@@ -35,6 +35,9 @@
   "dma-bucket.o"
   "dma-disasm.o"
   "pckernel-h.o" ;; added
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pc-debug-methods.o" ;; added
   "pad.o"
   "gs.o"
   "display-h.o"
@@ -193,14 +196,15 @@
   "entity-table.o"
   "loader.o"
   "task-control-h.o"
+  "speedruns-h.o" ;; added
   "game-info.o"
   "game-save.o"
   "settings.o"
   "pc-anim-util.o" ;; added
   "autosplit-h.o" ;; added
   "autosplit.o" ;; added
-  "speedruns-h.o" ;; added
   "speedruns.o" ;; added
+  "pckernel-common.o" ;; added
   "pckernel.o" ;; added
   "mood-tables.o"
   "mood.o"

@@ -284,15 +284,22 @@
        )
   )
 
+(defmacro define-once (name value)
+  "define once. Does not set the symbol if it already has a value. It must have been at least forward-declared first!"
+  `(begin
+    (if (or (not ,name) (zero? ,name))
+        (set! ,name ,value)
+        )
+    )
+  )
+
 (defmacro define-perm (name type value)
   "Define 'permanent', meaning the original definition will not be blown away by a file reload.
    If the value of the symbol is unset (zero) or set to false, it will be defined.
    Otherwise, no effect, other than to inform the type system of the symbol type."
   `(begin
     (define-extern ,name ,type)
-    (if (or (not ,name) (zero? ,name))
-        (set! ,name ,value)
-        )
+    (define-once ,name ,value)
     )
   )
 

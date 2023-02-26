@@ -11,6 +11,15 @@
 
 (define *debug-temp-string* (new 'debug 'string 4096 (the string #f)))
 
+(defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
+  "set the entity to inspect"
+
+  (set! (-> obj entity) e)
+  (set! (-> obj scroll-y) 0)
+
+  e
+  )
+
 ;; custom entity functions for pc port
 (defun-debug entity-inspect-draw ((inspect-info entity-debug-inspect))
   "draw text about an entity on screen"
@@ -21,7 +30,7 @@
   ;; draw trans
   (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
   (if (or (not (-> inspect-info show-actor-info)) (!= (-> e type) entity-actor) (and (= (-> e type) entity-actor) (not (-> (the entity-actor e) extra process))))
-      (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color precursor-#ec3b00) (new 'static 'vector2h :y 8)))
+      (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8)))
 
   ;; start writing text
   (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 16))) (cur-y begin-y) (y-adv 16))
@@ -30,7 +39,7 @@
       ;; basic info, actor id, etc
       (draw-string-xy
           (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
-          debug-buf 352 cur-y (font-color default-#cddbcd) (font-flags shadow kerning middle))
+          debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y (* 10 6))
       (cond
         ((type-type? (-> e type) entity-actor)
@@ -38,7 +47,7 @@
             ;; print info for entity-actors
             (draw-string-xy
                 (string-format "etype: ~A~%vis: ~D task: ~S" (-> actor etype) (-> actor vis-id) (game-task->string (-> actor task)))
-                debug-buf 352 cur-y (font-color default-#cddbcd) (font-flags shadow kerning middle))
+                debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
             (+! cur-y (* 10 3))
             )
           )
@@ -244,7 +253,7 @@
         )
       
       ;; draw a string for each tag instead of all at once. allows using smaller strings.
-      (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default-#cddbcd) (font-flags shadow kerning middle))
+      (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y y-adv)
       (set! y-adv 14)
 

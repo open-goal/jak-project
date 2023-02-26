@@ -1915,7 +1915,16 @@
  "game/task/hint-control.gc"
  "entity/ambient.gc"
  "debug/assert.gc"
- "common-obs/generic-obs.gc"
+ )
+
+(goal-src "engine/common-obs/generic-obs.gc" "pc-anim-util" "assert")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/generic-obs.o")
  "target/target-util.gc"
  "target/target-part.gc"
  "target/collide-reaction-target.gc"
@@ -2045,14 +2054,18 @@
 (goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h" "progress-static")
 (goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
+(goal-src "pc/pckernel-impl.gc" "pckernel-h")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
-(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
+(goal-src "pc/pckernel-common.gc" "pckernel-impl" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
+(goal-src "pc/pckernel.gc" "pckernel-common")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 (goal-src "pc/debug/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/debug/entity-debug.gc" "debug" "main-h" "entity" "pckernel" "font")
 (goal-src "pc/debug/default-menu-pc.gc" "anim-tester-x" "part-tester" "entity-debug")
+(goal-src "pc/debug/pc-debug-common.gc" "pckernel-impl" "entity-h" "game-info-h" "level-h" "settings-h" "gsound-h" "target-util")
+(goal-src "pc/debug/pc-debug-methods.gc" "pc-debug-common")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))
