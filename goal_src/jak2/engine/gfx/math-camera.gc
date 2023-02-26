@@ -67,6 +67,31 @@
       (set! (-> arg0 y-ratio) (* 0.75 (-> arg0 x-ratio)))
       (set! (-> arg0 y-ratio) (* 0.5625 (-> arg0 x-ratio)))
       )
+  (with-pc
+    (cond
+      ((-> *pc-settings* use-vis?)
+       ;; using game vis, cannot allow seeing more of the view
+       ;; crops excess aspect ratio at the top and bottom
+       ;(set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
+       )
+      ((-> *pc-settings* movie?)
+       ;; this mess is just so that we can force the original 16x9 cropping during cutscenes.
+       (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+           (set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
+           (begin
+              (set! (-> arg0 y-ratio) (* (1/ ASPECT_16X9) (-> arg0 x-ratio)))
+              (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))
+              )
+           )
+       )
+      (else
+       ;; not using game vis, allow *extended* aspect ratios
+       ;; there is no vertical cropping, and you can see more of the sides
+       (set! (-> arg0 y-ratio) (* (1/ ASPECT_4X3) (-> arg0 x-ratio))) ;; same cropping as 4x3
+       (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
+       )
+      )
+    )
 
   ;; compute culling constants. these seem unused...
   (let ((f1-3 (-> arg0 x-ratio))

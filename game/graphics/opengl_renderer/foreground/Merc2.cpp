@@ -449,6 +449,14 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
   // allocate lights
   u32 lights = alloc_lights(current_lights);
+  for (int i = 0; i < 3; i++) {
+    float debug_length = current_lights.direction0[i] * current_lights.direction0[i] +
+                         current_lights.direction1[i] * current_lights.direction1[i] +
+                         current_lights.direction2[i] * current_lights.direction2[i];
+    if (debug_length > 0.01 && debug_length < 0.98) {
+      fmt::print("likely incorrect merc light direction {}\n", debug_length);
+    }
+  }
 
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
@@ -489,8 +497,10 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
         if (should_envmap) {
           auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture,
                                          lev_bucket, fade_buffer + 4 * ei, first_bone, lights);
-          e->flags |= MOD_VTX;
-          e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          if (e) {
+            e->flags |= MOD_VTX;
+            e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          }
         }
       }
     } else {

@@ -28,8 +28,6 @@ out flat vec4 fragment_color;
 out vec3 tex_coord;
 out flat uvec2 tex_info;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 vec4 matrix_transform(mat4 mtx, vec3 pt) {
     return mtx[3]
     + mtx[0] * pt.x
@@ -169,7 +167,7 @@ void main() {
     // hack
     transformed.xyz *= transformed.w;
     // scissoring area adjust
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
     fragment_color *= 2;

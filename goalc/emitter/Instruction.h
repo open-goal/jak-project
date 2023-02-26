@@ -140,46 +140,46 @@ struct Instruction {
   Instruction(uint8_t opcode) : op(opcode) {}
   uint8_t op;
 
-  bool op2_set = false;
+  enum Flags {
+    kOp2Set = (1 << 0),
+    kOp3Set = (1 << 1),
+    kIsNull = (1 << 2),
+    kSetRex = (1 << 3),
+    kSetModrm = (1 << 4),
+    kSetSib = (1 << 5),
+    kSetDispImm = (1 << 6),
+    kSetImm = (1 << 7),
+  };
+
+  u8 m_flags = 0;
+
   uint8_t op2;
 
-  bool op3_set = false;
   uint8_t op3;
 
-  // if true, don't emit anything
-  bool is_null = false;
-
-  // flag to indicate it's the first instruction of a function and needs align and type tag
-  bool is_function_start = false;
-
-  int n_vex = 0;
+  u8 n_vex = 0;
   uint8_t vex[3] = {0, 0, 0};
 
   // the rex byte
-  bool set_rex = false;
   uint8_t m_rex = 0;
 
   // the modrm byte
-  bool set_modrm = false;
   uint8_t m_modrm = 0;
 
   // the sib byte
-  bool set_sib = false;
   uint8_t m_sib = 0;
 
   // the displacement
-  bool set_disp_imm = false;
   Imm disp;
 
   // the immediate
-  bool set_imm = false;
   Imm imm;
 
   /*!
    * Move opcode byte 0 to before the rex prefix.
    */
   void swap_op0_rex() {
-    if (!set_rex)
+    if (!(m_flags & kSetRex))
       return;
     auto temp = op;
     op = m_rex;
@@ -188,17 +188,17 @@ struct Instruction {
 
   void set(REX r) {
     m_rex = r();
-    set_rex = true;
+    m_flags |= kSetRex;
   }
 
   void set(ModRM modrm) {
     m_modrm = modrm();
-    set_modrm = true;
+    m_flags |= kSetModrm;
   }
 
   void set(SIB sib) {
     m_sib = sib();
-    set_sib = true;
+    m_flags |= kSetSib;
   }
 
   void set(VEX3 vex3) {
@@ -217,26 +217,26 @@ struct Instruction {
 
   void set_disp(Imm i) {
     disp = i;
-    set_disp_imm = true;
+    m_flags |= kSetDispImm;
   }
 
   void set(Imm i) {
     imm = i;
-    set_imm = true;
+    m_flags |= kSetImm;
   }
 
   void set_op2(uint8_t b) {
-    op2_set = true;
+    m_flags |= kOp2Set;
     op2 = b;
   }
 
   void set_op3(uint8_t b) {
-    op3_set = true;
+    m_flags |= kOp3Set;
     op3 = b;
   }
 
   int get_imm_size() const {
-    if (set_imm) {
+    if (m_flags & kSetImm) {
       return imm.size;
     } else {
       return 0;
@@ -244,7 +244,7 @@ struct Instruction {
   }
 
   int get_disp_size() const {
-    if (set_disp_imm) {
+    if (m_flags & kSetDispImm) {
       return disp.size;
     } else {
       return 0;
@@ -806,7 +806,7 @@ struct Instruction {
   }
 
   void add_rex() {
-    if (!set_rex) {
+    if (!(m_flags & kSetRex)) {
       set(REX());
     }
   }
@@ -880,21 +880,21 @@ struct Instruction {
    * Get the position of the disp immediate relative to the start of the instruction
    */
   int offset_of_disp() const {
-    if (is_null)
+    if (m_flags & kIsNull)
       return 0;
-    ASSERT(set_disp_imm);
+    ASSERT(m_flags & kSetDispImm);
     int offset = 0;
     offset += n_vex;
-    if (set_rex)
+    if (m_flags & kSetRex)
       offset++;
     offset++;  // opcode
-    if (op2_set)
+    if (m_flags & kOp2Set)
       offset++;
-    if (op3_set)
+    if (m_flags & kOp3Set)
       offset++;
-    if (set_modrm)
+    if (m_flags & kSetModrm)
       offset++;
-    if (set_sib)
+    if (m_flags & kSetSib)
       offset++;
     return offset;
   }
@@ -903,23 +903,23 @@ struct Instruction {
    * Get the position of the imm immediate relative to the start of the instruction
    */
   int offset_of_imm() const {
-    if (is_null)
+    if (m_flags & kIsNull)
       return 0;
-    ASSERT(set_imm);
+    ASSERT(m_flags & kSetImm);
     int offset = 0;
     offset += n_vex;
-    if (set_rex)
+    if (m_flags & kSetRex)
       offset++;
     offset++;  // opcode
-    if (op2_set)
+    if (m_flags & kOp2Set)
       offset++;
-    if (op3_set)
+    if (m_flags & kOp3Set)
       offset++;
-    if (set_modrm)
+    if (m_flags & kSetModrm)
       offset++;
-    if (set_sib)
+    if (m_flags & kSetSib)
       offset++;
-    if (set_disp_imm)
+    if (m_flags & kSetDispImm)
       offset += disp.size;
     return offset;
   }
@@ -928,7 +928,7 @@ struct Instruction {
    * Emit into a buffer and return how many bytes written (can be zero)
    */
   uint8_t emit(uint8_t* buffer) const {
-    if (is_null)
+    if (m_flags & kIsNull)
       return 0;
     uint8_t count = 0;
 
@@ -936,35 +936,35 @@ struct Instruction {
       buffer[count++] = vex[i];
     }
 
-    if (set_rex) {
+    if (m_flags & kSetRex) {
       buffer[count++] = m_rex;
     }
 
     buffer[count++] = op;
 
-    if (op2_set) {
+    if (m_flags & kOp2Set) {
       buffer[count++] = op2;
     }
 
-    if (op3_set) {
+    if (m_flags & kOp3Set) {
       buffer[count++] = op3;
     }
 
-    if (set_modrm) {
+    if (m_flags & kSetModrm) {
       buffer[count++] = m_modrm;
     }
 
-    if (set_sib) {
+    if (m_flags & kSetSib) {
       buffer[count++] = m_sib;
     }
 
-    if (set_disp_imm) {
+    if (m_flags & kSetDispImm) {
       for (int i = 0; i < disp.size; i++) {
         buffer[count++] = disp.v_arr[i];
       }
     }
 
-    if (set_imm) {
+    if (m_flags & kSetImm) {
       for (int i = 0; i < imm.size; i++) {
         buffer[count++] = imm.v_arr[i];
       }
@@ -973,41 +973,41 @@ struct Instruction {
   }
 
   uint8_t length() const {
-    if (is_null)
+    if (m_flags & kIsNull)
       return 0;
     uint8_t count = 0;
 
     count += n_vex;
 
-    if (set_rex) {
+    if (m_flags & kSetRex) {
       count++;
     }
 
     count++;
 
-    if (op2_set) {
+    if (m_flags & kOp2Set) {
       count++;
     }
 
-    if (op3_set) {
+    if (m_flags & kOp3Set) {
       count++;
     }
 
-    if (set_modrm) {
+    if (m_flags & kSetModrm) {
       count++;
     }
 
-    if (set_sib) {
+    if (m_flags & kSetSib) {
       count++;
     }
 
-    if (set_disp_imm) {
+    if (m_flags & kSetDispImm) {
       for (int i = 0; i < disp.size; i++) {
         count++;
       }
     }
 
-    if (set_imm) {
+    if (m_flags & kSetImm) {
       for (int i = 0; i < imm.size; i++) {
         count++;
       }

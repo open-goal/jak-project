@@ -490,6 +490,23 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+/*!
+ * PC port functions START
+ */
+
+/*!
+ * Return the current OS as a symbol. Actually returns what it was compiled for!
+ */
+u64 get_os() {
+#ifdef _WIN32
+  return intern_from_c("windows").offset;
+#elif __linux__
+  return intern_from_c("linux").offset;
+#else
+  return s7.offset;
+#endif
+}
+
 void pc_set_levels(u32 lev_list) {
   std::vector<std::string> levels;
   for (int i = 0; i < 6; i++) {
@@ -576,6 +593,28 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+u32 get_fullscreen() {
+  switch (Gfx::get_fullscreen()) {
+    default:
+    case GfxDisplayMode::Windowed:
+      return intern_from_c("windowed").offset;
+    case GfxDisplayMode::Borderless:
+      return intern_from_c("borderless").offset;
+    case GfxDisplayMode::Fullscreen:
+      return intern_from_c("fullscreen").offset;
+  }
+}
+
+void set_fullscreen(u32 symptr, s64 screen) {
+  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
+    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
+  } else if (symptr == intern_from_c("borderless").offset) {
+    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
+  } else if (symptr == intern_from_c("fullscreen").offset) {
+    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
+  }
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -597,18 +636,22 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
 
   // os stuff
-  // make_function_symbol_from_c("pc-get-os", (void*)get_os);
+  make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  // make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
+  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
   make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
+  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  // make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
   make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
   make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
+  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
+  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
@@ -648,6 +691,10 @@ void InitMachine_PCPort() {
       make_string_from_c(settings_path.string().c_str());
   intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(GIT_VERSION);
 }
+
+/*!
+ * PC port functions END
+ */
 
 void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
@@ -730,7 +777,7 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("art"), kernel_packages->value());
     kernel_packages->value() =
-        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
+        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
     call_goal_function_by_name("play-boot");  // new function for jak2!

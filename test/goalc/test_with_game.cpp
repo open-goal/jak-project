@@ -604,6 +604,8 @@ TEST_F(WithGameTests, StaticInlineArray) {
 TEST_F(WithGameTests, StaticArrayField) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-field.gc",
                                           {"\"ghjkl\"\n"
+                                           "\"hello\"\n"
+                                           "\"world\"\n"
                                            "0\n"});
 }
 

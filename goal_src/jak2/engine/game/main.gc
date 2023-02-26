@@ -23,23 +23,41 @@
 
 (defun letterbox ()
   "Draw letterbox bars."
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
-    (draw-sprite2d-xy-absolute s5-0 0 0 512 46 (new 'static 'rgba :a #x80))
-    (draw-sprite2d-xy-absolute s5-0 0 370 512 47 (new 'static 'rgba :a #x80))
-    (let ((a3-2 (-> s5-0 base)))
-      (let ((v1-7 (the-as dma-packet (-> s5-0 base))))
-        (set! (-> v1-7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-7 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-7 vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (the-as pointer (&+ v1-7 16)))
+  (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
+                               (bucket-id screen-filter))
+    (#cond
+      ((not PC_PORT)
+        (draw-sprite2d-xy-absolute dma-buf 0 0 512 46 (new 'static 'rgba :a #x80))
+        (draw-sprite2d-xy-absolute dma-buf 0 370 512 47 (new 'static 'rgba :a #x80))
         )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id screen-filter)
-        gp-0
-        (the-as (pointer dma-tag) a3-2)
+      (#t
+        (if (-> *pc-settings* use-vis?)
+            ;; original game mode. dont do anything.
+            (begin
+              (draw-sprite2d-xy-absolute dma-buf 0 0 512 46 (new 'static 'rgba :a #x80))
+              (draw-sprite2d-xy-absolute dma-buf 0 370 512 47 (new 'static 'rgba :a #x80)))
+            ;; native mode. force 16x9 letterboxing always.
+            (begin
+              (cond
+                ((< (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too tall. needs vertical letterboxing.
+                  (let ((lbx-h (the int (* 208.0 (- 1.0 (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))))))
+                    ;(format 0 "using new letterbox! size: ~D~%" lbx-h)
+                    (draw-sprite2d-xy dma-buf 0 0 512 lbx-h (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf 0 (- 416 lbx-h) 512 lbx-h (new 'static 'rgba :a #x80))
+                      )
+                  )
+                ((> (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too wide. needs horizontal letterboxing.
+                  (let ((lbx-w (the int (* 256.0 (- 1.0 (/ ASPECT_16X9 (-> *pc-settings* aspect-ratio)))))))
+                    ;(format 0 "using new pillarbox! size: ~D~%" lbx-w)
+                    (draw-sprite2d-xy dma-buf 0 0 lbx-w 416 (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf (- 512 lbx-w) 0 lbx-w 416 (new 'static 'rgba :a #x80))
+                      )
+                  )
+                )
+              )
+            )
         )
       )
     )
@@ -1276,48 +1294,6 @@
 ;;             - display-frame-start
 ;;    )
 
-(defconstant MEM_BAR_WIDTH 152)
-(defconstant MEM_BAR_HEIGHT 15)
-(defconstant MEM_BAR_NUM 11)
-(defconstant MEM_BAR_BG_COL (static-rgba 64 64 64 64))
-(defconstant MEM_BAR_X (- 475 MEM_BAR_WIDTH))
-(defconstant MEM_BAR_Y (- 424 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM)))
-(defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
-  `(let* (
-        (total  (the float ,total))
-        (remain (the float ,remain))
-        (used-p (/ (- total remain) total))
-        (used-x (the int (* used-p MEM_BAR_WIDTH)))
-        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
-        )
-      (draw-sprite2d-xy ,buf    MEM_BAR_X         used-y used-x MEM_BAR_HEIGHT ,color)
-      (draw-sprite2d-xy ,buf (+ MEM_BAR_X used-x) used-y (- MEM_BAR_WIDTH used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL)
-      (draw-string-xy ,name ,buf MEM_BAR_X used-y (font-color precursor-#ec3b00) (font-flags shadow kerning right))
-      (draw-string-xy (string-format "~,,2f%" (* used-p 100)) ,buf (+ MEM_BAR_X used-x) used-y (font-color precursor-#ec3b00) (font-flags shadow kerning middle))
-      (draw-string-xy (string-format "~,,1fM" (/ total (* 1024 1024))) ,buf (+ MEM_BAR_X MEM_BAR_WIDTH) used-y (font-color precursor-#ec3b00) (font-flags shadow kerning left))
-      )
-  )
-(defmacro draw-memory-bar-kheap (buf heap &key (name #f) &key idx &key color)
-  `(let ((heap ,heap))
-      (draw-memory-bar-generic ,buf
-              :remain (&- (-> heap top) (-> heap current))
-              :total  (&- (-> heap top) (-> heap base))
-              :name ,(if name name (symbol->string heap))
-              :idx ,idx
-              :color ,color)
-      )
-  )
-(defmacro draw-memory-bar-dead-pool-heap (buf heap &key (name #f) &key idx &key color)
-  `(let* ((heap ,heap) (pool-total (memory-total heap)))
-      (draw-memory-bar-generic ,buf
-              :remain (- pool-total (memory-used heap))
-              :total  pool-total
-              :name ,(if name name (symbol->string heap))
-              :idx ,idx
-              :color ,color)
-      )
-  )
-
 (defun end-display ((arg0 display))
   "Update debug drawing:
     - debug draws (triangles, spheres, etc)
@@ -1368,44 +1344,14 @@
         (when *display-deci-count*
           (let ((s2-0 draw-string-xy))
             (format (clear *temp-string*) "~D" *deci-count*)
-            (s2-0 *temp-string* s3-0 448 210 (font-color default-#cddbcd) (font-flags shadow))
+            (s2-0 *temp-string* s3-0 448 210 (font-color default) (font-flags shadow))
             )
           )
 
         (#when PC_PORT
-          (when (-> *pc-settings* display-heap-status)
-            (let ((idx 0))
-              (draw-memory-bar-kheap s3-0 global :idx idx :color (static-rgba 32 32 255 64))
-              (draw-memory-bar-kheap s3-0 debug :idx (+! idx 1) :color (static-rgba 255 32 32 64))
-              (if (!= (-> *level* level 0 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 0 heap) :name "l0" :idx (+! idx 1) :color (static-rgba 32 255 255 64))
-                )
-              (if (!= (-> *level* level 1 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 1 heap) :name "l1" :idx (+! idx 1) :color (static-rgba 255 32 255 64))
-              )
-              (if (!= (-> *level* level 2 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 2 heap) :name "l2" :idx (+! idx 1) :color (static-rgba 255 255 32 64))
-                )
-              (if (!= (-> *level* level 3 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 3 heap) :name "l3" :idx (+! idx 1) :color (static-rgba 32 255 255 64))
-              )
-              (if (!= (-> *level* level 4 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 4 heap) :name "l4" :idx (+! idx 1) :color (static-rgba 255 32 255 64))
-              )
-              (if (!= (-> *level* level 5 status) 'inactive)
-                (draw-memory-bar-kheap s3-0 (-> *level* level 5 heap) :name "l5" :idx (+! idx 1) :color (static-rgba 255 255 32 64))
-              )
-              (draw-memory-bar-dead-pool-heap s3-0 *nk-dead-pool* :name "actor" :idx (+! idx 1) :color (static-rgba 32 255 32 64))
-              (draw-memory-bar-generic s3-0
-                      :remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) global-buf)))
-                      :total  (length (-> *display* frames (-> *display* on-screen) global-buf))
-                      :name "dma-global" :idx (+! idx 1) :color (static-rgba 32 32 255 64))
-              (draw-memory-bar-generic s3-0
-                      :remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) debug-buf)))
-                      :total  (length (-> *display* frames (-> *display* on-screen) debug-buf))
-                      :name "dma-debug" :idx (+! idx 1) :color (static-rgba 255 32 32 64))
-              )
-            )
+          (draw *pc-settings* s3-0)
+          (draw-memory *pc-settings* s3-0)
+          (print-debug-misc *pc-settings*)
           )
         (display-file-info)
         )
@@ -1430,7 +1376,7 @@
                 352
                 320
                 )
-            (font-color precursor-#ec3b00)
+            (font-color red)
             (font-flags shadow kerning middle large)
             )
           )
@@ -1450,7 +1396,7 @@
                      buf
                      (the int (-> *font-context* origin x))
                      s2-2
-                     (font-color default-#cddbcd)
+                     (font-color default)
                      (font-flags shadow)
                      )
                    )
@@ -1461,7 +1407,7 @@
               buf
               (the int (-> *font-context* origin x))
               a3-6
-              (font-color default-#cddbcd)
+              (font-color default)
               (font-flags shadow)
               )
             )
@@ -1587,6 +1533,16 @@
       (if (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
                (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
                )
+          (letterbox)
+          )
+      (if (#if (not PC_PORT)
+               (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
+                    (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+                    )
+           (or (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
+                    (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+                    )
+               (not (-> *pc-settings* use-vis?))))
           (letterbox)
           )
       )
