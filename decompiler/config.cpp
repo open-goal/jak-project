@@ -196,7 +196,18 @@ Config make_config_via_json(nlohmann::json& json) {
 
   auto hacks_json = read_json_file_from_config(json, "hacks_file");
   if (json.contains("hacks_merge_file")) {
-    hacks_json.update(read_json_file_from_config(json, "hacks_merge_file"));
+    // NOTE - here we merge one level deeper because it's worth doing here
+    // - chances are you just need to override a few individual hacks
+    const auto hack_overrides = read_json_file_from_config(json, "hacks_merge_file");
+    for (const auto& entry : hack_overrides.items()) {
+      if (hacks_json.contains(entry.key())) {
+        // If the parent json file has this, update it
+        hacks_json.at(entry.key()).update(entry.value());
+      } else {
+        // Otherwise, we append it
+        hacks_json[entry.key()] = entry.value();
+      }
+    }
   }
   config.hacks.hint_inline_assembly_functions =
       hacks_json.at("hint_inline_assembly_functions").get<std::unordered_set<std::string>>();
