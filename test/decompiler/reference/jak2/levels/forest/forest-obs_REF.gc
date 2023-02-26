@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: forest-obs.gc
-;; name in dgo: forest-obs
-;; dgos: FOR
-
-;; DECOMP BEGINS
-
+;; definition for symbol *forest-protect-battle*, type (array hover-enemy-battle-command)
 (define *forest-protect-battle*
   (new 'static 'boxed-array :type hover-enemy-battle-command
     (new 'static 'hover-enemy-battle-command :command 'wait :time (seconds 20))
@@ -17,6 +12,7 @@
     )
   )
 
+;; definition of type forest-hover-manager
 (deftype forest-hover-manager (hover-enemy-manager)
   ((transport-actor entity-actor 2 :offset-assert 168)
    )
@@ -26,7 +22,21 @@
   :flag-assert         #x13003000b0
   )
 
+;; definition for method 3 of type forest-hover-manager
+(defmethod inspect forest-hover-manager ((obj forest-hover-manager))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hover-enemy-manager inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttransport-actor[2] @ #x~X~%" (-> obj transport-actor))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 11 of type forest-hover-manager
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! forest-hover-manager ((obj forest-hover-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
@@ -63,6 +73,7 @@ This commonly includes things such as:
   (none)
   )
 
+;; definition of type forest-youngsamos
 (deftype forest-youngsamos (process-focusable)
   ((root-override2      collide-shape-moving         :offset        128)
    (init-quat           quaternion           :inline :offset-assert 208)
@@ -87,13 +98,38 @@ This commonly includes things such as:
     )
   )
 
+;; definition for method 3 of type forest-youngsamos
+(defmethod inspect forest-youngsamos ((obj forest-youngsamos))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
+  (format #t "~2Tdesired-pos: #<vector @ #x~X>~%" (-> obj desired-pos))
+  (format #t "~2Thit-dir: #<vector @ #x~X>~%" (-> obj hit-dir))
+  (format #t "~2Thit-points: ~f~%" (-> obj hit-points))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
+  (format #t "~2Tfalling?: ~A~%" (-> obj falling?))
+  (format #t "~2Tfocus-disable-timer: ~D~%" (-> obj focus-disable-timer))
+  (format #t "~2Thud: ~D~%" (-> obj hud))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (label cfg-4)
+  obj
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-forest-youngsamos youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-idle-ja
               ((youngsamos-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               :shadow youngsamos-highres-shadow-mg
               )
 
+;; definition for function forest-youngsamos-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior forest-youngsamos-post forest-youngsamos ()
   (let ((a1-0 (new 'stack-no-clear 'collide-query)))
     (find-ground (-> self root-override2) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
@@ -170,6 +206,7 @@ This commonly includes things such as:
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate idle (forest-youngsamos)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -257,6 +294,7 @@ This commonly includes things such as:
     )
   )
 
+;; failed to figure out what this is:
 (defstate hit (forest-youngsamos)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -326,6 +364,7 @@ This commonly includes things such as:
   :post forest-youngsamos-post
   )
 
+;; failed to figure out what this is:
 (defstate die (forest-youngsamos)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -396,11 +435,14 @@ This commonly includes things such as:
   :post forest-youngsamos-post
   )
 
+;; failed to figure out what this is:
 (defstate dormant (forest-youngsamos)
   :virtual #t
   :code (the-as (function none :behavior forest-youngsamos) sleep-code)
   )
 
+;; definition for function forest-youngsamos-bounce-reaction
+;; INFO: Used lq/sq
 (defun forest-youngsamos-bounce-reaction ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
   (let ((s3-0 (new 'static 'array int32 4 0 0 0 0)))
     (let ((t9-0 (method-of-type array new))
@@ -427,6 +469,7 @@ This commonly includes things such as:
   (-> arg0 status)
   )
 
+;; definition for method 10 of type forest-youngsamos
 (defmethod deactivate forest-youngsamos ((obj forest-youngsamos))
   (if (valid? (-> obj hud) (the-as type #f) (the-as symbol "") #t 0)
       (send-event (handle->process (-> obj hud)) 'hide-and-die)
@@ -436,6 +479,8 @@ This commonly includes things such as:
   (none)
   )
 
+;; definition for method 11 of type forest-youngsamos
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! forest-youngsamos ((obj forest-youngsamos) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
@@ -509,6 +554,7 @@ This commonly includes things such as:
   (none)
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   200
@@ -631,6 +677,7 @@ This commonly includes things such as:
     )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   200
@@ -645,6 +692,7 @@ This commonly includes things such as:
           )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   200
@@ -1029,6 +1077,7 @@ This commonly includes things such as:
           )
   )
 
+;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
   200
@@ -1051,6 +1100,8 @@ This commonly includes things such as:
           )
   )
 
+;; definition for function forest-login
+;; WARN: Return type mismatch int vs none.
 (defun forest-login ()
   (set! *nav-network* (new 'loading-level 'nav-network))
   (nav-network-method-9 *nav-network*)
@@ -1058,12 +1109,16 @@ This commonly includes things such as:
   (none)
   )
 
+;; definition for function forest-deactivate
+;; WARN: Return type mismatch int vs none.
 (defun forest-deactivate ()
   (set! *nav-network* (the-as nav-network 0))
   0
   (none)
   )
 
+;; definition for function forest-activate
+;; WARN: Return type mismatch int vs none.
 (defun forest-activate ((arg0 level))
   (nav-network-method-10 *nav-network* arg0 *forest-adjacency*)
   0
