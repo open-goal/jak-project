@@ -479,7 +479,7 @@
 ;; definition for function merc-vu1-add-vu-function
 ;; WARN: Return type mismatch dma-packet vs dma-gif-packet.
 (defun merc-vu1-add-vu-function ((dma dma-packet) (func vu-function) (flush-mode int))
-  (let ((func-data (&-> func data 4))
+  (let ((func-data (the-as object (+ (the-as uint func) 16)))
         (qwc (-> func qlength))
         (dst (-> func origin))
         )
@@ -491,7 +491,7 @@
         (set! (-> dma vif0) (new 'static 'vif-tag :cmd (if (zero? flush-mode) 16 19)))
         (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-this-time 2) :imm dst))
         (&+! dma 16)
-        (&+! func-data (* qwc-this-time 16))
+        (set! func-data (+ (the-as uint func-data) (* qwc-this-time 16)))
         (set! qwc (- qwc qwc-this-time))
         (+! dst (* qwc-this-time 2))
         )

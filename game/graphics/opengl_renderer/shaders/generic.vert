@@ -79,7 +79,7 @@ void main() {
 
     gl_Position = transformed;
     // scissoring area adjust
-    gl_Position.y *= 512.0/448.0;
+    gl_Position.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
 
     fragment_color = vec4(rgba_in.rgb, rgba_in.a * 2);
     tex_info = byte_info.xy;

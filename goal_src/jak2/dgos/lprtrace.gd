@@ -1,15 +1,15 @@
 ("LPRTRACE.DGO"
-  ("race-h.o" "race-h")
-  ("race-mesh.o" "race-mesh")
-  ("race-part.o" "race-part")
-  ("race-obs.o" "race-obs")
-  ("vehicle-racer.o" "vehicle-racer")
-  ("race-info.o" "race-info")
-  ("race-manager.o" "race-manager")
-  ("race-hud.o" "race-hud")
-  ("pilot-recorder.o" "pilot-recorder")
-  ("errol-chal-part.o" "errol-chal-part")
-  ("errol-chal.o" "errol-chal")
-  ("tpage-3427.go" "tpage-3427")
-  ("lprtrace.go" "lprtrace")
-  )
+ ("race-h.o"
+  "race-mesh.o"
+  "race-part.o"
+  "race-obs.o"
+  "vehicle-racer.o"
+  "race-info.o"
+  "race-manager.o"
+  "race-hud.o"
+  "pilot-recorder.o"
+  "errol-chal-part.o"
+  "errol-chal.o"
+  "tpage-3427.go"
+  "lprtrace.go"
+ ))

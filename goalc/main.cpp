@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
     }
   } catch (std::exception& e) {
     lg::error("Compiler Fatal Error: {}", e.what());
+    return 1;
   }
 
   // Otherwise, start the REPL normally
@@ -161,7 +162,6 @@ int main(int argc, char** argv) {
             game_version, username,
             std::make_unique<REPL::Wrapper>(username, repl_config, startup_file));
         status = ReplStatus::OK;
-        repl_startup_func();
       }
       // process user input
       std::string input_from_stdin = compiler->get_repl_input();

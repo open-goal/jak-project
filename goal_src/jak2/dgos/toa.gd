@@ -1,30 +1,30 @@
 ("TOA.DGO"
-  ("tomb-part.o" "tomb-part")
-  ("tomb-obs.o" "tomb-obs")
-  ("tomb-water.o" "tomb-water")
-  ("tomb-beetle.o" "tomb-beetle")
-  ("spydroid.o" "spydroid")
-  ("widow-part.o" "widow-part")
-  ("widow-baron.o" "widow-baron")
-  ("widow-extras.o" "widow-extras")
-  ("widow-more-extras.o" "widow-more-extras")
-  ("widow.o" "widow")
-  ("widow2.o" "widow2")
-  ("monster-frog.o" "monster-frog")
-  ("tomb-scenes.o" "tomb-scenes")
-  ("tomb-baby-spider.o" "tomb-baby-spider")
-  ("tpage-1594.go" "tpage-1594")
-  ("tpage-1595.go" "tpage-1595")
-  ("tpage-1831.go" "tpage-1831")
-  ("tpage-1467.go" "tpage-1467")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("water-anim-tomb-ag.go" "water-anim-tomb")
-  ("monster-frog-ag.go" "monster-frog")
-  ("tomb-boss-door-ag.go" "tomb-boss-door")
-  ("tomb-mar-door-ag.go" "tomb-mar-door")
-  ("tomb-simon-button-ag.go" "tomb-simon-button")
-  ("tomb-wing-door-ag.go" "tomb-wing-door")
-  ("tomb-plat-return-ag.go" "tomb-plat-return")
-  ("tomba-vis.go" "tomba-vis")
-  )
+ ("tomb-part.o"
+  "tomb-obs.o"
+  "tomb-water.o"
+  "tomb-beetle.o"
+  "spydroid.o"
+  "widow-part.o"
+  "widow-baron.o"
+  "widow-extras.o"
+  "widow-more-extras.o"
+  "widow.o"
+  "widow2.o"
+  "monster-frog.o"
+  "tomb-scenes.o"
+  "tomb-baby-spider.o"
+  "tpage-1594.go"
+  "tpage-1595.go"
+  "tpage-1831.go"
+  "tpage-1467.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "water-anim-tomb-ag.go"
+  "monster-frog-ag.go"
+  "tomb-boss-door-ag.go"
+  "tomb-mar-door-ag.go"
+  "tomb-simon-button-ag.go"
+  "tomb-wing-door-ag.go"
+  "tomb-plat-return-ag.go"
+  "tomba-vis.go"
+ ))

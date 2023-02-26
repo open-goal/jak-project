@@ -1,11 +1,11 @@
 ("CIB.DGO"
-  ("ctyindb-part.o" "ctyindb-part")
-  ("ctyindb-obs.o" "ctyindb-obs")
-  ("tpage-1565.go" "tpage-1565")
-  ("tpage-1577.go" "tpage-1577")
-  ("tpage-1601.go" "tpage-1601")
-  ("tpage-1614.go" "tpage-1614")
-  ("tpage-1642.go" "tpage-1642")
-  ("com-airlock-outer-ag.go" "com-airlock-outer")
-  ("ctyindb-vis.go" "ctyindb-vis")
-  )
+ ("ctyindb-part.o"
+  "ctyindb-obs.o"
+  "tpage-1565.go"
+  "tpage-1577.go"
+  "tpage-1601.go"
+  "tpage-1614.go"
+  "tpage-1642.go"
+  "com-airlock-outer-ag.go"
+  "ctyindb-vis.go"
+ ))

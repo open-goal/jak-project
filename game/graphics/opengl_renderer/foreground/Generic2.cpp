@@ -53,6 +53,13 @@ void Generic2::draw_debug_window() {
  * and then return.
  */
 void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  render_in_mode(dma, render_state, prof, Mode::NORMAL);
+}
+
+void Generic2::render_in_mode(DmaFollower& dma,
+                              SharedRenderState* render_state,
+                              ScopedProfilerNode& prof,
+                              Mode mode) {
   // completely clear out state. These will get populated by the rendering functions, then displayed
   // by draw_debug_window() if the user opens that window
   m_debug.clear();
@@ -71,14 +78,32 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
     auto p = prof.make_scoped_child("dma");
-    process_dma(dma, render_state->next_bucket);
+    switch (mode) {
+      case Mode::NORMAL:
+        process_dma(dma, render_state->next_bucket);
+        break;
+      case Mode::LIGHTNING:
+        process_dma_lightning(dma, render_state->next_bucket);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
     auto p = prof.make_scoped_child("setup");
-    setup_draws();
+    switch (mode) {
+      case Mode::NORMAL:
+        setup_draws(true);
+        break;
+      case Mode::LIGHTNING:
+        setup_draws(false);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {

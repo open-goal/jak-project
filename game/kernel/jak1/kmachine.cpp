@@ -579,14 +579,6 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
-void set_game_resolution(s64 w, s64 h) {
-  Gfx::set_game_resolution(w, h);
-}
-
-void set_msaa(s64 samples) {
-  Gfx::set_msaa(samples);
-}
-
 void InitMachine_PCPort() {
   // PC Port added functions
 
