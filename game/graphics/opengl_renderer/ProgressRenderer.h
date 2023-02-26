@@ -7,29 +7,6 @@
 /*!
  * Renderer for the "Progress Bucket" of Jak 2.
  */
-// class ProgressRenderer : public BucketRenderer {
-//  public:
-//   ProgressRenderer(const std::string& name, int my_id, int batch_size);
-//   ~ProgressRenderer();
-//   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof)
-//   override; void draw_debug_window() override;
-//
-//   void render_vif(u32 vif0,
-//                   u32 vif1,
-//                   const u8* data,
-//                   u32 size,
-//                   SharedRenderState* render_state,
-//                   ScopedProfilerNode& prof);
-//   void render_gif(const u8* data,
-//                   u32 size,
-//                   SharedRenderState* render_state,
-//                   ScopedProfilerNode& prof);
-//
-//  private:
-//   DirectRenderer m_direct;
-//   bool m_using_direct = true;
-// };
-
 class ProgressRenderer : public DirectRenderer {
  public:
   static constexpr int kMinimapVramAddr = 4032;
@@ -42,6 +19,7 @@ class ProgressRenderer : public DirectRenderer {
   void handle_frame(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void pre_render() override;
   void post_render() override;
+
  private:
   GpuTexture* m_minimap_gpu_tex = nullptr;
   FramebufferTexturePair m_minimap_fb;

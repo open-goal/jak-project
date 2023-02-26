@@ -377,16 +377,8 @@ void DirectRenderer::update_gl_blend() {
       // Cs * As  + (1 - As) * Cd
       // s, d
       // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      if (m_prim_gl_state.ta0 == 0x80) {
-        // fmt::print("blend hack on\n");
-        glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
-        glBlendEquation(GL_FUNC_ADD);
-        glDisable(GL_BLEND);
-
-      } else {
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
         glBlendEquation(GL_FUNC_ADD);
-      }
 
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -738,12 +730,7 @@ void DirectRenderer::handle_ad(const u8* data,
   }
 }
 
-void DirectRenderer::handle_frame(u64 val,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
-
-
-}
+void DirectRenderer::handle_frame(u64, SharedRenderState*, ScopedProfilerNode&) {}
 
 void DirectRenderer::handle_xyoffset(u64 val) {
   GsXYOffset xyo(val);
