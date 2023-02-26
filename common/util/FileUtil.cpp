@@ -584,4 +584,13 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
   return dirs;
 }
 
+void copy_file(const fs::path& src, const fs::path& dst) {
+  if (src == dst) {
+    lg::error("Failed to copy_file {}, source and destination are the same\n", src.string());
+    throw std::runtime_error("Failed to copy_file");
+  }
+  auto data = read_binary_file(src);
+  write_binary_file(dst, data.data(), data.size());
+}
+
 }  // namespace file_util
