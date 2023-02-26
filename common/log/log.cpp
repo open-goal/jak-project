@@ -121,8 +121,7 @@ void set_file(const std::string& filename) {
   auto ext = as_path.extension().string();
   auto dir = as_path.parent_path();
   for (int i = LOG_ROTATE_MAX; i-- > 0;) {
-    auto src_name =
-        i != 0 ? fmt::format("{}.{}{}", stem, i, ext) : fmt::format("{}{}", stem, ext);
+    auto src_name = i != 0 ? fmt::format("{}.{}{}", stem, i, ext) : fmt::format("{}{}", stem, ext);
     auto src_path = dir / src_name;
     if (file_util::file_exists(src_path.string())) {
       auto dst_name = fmt::format("{}.{}{}", stem, i + 1, ext);
