@@ -377,8 +377,8 @@ void DirectRenderer::update_gl_blend() {
       // Cs * As  + (1 - As) * Cd
       // s, d
       // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-        glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+      glBlendEquation(GL_FUNC_ADD);
 
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
