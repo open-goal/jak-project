@@ -26,6 +26,7 @@ class GlowRenderer {
     bool show_probes = false;
     bool show_probe_copies = false;
     int num_sprites = 0;
+    float glow_boost = 1.f;
   } m_debug;
   void add_sprite_pass_1(const SpriteGlowOutput& data);
   void add_sprite_pass_2(const SpriteGlowOutput& data, int sprite_idx);
