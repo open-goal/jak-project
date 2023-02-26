@@ -392,7 +392,7 @@ bool cont_now(const ThreadID& tid) {
 DEBUG_EVENT debugEvent;
 void ignore_debug_event() {
   if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-    win_print_last_error("ContinueDebugEvent");
+    win_print_last_error("ContinueDebugEvent ignore_debug_event");
   }
   cont_status = -1;
 }
@@ -456,7 +456,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
     if (cont_status != -1) {
       cv.wait(lk, [&] { return cont_status == 1; });
       if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-        win_print_last_error("ContinueDebugEvent");
+        win_print_last_error("ContinueDebugEvent check_stopped");
       }
       cont_status = -1;
     }
@@ -471,14 +471,12 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
       {
         auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
         if (is_other) {
-          ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId,
-                             DBG_EXCEPTION_NOT_HANDLED);
-          // if (exc == EXCEPTION_BREAKPOINT) {
-          //   out->kind = SignalInfo::BREAK;
-          // } else {
-          //   // ignore exceptions outside goal thread
-          //   ignore_debug_event();
-          // }
+          if (exc == EXCEPTION_BREAKPOINT) {
+            out->kind = SignalInfo::BREAK;
+          } else {
+            // ignore exceptions outside goal thread
+            ignore_debug_event();
+          }
         } else {
           switch (exc) {
             case EXCEPTION_BREAKPOINT:
@@ -507,18 +505,12 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
           }
         }
       } break;
+      case CREATE_THREAD_DEBUG_EVENT:   // 2
       case CREATE_PROCESS_DEBUG_EVENT:  // 3
-        if (debugEvent.u.CreateProcessInfo.hProcess != NULL &&
-            GetProcessId(debugEvent.u.CreateProcessInfo.hProcess) == debugEvent.dwProcessId) {
-        }
-        // out->kind = SignalInfo::NOTHING;
-        ignore_debug_event();
-        break;
-      case CREATE_THREAD_DEBUG_EVENT:  // 2
-      case EXIT_THREAD_DEBUG_EVENT:    // 4
-      case LOAD_DLL_DEBUG_EVENT:       // 6
-      case UNLOAD_DLL_DEBUG_EVENT:     // 7
-      case OUTPUT_DEBUG_STRING_EVENT:  // 8
+      case EXIT_THREAD_DEBUG_EVENT:     // 4
+      case LOAD_DLL_DEBUG_EVENT:        // 6
+      case UNLOAD_DLL_DEBUG_EVENT:      // 7
+      case OUTPUT_DEBUG_STRING_EVENT:   // 8
         // don't care about these
         // out->kind = SignalInfo::NOTHING;
         ignore_debug_event();
@@ -556,7 +548,7 @@ bool read_goal_memory(u8* dest_buffer,
   HANDLE hProc = OpenProcess(PROCESS_VM_READ, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
-    win_print_last_error("OpenProcess");
+    win_print_last_error("OpenProcess read_goal_memory");
     return false;
   }
 
@@ -581,7 +573,7 @@ bool write_goal_memory(const u8* src_buffer,
   HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
-    win_print_last_error("OpenProcess");
+    win_print_last_error("OpenProcess write_goal_memory");
     return false;
   }
 
@@ -603,7 +595,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread get_regs_now");
     return false;
   }
 
@@ -611,7 +603,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("GetThreadContext");
+    win_print_last_error("GetThreadContext get_regs_now");
     return false;
   }
 
@@ -643,7 +635,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread set_regs_now");
     return false;
   }
 
@@ -651,7 +643,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("GetThreadContext");
+    win_print_last_error("GetThreadContext set_regs_now");
     return false;
   }
 
@@ -676,7 +668,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   hThr = OpenThread(THREAD_SET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread set_regs_now set");
     return false;
   }
 
@@ -684,7 +676,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("SetThreadContext");
+    win_print_last_error("SetThreadContext set_regs_now set");
     return false;
   }
   // todo, set fprs.

@@ -23,8 +23,6 @@ uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 // output
 out vec4 vtx_color;
 out vec2 vtx_st;
@@ -107,7 +105,7 @@ void main() {
     transformed.x /= (256);
     transformed.y /= -(128);
     transformed.xyz *= transformed.w;
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
 

@@ -313,7 +313,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<DirectRenderer>("progress", BucketCategory::OTHER, BucketId::PROGRESS,
                                        0x8000);
   init_bucket_renderer<DirectRenderer>("screen-filter", BucketCategory::OTHER,
-                                       BucketId::SCREEN_FILTER, 0x8000);
+                                       BucketId::SCREEN_FILTER, 256);
   init_bucket_renderer<DirectRenderer>("bucket-322", BucketCategory::OTHER, BucketId::BUCKET_322,
                                        0x8000);
   init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);

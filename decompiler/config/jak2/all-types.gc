@@ -5141,17 +5141,17 @@
 
 (deftype texture-anim-layer (structure)
   ((extra           vector  :inline :offset 240)
-   (func            basic           :offset 256)
+   (func            symbol          :offset 256)
    (func-id         basic           :offset 256)
-   (init-func       basic           :offset 260)
+   (init-func       symbol          :offset 260)
    (init-func-id    basic           :offset 260)
    (tex             texture           :offset 264)
    (start-time      float           :offset 268)
    (end-time        float           :offset 272)
    (tex-name        basic           :offset 276)
-   (test            uint64          :offset 280)
-   (alpha           uint64          :offset 288)
-   (clamp           uint64          :offset 296)
+   (test            gs-test         :offset 280)
+   (alpha           gs-alpha        :offset 288)
+   (clamp           gs-clamp        :offset 296)
    (start-color     vector  :inline :offset 80)
    (start-scale     vector2 :inline :offset 96)
    (start-offset    vector2 :inline :offset 104)
@@ -6304,10 +6304,10 @@
 ;; +++font-h:font-color
 (defenum font-color
   :type uint32
-  (default-#cddbcd 0)
+  (default 0)
   (#dadada 1)
   (#ededed 2)
-  (precursor-#ec3b00 3)
+  (red 3)
   (gold-#ba9200 4)
   (yellow-#f3f300 5)
   (green-#3df23d 6)
@@ -6324,7 +6324,7 @@
   (#a6b5a6 17)
   (#757f75 18)
   (#5e3f5e 19)
-  (#f0e387 20)
+  (flat-yellow 20)
   (#3fbaed 21)
   (#3a3a3a 22)
   (#5c5c5c 23)
@@ -24746,15 +24746,15 @@
 ;; texture-anim-tables            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *sky-texture-anim-array* texture-anim-array)
+(define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern set-fog-height! (function float none))
 (define-extern set-cloud-minmax! (function float float none))
-(define-extern *darkjak-texture-anim-array* texture-anim-array)
+(define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern set-darkjak-texture-morph! (function float none))
-(define-extern *skull-gem-texture-anim-array* texture-anim-array)
-(define-extern *waterfall-texture-anim-array* texture-anim-array)
-(define-extern *waterfall-b-texture-anim-array* texture-anim-array)
-(define-extern *bomb-texture-anim-array* texture-anim-array)
+(define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *waterfall-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *waterfall-b-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *bomb-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blit-displays                  ;;
@@ -29638,7 +29638,7 @@
    (sel-length    int32                   :offset-assert 8)
    (sel-menu      debug-menu            8 :offset-assert 12) ;; guessed by decompiler
    (root-menu     debug-menu              :offset-assert 44) ;; guessed by decompiler
-   (joypad-func   (function basic none)   :offset-assert 48) ;; guessed by decompiler
+   (joypad-func   (function basic int none)   :offset-assert 48) ;; guessed by decompiler
    (joypad-item   basic                   :offset-assert 52)
    (font          font-context            :offset-assert 56) ;; guessed by decompiler
    (is-hidden     symbol                  :offset-assert 60) ;; guessed by decompiler
@@ -29774,7 +29774,7 @@
 (define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var)) ;;
 (define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int debug-menu-msg int int int) int symbol int int symbol debug-menu-item-var))
 (define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int debug-menu-msg float float float) float symbol float float int debug-menu-item-var))
-(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic none) symbol)) ;;
+(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic (function basic int none) symbol)) ;;
 (define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;;
 (define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int)) ;;
 (define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context)) ;;
@@ -29799,7 +29799,7 @@
 (define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu debug-menu-msg debug-menu-item-submenu)) ;;
 (define-extern debug-menu-item-function-msg (function debug-menu-item-function debug-menu-msg debug-menu-item-function)) ;;
 (define-extern debug-menu-item-flag-msg (function debug-menu-item-flag debug-menu-msg debug-menu-item-flag)) ;;
-(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;;
+(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var int debug-menu-item-var)) ;;
 (define-extern debug-menu-item-var-msg (function debug-menu-item-var debug-menu-msg debug-menu-item-var)) ;;
 (define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item)) ;;
 (define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu)) ;;
@@ -31757,7 +31757,7 @@
    (temp-edge-list   (inline-array mysql-nav-edge)          :offset-assert 8)
    (level-node-index int32          :offset-assert 12)
    (cam-dist         float          :offset-assert 16)
-   (visible          basic          :offset-assert 20)
+   (visible          symbol         :offset-assert 20)
    (nav_node_id      uint32         :offset-assert 24)
    (nav_graph_id     uint32         :offset-assert 28)
    (position         vector :inline :offset-assert 32)
@@ -35842,7 +35842,6 @@
 ;; hover-nav-edit                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-nav-bsp-point (list-node)
   ((index int32          :offset-assert 8)
    (pos   vector :inline :offset-assert 16)
@@ -35851,9 +35850,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype hover-nav-bsp-node (structure)
   ((split-plane vector              :inline :offset-assert 0)
    (point-list  hover-nav-bsp-point         :offset-assert 16)
@@ -35864,13 +35861,11 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
-    (hover-nav-bsp-node-method-9 () none 9)
-    (hover-nav-bsp-node-method-10 () none 10)
+    (hover-nav-bsp-node-method-9 (_type_) none 9)
+    (hover-nav-bsp-node-method-10 (_type_ int) none 10)
     )
   )
-|#
 
-#|
 (deftype hover-nav-bsp (structure)
   ((root hover-nav-bsp-node  :offset-assert 0)
    )
@@ -35878,16 +35873,15 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern probe-for-clear-collision? function)
-;; (define-extern hover-nav-graph-process-points function)
-;; (define-extern hover-nav-graph-output function)
-;; (define-extern *axes-table* array)
-;; (define-extern *hover-bsp* object)
-;; (define-extern hover-nav-graph-output-bsp function)
-;; (define-extern hover-nav-network-build-bsp function)
-;; (define-extern hover-nav-bsp-output function)
+(define-extern probe-for-clear-collision? (function vector vector symbol))
+(define-extern hover-nav-graph-process-points (function none))
+(define-extern hover-nav-graph-output (function none))
+(define-extern *axes-table* (array vector))
+(define-extern *hover-bsp* hover-nav-bsp)
+(define-extern hover-nav-graph-output-bsp (function hover-nav-bsp))
+(define-extern hover-nav-network-build-bsp (function hover-nav-bsp-node none))
+(define-extern hover-nav-bsp-output (function hover-nav-bsp none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasp-part                      ;;
@@ -36050,9 +36044,8 @@
 ;; forest-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype forest-hover-manager (hover-enemy-manager)
-  ((transport-actor UNKNOWN 2 :offset-assert 164)
+  ((transport-actor entity-actor 2 :offset-assert 168)
    )
   :method-count-assert 19
   :size-assert         #xb0
@@ -36060,19 +36053,18 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype forest-youngsamos (process-focusable)
-  ((init-quat           quaternion :inline :offset-assert 204)
-   (desired-pos         vector     :inline :offset-assert 220)
-   (hit-dir             vector     :inline :offset-assert 236)
-   (hit-points          float              :offset-assert 252)
-   (incoming-attack-id  uint32             :offset-assert 256)
-   (falling?            basic              :offset-assert 260)
-   (focus-disable-timer uint64             :offset-assert 268)
-   (hud                 uint64             :offset-assert 276)
-   (sound-id            uint32             :offset-assert 284)
+  ((root-override2      collide-shape-moving :offset 128 :score 999)
+   (init-quat           quaternion :inline :offset-assert 208)
+   (desired-pos         vector     :inline :offset-assert 224)
+   (hit-dir             vector     :inline :offset-assert 240)
+   (hit-points          float              :offset-assert 256)
+   (incoming-attack-id  uint32             :offset-assert 260)
+   (falling?            basic              :offset-assert 264)
+   (focus-disable-timer uint64             :offset-assert 272)
+   (hud                 handle             :offset-assert 280)
+   (sound-id            uint32             :offset-assert 288)
    )
   :method-count-assert 31
   :size-assert         #x124
@@ -36084,14 +36076,13 @@
     (dormant () _type_ :state 30)
     )
   )
-|#
 
-;; (define-extern *forest-protect-battle* array)
-;; (define-extern forest-youngsamos-post function)
-;; (define-extern forest-youngsamos-bounce-reaction function)
-;; (define-extern forest-login function)
-;; (define-extern forest-deactivate function)
-;; (define-extern forest-activate function)
+(define-extern *forest-protect-battle* (array hover-enemy-battle-command))
+(define-extern forest-youngsamos-post (function none :behavior forest-youngsamos))
+(define-extern forest-youngsamos-bounce-reaction (function control-info collide-query vector vector collide-status))
+(define-extern forest-login (function none))
+(define-extern forest-deactivate (function none))
+(define-extern forest-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pegasus                        ;;
@@ -45368,7 +45359,7 @@
   (:methods
     (idle () _type_ :state 27)
     (stad-force-field-method-28 (_type_) none 28)
-    (stad-force-field-method-29 (_type_ vector) none 29))
+    (stad-force-field-method-29 (_type_ touching-shapes-entry) int 29))
   )
 
 (deftype stad-c-force-field (stad-force-field)
@@ -46876,27 +46867,6 @@
   :size-assert         #xb0
   :flag-assert         #x10003000b0
   )
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; helldog                        ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype helldog (hellcat)
-  ((current-level basic  :offset-assert 1076)
-   )
-  :method-count-assert 159
-  :size-assert         #x43c
-  :flag-assert         #x9f03c0043c
-  (:methods
-    )
-  )
-|#
-
-;; (define-extern *helldog-constants* object)
-;; (define-extern *helldog-front-turret-control-info* object)
-;; (define-extern *helldog-top-turret-control-info* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-dummy                      ;;
@@ -50962,6 +50932,24 @@
 (define-extern *hellcat-front-turret-control-info* turret-control-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; helldog                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype helldog (hellcat)
+  ((current-level level  :offset-assert 1080)
+   )
+  :method-count-assert 159
+  :size-assert         #x43c
+  :flag-assert         #x9f03c0043c
+  (:methods
+    )
+  )
+
+(define-extern *helldog-constants* rigid-body-vehicle-constants)
+(define-extern *helldog-front-turret-control-info* turret-control-info)
+(define-extern *helldog-top-turret-control-info* turret-control-info)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test-bike                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -51541,7 +51529,7 @@
 (define-extern *guard-status-spots* (array int32))
 (define-extern update-guard-status-spots (function vector symbol))
 (define-extern generate-target-spots "Code-gen function to define [[*guard-target-spots*]] using [[*x-vector*]]" (function none))
-(define-extern *alert-level-settings* traffic-alert-state-settings)
+(define-extern *alert-level-settings* (inline-array traffic-alert-state-settings))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; trail-graph                    ;;

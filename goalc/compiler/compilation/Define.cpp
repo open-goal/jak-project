@@ -42,7 +42,11 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     // The third case - immediate lambdas - don't get passed to a define,
     //   so this won't cause those to live for longer than they should
     if ((as_lambda->func && as_lambda->func->settings.allow_inline) || !as_lambda->func) {
-      m_inlineable_functions[sym.as_symbol()] = as_lambda;
+      auto& f = m_inlineable_functions[sym.as_symbol()];
+      // default inline if we have to (because no code), or if that's the option.
+      f.inline_by_default = (!as_lambda->func) || as_lambda->func->settings.inline_by_default;
+      f.lambda = as_lambda->lambda;
+      f.type = as_lambda->type();
     }
     // Most defines come via macro invokations, we want the TRUE defining form location
     // if we can get it

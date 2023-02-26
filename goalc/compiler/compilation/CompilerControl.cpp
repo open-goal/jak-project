@@ -651,7 +651,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
   int count = 0;
   for (const auto& sym_info : symbols) {
     count++;
-    if (count % 100 == 0 || count == symbols.size()) {
+    if (count % 100 == 0 || count == (int)symbols.size()) {
       lg::info("Processing [{}/{}] symbols...", count, symbols.size());
     }
     std::optional<Docs::DefinitionLocation> def_loc;
@@ -814,5 +814,10 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
       doc_path / fmt::format("{}-file-docs.json", version_to_game_name(m_version)),
       file_docs_data.dump());
 
+  return get_none();
+}
+
+Val* Compiler::compile_gc_text(const goos::Object&, const goos::Object&, Env*) {
+  m_goos.reader.db.clear_info();
   return get_none();
 }
