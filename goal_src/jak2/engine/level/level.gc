@@ -10,6 +10,17 @@
 (define-extern level-update-after-load (function level login-state level))
 (define-extern *level-type-list* type)
 
+(defglobalconstant NUM_LEVEL_PAGES 146)
+;(defglobalconstant DEBUG_LEVEL_PAGE_SIZE #x2f400) ;; original value
+(defglobalconstant DEBUG_LEVEL_PAGE_SIZE  #x40000)
+(defglobalconstant DEBUG_LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES DEBUG_LEVEL_PAGE_SIZE))
+
+;; multiplier for borrow heap size. It is a bit of a hack required to load the slightly larger PC port levels.
+;; in the original game, borrow levels never got extra room, even with big level heaps
+;; Setting this means that borrow won't work with normal-size level heaps, but this is probably okay
+;; because normal-size level heaps don't work at all.
+(defglobalconstant BONUS_BORROW 1)
+
 (defun give-all-stuff ()
   (send-event *target* 'get-pickup 18 #x447a0000)
   (send-event *target* 'get-pickup 17 #x447a0000)
@@ -502,6 +513,8 @@
      )
     (((load-buffer-mode medium))
      (set! (-> arg0 load-buffer-size) (+ (-> arg1 length) 2048))
+     (format 0 "believed unused load-buffer-resize case hit.")
+     ; (break!)
      )
     )
 
@@ -693,6 +706,11 @@
    This assigns memory to a level and is somewhat confusing."
   (local-vars (bits-to-use int) (borrow-from-lev level) (found-borrow symbol))
 
+  (when (!= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
+    (format 0 "------------- load-begin called without large level heaps. This is not supported on PC~%")
+    (break!)
+    )
+
   ;; a "borrow" level will borrow the heap of an existing level
   (dotimes (v1-0 2)
     (set! (-> obj borrow-level v1-0) #f) ;; levels that borrow our heap
@@ -749,6 +767,8 @@
                (the-as pointer (-> borrow-from-lev borrow-heap slot-in-borrow-from-lev))
                16
                )
+             (start-debug "borrowing from ~A. heap:~%" borrow-from-lev)
+             (inspect (-> obj heap))
              )
            (else
              ;; couldn't find it, die.
@@ -936,12 +956,15 @@
               (set! (-> obj memory-mask) (the-as uint bits-to-use))
               (cond
                 ;; are we using debug sized large level?
-                ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) #x1af2800)
+                ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
                  ;; if so, everything is 1.5x bigger!
                  (let ((v1-44 (-> obj heap)))
-                   (set! (-> v1-44 base) (&+ (-> *level* heap base) (* #x2f400 offset-in-level-heap)))
+                   (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
-                   (set! (-> v1-44 top-base) (&+ (-> v1-44 base) (+ heap-size (/ heap-size 2))))
+                   ;(set! (-> v1-44 top-base) (&+ (-> v1-44 base) (+ heap-size (/ heap-size 2))))
+                   ;; NOTE: changed in PC version to get 2x size levels heaps. This is only safe with the increased
+                   ;; DEBUG_LEVEL_PAGE_SIZE.
+                   (set! (-> v1-44 top-base) (&+ (-> v1-44 base) (* heap-size 2)))
                    (set! (-> v1-44 top) (-> v1-44 top-base))
                    )
                  )
@@ -1392,13 +1415,16 @@
   ;; if somebody will borrow from us, set aside some memory for them on the top of our heap
   (dotimes (v1-211 2)
     (set! (-> lev heap top-base)
-          (the pointer (&- (-> lev heap top-base) (the-as uint (shl (-> lev info borrow-size v1-211) 10))))
+          (the pointer (&- (-> lev heap top-base) (the-as uint (shl (-> lev info borrow-size v1-211) (+ 10 BONUS_BORROW)))))
           )
     (set! (-> lev heap top) (-> lev heap top-base))
     (let ((borrower-heap (-> lev borrow-heap v1-211)))
       (set! (-> borrower-heap base) (-> lev heap top))
       (set! (-> borrower-heap current) (-> borrower-heap base))
-      (set! (-> borrower-heap top-base) (&+ (-> borrower-heap base) (shl (-> lev info borrow-size v1-211) 10)))
+
+      ;; MODIFIED
+      (set! (-> borrower-heap top-base) (&+ (-> borrower-heap base) (shl (-> lev info borrow-size v1-211) (+ 10 BONUS_BORROW))))
+
       (set! (-> borrower-heap top) (-> borrower-heap top-base))
       )
     )
@@ -1850,7 +1876,6 @@
   )
 
 
-
 (defmethod alloc-levels-if-needed level-group ((obj level-group) (arg0 symbol))
   "Setup for playing levels by loading the required base packages (art, common)
    and allocating the level heap."
@@ -1868,7 +1893,7 @@
         )
     (let ((s5-1 (if (and arg0 (not *debug-segment*))
                     #x11f7000
-                    #x1af2800
+                    DEBUG_LEVEL_HEAP_SIZE
                     )
                 )
           (gp-1 (-> obj heap))

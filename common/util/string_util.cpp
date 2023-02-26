@@ -81,4 +81,16 @@ std::string diff(const std::string& lhs, const std::string& rhs) {
 std::vector<std::string> split(const ::std::string& str, char delimiter) {
   return google_diff::split_string(str, delimiter);
 }
+
+std::vector<std::string> regex_get_capture_groups(const std::string& str,
+                                                  const std::string& regex) {
+  std::vector<std::string> groups;
+  std::smatch matches;
+  if (std::regex_search(str, matches, std::regex(regex))) {
+    for (size_t i = 1; i < matches.size(); i++) {
+      groups.push_back(matches[i].str());
+    }
+  }
+  return groups;
+}
 }  // namespace str_util

@@ -179,6 +179,14 @@ bool FileEnv::is_empty() {
   return m_functions.size() == 1 && m_functions.front().get() == m_top_level_func &&
          m_top_level_func->code().empty();
 }
+
+void FileEnv::cleanup_after_codegen() {
+  m_top_level_func = nullptr;
+  m_functions.clear();
+  m_statics.clear();
+  m_vals.clear();
+}
+
 ///////////////////
 // FunctionEnv
 ///////////////////

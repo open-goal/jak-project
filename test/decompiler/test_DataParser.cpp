@@ -345,7 +345,7 @@ TEST_F(DataDecompTest, FloatArray) {
   info.array_size = 7;
   info.is_value = false;
   auto decomp = decompile_at_label_with_hint(info, parsed.label("L63"), parsed.labels,
-                                             {parsed.words}, *dts, nullptr, GameVersion::Jak1);
+                                             {parsed.words}, dts->ts, nullptr, GameVersion::Jak1);
   check_forms_equal(decomp.print(),
                     "(new 'static 'array float 7\n"
                     "1.0 0.0 1.0 0.0 1.0 0.0 1.0)");

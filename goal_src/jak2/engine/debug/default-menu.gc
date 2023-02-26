@@ -45,7 +45,7 @@
 
 ;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
 (define *debug-menu-context* (new 'debug 'debug-menu-context))
 
 (define *dm-cam-mode-interpolation* 0)
@@ -394,20 +394,68 @@
           )
       (cond
         ((zero? a1-1)
-         (set! (-> v1-3 base-strgif qword vector4w y) #x303e4000)
-         (set! (-> v1-3 base-strgif qword vector4w x) #x303ec000)
+         (set! (-> v1-3 base-strgif str-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
+         (set! (-> v1-3 base-strgif fan-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
          )
         ((= a1-1 1)
-         (set! (-> v1-3 base-strgif qword vector4w y) #x303d4000)
-         (set! (-> v1-3 base-strgif qword vector4w x) #x303d4000)
+         (set! (-> v1-3 base-strgif str-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
+         (set! (-> v1-3 base-strgif fan-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
          )
         ((= a1-1 2)
-         (set! (-> v1-3 base-strgif qword vector4w y) #x30364000)
-         (set! (-> v1-3 base-strgif qword vector4w x) #x3036c000)
+         (set! (-> v1-3 base-strgif str-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
+         (set! (-> v1-3 base-strgif fan-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
          )
         ((= a1-1 3)
-         (set! (-> v1-3 base-strgif qword vector4w y) #x30354000)
-         (set! (-> v1-3 base-strgif qword vector4w x) #x3036c000)
+         (set! (-> v1-3 base-strgif str-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
+         (set! (-> v1-3 base-strgif fan-prim)
+               (new 'static 'gif-tag-prim
+                 :pre #x1
+                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe #x1)
+                 :nreg #x3
+                 )
+               )
          )
         )
       )
@@ -2797,7 +2845,6 @@
   )
 
 (defun dm-play-task-with-continue ((arg0 game-task) (arg1 string))
-  (format 0 "hello world - ~D:~S~%" arg0 arg1)
   (let* ((t9-0 play-task)
          (a1-1 'debug)
          (a2-0 (cond
@@ -2822,7 +2869,6 @@
   )
 
 (defun dm-play-task ((arg0 game-task))
-  (format 0 "DEBUG - ~D~%" arg0)
   (dm-play-task-with-continue (the-as game-task (/ (the-as int arg0) 8)) (the-as string #f))
   (none)
   )
@@ -4133,7 +4179,7 @@
            (function "Toggle Plane Mode" #f ,(lambda ()
                                                (let ((a0-0 (get-nav-graph-editor)))
                                                  (if a0-0
-                                                     ((method-of-object a0-0 nav-graph-editor-method-60))
+                                                     (nav-graph-editor-method-60 a0-0)
                                                      )
                                                  )
                                                (none)
@@ -4142,7 +4188,7 @@
            (function "Toggle Hover Mode" #f ,(lambda ()
                                                (let ((a0-0 (get-nav-graph-editor)))
                                                  (if a0-0
-                                                     ((method-of-object a0-0 nav-graph-editor-method-61))
+                                                     (nav-graph-editor-method-61 a0-0)
                                                      )
                                                  )
                                                (none)
@@ -4208,7 +4254,7 @@
            (function "Save" #f ,(lambda ()
                                   (let ((a0-0 (get-nav-graph-editor)))
                                     (if a0-0
-                                        ((method-of-object a0-0 nav-graph-editor-method-63))
+                                        (nav-graph-editor-method-63 a0-0)
                                         )
                                     )
                                   (none)
@@ -5901,18 +5947,6 @@
       )
     (debug-menu-append-item s5-0 (debug-menu-make-task-menu arg0))
     (debug-menu-append-item s5-0 (debug-menu-make-play-menu arg0))
-    (debug-menu-append-item
-      s5-0
-      (debug-menu-make-from-template
-        arg0
-        '(menu
-           "PC Settings"
-           (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
-           (flag "Jetboard Trick String" #t ,(dm-lambda-boolean-flag (-> *pc-settings* jetboard-trick-text?)))
-           (function "Save" #f ,(lambda () (commit-to-file *pc-settings*)))
-           )
-        )
-      )
     )
   arg0
   )
@@ -6075,5 +6109,3 @@
   (debug-menus-handler *debug-menu-context*)
   (debug-menus-handler *popup-menu-context*)
   )
-
-)

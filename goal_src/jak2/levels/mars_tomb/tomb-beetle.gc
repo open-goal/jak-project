@@ -7,10 +7,10 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-tomb-beetle tomb-beetle 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-tomb-beetle tomb-beetle tomb-beetle-lod0-jg -1
+              ((tomb-beetle-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0.6 0 2)
-              :shadow 2
+              :shadow tomb-beetle-shadow-mg
               )
 
 (deftype tomb-beetle-fly-info (structure)
@@ -88,7 +88,35 @@
                                        :proximity-notice-distance (meters 40)
                                        :default-hit-points 1
                                        :gnd-collide-with (collide-spec backgnd)
-                                       :penetrate-knocked #x11fffdffa
+                                       :penetrate-knocked (penetrate
+                                         generic-attack
+                                         flop
+                                         punch
+                                         spin
+                                         roll
+                                         uppercut
+                                         bonk
+                                         tube
+                                         vehicle
+                                         flut-attack
+                                         board
+                                         mech-punch
+                                         mech-bonk
+                                         dark-skin
+                                         dark-punch
+                                         dark-bomb
+                                         dark-giant
+                                         shield
+                                         explode
+                                         jak-yellow-shot
+                                         jak-red-shot
+                                         jak-blue-shot
+                                         jak-dark-shot
+                                         enemy-yellow-shot
+                                         enemy-dark-shot
+                                         eco-yellow
+                                         knocked
+                                         )
                                        :movement-gravity (meters -100)
                                        :friction 0.8
                                        :attack-shove-back (meters 3)
@@ -163,6 +191,8 @@
 (set! (-> *tomb-beetle-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (defmethod general-event-handler tomb-beetle ((obj tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (let ((v1-0 (new 'static 'array int64 2 -1 0)))
       (case arg2
@@ -339,8 +369,8 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+      (ja-no-eval :group! tomb-beetle-falling-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-falling-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -369,8 +399,8 @@
     (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
+    (ja-no-eval :group! tomb-beetle-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -381,14 +411,14 @@
           (s5-0 (the int (* 300.0 (rand-vu-float-range 1.1 2.3))))
           (f30-1 (rand-vu-float-range 0.8 1.4))
           )
-      (ja-no-eval :group! (-> self draw art-group data 5) :num! (loop! f30-1) :frame-num 0.0)
+      (ja-no-eval :group! tomb-beetle-wiggle-ja :num! (loop! f30-1) :frame-num 0.0)
       (until (>= (- (-> self clock frame-counter) gp-0) s5-0)
         (suspend)
         (ja :num! (loop! f30-1))
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data 6)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+    (ja-no-eval :group! tomb-beetle-flip-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-flip-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -455,11 +485,8 @@
             (f30-0 (rand-vu-float-range 1.8 1.2))
             )
         (dotimes (s5-0 gp-0)
-          (ja-no-eval :group! (-> self draw art-group data 7)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1))
-                        f30-0
-                        )
+          (ja-no-eval :group! tomb-beetle-run0-ja
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-run0-ja) frames num-frames) -1)) f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -467,11 +494,8 @@
             (ja :num! (seek! max f30-0))
             )
           )
-        (ja-no-eval :group! (-> self draw art-group data 8)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) frames num-frames) -1))
-                      f30-0
-                      )
+        (ja-no-eval :group! tomb-beetle-run1-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-run1-ja) frames num-frames) -1)) f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -507,15 +531,15 @@
     (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self state-timeout)))
+    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
         (go-virtual active)
         )
     (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 9)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+      (ja-no-eval :group! tomb-beetle-stand0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-stand0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -533,7 +557,7 @@
   :virtual #t
   :enter (behavior ()
     (let ((s5-0 (-> self fly-info))
-          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (&-> self stack 544)))
+          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (-> self fly-info 1)))
           )
       (set! (-> s5-0 0 dst quad) (the-as uint128 (the-as vector (-> self root-override2 trans quad))))
       (set! (-> gp-0 0 dst quad) (-> self entity extra trans quad))
@@ -567,14 +591,14 @@
     )
   :code (behavior ()
     (set! (-> self state-timeout)
-          (the-as time-frame (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.8)))))
+          (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.8))))
           )
     (let ((v1-6 (ja-group)))
       (cond
-        ((and v1-6 (= v1-6 (-> self draw art-group data 9)))
+        ((and v1-6 (= v1-6 tomb-beetle-stand0-ja))
          (ja-no-eval :num! (seek!))
          (while (not (ja-done? 0))
-           (if (>= (-> self clock frame-counter) (the-as time-frame (-> self state-timeout)))
+           (if (>= (-> self clock frame-counter) (-> self state-timeout))
                (goto cfg-20)
                )
            (suspend)
@@ -587,12 +611,12 @@
         )
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 9)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) frames num-frames) -1)))
+      (ja-no-eval :group! tomb-beetle-stand0-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-stand0-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (if (>= (-> self clock frame-counter) (the-as time-frame (-> self state-timeout)))
+        (if (>= (-> self clock frame-counter) (-> self state-timeout))
             (goto cfg-20)
             )
         (suspend)
@@ -602,7 +626,7 @@
     #f
     (label cfg-20)
     (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! 6.0) :frame-num 0.0)
+    (ja-no-eval :group! tomb-beetle-fly-takeoff-ja :num! (seek! 6.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! 6.0))
@@ -614,8 +638,8 @@
       (ja-eval)
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 11)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+      (ja-no-eval :group! tomb-beetle-fly-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-fly-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -663,7 +687,7 @@
         (quaternion-smooth-seek!
           (-> self root-override2 quat)
           (-> self root-override2 quat)
-          (the-as quaternion (&-> self stack 560))
+          (-> self fly-info 1 dst-quat)
           (* 12.0 (-> self clock seconds-per-frame))
           )
         )
@@ -809,7 +833,7 @@
     0
     (set! (-> self flying?) #f)
     (let ((s5-0 (-> self fly-info))
-          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (&-> self stack 544)))
+          (gp-0 (the-as (inline-array tomb-beetle-fly-info) (-> self fly-info 1)))
           )
       (cond
         ((nonzero? (-> self actor-group-count))
@@ -878,8 +902,8 @@
              (-> self fly-info (-> self dest-index) threshold)
              )
       (when (= (-> self dest-index) 1)
-        (set! (-> self root-override2 trans quad) (-> (the-as vector (&-> self stack 544)) quad))
-        (quaternion-copy! (-> self root-override2 quat) (the-as quaternion (&-> self stack 560)))
+        (set! (-> self root-override2 trans quad) (-> (the-as vector (-> self fly-info 1)) quad))
+        (quaternion-copy! (-> self root-override2 quat) (-> self fly-info 1 dst-quat))
         (go-virtual key)
         )
       (set! (-> self speed) 81920.0)
@@ -891,7 +915,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! 6.0) :frame-num 0.0)
+    (ja-no-eval :group! tomb-beetle-fly-takeoff-ja :num! (seek! 6.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! 6.0))
@@ -903,8 +927,8 @@
       (ja-eval)
       )
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 11)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+      (ja-no-eval :group! tomb-beetle-fly-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-fly-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -981,8 +1005,8 @@
     )
   :trans (the-as (function none :behavior tomb-beetle) ja-post)
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 12)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
+    (ja-no-eval :group! tomb-beetle-fly-land-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-beetle-fly-land-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -995,7 +1019,7 @@
   )
 
 (defmethod init-enemy-collision! tomb-beetle ((obj tomb-beetle))
-  "@abstract"
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1043,7 +1067,7 @@
   )
 
 (defmethod init-enemy! tomb-beetle ((obj tomb-beetle))
-  "@abstract"
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-beetle" (the-as (pointer uint32) #f)))

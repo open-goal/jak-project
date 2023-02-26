@@ -76,7 +76,7 @@
 
 ;; TODO - can't use a variable because :deps downstream doesn't take a proper list (can't pass it in quoted)
 ;; (define common-dep ("$OUT/obj/cty-guard-turret-button.o"))
-
+(cgo-file "cwi.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "lmeetbrt.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "cta.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "palout.gd" ("$OUT/obj/cty-guard-turret-button.o"))
@@ -150,7 +150,6 @@
 (cgo-file "unb.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "cpo.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "cap.gd" ("$OUT/obj/cty-guard-turret-button.o"))
-(cgo-file "cwi.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "lbbush.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "lpackage.gd" ("$OUT/obj/cty-guard-turret-button.o"))
 (cgo-file "ctykora.gd" ("$OUT/obj/cty-guard-turret-button.o"))

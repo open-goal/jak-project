@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_LAMBDA_H
-#define JAK_LAMBDA_H
-
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSpec.h"
 
@@ -19,4 +16,8 @@ struct Lambda {
   goos::Object body;
 };
 
-#endif  // JAK_LAMBDA_H
+struct InlineableFunction {
+  Lambda lambda;
+  TypeSpec type;
+  bool inline_by_default = false;
+};

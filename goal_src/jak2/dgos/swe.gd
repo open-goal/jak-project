@@ -1,26 +1,26 @@
 ("SWE.DGO"
-  ("tpage-1370.go" "tpage-1370")
-  ("tpage-1387.go" "tpage-1387")
-  ("tpage-1371.go" "tpage-1371")
-  ("tpage-2293.go" "tpage-2293")
-  ("tpage-3478.go" "tpage-3478")
-  ("tpage-3415.go" "tpage-3415")
-  ("jinx-ag.go" "jinx")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("jak-highres-ag.go" "jak-highres")
-  ("hosehead-ag.go" "hosehead")
-  ("sew-wall-ag.go" "sew-wall")
-  ("sew-mar-statue-explode-ag.go" "sew-mar-statue-explode")
-  ("sew-multi-blade-ag.go" "sew-multi-blade")
-  ("mar-statue-ag.go" "sew-mar-statue")
-  ("sew-twist-blade-ag.go" "sew-twist-blade")
-  ("heart-of-mar-ag.go" "heart-of-mar")
-  ("mine-a-ag.go" "sew-mine-a")
-  ("mine-b-ag.go" "sew-mine-b")
-  ("sew-arm-blade-ag.go" "sew-arm-blade")
-  ("light-switch-ag.go" "sew-light-switch")
-  ("jinx-bomb-ag.go" "jinx-bomb")
-  ("grill-ag.go" "sew-grill")
-  ("particleman-ag.go" "particleman")
-  ("sewesc-vis.go" "sewesc-vis")
-  )
+ ("tpage-1370.go"
+  "tpage-1387.go"
+  "tpage-1371.go"
+  "tpage-2293.go"
+  "tpage-3478.go"
+  "tpage-3415.go"
+  "jinx-ag.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "hosehead-ag.go"
+  "sew-wall-ag.go"
+  "sew-mar-statue-explode-ag.go"
+  "sew-multi-blade-ag.go"
+  "mar-statue-ag.go"
+  "sew-twist-blade-ag.go"
+  "heart-of-mar-ag.go"
+  "mine-a-ag.go"
+  "mine-b-ag.go"
+  "sew-arm-blade-ag.go"
+  "light-switch-ag.go"
+  "jinx-bomb-ag.go"
+  "grill-ag.go"
+  "particleman-ag.go"
+  "sewesc-vis.go"
+ ))

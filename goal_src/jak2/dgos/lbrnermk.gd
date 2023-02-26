@@ -1,10 +1,10 @@
 ("LBRNERMK.DGO"
-  ("metalkor-texture.o" "metalkor-texture")
-  ("tpage-2558.go" "tpage-2558")
-  ("tpage-2801.go" "tpage-2801")
-  ("tpage-3267.go" "tpage-3267")
-  ("errol-highres-ag.go" "errol-highres")
-  ("baron-highres-ag.go" "baron-highres")
-  ("metalkor-head-ag.go" "metalkor-head")
-  ("lbrnermk.go" "lbrnermk")
-  )
+ ("metalkor-texture.o"
+  "tpage-2558.go"
+  "tpage-2801.go"
+  "tpage-3267.go"
+  "errol-highres-ag.go"
+  "baron-highres-ag.go"
+  "metalkor-head-ag.go"
+  "lbrnermk.go"
+ ))

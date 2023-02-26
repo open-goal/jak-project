@@ -1,54 +1,54 @@
 ("VI2.DGO"
-  ("villagep-obs.o" "villagep-obs")
-  ("oracle.o" "oracle")
-  ("village2-part.o" "village2-part")
-  ("village2-obs.o" "village2-obs")
-  ("village2-part2.o" "village2-part2")
-  ("gambler.o" "gambler")
-  ("warrior.o" "warrior")
-  ("geologist.o" "geologist")
-  ("swamp-blimp.o" "swamp-blimp")
-  ("sage-bluehut.o" "sage-bluehut")
-  ("flutflut-bluehut.o" "flutflut-bluehut")
-  ("assistant-village2.o" "assistant-village2")
-  ("sunken-elevator.o" "sunken-elevator")
-  ("tpage-919.go" "tpage-919")
-  ("tpage-922.go" "tpage-922")
-  ("tpage-920.go" "tpage-920")
-  ("tpage-921.go" "tpage-921")
-  ("tpage-1476.go" "tpage-1476")
-  ("allpontoons-ag.go" "allpontoons")
-  ("assistant-village2-ag.go" "assistant-village2")
-  ("barrel-ag.go" "barrel")
-  ("ceilingflag-ag.go" "ceilingflag")
-  ("exit-chamber-dummy-ag.go" "exit-chamber-dummy")
-  ("fireboulder-ag.go" "fireboulder")
-  ("flutflut-bluehut-ag.go" "flutflut-bluehut")
-  ("gambler-ag.go" "gambler")
-  ("geologist-ag.go" "geologist")
-  ("jaws-ag.go" "jaws")
-  ("medres-rolling-ag.go" "medres-rolling")
-  ("medres-rolling1-ag.go" "medres-rolling1")
-  ("medres-village2-ag.go" "medres-village2")
-  ("ogreboss-village2-ag.go" "ogreboss-village2")
-  ("oracle-ag.go" "oracle")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("pontoonfive-ag.go" "pontoonfive")
-  ("pontoonten-ag.go" "pontoonten")
-  ("precursor-arm-ag.go" "precursor-arm")
-  ("sage-bluehut-ag.go" "sage-bluehut")
-  ("sharkey-ag.go" "sharkey")
-  ("sunken-elevator-ag.go" "sunken-elevator")
-  ("swamp-blimp-ag.go" "swamp-blimp")
-  ("swamp-rope-ag.go" "swamp-rope")
-  ("swamp-tetherrock-ag.go" "swamp-tetherrock")
-  ("swamp-tetherrock-explode-ag.go" "swamp-tetherrock-explode")
-  ("swampcam-ag.go" "swampcam")
-  ("village-cam-ag.go" "village-cam")
-  ("village2cam-ag.go" "village2cam")
-  ("warp-gate-switch-ag.go" "warp-gate-switch")
-  ("warpgate-ag.go" "warpgate")
-  ("warrior-ag.go" "warrior")
-  ("water-anim-village2-ag.go" "water-anim-village2")
-  ("village2-vis.go" "village2-vis")
-  )
+ ("villagep-obs.o"
+  "oracle.o"
+  "village2-part.o"
+  "village2-obs.o"
+  "village2-part2.o"
+  "gambler.o"
+  "warrior.o"
+  "geologist.o"
+  "swamp-blimp.o"
+  "sage-bluehut.o"
+  "flutflut-bluehut.o"
+  "assistant-village2.o"
+  "sunken-elevator.o"
+  "tpage-919.go"
+  "tpage-922.go"
+  "tpage-920.go"
+  "tpage-921.go"
+  "tpage-1476.go"
+  "allpontoons-ag.go"
+  "assistant-village2-ag.go"
+  "barrel-ag.go"
+  "ceilingflag-ag.go"
+  "exit-chamber-dummy-ag.go"
+  "fireboulder-ag.go"
+  "flutflut-bluehut-ag.go"
+  "gambler-ag.go"
+  "geologist-ag.go"
+  "jaws-ag.go"
+  "medres-rolling-ag.go"
+  "medres-rolling1-ag.go"
+  "medres-village2-ag.go"
+  "ogreboss-village2-ag.go"
+  "oracle-ag.go"
+  "orb-cache-top-ag.go"
+  "pontoonfive-ag.go"
+  "pontoonten-ag.go"
+  "precursor-arm-ag.go"
+  "sage-bluehut-ag.go"
+  "sharkey-ag.go"
+  "sunken-elevator-ag.go"
+  "swamp-blimp-ag.go"
+  "swamp-rope-ag.go"
+  "swamp-tetherrock-ag.go"
+  "swamp-tetherrock-explode-ag.go"
+  "swampcam-ag.go"
+  "village-cam-ag.go"
+  "village2cam-ag.go"
+  "warp-gate-switch-ag.go"
+  "warpgate-ag.go"
+  "warrior-ag.go"
+  "water-anim-village2-ag.go"
+  "village2-vis.go"
+ ))
