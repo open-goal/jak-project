@@ -3,8 +3,10 @@
 #include <ctime>
 
 #ifdef _WIN32
+// clang-format off
 #include <Windows.h>
 #include <WinNls.h>
+// clang-format on
 #endif
 
 namespace ee {
