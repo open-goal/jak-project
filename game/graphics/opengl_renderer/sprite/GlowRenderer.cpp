@@ -492,6 +492,7 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 void GlowRenderer::draw_debug_window() {
   ImGui::Checkbox("Show Probes", &m_debug.show_probes);
   ImGui::Checkbox("Show Copy", &m_debug.show_probe_copies);
+  ImGui::SliderFloat("Boost Glow", &m_debug.glow_boost, 0, 10);
   ImGui::Text("Count: %d", m_debug.num_sprites);
 }
 
@@ -681,7 +682,12 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   render_state->shaders[ShaderId::GLOW_DRAW].activate();
-  glEnable(GL_DEPTH_TEST);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::GLOW_DRAW].id(), "glow_boost"),
+              m_debug.glow_boost);
+
+  // on PS2's, it's enabled but all sprite z's are UINT24_MAX, so it always passes.
+  // this z-override is done in VU1 code and we don't replicate it here.
+  glDisable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
   glEnable(GL_BLEND);
   // Cv = (Cs - 0) * Ad + D
@@ -723,6 +729,7 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
     prof.add_tri(2);
     glDrawElements(GL_TRIANGLE_STRIP, 5, GL_UNSIGNED_INT, (void*)(record.idx * sizeof(u32)));
   }
+  glEnable(GL_DEPTH_TEST);
 }
 
 GlowRenderer::Vertex* GlowRenderer::alloc_vtx(int num) {
