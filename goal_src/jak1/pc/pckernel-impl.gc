@@ -59,14 +59,21 @@
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj)
-  (set! (-> obj text-language) (case *jak1-territory*
-                                    ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
-                                    (else (pc-subtitle-lang english))))
+  (set! (-> obj text-language) (the pc-subtitle-lang (scf-get-language)))
+  (set! (-> obj subtitle-language) (the pc-subtitle-lang (scf-get-language)))
   (set! (-> obj skip-movies?) #t)
   (set! (-> obj subtitles?) *debug-segment*)
-  (set! (-> obj subtitle-language) (case *jak1-territory*
-                                        ((GAME_TERRITORY_SCEE) (pc-subtitle-lang uk-english))
-                                        (else (pc-subtitle-lang english))))
+  (cond
+    ((and (= *jak1-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-subtitle-lang english)))
+      (set! (-> obj text-language) (pc-subtitle-lang uk-english))
+      ;(set! (-> obj subtitle-language) (pc-subtitle-lang uk-english))
+      )
+    ((= *jak1-territory* GAME_TERRITORY_SCEI)
+      (set! (-> obj text-language) (pc-subtitle-lang japanese))
+      ;(set! (-> obj subtitle-language) (pc-subtitle-lang japanese))
+      )
+    (else
+      ))
   (set! (-> obj money-starburst?) #f)
   (set! (-> obj extra-hud?) #f)
   (none))
