@@ -93,7 +93,7 @@ s32 format_impl_jak2(uint64_t* args) {
   // read goal binteger
   if (print_column.offset) {
     // added the if check so we can format even if the kernel didn't load right.
-    indentation = (*print_column) >> 3;
+    indentation = (*(print_column - 1)) >> 3;
   }
 
   // which arg we're on
