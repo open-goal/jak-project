@@ -31757,7 +31757,7 @@
    (temp-edge-list   (inline-array mysql-nav-edge)          :offset-assert 8)
    (level-node-index int32          :offset-assert 12)
    (cam-dist         float          :offset-assert 16)
-   (visible          basic          :offset-assert 20)
+   (visible          symbol         :offset-assert 20)
    (nav_node_id      uint32         :offset-assert 24)
    (nav_graph_id     uint32         :offset-assert 28)
    (position         vector :inline :offset-assert 32)
@@ -35842,7 +35842,6 @@
 ;; hover-nav-edit                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-nav-bsp-point (list-node)
   ((index int32          :offset-assert 8)
    (pos   vector :inline :offset-assert 16)
@@ -35851,9 +35850,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype hover-nav-bsp-node (structure)
   ((split-plane vector              :inline :offset-assert 0)
    (point-list  hover-nav-bsp-point         :offset-assert 16)
@@ -35864,13 +35861,11 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
-    (hover-nav-bsp-node-method-9 () none 9)
-    (hover-nav-bsp-node-method-10 () none 10)
+    (hover-nav-bsp-node-method-9 (_type_) none 9)
+    (hover-nav-bsp-node-method-10 (_type_ int) none 10)
     )
   )
-|#
 
-#|
 (deftype hover-nav-bsp (structure)
   ((root hover-nav-bsp-node  :offset-assert 0)
    )
@@ -35878,16 +35873,15 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern probe-for-clear-collision? function)
-;; (define-extern hover-nav-graph-process-points function)
-;; (define-extern hover-nav-graph-output function)
-;; (define-extern *axes-table* array)
-;; (define-extern *hover-bsp* object)
-;; (define-extern hover-nav-graph-output-bsp function)
-;; (define-extern hover-nav-network-build-bsp function)
-;; (define-extern hover-nav-bsp-output function)
+(define-extern probe-for-clear-collision? (function vector vector symbol))
+(define-extern hover-nav-graph-process-points (function none))
+(define-extern hover-nav-graph-output (function none))
+(define-extern *axes-table* (array vector))
+(define-extern *hover-bsp* hover-nav-bsp)
+(define-extern hover-nav-graph-output-bsp (function hover-nav-bsp))
+(define-extern hover-nav-network-build-bsp (function hover-nav-bsp-node none))
+(define-extern hover-nav-bsp-output (function hover-nav-bsp none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasp-part                      ;;
@@ -45365,7 +45359,7 @@
   (:methods
     (idle () _type_ :state 27)
     (stad-force-field-method-28 (_type_) none 28)
-    (stad-force-field-method-29 (_type_ vector) none 29))
+    (stad-force-field-method-29 (_type_ touching-shapes-entry) int 29))
   )
 
 (deftype stad-c-force-field (stad-force-field)
@@ -46873,27 +46867,6 @@
   :size-assert         #xb0
   :flag-assert         #x10003000b0
   )
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; helldog                        ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype helldog (hellcat)
-  ((current-level basic  :offset-assert 1076)
-   )
-  :method-count-assert 159
-  :size-assert         #x43c
-  :flag-assert         #x9f03c0043c
-  (:methods
-    )
-  )
-|#
-
-;; (define-extern *helldog-constants* object)
-;; (define-extern *helldog-front-turret-control-info* object)
-;; (define-extern *helldog-top-turret-control-info* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-dummy                      ;;
@@ -50957,6 +50930,24 @@
 (define-extern *carc-constants* rigid-body-vehicle-constants)
 (define-extern *hellcat-constants* rigid-body-vehicle-constants)
 (define-extern *hellcat-front-turret-control-info* turret-control-info)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; helldog                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype helldog (hellcat)
+  ((current-level level  :offset-assert 1080)
+   )
+  :method-count-assert 159
+  :size-assert         #x43c
+  :flag-assert         #x9f03c0043c
+  (:methods
+    )
+  )
+
+(define-extern *helldog-constants* rigid-body-vehicle-constants)
+(define-extern *helldog-front-turret-control-info* turret-control-info)
+(define-extern *helldog-top-turret-control-info* turret-control-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test-bike                      ;;
