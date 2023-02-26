@@ -15,6 +15,7 @@ class Shader {
   u64 id() const { return m_program; }
 
  private:
+  std::string m_name;
   u64 m_frag_shader = 0;
   u64 m_vert_shader = 0;
   u64 m_program = 0;
