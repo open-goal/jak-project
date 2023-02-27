@@ -5,56 +5,59 @@
 ;; name in dgo: texture
 ;; dgos: ENGINE, GAME
 
-;; Jak 2 texture system:
-;; At a high level, the responsibility of the texture system is to make sure that each renderer
-;; can use the textures it needs: the texture should be in VRAM at the right point in time, and
-;; the renderer must know where the texture is in VRAM.
+#|@file
+Jak 2 texture system:
+At a high level, the responsibility of the texture system is to make sure that each renderer
+can use the textures it needs: the texture should be in VRAM at the right point in time, and
+the renderer must know where the texture is in VRAM.
 
-;; An oversimplified explanation is that each "bucket" in the rendering system needs a single
-;; "texture page" (tpage) loaded into VRAM. Each level has a tpage for each category, where the
-;; categories are:
+An oversimplified explanation is that each "bucket" in the rendering system needs a single
+"texture page" (tpage) loaded into VRAM. Each level has a tpage for each category, where the
+categories are:
 
-;; tfrag (background tie/tfrag)
-;; pris  (foreground)
-;; shrub (background shrub)
-;; alpha
-;; water
-;; warp
-;; pris2
-;; sprite
-;; map
-;; sky
+tfrag (background tie/tfrag)
+pris  (foreground)
+shrub (background shrub)
+alpha
+water
+warp
+pris2
+sprite
+map
+sky
 
-;; From the point of view of the rendering code, this oversimplification is basically true.
-;; Renderers use textures by sending "adgif shaders" to the GS. These tell the GS how to use
-;; the texture (mipmapping, size, format) and the location of the texture in VRAM (tbp).
-;; When levels load, they must "log in" their adgif shaders with the texture system, and the texture
-;; system will modify these in place so that things work.
+From the point of view of the rendering code, this oversimplification is basically true.
+Renderers use textures by sending "adgif shaders" to the GS. These tell the GS how to use
+the texture (mipmapping, size, format) and the location of the texture in VRAM (tbp).
+When levels load, they must "log in" their adgif shaders with the texture system, and the texture
+system will modify these in place so that things work.
 
-;; However, behind the scenes, there are many tricks.
+However, behind the scenes, there are many tricks.
 
-;; Texture data falls into two categories:
-;; - boot
-;; - common
+Texture data falls into two categories:
+- boot
+- common
 
-;; "boot"   textures are ones that are loaded on boot, transferred to VRAM, and live there forever.
-;; "common" textures are ones that are loaded as they are needed. There's an area in VRAM
-;;          called the "common segment" that holds these.
+"boot"   textures are ones that are loaded on boot, transferred to VRAM, and live there forever.
+"common" textures are ones that are loaded as they are needed. There's an area in VRAM
+         called the "common segment" that holds these.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; basic texture page methods
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+basic texture page methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; each "texture page" is a group of textures that are (from the point of view of renderers)
-;; loaded all at once to vram, and contain all the textures needed for one category in one level.
+each "texture page" is a group of textures that are (from the point of view of renderers)
+loaded all at once to vram, and contain all the textures needed for one category in one level.
 
-;; however, the texture system does some tricks:
-;; texture pages are divided into three "segments". The smaller number segments contain high
-;; resolution mipmaps of textures (needed for close up), and the high number segments contain lower ones.
-;; by looking at the distance to the closest object, we can figure out if the near textures
-;; are needed or not, and skip segments if needed.
+however, the texture system does some tricks:
+texture pages are divided into three "segments". The smaller number segments contain high
+resolution mipmaps of textures (needed for close up), and the high number segments contain lower ones.
+by looking at the distance to the closest object, we can figure out if the near textures
+are needed or not, and skip segments if needed.
 
-;; additionally, some texture pages have a chunk system that allows more specific control.
+additionally, some texture pages have a chunk system that allows more specific control.
+|#
+
 
 (defmethod print texture-page ((obj texture-page))
   "Print a texture page with name and size."

@@ -5,19 +5,25 @@
 ;; name in dgo: level
 ;; dgos: ENGINE, GAME
 
+#|@file
+the level heap is a giant block of memory which is seperated into "pages" so that it can easily
+be split into different sizes for the different kinds of level sizes.
+
+it is split into 6 sections, 24-24-25-25-24-24 pages large.
+this means the "center" portion of the main level heap is actually "larger"
+
+which is why there is a special small-center level memory mode for two-section
+levels that want to be placed in the middle of the heap for that slight size boost.
+
+some code checks for 7 bits in the memory mask, indicating the heap was originally split
+into 7 sections, which might explain the weird sizes in the center.
+|#
+
 ;; DECOMP BEGINS
 
 (define-extern level-update-after-load (function level login-state level))
 (define-extern *level-type-list* type)
 
-;; the level heap is a giant block of memory which is seperated into "pages" so that it can easily
-;; be split into different sizes for the different kinds of level sizes.
-;; it is split into 6 sections, 24-24-25-25-24-24 pages large.
-;; this means the "center" portion of the main level heap is actually "larger"
-;; which is why there is a special small-center level memory mode for two-section
-;; levels that want to be placed in the middle of the heap for that slight size boost.
-;; some code checks for 7 bits in the memory mask, indicating the heap was originally split
-;; into 7 sections, which might explain the weird sizes in the center.
 (defglobalconstant NUM_LEVEL_PAGES 146)
 (defglobalconstant LEVEL_PAGE_SIZE_KB 126) ;; original value
 (defglobalconstant LEVEL_PAGE_SIZE (* LEVEL_PAGE_SIZE_KB 1024)) ;; original value
