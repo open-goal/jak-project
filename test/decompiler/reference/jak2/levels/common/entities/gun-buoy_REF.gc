@@ -1,17 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gun-buoy.gc
-;; name in dgo: gun-buoy
-;; dgos: ATO, NESTT, NES, LPROTECT
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-gun-buoy gun-buoy gun-buoy-lod0-jg gun-buoy-idle-ja
               ((gun-buoy-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 1.3 -0.4 3)
               )
 
+;; definition of type gun-buoy-shot
 (deftype gun-buoy-shot (guard-shot)
   ()
   :heap-base #x170
@@ -20,7 +16,22 @@
   :flag-assert         #x28017001f0
   )
 
+;; definition for method 3 of type gun-buoy-shot
+(defmethod inspect gun-buoy-shot ((obj gun-buoy-shot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type guard-shot inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttail-pos: #<vector @ #x~X>~%" (-> obj tail-pos))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 28 of type gun-buoy-shot
+;; WARN: Return type mismatch int vs none.
 (defmethod play-impact-sound gun-buoy-shot ((obj gun-buoy-shot) (arg0 projectile-options))
   (if (zero? arg0)
       (sound-play "buoy-shot")
@@ -29,6 +40,9 @@
   (none)
   )
 
+;; definition for function gun-buoy-shot-move
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun gun-buoy-shot-move ((arg0 gun-buoy-shot))
   (local-vars (at-0 int))
   (with-pp
@@ -105,6 +119,8 @@
     )
   )
 
+;; definition for method 30 of type gun-buoy-shot
+;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-collision! gun-buoy-shot ((obj gun-buoy-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -152,6 +168,8 @@
   (none)
   )
 
+;; definition for method 31 of type gun-buoy-shot
+;; INFO: Used lq/sq
 (defmethod init-proj-settings! gun-buoy-shot ((obj gun-buoy-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> obj hit-actor?) #f)
@@ -166,6 +184,7 @@
   (none)
   )
 
+;; definition for symbol *gun-buoy-nav-enemy-info*, type nav-enemy-info
 (define *gun-buoy-nav-enemy-info*
   (new 'static 'nav-enemy-info
     :use-die-falling #f
@@ -271,8 +290,10 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *gun-buoy-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition of type gun-buoy
 (deftype gun-buoy (nav-enemy)
   ((gun-elev-jmod      joint-mod          :offset-assert 604)
    (start-pos          vector     :inline :offset-assert 608)
@@ -307,15 +328,53 @@
     )
   )
 
+;; definition for method 3 of type gun-buoy
+(defmethod inspect gun-buoy ((obj gun-buoy))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tgun-elev-jmod: ~A~%" (-> obj gun-elev-jmod))
+  (format #t "~2Tstart-pos: #<vector @ #x~X>~%" (-> obj start-pos))
+  (format #t "~2Taim-dir: #<vector @ #x~X>~%" (-> obj aim-dir))
+  (format #t "~2Tfocus-pos: #<vector @ #x~X>~%" (-> obj focus-pos))
+  (format #t "~2Tbanking-quat: #<quaternion @ #x~X>~%" (-> obj banking-quat))
+  (format #t "~2Toffset-from-player: #<vector @ #x~X>~%" (-> obj offset-from-player))
+  (format #t "~2Toffset-y-angular: ~f~%" (-> obj offset-y-angular))
+  (format #t "~2Telev-angle: ~f~%" (-> obj elev-angle))
+  (format #t "~2Ty-final: ~f~%" (-> obj y-final))
+  (format #t "~2Ty-offset: ~f~%" (-> obj y-offset))
+  (format #t "~2Ty-bob: ~f~%" (-> obj y-bob))
+  (format #t "~2Ty-speed: ~f~%" (-> obj y-speed))
+  (format #t "~2Twarning-interval: ~D~%" (-> obj warning-interval))
+  (format #t "~2Twarning-timer: ~D~%" (-> obj warning-timer))
+  (format #t "~2Tsplash-timer: ~D~%" (-> obj splash-timer))
+  (format #t "~2Tstare-down-timer: ~D~%" (-> obj stare-down-timer))
+  (format #t "~2Twarning-id: ~D~%" (-> obj warning-id))
+  (format #t "~2Tvoice-id: ~D~%" (-> obj voice-id))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol *gun-buoy-warning-speech*, type (array string)
 (define *gun-buoy-warning-speech* (new 'static 'boxed-array :type string "cityv047" "cityv048"))
 
+;; definition for symbol *gun-buoy-warning-index*, type int
 (define *gun-buoy-warning-index* 0)
 
+;; definition for symbol *gun-buoy-victory-speech*, type (array string)
 (define *gun-buoy-victory-speech* (new 'static 'boxed-array :type string "cityv050" "cityv051"))
 
+;; definition for symbol *gun-buoy-victory-index*, type int
 (define *gun-buoy-victory-index* 0)
 
+;; definition for function gun-buoy-chase-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior gun-buoy-chase-post gun-buoy ()
   (let ((gp-0 (handle->process (-> self focus handle))))
     (when gp-0
@@ -387,6 +446,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate dormant-aware (gun-buoy)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -417,6 +477,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate ambush (gun-buoy)
   :virtual #t
   :enter (behavior ()
@@ -536,6 +597,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate exit-ambush (gun-buoy)
   :virtual #t
   :enter (behavior ()
@@ -576,6 +638,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate open-guns (gun-buoy)
   :virtual #t
   :trans (behavior ()
@@ -640,6 +703,7 @@
   :post gun-buoy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate stare-down (gun-buoy)
   :virtual #t
   :enter (behavior ()
@@ -682,6 +746,7 @@
   :post gun-buoy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate warning (gun-buoy)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
@@ -770,6 +835,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hostile (gun-buoy)
   :virtual #t
   :enter (behavior ()
@@ -818,6 +884,7 @@
   :post gun-buoy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate attack (gun-buoy)
   :virtual #t
   :trans (behavior ()
@@ -867,6 +934,7 @@
   :post gun-buoy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate victory (gun-buoy)
   :virtual #t
   :enter (behavior ()
@@ -901,6 +969,7 @@
   :post gun-buoy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate active (gun-buoy)
   :virtual #t
   :code (behavior ()
@@ -909,6 +978,7 @@
     )
   )
 
+;; definition for method 74 of type gun-buoy
 (defmethod general-event-handler gun-buoy ((obj gun-buoy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
@@ -922,6 +992,9 @@
     )
   )
 
+;; definition for method 55 of type gun-buoy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod track-target! gun-buoy ((obj gun-buoy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
@@ -998,6 +1071,7 @@
     )
   )
 
+;; definition for method 70 of type gun-buoy
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile gun-buoy ((obj gun-buoy))
   (if (logtest? (-> obj flags) 2)
@@ -1007,10 +1081,12 @@
   (none)
   )
 
+;; definition for method 61 of type gun-buoy
 (defmethod enemy-method-61 gun-buoy ((obj gun-buoy) (arg0 int))
   arg0
   )
 
+;; definition for method 98 of type gun-buoy
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 40. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod in-aggro-range? gun-buoy ((obj gun-buoy) (arg0 process-focusable) (arg1 vector))
@@ -1081,6 +1157,8 @@
     )
   )
 
+;; definition for method 183 of type gun-buoy
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs none.
 (defmethod gun-buoy-method-183 gun-buoy ((obj gun-buoy) (arg0 process-focusable))
   (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8)))
@@ -1116,6 +1194,8 @@
   (none)
   )
 
+;; definition for method 142 of type gun-buoy
+;; WARN: Return type mismatch int vs none.
 (defmethod nav-enemy-method-142 gun-buoy ((obj gun-buoy) (arg0 nav-control))
   (local-vars (a0-19 int) (a0-21 int))
   (with-pp
@@ -1194,6 +1274,7 @@
     )
   )
 
+;; definition for method 7 of type gun-buoy
 ;; WARN: Return type mismatch nav-enemy vs gun-buoy.
 (defmethod relocate gun-buoy ((obj gun-buoy) (arg0 int))
   (if (nonzero? (-> obj gun-elev-jmod))
@@ -1202,6 +1283,7 @@
   (the-as gun-buoy ((method-of-type nav-enemy relocate) obj arg0))
   )
 
+;; definition for method 114 of type gun-buoy
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! gun-buoy ((obj gun-buoy))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
@@ -1257,6 +1339,9 @@
   (none)
   )
 
+;; definition for method 115 of type gun-buoy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! gun-buoy ((obj gun-buoy))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
@@ -1307,3 +1392,7 @@
   (set! (-> obj warning-id) (the-as sound-id -1))
   (none)
   )
+
+
+
+
