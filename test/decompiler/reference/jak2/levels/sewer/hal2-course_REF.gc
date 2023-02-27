@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: hal2-course.gc
-;; name in dgo: hal2-course
-;; dgos: SEB, SWB
-
-;; DECOMP BEGINS
-
+;; definition of type hal2-course
 (deftype hal2-course (bot-course)
   ((sentries1-reminders (array int16)    :offset-assert  48)
    (sentries2-reminders (array int16)    :offset-assert  52)
@@ -17,7 +12,34 @@
   :flag-assert         #x90000003c
   )
 
+;; definition for method 3 of type hal2-course
+(defmethod inspect hal2-course ((obj hal2-course))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tcourse-id: ~D~%" (-> obj course-id))
+  (format #t "~1Tspeech-count: ~D~%" (-> obj speech-count))
+  (format #t "~1Tspot-count: ~D~%" (-> obj spot-count))
+  (format #t "~1Tretry-cookie: ~D~%" (-> obj retry-cookie))
+  (format #t "~1Ttoo-far-warn-speeches: ~A~%" (-> obj too-far-warn-speeches))
+  (format #t "~1Ttoo-far-fail-speeches: ~A~%" (-> obj too-far-fail-speeches))
+  (format #t "~1Tattack-player-speeches: ~A~%" (-> obj attack-player-speeches))
+  (format #t "~1Tdefault-check-too-far: ~A~%" (-> obj default-check-too-far))
+  (format #t "~1Twaypoints: ~A~%" (-> obj waypoints))
+  (format #t "~1Tspeeches: #x~X~%" (-> obj speeches))
+  (format #t "~1Tspeech-tunings: #x~X~%" (-> obj speech-tunings))
+  (format #t "~1Tdirs: #x~X~%" (-> obj dirs))
+  (format #t "~1Tspots: #x~X~%" (-> obj spots))
+  (format #t "~1Tsentries1-reminders: ~A~%" (-> obj sentries1-reminders))
+  (format #t "~1Tsentries2-reminders: ~A~%" (-> obj sentries2-reminders))
+  (format #t "~1Tbomb2-reminders: ~A~%" (-> obj bomb2-reminders))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type hal-sewer
 (deftype hal-sewer (hal)
   ((hal2-course              hal2-course         :offset        652)
    (sentries1-reminder-index int8                :offset-assert 1024)
@@ -37,7 +59,23 @@
     )
   )
 
+;; definition for method 3 of type hal-sewer
+(defmethod inspect hal-sewer ((obj hal-sewer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hal inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsentries1-reminder-index: ~D~%" (-> obj sentries1-reminder-index))
+  (format #t "~2Tsentries2-reminder-index: ~D~%" (-> obj sentries2-reminder-index))
+  (format #t "~2Ttest-plane: #<plane @ #x~X>~%" (-> obj test-plane))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 116 of type hal-sewer
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-idle hal-sewer ((obj hal-sewer))
   (cond
@@ -52,6 +90,7 @@
   (none)
   )
 
+;; definition for method 210 of type hal-sewer
 ;; WARN: Return type mismatch float vs none.
 (defmethod init! hal-sewer ((obj hal-sewer))
   "Set defaults for various fields."
@@ -63,6 +102,7 @@
   (none)
   )
 
+;; definition for method 74 of type hal-sewer
 (defmethod general-event-handler hal-sewer ((obj hal-sewer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
@@ -84,6 +124,7 @@
     )
   )
 
+;; definition for function hal2-default-check-too-far
 (defun hal2-default-check-too-far ((arg0 hal-sewer))
   (let ((s5-0 (-> *target* control trans))
         (f30-0 40960000.0)
@@ -127,6 +168,7 @@
     )
   )
 
+;; definition for function hal2-near-start-check-too-far
 (defun hal2-near-start-check-too-far ((arg0 hal-sewer))
   (let ((gp-0 0))
     (let ((v1-0 (target-pos 0)))
@@ -146,6 +188,7 @@
     )
   )
 
+;; definition for function hal2-below-elevator-a-check-too-far
 (defun hal2-below-elevator-a-check-too-far ((arg0 hal-sewer))
   (let ((gp-0 0))
     (if (and (>= (-> (target-pos 0) y) -212402.17) (>= (-> (get-trans *target* 1) y) -212402.17))
@@ -155,6 +198,7 @@
     )
   )
 
+;; definition for function hal2-force-fail-check-too-far
 (defun hal2-force-fail-check-too-far ((arg0 hal-sewer))
   (let ((gp-0 0))
     (if (and (not (channel-active? arg0 (the-as uint 0))) (logtest? (bot-flags bf24) (-> arg0 bot-flags)))
@@ -164,6 +208,7 @@
     )
   )
 
+;; definition for function hal2-onslaught-check-too-far
 (defun hal2-onslaught-check-too-far ((arg0 hal-sewer))
   (let ((gp-0 (hal2-default-check-too-far arg0)))
     (if (>= 1884160.0 (-> (target-pos 0) z))
@@ -173,6 +218,7 @@
     )
   )
 
+;; definition for method 229 of type hal-sewer
 (defmethod hal-sewer-method-229 hal-sewer ((obj hal-sewer))
   (let ((a0-1 *target*))
     (when a0-1
@@ -187,6 +233,7 @@
     )
   )
 
+;; definition for method 231 of type hal-sewer
 (defmethod hal-sewer-method-231 hal-sewer ((obj hal-sewer) (arg0 int))
   (countdown (v1-0 3)
     (let* ((a2-4 (-> obj actor-group 0 data (+ arg0 v1-0) actor))
@@ -203,6 +250,8 @@
   #t
   )
 
+;; definition for method 230 of type hal-sewer
+;; INFO: Used lq/sq
 (defmethod hal-sewer-method-230 hal-sewer ((obj hal-sewer) (arg0 process-focusable) (arg1 process-focusable))
   (when (and arg0 arg1)
     (let ((gp-0 (new 'stack-no-clear 'collide-query)))
@@ -222,6 +271,7 @@
     )
   )
 
+;; definition for method 227 of type hal-sewer
 (defmethod hal-sewer-method-227 hal-sewer ((obj hal-sewer))
   (let* ((a0-1 (-> obj actor-group 0 data 1 actor))
          (v1-3 (if a0-1
@@ -272,6 +322,7 @@
     )
   )
 
+;; definition for method 228 of type hal-sewer
 ;; WARN: Return type mismatch bot-flags vs none.
 (defmethod hal-sewer-method-228 hal-sewer ((obj hal-sewer))
   (with-pp
@@ -384,6 +435,7 @@
     )
   )
 
+;; definition for symbol *hal2-course*, type hal2-course
 (define *hal2-course*
   (new 'static 'hal2-course
     :course-id #x5
@@ -4195,4 +4247,9 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *bot-course-table* course 5) *hal2-course*)
+
+
+
+

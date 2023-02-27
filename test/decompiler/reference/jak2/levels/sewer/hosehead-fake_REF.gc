@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: hosehead-fake.gc
-;; name in dgo: hosehead-fake
-;; dgos: SEB, SWB
-
-(define-extern spawn-hosehead-fakes (function none))
-(define-extern hosehead-fake-trigger (function int symbol))
-
-;; DECOMP BEGINS
-
+;; definition of type hosehead-fake-spawn-info
 (deftype hosehead-fake-spawn-info (basic)
   ((id        int32              :offset-assert   4)
    (walk-dist float              :offset-assert   8)
@@ -30,7 +22,31 @@
   :flag-assert         #x900000040
   )
 
+;; definition for method 3 of type hosehead-fake-spawn-info
+(defmethod inspect hosehead-fake-spawn-info ((obj hosehead-fake-spawn-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Twalk-dist: ~f~%" (-> obj walk-dist))
+  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
+  (format #t "~1Ttrans-x: ~f~%" (-> obj trans x))
+  (format #t "~1Ttrans-y: ~f~%" (-> obj trans y))
+  (format #t "~1Ttrans-z: ~f~%" (-> obj trans z))
+  (format #t "~1Ttrans-w: ~f~%" (-> obj trans w))
+  (format #t "~1Tquat-x: ~f~%" (-> obj quat x))
+  (format #t "~1Tquat-y: ~f~%" (-> obj quat y))
+  (format #t "~1Tquat-z: ~f~%" (-> obj quat z))
+  (format #t "~1Tquat-w: ~f~%" (-> obj quat w))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type hosehead-fake
 (deftype hosehead-fake (process-drawable)
   ((info      hosehead-fake-spawn-info         :offset-assert 200)
    (id        int32                            :offset-assert 204)
@@ -49,7 +65,24 @@
     )
   )
 
+;; definition for method 3 of type hosehead-fake
+(defmethod inspect hosehead-fake ((obj hosehead-fake))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinfo: ~A~%" (-> obj info))
+  (format #t "~2Tid: ~D~%" (-> obj id))
+  (format #t "~2Twalk-dest: #<vector @ #x~X>~%" (-> obj walk-dest))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for method 24 of type hosehead-fake
+;; WARN: Return type mismatch int vs none.
 (defmethod print-def hosehead-fake ((obj hosehead-fake))
   (let ((s5-0 (-> obj root)))
     (format #t "~%")
@@ -77,6 +110,7 @@
   (none)
   )
 
+;; definition for method 23 of type hosehead-fake
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod debug-draw hosehead-fake ((obj hosehead-fake))
   (let ((a2-0 (-> obj info)))
@@ -97,6 +131,8 @@
   (none)
   )
 
+;; definition for function hosehead-fake-event-handler
+;; INFO: Used lq/sq
 (defbehavior hosehead-fake-event-handler hosehead-fake ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('walk)
@@ -168,6 +204,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (hosehead-fake)
   :virtual #t
   :event hosehead-fake-event-handler
@@ -273,6 +310,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate walk (hosehead-fake)
   :virtual #t
   :event hosehead-fake-event-handler
@@ -316,11 +354,14 @@
   :post (-> (method-of-type hosehead-fake idle) post)
   )
 
+;; failed to figure out what this is:
 (defstate die-fast (hosehead-fake)
   :virtual #t
   :code (the-as (function none :behavior hosehead-fake) nothing)
   )
 
+;; definition for function hosehead-fake-init-by-other
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior hosehead-fake-init-by-other hosehead-fake ((arg0 int) (arg1 vector) (arg2 hosehead-fake-spawn-info) (arg3 level))
   (set! (-> self level) arg3)
@@ -364,6 +405,7 @@
   (none)
   )
 
+;; definition for symbol *hosehead-fakes*, type (array hosehead-fake-spawn-info)
 (define *hosehead-fakes* (new 'static 'boxed-array :type hosehead-fake-spawn-info
                            (new 'static 'hosehead-fake-spawn-info
                              :trans (new 'static 'vector :x 5678842.5 :y -217158.45 :z 1979005.8 :w 1.0)
@@ -551,6 +593,7 @@
                            )
         )
 
+;; definition for function spawn-hosehead-fakes
 ;; WARN: Return type mismatch symbol vs none.
 (defun spawn-hosehead-fakes ()
   (let ((gp-0 *hosehead-fakes*)
@@ -578,6 +621,7 @@
   (none)
   )
 
+;; definition for function hosehead-fake-trigger
 (defun hosehead-fake-trigger ((arg0 int))
   (let ((a1-0 *hosehead-fakes*))
     (countdown (a2-0 (-> a1-0 length))
@@ -591,3 +635,7 @@
     )
   #f
   )
+
+
+
+
