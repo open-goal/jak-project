@@ -645,6 +645,8 @@ MethodInfo TypeSystem::define_method(Type* type,
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
 
   if (got_existing) {
+    // Update the docstring
+    existing_info.docstring = docstring;
     int bad_arg_idx = -99;
     // make sure we aren't changing anything that isn't the return type.
     if (!existing_info.type.is_compatible_child_method(ts, type->get_name(), &bad_arg_idx) &&

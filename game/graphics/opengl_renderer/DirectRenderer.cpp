@@ -54,6 +54,15 @@ DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_siz
       sizeof(Vertex),                    //
       (void*)offsetof(Vertex, tex_unit)  // offset in array (why is this a pointer...)
   );
+
+  glEnableVertexAttribArray(4);
+  glVertexAttribIPointer(
+      4,                               // location 4 in the shader
+      1,                               // 3 floats per vert
+      GL_UNSIGNED_BYTE,                // floats
+      sizeof(Vertex),                  //
+      (void*)offsetof(Vertex, use_uv)  // offset in array (why is this a pointer...)
+  );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
@@ -69,6 +78,7 @@ DirectRenderer::~DirectRenderer() {
 void DirectRenderer::render(DmaFollower& dma,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof) {
+  pre_render();
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
   setup_common_state(render_state);
@@ -91,6 +101,8 @@ void DirectRenderer::render(DmaFollower& dma,
   if (m_enabled) {
     flush_pending(render_state, prof);
   }
+  post_render();
+  glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 }
 
 void DirectRenderer::reset_state() {
@@ -135,6 +147,7 @@ void DirectRenderer::draw_debug_window() {
   ImGui::Text("  tex1: %d", m_stats.flush_from_tex_1);
   ImGui::Text("  zbuf: %d", m_stats.flush_from_zbuf);
   ImGui::Text("  test: %d", m_stats.flush_from_test);
+  ImGui::Text("  ta0: %d", m_stats.flush_from_ta0);
   ImGui::Text("  alph: %d", m_stats.flush_from_alpha);
   ImGui::Text("  clmp: %d", m_stats.flush_from_clamp);
   ImGui::Text("  prim: %d", m_stats.flush_from_prim);
@@ -251,6 +264,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
+        case GsTest::AlphaTest::GREATER:  // todo
           alpha_reject = m_test_state.aref / 128.f;
           break;
         case GsTest::AlphaTest::NEVER:
@@ -274,6 +288,12 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                                      "fog_color"),
                 render_state->fog_color[0] / 255.f, render_state->fog_color[1] / 255.f,
                 render_state->fog_color[2] / 255.f, render_state->fog_intensity / 255);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "offscreen_mode"),
+                m_offscreen_mode);
+    glUniform1f(
+        glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "ta0"),
+        state.ta0 / 255.f);
 
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
@@ -359,6 +379,7 @@ void DirectRenderer::update_gl_blend() {
       // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
+
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
@@ -441,6 +462,12 @@ void DirectRenderer::update_gl_test() {
     glDepthMask(GL_TRUE);
   } else {
     glDepthMask(GL_FALSE);
+  }
+
+  if (state.write_rgb) {
+    glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  } else {
+    glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
   }
 }
 
@@ -658,7 +685,7 @@ void DirectRenderer::handle_ad(const u8* data,
       handle_tex1_1(value);
       break;
     case GsRegisterAddress::TEXA:
-      handle_texa(value);
+      handle_texa(value, render_state, prof);
       break;
     case GsRegisterAddress::TEXCLUT:
       // TODO
@@ -679,6 +706,7 @@ void DirectRenderer::handle_ad(const u8* data,
     case GsRegisterAddress::TEXFLUSH:
       break;
     case GsRegisterAddress::FRAME_1:
+      handle_frame(value, render_state, prof);
       break;
     case GsRegisterAddress::RGBAQ:
       // shadow scissor does this?
@@ -690,9 +718,26 @@ void DirectRenderer::handle_ad(const u8* data,
         memcpy(&m_prim_building.Q, data + 4, 4);
       }
       break;
+    case GsRegisterAddress::SCISSOR_1:
+      // fmt::print("ignoring scissor\n");
+      break;
+    case GsRegisterAddress::XYOFFSET_1:
+      ASSERT(render_state->version == GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
+      handle_xyoffset(value);
+      break;
     default:
       ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
+}
+
+void DirectRenderer::handle_frame(u64, SharedRenderState*, ScopedProfilerNode&) {}
+
+void DirectRenderer::handle_xyoffset(u64 val) {
+  GsXYOffset xyo(val);
+  // :ofx #x7000 :ofy #x7300
+  float scale = -65536;
+  m_prim_buffer.x_off = scale * ((s32)xyo.ofx() - 0x7000) / float(UINT32_MAX);
+  m_prim_buffer.y_off = scale * ((s32)xyo.ofy() - 0x7300) / float(UINT32_MAX);
 }
 
 void DirectRenderer::handle_tex1_1(u64 val) {
@@ -750,17 +795,6 @@ void DirectRenderer::handle_tex0_1(u64 val) {
   // csm: assume they got it right
 }
 
-void DirectRenderer::handle_texa(u64 val) {
-  GsTexa reg(val);
-
-  // rgba16 isn't used so this doesn't matter?
-  // but they use sane defaults anyway
-  ASSERT(reg.ta0() == 0);
-  ASSERT(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
-
-  ASSERT(reg.aem() == false);
-}
-
 void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.st_reg.x(), data + 0, 4);
   memcpy(&m_prim_building.st_reg.y(), data + 4, 4);
@@ -773,7 +807,7 @@ void DirectRenderer::handle_uv_packed(const u8* data) {
   memcpy(&v, data + 4, 4);
   m_prim_building.st_reg.x() = u;
   m_prim_building.st_reg.y() = v;
-  m_prim_building.Q = 16.f;
+  m_prim_building.Q = 1;
 }
 
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
@@ -852,7 +886,26 @@ void DirectRenderer::handle_test1(u64 val,
     m_prim_gl_state_needs_gl_update = true;
   }
 }
+void DirectRenderer::handle_texa(u64 val,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
+  GsTexa reg(val);
 
+  // rgba16 isn't used so this doesn't matter?
+  // but they use sane defaults anyway
+  // ASSERT(reg.ta0() == 0); TODO
+  if (m_prim_gl_state.ta0 != reg.ta0()) {
+    m_stats.flush_from_ta0++;
+    flush_pending(render_state, prof);
+    m_prim_gl_state.ta0 = reg.ta0();
+    m_test_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
+    m_blend_state_needs_gl_update = true;
+  }
+  ASSERT(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
+
+  ASSERT(reg.aem() == false);
+}
 void DirectRenderer::handle_alpha1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
@@ -965,6 +1018,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   bool tcc = m_buffered_tex_state[tex_unit].tcc;
   bool decal = m_buffered_tex_state[tex_unit].decal;
   bool fge = m_prim_gl_state.fogging_enable;
+  bool use_uv = m_prim_gl_state.use_uv;
 
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
@@ -990,12 +1044,12 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, corner3_stq, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, corner4_stq, 0, tcc, decal, fge);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, corner3_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, corner4_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge, use_uv);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -1011,7 +1065,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
+                               m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
           }
         }
       }
@@ -1023,7 +1077,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
         }
       }
       break;
@@ -1039,7 +1093,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge);
+                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
         }
       }
     } break;
@@ -1064,13 +1118,13 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
 
         // ACB:
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false, false);
         // b c d
-        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false, false);
         //
 
         m_prim_building.building_idx = 0;
@@ -1142,11 +1196,14 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            int unit,
                                            bool tcc,
                                            bool decal,
-                                           bool fog_enable) {
+                                           bool fog_enable,
+                                           bool use_uv) {
   auto& v = vertices[vert_count];
   v.rgba = rgba;
   v.xyzf[0] = (float)vert[0] / (float)UINT32_MAX;
+  v.xyzf[0] += x_off;
   v.xyzf[1] = (float)vert[1] / (float)UINT32_MAX;
+  v.xyzf[1] += y_off;
   v.xyzf[2] = (float)vert[2] / (float)0xffffff;
   v.xyzf[3] = (float)vert[3];
   v.stq = st;
@@ -1154,5 +1211,6 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
   v.tcc = tcc;
   v.decal = decal;
   v.fog_enable = fog_enable;
+  v.use_uv = use_uv;
   vert_count++;
 }

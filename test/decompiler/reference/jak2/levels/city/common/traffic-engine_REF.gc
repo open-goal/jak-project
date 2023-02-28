@@ -636,9 +636,9 @@ Process is recycled and moved to reserved, if it deactivates."
     (when (and (> (-> v1-2 inactive-count) 0)
                (> (-> v1-2 reserve-count) 0)
                (< (-> v1-2 active-count) (-> v1-2 target-count))
-               (logtest? (-> v1-2 flags) 4)
-               (logtest? (-> v1-2 flags) 8)
-               (or (not (logtest? (-> v1-2 flags) 1))
+               (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-2))
+               (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-3))
+               (or (not (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-0)))
                    (zero? (logand (-> obj traffic alert-state flags) (traffic-alert-flag alert-ending)))
                    )
                )
@@ -789,7 +789,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (let ((v1-4 (-> obj inactive-object-array)))
     (dotimes (a0-5 21)
       (let ((a1-3 (-> obj object-type-info-array a0-5)))
-        (set! (-> a1-3 flags) (the-as uint 6))
+        (set! (-> a1-3 flags) (traffic-type-flags trtflags-1 trtflags-2))
         (set! (-> a1-3 inactive-count) 0)
         (set! (-> a1-3 active-count) 0)
         (set! (-> a1-3 target-count) 20)
@@ -802,7 +802,7 @@ Process is recycled and moved to reserved, if it deactivates."
       )
     )
   (set! (-> obj object-type-info-array 6 guard-type) (the-as uint 0))
-  (set! (-> obj object-type-info-array 20 level) (the-as level 'ctywide))
+  (set! (-> obj object-type-info-array 20 level) 'ctywide)
   (let ((v1-8 11))
     (dotimes (a0-6 10)
       (set! (-> obj object-type-info-array v1-8 tracker-index) (the-as uint 0))
@@ -845,7 +845,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (dotimes (s5-2 (-> *level* length))
     (let ((a1-12 (-> *level* level s5-2)))
       (if (= (-> a1-12 status) 'active)
-          (level-loaded obj a1-12)
+          (level-link obj a1-12)
           )
       )
     )
@@ -864,7 +864,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 ;; definition for method 61 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
-(defmethod level-loaded traffic-engine ((obj traffic-engine) (arg0 level))
+(defmethod level-link traffic-engine ((obj traffic-engine) (arg0 level))
   "Call after loading a level to patch the data in the bsp"
   (format #t "traffic-engine: level birth ~S~%" (-> arg0 nickname))
   (cond
@@ -998,7 +998,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 ;; definition for method 62 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
-(defmethod level-killed traffic-engine ((obj traffic-engine) (arg0 level))
+(defmethod level-unlink traffic-engine ((obj traffic-engine) (arg0 level))
   "Call after removing a level. Kills processes and unlinks nav"
   (let ((s4-0 (-> arg0 bsp city-level-info nav-graph)))
     (dotimes (v1-2 2)
@@ -1257,11 +1257,11 @@ Process is recycled and moved to reserved, if it deactivates."
   )
 
 ;; definition for method 14 of type traffic-engine
-(defmethod sphere-in-loaded-city-infos? traffic-engine ((obj traffic-engine) (arg0 int) (arg1 vector))
+(defmethod sphere-in-loaded-city-infos? traffic-engine ((obj traffic-engine) (arg0 vector) (arg1 int))
   (dotimes (s3-0 2)
     (let ((v1-3 (-> obj level-data-array s3-0)))
       (when (nonzero? (-> v1-3 city-info))
-        (if (sphere-in-grid? (-> v1-3 city-info) arg0 (the-as int arg1))
+        (if (sphere-in-grid? (-> v1-3 city-info) arg0 arg1)
             (return #t)
             )
         )
@@ -1273,7 +1273,7 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 17 of type traffic-engine
 (defmethod can-dest-be-used? traffic-engine ((obj traffic-engine) (arg0 nav-branch))
   (let ((v1-0 (-> arg0 src-node)))
-    (or (logtest? (-> arg0 flags) 1)
+    (or (logtest? (-> arg0 flags) (nav-branch-flags nabflags-0))
         (logtest? (-> v1-0 flags) (nav-node-flag-byte blocked))
         (not (-> arg0 dest-node))
         (>= (-> arg0 user-count) (-> arg0 max-user-count))
@@ -1387,44 +1387,44 @@ Process is recycled and moved to reserved, if it deactivates."
           (let ((v1-1 (-> obj danger-sphere-array)))
             (set! (-> v1-1 0 handle) (process->handle s5-0))
             (let ((a0-4 (-> s5-0 focus-status))
-                  (f0-0 0.0)
-                  (f1-0 0.0)
-                  (f3-0 1.0)
-                  (f2-0 0.0)
+                  (notify-radius 0.0)
+                  (danger-radius 0.0)
+                  (decay-rate 1.0)
+                  (danger-level 0.0)
                   )
               (cond
                 ((logtest? (focus-status mech dark shooting) a0-4)
-                 (set! f0-0 245760.0)
-                 (set! f1-0 163840.0)
-                 (set! f2-0 1.0)
-                 (set! f3-0 0.0)
+                 (set! notify-radius 245760.0)
+                 (set! danger-radius 163840.0)
+                 (set! danger-level 1.0)
+                 (set! decay-rate 0.0)
                  )
                 ((logtest? (focus-status gun) a0-4)
-                 (set! f0-0 102400.0)
-                 (set! f1-0 61440.0)
-                 (set! f2-0 0.5)
-                 (set! f3-0 0.5)
+                 (set! notify-radius 102400.0)
+                 (set! danger-radius 61440.0)
+                 (set! danger-level 0.5)
+                 (set! decay-rate 0.5)
                  )
                 ((logtest? (focus-status board pilot) a0-4)
-                 (set! f0-0 40960.0)
-                 (set! f1-0 24576.0)
-                 (set! f2-0 0.5)
+                 (set! notify-radius 40960.0)
+                 (set! danger-radius 24576.0)
+                 (set! danger-level 0.5)
                  )
                 ((logtest? a0-4 (focus-status dangerous))
-                 (set! f0-0 61440.0)
-                 (set! f1-0 40960.0)
-                 (set! f3-0 0.0)
-                 (set! f2-0 0.5)
+                 (set! notify-radius 61440.0)
+                 (set! danger-radius 40960.0)
+                 (set! decay-rate 0.0)
+                 (set! danger-level 0.5)
                  )
                 (else
-                  (set! f3-0 1.5)
+                  (set! decay-rate 1.5)
                   )
                 )
-              (set! (-> v1-1 0 decay-rate) (* 0.1 f3-0))
-              (when (< (-> v1-1 0 danger-level) f2-0)
-                (set! (-> v1-1 0 danger-level) f2-0)
-                (set! (-> v1-1 0 sphere r) f1-0)
-                (set! (-> v1-1 0 notify-radius) f0-0)
+              (set! (-> v1-1 0 decay-rate) (* 0.1 decay-rate))
+              (when (< (-> v1-1 0 danger-level) danger-level)
+                (set! (-> v1-1 0 danger-level) danger-level)
+                (set! (-> v1-1 0 sphere r) danger-radius)
+                (set! (-> v1-1 0 notify-radius) notify-radius)
                 )
               )
             (let ((f0-1 (-> v1-1 0 sphere r)))
@@ -1552,7 +1552,7 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 69 of type traffic-engine
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod per-frame-danger-update traffic-engine ((obj traffic-engine))
+(defmethod update-danger traffic-engine ((obj traffic-engine))
   "see what's dangerous and make people avoid it."
   (update-danger-from-target obj)
   (dotimes (s5-0 (-> obj danger-sphere-count))
@@ -1667,8 +1667,8 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 68 of type traffic-engine
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod per-frame-activate-deactivate traffic-engine ((obj traffic-engine))
-  "per-frame activate and deactivate processes."
+(defmethod update-traffic-amount traffic-engine ((obj traffic-engine))
+  "kills inactive traffic and spawns more if needed."
   (local-vars (sv-48 int) (sv-64 nav-segment))
   (set! (-> obj object-hash object-count) 0)
   (let* ((v1-1 (-> obj object-hash))
@@ -1725,7 +1725,7 @@ Process is recycled and moved to reserved, if it deactivates."
                    (set! (-> s5-0 quad) (-> v1-33 trans quad))
                    (set! (-> s5-0 w) (-> v1-33 root-prim prim-core world-sphere w))
                    )
-                 (sphere-in-loaded-city-infos? obj (the-as int s5-0) (the-as vector 0))
+                 (sphere-in-loaded-city-infos? obj s5-0 0)
                  )
                (set! (-> (the-as vehicle s3-0) traffic-hash-id)
                      (spatial-hash-method-39 (-> obj object-hash) s5-0 (the-as hash-object-info s3-0))
@@ -1755,7 +1755,7 @@ Process is recycled and moved to reserved, if it deactivates."
                    (set! (-> s5-0 quad) (-> v1-54 trans quad))
                    (set! (-> s5-0 w) (-> v1-54 root-prim prim-core world-sphere w))
                    )
-                 (sphere-in-loaded-city-infos? obj (the-as int s5-0) (the-as vector 1))
+                 (sphere-in-loaded-city-infos? obj s5-0 1)
                  )
                (spatial-hash-method-39 (-> obj object-hash) s5-0 (the-as hash-object-info s3-1))
                )
@@ -1835,7 +1835,7 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-traffic traffic-engine ((obj traffic-engine))
   (update-sync-from-frame-counter obj)
-  (per-frame-suppressor-update obj)
+  (update-suppressor obj)
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (set-vector!
       (-> s5-0 min)
@@ -1862,11 +1862,11 @@ Process is recycled and moved to reserved, if it deactivates."
       )
     (update-grid-for-objects-in-box (-> obj object-hash) 253 (-> s5-0 min) (-> s5-0 max))
     )
-  (per-frame-activate-deactivate obj)
+  (update-traffic-amount obj)
   (set! (-> obj alert-state guard-aim-count) 0)
-  (per-frame-alert-update obj)
-  (per-frame-guard-update obj)
-  (per-frame-danger-update obj)
+  (update-alert-state obj)
+  (update-guards obj)
+  (update-danger obj)
   0
   (none)
   )
@@ -2438,7 +2438,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 ;; definition for method 34 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-alert-duration traffic-engine ((obj traffic-engine) (arg0 int))
+(defmethod set-alert-duration traffic-engine ((obj traffic-engine) (arg0 time-frame))
   (set! (-> obj alert-state duration) (the-as uint arg0))
   0
   (none)
@@ -2765,7 +2765,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 ;; definition for method 67 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
-(defmethod per-frame-guard-update traffic-engine ((obj traffic-engine))
+(defmethod update-guards traffic-engine ((obj traffic-engine))
   (dotimes (v1-0 6)
     (set! (-> obj alert-state guard-type-info-array v1-0 count) 0)
     )
@@ -2899,7 +2899,7 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 71 of type traffic-engine
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod per-frame-alert-update traffic-engine ((obj traffic-engine))
+(defmethod update-alert-state traffic-engine ((obj traffic-engine))
   (with-pp
     (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak)) *target*)
         (set! (-> obj alert-state target-status-array 0 handle) (process->handle *target*))
@@ -3064,7 +3064,7 @@ Process is recycled and moved to reserved, if it deactivates."
                 *target*
                 )
            (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                           (if (logtest? (-> arg1 flags) 1)
+                                           (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
                                                (send-event arg0 'alert-begin *target*)
                                                )
                                            (none)
@@ -3074,7 +3074,7 @@ Process is recycled and moved to reserved, if it deactivates."
        )
       (else
         (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                        (if (logtest? (-> arg1 flags) 1)
+                                        (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
                                             (send-event arg0 'alert-end)
                                             )
                                         (none)
@@ -3103,54 +3103,56 @@ Process is recycled and moved to reserved, if it deactivates."
     (logclear! (-> v1-6 0 flags) (traffic-target-flag force-visible))
     )
   (set-target-level obj 1.0)
-  (set-alert-duration obj 9000)
+  (set-alert-duration obj (seconds 30))
   (set-max-alert-level obj 4)
   (let ((v1-13 42))
     (dotimes (a0-7 21)
       (let ((a1-6 (-> obj object-type-info-array a0-7)))
-        (set! (-> a1-6 flags) (the-as uint 6))
+        (set! (-> a1-6 flags) (traffic-type-flags trtflags-1 trtflags-2))
         (set! (-> a1-6 reserve-count) (the-as uint (max 1000 (min #xfde8 (* 1000 (-> a1-6 want-count))))))
         (set! (-> a1-6 killed-count) (the-as uint 0))
         (set! (-> a1-6 parking-spot-prob)
-              (the-as uint (if (and (zero? (-> a1-6 tracker-index)) (zero? (logand (-> a1-6 flags) 1)))
-                               v1-13
-                               0
-                               )
-                      )
+              (the-as
+                uint
+                (if (and (zero? (-> a1-6 tracker-index)) (zero? (logand (-> a1-6 flags) (traffic-type-flags trtflags-0))))
+                    v1-13
+                    0
+                    )
+                )
               )
         )
       )
     )
   (let ((v1-16 (-> obj object-type-info-array 6)))
-    (logior! (-> v1-16 flags) 1)
+    (logior! (-> v1-16 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-17 (-> obj object-type-info-array 7)))
-    (logior! (-> v1-17 flags) 1)
+    (logior! (-> v1-17 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-18 (-> obj object-type-info-array 18)))
-    (logior! (-> v1-18 flags) 1)
+    (logior! (-> v1-18 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-19 (-> obj object-type-info-array 19)))
-    (logior! (-> v1-19 flags) 1)
+    (logior! (-> v1-19 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-20 (-> obj object-type-info-array 20)))
-    (logior! (-> v1-20 flags) 1)
+    (logior! (-> v1-20 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-21 (-> obj object-type-info-array 5)))
     (set! (-> v1-21 target-count) 0)
-    (set! (-> v1-21 flags) (logand -7 (-> v1-21 flags)))
+    (logclear! (-> v1-21 flags) (traffic-type-flags trtflags-1 trtflags-2))
     )
   (let ((v1-22 (-> obj object-type-info-array 3)))
     (set! (-> v1-22 target-count) 0)
-    (set! (-> v1-22 flags) (logand -5 (-> v1-22 flags)))
+    (logclear! (-> v1-22 flags) (traffic-type-flags trtflags-2))
     )
   (let ((v1-23 (-> obj object-type-info-array 4)))
     (set! (-> v1-23 target-count) 0)
-    (set! (-> v1-23 flags) (logand -5 (-> v1-23 flags)))
+    (logclear! (-> v1-23 flags) (traffic-type-flags trtflags-2))
     )
   (let ((v1-24 (-> obj object-type-info-array 17)))
     (set! (-> v1-24 target-count) 0)
-    (set! (-> v1-24 flags) (logand -7 (-> v1-24 flags)))
+    (logclear! (-> v1-24 flags) (traffic-type-flags trtflags-1 trtflags-2))
     )
   (dotimes (v1-25 6)
     (let ((a0-28 (-> obj alert-state guard-type-info-array v1-25)))
@@ -3222,8 +3224,8 @@ Process is recycled and moved to reserved, if it deactivates."
 (defmethod set-object-auto-activate traffic-engine ((obj traffic-engine) (arg0 int) (arg1 object))
   (let ((v1-2 (-> obj object-type-info-array arg0)))
     (if arg1
-        (logior! (-> v1-2 flags) 4)
-        (set! (-> v1-2 flags) (logand -5 (-> v1-2 flags)))
+        (logior! (-> v1-2 flags) (traffic-type-flags trtflags-2))
+        (logclear! (-> v1-2 flags) (traffic-type-flags trtflags-2))
         )
     )
   0
@@ -3299,7 +3301,9 @@ Process is recycled and moved to reserved, if it deactivates."
           )
       (while (< (the-as uint s5-0) (the-as uint 21))
         (let ((s2-0 (-> obj object-type-info-array s5-0)))
-          (when (and (logtest? (-> s2-0 flags) 8) (= (level-status *level* (the-as symbol (-> s2-0 level))) 'active))
+          (when (and (logtest? (-> s2-0 flags) (traffic-type-flags trtflags-3))
+                     (= (level-status *level* (-> s2-0 level)) 'active)
+                     )
             (+! s3-0 (-> s2-0 parking-spot-prob))
             (b! (>= (the-as uint s3-0) (the-as uint s4-0)) cfg-10)
             )
@@ -3353,7 +3357,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 ;; definition for method 72 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
-(defmethod per-frame-suppressor-update traffic-engine ((obj traffic-engine))
+(defmethod update-suppressor traffic-engine ((obj traffic-engine))
   (let ((v1-3 (- (-> *display* game-clock frame-counter) (-> *display* game-clock old-frame-counter))))
     (dotimes (a1-3 16)
       (let ((a2-2 (-> obj suppressor array a1-3)))
@@ -3415,12 +3419,12 @@ Process is recycled and moved to reserved, if it deactivates."
   )
 
 ;; definition for method 15 of type city-level-info
-(defmethod sphere-in-grid? city-level-info ((obj city-level-info) (arg0 int) (arg1 int))
+(defmethod sphere-in-grid? city-level-info ((obj city-level-info) (arg0 vector) (arg1 int))
   (let ((gp-0 #f))
     (let ((s3-0 (new 'stack-no-clear 'vis-grid-box))
           (s2-0 (new 'stack-no-clear 'vis-grid-box))
           )
-      (lookup-box-for-sphere (-> obj grid-info) s2-0 (the-as vector arg0))
+      (lookup-box-for-sphere (-> obj grid-info) s2-0 arg0)
       (set! (-> s3-0 min y) (-> s2-0 min y))
       (let ((v1-6 (+ (- 1 (-> s2-0 min y)) (-> s2-0 max y))))
         (b! #t cfg-13 :delay (nop!))

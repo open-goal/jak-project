@@ -941,8 +941,16 @@
 ;; lights (7 qw x 1)
 ;; matrix slot string (128 char, 8 qw)
 ;; matrices (7 qw x N)
-;; flags    (num-effects, effect-alpha-ignore, effect-disable)
+;; flags    2 qw
 ;; fades    (u32 x N), padding to qw aligned
+
+(deftype pc-merc-flags (structure)
+  ((enable-mask uint64)
+   (ignore-alpha-mask uint64)
+   (effect-count uint8)
+   (update-verts uint8)
+   )
+  )
 
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
   (let ((start-packet (the-as dma-packet dma-buf))
@@ -1024,14 +1032,14 @@
             )
 
           ;; flags
-          (let ((flags (the (pointer uint32) dma-buf)))
-            (set! (-> flags 0) (-> merc-ctrl header effect-count))
-            (set! (-> flags 1) ignore-alpha-mask)
-            (set! (-> flags 2) enable-mask)
-            (set! (-> flags 3) (if update-verts 1 0))
+          (let ((flags (the (pc-merc-flags) dma-buf)))
+            (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
+            (set! (-> flags update-verts) (if update-verts 1 0))
+            (set! (-> flags enable-mask) enable-mask)
+            (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
             )
-          (&+! dma-buf (* 16 1))
-          (+! qwc-total 1)
+          (&+! dma-buf (* 16 2))
+          (+! qwc-total 2)
 
           ;; fades
           (let ((fades (the (pointer uint32) dma-buf)))
