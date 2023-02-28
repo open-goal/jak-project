@@ -33,8 +33,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
  * when used in a function call. This only works for immediaate function calls, you can't "save"
  * an (inline my-func) into a function pointer.
  *
- * If inlining is not possible (function disallows inlining or didn't save its code), throw an
- * error.
+ * If inlining is not possible (function didn't save its code), throw an error.
  */
 Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
@@ -47,12 +46,8 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
                          args.unnamed.at(0).print());
   }
 
-  if (kv->second->func && !kv->second->func->settings.allow_inline) {
-    throw_compiler_error(form,
-                         "Cannot inline {} because inlining of this function was disallowed.");
-  }
   auto fe = env->function_env();
-  return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
+  return fe->alloc_val<InlinedLambdaVal>(kv->second.type, kv->second);
 }
 
 Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -333,13 +328,11 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     auto kv = m_inlineable_functions.find(uneval_head.as_symbol());
     if (kv != m_inlineable_functions.end()) {
       // it's inlinable.  However, we do not always inline an inlinable function by default
-      if (kv->second->func ==
-              nullptr ||  // only-inline, we must inline it as there is no code generated for it
-          kv->second->func->settings
-              .inline_by_default) {  // inline when possible, so we should inline
-
+      if (kv->second.inline_by_default) {  // inline when possible, so we should inline
         auto_inline = true;
-        head = kv->second;
+        auto* lv = env->function_env()->alloc_val<LambdaVal>(kv->second.type);
+        lv->lambda = kv->second.lambda;
+        head = lv;
       }
     }
   }
@@ -394,7 +387,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       auto head_as_inlined_lambda = dynamic_cast<InlinedLambdaVal*>(head);
       if (head_as_inlined_lambda) {
         // yes, remember the lambda that contains and flag that we're inlining.
-        head_as_lambda = head_as_inlined_lambda->lv;
+        head_as_lambda = env->function_env()->alloc_val<LambdaVal>(head_as_inlined_lambda->lv.type);
+        head_as_lambda->lambda = head_as_inlined_lambda->lv.lambda;
         got_inlined_lambda = true;
       }
     }

@@ -5,7 +5,10 @@
 ;; name in dgo: sprite
 ;; dgos: ENGINE, GAME
 
-;; the sprite renderer draw 2D or 3D sprites
+#|@file
+the sprite renderer draw 2D or 3D sprites
+|#
+
 ;; TODO: glow is commented out.
 ;; TODO: distort is commented out.
 
@@ -142,6 +145,10 @@
   )
 
 (defmethod new sprite-aux-list ((allocation symbol) (type-to-make type) (size int))
+
+  (#when PC_BIG_MEMORY
+    (*! size SPRITE_AUX_MAX_AMOUNT_MULT))
+
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* size 16))))))
     (set! (-> v0-0 num-entries) size)
     (set! (-> v0-0 entry) 0)
@@ -431,6 +438,12 @@
 
 (defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 2d sprites.  There are two groups, each can contain the given number."
+
+  (#when PC_BIG_MEMORY
+    (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
+    ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
+    )
+
   (let* ((sprite-count (+ group-0-size group-1-size))
          (vec-data-size (* 3 sprite-count)) ;; 3 quadwords of vec-data per sprite
          (adgif-data-size (* 5 sprite-count)) ;; 5 quadwords of adgif data per sprite
@@ -455,6 +468,12 @@
 (defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 3d sprites.  There are two groups, each can contain the given number of sprites.
    Group 1 size is zero in practice for 3d."
+
+  (#when PC_BIG_MEMORY
+    (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
+    ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
+    )
+
   (let* ((sprite-count (+ group-0-size group-1-size))
          (vec-data-size (* 3 sprite-count))
          (adgif-data-size (* 5 sprite-count))

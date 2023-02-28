@@ -140,9 +140,9 @@ class LambdaVal : public Val {
 
 class InlinedLambdaVal : public Val {
  public:
-  explicit InlinedLambdaVal(TypeSpec ts, LambdaVal* _lv) : Val(std::move(ts)), lv(_lv) {}
-  std::string print() const override { return "inline-lambda-" + lv->lambda.debug_name; }
-  LambdaVal* lv = nullptr;
+  explicit InlinedLambdaVal(TypeSpec ts, InlineableFunction _lv) : Val(std::move(ts)), lv(_lv) {}
+  std::string print() const override { return "inline-lambda-" + lv.lambda.debug_name; }
+  InlineableFunction lv;
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
 };
 

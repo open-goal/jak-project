@@ -158,6 +158,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
+        graphics/opengl_renderer/ProgressRenderer.cpp
         graphics/opengl_renderer/Shader.cpp
         graphics/opengl_renderer/Shadow_PS2.cpp
         graphics/opengl_renderer/ShadowRenderer.cpp

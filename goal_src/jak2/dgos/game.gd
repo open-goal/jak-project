@@ -29,8 +29,10 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
-  "pad.o"
   "pckernel-h.o" ;; added
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pad.o"
   "gs.o"
   "display-h.o"
   "geometry.o"
@@ -242,6 +244,7 @@
   "sky-data.o"
   "sky-tng.o"
   "load-state.o"
+  "pc-debug-methods.o" ;; added
   "level-info.o"
   "level.o"
   "text.o"
@@ -325,6 +328,7 @@
   "prototype.o"
   "main-collide.o"
   "video.o"
+  "pckernel-common.o" ;; added
   "pckernel.o" ;; added
   "main.o"
   "collide-cache.o"
