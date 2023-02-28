@@ -25,13 +25,20 @@ int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
   if (!file_util::setup_project_path(std::nullopt)) {
+    lg::error("Unable to setup project path");
     return 1;
   }
-  lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
-  lg::set_file_level(lg::level::info);
-  lg::set_stdout_level(lg::level::info);
-  lg::set_flush_level(lg::level::info);
-  lg::initialize();
+
+  try {
+    lg::set_file(file_util::get_file_path({"log", "decompiler.log"}));
+    lg::set_file_level(lg::level::info);
+    lg::set_stdout_level(lg::level::info);
+    lg::set_flush_level(lg::level::info);
+    lg::initialize();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   fs::path config_path;
   fs::path in_folder;
