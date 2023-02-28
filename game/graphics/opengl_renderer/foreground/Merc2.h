@@ -66,7 +66,7 @@ class Merc2 : public BucketRenderer {
     GLuint vao, vertex;
   };
 
-  static constexpr int kMaxEffect = 32;
+  static constexpr int kMaxEffect = 64;
   bool m_effect_debug_mask[kMaxEffect];
 
   struct MercMat {
@@ -86,8 +86,8 @@ class Merc2 : public BucketRenderer {
   static constexpr int MAX_SHADER_BONE_VECTORS = 1024 * 32;  // ??
 
   static constexpr int MAX_LEVELS = 3;
-  static constexpr int MAX_DRAWS_PER_LEVEL = 1024;
-  static constexpr int MAX_ENVMAP_DRAWS_PER_LEVEL = 1024;
+  static constexpr int MAX_DRAWS_PER_LEVEL = 2048;
+  static constexpr int MAX_ENVMAP_DRAWS_PER_LEVEL = MAX_DRAWS_PER_LEVEL;
 
   math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
 

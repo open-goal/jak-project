@@ -5,21 +5,39 @@
 ;; name in dgo: level
 ;; dgos: ENGINE, GAME
 
+#|@file
+the level heap is a giant block of memory which is seperated into "pages" so that it can easily
+be split into different sizes for the different kinds of level sizes.
+
+it is split into 6 sections, 24-24-25-25-24-24 pages large.
+this means the "center" portion of the main level heap is actually "larger"
+
+which is why there is a special small-center level memory mode for two-section
+levels that want to be placed in the middle of the heap for that slight size boost.
+
+some code checks for 7 bits in the memory mask, indicating the heap was originally split
+into 7 sections, which might explain the weird sizes in the center.
+|#
+
 ;; DECOMP BEGINS
 
 (define-extern level-update-after-load (function level login-state level))
 (define-extern *level-type-list* type)
 
 (defglobalconstant NUM_LEVEL_PAGES 146)
-;(defglobalconstant DEBUG_LEVEL_PAGE_SIZE #x2f400) ;; original value
-(defglobalconstant DEBUG_LEVEL_PAGE_SIZE  #x40000)
+(defglobalconstant LEVEL_PAGE_SIZE_KB 126) ;; original value
+(defglobalconstant LEVEL_PAGE_SIZE (* LEVEL_PAGE_SIZE_KB 1024)) ;; original value
+(defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
+;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
+(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
+(defglobalconstant DEBUG_LEVEL_PAGE_SIZE (* 1024 (* DEBUG_LEVEL_HEAP_MULT LEVEL_PAGE_SIZE_KB)))
 (defglobalconstant DEBUG_LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES DEBUG_LEVEL_PAGE_SIZE))
 
 ;; multiplier for borrow heap size. It is a bit of a hack required to load the slightly larger PC port levels.
 ;; in the original game, borrow levels never got extra room, even with big level heaps
 ;; Setting this means that borrow won't work with normal-size level heaps, but this is probably okay
 ;; because normal-size level heaps don't work at all.
-(defglobalconstant BONUS_BORROW 1)
+(defglobalconstant BORROW_MULT DEBUG_LEVEL_HEAP_MULT)
 
 (defun give-all-stuff ()
   (send-event *target* 'get-pickup 18 #x447a0000)
@@ -837,19 +855,28 @@
                                  )
                                )
                (offset-in-level-heap 0)
-               (v1-14 mem-mode)
-               (heap-size (cond
-                            ((= v1-14 (load-buffer-mode large))
-                             #xbd0000 ;; ~12 MB, can't have large + large, or large + medium
+               (heap-size (case mem-mode
+                            (((load-buffer-mode large))
+                             ;; 96 pages. this uses up four of the six sections, meaning you can only have a small level alongside a large level.
+                             ;; because two of the sections are gonna be in the middle, there is actually space for 98 pages.
+                             ;; but it seems ndi did not notice that when writing this code.
+                             (* LEVEL_PAGE_SIZE 96)
                              )
-                            ((= v1-14 (load-buffer-mode medium))
-                             #x8fb800 ;; ~9 MB, can have medium + medium
+                            (((load-buffer-mode medium))
+                             ;; 73 pages. this uses up three of the six sections, one of them being a middle section
+                             ;; which is 1 page larger than non-middle sections. 24 + 24 + 25 = 73.
+                             ;; this means you can either have a medium or small level alongside this.
+                             (* LEVEL_PAGE_SIZE 73)
                              )
-                            ((= v1-14 (load-buffer-mode small-center))
-                             #x627000 ;; ~6 MB, can have small + small + small, or small + medium
+                            (((load-buffer-mode small-center))
+                             ;; 50 pages. this uses up the two middle sections. 25 + 25 = 50.
+                             ;; this leaves two sections on each edge of the heap which are used by the small mode.
+                             ;; small-center + small + small is the only way to get 3 levels! (borrow levels excluded)
+                             (* LEVEL_PAGE_SIZE 50)
                              )
                             (else
-                              #x5e8000 ;; ~6 MB
+                              ;; 48 pages. this uses up two sections that aren't in the middle. 24 + 24 = 48.
+                              (* LEVEL_PAGE_SIZE 48)
                               )
                             )
                           )
@@ -863,8 +890,8 @@
                )
              ;; nope, try upper 4.
              (when (memory-unused? *level* #b111100)
-               (set! offset-in-level-heap 48)
-               (set! bits-to-use 60)
+               (set! offset-in-level-heap (+ 24 24))
+               (set! bits-to-use #b111100)
                (goto cfg-83)
                )
              )
@@ -872,11 +899,11 @@
              ;; need 3 bits in the mask.
              ;; like large, check both ends.
              (when (memory-unused? *level* #b000111)
-               (set! bits-to-use 7)
+               (set! bits-to-use #b000111)
                (goto cfg-83)
                )
              (when (memory-unused? *level* #b111000)
-               (set! offset-in-level-heap 73) ;; weird sizing
+               (set! offset-in-level-heap (+ 24 24 25)) ;; weird sizing
                (set! bits-to-use #b111000)
                (goto cfg-83)
                )
@@ -884,8 +911,8 @@
             (((load-buffer-mode small-center))
              ;; only one place for us to go, in the center
              (when (memory-unused? *level* #b001100)
-               (set! offset-in-level-heap 48)
-               (set! bits-to-use #b1100)
+               (set! offset-in-level-heap (+ 24 24))
+               (set! bits-to-use #b001100)
                (goto cfg-83)
                )
              )
@@ -897,7 +924,7 @@
                )
              ;; and the other
              (when (memory-unused? *level* #b110000)
-               (set! offset-in-level-heap 98)
+               (set! offset-in-level-heap (+ 24 24 25 25))
                (set! bits-to-use #b110000)
                (goto cfg-83)
                )
@@ -908,33 +935,7 @@
           (cond
             ((zero? bits-to-use)
              ;; darn, couldn't find a spot.
-             (let ((v1-32 mem-mode))
-               (format
-                 0
-                 "ERROR: level ~A could not find free ~S bank in the level-group heap~%"
-                 (-> obj name)
-                 (cond
-                   ((= v1-32 (load-buffer-mode large))
-                    "large"
-                    )
-                   ((= v1-32 (load-buffer-mode borrow))
-                    "borrow"
-                    )
-                   ((= v1-32 (load-buffer-mode small-center))
-                    "small-center"
-                    )
-                   ((= v1-32 (load-buffer-mode medium))
-                    "medium"
-                    )
-                   ((= v1-32 (load-buffer-mode small-edge))
-                    "small-edge"
-                    )
-                   (else
-                     "*unknown*"
-                     )
-                   )
-                 )
-               )
+             (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%" (-> obj name) (enum->string load-buffer-mode mem-mode))
              (dotimes (s5-1 7)
                (if (!= (-> *level* level s5-1 status) 'inactive)
                    (format
@@ -962,17 +963,16 @@
                    (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
                    ;(set! (-> v1-44 top-base) (&+ (-> v1-44 base) (+ heap-size (/ heap-size 2))))
-                   ;; NOTE: changed in PC version to get 2x size levels heaps. This is only safe with the increased
-                   ;; DEBUG_LEVEL_PAGE_SIZE.
-                   (set! (-> v1-44 top-base) (&+ (-> v1-44 base) (* heap-size 2)))
+                   ;; pc port note : modified the math here so we can just use a float to change the size
+                   (set! (-> v1-44 top-base) (&+ (-> v1-44 base) (* DEBUG_LEVEL_PAGE_SIZE (/ heap-size LEVEL_PAGE_SIZE))))
                    (set! (-> v1-44 top) (-> v1-44 top-base))
                    )
                  )
                 (else
                   (let ((v1-45 (-> obj heap)))
                     ;; no debug size heaps. set up our heap.
-                    ;; offset-in-level-heap is in 146ths of the total size.
-                    (set! (-> v1-45 base) (&+ (-> *level* heap base) (* #x1f800 offset-in-level-heap)))
+                    ;; offset-in-level-heap is in 146ths (1 level heap page) of the total size.
+                    (set! (-> v1-45 base) (&+ (-> *level* heap base) (* LEVEL_PAGE_SIZE offset-in-level-heap)))
                     (set! (-> v1-45 current) (-> v1-45 base))
                     (set! (-> v1-45 top-base) (&+ (-> v1-45 base) heap-size))
                     (set! (-> v1-45 top) (-> v1-45 top-base))
@@ -1415,7 +1415,8 @@
   ;; if somebody will borrow from us, set aside some memory for them on the top of our heap
   (dotimes (v1-211 2)
     (set! (-> lev heap top-base)
-          (the pointer (&- (-> lev heap top-base) (the-as uint (shl (-> lev info borrow-size v1-211) (+ 10 BONUS_BORROW)))))
+          ;; MODIFIED
+          (the pointer (&- (-> lev heap top-base) (the uint (shl (the int (* BORROW_MULT (-> lev info borrow-size v1-211))) 10))))
           )
     (set! (-> lev heap top) (-> lev heap top-base))
     (let ((borrower-heap (-> lev borrow-heap v1-211)))
@@ -1423,7 +1424,7 @@
       (set! (-> borrower-heap current) (-> borrower-heap base))
 
       ;; MODIFIED
-      (set! (-> borrower-heap top-base) (&+ (-> borrower-heap base) (shl (-> lev info borrow-size v1-211) (+ 10 BONUS_BORROW))))
+      (set! (-> borrower-heap top-base) (&+ (-> borrower-heap base) (the int (shl (the int (* BORROW_MULT (-> lev info borrow-size v1-211))) 10))))
 
       (set! (-> borrower-heap top) (-> borrower-heap top-base))
       )
@@ -1762,6 +1763,9 @@
 (defmethod is-object-visible? level ((obj level) (arg0 int))
   "Is drawable arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
+  ;; note : pc port added option to show every actor regardless
+  (with-pc (if (-> *pc-settings* force-actors?) (return #t)))
+
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0)
             (vis-data (-> obj vis-bits))
@@ -1892,7 +1896,7 @@
         (load-package "common" global)
         )
     (let ((s5-1 (if (and arg0 (not *debug-segment*))
-                    #x11f7000
+                    LEVEL_HEAP_SIZE
                     DEBUG_LEVEL_HEAP_SIZE
                     )
                 )

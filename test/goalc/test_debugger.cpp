@@ -182,7 +182,7 @@ TEST(Jak1Debugger, SimpleBreakpoint) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    compiler.get_debugger().update_break_info();
+    compiler.get_debugger().update_break_info({});
     auto expected_instr_before_rip = compiler.get_debugger().get_x86_base_addr() + func_addr;
     auto rip = compiler.get_debugger().get_regs().rip;
     // instructions can be at most 15 bytes long.
