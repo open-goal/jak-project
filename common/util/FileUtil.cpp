@@ -213,6 +213,11 @@ void write_binary_file(const fs::path& name, const void* data, size_t size) {
     throw std::runtime_error("couldn't open file " + name.string());
   }
 
+  if (size == 0) {
+    // nothing to write, just 'touch' the file
+    return;
+  }
+
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
     throw std::runtime_error("couldn't write file " + name.string());
@@ -273,6 +278,9 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
+  if (len == 0) {
+    return {};
+  }
   rewind(fp);
 
   std::vector<uint8_t> data;
