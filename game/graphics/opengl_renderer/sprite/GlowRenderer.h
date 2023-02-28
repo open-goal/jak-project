@@ -76,8 +76,8 @@ class GlowRenderer {
 
   // max sprites should be 128 in simple sprite, plus 256 from aux = 384
   // 20 width = 20 * 20 = 400 sprites > 384.
-  // we multiply by 4 to get 16x as many max sprites (in-game the max is only 12x)
-  static constexpr int kDownsampleBatchWidth = 20 * 4;
+  // we multiply by 2 to get 4x as many max sprites (in-game the max is 4x)
+  static constexpr int kDownsampleBatchWidth = 20 * 2;
   static constexpr int kMaxSprites = kDownsampleBatchWidth * kDownsampleBatchWidth;
   static constexpr int kMaxVertices = kMaxSprites * 32;  // check.
   static constexpr int kMaxIndices = kMaxSprites * 32;   // check.
