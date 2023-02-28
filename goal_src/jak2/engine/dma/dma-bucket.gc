@@ -5,32 +5,33 @@
 ;; name in dgo: dma-bucket
 ;; dgos: ENGINE, GAME
 
+#|@file
+A dma-bucket is used to organize dma data into groups called buckets.
+Each bucket is a linked list of DMA. At DMA time, the buckets are sent in order.
+
+A dma-bucket is a 16 byte thing that lives in the dma-buffer.
+buckets live consecutively in the dma-buffer, and can mark the start of a DMA chain
+location anywhere.
+
+The bucket doesn't own the data, but rather is a beginning of a linked list of DMA data associated with that bucket
+that's stored somewhere else.
+
+At the end, all the buckets are spliced together.
+
+The typical process is:
+- empty buckets are allocated with add-buckets
+- tags are put somewhere and added to the appropriate bucket with insert-tag, updating last as needed.
+- buckets are patched to link to each other with dma-buffer-patch-buckets.
+
+the idea here is that you can build the buckets in whatever order you want, but the buckets
+will be DMAd in the bucket allocation order.
+
+Each bucket contains:
+  a tag, (64-bits), to point to the chain of the bucket
+  last, a pointer to the last tag of this bucket, so that the bucket can be patched to point to the next.
+|#
+
 ;; DECOMP BEGINS
-
-;; A dma-bucket is used to organize dma data into groups called buckets.
-;; Each bucket is a linked list of DMA. At DMA time, the buckets are sent in order.
-
-;; A dma-bucket is a 16 byte thing that lives in the dma-buffer.
-;; buckets live consecutively in the dma-buffer, and can mark the start of a DMA chain
-;; location anywhere.
-
-;; The bucket doesn't own the data, but rather is a beginning of a linked list of DMA data associated with that bucket
-;; that's stored somewhere else.
-
-;; At the end, all the buckets are spliced together.
-
-;; The typical process is:
-;; - empty buckets are allocated with add-buckets
-;; - tags are put somewhere and added to the appropriate bucket with insert-tag, updating last as needed.
-;; - buckets are patched to link to each other with dma-buffer-patch-buckets.
-
-;; the idea here is that you can build the buckets in whatever order you want, but the buckets
-;; will be DMAd in the bucket allocation order.
-
-;; Each bucket contains:
-;;   a tag, (64-bits), to point to the chain of the bucket
-;;   last, a pointer to the last tag of this bucket, so that the bucket can be patched to point to the next.
-
 
 (defun dma-buffer-add-buckets ((arg0 dma-buffer) (arg1 int))
   "Add count buckets. Each bucket is initialized as empty and won't transfer anything."

@@ -38788,7 +38788,7 @@
    (prev      ai-task      :offset-assert 8)
    (pool      ai-task-pool :offset-assert 12)
    (unique-id uint32       :offset-assert 16)
-   (bytes     uint8 16     :offset 32)
+   (bytes     int8 16      :offset 32)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -38961,7 +38961,7 @@
    (spot-count             uint16                           :offset-assert 8)
    (retry-cookie           uint8                            :offset-assert 10)
    (too-far-warn-speeches  bot-speech-list-shuffle          :offset-assert 12)
-   (too-far-fail-speeches  bot-speech-list-shuffle          :offset-assert 16)
+   (too-far-fail-speeches  bot-speech-list                  :offset-assert 16)
    (attack-player-speeches bot-speech-list                  :offset-assert 20)
    (default-check-too-far  symbol                           :offset-assert 24)
    (waypoints              (array bot-waypoint)             :offset-assert 28)
@@ -39179,8 +39179,23 @@
 ;; sig-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++sig-h:plasma-flags
+(defenum plasma-flags
+  :type uint8
+  :bitfield #t
+  (pf00)
+  (pf01)
+  (pf02)
+  (pf03)
+  (pf04)
+  (pf05)
+  (pf06)
+  (pf07)
+  )
+;; ---sig-h:plasma-flags
+
 (deftype sig-plasma (structure)
-  ((flags            uint8   :offset-assert 0)
+  ((flags            plasma-flags   :offset-assert 0)
    (level            float   :offset-assert 4)
    (min-level        float   :offset-assert 8)
    (charge-speed     float   :offset-assert 12)
@@ -40447,38 +40462,35 @@
 ;; gun-buoy                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-buoy-shot (guard-shot)
   ()
   :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-buoy (nav-enemy)
-  ((gun-elev-jmod      basic              :offset-assert 600)
-   (start-pos          vector     :inline :offset-assert 604)
-   (aim-dir            vector     :inline :offset-assert 620)
-   (focus-pos          vector     :inline :offset-assert 348)
-   (banking-quat       quaternion :inline :offset-assert 652)
-   (offset-from-player vector     :inline :offset-assert 668)
-   (offset-y-angular   float              :offset-assert 684)
-   (elev-angle         float              :offset-assert 688)
-   (y-final            float              :offset-assert 692)
-   (y-offset           float              :offset-assert 696)
-   (y-bob              float              :offset-assert 700)
-   (y-speed            float              :offset-assert 704)
-   (warning-interval   uint64             :offset-assert 708)
-   (warning-timer      uint64             :offset-assert 716)
-   (splash-timer       uint64             :offset-assert 724)
-   (stare-down-timer   uint64             :offset-assert 732)
-   (warning-id         uint32             :offset-assert 740)
-   (voice-id           uint32             :offset-assert 744)
-   (flags              uint16             :offset-assert 748)
+  ((gun-elev-jmod      joint-mod          :offset-assert 604)
+   (start-pos          vector     :inline :offset-assert 608)
+   (aim-dir            vector     :inline :offset-assert 624)
+   ;; (focus-pos          vector     :inline :offset-assert 352)
+   (banking-quat       quaternion :inline :offset 656)
+   (offset-from-player vector     :inline :offset-assert 672)
+   (offset-y-angular   float              :offset-assert 688)
+   (elev-angle         float              :offset-assert 692)
+   (y-final            float              :offset-assert 696)
+   (y-offset           float              :offset-assert 700)
+   (y-bob              float              :offset-assert 704)
+   (y-speed            float              :offset-assert 708)
+   (warning-interval   time-frame         :offset-assert 712)
+   (warning-timer      time-frame         :offset-assert 720)
+   (splash-timer       time-frame         :offset-assert 728)
+   (stare-down-timer   time-frame         :offset-assert 736)
+   (warning-id         sound-id           :offset-assert 744)
+   (voice-id           sound-id           :offset-assert 748)
+   (flags              uint16             :offset-assert 752)
    )
   :method-count-assert 184
   :size-assert         #x2f2
@@ -40489,18 +40501,17 @@
     (warning () _type_ :state 180)
     (stare-down () _type_ :state 181)
     (open-guns () _type_ :state 182)
-    (gun-buoy-method-183 () none 183)
+    (gun-buoy-method-183 (_type_ process-focusable) none 183)
     )
   )
-|#
 
-;; (define-extern gun-buoy-shot-move function)
-;; (define-extern *gun-buoy-nav-enemy-info* nav-enemy-info)
-;; (define-extern *gun-buoy-warning-speech* array)
-;; (define-extern *gun-buoy-warning-index* object)
-;; (define-extern *gun-buoy-victory-speech* array)
-;; (define-extern *gun-buoy-victory-index* object)
-;; (define-extern gun-buoy-chase-post function)
+(define-extern gun-buoy-shot-move (function gun-buoy-shot none))
+(define-extern *gun-buoy-nav-enemy-info* nav-enemy-info)
+(define-extern *gun-buoy-warning-speech* (array string))
+(define-extern *gun-buoy-warning-index* int)
+(define-extern *gun-buoy-victory-speech* (array string))
+(define-extern *gun-buoy-victory-index* int)
+(define-extern gun-buoy-chase-post (function none :behavior gun-buoy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-part                     ;;
@@ -40769,7 +40780,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype ruffian-course (bot-course)
-  ((ouch-speeches basic  :offset-assert 48)
+  ((ouch-speeches bot-speech-list-shuffle  :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -40777,7 +40788,8 @@
   )
 
 (deftype ruffian (bot)
-  ((travel-anim-interp float   :offset-assert 992)
+  ((ruf-course         ruffian-course  :offset 652 :score 1)
+   (travel-anim-interp float   :offset-assert 992)
    (fired-gun-count    uint32  :offset-assert 996)
    (next-fire-time     time-frame  :offset-assert 1000)
    )
@@ -40785,35 +40797,35 @@
   :size-assert         #x3f0
   :flag-assert         #xf6037003f0
   (:methods
-    (ruffian-method-225 () none 225)
-    (ruffian-method-226 () none 226)
-    (ruffian-method-227 () none 227)
-    (ruffian-method-228 () none 228)
-    (ruffian-method-229 () none 229)
-    (ruffian-method-230 () none 230)
-    (ruffian-method-231 () none 231)
-    (ruffian-method-232 () none 232)
-    (ruffian-method-233 () none 233)
-    (ruffian-method-234 () none 234)
-    (ruffian-method-235 () none 235)
-    (ruffian-method-236 () none 236)
-    (ruffian-method-237 () none 237)
-    (ruffian-method-238 () none 238)
-    (ruffian-method-239 () none 239)
-    (ruffian-method-240 () none 240)
-    (ruffian-method-241 () none 241)
-    (ruffian-method-242 () none 242)
-    (ruffian-method-243 () none 243)
-    (ruffian-method-244 () none 244)
-    (ruffian-method-245 () none 245)
+    (kick () _type_ :state 225)
+    (blast () _type_ :state 226)
+    (alert-idle () _type_ :state 227)
+    (alert-turn () _type_ :state 228)
+    (traveling () _type_ :state 229)
+    (traveling-blocked () _type_ :state 230)
+    (waiting-idle () _type_ :state 231)
+    (waiting-turn () _type_ :state 232)
+    (scared-idle () _type_ :state 233)
+    (scared-turn () _type_ :state 234)
+    (plant-bomb () _type_ :state 235)
+    (bomb-recoil () _type_ :state 236)
+    (ruffian-method-237 (_type_) symbol 237)
+    (ruffian-method-238 (_type_) symbol 238)
+    (fire-gun (_type_ vector) none 239)
+    (ruffian-method-240 (_type_) none 240)
+    (ruffian-method-241 (_type_) none 241)
+    (ruffian-method-242 (_type_) none 242)
+    (ruffian-method-243 (_type_) symbol 243)
+    (ruffian-method-244 (_type_) none 244)
+    (ruffian-method-245 (_type_) none 245)
     )
   )
 
 (deftype ruft-wait-spot (ai-task)
-  ((check-done   basic     :offset 32)
+  ((check-done   (function ruft-wait-spot ruffian symbol) :offset 32)
    (which-spot   int8      :offset 36)
    (num-spots    uint8     :offset 37)
-   (spot-indexes int8    6 :offset 38)
+   (spot-indexes uint8   6 :offset 38)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -40821,18 +40833,18 @@
   )
 
 (deftype ruft-choose-jump (ai-task)
-  ((check-done        basic     :offset 32)
+  ((check-done        (function ruft-choose-jump ruffian symbol) :offset 32)
    (which-spot        int8      :offset 36)
    (num-spots         uint8     :offset 37)
-   (src-spot-indexes  int8 4 :offset 38)
-   (dest-spot-indexes int8 4 :offset 42)
+   (src-spot-indexes  uint8 4 :offset 38)
+   (dest-spot-indexes uint8 4 :offset 42)
    )
   :method-count-assert 14
   :size-assert         #x30
   :flag-assert         #xe00000030
   (:methods
-    (ruft-choose-jump-method-12 () none 12)
-    (ruft-choose-jump-method-13 () none 13)
+    (ruft-choose-jump-method-12 (_type_ ruffian) symbol 12)
+    (ruft-choose-jump-method-13 (_type_ ruffian) int 13)
     )
   )
 
@@ -40844,11 +40856,11 @@
   )
 
 (deftype ruft-plant-bomb (ai-task)
-  ((check-done         basic     :offset 32)
+  ((check-done         (function ruft-plant-bomb ruffian symbol) :offset 32)
    (which-spot         int8      :offset 36)
    (num-spots          uint8     :offset 37)
-   (stand-spot-indexes int8    2 :offset 38)
-   (face-spot-indexes  int8    2 :offset 40)
+   (stand-spot-indexes uint8    2 :offset 38)
+   (face-spot-indexes  uint8    2 :offset 40)
    )
   :method-count-assert 12
   :size-assert         #x30
@@ -40876,8 +40888,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype jinx (ruffian)
-  ((bomb-handle     uint64  :offset-assert 1008)
-   (bomb-func       basic   :offset-assert 1016)
+  ((bomb-handle     handle  :offset-assert 1008)
+   (bomb-func       function :offset-assert 1016)
    (bomb-fuse-delay uint32  :offset-assert 1020)
    )
   :method-count-assert 246
@@ -40890,10 +40902,9 @@
 ;; jinx-shot                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jinx-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 476)
-   (hit-pos  vector :inline :offset-assert 492)
+  ((tail-pos vector :inline :offset-assert 480)
+   (hit-pos  vector :inline :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x200
@@ -40901,9 +40912,8 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern jinx-shot-move function)
+(define-extern jinx-shot-move (function jinx-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jinx-bomb                      ;;
@@ -40913,7 +40923,7 @@
   ((fuse-delay    uint32  :offset-assert 204)
    (attack-id     uint32  :offset-assert 208)
    (shake-screen? symbol  :offset-assert 212)
-   (explode-func  basic   :offset-assert 216)
+   (explode-func  (function jinx-bomb none) :offset-assert 216)
    )
   :method-count-assert 29
   :size-assert         #xdc
@@ -40924,40 +40934,37 @@
     )
   )
 
-(define-extern jinx-bomb-init-by-other (function vector quaternion none :behavior jinx-bomb))
+(define-extern jinx-bomb-init-by-other (function vector quaternion level uint (function jinx-bomb none) symbol none :behavior jinx-bomb))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jinx                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jinx-anim-info (structure)
   ((anim-index int32  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype jinx-global-info (basic)
   ((prev-blue-hit-front int8      :offset-assert 4)
    (prev-blue-hit-back  int8      :offset-assert 5)
-   (blue-hit-front-anim UNKNOWN 3 :offset-assert 8)
-   (blue-hit-back-anim  UNKNOWN 3 :offset-assert 20)
-   (kick-anim           UNKNOWN 2 :offset-assert 32)
-   (scared-idle-anim    UNKNOWN 5 :offset-assert 40)
-   (bomb-recoil-anim    UNKNOWN 2 :offset-assert 60)
+   (blue-hit-front-anim int32 3   :offset-assert 8)
+   (blue-hit-back-anim  int32 3   :offset-assert 20)
+   (kick-anim           int32 2   :offset-assert 32)
+   (scared-idle-anim    int32 5   :offset-assert 40)
+   (bomb-recoil-anim    int32 2   :offset-assert 60)
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern *jinx-global-info* jinx-global-info)
-;; (define-extern *jinx-nav-enemy-info* nav-enemy-info)
+(define-extern *jinx-global-info* jinx-global-info)
+(define-extern *jinx-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jinx-states                    ;;
@@ -40968,7 +40975,6 @@
 ;; mog-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mog (jinx)
   ()
   :method-count-assert 246
@@ -40977,15 +40983,13 @@
   (:methods
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mog                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *mog-nav-enemy-info* nav-enemy-info)
-;; (define-extern mog-prebind-function function)
+(define-extern *mog-nav-enemy-info* nav-enemy-info)
+(define-extern mog-prebind-function (function joint-anim-frame int joint-control int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; grim-h                         ;;
@@ -41356,13 +41360,34 @@
 ;; hosehead                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hosehead (nav-enemy)
-  ()
+  ((on-wall?               symbol             :offset-assert 604)
+   (sentry?                symbol             :offset-assert 608)
+   (shot-by-ruffian?       symbol             :offset-assert 612)
+   (on-stop-sentry         function           :offset-assert 616)
+   (jump-point             vector :inline     :offset-assert 624)
+   (last-time-dist-changed time-frame         :offset-assert 640)
+   (next-lazer-time        time-frame         :offset-assert 648)
+   (fire-beam?             symbol             :offset-assert 656)
+   (head-angle             degrees            :offset-assert 660)
+   (head-angle-inc         degrees            :offset-assert 664)
+   (target-pos             vector :inline     :offset-assert 672)
+   (come-from-notice       symbol             :offset-assert 688)
+   (allow-head             symbol             :offset-assert 692)
+   (head-joint-mod         joint-mod          :offset-assert 696)
+   (joint-ik               joint-mod-ik 4     :offset-assert 700)
+   (delta-y-ik             float 4            :offset-assert 716)
+   (lazer-dist             float              :offset 740)
+   (lazer-pos-sound        vector :inline     :offset-assert 752)
+   (lazer-sound            sound-id           :offset-assert 768)
+   (lazer-sound2           sound-id           :offset-assert 772)
+   (sync                   sync-eased :inline :offset-assert 776)
+   (angle-sentry           degrees            :offset-assert 820)
+   (lazer-length           float              :offset-assert 824)
+   )
   :method-count-assert 198
   :size-assert         #x33c
   :flag-assert         #xc602c0033c
-  ;; Failed to read fields.
   (:methods
     (ambush-land () _type_ :state 178)
     (idle-sentry () _type_ :state 179)
@@ -41371,25 +41396,25 @@
     (hostile-sentry () _type_ :state 182)
     (fire () _type_ :state 183)
     (attack () _type_ :state 184)
-    (hosehead-method-185 () none 185)
-    (hosehead-method-186 () none 186)
-    (hosehead-method-187 () none 187)
-    (hosehead-method-188 () none 188)
-    (hosehead-method-189 () none 189)
-    (hosehead-method-190 () none 190)
-    (hosehead-method-191 () none 191)
-    (hosehead-method-192 () none 192)
-    (hosehead-method-193 () none 193)
-    (hosehead-method-194 () none 194)
-    (hosehead-method-195 () none 195)
-    (hosehead-method-196 () none 196)
-    (hosehead-method-197 () none 197)
+    (hosehead-method-185 (_type_) none 185)
+    (hosehead-method-186 (_type_) none 186)
+    (hosehead-method-187 (_type_ vector) none 187)
+    (hosehead-method-188 (_type_) none 188)
+    (hosehead-method-189 (_type_) none 189)
+    (hosehead-method-190 (_type_) symbol 190)
+    (hosehead-method-191 (_type_ vector vector) none 191)
+    (hosehead-method-192 (_type_ vector) symbol 192)
+    (hosehead-method-193 (_type_) none 193)
+    (hosehead-method-194 (_type_) none 194)
+    (hosehead-method-195 (_type_) symbol 195)
+    (hosehead-method-196 (_type_) none 196)
+    (hosehead-method-197 (_type_) none 197)
     )
   )
-|#
 
 #|
 (deftype ik-setup (structure)
+  "duplicate type definition, first one is in spyder"
   ((elbow-index int32  :offset-assert 0)
    (hand-dist   float  :offset-assert 4)
    )
@@ -41399,70 +41424,64 @@
   )
 |#
 
-#|
 (deftype hosehead-anim-info (structure)
   ((hit-index  int32  :offset-assert 0)
    (land-index int32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype hosehead-global-info (basic)
   ((prev-yellow-hit int8      :offset-assert 4)
    (prev-blue-hit   int8      :offset-assert 5)
    (prev-knocked    int8      :offset-assert 6)
-   (yellow-hit-anim UNKNOWN 2 :offset-assert 8)
-   (blue-hit-anim   UNKNOWN 3 :offset-assert 24)
-   (knocked-anim    UNKNOWN 2 :offset-assert 48)
+   (yellow-hit-anim hosehead-anim-info 2 :inline :offset-assert 8)
+   (blue-hit-anim   hosehead-anim-info 3 :inline :offset 24)
+   (knocked-anim    hosehead-anim-info 2 :inline :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-;; (define-extern *hosehead-idle-wall* object)
-;; (define-extern *hosehead-idle-ground* object)
-;; (define-extern *hosehead-nav-enemy-info* nav-enemy-info)
-;; (define-extern *hosehead-ik-setup* object)
-;; (define-extern *hosehead-global-info* hosehead-global-info)
-;; (define-extern point-line-distance function)
+(define-extern *hosehead-idle-wall* (pointer idle-control-frame))
+(define-extern *hosehead-idle-ground* (pointer idle-control-frame))
+(define-extern *hosehead-nav-enemy-info* nav-enemy-info)
+(define-extern *hosehead-ik-setup* (inline-array ik-setup))
+(define-extern *hosehead-global-info* hosehead-global-info)
+(define-extern point-line-distance (function vector vector vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hosehead-fake                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hosehead-fake-spawn-info (basic)
   ((id        int32              :offset-assert 4)
    (walk-dist float              :offset-assert 8)
-   (handle    uint64             :offset-assert 16)
+   (handle    handle             :offset-assert 16)
    (trans     vector     :inline :offset-assert 32)
    (quat      quaternion :inline :offset-assert 48)
-   (trans-x   float              :offset-assert 32)
-   (trans-y   float              :offset-assert 36)
-   (trans-z   float              :offset-assert 40)
-   (trans-w   float              :offset-assert 44)
-   (quat-x    float              :offset-assert 48)
-   (quat-y    float              :offset-assert 52)
-   (quat-z    float              :offset-assert 56)
-   (quat-w    float              :offset-assert 60)
+   (trans-x   float              :offset 32)
+   (trans-y   float              :offset 36)
+   (trans-z   float              :offset 40)
+   (trans-w   float              :offset 44)
+   (quat-x    float              :offset 48)
+   (quat-y    float              :offset 52)
+   (quat-z    float              :offset 56)
+   (quat-w    float              :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype hosehead-fake (process-drawable)
-  ((info      basic          :offset-assert 196)
-   (id        int32          :offset-assert 200)
-   (walk-dest vector :inline :offset-assert 204)
+  ((info      hosehead-fake-spawn-info :offset-assert 200)
+   (id        int32          :offset-assert 204)
+   (walk-dest vector :inline :offset-assert 208)
    )
   :method-count-assert 25
   :size-assert         #xe0
@@ -41471,17 +41490,16 @@
     (die-fast () _type_ :state 20)
     (idle () _type_ :state 21)
     (walk () _type_ :state 22)
-    (hosehead-fake-method-23 () none 23)
-    (hosehead-fake-method-24 () none 24)
+    (debug-draw (_type_) none 23)
+    (print-def (_type_) none 24)
     )
   )
-|#
 
-;; (define-extern hosehead-fake-event-handler function)
-;; (define-extern hosehead-fake-init-by-other function)
-;; (define-extern *hosehead-fakes* array)
+(define-extern hosehead-fake-event-handler (function process int symbol event-message-block object :behavior hosehead-fake))
+(define-extern hosehead-fake-init-by-other (function int vector hosehead-fake-spawn-info level none :behavior hosehead-fake))
+(define-extern *hosehead-fakes* (array hosehead-fake-spawn-info))
 (define-extern spawn-hosehead-fakes (function none))
-(define-extern hosehead-fake-trigger (function int none))
+(define-extern hosehead-fake-trigger (function int symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gator                          ;;
@@ -41520,97 +41538,80 @@
 ;; hal2-course                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype hal2-course (UNKNOWN)
-  ((course-id              uint8   :offset-assert 4)
-   (speech-count           uint16  :offset-assert 6)
-   (spot-count             uint16  :offset-assert 8)
-   (retry-cookie           uint8   :offset-assert 10)
-   (too-far-warn-speeches  basic   :offset-assert 12)
-   (too-far-fail-speeches  basic   :offset-assert 16)
-   (attack-player-speeches basic   :offset-assert 20)
-   (default-check-too-far  basic   :offset-assert 24)
-   (waypoints              basic   :offset-assert 28)
-   (speeches               uint32  :offset-assert 32)
-   (speech-tunings         uint32  :offset-assert 36)
-   (dirs                   uint32  :offset-assert 40)
-   (spots                  uint32  :offset-assert 44)
-   (sentries1-reminders    basic   :offset-assert 48)
-   (sentries2-reminders    basic   :offset-assert 52)
-   (bomb2-reminders        basic   :offset-assert 56)
+(deftype hal2-course (bot-course)
+  ((sentries1-reminders (array int16) :offset-assert 48)
+   (sentries2-reminders (array int16) :offset-assert 52)
+   (bomb2-reminders     bot-speech-list :offset-assert 56)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; field default-check-too-far uses ~A with a signed load
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
-#|
-(deftype hal-sewer (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+(deftype hal-sewer (hal)
+  ((hal2-course              hal2-course :offset 652 :score 1)
+   (sentries1-reminder-index int8  :offset-assert 1024)
+   (sentries2-reminder-index int8  :offset-assert 1025)
+   (test-plane               plane :inline :offset 1040)
+   )
+  :method-count-assert 232
+  :size-assert         #x420
+  :flag-assert         #xe803a00420
+  (:methods
+    (hal-sewer-method-227 (_type_) symbol 227)
+    (hal-sewer-method-228 (_type_) none 228)
+    (hal-sewer-method-229 (_type_) symbol 229)
+    (hal-sewer-method-230 (_type_ process-focusable process-focusable) symbol 230)
+    (hal-sewer-method-231 (_type_ int) symbol 231)
+    )
   )
-|#
 
-;; (define-extern hal2-default-check-too-far function)
-;; (define-extern hal2-near-start-check-too-far function)
-;; (define-extern hal2-below-elevator-a-check-too-far function)
-;; (define-extern hal2-force-fail-check-too-far function)
-;; (define-extern hal2-onslaught-check-too-far function)
-;; (define-extern *hal2-course* hal2-course)
+(define-extern hal2-default-check-too-far (function hal-sewer int))
+(define-extern hal2-near-start-check-too-far (function hal-sewer int))
+(define-extern hal2-below-elevator-a-check-too-far (function hal-sewer int))
+(define-extern hal2-force-fail-check-too-far (function hal-sewer int))
+(define-extern hal2-onslaught-check-too-far (function hal-sewer int))
+(define-extern *hal2-course* hal2-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mog2-course                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype mog-sewer (UNKNOWN)
+(deftype mog-sewer (mog)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 246
+  :size-assert         #x400
+  :flag-assert         #xf603800400
   )
-|#
 
-;; (define-extern *mog2-course* ruffian-course)
+(define-extern *mog2-course* ruffian-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jinx2-course                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype jinx-sewer (UNKNOWN)
+(deftype jinx-sewer (jinx)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 246
+  :size-assert         #x400
+  :flag-assert         #xf603800400
   )
-|#
 
-;; (define-extern jinx2-bomb1-callback function)
-;; (define-extern *jinx2-course* ruffian-course)
+(define-extern jinx2-bomb1-callback (function jinx-bomb none))
+(define-extern *jinx2-course* ruffian-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; grim2-course                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype grim-sewer (UNKNOWN)
+(deftype grim-sewer (grim)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  ;; Failed to read fields.
+  :method-count-assert 246
+  :size-assert         #x400
+  :flag-assert         #xf603800400
   )
-|#
 
-;; (define-extern *grim2-course* ruffian-course)
+(define-extern *grim2-course* ruffian-course)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-scenes                   ;;

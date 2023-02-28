@@ -480,8 +480,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
   lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
 
-  // TODO - docstring - do something with the docstring!
+  std::optional<std::string> docstring;
   if (body->as_pair()->car.is_string() && !body->as_pair()->cdr.is_empty_list()) {
+    docstring = pair_car(*body).as_string()->data;
     body = &pair_cdr(*body);
   }
 
@@ -612,12 +613,13 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   }
   place->set_type(lambda_ts);
 
-  auto info =
-      m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
+  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts,
+                                 docstring);
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
   auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
+
   m_symbol_info.add_method(symbol_string(method_name), lambda.params, info, form);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
