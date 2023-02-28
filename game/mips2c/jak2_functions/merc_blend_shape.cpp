@@ -2,6 +2,11 @@
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "common/global_profiler/GlobalProfiler.h"
+#include <mutex>
+
+extern std::mutex g_merc_data_mutex;
+
 using ::jak2::intern_from_c;
 namespace Mips2C::jak2 {
 namespace blerc_execute {
@@ -14,6 +19,8 @@ struct Cache {
 } cache;
 
 u64 execute(void* ctxt) {
+  auto pp = scoped_prof("blerc-exec");
+  std::unique_lock<std::mutex> lk(g_merc_data_mutex);
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
@@ -251,6 +258,10 @@ block_24:
   if (bc) {goto block_23;}                          // branch non-likely
 
   // Unknown instr: pmfhl.uw t5
+  c->gprs[t5].du32[0] = c->lo.du32[1];
+  c->gprs[t5].du32[1] = c->hi.du32[1];
+  c->gprs[t5].du32[2] = c->lo.du32[3];
+  c->gprs[t5].du32[3] = c->hi.du32[3];
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->psraw(t7, t7, 13);                             // psraw t7, t7, 13
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
@@ -345,7 +356,10 @@ block_29:
   qwc = c->sgpr64(a0);
   // Unknown instr: sync.l
   // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
-  spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
+  // fmt::print("blerc download 0x{:x} <- 0x{:x} ({} qwc)\n", madr, sadr, qwc);
+  {
+    spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
+  }
   // Unknown instr: sync.l
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
   c->addiu(a0, r0, 1);                              // addiu a0, r0, 1
@@ -406,7 +420,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)

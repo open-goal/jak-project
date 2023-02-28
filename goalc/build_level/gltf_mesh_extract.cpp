@@ -556,12 +556,12 @@ void extract(const Input& in,
           auto& grp = draw.vis_groups.emplace_back();
           grp.num_inds += prim_indices.size();
           grp.num_tris += draw.num_triangles;
-          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
         } else {
           auto& grp = draw.vis_groups.back();
           grp.num_inds += prim_indices.size();
           grp.num_tris += draw.num_triangles;
-          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
         }
 
         draw.plain_indices.insert(draw.plain_indices.end(), prim_indices.begin(),

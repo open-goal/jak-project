@@ -12,6 +12,17 @@ class Generic2 : public BucketRenderer {
            u32 num_buckets = 800);
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+
+  enum class Mode {
+    NORMAL,
+    LIGHTNING,
+  };
+
+  void render_in_mode(DmaFollower& dma,
+                      SharedRenderState* render_state,
+                      ScopedProfilerNode& prof,
+                      Mode mode);
+
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
 
@@ -28,14 +39,15 @@ class Generic2 : public BucketRenderer {
   static_assert(sizeof(Vertex) == 32);
 
  private:
-  void determine_draw_modes();
+  void determine_draw_modes(bool enable_at);
   void build_index_buffer();
   void link_adgifs_back_to_frags();
   void draws_to_buckets();
   void reset_buffers();
   void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
-  void setup_draws();
+  void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
+  void setup_draws(bool enable_at);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
                           ScopedProfilerNode& prof,

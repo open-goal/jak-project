@@ -480,8 +480,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // todo, verify argument list types (check that first arg is _type_ for methods that aren't "new")
   lambda.debug_name = fmt::format("(method {} {})", method_name.print(), type_name.print());
 
-  // TODO - docstring - do something with the docstring!
+  std::optional<std::string> docstring;
   if (body->as_pair()->car.is_string() && !body->as_pair()->cdr.is_empty_list()) {
+    docstring = pair_car(*body).as_string()->data;
     body = &pair_cdr(*body);
   }
 
@@ -612,15 +613,14 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   }
   place->set_type(lambda_ts);
 
-  m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
-
-  // TODO!
-  auto info =
-      m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
+  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts,
+                                 docstring);
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
   auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
+
+  m_symbol_info.add_method(symbol_string(method_name), lambda.params, info, form);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
 
@@ -1141,13 +1141,18 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
     }
-    auto type_info = m_ts.lookup_type(ts.get_single_arg());
-    if (!m_ts.lookup_type(elt_type)->is_reference()) {
+    auto type_info = m_ts.lookup_type_allow_partial_def(ts.get_single_arg());
+    if (!m_ts.lookup_type_allow_partial_def(elt_type)->is_reference()) {
       // not a reference type
+      m_ts.lookup_type(elt_type);  // should be fully defined
       int size_in_bytes = info.stride * constant_count;
       auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes,
                                                       type_info->get_in_memory_alignment());
       return addr;
+    }
+
+    if (is_inline) {
+      m_ts.lookup_type(elt_type);  // should be fully defined
     }
 
     int stride = is_inline ? align(type_info->get_size_in_memory(),

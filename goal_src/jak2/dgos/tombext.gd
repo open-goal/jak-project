@@ -1,7 +1,7 @@
 ("TOMBEXT.DGO"
-  ("tpage-2525.go" "tpage-2525")
-  ("daxter-highres-ag.go" "daxter-highres")
-  ("tomb-boss-explode-ag.go" "tomb-boss-explode")
-  ("baron-highres-ag.go" "baron-highres")
-  ("tombext.go" "tombext")
-  )
+ ("tpage-2525.go"
+  "daxter-highres-ag.go"
+  "tomb-boss-explode-ag.go"
+  "baron-highres-ag.go"
+  "tombext.go"
+ ))

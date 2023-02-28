@@ -178,4 +178,5 @@
 (#x1114 "SVENSKA")
 (#x1115 "DANSK")
 (#x1116 "NORSK")
+(#x1117 "MAGYAR")
 

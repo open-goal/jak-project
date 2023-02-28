@@ -1,38 +1,37 @@
-
 ("OGR.DGO"
-  ("target-racer-h.o" "target-racer-h")
-  ("racer-part.o" "racer-part")
-  ("racer.o" "racer")
-  ("target-racer.o" "target-racer")
-  ("racer-states.o" "racer-states")
-  ("collide-reaction-racer.o" "collide-reaction-racer")
-  ("eichar-racer+0-ag.go" "eichar-racer+0")
-  ("tpage-1119.go" "tpage-1119")
-  ("blocking-plane.o" "blocking-plane")
-  ("firecanyon-obs.o" "firecanyon-obs")
-  ("ogre-part.o" "ogre-part")
-  ("ogreboss.o" "ogreboss")
-  ("ogre-obs.o" "ogre-obs")
-  ("flying-lurker.o" "flying-lurker")
-  ("tpage-875.go" "tpage-875")
-  ("tpage-967.go" "tpage-967")
-  ("tpage-884.go" "tpage-884")
-  ("tpage-1117.go" "tpage-1117")
-  ("crate-darkeco-cluster-ag.go" "crate-darkeco-cluster")
-  ("ecovalve-ag.go" "ecovalve")
-  ("ef-plane-ag.go" "ef-plane")
-  ("flying-lurker-ag.go" "flying-lurker")
-  ("medres-snow-ag.go" "medres-snow")
-  ("ogre-bridge-ag.go" "ogre-bridge")
-  ("ogre-bridgeend-ag.go" "ogre-bridgeend")
-  ("ogre-isle-ag.go" "ogre-isle")
-  ("ogre-step-ag.go" "ogre-step")
-  ("ogreboss-ag.go" "ogreboss")
-  ("ogrecam-ag.go" "ogrecam")
-  ("plunger-lurker-ag.go" "plunger-lurker")
-  ("racer-ag.go" "racer")
-  ("shortcut-boulder-ag.go" "shortcut-boulder")
-  ("tntbarrel-ag.go" "tntbarrel")
-  ("water-anim-ogre-ag.go" "water-anim-ogre")
-  ("ogre-vis.go" "ogre-vis")
-  )
+ ("target-racer-h.o"
+  "racer-part.o"
+  "racer.o"
+  "target-racer.o"
+  "racer-states.o"
+  "collide-reaction-racer.o"
+  "eichar-racer+0-ag.go"
+  "tpage-1119.go"
+  "blocking-plane.o"
+  "firecanyon-obs.o"
+  "ogre-part.o"
+  "ogreboss.o"
+  "ogre-obs.o"
+  "flying-lurker.o"
+  "tpage-875.go"
+  "tpage-967.go"
+  "tpage-884.go"
+  "tpage-1117.go"
+  "crate-darkeco-cluster-ag.go"
+  "ecovalve-ag.go"
+  "ef-plane-ag.go"
+  "flying-lurker-ag.go"
+  "medres-snow-ag.go"
+  "ogre-bridge-ag.go"
+  "ogre-bridgeend-ag.go"
+  "ogre-isle-ag.go"
+  "ogre-step-ag.go"
+  "ogreboss-ag.go"
+  "ogrecam-ag.go"
+  "plunger-lurker-ag.go"
+  "racer-ag.go"
+  "shortcut-boulder-ag.go"
+  "tntbarrel-ag.go"
+  "water-anim-ogre-ag.go"
+  "ogre-vis.go"
+ ))

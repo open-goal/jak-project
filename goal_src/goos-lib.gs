@@ -240,7 +240,7 @@
   `(let ((,(car bindings) ,(cadr bindings)))
       (while (not (null? ,(car bindings)))
         ,@body
-        
+
         (set! ,(car bindings) (cdr ,(car bindings)))
         )
       )
@@ -344,19 +344,18 @@
 
 ;; Bootstrap GOAL macro system
 
-
 ;; goal macro to define a goal macro
 (defgmacro defmacro (name args &rest body)
   `(begin
-     (add-macro-to-autocomplete ,name)
-     ,(if (and
-           (> (length body) 1) ;; more than one thing in function
-           (string? (first body)) ;; first thing is a string
-           )
+     ,(if (and (> (length body) 1) (string? (first body)))
           ;; then it's a docstring and we ignore it.
-          `(seval (defgmacro ,name ,args ,@(cdr body)))
+          `(begin
+            (update-macro-metadata ,name ,(first body) ,args)
+            (seval (defgmacro ,name ,args ,@(cdr body))))
           ;; otherwise don't ignore it.
-          `(seval (defgmacro ,name ,args ,@body))
+          `(begin
+            (update-macro-metadata ,name "" ,args)
+            (seval (defgmacro ,name ,args ,@body)))
           )
      )
   )
@@ -381,30 +380,30 @@
 
 (defsmacro doenum (bindings &rest body)
   ;; (doenum (name-var val-var 'enum &rest result) &rest body)
-  
+
   (with-gensyms (enum-vals)
     `(let ((,enum-vals (get-enum-vals ,(third bindings))))
-        
+
         (while (not (null? ,enum-vals))
           (let ((,(first bindings) (caar ,enum-vals)) ;; name
                 (,(second bindings) (cdar ,enum-vals)) ;; value
                 )
             ,@body
             )
-          
+
           (set! ,enum-vals (cdr ,enum-vals))
           )
-        
+
         ,@(cdddr bindings)
-        
+
         )
     )
-  
+
   )
 
 (desfun enum-max (enum)
   "get the highest value in an enum"
-  
+
   (let ((max-val -999999999999))
     (doenum (name val enum)
       (when (> val max-val)

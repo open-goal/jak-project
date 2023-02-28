@@ -367,6 +367,14 @@ void c_memmove(u32 dst, u32 src, u32 size) {
   memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
 }
 
+void set_game_resolution(s64 w, s64 h) {
+  Gfx::set_game_resolution(w, h);
+}
+
+void set_msaa(s64 samples) {
+  Gfx::set_msaa(samples);
+}
+
 /*!
  * Returns size of window. Called from game thread
  */
@@ -540,7 +548,7 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
 
   // Check distance first
   if (Gfx::g_debug_settings.debug_text_check_range) {
-    if (dist / 4096.0 > Gfx::g_debug_settings.debug_text_max_range) {
+    if (dist / 4096.F > Gfx::g_debug_settings.debug_text_max_range) {
       return s7.offset + true_symbol_offset(g_game_version);
     }
   }

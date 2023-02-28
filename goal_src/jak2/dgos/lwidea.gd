@@ -1,18 +1,18 @@
 ("LWIDEA.DGO"
-  ("tpage-2929.go" "tpage-2929")
-  ("tpage-2930.go" "tpage-2930")
-  ("citizen-fat-ag.go" "citizen-fat")
-  ("citizen-norm-ag.go" "citizen-norm")
-  ("crimson-guard-ag.go" "crimson-guard")
-  ("citizen-chick-ag.go" "citizen-chick")
-  ("hellcat-ag.go" "hellcat")
-  ("carc-ag.go" "carc")
-  ("cara-ag.go" "cara")
-  ("carb-ag.go" "carb")
-  ("citizen-norm-rider-ag.go" "citizen-norm-rider")
-  ("crimson-bike-ag.go" "crimson-bike")
-  ("bikec-ag.go" "bikec")
-  ("bikeb-ag.go" "bikeb")
-  ("bikea-ag.go" "bikea")
-  ("lwidea.go" "lwidea")
-  )
+ ("tpage-2929.go"
+  "tpage-2930.go"
+  "citizen-fat-ag.go"
+  "citizen-norm-ag.go"
+  "crimson-guard-ag.go"
+  "citizen-chick-ag.go"
+  "hellcat-ag.go"
+  "carc-ag.go"
+  "cara-ag.go"
+  "carb-ag.go"
+  "citizen-norm-rider-ag.go"
+  "crimson-bike-ag.go"
+  "bikec-ag.go"
+  "bikeb-ag.go"
+  "bikea-ag.go"
+  "lwidea.go"
+ ))

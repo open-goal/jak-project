@@ -340,8 +340,14 @@ Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, En
         form,
         "Cannot get debug info, the debugger must be connected and the target must be halted.");
   }
+  auto args = get_va(form, rest);
 
-  m_debugger.update_break_info();
+  std::optional<std::string> dump_path;
+  if (args.unnamed.size() > 0 && args.unnamed.at(0).is_string()) {
+    dump_path = args.unnamed.at(0).as_string()->data;
+  }
+
+  m_debugger.update_break_info(dump_path);
   return get_none();
 }
 

@@ -6,10 +6,10 @@
 #include "game/graphics/opengl_renderer/DepthCue.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "game/graphics/opengl_renderer/LightningRenderer.h"
+#include "game/graphics/opengl_renderer/ProgressRenderer.h"
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
-#include "game/graphics/opengl_renderer/Sprite3.h"
-#include "game/graphics/opengl_renderer/SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "game/graphics/opengl_renderer/VisDataHandler.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
@@ -19,6 +19,8 @@
 #include "game/graphics/opengl_renderer/foreground/Merc2.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
+#include "game/graphics/opengl_renderer/sprite/Sprite3.h"
+#include "game/graphics/opengl_renderer/sprite/SpriteRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
@@ -137,6 +139,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TFragment>("tfrag-l5-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L5_TFRAG,
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 5);
   init_bucket_renderer<Tie3>("tie-l5-tfrag", BucketCategory::TIE, BucketId::TIE_L5_TFRAG, 5);
+  init_bucket_renderer<Merc2>("merc-l5-tfrag", BucketCategory::MERC, BucketId::MERC_L5_TFRAG);
   // 70
   init_bucket_renderer<TextureUploadHandler>("tex-l0-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L0_SHRUB);
@@ -155,6 +158,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L3_SHRUB);
   init_bucket_renderer<Shrub>("shrub-l3-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L3_SHRUB);
+  init_bucket_renderer<Merc2>("merc-l3-shrub", BucketCategory::MERC, BucketId::MERC_L3_SHRUB);
   init_bucket_renderer<TextureUploadHandler>("tex-l4-shrub", BucketCategory::TEX,
                                              BucketId::TEX_L4_SHRUB);
   // 110
@@ -247,6 +251,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-l4-pris2", BucketCategory::TEX,
                                              BucketId::TEX_L4_PRIS2);
   init_bucket_renderer<Merc2>("merc-l4-pris2", BucketCategory::MERC, BucketId::MERC_L4_PRIS2);
+  init_bucket_renderer<TextureUploadHandler>("tex-l5-pris2", BucketCategory::TEX,
+                                             BucketId::TEX_L5_PRIS2);
+  init_bucket_renderer<Merc2>("merc-l5-pris2", BucketCategory::MERC, BucketId::MERC_L5_PRIS2);
   // 250
   init_bucket_renderer<TextureUploadHandler>("tex-l0-water", BucketCategory::TEX,
                                              BucketId::TEX_L0_WATER);
@@ -273,11 +280,19 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_L3_WATER);
   // 280
   init_bucket_renderer<Merc2>("merc-l3-water", BucketCategory::MERC, BucketId::MERC_L3_WATER);
+  init_bucket_renderer<TFragment>("tfrag-w-l3-water", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_W_L3_WATER,
+                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 3);
   init_bucket_renderer<TextureUploadHandler>("tex-l4-water", BucketCategory::TEX,
                                              BucketId::TEX_L4_WATER);
   init_bucket_renderer<Merc2>("merc-l4-water", BucketCategory::MERC, BucketId::MERC_L4_WATER);
   // 290
+  init_bucket_renderer<TextureUploadHandler>("tex-l5-water", BucketCategory::TEX,
+                                             BucketId::TEX_L5_WATER);
   // 300
+  init_bucket_renderer<TFragment>("tfrag-w-l5-water", BucketCategory::TFRAG,
+                                  BucketId::TFRAG_W_L5_WATER,
+                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 5);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_WATER);
   init_bucket_renderer<Merc2>("merc-lcom-water", BucketCategory::MERC, BucketId::MERC_LCOM_WATER);
@@ -288,6 +303,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+  init_bucket_renderer<LightningRenderer>("lightning", BucketCategory::OTHER, BucketId::LIGHTNING);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
@@ -295,10 +311,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,
                                              BucketId::TEX_ALL_MAP);
   // 320
-  init_bucket_renderer<DirectRenderer>("progress", BucketCategory::OTHER, BucketId::PROGRESS,
-                                       0x8000);
+  init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::PROGRESS,
+                                         0x8000);
   init_bucket_renderer<DirectRenderer>("screen-filter", BucketCategory::OTHER,
-                                       BucketId::SCREEN_FILTER, 0x8000);
+                                       BucketId::SCREEN_FILTER, 256);
   init_bucket_renderer<DirectRenderer>("bucket-322", BucketCategory::OTHER, BucketId::BUCKET_322,
                                        0x8000);
   init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);
@@ -599,6 +615,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     if (settings.gpu_sync) {
       glFinish();
     }
+  }
+
+  if (settings.draw_loader_window) {
+    m_render_state.loader->draw_debug_window();
   }
 
   m_profiler.finish();
@@ -992,6 +1012,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
 
   // TODO ending data.
 }
+
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */

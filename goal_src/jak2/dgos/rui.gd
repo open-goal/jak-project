@@ -1,50 +1,50 @@
 ("RUI.DGO"
-  ("jak-pole+0-ag.go" "jak-pole+0")
-  ("jak-mech+0-ag.go" "jak-mech+0")
-  ("grunt-mech-anims+0-ag.go" "grunt-mech-anims+0")
-  ("mech-part.o" "mech-part")
-  ("mech.o" "mech")
-  ("target-mech.o" "target-mech")
-  ("mech-states.o" "mech-states")
-  ("grunt-mech.o" "grunt-mech")
-  ("ruins-ocean.o" "ruins-ocean")
-  ("ruins-scenes.o" "ruins-scenes")
-  ("mechtest-obs.o" "mechtest-obs")
-  ("ruins-part.o" "ruins-part")
-  ("breakable-wall.o" "breakable-wall")
-  ("pillar-collapse.o" "pillar-collapse")
-  ("ruins-obs.o" "ruins-obs")
-  ("rapid-gunner.o" "rapid-gunner")
-  ("amphibian.o" "amphibian")
-  ("fodder.o" "fodder")
-  ("grenadier.o" "grenadier")
-  ("tpage-851.go" "tpage-851")
-  ("tpage-853.go" "tpage-853")
-  ("tpage-852.go" "tpage-852")
-  ("tpage-2205.go" "tpage-2205")
-  ("tpage-1000.go" "tpage-1000")
-  ("grunt-ag.go" "grunt")
-  ("ruins-breakable-wall-ag.go" "ruins-breakable-wall")
-  ("grenadier-ag.go" "grenadier")
-  ("amphibian-ag.go" "amphibian")
-  ("ruins-drop-plat-ag.go" "ruins-drop-plat")
-  ("rapid-gunner-ag.go" "rapid-gunner")
-  ("flitter-ag.go" "flitter")
-  ("ruins-pillar-collapse-ag.go" "ruins-pillar-collapse")
-  ("mech-ag.go" "mech")
-  ("fodder-ag.go" "fodder")
-  ("ruins-bridge-ag.go" "ruins-bridge")
-  ("com-airlock-outer-ag.go" "com-airlock-outer")
-  ("shield-gunner-ag.go" "shield-gunner")
-  ("precipice-b-ag.go" "precipice-b")
-  ("ruins-precipice-ag.go" "ruins-precipice")
-  ("precipice-a-ag.go" "precipice-a")
-  ("pushblock-ag.go" "pushblock")
-  ("throwblock-ag.go" "throwblock")
-  ("zipline-ag.go" "zipline")
-  ("flag-ag.go" "flag")
-  ("sinking-plat-ag.go" "sinking-plat")
-  ("awning-ag.go" "awning")
-  ("beam-ag.go" "beam")
-  ("ruins-vis.go" "ruins-vis")
-  )
+ ("jak-pole+0-ag.go"
+  "jak-mech+0-ag.go"
+  "grunt-mech-anims+0-ag.go"
+  "mech-part.o"
+  "mech.o"
+  "target-mech.o"
+  "mech-states.o"
+  "grunt-mech.o"
+  "ruins-ocean.o"
+  "ruins-scenes.o"
+  "mechtest-obs.o"
+  "ruins-part.o"
+  "breakable-wall.o"
+  "pillar-collapse.o"
+  "ruins-obs.o"
+  "rapid-gunner.o"
+  "amphibian.o"
+  "fodder.o"
+  "grenadier.o"
+  "tpage-851.go"
+  "tpage-853.go"
+  "tpage-852.go"
+  "tpage-2205.go"
+  "tpage-1000.go"
+  "grunt-ag.go"
+  "ruins-breakable-wall-ag.go"
+  "grenadier-ag.go"
+  "amphibian-ag.go"
+  "ruins-drop-plat-ag.go"
+  "rapid-gunner-ag.go"
+  "flitter-ag.go"
+  "ruins-pillar-collapse-ag.go"
+  "mech-ag.go"
+  "fodder-ag.go"
+  "ruins-bridge-ag.go"
+  "com-airlock-outer-ag.go"
+  "shield-gunner-ag.go"
+  "precipice-b-ag.go"
+  "ruins-precipice-ag.go"
+  "precipice-a-ag.go"
+  "pushblock-ag.go"
+  "throwblock-ag.go"
+  "zipline-ag.go"
+  "flag-ag.go"
+  "sinking-plat-ag.go"
+  "awning-ag.go"
+  "beam-ag.go"
+  "ruins-vis.go"
+ ))
