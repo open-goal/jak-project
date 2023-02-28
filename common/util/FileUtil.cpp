@@ -278,7 +278,7 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
   std::vector<uint8_t> data;
   data.resize(len);
 
-  if (fread(data.data(), len, 1, fp) != 1) {
+  if (len != 0 && fread(data.data(), len, 1, fp) != 1) {
     fclose(fp);
     throw std::runtime_error("File " + path.string() + " cannot be read");
   }
