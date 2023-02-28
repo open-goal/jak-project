@@ -593,12 +593,16 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
 }
 
 void copy_file(const fs::path& src, const fs::path& dst) {
-  if (src == dst) {
-    lg::error("Failed to copy_file {}, source and destination are the same\n", src.string());
-    throw std::runtime_error("Failed to copy_file");
+  // Check that the src path exists
+  if (!fs::exists(src)) {
+    throw std::runtime_error(fmt::format("Cannot copy '{}', path does not exist", src.string()));
   }
-  auto data = read_binary_file(src);
-  write_binary_file(dst, data.data(), data.size());
+  // Ensure the directory can be copied into
+  if (!fs::exists(dst.parent_path()) && !create_dir_if_needed_for_file(dst)) {
+    throw std::runtime_error(fmt::format(
+        "Cannot copy '{}', couldn't make directory to copy into '{}'", src.string(), dst.string()));
+  }
+  fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
 }
 
 }  // namespace file_util
