@@ -111,7 +111,7 @@ static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMet
         GAME_TERRITORY_SCEA,
         338,
         8538304367812415885U,
-        "jp",
+        "ntsc_v2",
         "jak1",
         {}}}}},
     {"SCES-50361",
