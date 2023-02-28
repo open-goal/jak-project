@@ -9087,8 +9087,8 @@
   ))
 
 (define-extern *traffic-manager* process)
-(define-extern *ctywide-entity* object)
-(define-extern *lwide-entity* object)
+(define-extern *ctywide-entity* entity)
+(define-extern *lwide-entity* entity)
 (define-extern *race-vehicle-entity* entity-actor)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30035,7 +30035,7 @@
 (define-extern entity-count (function int))
 (define-extern entity-remap-names (function pair none))
 (define-extern process-status-bits (function process symbol none))
-(define-extern process-entity-set! (function process entity-actor entity-actor))
+(define-extern process-entity-set! (function process entity entity))
 (define-extern process-task-mask (function process task-mask))
 (define-extern update-actor-vis-box (function process-drawable vector vector none))
 (define-extern expand-bounding-box (function vector vector vector vector none))
@@ -48417,6 +48417,19 @@
   (phase-4a 7)
   )
 
+(defenum nav-branch-flags
+  :bitfield #t
+  :type uint8
+  (nabflags-0)
+  (nabflags-1)
+  (nabflags-2)
+  (nabflags-3)
+  (nabflags-4)
+  (nabflags-5)
+  (nabflags-6)
+  (nabflags-7)
+  )
+
 (declare-type nav-node structure)
 (deftype nav-branch (structure)
   ((node              nav-node    2 :offset-assert   0)
@@ -48430,7 +48443,7 @@
    (max-user-count    uint8      :offset-assert  12)
    (user-count        uint8      :offset-assert  13)
    (width             uint8      :offset-assert  14)
-   (flags             uint8      :offset-assert  15)
+   (flags             nav-branch-flags      :offset-assert  15)
    )
   :method-count-assert 21
   :size-assert         #x10
@@ -48727,7 +48740,7 @@
     (city-level-info-method-12 (_type_ vector nav-branch vector) vector 12)
     (lookup-cell-by-position (_type_ vector) vis-cell 13)
     (get-first-cell-in-box (_type_ vis-grid-box) vis-cell 14)
-    (sphere-in-grid? (_type_ int int) symbol 15)
+    (sphere-in-grid? (_type_ vector int) symbol 15)
     (callback-on-nav-segments-in-sphere (_type_ vector int traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none 16)
     (update-suppressions-from-traffic-engine (_type_ traffic-engine) none 17)
     (city-level-info-method-18 (_type_) none 18)
@@ -48886,8 +48899,21 @@
     )
   )
 
+(defenum traffic-type-flags
+  :bitfield #t
+  :type uint8
+  (trtflags-0)
+  (trtflags-1)
+  (trtflags-2)
+  (trtflags-3)
+  (trtflags-4)
+  (trtflags-5)
+  (trtflags-6)
+  (trtflags-7)
+  )
+
 (deftype traffic-object-type-info (structure)
-  ((flags             uint8   :offset-assert 0)
+  ((flags             traffic-type-flags   :offset-assert 0)
    (target-count      int8    :offset-assert 1)
    (active-count      int8    :offset-assert 2)
    (inactive-count    int8    :offset-assert 3)
@@ -48898,7 +48924,7 @@
    (parking-spot-prob uint8   :offset-assert 10)
    (guard-type        uint8   :offset-assert 11)
    (array             (pointer handle)  :offset-assert 12) ;; this is a total guess TODO
-   (level             level   :offset-assert 16)
+   (level             symbol   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -49008,7 +49034,7 @@
     (stop-alarm-sound (_type_) none 11)
     (debug-unused (_type_) none 12)
     (add-object (_type_ traffic-type process) none 13)
-    (sphere-in-loaded-city-infos? (_type_ int vector) symbol 14)
+    (sphere-in-loaded-city-infos? (_type_ vector int) symbol 14)
     (activate-one-citizen (_type_ nav-segment float) none 15)
     (activate-one-vehicle (_type_ nav-segment float) none 16)
     (can-dest-be-used? (_type_ nav-branch) symbol 17)
@@ -49028,7 +49054,7 @@
     (decrease-alert-level (_type_ int) none 31)
     (set-alert-level (_type_ int) none 32)
     (set-max-alert-level (_type_ int) none 33)
-    (set-alert-duration (_type_ int) none 34)
+    (set-alert-duration (_type_ time-frame) none 34)
     (get-alert-level (_type_) int 35)
     (get-target "@returns [[*target*]]" (_type_) target 36)
     (set-object-target-level (_type_ int float) none 37)
@@ -49055,18 +49081,18 @@
     (set-object-auto-activate (_type_ int object) none 58)
     (debug-check-proc-in-tracker (_type_ process int) none 59)
     (kill-traffic-sphere "Kill everything in the sphere with a traffic-off-force." (_type_ sphere) none 60)
-    (level-loaded "Call after loading a level to patch the data in the bsp" (_type_ level) none 61)
-    (level-killed "Call after removing a level. Kills processes and unlinks nav" (_type_ level) none 62)
+    (level-link "Call after loading a level to patch the data in the bsp" (_type_ level) none 61)
+    (level-unlink "Call after removing a level. Kills processes and unlinks nav" (_type_ level) none 62)
     (traffic-engine-method-63 (_type_) none 63)
     (traffic-engine-method-64 (_type_) none 64)
     (handle-new-vis-cell (_type_ vis-cell) none 65)
     (update-sync-from-frame-counter (_type_) none 66)
-    (per-frame-guard-update (_type_) none 67)
-    (per-frame-activate-deactivate "per-frame activate and deactivate processes." (_type_) none 68)
-    (per-frame-danger-update "see what's dangerous and make people avoid it." (_type_) none 69)
+    (update-guards (_type_) none 67)
+    (update-traffic-amount "kills inactive traffic and spawns more if needed." (_type_) none 68)
+    (update-danger "see what's dangerous and make people avoid it." (_type_) none 69)
     (update-danger-from-target "make people run away from jak when he is dangerous." (_type_) none 70)
-    (per-frame-alert-update (_type_) none 71)
-    (per-frame-suppressor-update (_type_) none 72)
+    (update-alert-state (_type_) none 71)
+    (update-suppressor (_type_) none 72)
     (recompute-supressions (_type_) none 73)
     )
   )
@@ -51568,8 +51594,8 @@
   :flag-assert         #x900000020)
 
 (deftype traffic-manager (process)
-  ((traffic-engine   traffic-engine                               :offset-assert 128)
-   (fast-spawn       basic                               :offset-assert 132)
+  ((traffic-engine   traffic-engine                      :offset-assert 128)
+   (fast-spawn       symbol                              :offset-assert 132)
    (dark-guard-ratio int32                               :offset-assert 136)
    (spawn-params     traffic-object-spawn-params :inline :offset-assert 144)
    )
@@ -51579,12 +51605,12 @@
   (:methods
     (idle () _type_ :state 14)
     (active () _type_ :state 15)
-    (traffic-manager-method-16 (_type_) none 16)
+    (update (_type_) none 16)
     (spawn-all (_type_) none 17)
-    (traffic-manager-method-18 (_type_) none 18)
-    (kill-all (_type_) none 19)
-    (traffic-manager-method-20 (_type_) none 20)
-    (traffic-manager-method-21 (_type_) none 21)
+    (kill-excess-once (_type_) none 18)
+    (kill-all-inactive (_type_) none 19)
+    (reset-and-init (_type_) none 20)
+    (init-params (_type_) none 21)
     )
   )
 
