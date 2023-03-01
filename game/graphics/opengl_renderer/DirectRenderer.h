@@ -23,7 +23,8 @@ class DirectRenderer : public BucketRenderer {
   DirectRenderer(const std::string& name, int my_id, int batch_size);
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
-
+  virtual void pre_render() {}
+  virtual void post_render() {}
   /*!
    * Render directly from _VIF_ data.
    * You can optionally provide two vif tags that come in front of data.
@@ -66,22 +67,9 @@ class DirectRenderer : public BucketRenderer {
   }
 
   void set_mipmap(bool en) { m_debug_state.disable_mipmap = !en; }
-
- private:
-  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_pabe(u64 val);
-  void handle_clamp1(u64 val);
   void handle_prim(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_prim_packed(const u8* data,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof);
-  void handle_rgbaq(u64 val);
-  void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_st_packed(const u8* data);
-  void handle_uv_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
@@ -89,11 +77,25 @@ class DirectRenderer : public BucketRenderer {
   void handle_xyz2_packed(const u8* data,
                           SharedRenderState* render_state,
                           ScopedProfilerNode& prof);
+  void handle_prim_packed(const u8* data,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof);
   void handle_tex0_1_packed(const u8* data);
+  void handle_uv_packed(const u8* data);
+  void handle_rgbaq(u64 val);
+  void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+ protected:
+  virtual void handle_frame(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_pabe(u64 val);
+  void handle_clamp1(u64 val);
   void handle_tex0_1(u64 val);
   void handle_tex1_1(u64 val);
-  void handle_texa(u64 val);
-
+  void handle_texa(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_xyoffset(u64 val);
   void handle_xyzf2_common(u32 x,
                            u32 y,
                            u32 z,
@@ -106,6 +108,7 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_blend();
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state, int unit);
+  bool m_offscreen_mode = false;
 
   struct TestState {
     void from_register(GsTest reg);
@@ -120,7 +123,7 @@ class DirectRenderer : public BucketRenderer {
     bool datm = false;
     bool zte = true;
     GsTest::ZTest ztst = GsTest::ZTest::GEQUAL;
-
+    bool write_rgb = true;
     bool depth_writes = true;
 
   } m_test_state;
@@ -151,6 +154,7 @@ class DirectRenderer : public BucketRenderer {
     bool use_uv = false;  // todo: might not require a gl state change
     bool ctxt = false;    // do they ever use ctxt2?
     bool fix = false;     // what does this even do?
+    u32 ta0 = 0;
   } m_prim_gl_state;
 
   static constexpr int TEXTURE_STATE_COUNT = 1;
@@ -161,7 +165,6 @@ class DirectRenderer : public BucketRenderer {
     bool using_mt4hh = false;
     bool tcc = false;
     bool decal = false;
-
     bool enable_tex_filt = true;
 
     struct ClampState {
@@ -206,7 +209,6 @@ class DirectRenderer : public BucketRenderer {
     int tri_strip_startup = 0;
 
     float Q = 1.0;
-
   } m_prim_building;
 
   struct Vertex {
@@ -217,7 +219,8 @@ class DirectRenderer : public BucketRenderer {
     u8 tcc;
     u8 decal;
     u8 fog_enable;
-    math::Vector<u8, 28> pad;
+    u8 use_uv;
+    math::Vector<u8, 27> pad;
   };
   static_assert(sizeof(Vertex) == 64);
   static_assert(offsetof(Vertex, tex_unit) == 32);
@@ -227,7 +230,8 @@ class DirectRenderer : public BucketRenderer {
     std::vector<Vertex> vertices;
     int vert_count = 0;
     int max_verts = 0;
-
+    float x_off = 0;
+    float y_off = 0;
     // leave 6 free on the end so we always have room to flush one last primitive.
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
@@ -236,7 +240,8 @@ class DirectRenderer : public BucketRenderer {
               int unit,
               bool tcc,
               bool decal,
-              bool fog_enable);
+              bool fog_enable,
+              bool use_uv);
   } m_prim_buffer;
 
   struct {
@@ -264,6 +269,7 @@ class DirectRenderer : public BucketRenderer {
     int flush_from_tex_1 = 0;
     int flush_from_zbuf = 0;
     int flush_from_test = 0;
+    int flush_from_ta0 = 0;
     int flush_from_alpha = 0;
     int flush_from_clamp = 0;
     int flush_from_prim = 0;

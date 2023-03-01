@@ -1,0 +1,66 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+	This file has the game-specific implementation of the pckernel (see pckernel-h.gc and pckernel.gc).
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+                                            ;; version: 0.1.0.2
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 0 2))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; The Jak 2 version of the pc-settings object.
+(deftype pc-settings-jak2 (pc-settings)
+  (
+   ;; debug
+   (jetboard-trick-text? symbol) ;; enable rendering jetboard trick combo during minigame
+	 )
+  )
+
+(define *pc-settings* (the pc-settings-jak2 #f))
+
+
+;; jak 2 discord rpc structure
+(deftype discord-info (structure)
+  ((orb-count (pointer float))
+   (gem-count (pointer float))
+   (death-count (pointer int32))
+   (status string)
+   (level string)
+   (cutscene? symbol)
+   (time-of-day (pointer float))
+   (percent-complete float)
+   )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; resets
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod reset-misc pc-settings-jak2 ((obj pc-settings-jak2))
+  "Set the default misc settings"
+
+  ((method-of-type pc-settings reset-misc) obj)
+  (set! (-> obj jetboard-trick-text?) #t)
+  (none))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun get-video-params () *video-params*)
+
+
+

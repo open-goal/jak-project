@@ -5,37 +5,39 @@
 ;; name in dgo: sky-tng
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
-
-;; Sky renderer.
-;; this render is much more complicated than the jak 1 version.
-;; there's a lot of weird tricks to store values in the VF registers, and a lot of asm,
-;; so a lot of this is in C++.
+#|@file
+Sky renderer.
+this render is much more complicated than the jak 1 version.
+there's a lot of weird tricks to store values in the VF registers, and a lot of asm,
+so a lot of this is in C++.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Large Polygon Renderer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; there's a special "large polygon renderer" that handles clipping
-;; and ps2-specific texture perspective stuff.
-;; the way it subdivides is extremely strange, and not well understood, but it works well with the
-;; Direct renderer in C++.
-;; this renderer is also used for drawing debug regions and some parts of the ocean near the horizon.
+there's a special "large polygon renderer" that handles clipping
+and ps2-specific texture perspective stuff.
+the way it subdivides is extremely strange, and not well understood, but it works well with the
+Direct renderer in C++.
+this renderer is also used for drawing debug regions and some parts of the ocean near the horizon.
 
-;; there's a lot of state stored in vf registers, so we have to be very careful with this.
+there's a lot of state stored in vf registers, so we have to be very careful with this.
 
-;; VF registers for large polygon
-;; vf13: fog
-;; vf14: hmge
-;; vf23: 0?
-;; vf24: texture offset (stored in xy, zw are 0),
-;; vf25: hvdf-offset
-;; vf26: inv-hmge
-;; vf27: giftag
-;; vf28: cam 3 (premultiplied by hmge)
-;; vf29: cam 2 (premultiplied by hmge)
-;; vf30: cam 1 (premultiplied by hmge)
-;; vf31: cam 0 (premultiplied by hmge)
+VF registers for large polygon
+vf13: fog
+vf14: hmge
+vf23: 0?
+vf24: texture offset (stored in xy, zw are 0),
+vf25: hvdf-offset
+vf26: inv-hmge
+vf27: giftag
+vf28: cam 3 (premultiplied by hmge)
+vf29: cam 2 (premultiplied by hmge)
+vf30: cam 1 (premultiplied by hmge)
+vf31: cam 0 (premultiplied by hmge)
+|#
+
+;; DECOMP BEGINS
 
 ;; set the xy component of vf24 (texture offset for large poly renderer) to values / 65,536
 (def-mips2c set-tex-offset (function int int none))

@@ -244,7 +244,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 void FS_Close(LoadStackEntry* fd) {
-  lg::debug("[OVERLORD] FS_Close {}", fd->fr->name);
+  lg::debug("[OVERLORD] FS_Close {} @ {}/{}", fd->fr->name, fd->fr->location, fd->location);
 
   // close the FD
   fd->fr = nullptr;

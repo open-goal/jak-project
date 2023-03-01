@@ -1,26 +1,26 @@
 ("NES.DGO"
-  ("gun-buoy.o" "gun-buoy")
-  ("nest-obs.o" "nest-obs")
-  ("mantis.o" "mantis")
-  ("mammoth.o" "mammoth")
-  ("flying-spider.o" "flying-spider")
-  ("nest-ocean.o" "nest-ocean")
-  ("nest-scenes.o" "nest-scenes")
-  ("nest-part.o" "nest-part")
-  ("tpage-2988.go" "tpage-2988")
-  ("tpage-2990.go" "tpage-2990")
-  ("tpage-2989.go" "tpage-2989")
-  ("tpage-2991.go" "tpage-2991")
-  ("tpage-3349.go" "tpage-3349")
-  ("mammoth-ag.go" "mammoth")
-  ("flying-spider-ag.go" "flying-spider")
-  ("mantis-ag.go" "mantis")
-  ("nest-break-rocks-ag.go" "nest-break-rocks")
-  ("water-anim-nest-dark-eco-ag.go" "water-anim-nest-dark-eco")
-  ("gun-buoy-ag.go" "gun-buoy")
-  ("transport-ag.go" "transport")
-  ("switch-ag.go" "cas-switch")
-  ("air-train-ag.go" "air-train")
-  ("piston-ag.go" "piston")
-  ("nest-vis.go" "nest-vis")
-  )
+ ("gun-buoy.o"
+  "nest-obs.o"
+  "mantis.o"
+  "mammoth.o"
+  "flying-spider.o"
+  "nest-ocean.o"
+  "nest-scenes.o"
+  "nest-part.o"
+  "tpage-2988.go"
+  "tpage-2990.go"
+  "tpage-2989.go"
+  "tpage-2991.go"
+  "tpage-3349.go"
+  "mammoth-ag.go"
+  "flying-spider-ag.go"
+  "mantis-ag.go"
+  "nest-break-rocks-ag.go"
+  "water-anim-nest-dark-eco-ag.go"
+  "gun-buoy-ag.go"
+  "transport-ag.go"
+  "switch-ag.go"
+  "air-train-ag.go"
+  "piston-ag.go"
+  "nest-vis.go"
+ ))

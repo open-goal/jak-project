@@ -135,7 +135,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
-      ASSERT(fix == 0);
+      // fix is ignored. it's usually 0, except for lightning, which sets it to 0x80.
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::ZERO_SRC_SRC_DST) {

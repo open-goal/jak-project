@@ -1,13 +1,13 @@
 ("LWIDEB.DGO"
-  ("tpage-2972.go" "tpage-2972")
-  ("grunt-ag.go" "grunt")
-  ("citizen-norm-ag.go" "citizen-norm")
-  ("crimson-guard-ag.go" "crimson-guard")
-  ("predator-ag.go" "predator")
-  ("flitter-ag.go" "flitter")
-  ("cara-ag.go" "cara")
-  ("citizen-norm-rider-ag.go" "citizen-norm-rider")
-  ("crimson-bike-ag.go" "crimson-bike")
-  ("bikea-ag.go" "bikea")
-  ("lwideb.go" "lwideb")
-  )
+ ("tpage-2972.go"
+  "grunt-ag.go"
+  "citizen-norm-ag.go"
+  "crimson-guard-ag.go"
+  "predator-ag.go"
+  "flitter-ag.go"
+  "cara-ag.go"
+  "citizen-norm-rider-ag.go"
+  "crimson-bike-ag.go"
+  "bikea-ag.go"
+  "lwideb.go"
+ ))
