@@ -290,8 +290,12 @@ int main(int argc, char** argv) {
     }
   }
 
-  auto log_path = file_util::get_jak_project_dir() / "extractor.log";
-  lg::set_file(log_path.string());
+  try {
+    lg::set_file(file_util::get_file_path({"log", "extractor.log"}));
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   fs::path iso_data_path;
 
