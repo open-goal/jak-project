@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\gk -boot -fakeiso -debug -v
+out\build\Release\bin\gk -v -- -boot -fakeiso -debug
 pause

@@ -116,8 +116,7 @@ int main(int argc, char** argv) {
   std::vector<char*> new_argv;
   if (!adjusted_argv_vals.empty() || !adjusted_argv_vals_passthru.empty()) {
     new_argv.push_back(argv[0]);
-    argc++;
-    argc = adjusted_argv_vals.size() + adjusted_argv_vals_passthru.size();
+    argc = adjusted_argv_vals.size() + adjusted_argv_vals_passthru.size() + 1;
     if (!adjusted_argv_vals_passthru.empty()) {
       argc++;
     }

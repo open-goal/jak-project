@@ -3,6 +3,7 @@
  * Setup and launcher for the runtime.
  */
 
+#include "common/common_types.h"
 #ifdef OS_POSIX
 #include <unistd.h>
 
@@ -22,7 +23,6 @@
 
 #include "runtime.h"
 
-#include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
