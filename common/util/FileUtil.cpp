@@ -215,6 +215,7 @@ void write_binary_file(const fs::path& name, const void* data, size_t size) {
 
   if (size == 0) {
     // nothing to write, just 'touch' the file
+    fclose(fp);
     return;
   }
 
@@ -279,6 +280,7 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
   if (len == 0) {
+    fclose(fp);
     return {};
   }
   rewind(fp);
