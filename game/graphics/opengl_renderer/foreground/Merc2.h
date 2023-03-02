@@ -66,7 +66,7 @@ class Merc2 : public BucketRenderer {
     GLuint vao, vertex;
   };
 
-  static constexpr int kMaxEffect = 32;
+  static constexpr int kMaxEffect = 64;
   bool m_effect_debug_mask[kMaxEffect];
 
   struct MercMat {
