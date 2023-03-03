@@ -16,7 +16,7 @@
 #include "third-party/fmt/core.h"
 
 void setup_logging() {
-  lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
+  lg::set_file(file_util::get_file_path({"log", "compiler.log"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
@@ -79,7 +79,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  setup_logging();
+  try {
+    setup_logging();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
+
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   // Figure out the username
