@@ -60,10 +60,10 @@ std::string game_arg_documentation() {
   output += "  -debug-mem     Used to set up GOAL in debug mode, but not to load debug-segments\n";
   output += "  -nokernel      An added mode to allow booting without a KERNEL.CGO for testing\n";
   output += "  -nosound       An added mode to allow booting without sound for testing\n";
+  output += "  -level [name]  Used to inform the game to boot a specific level the default level is `#f`\n";
   // Jak 1 Related
   output += fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::orange), "Jak 1:\n");
   output += "  -demo          Used to pass the message `demo` to the gkernel in the DebugBootMessage (instead of play)\n";
-  output += "  -level [name]  Used to inform the game to boot a specific level the default level is `#f`\n";
   // Jak 2 only
   output += fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::purple), "Jak 2:\n");
   output += "  -kiosk         A demo mode, TODO on specifics\n";
@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    setup_logging(verbose);
+    setup_logging(verbose_logging);
   } catch (const std::exception& e) {
     lg::error("Failed to setup logging: {}", e.what());
     return 1;
