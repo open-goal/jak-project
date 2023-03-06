@@ -175,9 +175,9 @@ int main(int argc, char** argv) {
   if (project_path_override.empty()) {
     if (!file_util::setup_project_path({})) {
       return 1;
-    } else if (!file_util::setup_project_path(project_path_override)) {
-      return 1;
     }
+  } else if (!file_util::setup_project_path(project_path_override)) {
+    return 1;
   }
 
   if (disable_avx2) {
