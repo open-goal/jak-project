@@ -213,6 +213,12 @@ void write_binary_file(const fs::path& name, const void* data, size_t size) {
     throw std::runtime_error("couldn't open file " + name.string());
   }
 
+  if (size == 0) {
+    // nothing to write, just 'touch' the file
+    fclose(fp);
+    return;
+  }
+
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
     throw std::runtime_error("couldn't write file " + name.string());
@@ -273,6 +279,10 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
+  if (len == 0) {
+    fclose(fp);
+    return {};
+  }
   rewind(fp);
 
   std::vector<uint8_t> data;
@@ -585,12 +595,16 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
 }
 
 void copy_file(const fs::path& src, const fs::path& dst) {
-  if (src == dst) {
-    lg::error("Failed to copy_file {}, source and destination are the same\n", src.string());
-    throw std::runtime_error("Failed to copy_file");
+  // Check that the src path exists
+  if (!fs::exists(src)) {
+    throw std::runtime_error(fmt::format("Cannot copy '{}', path does not exist", src.string()));
   }
-  auto data = read_binary_file(src);
-  write_binary_file(dst, data.data(), data.size());
+  // Ensure the directory can be copied into
+  if (!fs::exists(dst.parent_path()) && !create_dir_if_needed_for_file(dst)) {
+    throw std::runtime_error(fmt::format(
+        "Cannot copy '{}', couldn't make directory to copy into '{}'", src.string(), dst.string()));
+  }
+  fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
 }
 
 }  // namespace file_util
