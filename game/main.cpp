@@ -116,21 +116,17 @@ int main(int argc, char** argv) {
   std::vector<char*> new_argv;
   if (!adjusted_argv_vals.empty() || !adjusted_argv_vals_passthru.empty()) {
     new_argv.push_back(argv[0]);
-    argc = adjusted_argv_vals.size() + adjusted_argv_vals_passthru.size() + 1;
-    if (!adjusted_argv_vals_passthru.empty()) {
-      argc++;
-    }
     for (const auto& arg : adjusted_argv_vals) {
       new_argv.push_back(arg);
     }
     if (!adjusted_argv_vals_passthru.empty()) {
-      argc++;
       new_argv.push_back("--");
       for (const auto& arg : adjusted_argv_vals_passthru) {
         new_argv.push_back(arg);
       }
     }
     argv = new_argv.data();
+    argc = new_argv.size();
   }
   // --- END temporary shim
 
@@ -173,6 +169,7 @@ int main(int argc, char** argv) {
   // set up file paths for resources. This is the full repository when developing, and the data
   // directory (a subset of the full repo) in release versions
   if (project_path_override.empty()) {
+    lg::info("No project path provided, looking for data/ folder in current directory");
     if (!file_util::setup_project_path({})) {
       return 1;
     }
