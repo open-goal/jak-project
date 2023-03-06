@@ -31,7 +31,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
  * @param verbose : should we print debug-level messages to stdout?
  */
 void setup_logging(bool verbose) {
-  // lg::set_file(file_util::get_file_path({"log/game.txt"}));
+  lg::set_file(file_util::get_file_path({"log", "game.log"}));
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::debug);
@@ -199,7 +199,12 @@ int main(int argc, char** argv) {
     lg::info("AVX2 mode disabled");
   }
 
-  setup_logging(verbose_logging);
+  try {
+    setup_logging(verbose);
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   bool force_debug_next_time = false;
   // always start with an empty arg, as internally kmachine starts at `1` not `0`
