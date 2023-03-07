@@ -5,6 +5,7 @@
  */
 
 #include "common/goos/ParseHelpers.h"
+#include "common/util/math_util.h"
 
 #include "goalc/compiler/Compiler.h"
 
@@ -44,10 +45,6 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
     field_name_def = field_name_def.substr(1);
     auto field_info = m_ts.lookup_field_info(type_info->get_name(), field_name_def);
-
-    if (field_info.field.is_dynamic()) {
-      throw_compiler_error(form, "Dynamic fields are not supported for inline");
-    }
 
     auto field_offset = field_info.field.offset() + offset;
 
@@ -99,7 +96,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
       s64 elt_array_len = get_constant_integer_or_error(new_form.at(4), env);
 
-      if (elt_array_len != field_info.field.array_size()) {
+      if (!field_info.field.is_dynamic() && elt_array_len != field_info.field.array_size()) {
         throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
                              field_info.field.array_size(), elt_array_len);
       }
@@ -110,11 +107,25 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
       if (is_inline) {
+        if (field_info.field.is_dynamic()) {
+          throw_compiler_error(form, "Dynamic fields are not supported for inline");
+        }
         fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
                                         field_offset, env);
       } else {
+        int num_elts = arg_list.size() - 4;
+        if (field_info.field.is_dynamic()) {
+          // need to resize data
+          // first, expected original size
+          int expected_data_size = type_info->get_size_in_memory();
+          ASSERT(expected_data_size == (int)structure->data.size());
+          int stride = align(type_info->get_size_in_memory(),
+                             type_info->get_inline_array_stride_alignment());
+          int increase_by = stride * num_elts;
+          structure->data.resize(expected_data_size + increase_by);
+        }
         fill_static_array_inline(field_value, field_info.field.type(), arg_list.data() + 4,
-                                 (int)arg_list.size() - 4, structure, field_offset, env);
+                                 num_elts, structure, field_offset, env);
       }
 
     } else if (is_integer(field_info.type)) {
@@ -189,7 +200,9 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         auto sr = compile_static(field_value, env);
         if (sr.is_symbol()) {
           if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
-            typecheck(form, field_info.type, sr.typespec());
+            typecheck(form, field_info.type, sr.typespec(),
+                      fmt::format("Field {}, containing symbol {}", field_info.field.name(),
+                                  sr.symbol_name()));
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
           ASSERT(deref_info.mem_deref);

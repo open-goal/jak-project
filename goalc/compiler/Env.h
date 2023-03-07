@@ -102,7 +102,7 @@ class FileEnv : public Env {
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
   void add_static(std::unique_ptr<StaticObject> s);
   void debug_print_tl();
-  const std::vector<std::shared_ptr<FunctionEnv>>& functions() { return m_functions; }
+  const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
   std::string get_anon_function_name() {
     return "anon-function-" + std::to_string(m_anon_func_counter++);
@@ -128,9 +128,11 @@ class FileEnv : public Env {
   void set_debug_file() { m_default_segment = DEBUG_SEGMENT; }
   bool is_debug_file() const { return default_segment() == DEBUG_SEGMENT; }
 
+  void cleanup_after_codegen();
+
  protected:
   std::string m_name;
-  std::vector<std::shared_ptr<FunctionEnv>> m_functions;
+  std::vector<std::unique_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
   int m_anon_func_counter = 0;
   std::vector<std::unique_ptr<Val>> m_vals;

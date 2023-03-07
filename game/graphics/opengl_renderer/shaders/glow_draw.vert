@@ -9,8 +9,6 @@ out vec4 fragment_color;
 out vec2 uv_texture;
 out float discard_flag;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 layout (binding = 1) uniform sampler2D probe_tex;
 
 
@@ -23,7 +21,7 @@ void main() {
   transformed.y /= -(128);
   transformed.xyz *= transformed.w;
   // scissoring area adjust
-  transformed.y *= SCISSOR_ADJUST;
+  transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;
   fragment_color = rgba_in;
   uv_texture = uv_texture_in;

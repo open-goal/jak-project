@@ -27,7 +27,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
  * @param verbose : should we print debug-level messages to stdout?
  */
 void setup_logging(bool verbose) {
-  lg::set_file(file_util::get_file_path({"log/game.txt"}));
+  lg::set_file(file_util::get_file_path({"log", "game.log"}));
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::debug);
@@ -101,7 +101,12 @@ int main(int argc, char** argv) {
     printf("AVX2 mode disabled\n");
   }
 
-  setup_logging(verbose);
+  try {
+    setup_logging(verbose);
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   bool force_debug_next_time = false;
   while (true) {

@@ -5,6 +5,10 @@
 ;; name in dgo: part-tester
 ;; dgos: ENGINE, GAME
 
+(#when PC_PORT
+  (define *part-tester-id* 127)
+  )
+
 (define-extern *part-tester* (pointer process))
 
 ;; DECOMP BEGINS
@@ -64,8 +68,12 @@
         (-> self root trans)
         (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
         )
-      ;(let ((gp-1 (-> *part-group-id-table* 127)))
-      (let ((gp-1 (-> *part-group-id-table* 96)))
+      (let ((gp-1 (-> *part-group-id-table* 127)))
+        (#when PC_PORT
+          (if (nonzero? (-> *part-group-id-table* *part-tester-id*))
+              (set! gp-1 (-> *part-group-id-table* *part-tester-id*))
+              )
+          )
         (let ((s5-1 (-> self root trans)))
           (when (!= gp-1 (-> self old-group))
             (when (nonzero? (-> self part))

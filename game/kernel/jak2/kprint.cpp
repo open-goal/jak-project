@@ -93,7 +93,7 @@ s32 format_impl_jak2(uint64_t* args) {
   // read goal binteger
   if (print_column.offset) {
     // added the if check so we can format even if the kernel didn't load right.
-    indentation = (*print_column) >> 3;
+    indentation = (*(print_column - 1)) >> 3;
   }
 
   // which arg we're on
@@ -538,7 +538,8 @@ s32 format_impl_jak2(uint64_t* args) {
     // change for Jak 2: if we are disk-booting and do a (format #t, immediately flush to stdout.
     // we'd get these eventually in ClearPending, but for some reason they flush these here.
     // This is nicer because we may crash in between here and flushing the print buffer.
-    if (DiskBoot) {
+    // It's actually really annoying though so we disable it when in debug mode
+    if (DiskBoot && !MasterDebug) {
       printf("%s", PrintPendingLocal3);
       fflush(stdout);
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
