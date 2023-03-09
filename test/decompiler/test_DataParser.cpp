@@ -17,7 +17,7 @@ class DataDecompTest : public ::testing::Test {
 
   static void SetUpTestCase() {
     dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak1);
-    dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
+    dts->parse_type_defs({"decompiler", "config", "jak1", "all-types.gc"});
   }
 
   static void TearDownTestCase() { dts.reset(); }
