@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser("update-gsrc-via-refs")
 parser.add_argument("--game", help="The name of the game", type=str)
 parser.add_argument("--decompiler", help="The path to the decompiler", type=str)
 parser.add_argument("--decompiler_config", help="The decomp config", type=str)
+parser.add_argument("--version", help="The decomp config version", type=str)
 parser.add_argument("--file_pattern", help="Provide a glob pattern to find files, instead of using git status. Relative to the reference test folder", type=str)
 args = parser.parse_args()
 
@@ -51,6 +52,8 @@ for file_name in file_names:
             "./decompiler/config/{}".format(args.decompiler_config),
             "./iso_data",
             "./decompiler_out",
+            "--version",
+            args.version,
             "--config-override",
             '{{"allowed_objects": ["{}"]}}'.format(file_name),
         ]

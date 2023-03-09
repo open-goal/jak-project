@@ -117,6 +117,7 @@ struct ConvertedMercEffect {
   bool has_envmap = false;
   DrawMode envmap_mode;
   u32 envmap_texture;
+  std::optional<s8> eye_slot;
 };
 
 /*!
@@ -682,7 +683,10 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
 int find_or_add_texture_to_level(tfrag3::Level& out,
                                  const TextureDB& tex_db,
                                  const std::string& debug_name,
-                                 u32 pc_combo_tex_id) {
+                                 u32 pc_combo_tex_id,
+                                 const MercCtrlHeader& hdr,
+                                 u8* eye_out,
+                                 GameVersion version) {
   u32 idx_in_level_texture = UINT32_MAX;
   for (u32 i = 0; i < out.textures.size(); i++) {
     if (out.textures[i].combo_id == pc_combo_tex_id) {
@@ -710,6 +714,38 @@ int find_or_add_texture_to_level(tfrag3::Level& out,
     }
   }
 
+  // check eyes
+  u32 eye_tpage = version == GameVersion::Jak2 ? 0x70c : 0x1cf;
+  u32 left_id = version == GameVersion::Jak2 ? 7 : 0x6f;
+  u32 right_id = version == GameVersion::Jak2 ? 8 : 0x70;
+
+  if (eye_out && (pc_combo_tex_id >> 16) == eye_tpage) {
+    auto tex_it = tex_db.textures.find(pc_combo_tex_id);
+    if (tex_it == tex_db.textures.end()) {
+      // fmt::print("{} got dynamic merc texture (no known texture)\n", debug_name);
+    } else {
+      // fmt::print("{} got dynamic merc texture (will overwrite {})\n", debug_name,
+      //                  tex_it->second.name);
+    }
+    u32 idx = pc_combo_tex_id & 0xffff;
+
+    if (idx == left_id || idx == right_id) {
+      if (!hdr.eye_ctrl) {
+        fmt::print("no eye ctrl, but expected one");
+        if (debug_name != "kor-break-lod0") {
+          ASSERT(false);
+        }
+      }
+      if (idx == left_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2);
+      } else if (idx == right_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2) + 1;
+      }
+    } else {
+      // fmt::print("got unknown tex id in eye page: {}\n", idx);
+    }
+  }
+
   return idx_in_level_texture;
 }
 
@@ -726,6 +762,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  if (ctrl_header.eye_ctrl) {
+    result.eye_slot = ctrl_header.eye_ctrl->eye_slot;
+  }
   if (input_effect.extra_info.shader) {
     result.has_envmap = true;
     result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false, false);
@@ -738,7 +777,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 tpage = new_tex >> 20;
     u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
     u32 tex_combo = (((u32)tpage) << 16) | tidx;
-    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo);
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo,
+                                                         ctrl_header, nullptr, version);
   } else if (input_effect.envmap_or_effect_usage) {
     u32 tex_combo = 0;
     switch (version) {
@@ -757,7 +797,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         ASSERT_NOT_REACHED();
     }
 
-    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo);
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo,
+                                                         ctrl_header, nullptr, version);
 
     DrawMode mode;
     mode.set_at(false);
@@ -1264,7 +1305,8 @@ void extract_merc(const ObjectFileData& ag_data,
           pc_draw = &pc_effect.all_draws.emplace_back();
           pc_draw->mode = draw.state.merc_draw_mode.mode;
           pc_draw->tree_tex_id = find_or_add_texture_to_level(
-              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id);
+              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.header,
+              &pc_draw->eye_id, version);
         } else {
           pc_draw_idx = existing->second;
           pc_draw = &pc_effect.all_draws.at(pc_draw_idx);

@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 25;
+constexpr int TFRAG3_VERSION = 26;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -393,7 +393,7 @@ static_assert(sizeof(MercVertex) == 64);
 struct MercDraw {
   DrawMode mode;
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
-
+  u8 eye_id = 0xff;     // 0xff if not eyes, (slot << 1) | (is_r)
   u32 first_index;
   u32 index_count;
   u32 num_triangles;

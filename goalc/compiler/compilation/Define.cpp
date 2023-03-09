@@ -77,7 +77,10 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  m_symbol_info.add_global(symbol_string(sym), form, sym_meta);
+  if (!as_lambda) {
+    // Don't double-add functions as globals
+    m_symbol_info.add_global(symbol_string(sym), form, sym_meta);
+  }
 
   env->emit(form, std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;

@@ -16,7 +16,7 @@
 #include "third-party/fmt/core.h"
 
 void setup_logging() {
-  lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
+  lg::set_file(file_util::get_file_path({"log", "compiler.log"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
@@ -24,8 +24,6 @@ void setup_logging() {
 }
 
 int main(int argc, char** argv) {
-  bool auto_listen = false;
-  bool auto_debug = false;
   bool auto_find_user = false;
   std::string cmd = "";
   std::string username = "#f";
@@ -40,10 +38,6 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("--auto-lt", auto_listen,
-               "Attempt to automatically connect to the listener on startup");
-  app.add_flag("--auto-dbg", auto_debug,
-               "Attempt to automatically connect to the debugger on startup");
   app.add_flag("--user-auto", auto_find_user,
                "Attempt to automatically deduce the user, overrides '--user'");
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
@@ -51,18 +45,6 @@ int main(int argc, char** argv) {
                  "Specify the location of the 'data/' folder");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
-
-  // Yell about deprecations
-  if (auto_listen) {
-    lg::warn(
-        "--auto-lt will be deprecated, migrate to a 'startup.gc' file in your goal_src/user "
-        "folder");
-  }
-  if (auto_debug) {
-    lg::warn(
-        "--auto-dbg will be deprecated, migrate to a 'startup.gc' file in your goal_src/user "
-        "folder");
-  }
 
   GameVersion game_version = game_name_to_version(game);
 
@@ -79,7 +61,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  setup_logging();
+  try {
+    setup_logging();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
+
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   // Figure out the username
@@ -88,13 +76,6 @@ int main(int argc, char** argv) {
   }
   // Load the user's startup file
   auto startup_file = REPL::load_user_startup_file(username, game_version);
-  // TODO - deprecate these two flags
-  if (startup_file.run_before_listen.empty() && (auto_debug || auto_listen)) {
-    startup_file.run_before_listen.push_back("(lt)");
-  }
-  if (startup_file.run_after_listen.empty() && (auto_debug || auto_listen)) {
-    startup_file.run_before_listen.push_back("(dbgc)");
-  }
   // Load the user's REPL config
   auto repl_config = REPL::load_repl_config(username, game_version);
 
