@@ -2,6 +2,7 @@
 
 #include "common/global_profiler/GlobalProfiler.h"
 
+#include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include "third-party/imgui/imgui.h"
@@ -455,14 +456,6 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
   // allocate lights
   u32 lights = alloc_lights(current_lights);
-  for (int i = 0; i < 3; i++) {
-    float debug_length = current_lights.direction0[i] * current_lights.direction0[i] +
-                         current_lights.direction1[i] * current_lights.direction1[i] +
-                         current_lights.direction2[i] * current_lights.direction2[i];
-    if (debug_length > 0.01 && debug_length < 0.98) {
-      fmt::print("likely incorrect merc light direction {}\n", debug_length);
-    }
-  }
 
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
@@ -930,7 +923,7 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = mdraw.mode;
-  draw->texture = mdraw.tree_tex_id;
+  draw->texture = mdraw.eye_id == 0xff ? mdraw.tree_tex_id : (0xffffff00 | mdraw.eye_id);
   draw->first_bone = first_bone;
   draw->light_idx = lights;
   draw->num_triangles = mdraw.num_triangles;
@@ -1041,13 +1034,14 @@ void Merc2::do_draws(const Draw* draw_array,
                      const Uniforms& uniforms,
                      ScopedProfilerNode& prof,
                      bool set_fade,
-                     SharedRenderState*) {
+                     SharedRenderState* render_state) {
   glBindVertexArray(m_vao);
   int last_tex = -1;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;
   for (u32 di = 0; di < num_draws; di++) {
     auto& draw = draw_array[di];
+    auto mode = draw.mode;
     if (draw.flags & MOD_VTX) {
       glBindVertexArray(draw.mod_vtx_buffer.vao);
       glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
@@ -1065,6 +1059,13 @@ void Merc2::do_draws(const Draw* draw_array,
     if ((int)draw.texture != last_tex) {
       if (draw.texture < lev->textures.size()) {
         glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
+      } else if ((draw.texture & 0xffffff00) == 0xffffff00) {
+        auto maybe_eye = render_state->eye_renderer->lookup_eye_texture(draw.texture & 0xff);
+        if (maybe_eye) {
+          glBindTexture(GL_TEXTURE_2D, *maybe_eye);
+        }
+
+        mode.set_filt_enable(false);
       } else {
         fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
       }
@@ -1081,7 +1082,7 @@ void Merc2::do_draws(const Draw* draw_array,
       set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
       last_light = draw.light_idx;
     }
-    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
+    setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
 
