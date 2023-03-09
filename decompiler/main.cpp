@@ -44,12 +44,13 @@ int main(int argc, char** argv) {
   fs::path in_folder;
   fs::path out_folder;
 
+  std::string config_game_version = "";
   std::string config_override = "{}";
 
   CLI::App app{"OpenGOAL Decompiler"};
   app.add_option("config-path", config_path,
                  "Path to the decompiler config .jsonc file. ie. "
-                 "./decompiler/config/jak1_ntsc_black_label.jsonc")
+                 "./decompiler/config/jak1/jak1_config.jsonc")
       ->required();
   app.add_option("in-folder", in_folder,
                  "The path containing the iso_data folders. ie. ./iso_data/. Assumes the "
@@ -58,6 +59,10 @@ int main(int argc, char** argv) {
   app.add_option("out-folder", out_folder,
                  "The path for where the decompiler should place it's outputs. Assumes the "
                  "'gameName' from the config as a sub-directory")
+      ->required();
+
+  app.add_option("--version", config_game_version,
+                 "The name of the game version to update the config with, ie. ntsc_v2")
       ->required();
   app.add_option("--config-override", config_override,
                  "JSON provided will be merged with the specified config, use to override options");
@@ -69,7 +74,7 @@ int main(int argc, char** argv) {
 
   Config config;
   try {
-    config = read_config_file(config_path, config_override);
+    config = read_config_file(config_path, config_game_version, config_override);
   } catch (const std::exception& e) {
     lg::error("Failed to parse config: {}", e.what());
     return 1;

@@ -322,6 +322,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                        BucketId::DEBUG_NO_ZBUF2, 0x8000);
   init_bucket_renderer<DirectRenderer>("debug3", BucketCategory::OTHER, BucketId::DEBUG3, 0x8000);
 
+  auto eye_renderer = std::make_unique<EyeRenderer>("eyes", 0);
+  m_render_state.eye_renderer = eye_renderer.get();
+  m_jak2_eye_renderer = std::move(eye_renderer);
+
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
@@ -332,6 +336,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
     m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
   }
+
+  m_jak2_eye_renderer->init_shaders(m_render_state.shaders);
+  m_jak2_eye_renderer->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
+
   m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 /*!
@@ -696,6 +704,12 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   if (ImGui::TreeNode("Texture Pool")) {
     m_render_state.texture_pool->draw_debug_window();
     ImGui::TreePop();
+  }
+  if (m_jak2_eye_renderer) {
+    if (ImGui::TreeNode("Eyes")) {
+      m_jak2_eye_renderer->draw_debug_window();
+      ImGui::TreePop();
+    }
   }
   ImGui::End();
 }
