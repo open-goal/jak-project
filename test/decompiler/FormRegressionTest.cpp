@@ -22,7 +22,7 @@ using namespace decompiler;
 void FormRegressionTestJak1::SetUpTestCase() {
   parser = std::make_unique<InstructionParser>();
   dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak1);
-  dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
+  dts->parse_type_defs({"decompiler", "config", "jak1", "all-types.gc"});
 }
 
 void FormRegressionTestJak2::SetUpTestCase() {

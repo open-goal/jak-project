@@ -77,7 +77,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   lg::info("\tDetected - {}", version_info.canonical_name);
   lg::info("\tRegion - {}", get_territory_name(version_info.region));
   lg::info("\tSerial - {}", dbEntry->first);
-  lg::info("\tUses Decompiler Config - {}", version_info.decomp_config);
+  lg::info("\tUses Decompiler Config Version - {}", version_info.decomp_config_version);
 
   // - Number of Files
   if (version_info.num_files != expected_num_files) {
@@ -104,9 +104,10 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Config config = read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
-                                    fmt::format("{}.jsonc", version_info.decomp_config))
-                                       .string());
+  Config config = read_config_file(file_util::get_jak_project_dir() / "decompiler" / "config" /
+                                       version_info.game_name /
+                                       fmt::format("{}_config.jsonc", version_info.game_name),
+                                   version_info.decomp_config_version);
 
   std::vector<fs::path> dgos, objs;
 
