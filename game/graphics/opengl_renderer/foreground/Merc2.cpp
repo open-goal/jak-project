@@ -361,7 +361,6 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
               u32 q2x = model->st_vif_add + frag[w * 4 + (2 * 4) + 0];
               u32 q2y = model->st_vif_add + frag[w * 4 + (2 * 4) + 1];
 
-
               auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
               memcpy(&pos_array[0], &q0w, 4);
               memcpy(&pos_array[1], &q1w, 4);
