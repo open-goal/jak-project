@@ -113,7 +113,7 @@
     (elevator-method-44 (_type_) symbol 44)
     (commited-to-ride? (_type_) symbol 45)
     (move-to-next-point! (_type_) none 46)
-    (find-closest-point-in-path! (_type_ vector path-step symbol symbol) symbol 47)
+    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol 47)
     (elevator-method-48 (_type_) none 48)
     )
   )
@@ -451,7 +451,7 @@ which is obviously useful for an elevator."
 
 ;; definition for method 47 of type elevator
 ;; INFO: Used lq/sq
-(defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 path-step) (arg2 symbol) (arg3 symbol))
+(defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
 the provided [[vector]]
 
@@ -488,7 +488,7 @@ the provided [[vector]]
         )
       )
     (when (!= point-idx-tracker -1.0)
-      (set! (-> arg1 next-pos) point-idx-tracker)
+      (set! (-> arg1 0) point-idx-tracker)
       #t
       )
     )
@@ -537,9 +537,7 @@ do so.
                       )
                )
       (set! zero (the-as float 0.0))
-      (when (and (find-closest-point-in-path! obj (get-trans target 0) (new 'stack-no-clear 'path-step) #t #t)
-                 (!= (-> obj move-pos 1) zero)
-                 )
+      (when (and (find-closest-point-in-path! obj (get-trans target 0) (& zero) #t #t) (!= (-> obj move-pos 1) zero))
         (set! (-> obj move-pos 0) (-> obj move-pos 1))
         (set! (-> obj move-pos 1) zero)
         (logior! (-> obj elevator-status) (elevator-status moving))
@@ -936,7 +934,7 @@ This commonly includes things such as:
     )
   (if (not (and sv-40
                 (logtest? (-> obj params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! obj (get-trans sv-40 0) (new 'stack-no-clear 'path-step) #f #t)
+                (find-closest-point-in-path! obj (get-trans sv-40 0) (& sv-32) #f #t)
                 )
            )
       (set! sv-32 (-> obj params start-pos))
