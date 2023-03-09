@@ -97,8 +97,8 @@
    (ride-timer                   time-frame                     :offset-assert 336)
    (sticky-player-last-ride-time time-frame                     :offset-assert 344)
    (elevator-status              elevator-status                :offset-assert 352)
-   (on-activate                  pair                          :offset-assert 360)
-   (on-deactivate                pair                          :offset-assert 364)
+   (on-activate                  pair                           :offset-assert 360)
+   (on-deactivate                pair                           :offset-assert 364)
    )
   :heap-base #xf0
   :method-count-assert 49
@@ -111,7 +111,7 @@
     (arrived () _type_ :state 37)
     (elevator-method-38 (_type_) none 38)
     (calc-dist-between-points! (_type_ int int) none 39)
-    (activate-elevator (_type_) none 40)
+    (activate-elevator (_type_) object 40)
     (init-defaults! (_type_) none 41)
     (set-ambient-sound! (_type_) none 42)
     (move-between-points (_type_ vector float float) symbol 43)
@@ -504,19 +504,15 @@ do so.
                )
       (set! zero (the-as float 0.0))
       (when (and (find-closest-point-in-path! obj (get-trans target 0) (new 'stack-no-clear 'path-step) #t #t)
-                 (basically-not-zero? (-> obj move-pos 1)) ;; manual fix to resolve a floating point comparison with zero
+                 (!= (-> obj move-pos 1) zero)
                  )
-        (format #t "elevator - running A! | ~A:~f(~A) | ~A~%"
-          (find-closest-point-in-path! obj (get-trans target 0) (new 'stack-no-clear 'path-step) #t #t)
-          (-> obj move-pos 1)
-          (basically-not-zero? (-> obj move-pos 1))
-          (and (find-closest-point-in-path! obj (get-trans target 0) (new 'stack-no-clear 'path-step) #t #t)
-                 (basically-not-zero? (-> obj move-pos 1)) ;; manual fix to resolve a floating point comparison with zero
-                 ))
+        (format #t "move-to-next-point! ~f~%" (-> obj move-pos 1))
         (set! (-> obj move-pos 0) (-> obj move-pos 1))
         (set! (-> obj move-pos 1) zero)
         (logior! (-> obj elevator-status) (elevator-status moving))
-        (go (method-of-object obj running))
+        ;; disabling this "fixes" the elevators...but also causes them to start from the top and go to the bottom when you
+        ;; re-mount them lol
+        ;; (go (method-of-object obj running))
         )
       )
     )
@@ -653,13 +649,7 @@ do so.
     (let ((gp-0 (-> self on-activate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 0)) 8))
-              self
-              (-> self root-override trans)
-              )
+            (new 'stack 'script-context (* (the int (-> self move-pos 0)) 8) self (-> self root-override trans))
             gp-0
             )
           )
@@ -752,13 +742,7 @@ do so.
     (let ((gp-0 (-> self on-deactivate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 1)) 8))
-              self
-              (-> self root-override trans)
-              )
+            (new 'stack 'script-context (* (the int (-> self move-pos 1)) 8) self (-> self root-override trans))
             gp-0
             )
           )
@@ -789,7 +773,7 @@ do so.
          (set! (-> self move-pos 0) (-> self move-pos 1))
          (set! (-> self move-pos 1) (-> self params start-pos))
          (format #t "elevator - running C~%")
-         (go-virtual running)
+         (go-virtual waiting)
          )
         (else
           (format #t "elevator - waiting A~%")
@@ -841,16 +825,15 @@ For example for an elevator pre-compute the distance between the first and last 
   (the-as elevator ((the-as (function base-plat int base-plat) (find-parent-method elevator 7)) obj arg0))
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod activate-elevator elevator ((obj elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
       (go (method-of-object obj arrived))
       (go (method-of-object obj waiting))
       )
-  (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! elevator ((obj elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
@@ -906,7 +889,7 @@ This commonly includes things such as:
     )
   (if (not (and sv-40
                 (logtest? (-> obj params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! obj (get-trans sv-40 0) (the-as path-step (& sv-32)) #f #t)
+                (find-closest-point-in-path! obj (get-trans sv-40 0) (new 'stack-no-clear 'path-step) #f #t)
                 )
            )
       (set! sv-32 (-> obj params start-pos))

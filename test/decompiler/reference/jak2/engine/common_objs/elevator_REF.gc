@@ -106,7 +106,7 @@
     (arrived () _type_ :state 37)
     (elevator-method-38 (_type_) none 38)
     (calc-dist-between-points! (_type_ int int) none 39)
-    (activate-elevator (_type_) none 40)
+    (activate-elevator (_type_) object 40)
     (init-defaults! (_type_) none 41)
     (set-ambient-sound! (_type_) none 42)
     (move-between-points (_type_ vector float float) symbol 43)
@@ -681,13 +681,7 @@ do so.
     (let ((gp-0 (-> self on-activate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 0)) 8))
-              self
-              (-> self root-override trans)
-              )
+            (new 'stack 'script-context (* (the int (-> self move-pos 0)) 8) self (-> self root-override trans))
             gp-0
             )
           )
@@ -780,13 +774,7 @@ do so.
     (let ((gp-0 (-> self on-deactivate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 1)) 8))
-              self
-              (-> self root-override trans)
-              )
+            (new 'stack 'script-context (* (the int (-> self move-pos 1)) 8) self (-> self root-override trans))
             gp-0
             )
           )
@@ -868,14 +856,12 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 40 of type elevator
-;; WARN: Return type mismatch object vs none.
 (defmethod activate-elevator elevator ((obj elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
       (go (method-of-object obj arrived))
       (go (method-of-object obj waiting))
       )
-  (none)
   )
 
 ;; definition for method 11 of type elevator
@@ -894,6 +880,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Stack slot offset 32 signed mismatch
 ;; WARN: Stack slot offset 32 signed mismatch
 ;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! elevator ((obj elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
@@ -949,7 +936,7 @@ This commonly includes things such as:
     )
   (if (not (and sv-40
                 (logtest? (-> obj params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! obj (get-trans sv-40 0) (the-as path-step (& sv-32)) #f #t)
+                (find-closest-point-in-path! obj (get-trans sv-40 0) (new 'stack-no-clear 'path-step) #f #t)
                 )
            )
       (set! sv-32 (-> obj params start-pos))
