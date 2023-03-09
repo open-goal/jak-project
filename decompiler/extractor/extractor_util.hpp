@@ -55,7 +55,7 @@ struct ISOMetadata {
   int region;  // territory code
   int num_files;
   uint64_t contents_hash;
-  std::string decomp_config;
+  std::string decomp_config_version;
   std::string game_name;
   std::vector<std::string> flags;
 };
@@ -96,9 +96,11 @@ static const ISOMetadata jak1_ntsc_black_label_info = {
     GAME_TERRITORY_SCEA,
     337,
     11363853835861842434U,
-    "jak1_ntsc_black_label",
+    "ntsc_v1",
     "jak1",
     {"jak1-black-label"}};
+
+// TODO - we don't detect or handle ntsc_v2?
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
 static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> isoDatabase{
@@ -109,7 +111,7 @@ static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMet
         GAME_TERRITORY_SCEA,
         338,
         8538304367812415885U,
-        "jak1_jp",
+        "ntsc_v2",
         "jak1",
         {}}}}},
     {"SCES-50361",
@@ -118,7 +120,7 @@ static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMet
         GAME_TERRITORY_SCEE,
         338,
         16850370297611763875U,
-        "jak1_pal",
+        "pal",
         "jak1",
         {}}}}},
     {"SCPS-15021",
@@ -127,7 +129,7 @@ static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMet
         GAME_TERRITORY_SCEI,
         338,
         1262350561338887717,
-        "jak1_jp",
+        "jp",
         "jak1",
         {}}}}}};
 
