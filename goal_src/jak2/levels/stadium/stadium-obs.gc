@@ -1171,7 +1171,6 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1373,10 +1372,10 @@ This commonly includes things such as:
     (move-rift-rider () _type_ :state 29)
     (hit () _type_ :state 30)
     (die () _type_ :state 31)
-    (stad-samos-method-32 (_type_) none 32)
-    (stad-samos-method-33 (_type_) symbol 33)
-    (stad-samos-method-34 (_type_) none 34)
-    (stad-samos-method-35 (_type_) none 35)
+    (init! (_type_) none 32)
+    (get-position (_type_) symbol 33)
+    (spawn-lightning (_type_) none 34)
+    (kill-lightning (_type_) none 35)
     )
   )
 
@@ -1396,7 +1395,7 @@ This commonly includes things such as:
                  (-> v1-15 extra process)
                  )
              )
-        (stad-samos-method-35 self)
+        (kill-lightning self)
         )
     )
   (set! (-> *game-info* bot-health (-> self hud-bot-index)) (/ (-> self hit-points) (-> self max-hit-points)))
@@ -1615,7 +1614,7 @@ This commonly includes things such as:
             )
           )
         )
-      (stad-samos-method-34 self)
+      (spawn-lightning self)
       )
     (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
         (go-virtual move-rift-rider)
@@ -1718,7 +1717,7 @@ This commonly includes things such as:
       (set! (-> gp-0 from) (process->ppointer self))
       (set! (-> gp-0 num-params) 2)
       (set! (-> gp-0 message) 'get-position)
-      (set! (-> gp-0 param 0) (the-as uint (stad-samos-method-33 self)))
+      (set! (-> gp-0 param 0) (the-as uint (get-position self)))
       (set! (-> gp-0 param 1) (the-as uint (new 'stack-no-clear 'vector)))
       (let* ((t9-2 send-event-function)
              (v1-12 (-> self rift-rider-actor))
@@ -1803,7 +1802,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status ignore))
     (set! (-> self focus-disable-timer) (+ (-> self clock frame-counter) (seconds 5)))
-    (stad-samos-method-35 self)
+    (kill-lightning self)
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer self))
       (set! (-> a1-0 num-params) 0)
@@ -1905,7 +1904,7 @@ This commonly includes things such as:
       (suspend)
       (ja :num! (seek!))
       )
-    (stad-samos-method-34 self)
+    (spawn-lightning self)
     (go-virtual move-rift-rider)
     (none)
     )
@@ -1967,7 +1966,7 @@ This commonly includes things such as:
           )
         )
       )
-    (stad-samos-method-35 self)
+    (kill-lightning self)
     (none)
     )
   :code (behavior ()
@@ -2036,12 +2035,12 @@ This commonly includes things such as:
   :post stad-samos-post
   )
 
-(defmethod stad-samos-method-33 stad-samos ((obj stad-samos))
+(defmethod get-position stad-samos ((obj stad-samos))
   'right
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod stad-samos-method-34 stad-samos ((obj stad-samos))
+(defmethod spawn-lightning stad-samos ((obj stad-samos))
   (let* ((v1-0 (-> obj rift-rider-actor))
          (s5-0 (if v1-0
                    (-> v1-0 extra process)
@@ -2077,7 +2076,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod stad-samos-method-35 stad-samos ((obj stad-samos))
+(defmethod kill-lightning stad-samos ((obj stad-samos))
   (dotimes (s5-0 4)
     (send-event (handle->process (-> obj lightning s5-0)) 'die)
     )
@@ -2089,7 +2088,7 @@ This commonly includes things such as:
   (if (valid? (-> obj hud) (the-as type #f) (the-as symbol "") #t 0)
       (send-event (handle->process (-> obj hud)) 'hide-and-die)
       )
-  (stad-samos-method-35 obj)
+  (kill-lightning obj)
   ((the-as (function process-focusable none) (find-parent-method stad-samos 10)) obj)
   (none)
   )
@@ -2156,7 +2155,7 @@ This commonly includes things such as:
     (set! (-> obj hud-bot-index) 0)
     (set! (-> obj rift-rider-joint-offset) 0)
     (process-drawable-from-entity! obj arg0)
-    (stad-samos-method-32 obj)
+    (init! obj)
     (get-nav-control obj (the-as nav-mesh #f))
     (let ((v1-24 (-> obj nav)))
       (set! (-> v1-24 sphere-mask) (the-as uint 1102))
@@ -2189,7 +2188,7 @@ This commonly includes things such as:
               :shadow samos-shadow-mg
               )
 
-(defmethod stad-samos-method-32 stad-samos ((obj stad-samos))
+(defmethod init! stad-samos ((obj stad-samos))
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-samos" (the-as (pointer uint32) #f)))
@@ -2291,7 +2290,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod stad-samos-method-32 stad-youngsamos ((obj stad-youngsamos))
+(defmethod init! stad-youngsamos ((obj stad-youngsamos))
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-youngsamos" (the-as (pointer uint32) #f)))
@@ -2313,7 +2312,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod stad-samos-method-33 stad-youngsamos ((obj stad-youngsamos))
+(defmethod get-position stad-youngsamos ((obj stad-youngsamos))
   'left
   )
 
