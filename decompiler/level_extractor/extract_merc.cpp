@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/MercData.h"
 #include "decompiler/level_extractor/extract_common.h"
@@ -824,6 +825,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   bool use_alpha_blend = false;
   if (version == GameVersion::Jak2) {
     use_alpha_blend = input_effect.texture_index == 4;  // water
+  } else if (version == GameVersion::Jak1) {
+    use_alpha_blend = str_util::starts_with(debug_name, "water-anim");
   }
 
   // full reset of state per effect.
@@ -863,6 +866,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     }
 
     if (input_effect.effect_bits & kRippleEffectBit) {
+      can_be_modified = true;
+    }
+
+    if (input_effect.effect_bits & kTextureScrollEffectBit) {
       can_be_modified = true;
     }
 
@@ -1270,6 +1277,7 @@ void extract_merc(const ObjectFileData& ag_data,
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
     pc_ctrl.st_vif_add = ctrl.header.st_vif_add;
+    pc_ctrl.st_magic = u32_as_float(ctrl.header.st_magic);
     pc_ctrl.xyz_scale = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {

@@ -347,15 +347,20 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
             // loop over vertices in the fragment and unpack
             for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
-              // just want positions for now.
+              // positions
               u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
               u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
               u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
 
-              // and maybe normals
+              // normals
               u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
               u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
               u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
+
+              // uvs
+              u32 q2x = model->st_vif_add + frag[w * 4 + (2 * 4) + 0];
+              u32 q2y = model->st_vif_add + frag[w * 4 + (2 * 4) + 1];
+
 
               auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
               memcpy(&pos_array[0], &q0w, 4);
@@ -375,6 +380,13 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
               nrm_array[0] += -65537;
               nrm_array[1] += -65537;
               nrm_array[2] += -65537;
+
+              auto* uv_array = m_mod_vtx_unpack_temp[vidx].uv;
+              memcpy(&uv_array[0], &q2x, 4);
+              memcpy(&uv_array[1], &q2y, 4);
+              uv_array[0] += model->st_magic;
+              uv_array[1] += model->st_magic;
+
               vidx++;
             }
           }
@@ -401,6 +413,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
           u32 addr = effect.mod.vertex_lump4_addr[vi];
           if (addr < vidx) {
             memcpy(&m_mod_vtx_temp[vi], &m_mod_vtx_unpack_temp[addr], 32);
+            m_mod_vtx_temp[vi].st[0] = m_mod_vtx_unpack_temp[addr].uv[0];
+            m_mod_vtx_temp[vi].st[1] = m_mod_vtx_unpack_temp[addr].uv[1];
           }
         }
       }
