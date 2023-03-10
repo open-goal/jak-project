@@ -103,8 +103,12 @@ int main(int argc, char** argv) {
         return 1;
       }
       adjusted_argv_vals.push_back(argv[i]);
-    }  // now handle all the ones that get passed to the game
-    else if (val == "-boot") {
+    } else if (val == "--") {
+      // if we hit a '--' then break out, args will be matched but they are already in the new
+      // format
+      break;
+    } else if (val == "-boot") {
+      // now handle all the ones that get passed to the game
       adjusted_argv_vals_passthru.push_back("-boot");
     } else if (val == "-fakeiso") {
       adjusted_argv_vals_passthru.push_back("-fakeiso");
