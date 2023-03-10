@@ -1087,6 +1087,7 @@ void Merc2::do_draws(const Draw* draw_array,
       }
     }
     glUniform1i(uniforms.ignore_alpha, draw.flags & DrawFlags::IGNORE_ALPHA);
+    bool use_mipmaps_for_filtering = true;
     if ((int)draw.texture != last_tex) {
       if (draw.texture < lev->textures.size()) {
         glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
@@ -1095,8 +1096,7 @@ void Merc2::do_draws(const Draw* draw_array,
         if (maybe_eye) {
           glBindTexture(GL_TEXTURE_2D, *maybe_eye);
         }
-
-        mode.set_filt_enable(false);
+        use_mipmaps_for_filtering = false;
       } else {
         fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
       }
@@ -1113,7 +1113,7 @@ void Merc2::do_draws(const Draw* draw_array,
       set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
       last_light = draw.light_idx;
     }
-    setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
+    setup_opengl_from_draw_mode(mode, GL_TEXTURE0, use_mipmaps_for_filtering);
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
 
