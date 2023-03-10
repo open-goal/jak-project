@@ -207,84 +207,126 @@
   (let ((tag (the-as game-save-tag (-> obj tag)))
         (tag-idx 0)
         )
-    (while (< (the-as int tag) (the-as int (-> obj tag (-> obj length))))
-      (format #t "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
-              tag-idx
-              (game-save-elt->string (-> tag elt-type))
-              (-> tag elt-count)
-              (-> tag elt-size)
-              (-> tag user-uint64)
-              (-> tag user-float))
-
-      ;; name/continue are strings
+    (while (< (the-as int tag) (the-as int (&-> obj tag 0 user-int8 (-> obj length))))
+      (let ((a3-2 (game-save-elt->string (-> tag elt-type)))
+            (t0-1 (-> tag elt-count))
+            (t1-1 (-> tag elt-size))
+            (t2-1 (-> tag user-uint64))
+            (t3-0 (-> tag user-float0))
+            )
+        (format #t "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
+                    tag-idx
+                    (game-save-elt->string (-> tag elt-type))
+                    (-> tag elt-count)
+                    (-> tag elt-size)
+                    (-> tag user-uint64)
+                    (-> tag user-float0))
+        )
       (let ((v1-0 (-> tag elt-type)))
         (if (or (= v1-0 (game-save-elt name)) (= v1-0 (game-save-elt continue)))
             (format #t "= \"~G\"~%" (&+ (the-as pointer tag) 16))
             (format #t "~%")
             )
         )
-
       (when detail
-        (let ((v1-4 (-> tag elt-type)))
-          (cond
-            ((or (= v1-4 (game-save-elt money-per-level)) (= v1-4 (game-save-elt deaths-per-level)))
-             ;; per level u8's
-             (dotimes (prog-lev-idx (-> tag elt-count))
-               (let ((lev-name (progress-level-index->string prog-lev-idx)))
-                 (if lev-name
-                     (format #t "                 ~-32S: ~D~%"
-                             lev-name
-                             (-> (the-as (pointer uint8) (&+ (the-as pointer (&-> (the-as (pointer uint8) tag) 16)) prog-lev-idx)))
-                             )
+        (case (-> tag elt-type)
+          (((game-save-elt money-per-level) (game-save-elt deaths-per-level)
+           ;; added in pc port
+            (game-save-elt level-open-list))
+           (dotimes (prog-lev-idx (-> tag elt-count))
+             (let ((lev-name (progress-level-index->string prog-lev-idx)))
+               (if lev-name
+                   (format
+                     #t
+                     "                 ~-32S: ~D~%"
+                     lev-name
+                     (-> (the-as (pointer uint8) (&+ (the-as pointer (&-> (the-as (pointer uint8) tag) 16)) prog-lev-idx)))
                      )
-                 )
+                   )
                )
              )
-            ((= v1-4 (game-save-elt enter-level-time))
-             ;; per level u64's 
-             (dotimes (s2-2 (-> tag elt-count))
-               (let ((a2-14 (progress-level-index->string s2-2)))
-                 (if a2-14
-                     (format #t "                 ~-32S: ~D~%"
-                             a2-14
-                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-2 8))))
-                             )
+           )
+          (((game-save-elt enter-level-time))
+           (dotimes (s2-2 (-> tag elt-count))
+             (let ((a2-14 (progress-level-index->string s2-2)))
+               (if a2-14
+                   (format
+                     #t
+                     "                 ~-32S: ~D~%"
+                     a2-14
+                     (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-2 8))))
                      )
-                 )
+                   )
                )
              )
-            ((= v1-4 (game-save-elt in-level-time))
-             (dotimes (s2-3 (-> tag elt-count))
-               (let ((a2-15 (progress-level-index->string s2-3)))
-                 (if a2-15
-                     (format #t "                 ~-32S: ~D~%"
-                             a2-15
-                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-3 8))))
-                             )
+           )
+          (((game-save-elt in-level-time))
+           (dotimes (s2-3 (-> tag elt-count))
+             (let ((a2-15 (progress-level-index->string s2-3)))
+               (if a2-15
+                   (format
+                     #t
+                     "                 ~-32S: ~D~%"
+                     a2-15
+                     (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-3 8))))
                      )
-                 )
+                   )
                )
              )
-            ((= v1-4 (game-save-elt fuel-cell-time))
-             (dotimes (s2-4 (-> tag elt-count))
-               (let ((a2-16 (game-task->string (the game-task s2-4))))
-                 (if a2-16
-                     (format #t "                 ~-32S: ~D~%"
-                             a2-16
-                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-4 8))))
-                             )
+           )
+          (((game-save-elt fuel-cell-time))
+           (dotimes (s2-4 (-> tag elt-count))
+             (let ((a2-16 (game-task->string (the-as game-task s2-4))))
+               (if a2-16
+                   (format
+                     #t
+                     "                 ~-32S: ~D~%"
+                     a2-16
+                     (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-4 8))))
                      )
-                 )
+                   )
                )
              )
+           )
+          ;; below here were added for pc port
+
+          (((game-save-elt hint-list))
+            (dotimes (i (-> tag elt-count))
+              (awhen (game-text-id->string (-> *game-info* hint-control i id))
+                (format #t "                 ~-32S [~D]~%" it i)
+                (format #t "                 ~-32S: ~D~%" "start-time" (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* i (-> tag elt-size)))) 0))
+                (format #t "                 ~-32S: ~D~%" "last-time-called" (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* i (-> tag elt-size)))) 1))
+                (format #t "                 ~-32S: ~D~%" "num-attempts" (-> (the-as (pointer uint8) (&+ (&+ (the-as pointer tag) 16) (* i (-> tag elt-size)))) 16))
+                (format #t "                 ~-32S: ~D~%" "num-success" (-> (the-as (pointer uint8) (&+ (&+ (the-as pointer tag) 16) (* i (-> tag elt-size)))) 17))
+                )
+              )
+            )
+          (((game-save-elt text-list))
+            (dotimes (i (* 8 (-> tag elt-count)))
+              (awhen (game-text-id->string (the game-text-id i))
+                (unless (string= it "*unknown*")
+                  (format #t "                 ~-32S: ~A~%" it (logtest? (-> (the-as (pointer uint8) (&+ (the-as pointer tag) 16)) (/ i 8)) (ash 1 (mod i 8))))
+                  ))
+              )
+            )
+          (((game-save-elt task-list) (game-save-elt perm-list))
+            (dotimes (i (-> tag elt-count))
+              (let ((perm (the-as entity-perm (&+ (the-as pointer tag) 16 (* i 16)))))
+                (format #t "~T    ~-4D: ~20D/#x~16x[~8f/~8f]" i (-> perm user-uint64) (-> perm user-uint64) (-> perm user-float 0) (-> perm user-float 1))
+                (format #t "  task: ~-32S #x~4x~%" (game-task->string (-> perm task)) (-> perm aid))
+                (format #t "~T~T    (entity-perm-status ")
+                (bit-enum->string entity-perm-status (-> perm status) #t)
+                (format #t ")~%")
+                )
+              )
             )
           )
         )
-      (set! tag (the-as game-save-tag
-                        (&+ (the-as pointer tag)
-                            (logand -16 (+ (* (the-as int (-> tag elt-size)) (-> tag elt-count)) 31))
-                            )
-                        )
+      (set! tag
+            (the-as
+              game-save-tag
+              (&+ (the-as pointer tag) (logand -16 (+ (* (the-as int (-> tag elt-size)) (-> tag elt-count)) 31)))
+              )
             )
       (+! tag-idx 1)
       )
@@ -1536,7 +1578,10 @@
       (set! (-> self save) (new 'loading-level 'game-save (- SPOOL_HEAP_SIZE (psize-of game-save))))
       (save-game! *game-info* (-> self save) "save")
       (set! loading-level (the-as kheap gp-0))
-      0
+      ;0
+      (when *debug-segment*
+        (debug-print (-> self save) (user? dass)))
+
       (label cfg-7)
       (set! (-> self result)
             (mc-save (-> self card) (-> self which) (&-> (-> self save) type) (the-as int (-> self save info-int32)))
