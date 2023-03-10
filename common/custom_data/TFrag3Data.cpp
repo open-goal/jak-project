@@ -316,6 +316,7 @@ void MercModel::serialize(Serializer& ser) {
   ser.from_ptr(&max_bones);
   ser.from_ptr(&st_vif_add);
   ser.from_ptr(&xyz_scale);
+  ser.from_ptr(&st_magic);
 }
 
 void MercModelGroup::serialize(Serializer& ser) {
