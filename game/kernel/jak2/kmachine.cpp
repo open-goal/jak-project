@@ -152,17 +152,17 @@ void InitParms(int argc, const char* const* argv) {
     // new for jak 2
     if (arg == "-user") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: user %s\n", levelName.c_str());
-      kstrcpy(DebugBootUser, levelName.c_str());
+      std::string userName = argv[i];
+      Msg(6, "dkernel: user %s\n", userName.c_str());
+      kstrcpy(DebugBootUser, userName.c_str());
     }
 
     // new for jak 2
     if (arg == "-art") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: art-group %s\n", levelName.c_str());
-      kstrcpy(DebugBootArtGroup, levelName.c_str());
+      std::string artGroupName = argv[i];
+      Msg(6, "dkernel: art-group %s\n", artGroupName.c_str());
+      kstrcpy(DebugBootArtGroup, artGroupName.c_str());
       kstrcpy(DebugBootMessage, "art-group");
     }
 
