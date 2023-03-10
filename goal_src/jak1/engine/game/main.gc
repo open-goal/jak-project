@@ -855,15 +855,24 @@
                      (str-play-kick)
                      )
 
-      (with-profiler "level-and-save"
-         (level-update *level*) ;; also updates settings.
-         (mc-run)
-         (auto-save-check)
+      (with-profiler "level-update"
+        (level-update *level*) ;; also updates settings.
+        )
+      (with-profiler "mc-run"
+        (mc-run)
+        )
+      ;; PC port note : this function checks to see if the memory card has been removed or swapped
+      ;; and disabled auto-save if it has. the pc port can only disable auto-save manually through the menu option.
+      ;; the port doesn't use memory cards so those checks will never pass.
+      ;; it runs some C kernel functions which in the port also do some I/O which gets very slow very quickly.
+      ;; we're just not gonna run it.
+      ; (auto-save-check)
 
-         (#when PC_PORT
-           (update *pc-settings*)
-           )
-         )
+      (with-profiler "update-pc"
+        (#when PC_PORT
+          (update *pc-settings*)
+          )
+        )
 
 
       ;; suspend
