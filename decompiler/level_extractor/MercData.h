@@ -179,6 +179,7 @@ struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
 
+constexpr int kTextureScrollEffectBit = 1;
 constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {

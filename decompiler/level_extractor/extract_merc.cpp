@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/MercData.h"
 #include "decompiler/level_extractor/extract_common.h"
@@ -866,6 +867,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       can_be_modified = true;
     }
 
+    if (input_effect.effect_bits & kTextureScrollEffectBit) {
+      can_be_modified = true;
+    }
+
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
     u32 vert_count = frag.lump4_unpacked.size() / 3;
@@ -1270,6 +1275,7 @@ void extract_merc(const ObjectFileData& ag_data,
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
     pc_ctrl.st_vif_add = ctrl.header.st_vif_add;
+    pc_ctrl.st_magic = u32_as_float(ctrl.header.st_magic);
     pc_ctrl.xyz_scale = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
