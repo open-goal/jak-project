@@ -129,7 +129,6 @@ std::optional<std::string> try_get_jak_project_path() {
 
 std::optional<fs::path> try_get_data_dir() {
   fs::path my_path = get_current_executable_path();
-  lg::info("Current executable directory - {}", my_path.string());
   auto data_dir = my_path.parent_path() / "data";
   if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
     return std::make_optional(data_dir);

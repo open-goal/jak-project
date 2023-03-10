@@ -310,14 +310,25 @@ void dmac_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
-RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, char** argv) {
+RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  bool enable_display = !game_options.disable_display;
-  VM::use = !game_options.disable_debug_vm;
-  g_game_version = game_options.game_version;
+  // parse opengoal arguments
+  g_game_version = GameVersion::Jak1;
+  bool enable_display = true;
+  for (int i = 1; i < argc; i++) {
+    if (std::string("-nodisplay") == argv[i]) {  // disable video display
+      enable_display = false;
+    } else if (std::string("-vm") == argv[i]) {  // enable debug ps2 VM
+      VM::use = true;
+    } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
+      VM::use = false;
+    } else if (std::string("-jak2") == argv[i]) {
+      g_game_version = GameVersion::Jak2;
+    }
+  }
 
   // set up discord stuff
   gStartTime = time(nullptr);
