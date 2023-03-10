@@ -7,7 +7,6 @@
 #include "common/util/FileUtil.h"
 #include "common/util/diff.h"
 #include "common/util/string_util.h"
-#include "common/util/unicode_util.h"
 #include "common/versions.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -25,8 +24,6 @@ void setup_logging() {
 }
 
 int main(int argc, char** argv) {
-  ArgumentGuard u8_guard(argc, argv);
-
   bool auto_find_user = false;
   std::string cmd = "";
   std::string username = "#f";

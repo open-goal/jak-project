@@ -107,45 +107,34 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
 }
 
 void runtime_no_kernel_jak1() {
-  constexpr int argc = 5;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nosound"};
-  GameLaunchOptions game_options;
-  game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  constexpr int argc = 6;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay", "-nosound"};
+  exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_no_kernel_jak2() {
-  constexpr int argc = 5;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nosound"};
-  GameLaunchOptions game_options;
-  game_options.disable_display = true;
-  game_options.game_version = GameVersion::Jak2;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  constexpr int argc = 7;
+  const char* argv[argc] = {"",           "-fakeiso", "-debug", "-nokernel",
+                            "-nodisplay", "-nosound", "-jak2"};
+  exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_jak1() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
-  GameLaunchOptions game_options;
-  game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound"};
+  exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_jak2() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
-  GameLaunchOptions game_options;
-  game_options.disable_display = true;
-  game_options.game_version = GameVersion::Jak2;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  constexpr int argc = 6;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound", "-jak2"};
+  exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_no_debug_segment() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nosound"};
-  GameLaunchOptions game_options;
-  game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay", "-nosound"};
+  exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void createDirIfAbsent(const std::string& path) {

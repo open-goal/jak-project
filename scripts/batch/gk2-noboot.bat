@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\gk -v --game jak2 -- -fakeiso -debug
+out\build\Release\bin\gk -fakeiso -debug -v -jak2
 pause

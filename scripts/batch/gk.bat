@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\gk -v --no-display -- -fakeiso -debug
+out\build\Release\bin\gk -fakeiso -debug -v -nodisplay
 pause
