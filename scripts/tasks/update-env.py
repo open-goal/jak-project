@@ -12,7 +12,8 @@ args = parser.parse_args()
 # TODO - read from defaults
 file = {
   "GAME": "jak1",
-  "DECOMP_CONFIG": "jak1_ntsc_black_label.jsonc"
+  "DECOMP_CONFIG": "jak1/jak1_config.jsonc",
+  "DECOMP_CONFIG_VERSION": "ntsc_v1"
 }
 
 env_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env")
@@ -36,20 +37,25 @@ if args.info:
 valid_games = ["jak1", "jak2"]
 
 decomp_config_map = {
+  "jak1": "jak1/jak1_config.jsonc",
+  "jak2": "jak2/jak2_config.jsonc",
+}
+
+decomp_config_version_map = {
   "jak1": {
-    "ntscv1": "jak1_ntsc_black_label.jsonc",
-    "ntscv2": "jak1_us2.jsonc",
-    "pal": "jak1_pal.jsonc",
-    "ntscjp": "jak1_jp.jsonc"
+    "ntscv1": "ntsc_v1",
+    "ntscv2": "ntsc_v2",
+    "pal": "pal",
+    "ntscjp": "jp"
   },
   "jak2": {
-    "ntscv1": "jak2_ntsc_v1.jsonc"
+    "ntscv1": "ntsc_v1"
   }
 }
 
-default_config_map = {
-  "jak1": "jak1_ntsc_black_label.jsonc",
-  "jak2": "jak2_ntsc_v1.jsonc"
+default_config_version_map = {
+  "jak1": "ntsc_v1",
+  "jak2": "ntsc_v1"
 }
 
 if args.game:
@@ -58,13 +64,15 @@ if args.game:
     sys.exit(1)
   curr = file["GAME"]
   file["GAME"] = args.game
-  if (curr != file["GAME"]) or file["DECOMP_CONFIG"] not in decomp_config_map[file["GAME"]]:
-    file["DECOMP_CONFIG"] = default_config_map[file["GAME"]]
+  if (curr != file["GAME"]) or file["DECOMP_CONFIG_VERSION"] not in decomp_config_version_map[file["GAME"]]:
+    file["DECOMP_CONFIG"] = decomp_config_map[file["GAME"]]
+    file["DECOMP_CONFIG_VERSION"] = default_config_version_map[file["GAME"]]
 if args.decomp_config:
-  if args.decomp_config not in decomp_config_map[file["GAME"]]:
+  if args.decomp_config not in decomp_config_version_map[file["GAME"]]:
     print("Unsupported decomp config '{}' for game '{}'".format(args.decomp_config, file["GAME"]))
     sys.exit(1)
-  file["DECOMP_CONFIG"] = decomp_config_map[file["GAME"]][args.decomp_config]
+  file["DECOMP_CONFIG"] = decomp_config_map[file["GAME"]]
+  file["DECOMP_CONFIG_VERSION"] = decomp_config_version_map[file["GAME"]][args.decomp_config]
 
 with open(env_path, 'w') as env_file:
   for item in file.items():

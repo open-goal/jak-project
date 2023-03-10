@@ -10,11 +10,12 @@
 #include "common/common_types.h"
 #include "common/versions.h"
 
+#include "game/common/game_common_types.h"
 #include "game/kernel/common/kboot.h"
 
 extern u8* g_ee_main_mem;
 extern GameVersion g_game_version;
 
-RuntimeExitStatus exec_runtime(int argc, char** argv);
+RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, char** argv);
 
 extern std::thread::id g_main_thread_id;

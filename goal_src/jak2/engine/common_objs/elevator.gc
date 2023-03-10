@@ -97,8 +97,8 @@
    (ride-timer                   time-frame                     :offset-assert 336)
    (sticky-player-last-ride-time time-frame                     :offset-assert 344)
    (elevator-status              elevator-status                :offset-assert 352)
-   (on-activate                  basic                          :offset-assert 360)
-   (on-deactivate                basic                          :offset-assert 364)
+   (on-activate                  pair                           :offset-assert 360)
+   (on-deactivate                pair                           :offset-assert 364)
    )
   :heap-base #xf0
   :method-count-assert 49
@@ -111,14 +111,14 @@
     (arrived () _type_ :state 37)
     (elevator-method-38 (_type_) none 38)
     (calc-dist-between-points! (_type_ int int) none 39)
-    (activate-elevator (_type_) none 40)
+    (activate-elevator (_type_) object 40)
     (init-defaults! (_type_) none 41)
     (set-ambient-sound! (_type_) none 42)
     (move-between-points (_type_ vector float float) symbol 43)
     (elevator-method-44 (_type_) symbol 44)
     (commited-to-ride? (_type_) symbol 45)
     (move-to-next-point! (_type_) none 46)
-    (find-closest-point-in-path! (_type_ vector path-step symbol symbol) symbol 47)
+    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol 47)
     (elevator-method-48 (_type_) none 48)
     )
   )
@@ -422,7 +422,7 @@ which is obviously useful for an elevator."
     )
   )
 
-(defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 path-step) (arg2 symbol) (arg3 symbol))
+(defmethod find-closest-point-in-path! elevator ((obj elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
 the provided [[vector]]
 
@@ -459,7 +459,7 @@ the provided [[vector]]
         )
       )
     (when (!= point-idx-tracker -1.0)
-      (set! (-> arg1 next-pos) point-idx-tracker)
+      (set! (-> arg1 0) point-idx-tracker)
       #t
       )
     )
@@ -498,9 +498,7 @@ do so.
                       )
                )
       (set! zero (the-as float 0.0))
-      (when (and (find-closest-point-in-path! obj (get-trans target 0) (new 'stack-no-clear 'path-step) #t #t)
-                 (!= (-> obj move-pos 1) zero)
-                 )
+      (when (and (find-closest-point-in-path! obj (get-trans target 0) (& zero) #t #t) (!= (-> obj move-pos 1) zero))
         (set! (-> obj move-pos 0) (-> obj move-pos 1))
         (set! (-> obj move-pos 1) zero)
         (logior! (-> obj elevator-status) (elevator-status moving))
@@ -638,14 +636,8 @@ do so.
     (let ((gp-0 (-> self on-activate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 0)) 8))
-              self
-              (-> self root-override trans)
-              )
-            (the-as pair gp-0)
+            (new 'stack 'script-context (* (the int (-> self move-pos 0)) 8) self (-> self root-override trans))
+            gp-0
             )
           )
       )
@@ -736,14 +728,8 @@ do so.
     (let ((gp-0 (-> self on-deactivate)))
       (if gp-0
           (eval!
-            (new
-              'stack
-              'script-context
-              (the-as basic (* (the int (-> self move-pos 1)) 8))
-              self
-              (-> self root-override trans)
-              )
-            (the-as pair gp-0)
+            (new 'stack 'script-context (* (the int (-> self move-pos 1)) 8) self (-> self root-override trans))
+            gp-0
             )
           )
       )
@@ -816,16 +802,15 @@ For example for an elevator pre-compute the distance between the first and last 
   (the-as elevator ((the-as (function base-plat int base-plat) (find-parent-method elevator 7)) obj arg0))
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod activate-elevator elevator ((obj elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (logtest? (-> obj params flags) (elevator-flags elevator-flags-6))
       (go (method-of-object obj arrived))
       (go (method-of-object obj waiting))
       )
-  (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! elevator ((obj elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
@@ -842,8 +827,8 @@ This commonly includes things such as:
   (update-transforms (-> obj root-override))
   (base-plat-method-32 obj)
   (init-defaults! obj)
-  (set! (-> obj on-activate) (res-lump-struct (-> obj entity) 'on-activate basic))
-  (set! (-> obj on-deactivate) (res-lump-struct (-> obj entity) 'on-deactivate basic))
+  (set! (-> obj on-activate) (res-lump-struct (-> obj entity) 'on-activate pair))
+  (set! (-> obj on-deactivate) (res-lump-struct (-> obj entity) 'on-deactivate pair))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 entity #f))
   (if (logtest? (-> obj path flags) (path-control-flag not-found))
       (go process-drawable-art-error "error in path")
@@ -881,7 +866,7 @@ This commonly includes things such as:
     )
   (if (not (and sv-40
                 (logtest? (-> obj params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! obj (get-trans sv-40 0) (the-as path-step (& sv-32)) #f #t)
+                (find-closest-point-in-path! obj (get-trans sv-40 0) (& sv-32) #f #t)
                 )
            )
       (set! sv-32 (-> obj params start-pos))

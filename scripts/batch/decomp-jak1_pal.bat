@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\decompiler decompiler\config\jak1_pal.jsonc iso_data decompiler_out\
+out\build\Release\bin\decompiler decompiler\config\jak1\jak1_config.jsonc iso_data decompiler_out\ --version pal
 pause

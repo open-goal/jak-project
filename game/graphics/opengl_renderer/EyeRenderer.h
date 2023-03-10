@@ -7,7 +7,7 @@
 #include "game/graphics/pipelines/opengl.h"
 
 constexpr int EYE_BASE_BLOCK = 8160;
-constexpr int NUM_EYE_PAIRS = 11;
+constexpr int NUM_EYE_PAIRS = 20;
 constexpr int SINGLE_EYE_SIZE = 32;
 
 class EyeRenderer : public BucketRenderer {
@@ -19,6 +19,7 @@ class EyeRenderer : public BucketRenderer {
   void init_textures(TexturePool& texture_pool, GameVersion) override;
 
   void handle_eye_dma2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  std::optional<u64> lookup_eye_texture(u8 eye_id);
 
   struct SpriteInfo {
     u8 a;
@@ -46,22 +47,8 @@ class EyeRenderer : public BucketRenderer {
   std::string m_debug;
   float m_average_time_ms = 0;
 
-  bool m_use_bilinear = true;
-  bool m_alpha_hack = true;
-
-  u32 m_temp_tex[SINGLE_EYE_SIZE * SINGLE_EYE_SIZE];
-
-  bool m_use_gpu = true;
-
-  struct CpuEyeTex {
-    u64 gl_tex;
-    GpuTexture* gpu_tex;
-    u32 tbp;
-  };
-  CpuEyeTex m_cpu_eye_textures[NUM_EYE_PAIRS * 2];
-
   struct GpuEyeTex {
-    GpuTexture* gpu_tex;
+    GpuTexture* gpu_tex = nullptr;
     u32 tbp;
     FramebufferTexturePair fb;
 
@@ -78,6 +65,7 @@ class EyeRenderer : public BucketRenderer {
   struct SingleEyeDraws {
     int lr;
     int pair;
+    bool using_64 = false;
 
     int tex_slot() const { return pair * 2 + lr; }
     u32 clear_color;
@@ -95,6 +83,5 @@ class EyeRenderer : public BucketRenderer {
   };
 
   std::vector<SingleEyeDraws> get_draws(DmaFollower& dma, SharedRenderState* render_state);
-  void run_cpu(const std::vector<SingleEyeDraws>& draws, SharedRenderState* render_state);
   void run_gpu(const std::vector<SingleEyeDraws>& draws, SharedRenderState* render_state);
 };
