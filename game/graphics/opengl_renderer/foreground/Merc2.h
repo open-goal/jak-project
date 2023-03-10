@@ -138,6 +138,7 @@ class Merc2 : public BucketRenderer {
   struct UnpackTempVtx {
     float pos[4];
     float nrm[4];
+    float uv[2];
   };
   std::vector<UnpackTempVtx> m_mod_vtx_unpack_temp;
 
@@ -198,14 +199,16 @@ class Merc2 : public BucketRenderer {
                           bool ignore_alpha,
                           LevelDrawBucket* lev_bucket,
                           u32 first_bone,
-                          u32 lights);
+                          u32 lights,
+                          bool jak1_water_mode);
   Draw* try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                               const DrawMode& envmap_mode,
                               u32 envmap_texture,
                               LevelDrawBucket* lev_bucket,
                               const u8* fade,
                               u32 first_bone,
-                              u32 lights);
+                              u32 lights,
+                              bool jak1_water_mode);
 
   void do_draws(const Draw* draw_array,
                 const LevelData* lev,
