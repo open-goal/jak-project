@@ -952,6 +952,22 @@
    )
   )
 
+(defun draw-control-uses-water-bucket ((dc draw-control))
+  "Does this draw control use a water bucket?"
+  (let ((sg (-> dc sink-group)))
+    (dotimes (i 3)
+      (let ((lev (-> *level* level i)))
+        (when lev
+          (when (= sg (-> lev water-tex-foreground-sink-group))
+            (return #t)
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
@@ -976,7 +992,12 @@
     (&+! dma-buf (* 16 7))
     (+! qwc-total 7)
 
-
+    (let ((uses-water (draw-control-uses-water-bucket dc)))
+      ;; tell PC renderer if we're in a water bucket or not (has different settings.)
+      (set! (-> (the (pointer uint64) dma-buf)) (if uses-water 1 0))
+      (&+! dma-buf 16)
+      (+! qwc-total 1)
+      )
     (let ((matrix-slot-string (the (pointer uint8) dma-buf)) ;; matrix slot list (so PC knows what order they come in)
           (enable-mask 0)
           (ignore-alpha-mask 0)

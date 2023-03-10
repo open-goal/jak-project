@@ -825,8 +825,6 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   bool use_alpha_blend = false;
   if (version == GameVersion::Jak2) {
     use_alpha_blend = input_effect.texture_index == 4;  // water
-  } else if (version == GameVersion::Jak1) {
-    use_alpha_blend = str_util::starts_with(debug_name, "water-anim");
   }
 
   // full reset of state per effect.

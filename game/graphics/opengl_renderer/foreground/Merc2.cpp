@@ -215,6 +215,13 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   memcpy(&current_lights, input_data, sizeof(VuLights));
   input_data += sizeof(VuLights);
 
+  u64 uses_water = 0;
+  if (render_state->version == GameVersion::Jak1) {
+    // jak 1 figures out water at runtime sadly
+    memcpy(&uses_water, input_data, 8);
+    input_data += 16;
+  }
+
   // Next part is the matrix slot string. The game sends us a bunch of bone matrices,
   // but they may not be in order, or include all bones. The matrix slot string tells
   // us which bones go where. (the game doesn't go in order because it follows the merc format)
@@ -493,22 +500,23 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // do fixed draws:
       for (auto& fdraw : effect.mod.fix_draw) {
-        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
         if (should_envmap) {
           try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights);
+                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
       }
 
       // do mod draws
       for (auto& mdraw : effect.mod.mod_draw) {
-        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
         // modify the draw, set the mod flag and point it to the opengl buffer
         n->flags |= MOD_VTX;
         n->mod_vtx_buffer = mod_opengl_buffers[ei];
         if (should_envmap) {
-          auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture,
-                                         lev_bucket, fade_buffer + 4 * ei, first_bone, lights);
+          auto e =
+              try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
+                                    fade_buffer + 4 * ei, first_bone, lights, uses_water);
           if (e) {
             e->flags |= MOD_VTX;
             e->mod_vtx_buffer = mod_opengl_buffers[ei];
@@ -520,9 +528,9 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       for (auto& draw : effect.all_draws) {
         if (should_envmap) {
           try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights);
+                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
-        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights);
+        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
       }
     }
   }
@@ -899,7 +907,8 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                                           LevelDrawBucket* lev_bucket,
                                           const u8* fade,
                                           u32 first_bone,
-                                          u32 lights) {
+                                          u32 lights,
+                                          bool jak1_water_mode) {
   bool nonzero_fade = false;
   for (int i = 0; i < 4; i++) {
     if (fade[i]) {
@@ -916,6 +925,10 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = envmap_mode;
+  if (jak1_water_mode) {
+    draw->mode.enable_ab();
+    draw->mode.disable_depth_write();
+  }
   draw->texture = envmap_texture;
   draw->first_bone = first_bone;
   draw->light_idx = lights;
@@ -930,12 +943,17 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
                                       bool ignore_alpha,
                                       LevelDrawBucket* lev_bucket,
                                       u32 first_bone,
-                                      u32 lights) {
+                                      u32 lights,
+                                      bool jak1_water_mode) {
   Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = mdraw.mode;
+  if (jak1_water_mode) {
+    draw->mode.set_ab(true);
+    draw->mode.disable_depth_write();
+  }
   draw->texture = mdraw.eye_id == 0xff ? mdraw.tree_tex_id : (0xffffff00 | mdraw.eye_id);
   draw->first_bone = first_bone;
   draw->light_idx = lights;
