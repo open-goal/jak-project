@@ -348,19 +348,14 @@
 ;; definition for method 116 of type sniper
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-idle sniper ((obj sniper))
-  (with-pp
-    (cond
-      ((eval!
-         (new 'stack 'script-context (process->ppointer pp) pp (the-as vector #f))
-         (res-lump-struct (-> obj entity) 'on-activate pair)
-         )
-       (cleanup-for-death obj)
-       (go (method-of-object obj die-fast))
-       )
-      (else
-        (go (method-of-object obj idle))
-        )
+  (cond
+    ((script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
+     (cleanup-for-death obj)
+     (go (method-of-object obj die-fast))
+     )
+    (else
+      (go (method-of-object obj idle))
       )
-    (none)
     )
+  (none)
   )
