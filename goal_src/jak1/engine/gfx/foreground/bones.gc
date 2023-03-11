@@ -952,6 +952,22 @@
    )
   )
 
+(defun draw-control-uses-water-bucket ((dc draw-control))
+  "Does this draw control use a water bucket?"
+  (let ((sg (-> dc sink-group)))
+    (dotimes (i 3)
+      (let ((lev (-> *level* level i)))
+        (when lev
+          (when (= sg (-> lev water-tex-foreground-sink-group))
+            (return #t)
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
@@ -976,7 +992,12 @@
     (&+! dma-buf (* 16 7))
     (+! qwc-total 7)
 
-
+    (let ((uses-water (draw-control-uses-water-bucket dc)))
+      ;; tell PC renderer if we're in a water bucket or not (has different settings.)
+      (set! (-> (the (pointer uint64) dma-buf)) (if uses-water 1 0))
+      (&+! dma-buf 16)
+      (+! qwc-total 1)
+      )
     (let ((matrix-slot-string (the (pointer uint8) dma-buf)) ;; matrix slot list (so PC knows what order they come in)
           (enable-mask 0)
           (ignore-alpha-mask 0)
@@ -1087,6 +1108,9 @@
 
 ;; when set, use merc for blerc instead of generic.
 (define *blerc-hack* #t)
+
+(define *texscroll-force-generic* #f)
+(define *ripple-force-generic* #f)
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
@@ -1316,9 +1340,10 @@
                          (v1-36 (the-as mei-texture-scroll (+ (the-as uint v1-35) (* (-> v1-35 texture-scroll-offset) 16))))
                          )
                     (when (< arg2 (-> v1-36 max-dist)) ;; in range to draw?
-                        ;; do scrolling. in PC, always use generic here because merc2 can't update texture coordinates
-                        (#when PC_PORT
-                          (set! pc-force-mercneric #t)
+                      ;; do scrolling.
+                      (if *texscroll-force-generic*
+                          (set! pc-force-mercneric #t) ;; use generic for texscroll
+                          (set! pc-merc-vtx-update #t) ;; use merc2 for texscroll
                           )
                         (texscroll-make-request (-> geom effect effect-idx))
                         )
@@ -1328,9 +1353,9 @@
                 ;; check if this effect uses "ripple"
                 (when (logtest? (-> geom effect effect-idx effect-bits) 4)
                   (when (-> arg0 ripple)
-                    ;; merc2 can't handle ripple, even if it's off.
-                    (#when PC_PORT
+                    (if *ripple-force-generic*
                       (set! pc-force-mercneric #t)
+                      (set! pc-merc-vtx-update #t)
                       )
                     (set! sv-144 (-> arg0 ripple))
                     (let* ((f1-4 (/ (- (-> sv-144 far-fade-dist) arg2) (- (-> sv-144 far-fade-dist) (-> sv-144 close-fade-dist))))

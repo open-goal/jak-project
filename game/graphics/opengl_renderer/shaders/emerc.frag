@@ -27,6 +27,4 @@ void main() {
       color.rgb = vtx_color;
       color.a = 1;
     }
-
-  color.xyz *= 0.5;
 }
