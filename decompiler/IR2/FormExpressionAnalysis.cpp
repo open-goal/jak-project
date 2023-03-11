@@ -3509,7 +3509,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      const auto& type_1 = match_result.maps.strings.at(type_for_method);
+      const auto type_1 = match_result.maps.strings.at(type_for_method);
       const auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
@@ -3610,7 +3610,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      const auto& name = match_result.maps.strings.at(method_name);
+      const auto name = match_result.maps.strings.at(method_name);
       if (name != "new") {
         // only do these checks on non-new methods.  New methods are treated as functions because
         // they are never virtual and are never called like a method.
