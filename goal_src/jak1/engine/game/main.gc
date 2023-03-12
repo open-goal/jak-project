@@ -8,6 +8,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Letterbox and blackout
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun-extern runs-every-frame (none))
 
 (defun set-letterbox-frames ((arg0 time-frame))
   "Set the letterbox frame counter for arg0 frames in the future"
@@ -569,13 +570,15 @@
   "the main 'display loop' in GOAL. v-sync is done in this function, so all frames start and end here."
 
   ;; increase our stack size.
-  (stack-size-set! (-> self main-thread) 512)
+  (stack-size-set! (-> self main-thread) 1024)
 
+  
+  
   (let ((disp *display*))
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Pre loop initialization
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+    
     ;; the size is 0, so this doesn't actually do anything.
     ;; (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
@@ -590,6 +593,9 @@
 
 
     (while *run*
+   
+      (runs-every-frame) ;; trigger hook for mod base
+    
       ;; start immediately after all process updates finish.
       (profiler-instant-event "display-loop-top")
 
