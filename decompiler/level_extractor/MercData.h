@@ -12,6 +12,12 @@
 
 namespace decompiler {
 
+struct MercEyeCtrl {
+  s8 eye_slot;
+  // there's more...
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+};
+
 /*!
  * per-ctrl information. the first qw is uploaded to vu1
  */
@@ -42,7 +48,7 @@ struct MercCtrlHeader {
   u16 cross_copy_count;
   u16 num_verts;
   float longest_edge;
-  // todo (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
+  std::optional<MercEyeCtrl> eye_ctrl;
   u32 masks[3];
   // (dummy-bytes            uint8       48 :offset 32)
   u32 envmap_tint;
@@ -173,6 +179,7 @@ struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
 
+constexpr int kTextureScrollEffectBit = 1;
 constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {

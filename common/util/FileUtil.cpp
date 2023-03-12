@@ -129,6 +129,7 @@ std::optional<std::string> try_get_jak_project_path() {
 
 std::optional<fs::path> try_get_data_dir() {
   fs::path my_path = get_current_executable_path();
+  lg::info("Current executable directory - {}", my_path.string());
   auto data_dir = my_path.parent_path() / "data";
   if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
     return std::make_optional(data_dir);
@@ -213,6 +214,12 @@ void write_binary_file(const fs::path& name, const void* data, size_t size) {
     throw std::runtime_error("couldn't open file " + name.string());
   }
 
+  if (size == 0) {
+    // nothing to write, just 'touch' the file
+    fclose(fp);
+    return;
+  }
+
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
     throw std::runtime_error("couldn't write file " + name.string());
@@ -273,6 +280,10 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
+  if (len == 0) {
+    fclose(fp);
+    return {};
+  }
   rewind(fp);
 
   std::vector<uint8_t> data;
@@ -582,6 +593,19 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
     }
   }
   return dirs;
+}
+
+void copy_file(const fs::path& src, const fs::path& dst) {
+  // Check that the src path exists
+  if (!fs::exists(src)) {
+    throw std::runtime_error(fmt::format("Cannot copy '{}', path does not exist", src.string()));
+  }
+  // Ensure the directory can be copied into
+  if (!fs::exists(dst.parent_path()) && !create_dir_if_needed_for_file(dst)) {
+    throw std::runtime_error(fmt::format(
+        "Cannot copy '{}', couldn't make directory to copy into '{}'", src.string(), dst.string()));
+  }
+  fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
 }
 
 }  // namespace file_util

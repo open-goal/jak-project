@@ -7,6 +7,22 @@
 
 (declare-type fuel-cell basic) ;; TODO!!
 
+(#when PC_PORT
+
+(define *display-bones* #f)
+(define *display-joint-names* #f)
+
+(defun draw-joint-spheres ((arg0 process-drawable))
+  (dotimes (s5-0 (-> arg0 node-list length))
+    (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
+      (add-debug-sphere #t (bucket-id debug2) a2-0 (meters 0.2) (new 'static 'rgba :g #xff :a #x40))
+      (#when PC_PORT
+          (add-debug-text-sphere (!= (-> arg0 node-list data s5-0 joint) #f) (bucket-id debug2) a2-0 (meters 0.1) (the string (-> arg0 node-list data s5-0 joint name)) (static-rgba 0 #xff 0 #x40)))
+      )
+    )
+  #f
+  )
+
 (defun-debug draw-bone-lines ((obj process-drawable))
   "Added in PC port to debug bones"
   (dotimes (i (-> obj node-list length))
@@ -19,7 +35,7 @@
         )
       )
     )
-  )
+  ))
 
 ;; DECOMP BEGINS
 
@@ -452,7 +468,12 @@
           )
         )
       )
-    ; (draw-bone-lines (-> obj process))
+  (#when PC_PORT (when *debug-segment*
+    (if *display-bones*
+      (draw-bone-lines (the-as process-drawable (-> obj process))))
+    (if *display-joint-names*
+      (draw-joint-spheres (the-as process-drawable (-> obj process))))
+    ))
     0
     (none)
     )
@@ -623,7 +644,7 @@
                 (the-as bucket-id s2-0)
                 *temp-string*
                 (the-as vector s5-1)
-                (font-color precursor-#ec3b00)
+                (font-color red)
                 (the-as vector2h #f)
                 )
               )

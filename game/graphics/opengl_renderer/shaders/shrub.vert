@@ -16,8 +16,6 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 void main() {
 
 
@@ -62,7 +60,7 @@ void main() {
     // hack
     transformed.xyz *= transformed.w;
     // scissoring area adjust
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
     // time of day lookup

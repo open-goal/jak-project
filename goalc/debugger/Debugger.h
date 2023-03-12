@@ -96,7 +96,7 @@ class Debugger {
   const char* get_symbol_name_from_offset(s32 ofs) const;
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
-  void update_break_info();
+  void update_break_info(std::optional<std::string> dump_path);
 
   InstructionPointerInfo get_rip_info(u64 x86_rip);
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
@@ -105,7 +105,7 @@ class Debugger {
   std::string get_info_about_addr(u32 addr);
   Disassembly disassemble_at_rip(const InstructionPointerInfo& info);
 
-  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp);
+  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp, std::optional<std::string> dump_path);
 
   std::string disassemble_x86_with_symbols(int len, u64 base_addr) const;
 

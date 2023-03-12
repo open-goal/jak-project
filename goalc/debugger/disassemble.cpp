@@ -77,15 +77,17 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
 static constexpr int FORM_DUMP_SIZE_REV = 4;
 static constexpr int FORM_DUMP_SIZE_FWD = 4;
 
-std::string disassemble_x86_function(u8* data,
-                                     int len,
-                                     const goos::Reader* reader,
-                                     u64 base_addr,
-                                     u64 highlight_addr,
-                                     const std::vector<InstructionInfo>& x86_instructions,
-                                     const FunctionEnv* fenv,
-                                     bool* had_failure,
-                                     bool print_whole_function) {
+std::string disassemble_x86_function(
+    u8* data,
+    int len,
+    const goos::Reader* reader,
+    u64 base_addr,
+    u64 highlight_addr,
+    const std::vector<InstructionInfo>& x86_instructions,
+    const std::vector<std::shared_ptr<goos::HeapObject>>& code_sources,
+    const std::vector<std::string>& ir_strings,
+    bool* had_failure,
+    bool print_whole_function) {
   std::string result;
   ZydisDecoder decoder;
   ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
@@ -93,8 +95,6 @@ std::string disassemble_x86_function(u8* data,
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
   ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
-
-  const auto& irs = fenv->code();
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -155,8 +155,8 @@ std::string disassemble_x86_function(u8* data,
 
       std::string line;
 
-      if (current_ir_idx >= 0 && current_ir_idx < int(irs.size())) {
-        auto source = reader->db.try_get_short_info(fenv->code_source().at(current_ir_idx));
+      if (current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
+        auto source = reader->db.try_get_short_info(code_sources.at(current_ir_idx));
         if (source) {
           if (source->filename != current_filename ||
               source->line_idx_to_display != current_file_line ||
@@ -187,12 +187,12 @@ std::string disassemble_x86_function(u8* data,
                                       print_buff, print_buff_size, base_addr);
       line += print_buff;
 
-      if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(irs.size())) {
+      if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
         if (line.size() < 50) {
           line.append(50 - line.size(), ' ');
         }
         line += " ";
-        line += irs.at(current_ir_idx)->print();
+        line += ir_strings.at(current_ir_idx);
       }
 
       if (warn_messed_up) {

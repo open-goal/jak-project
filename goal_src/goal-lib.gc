@@ -63,7 +63,7 @@
 
 (defmacro tc ()
   "Typecheck against the all-types file"
-  `(m "decompiler/config/all-types.gc")
+  `(m "decompiler/config/jak1/all-types.gc")
   )
 
 (defmacro e ()
@@ -208,6 +208,7 @@
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
 ;;;;;;;;;;;;;;;;;;;
+
 ;; Bind vars in body
 (defmacro let (bindings &rest body)
   `((lambda :inline-only #t ,(apply first bindings) ,@body)
@@ -237,15 +238,11 @@
 
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
-  (if (and (> (length body) 1)      ;; more than one thing in function
-           (string? (first body))   ;; first thing is a string
-           )
-    ;; then it's a docstring and we ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
-    ;; otherwise don't ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@body))
-    )
-  )
+  (let ((docstring ""))
+    (when (and (> (length body) 1) (string? (first body)))
+      (set! docstring (first body))
+      (set! body (cdr body)))
+    `(define ,name ,docstring (lambda :name ,name ,bindings ,@body))))
 
 ;; the compiler can't figure out types of a recursive function without
 ;; first knowing the return type, so we use this form to forward declare
@@ -287,15 +284,22 @@
        )
   )
 
+(defmacro define-once (name value)
+  "define once. Does not set the symbol if it already has a value. It must have been at least forward-declared first!"
+  `(begin
+    (if (or (not ,name) (zero? ,name))
+        (set! ,name ,value)
+        )
+    )
+  )
+
 (defmacro define-perm (name type value)
   "Define 'permanent', meaning the original definition will not be blown away by a file reload.
    If the value of the symbol is unset (zero) or set to false, it will be defined.
    Otherwise, no effect, other than to inform the type system of the symbol type."
   `(begin
     (define-extern ,name ,type)
-    (if (or (not ,name) (zero? ,name))
-        (set! ,name ,value)
-        )
+    (define-once ,name ,value)
     )
   )
 
@@ -964,6 +968,15 @@
   `(sqrtf-no-fabs (fabs ,x))
   )
 
+(defmacro basically-zero? (val)
+  "Checks if the value is within 0.000000000000000001 of zero (to solve float comparison bugs)"
+  `(<= (fabs (- ,val 0.0))
+       0.000000000000000001))
+
+(defmacro basically-not-zero? (val)
+  "Checks if the value is NOT within 0.000000000000000001 of zero (to solve float comparison bugs)"
+  `(> (fabs (- ,val 0.0))
+       0.000000000000000001))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; user stuf

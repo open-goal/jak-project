@@ -1,34 +1,34 @@
 ("DRILLMTN.DGO"
-  ("jak-mech+0-ag.go" "jak-mech+0")
-  ("grunt-mech-anims+0-ag.go" "grunt-mech-anims+0")
-  ("mech-part.o" "mech-part")
-  ("mech.o" "mech")
-  ("target-mech.o" "target-mech")
-  ("mech-states.o" "mech-states")
-  ("grunt-mech.o" "grunt-mech")
-  ("tpage-1877.go" "tpage-1877")
-  ("tpage-2535.go" "tpage-2535")
-  ("tpage-2624.go" "tpage-2624")
-  ("drill-top-break-ag.go" "drill-top-break")
-  ("drill-barons-ship-ag.go" "drill-barons-ship")
-  ("grunt-ag.go" "grunt")
-  ("drill-control-panel-ag.go" "drill-control-panel")
-  ("drill-crane-ag.go" "drill-crane")
-  ("crimson-guard-hover-ag.go" "crimson-guard-hover")
-  ("wasp-ag.go" "wasp")
-  ("drill-turret-ext-ag.go" "drill-turret-ext")
-  ("mech-ag.go" "mech")
-  ("drill-drill-ag.go" "drill-drill")
-  ("port-turret-ag.go" "port-turret")
-  ("drill-flip-step-ag.go" "drill-flip-step")
-  ("drill-lift-ag.go" "drill-lift")
-  ("drill-elevator-doors-ag.go" "drill-elevator-doors")
-  ("drill-wall-ag.go" "drill-wall")
-  ("drill-metalhead-eggs-c-ag.go" "drill-metalhead-eggs-c")
-  ("drill-metalhead-eggs-b-ag.go" "drill-metalhead-eggs-b")
-  ("drill-metalhead-eggs-a-ag.go" "drill-metalhead-eggs-a")
-  ("drill-switch-ag.go" "drill-switch")
-  ("drill-turret-int-ag.go" "drill-turret-int")
-  ("drill-moving-staircase-ag.go" "drill-moving-staircase")
-  ("drillmtn.go" "drillmtn")
-  )
+ ("jak-mech+0-ag.go"
+  "grunt-mech-anims+0-ag.go"
+  "mech-part.o"
+  "mech.o"
+  "target-mech.o"
+  "mech-states.o"
+  "grunt-mech.o"
+  "tpage-1877.go"
+  "tpage-2535.go"
+  "tpage-2624.go"
+  "drill-top-break-ag.go"
+  "drill-barons-ship-ag.go"
+  "grunt-ag.go"
+  "drill-control-panel-ag.go"
+  "drill-crane-ag.go"
+  "crimson-guard-hover-ag.go"
+  "wasp-ag.go"
+  "drill-turret-ext-ag.go"
+  "mech-ag.go"
+  "drill-drill-ag.go"
+  "port-turret-ag.go"
+  "drill-flip-step-ag.go"
+  "drill-lift-ag.go"
+  "drill-elevator-doors-ag.go"
+  "drill-wall-ag.go"
+  "drill-metalhead-eggs-c-ag.go"
+  "drill-metalhead-eggs-b-ag.go"
+  "drill-metalhead-eggs-a-ag.go"
+  "drill-switch-ag.go"
+  "drill-turret-int-ag.go"
+  "drill-moving-staircase-ag.go"
+  "drillmtn.go"
+ ))

@@ -466,22 +466,6 @@ void render_game_frame(int game_width,
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
 
-    // hack for jak 2 resize
-    if (g_game_version == GameVersion::Jak2) {
-      float ratio = 0.75 * (float)window_fb_width / (float)window_fb_height;
-      if (ratio > 1) {
-        window_fb_width /= ratio;
-      } else {
-        window_fb_height *= ratio;
-      }
-      options.game_res_w = window_fb_width;
-      options.game_res_h = window_fb_height;
-      options.window_framebuffer_width = window_fb_width;
-      options.window_framebuffer_height = window_fb_height;
-      options.draw_region_width = window_fb_width;
-      options.draw_region_height = window_fb_height;
-    }
-
     if (want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled) {
       options.save_screenshot = true;
       std::string screenshot_file_name = make_hotkey_screenshot_file_name();

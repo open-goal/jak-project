@@ -1,17 +1,20 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
+;; definition of type debug-menu-context
 (deftype debug-menu-context (basic)
-  ((is-active     symbol                  :offset-assert   4)
-   (sel-length    int32                   :offset-assert   8)
-   (sel-menu      debug-menu            8 :offset-assert  12)
-   (root-menu     debug-menu              :offset-assert  44)
-   (joypad-func   (function basic none)   :offset-assert  48)
-   (joypad-item   basic                   :offset-assert  52)
-   (font          font-context            :offset-assert  56)
-   (is-hidden     symbol                  :offset-assert  60)
-   (joypad-number int32                   :offset-assert  64)
+  ((is-active     symbol                      :offset-assert   4)
+   (sel-length    int32                       :offset-assert   8)
+   (sel-menu      debug-menu                8 :offset-assert  12)
+   (root-menu     debug-menu                  :offset-assert  44)
+   (joypad-func   (function basic int none)   :offset-assert  48)
+   (joypad-item   basic                       :offset-assert  52)
+   (font          font-context                :offset-assert  56)
+   (is-hidden     symbol                      :offset-assert  60)
+   (joypad-number int32                       :offset-assert  64)
    )
   :method-count-assert 9
   :size-assert         #x44
@@ -21,6 +24,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu-context
 (defmethod inspect debug-menu-context ((obj debug-menu-context))
   (when (not obj)
     (set! obj obj)
@@ -40,6 +44,7 @@
   obj
   )
 
+;; definition for method 0 of type debug-menu-context
 (defmethod new debug-menu-context ((allocation symbol) (type-to-make type))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 is-active) #f)
@@ -48,22 +53,15 @@
     (set! (-> gp-0 root-menu) #f)
     (set! (-> gp-0 joypad-func) #f)
     (set! (-> gp-0 joypad-item) #f)
-    (set! (-> gp-0 font) (new
-                           'debug
-                           'font-context
-                           *font-default-matrix*
-                           0
-                           0
-                           0.0
-                           (font-color default-#cddbcd)
-                           (font-flags shadow kerning)
-                           )
+    (set! (-> gp-0 font)
+          (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
           )
     (set! (-> gp-0 joypad-number) 0)
     gp-0
     )
   )
 
+;; definition of type debug-menu-node
 (deftype debug-menu-node (basic)
   ((name          string      :offset-assert   4)
    (parent        debug-menu  :offset-assert   8)
@@ -75,6 +73,7 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type debug-menu-node
 (defmethod inspect debug-menu-node ((obj debug-menu-node))
   (when (not obj)
     (set! obj obj)
@@ -89,11 +88,13 @@
   obj
   )
 
+;; definition for method 2 of type debug-menu-node
 (defmethod print debug-menu-node ((obj debug-menu-node))
   (format #t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
   obj
   )
 
+;; definition of type debug-menu
 (deftype debug-menu (debug-menu-node)
   ((context       debug-menu-context  :offset-assert  20)
    (selected-item debug-menu-item     :offset-assert  24)
@@ -109,6 +110,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu
 (defmethod inspect debug-menu ((obj debug-menu))
   (when (not obj)
     (set! obj obj)
@@ -128,6 +130,7 @@
   obj
   )
 
+;; definition for method 0 of type debug-menu
 (defmethod new debug-menu ((allocation symbol) (type-to-make type) (arg0 debug-menu-context) (arg1 string))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 context) arg0)
@@ -139,6 +142,7 @@
     )
   )
 
+;; definition of type debug-menu-item
 (deftype debug-menu-item (debug-menu-node)
   ((id int32  :offset-assert  20)
    )
@@ -147,6 +151,7 @@
   :flag-assert         #x900000018
   )
 
+;; definition for method 3 of type debug-menu-item
 (defmethod inspect debug-menu-item ((obj debug-menu-item))
   (when (not obj)
     (set! obj obj)
@@ -162,6 +167,7 @@
   obj
   )
 
+;; definition of type debug-menu-item-submenu
 (deftype debug-menu-item-submenu (debug-menu-item)
   ((submenu debug-menu  :offset-assert  24)
    )
@@ -173,6 +179,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu-item-submenu
 (defmethod inspect debug-menu-item-submenu ((obj debug-menu-item-submenu))
   (when (not obj)
     (set! obj obj)
@@ -189,6 +196,7 @@
   obj
   )
 
+;; definition for method 0 of type debug-menu-item-submenu
 (defmethod new debug-menu-item-submenu ((allocation symbol) (type-to-make type) (arg0 string) (arg1 debug-menu))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
@@ -201,6 +209,7 @@
     )
   )
 
+;; definition of type debug-menu-item-function
 (deftype debug-menu-item-function (debug-menu-item)
   ((activate-func (function object object)  :offset-assert  24)
    (hilite-timer  int8                      :offset-assert  28)
@@ -213,6 +222,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu-item-function
 (defmethod inspect debug-menu-item-function ((obj debug-menu-item-function))
   (when (not obj)
     (set! obj obj)
@@ -230,6 +240,7 @@
   obj
   )
 
+;; definition for method 0 of type debug-menu-item-function
 (defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (arg0 string) (arg1 object) (arg2 (function object object)))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
@@ -243,6 +254,7 @@
     )
   )
 
+;; definition of type debug-menu-item-flag
 (deftype debug-menu-item-flag (debug-menu-item)
   ((activate-func (function object debug-menu-msg object)  :offset-assert  24)
    (is-on         object                                   :offset-assert  28)
@@ -255,6 +267,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu-item-flag
 (defmethod inspect debug-menu-item-flag ((obj debug-menu-item-flag))
   (when (not obj)
     (set! obj obj)
@@ -272,6 +285,7 @@
   obj
   )
 
+;; definition for method 0 of type debug-menu-item-flag
 (defmethod new debug-menu-item-flag ((allocation symbol)
                                    (type-to-make type)
                                    (arg0 string)
@@ -290,6 +304,7 @@
     )
   )
 
+;; definition of type debug-menu-item-var
 (deftype debug-menu-item-var (debug-menu-item)
   ((display-str      string                                           :offset-assert  24)
    (grabbed-joypad-p symbol                                           :offset-assert  28)
@@ -326,6 +341,7 @@
     )
   )
 
+;; definition for method 3 of type debug-menu-item-var
 (defmethod inspect debug-menu-item-var ((obj debug-menu-item-var))
   (when (not obj)
     (set! obj obj)
@@ -367,6 +383,7 @@
   obj
   )
 
+;; definition for function debug-menu-item-var-update-display-str
 (defun debug-menu-item-var-update-display-str ((arg0 debug-menu-item-var))
   (cond
     ((-> arg0 float-p)
@@ -405,6 +422,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-var-make-int
 (defun debug-menu-item-var-make-int ((arg0 debug-menu-item-var)
                             (arg1 (function int debug-menu-msg int int int))
                             (arg2 int)
@@ -442,6 +460,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-var-make-float
 (defun debug-menu-item-var-make-float ((arg0 debug-menu-item-var)
                               (arg1 (function int debug-menu-msg float float float))
                               (arg2 float)
@@ -471,6 +490,7 @@
   arg0
   )
 
+;; definition for method 0 of type debug-menu-item-var
 (defmethod new debug-menu-item-var ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int) (arg2 int))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (let ((v1-2 (/ arg2 8)))
@@ -499,7 +519,8 @@
     )
   )
 
-(defun debug-menu-context-grab-joypad ((arg0 debug-menu-context) (arg1 basic) (arg2 (function basic none)))
+;; definition for function debug-menu-context-grab-joypad
+(defun debug-menu-context-grab-joypad ((arg0 debug-menu-context) (arg1 basic) (arg2 (function basic int none)))
   (cond
     ((-> arg0 joypad-func)
      #f
@@ -512,12 +533,14 @@
     )
   )
 
+;; definition for function debug-menu-context-release-joypad
 (defun debug-menu-context-release-joypad ((arg0 debug-menu-context))
   (set! (-> arg0 joypad-func) #f)
   (set! (-> arg0 joypad-item) #f)
   #f
   )
 
+;; definition for function debug-menu-item-get-max-width
 (defun debug-menu-item-get-max-width ((arg0 debug-menu-item) (arg1 debug-menu))
   (local-vars (v0-1 int))
   0
@@ -554,6 +577,7 @@
   v0-1
   )
 
+;; definition for function debug-menu-context-default-selection
 (defun debug-menu-context-default-selection ((arg0 debug-menu-context) (arg1 symbol))
   (when (or (zero? (-> arg0 sel-length)) (not arg1))
     (let ((s5-0 (-> arg0 root-menu)))
@@ -575,6 +599,7 @@
   arg0
   )
 
+;; definition for function debug-menu-rebuild
 (defun debug-menu-rebuild ((arg0 debug-menu))
   (let ((s4-0 0)
         (s5-0 0)
@@ -599,6 +624,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-set-root-menu
 (defun debug-menu-context-set-root-menu ((arg0 debug-menu-context) (arg1 debug-menu))
   (let ((s4-0 (-> arg0 is-active)))
     (if s4-0
@@ -613,6 +639,7 @@
   arg0
   )
 
+;; definition for function debug-menu-append-item
 (defun debug-menu-append-item ((arg0 debug-menu) (arg1 debug-menu-node))
   (let* ((gp-0 (-> arg0 context))
          (s4-0 (-> gp-0 is-active))
@@ -630,6 +657,7 @@
   arg1
   )
 
+;; definition for function debug-menu-remove-all-items
 (defun debug-menu-remove-all-items ((arg0 debug-menu))
   (let* ((gp-0 (-> arg0 context))
          (s4-0 (-> gp-0 is-active))
@@ -647,6 +675,9 @@
   arg0
   )
 
+;; definition for function debug-menu-func-decode
+;; WARN: Return type mismatch object vs function.
+;; WARN: Using new Jak 2 rtype-of
 (defun debug-menu-func-decode ((arg0 object))
   (let ((v1-2 (rtype-of arg0)))
     (the-as function (cond
@@ -664,6 +695,16 @@
     )
   )
 
+;; definition for function debug-menu-make-from-template
+;; INFO: Used lq/sq
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 128 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 128 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 128 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 128 mismatch: defined as size 4, got size 16
 (defun debug-menu-make-from-template ((arg0 debug-menu-context) (arg1 pair))
   (local-vars
     (s4-0 debug-menu-node)
@@ -839,6 +880,8 @@
   s4-0
   )
 
+;; definition for function debug-menu-find-from-template
+;; WARN: Return type mismatch object vs debug-menu.
 (defun debug-menu-find-from-template ((arg0 debug-menu-context) (arg1 pair))
   (let ((s5-0 (the-as object (-> arg0 root-menu))))
     (while (begin (label cfg-12) (and s5-0 (type? s5-0 debug-menu) (not (null? arg1))))
@@ -868,6 +911,8 @@
     )
   )
 
+;; definition for function debug-menu-item-submenu-render
+;; ERROR: Failed store: (s.w! (+ v1-9 8) 0) at op 42
 (defun debug-menu-item-submenu-render ((arg0 debug-menu-item-submenu) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((s5-0 (-> arg0 parent context font)))
     (let ((v1-2 s5-0)
@@ -898,6 +943,8 @@
   arg0
   )
 
+;; definition for function debug-menu-item-function-render
+;; ERROR: Failed store: (s.w! (+ v1-3 8) 0) at op 49
 (defun debug-menu-item-function-render ((arg0 debug-menu-item-function) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((v1-2 (-> arg0 parent context font)))
     (let ((a0-1 v1-2)
@@ -933,6 +980,8 @@
   arg0
   )
 
+;; definition for function debug-menu-item-flag-render
+;; ERROR: Failed store: (s.w! (+ v1-3 8) 0) at op 47
 (defun debug-menu-item-flag-render ((arg0 debug-menu-item-flag) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((v1-2 (-> arg0 parent context font)))
     (let ((a0-1 v1-2)
@@ -968,6 +1017,8 @@
   arg0
   )
 
+;; definition for function debug-menu-item-var-render
+;; ERROR: Failed store: (s.w! (+ v1-16 8) 0) at op 95
 (defun debug-menu-item-var-render ((arg0 debug-menu-item-var) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (let ((s5-0 (-> arg0 parent context font)))
     (let ((v1-2 s5-0)
@@ -1022,6 +1073,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-render
 (defun debug-menu-item-render ((arg0 debug-menu-item) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
   (when (> (-> arg0 refresh-delay) 0)
     (+! (-> arg0 refresh-ctr) -1)
@@ -1050,6 +1102,9 @@
   arg0
   )
 
+;; definition for function debug-menu-render
+;; INFO: Used lq/sq
+;; ERROR: Failed store: (s.w! (+ v1-9 8) 0) at op 47
 (defun debug-menu-render ((arg0 debug-menu) (arg1 int) (arg2 int) (arg3 debug-menu-node) (arg4 int))
   (local-vars (sv-16 dma-buffer) (sv-32 pointer))
   (let ((v1-0 0))
@@ -1121,6 +1176,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-render
 (defun debug-menu-context-render ((arg0 debug-menu-context))
   (let ((s4-0 6))
     (dotimes (s5-0 (-> arg0 sel-length))
@@ -1135,6 +1191,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-select-next-or-prev-item
 (defun debug-menu-context-select-next-or-prev-item ((arg0 debug-menu-context) (arg1 int))
   (local-vars (v1-6 object))
   (let ((s5-0 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1))))
@@ -1179,6 +1236,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-select-new-item
 (defun debug-menu-context-select-new-item ((arg0 debug-menu-context) (arg1 int))
   (let* ((a2-0 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1)))
          (a1-1 (-> a2-0 selected-item))
@@ -1232,6 +1290,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-open-submenu
 (defun debug-menu-context-open-submenu ((arg0 debug-menu-context) (arg1 debug-menu))
   (let ((v1-0 (-> arg0 sel-length)))
     (when (>= v1-0 8)
@@ -1251,6 +1310,7 @@
   (debug-menu-context-send-msg arg0 (debug-menu-msg activate) (debug-menu-dest current-selection))
   )
 
+;; definition for function debug-menu-context-close-submenu
 (defun debug-menu-context-close-submenu ((arg0 debug-menu-context))
   (debug-menu-context-send-msg arg0 (debug-menu-msg deactivate) (debug-menu-dest current-selection))
   (if (< 1 (-> arg0 sel-length))
@@ -1259,6 +1319,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-submenu-msg
 (defun debug-menu-item-submenu-msg ((arg0 debug-menu-item-submenu) (arg1 debug-menu-msg))
   (when (= arg1 (debug-menu-msg press))
     (let ((a0-1 (-> arg0 parent context)))
@@ -1268,6 +1329,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-function-msg
 (defun debug-menu-item-function-msg ((arg0 debug-menu-item-function) (arg1 debug-menu-msg))
   (cond
     ((= arg1 (debug-menu-msg press))
@@ -1291,6 +1353,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-flag-msg
 (defun debug-menu-item-flag-msg ((arg0 debug-menu-item-flag) (arg1 debug-menu-msg))
   (cond
     ((= arg1 (debug-menu-msg press))
@@ -1311,7 +1374,8 @@
   arg0
   )
 
-(defun debug-menu-item-var-joypad-handler ((arg0 debug-menu-item-var) (arg1 debug-menu-msg))
+;; definition for function debug-menu-item-var-joypad-handler
+(defun debug-menu-item-var-joypad-handler ((arg0 debug-menu-item-var) (arg1 int))
   (cond
     ((not (cpad-hold? arg1 x))
      (let ((a0-2 (-> arg0 parent context)))
@@ -1437,6 +1501,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-var-msg
 (defun debug-menu-item-var-msg ((arg0 debug-menu-item-var) (arg1 debug-menu-msg))
   (cond
     ((= arg1 (debug-menu-msg deactivate))
@@ -1450,7 +1515,11 @@
     ((= arg1 (debug-menu-msg press))
      (when (not (-> arg0 grabbed-joypad-p))
        (let ((a0-2 (-> arg0 parent context)))
-         (when (debug-menu-context-grab-joypad a0-2 arg0 (the-as (function basic none) debug-menu-item-var-joypad-handler))
+         (when (debug-menu-context-grab-joypad
+                 a0-2
+                 arg0
+                 (the-as (function basic int none) debug-menu-item-var-joypad-handler)
+                 )
            (set! (-> arg0 grabbed-joypad-p) #t)
            (set! (-> arg0 fundo-val) (-> arg0 fval))
            (set! (-> arg0 fundo-val) (-> arg0 fval))
@@ -1484,6 +1553,7 @@
   arg0
   )
 
+;; definition for function debug-menu-item-send-msg
 (defun debug-menu-item-send-msg ((arg0 debug-menu-item) (arg1 debug-menu-msg))
   (cond
     ((= (-> arg0 type) debug-menu-item-submenu)
@@ -1505,6 +1575,7 @@
   arg0
   )
 
+;; definition for function debug-menu-send-msg
 (defun debug-menu-send-msg ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 symbol))
   (let* ((s3-0 (-> arg0 items))
          (s2-0 (car s3-0))
@@ -1521,6 +1592,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-send-msg
 (defun debug-menu-context-send-msg ((arg0 debug-menu-context) (arg1 debug-menu-msg) (arg2 debug-menu-dest))
   (cond
     ((= arg2 (debug-menu-dest root))
@@ -1562,6 +1634,7 @@
   arg0
   )
 
+;; definition for function debug-menu-context-activate-selection
 (defun debug-menu-context-activate-selection ((arg0 debug-menu-context))
   (let ((a0-1 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1) selected-item)))
     (debug-menu-item-send-msg a0-1 (debug-menu-msg press))
@@ -1569,6 +1642,7 @@
   arg0
   )
 
+;; definition for function debug-menus-default-joypad-func
 (defun debug-menus-default-joypad-func ((arg0 debug-menu-context))
   (cond
     ((cpad-pressed? (-> arg0 joypad-number) square)
@@ -1599,26 +1673,19 @@
   arg0
   )
 
+;; definition for function debug-menus-active
 (defun debug-menus-active ((arg0 debug-menu-context))
   (when (not (-> arg0 is-hidden))
-    (cond
-      ((-> arg0 joypad-func)
-       (let ((t9-0 (-> arg0 joypad-func))
-             (a0-1 (-> arg0 joypad-item))
-             )
-         (-> arg0 joypad-number)
-         (t9-0 a0-1)
-         )
-       )
-      (else
+    (if (-> arg0 joypad-func)
+        ((-> arg0 joypad-func) (-> arg0 joypad-item) (-> arg0 joypad-number))
         (debug-menus-default-joypad-func arg0)
         )
-      )
     (debug-menu-context-render arg0)
     )
   arg0
   )
 
+;; definition for function debug-menus-handler
 (defun debug-menus-handler ((arg0 debug-menu-context))
   (if (-> arg0 is-active)
       (debug-menus-active arg0)
@@ -1626,6 +1693,9 @@
   arg0
   )
 
+;; failed to figure out what this is:
 0
 
-)
+
+
+
