@@ -55,6 +55,7 @@ class Matcher {
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
+  static Matcher quoted_symbol(const std::string& name);
   static Matcher symbol(const std::string& name);
   static Matcher deref(const Matcher& root,
                        bool is_addr_of,
@@ -95,6 +96,7 @@ class Matcher {
     SC_OR,
     BEGIN,
     REG,  // a specific register. like s6.
+    QUOTED_SYMBOL,
     INVALID
   };
 

@@ -260,6 +260,10 @@ bool Object::is_symbol(const std::string& name) const {
   return is_symbol() && as_symbol()->name == name;
 }
 
+bool Object::is_string(const std::string& val) const {
+  return is_string() && as_string()->data == val;
+}
+
 template <>
 Object Object::make_number(FloatType value) {
   return Object::make_float(value);

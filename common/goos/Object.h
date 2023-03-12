@@ -302,6 +302,7 @@ class Object {
   bool is_symbol() const { return type == ObjectType::SYMBOL; }
   bool is_symbol(const std::string& name) const;
   bool is_string() const { return type == ObjectType::STRING; }
+  bool is_string(const std::string& val) const;
   bool is_pair() const { return type == ObjectType::PAIR; }
   bool is_array() const { return type == ObjectType::ARRAY; }
   bool is_env() const { return type == ObjectType::ENVIRONMENT; }

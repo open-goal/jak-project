@@ -9016,7 +9016,7 @@
 
 (deftype traffic-suppression-params (structure)
   ((bbox     bounding-box :inline :offset-assert 0)
-   (duration uint64               :offset-assert 32)
+   (duration time-frame           :offset-assert 32)
    (id       int8                 :offset-assert 40)
    )
   :method-count-assert 13
@@ -9058,6 +9058,21 @@
   )
 ;; ---traffic-h:traffic-type
 
+;; +++traffic-h:traffic-spawn-flags
+(defenum traffic-spawn-flags
+  :type uint32
+  :bitfield #t
+  (trsflags-00)
+  (trsflags-01)
+  (trsflags-02)
+  (dark-guard)
+  (trsflags-04)
+  (trsflags-05)
+  (trsflags-06)
+  (trsflags-07)
+  )
+;; ---traffic-h:traffic-spawn-flags
+
 (declare-type nav-mesh basic)
 (declare-type nav-branch structure)
 (deftype traffic-object-spawn-params (structure)
@@ -9072,7 +9087,7 @@
    (handle      handle             :offset-assert 80)
    (guard-type  uint8              :offset-assert 88)
    (user-data   uint32             :offset-assert 92)
-   (flags       uint32             :offset-assert 96)
+   (flags       traffic-spawn-flags  :offset-assert 96)
    (proc        process              :offset-assert 100)
    )
   :method-count-assert 9
@@ -45223,8 +45238,8 @@
 
 (deftype rift-rider (rigid-body-object)
   (
-    (escort-actor            actor-reference 2   :inline   :offset-assert 272) ;; elt size: 8
-    (escort-force            vector 2  :inline     :offset-assert 288) ;; elt size: 16
+    (escort-actor            entity-actor 2             :offset-assert 272) ;; elt size: 8
+    (escort-force            vector 2  :inline    :offset-assert 288) ;; elt size: 16
     (brutter-balloon-actor   entity-actor         :offset-assert 320)
     (path-pos                float          :offset-assert 324)
     (dest-pos                vector :inline :offset-assert 336)
@@ -45233,7 +45248,7 @@
     (init-height             float          :offset-assert 360)
     (battle-entity-triggered int32          :offset-assert 364)
     (battle-info-index       int32          :offset-assert 368)
-    (sound-id                uint32         :offset-assert 372)
+    (sound-id                sound-id       :offset-assert 372)
     (hover-volume            float          :offset-assert 376)
   )
   :method-count-assert 58
@@ -45315,10 +45330,11 @@
     (move-rift-rider () _type_ :state 29)
     (hit () _type_ :state 30)
     (die () _type_ :state 31)
-    (stad-samos-method-32 (_type_) none 32)
-    (stad-samos-method-33 (_type_) none 33)
-    (stad-samos-method-34 (_type_) none 34)
-    (stad-samos-method-35 (_type_) none 35))
+    (init! (_type_) none 32)
+    (get-position (_type_) symbol 33)
+    (spawn-lightning (_type_) none 34)
+    (kill-lightning (_type_) none 35)
+    )
   )
 
 (deftype stad-youngsamos (stad-samos)
@@ -45409,14 +45425,14 @@
 (define-extern *rift-rider-battle-table* (array rift-rider-battle-info))
 (define-extern defend-stadium-rift-rider-handler (function process int symbol event-message-block object :behavior rift-rider))
 (define-extern rift-rider-travel-post (function none :behavior rift-rider))
-;; (define-extern rift-rider-bounce-reaction function)
+(define-extern rift-rider-bounce-reaction (function control-info collide-query vector vector collide-status))
 (define-extern *stad-nav-callback-info* nav-callback-info)
 (define-extern *stad-samos-lightning-joint-tbl* (array int32))
 (define-extern stad-samos-post (function none :behavior stad-samos))
 (define-extern spawn-energy (function none :behavior stad-samos))
 (define-extern stad-samos-handler (function process int symbol event-message-block object :behavior stad-samos))
 (define-extern stadium-barrier-init-by-other (function vector quaternion vector none :behavior stadium-barrier))
-(define-extern stadium-barrier-spawn (function stad-force-field vector quaternion vector (pointer process)))
+(define-extern stadium-barrier-spawn (function stad-force-field vector quaternion vector (pointer stadium-barrier)))
 (define-extern stad-keira-init-by-other (function none :behavior stad-keira))
 (define-extern stad-brutter-init-by-other (function none :behavior stad-keira))
 (define-extern *suppress-stadium* traffic-suppression-params)
@@ -51168,7 +51184,7 @@
    (v-speed           vector :inline :offset-assert 1088)
    (end-pos           vector :inline :offset-assert 1104)
    (task-done?        symbol         :offset-assert 1120)
-   (task-node         uint16         :offset-assert 1124)
+   (task-node         game-task-node :offset-assert 1124)
    (jump-in-pipe?     symbol         :offset-assert 1128)
    (pipe-name         string         :offset-assert 1132)
    (coming-from-pw    symbol         :offset-assert 1136)
