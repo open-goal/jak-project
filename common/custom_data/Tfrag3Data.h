@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 27;
+constexpr int TFRAG3_VERSION = 28;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -313,10 +313,19 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
+enum class TieCategory {
+  NORMAL,
+  TRANS,  // also called alpha
+  WATER,
+};
+constexpr int kNumTieCategories = 3;
+
 // A tie model
 struct TieTree {
   BVH bvh;
-  std::vector<StripDraw> static_draws;  // the actual topology and settings
+  std::vector<StripDraw> static_draws;
+  // Category n uses draws: static_draws[cdi[n]] to static_draws[cdi[n + 1]]
+  std::array<u32, kNumTieCategories + 1> category_draw_indices;
 
   PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)

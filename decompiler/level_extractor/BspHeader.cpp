@@ -1037,6 +1037,24 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   for (int i = 0; i < int(8 * time_of_day.height); i++) {
     time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }
+
+  if (version > GameVersion::Jak1) {
+    auto fr = get_field_ref(ref, "envmap-shader", dts);
+    const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+    if (word.kind() == decompiler::LinkedWord::PTR) {
+      has_envmap_shader = true;
+      Ref envmap_shader_ref(deref_label(fr));
+      for (int i = 0; i < 5 * 16; i++) {
+        int byte = envmap_shader_ref.byte_offset + i;
+        u8 val =
+            ref.ref.data->words_by_seg.at(envmap_shader_ref.seg).at(byte / 4).get_byte(byte % 4);
+        envmap_shader[i] = val;
+      }
+    }
+
+    u32 tint = read_plain_data_field<u32>(ref, "tint-color", dts);
+    memcpy(tint_color.data(), &tint, 4);
+  }
 }
 
 std::string PrototypeBucketTie::print(const PrintSettings& settings, int indent) const {

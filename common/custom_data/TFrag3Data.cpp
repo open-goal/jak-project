@@ -187,6 +187,7 @@ void TieTree::serialize(Serializer& ser) {
   for (auto& draw : static_draws) {
     draw.serialize(ser);
   }
+  ser.from_ptr(&category_draw_indices);
 
   if (ser.is_saving()) {
     ser.save<size_t>(instanced_wind_draws.size());

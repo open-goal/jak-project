@@ -342,10 +342,10 @@ struct TieFrag {
 struct TieProtoInfo {
   std::string name;
   std::vector<TieInstanceInfo> instances;
-  bool uses_generic = false;
   u32 proto_flag;
   float stiffness = 0;  // wind
-  u32 generic_flag;
+  std::optional<AdgifInfo> envmap_adgif;
+  math::Vector<u8, 4> tint_color;
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
   std::vector<TieFrag> frags;                              // the fragments of the prototype
 };
@@ -476,6 +476,79 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   return original;
 }
 
+AdgifInfo process_adgif(const std::vector<u8>& gif_data,
+                        int tex_idx,
+                        const std::vector<level_tools::TextureRemap>& map,
+                        bool* uses_magic_tex0_bit) {
+  AdgifInfo adgif;
+  // address for the first adgif shader qw.
+  u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
+  // data for the first adgif shader qw.
+  u64 ra_tex0_val;
+  memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
+
+  // always expecting TEX0_1
+  ASSERT(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
+
+  // the value is overwritten by the login function. We don't care about this value, it's
+  // specific to the PS2's texture system.
+  ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
+  // the original value is a flag. this means to use decal texture mode (todo)
+  if (uses_magic_tex0_bit) {
+    *uses_magic_tex0_bit = ra_tex0_val == 0x800000000;
+  }
+  // there's also a hidden value in the unused bits of the a+d data. it'll be used by the
+  // VU program.
+  memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
+
+  // Second adgif. Similar to the first, except the original data value is a texture ID.
+  u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
+  u64 ra_tex1_val;
+  memcpy(&ra_tex1_val, &gif_data.at(16 * (tex_idx * 5 + 1)), 8);
+  ASSERT(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
+  ASSERT(ra_tex1_val == 0x120);  // some flag
+  u32 original_tex;
+  memcpy(&original_tex, &gif_data.at(16 * (tex_idx * 5 + 1) + 8), 4);
+  // try remapping it
+  u32 new_tex = remap_texture(original_tex, map);
+  if (original_tex != new_tex) {
+    lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
+  }
+  // texture the texture page/texture index, and convert to a PC port texture ID
+  u32 tpage = new_tex >> 20;
+  u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+  u32 tex_combo = (((u32)tpage) << 16) | tidx;
+  // remember the texture id (may be invalid, will be checked later)
+  adgif.combo_tex = tex_combo;
+  // and the hidden value in the unused a+d
+  memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
+  // todo: figure out if this matters. maybe this is decal?
+  if (ra_tex0_val == 0x800000000) {
+    // lg::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
+  }
+
+  // mipmap settings. we ignore, but get the hidden value
+  u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
+  ASSERT(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
+  memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
+  // who cares about the value
+
+  // clamp settings. we care about these. no hidden value.
+  u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
+  ASSERT(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
+  u64 clamp;
+  memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
+  adgif.clamp_val = clamp;
+
+  // alpha settings. we care about these, but no hidden value
+  u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
+  ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
+  u64 alpha;
+  memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
+  adgif.alpha_val = alpha;
+  return adgif;
+}
+
 /*!
  * Update per-proto information.
  */
@@ -488,14 +561,18 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     const auto& proto = protos[i];
     auto& info = out->at(i);
     info.proto_flag = proto.flags;
-    // flag of 2 means it should use the generic renderer (determined from EE asm)
-    // for now, we ignore this and use TIE on everything.
-    info.uses_generic = (proto.flags == 2);  // possibly different in jak 2
     // for debug, remember the name
     info.name = proto.name;
     // wind "stiffness" nonzero value means it has the wind effect
     info.stiffness = proto.stiffness;
-    info.generic_flag = proto.flags & 2;
+    if (proto.has_envmap_shader) {
+      std::vector<u8> adgif;
+      for (auto x : proto.envmap_shader) {
+        adgif.push_back(x);
+      }
+      info.envmap_adgif = process_adgif(adgif, 0, map, nullptr);
+      info.tint_color = proto.tint_color;
+    }
     // the actual colors (rgba) used by time of day interpolation
     // there are "height" colors. Each color is actually 8 colors that are interpolated.
     info.time_of_day_colors.resize(proto.time_of_day.height);
@@ -516,74 +593,12 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         // all TIE things have pretty normal adgif shaders
 
         // all the useful adgif data will be saved into this AdgifInfo
-        AdgifInfo adgif;
 
         // pointer to the level data
         auto& gif_data = proto.geometry[geo].tie_fragments[frag_idx].gif_data;
 
-        // address for the first adgif shader qw.
-        u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
-        // data for the first adgif shader qw.
-        u64 ra_tex0_val;
-        memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
+        auto adgif = process_adgif(gif_data, tex_idx, map, &frag_info.has_magic_tex0_bit);
 
-        // always expecting TEX0_1
-        ASSERT(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
-
-        // the value is overwritten by the login function. We don't care about this value, it's
-        // specific to the PS2's texture system.
-        ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
-        // the original value is a flag. this means to use decal texture mode (todo)
-        frag_info.has_magic_tex0_bit = ra_tex0_val == 0x800000000;
-        // there's also a hidden value in the unused bits of the a+d data. it'll be used by the
-        // VU program.
-        memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
-
-        // Second adgif. Similar to the first, except the original data value is a texture ID.
-        u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
-        u64 ra_tex1_val;
-        memcpy(&ra_tex1_val, &gif_data.at(16 * (tex_idx * 5 + 1)), 8);
-        ASSERT(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
-        ASSERT(ra_tex1_val == 0x120);  // some flag
-        u32 original_tex;
-        memcpy(&original_tex, &gif_data.at(16 * (tex_idx * 5 + 1) + 8), 4);
-        // try remapping it
-        u32 new_tex = remap_texture(original_tex, map);
-        if (original_tex != new_tex) {
-          lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
-        }
-        // texture the texture page/texture index, and convert to a PC port texture ID
-        u32 tpage = new_tex >> 20;
-        u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
-        u32 tex_combo = (((u32)tpage) << 16) | tidx;
-        // remember the texture id (may be invalid, will be checked later)
-        adgif.combo_tex = tex_combo;
-        // and the hidden value in the unused a+d
-        memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
-        // todo: figure out if this matters. maybe this is decal?
-        if (ra_tex0_val == 0x800000000) {
-          // lg::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
-        }
-
-        // mipmap settings. we ignore, but get the hidden value
-        u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
-        ASSERT(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
-        memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
-        // who cares about the value
-
-        // clamp settings. we care about these. no hidden value.
-        u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
-        ASSERT(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
-        u64 clamp;
-        memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
-        adgif.clamp_val = clamp;
-
-        // alpha settings. we care about these, but no hidden value
-        u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
-        ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
-        u64 alpha;
-        memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
-        adgif.alpha_val = alpha;
         frag_info.adgifs.push_back(adgif);
       }
 
@@ -1276,7 +1291,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 void debug_print_info(const std::vector<TieProtoInfo>& out) {
   for (auto& proto : out) {
     lg::debug("[{:40}]", proto.name);
-    lg::debug("  generic: {}", proto.uses_generic);
+    lg::debug("  flag: {}", proto.proto_flag);
     lg::debug("  use count: {}", proto.instances.size());
     lg::debug("  stiffness: {}", proto.stiffness);
   }
@@ -1968,6 +1983,10 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // Cv = (Cs - Cd) * FIX + Cd
     ASSERT(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
   }
 
   else {
@@ -2020,6 +2039,54 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   return mode;
 }
 
+DrawMode process_envmap_draw_mode(const AdgifInfo& info) {
+  // (set! (-> envmap-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+  // (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt
+  // (gs-tex-wrap-mode clamp))) (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1
+  // :d #x1))
+  auto mode = process_draw_mode(info, false, false);
+  mode.set_filt_enable(true);
+  mode.set_clamp_s_enable(true);
+  mode.set_clamp_t_enable(true);
+  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  return mode;
+}
+
+struct TieCategoryInfo {
+  tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL;
+  bool uses_envmap = false;
+};
+
+TieCategoryInfo get_jak2_tie_category(u32 flags) {
+  constexpr int kJak2ProtoDisable = 1;
+  constexpr int kJak2ProtoEnvmap = 2;
+  constexpr int kJak2ProtoTpageAlpha = 4;
+  constexpr int kJak2ProtoVanish = 8;
+  constexpr int kJak2ProtoBitFour = 16;
+  constexpr int kJak2ProtoVisible = 32;
+  constexpr int kJak2ProtoNoCollide = 64;
+  constexpr int kJak2ProtoTpageWater = 128;
+  TieCategoryInfo result;
+  if (flags & kJak2ProtoTpageAlpha) {
+    result.category = tfrag3::TieCategory::TRANS;
+    ASSERT((flags & kJak2ProtoTpageWater) == 0);
+  } else if (flags & kJak2ProtoTpageWater) {
+    result.category = tfrag3::TieCategory::WATER;
+    ASSERT((flags & kJak2ProtoTpageAlpha) == 0);
+  } else {
+    result.category = tfrag3::TieCategory::NORMAL;
+  }
+  result.uses_envmap = flags & kJak2ProtoEnvmap;
+  return result;
+}
+
+TieCategoryInfo get_jak1_tie_category(u32 flags) {
+  TieCategoryInfo result;
+  result.category = tfrag3::TieCategory::NORMAL;
+  result.uses_envmap = flags & 2;
+  return result;
+}
+
 /*!
  * Convert TieProtoInfo's to C++ renderer format
  */
@@ -2033,6 +2100,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
   std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
   std::unordered_map<u32, std::vector<u32>> wind_draws_by_tex;
 
+  std::array<std::vector<tfrag3::StripDraw>, tfrag3::kNumTieCategories> draws_by_category;
+
   if (version > GameVersion::Jak1) {
     tree.has_per_proto_visibility_toggle = true;
   }
@@ -2044,12 +2113,32 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       tree.proto_names.push_back(proto.name);
     }
 
-    if (proto.uses_generic) {
-      // generic ties go through generic
+    TieCategoryInfo info;
+    switch (version) {
+      case GameVersion::Jak1:
+        info = get_jak1_tie_category(proto.proto_flag);
+        break;
+      case GameVersion::Jak2:
+        info = get_jak2_tie_category(proto.proto_flag);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
+
+    if (info.uses_envmap && version == GameVersion::Jak1) {
+      // envmap ties go through generic (for now...)
       continue;
     }
+
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
+
+    bool using_envmap = info.uses_envmap;
+    ASSERT(using_envmap == proto.envmap_adgif.has_value());
+    DrawMode envmap_drawmode;
+    if (using_envmap) {
+      envmap_drawmode = process_envmap_draw_mode(proto.envmap_adgif.value());
+    }
 
     // create the model first
     std::vector<std::vector<std::pair<int, int>>> packed_vert_indices;
@@ -2110,8 +2199,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
           if (idx_in_lev_data == UINT32_MAX) {
             if (combo_tex == 0) {
-              lg::warn("unhandled texture 0 case in extract_tie for {} {}", lev.level_name,
-                       proto.name);
+              //              lg::warn("unhandled texture 0 case in extract_tie for {} {}",
+              //              lev.level_name,
+              //                       proto.name);
               idx_in_lev_data = 0;
             } else {
               // didn't find it, have to add a new one texture.
@@ -2213,17 +2303,18 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             tfrag3::StripDraw* draw_to_add_to = nullptr;
             if (existing_draws_in_tex != static_draws_by_tex.end()) {
               for (auto idx : existing_draws_in_tex->second) {
-                if (tree.static_draws.at(idx).mode == mode) {
-                  draw_to_add_to = &tree.static_draws[idx];
+                if (draws_by_category.at((int)info.category).at(idx).mode == mode) {
+                  draw_to_add_to = &draws_by_category.at((int)info.category)[idx];
                 }
               }
             }
 
             if (!draw_to_add_to) {
               // nope, need to create a new draw
-              tree.static_draws.emplace_back();
-              static_draws_by_tex[idx_in_lev_data].push_back(tree.static_draws.size() - 1);
-              draw_to_add_to = &tree.static_draws.back();
+              draws_by_category.at((int)info.category).emplace_back();
+              static_draws_by_tex[idx_in_lev_data].push_back(
+                  draws_by_category.at((int)info.category).size() - 1);
+              draw_to_add_to = &draws_by_category.at((int)info.category).back();
               draw_to_add_to->mode = mode;
               draw_to_add_to->tree_tex_id = idx_in_lev_data;
             }
@@ -2274,10 +2365,20 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   // sort draws by texture. no idea if this really matters, but will reduce the number of
   // times the renderer changes textures. it at least makes the rendererdoc debugging easier.
-  std::stable_sort(tree.static_draws.begin(), tree.static_draws.end(),
-                   [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
-                     return a.tree_tex_id < b.tree_tex_id;
-                   });
+  for (auto& draws : draws_by_category) {
+    std::stable_sort(draws.begin(), draws.end(),
+                     [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
+                       return a.tree_tex_id < b.tree_tex_id;
+                     });
+  }
+
+  ASSERT(tree.static_draws.empty());
+  tree.category_draw_indices[0] = 0;
+  for (int i = 0; i < tfrag3::kNumTieCategories; i++) {
+    tree.static_draws.insert(tree.static_draws.end(), draws_by_category[i].begin(),
+                             draws_by_category[i].end());
+    tree.category_draw_indices[i + 1] = tree.static_draws.size();
+  }
 }
 
 /*!
