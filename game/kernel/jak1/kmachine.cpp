@@ -44,6 +44,18 @@
 #include "game/sce/stubs.h"
 #include "game/system/vm/vm.h"
 
+#include <iostream>
+#include "common/util/FileUtil.h"
+#include "common/util/os.h"
+#include "common/versions.h"
+#include "common/util/unicode_util.h"
+#include "curl/curl.h"
+#include <mutex>
+#include "common/util/json_util.h"
+#include <mutex>
+
+std::mutex mtx; // Mutex for thread-safe access to position variables
+
 using namespace ee;
 
 namespace jak1 {
@@ -637,6 +649,11 @@ void InitMachine_PCPort() {
 
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
+
+  // HTTP server stuff
+  make_function_symbol_from_c("pc-http-register", (void*)pc_http_register)
+  make_function_symbol_from_c("pc-http-post-position", (void*)pc_http_post_position)
+  make_function_symbol_from_c("pc-http-get-other-positions", (void*)pc_http_get_other_positions)
 
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);

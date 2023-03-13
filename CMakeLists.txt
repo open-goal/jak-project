@@ -208,6 +208,9 @@ include_directories(third-party/glfw/include)
 add_subdirectory(third-party/imgui EXCLUDE_FROM_ALL)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
+# libcURL
+add_subdirectory(third-party/curl EXCLUDE_FROM_ALL)
+
 # build the game code in C++
 add_subdirectory(game)
 

@@ -41,3 +41,22 @@ struct FileStream {
   u32 name;  // basic
   s32 file;  // int32
 };
+
+#pragma pack(push, 4)
+struct RemotePlayerInfo {
+  float trans_x;
+  float trans_y;
+  float trans_z;
+  float color_r;
+  float color_g;
+  float color_b;
+}
+static_assert(sizeof(RemotePlayerInfo) == 24, "RemotePlayerInfo size is wrong");
+#pragma pack(pop)
+
+#pragma pack(push, 4)
+struct RemotePlayerList {
+  RemotePlayerInfo players[3];
+}
+static_assert(sizeof(RemotePlayerInfo) == 12, "RemotePlayerList size is wrong");
+#pragma pack(pop)
